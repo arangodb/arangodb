@@ -34,6 +34,7 @@ var internal = require("internal");
 var errors = internal.errors;
 var helper = require("@arangodb/aql-helper");
 var cluster = require("@arangodb/cluster");
+const gm = require("@arangodb/general-graph");
 var getQueryResults = helper.getQueryResults;
 var getRawQueryResults = helper.getRawQueryResults;
 var assertQueryError = helper.assertQueryError;
@@ -1277,8 +1278,33 @@ function ahuacatlQueryShortestPathTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual([ ], actual);
-    }
+    },
 
+    testKPathsConnectedButInnerVertexDeleted : function () {
+      // Find the path(s): A -> B -> F (which is valid)
+      // Case: B will be deleted before query execution.
+      // This is valid, but the query needs to report an error!
+      let key = 'B';
+      let item = `${vn}/${key}`;
+      vertexCollection.remove(item);
+
+      // Execute without fail and check
+      let query = `WITH ${vn} FOR path IN 1..3 OUTBOUND K_PATHS "${vn}/A" TO "${vn}/F" ${en} RETURN path.vertices[* RETURN CURRENT._key]`;
+      let actual = getQueryResults(query);
+      assertEqual(2, actual.length); // two paths because testShortestPathDijkstraCycles test added edges
+      assertEqual([['A', 'null', 'F'], ['A', 'D', 'null', 'F']], actual);
+
+      // Now execute with fail on warnings
+      try {
+        db._query(query, null, {"failOnWarning": true});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
+
+      // re-add vertex to let environment stay as is has been before the test
+      vertexCollection.save({ _key: key, name: key });
+    }
   };
 }
 
@@ -1336,7 +1362,7 @@ function ahuacatlQueryShortestpathErrorsSuite () {
       var m = vn + "/B";
       var t = vn + "/C";
 
-      var query = `FOR v IN OUTBOUND SHORTEST_PATH "${s}" TO "${t}" ${en} RETURN v._id`;
+      var query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${s}" TO "${t}" ${en} RETURN v._id`;
 
       var actual = getQueryResults(query);
       // Positive Check
@@ -1372,6 +1398,164 @@ function ahuacatlQueryShortestpathErrorsSuite () {
   };
 }
 
+function kPathsTestSuite () {
+  const gn = "UnitTestGraph";
+  const vn = "UnitTestV";
+  const en = "UnitTestE";
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUpAll: function () {
+      gm._create(gn, [gm._relation(en, vn, vn)]);
+
+      ["s", "t", "a", "b", "c", "d", "e", "f", "g"].map((elem) => {
+        db[vn].insert({_key: elem});
+      });
+
+      [
+        ["s", "a"], ["s", "b"], ["a", "b"], ["a", "c"], ["b", "c"],
+        ["c", "d"], ["d", "t"],
+        ["c", "e"], ["e", "t"],
+        ["c", "f"], ["f", "t"],
+        ["c", "g"], ["g", "t"]
+      ].map(([a, b]) => {
+        db[en].insert({_from: `${vn}/${a}`, _to: `${vn}/${b}`});
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDownAll: function () {
+      gm._drop(gn, true);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if we are able to find all paths when using ANY direction with KPATHs
+/// One of the edges is used in both directions.
+////////////////////////////////////////////////////////////////////////////////
+
+    testkPathsAnyUseEdgeTwice: function () {
+      let outbound = db._query(`
+        FOR p IN 1..10 OUTBOUND K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices[*]._key
+      `);
+
+      let any = db._query(`
+        FOR p IN 1..10 ANY K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices[*]._key
+      `);
+
+      assertEqual(outbound.toArray().length, 12);
+      assertEqual(any.toArray().length, 16);
+    }
+  };
+}
+
+function ShortestPathErrorTestSuite() {
+
+  const graphName = "UnitTestGraph";
+  const vName = "UnitTestVertices";
+  const eName = "UnitTestEdges";
+
+  const keyA = "A";
+  const keyB = "B";
+  const keyC = "C";
+  const keyD = "D";
+  const keyE = "E";
+
+  function createGraph() {
+    /*
+     * Graph:
+     *   A  -> B  -> E
+     *    ⬊ C -> D ⬈
+     */
+    gm._create(graphName, [gm._relation(eName, vName, vName)], [], {});
+
+    const vertexes = [
+      {_key: keyA, value: 1},
+      {_key: keyB, value: 1},
+      {_key: keyC, value: 1},
+      {_key: keyD, value: 1},
+      {_key: keyE, value: 1}
+    ];
+
+    const edges = [
+      {_from: `${vName}/${keyA}`, _to: `${vName}/${keyB}`, weight: 1},
+      {_from: `${vName}/${keyB}`, _to: `${vName}/${keyE}`, weight: -1},
+      {_from: `${vName}/${keyA}`, _to: `${vName}/${keyC}`, weight: -1},
+      {_from: `${vName}/${keyC}`, _to: `${vName}/${keyD}`, weight: 1},
+      {_from: `${vName}/${keyD}`, _to: `${vName}/${keyE}`, weight: -1}
+    ];
+
+    db[vName].insert(vertexes);
+    db[eName].insert(edges);
+  }
+
+
+  return {
+    setUpAll: function () {
+      createGraph();
+    },
+
+    tearDownAll: function () {
+      gm._drop(graphName, true);
+    },
+
+    testShortestPathNegativeDefaultEdgeWeight: function () {
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const bindVars = {
+        weight: -1
+      };
+
+      const query = `
+        FOR path IN OUTBOUND SHORTEST_PATH "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {defaultWeight: @weight}
+          RETURN path
+      `;
+
+      try {
+        let res = db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        console.warn(err);
+        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
+      }
+    },
+
+    testShortestPathNegativeEdgeWeight: function () {
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const bindVars = {
+        weight: 1,
+        weightAttributeToUse: "weight"
+      };
+
+      const query = `
+        FOR path IN OUTBOUND SHORTEST_PATH "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {defaultWeight: @weight, weightAttribute: @weightAttributeToUse}
+          RETURN path
+      `;
+
+      try {
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
+      }
+    }
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -1384,4 +1568,7 @@ jsunity.run(ahuacatlQueryShortestPathTestSuite);
 if (internal.debugCanUseFailAt() && ! cluster.isCluster()) {
   jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
 }
+jsunity.run(kPathsTestSuite);
+jsunity.run(ShortestPathErrorTestSuite);
+
 return jsunity.done();

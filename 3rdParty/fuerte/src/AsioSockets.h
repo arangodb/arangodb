@@ -40,12 +40,21 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
       return;
     }
 
-    // A successful resolve operation is guaranteed to pass a
-    // non-empty range to the handler.
-    asio_ns::async_connect(socket, it,
-                           [done(std::move(done))](auto ec, auto it) mutable {
-                             std::forward<F>(done)(ec);
-                           });
+    try {
+      // A successful resolve operation is guaranteed to pass a
+      // non-empty range to the handler.
+      asio_ns::async_connect(socket, it,
+                             [done(std::move(done))](auto ec, auto it) mutable {
+                               std::forward<F>(done)(ec);
+                             });
+    } catch (std::bad_alloc const&) {
+      // definitely an OOM error
+      done(boost::system::errc::make_error_code(boost::system::errc::not_enough_memory));
+    } catch (...) {
+      // probably not an OOM error, but we don't know what it actually is.
+      // there is no code for a generic error that we could use here
+      done(boost::system::errc::make_error_code(boost::system::errc::not_enough_memory));
+    }
   };
 
   // windows does not like async_resolve
@@ -146,7 +155,13 @@ struct Socket<fuerte::SocketType::Ssl> {
             } else {
               socket.set_verify_mode(asio_ns::ssl::verify_none);
             }
+          } catch (std::bad_alloc const&) {
+            // definitely an OOM error
+            done(boost::system::errc::make_error_code(boost::system::errc::not_enough_memory));
+            return;
           } catch (boost::system::system_error const& exc) {
+            // probably not an OOM error, but we don't know what it actually is.
+            // there is no code for a generic error that we could use here
             done(exc.code());
             return;
           }

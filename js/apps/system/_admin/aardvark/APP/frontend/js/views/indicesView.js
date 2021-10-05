@@ -15,7 +15,7 @@
 
       // rerender
       self.interval = window.setInterval(function () {
-        if (window.location.hash.indexOf('cIndices/' + self.collectionName) !== -1 && window.VISIBLE) {
+        if (window.location.hash.indexOf('cIndices/' + encodeURIComponent(self.collectionName)) !== -1 && window.VISIBLE) {
           if ($('#collectionEditIndexTable').is(':visible') && !$('#indexDeleteModal').is(':visible')) {
             self.rerender();
           }
@@ -103,7 +103,7 @@
 
     breadcrumb: function () {
       $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + (this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
+        'Collection: ' + _.escape(this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
       );
     },
 
@@ -128,10 +128,24 @@
       var unique;
       var sparse;
       var deduplicate;
+      var estimates;
       var background;
       var name;
 
       switch (indexType) {
+        case 'Zkd':
+          fields = $('#newZkdFields').val();
+          const fieldValueTypes = $('#newZkdFieldValueTypes').val();
+          background = self.checkboxToValue('#newZkdBackground');
+          name = $('#newZkdName').val();
+          postParameter = {
+            type: 'zkd',
+            fields: self.stringToArray(fields),
+            fieldValueTypes,
+            inBackground: background,
+            name
+          };
+          break;
         case 'Ttl':
           fields = $('#newTtlFields').val();
           var expireAfter = parseInt($('#newTtlExpireAfter').val(), 10) || 0;
@@ -164,6 +178,7 @@
           unique = self.checkboxToValue('#newPersistentUnique');
           sparse = self.checkboxToValue('#newPersistentSparse');
           deduplicate = self.checkboxToValue('#newPersistentDeduplicate');
+          estimates = self.checkboxToValue('#newPersistentEstimates');
           background = self.checkboxToValue('#newPersistentBackground');
           name = $('#newPersistentName').val();
           postParameter = {
@@ -172,6 +187,7 @@
             unique: unique,
             sparse: sparse,
             deduplicate: deduplicate,
+            estimates: estimates,
             inBackground: background,
             name: name
           };
@@ -181,6 +197,7 @@
           unique = self.checkboxToValue('#newHashUnique');
           sparse = self.checkboxToValue('#newHashSparse');
           deduplicate = self.checkboxToValue('#newHashDeduplicate');
+          estimates = self.checkboxToValue('#newHashEstimates');
           background = self.checkboxToValue('#newHashBackground');
           name = $('#newHashName').val();
           postParameter = {
@@ -189,6 +206,7 @@
             unique: unique,
             sparse: sparse,
             deduplicate: deduplicate,
+            estimates: estimates,
             inBackground: background,
             name: name
           };
@@ -211,6 +229,7 @@
           unique = self.checkboxToValue('#newSkiplistUnique');
           sparse = self.checkboxToValue('#newSkiplistSparse');
           deduplicate = self.checkboxToValue('#newSkiplistDeduplicate');
+          estimates = self.checkboxToValue('#newSkiplistEstimates');
           background = self.checkboxToValue('#newSkiplistBackground');
           name = $('#newSkiplistName').val();
           postParameter = {
@@ -219,6 +238,7 @@
             unique: unique,
             sparse: sparse,
             deduplicate: deduplicate,
+            estimates: estimates,
             inBackground: background,
             name: name
           };
@@ -387,7 +407,7 @@
               $.ajax({
                 type: 'PUT',
                 cache: false,
-                url: arangoHelper.databaseUrl('/_api/job/' + job.id),
+                url: arangoHelper.databaseUrl('/_api/job/' + encodeURIComponent(job.id)),
                 contentType: 'application/json',
                 success: function (data, a, b) {
                   readJob(false, data, job.id);
@@ -435,9 +455,9 @@
           );
           var sparse = (v.hasOwnProperty('sparse') ? v.sparse : 'n/a');
           var extras = [];
-          ["deduplicate", "expireAfter", "minLength", "geoJson"].forEach(function(k) {
+          ['deduplicate', 'expireAfter', 'minLength', 'geoJson', 'estimates'].forEach(function (k) {
             if (v.hasOwnProperty(k)) {
-              extras.push(k + ": " + v[k]);
+              extras.push(k + ': ' + v[k]);
             }
           });
 
@@ -467,6 +487,12 @@
         $('#newIndexType').val(arangoHelper.escapeHtml(type));
       }
       $('#newIndexType' + type).show();
+      if (type) {
+        // select "maintain index selectivity estimates" by default
+        $('#new' + type + 'Estimates').prop('checked', true);
+        // select "create in background" by default
+        $('#new' + type + 'Background').prop('checked', true);
+      }
     },
 
     resetIndexForms: function () {
@@ -490,7 +516,6 @@
           $('#cancelIndex').detach().appendTo(elem);
           $('#createIndex').detach().appendTo(elem);
         }
-
         this.resetIndexForms();
       }
       arangoHelper.createTooltips('.index-tooltip');

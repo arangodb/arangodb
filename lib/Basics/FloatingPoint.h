@@ -34,8 +34,7 @@
 //
 // Authors: wan@google.com (Zhanyong Wan), eefacm@gmail.com (Sean Mcafee)
 
-#ifndef LIB_BASICS_FLOATINGPOINT_H
-#define LIB_BASICS_FLOATINGPOINT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -288,5 +287,3 @@ static inline bool almostEquals(double f1, double f2) {
 }
 
 }  // namespace arangodb
-
-#endif

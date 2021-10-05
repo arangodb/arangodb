@@ -21,14 +21,15 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__UTILS_H
-#define ARANGODB_V8_V8__UTILS_H 1
+#pragma once
 
 #include <stddef.h>
 #include <cstdint>
 #include <string>
 
 #include <v8.h>
+
+#include "Basics/ErrorCode.h"
 
 namespace arangodb {
 class Result;
@@ -140,7 +141,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
 /// @brief creates an error in a javascript object, based on error number only
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber);
+// void TRI_CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on arangodb::Result
@@ -151,7 +152,7 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const&);
 /// @brief creates an error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
+void TRI_CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber,
                            std::string_view message, bool autoPrepend);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,4 +186,3 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args);
 
-#endif

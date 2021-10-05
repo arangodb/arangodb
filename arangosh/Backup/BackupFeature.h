@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BACKUP_BACKUP_FEATURE_H
-#define ARANGODB_BACKUP_BACKUP_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -79,4 +78,3 @@ class BackupFeature : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

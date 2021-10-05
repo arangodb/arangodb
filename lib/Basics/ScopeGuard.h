@@ -21,90 +21,86 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SCOPE_GUARD_H
-#define ARANGODB_BASICS_SCOPE_GUARD_H 1
+#pragma once
 
+#include <functional>
 #include <type_traits>
 #include <utility>
 
-#define SCOPE_GUARD_TOKEN_PASTE_WRAPPED(x, y) x##y
-#define SCOPE_GUARD_TOKEN_PASTE(x, y) SCOPE_GUARD_TOKEN_PASTE_WRAPPED(x, y)
-
-// helper macros for creating a capture-all ScopeGuard
-#define TRI_DEFER_BLOCK_INTERNAL(func, objname) \
-  auto objname = arangodb::scopeGuard([&] { func; });
-
-#define TRI_DEFER_BLOCK(func) \
-  TRI_DEFER_BLOCK_INTERNAL(func, SCOPE_GUARD_TOKEN_PASTE(autoScopeGuardObj, __LINE__))
-
-// TRI_DEFER currently just maps to TRI_DEFER_BLOCK
-// we will fix this later
-#define TRI_DEFER(func) TRI_DEFER_BLOCK(func)
-
 namespace arangodb {
 
-template <class T>
-class ScopeGuard {
- public:
-  // prevent empty construction
-  ScopeGuard() = delete;
-
-  // prevent copying
-  ScopeGuard(ScopeGuard const&) = delete;
-  ScopeGuard& operator=(ScopeGuard const&) = delete;
-
-  ScopeGuard(T&& func) noexcept : _func(std::forward<T>(func)), _active(true) {}
-
-  ScopeGuard(ScopeGuard&& other) noexcept(std::is_nothrow_move_constructible<T>::value)
-      : _func(std::move_if_noexcept(other._func)), _active(other._active) {
-    other.cancel();
+namespace detail {
+struct UniqueBool {
+  UniqueBool() noexcept = default;
+  explicit UniqueBool(bool v) : _value(v) {}
+  UniqueBool(UniqueBool&& other) noexcept : _value(other.once()) {}
+  UniqueBool& operator=(UniqueBool&& other) noexcept {
+    _value = other.once();
+    return *this;
   }
 
-  // the actual work is done in the ScopeGuard's destructor
-  ~ScopeGuard() noexcept {
-    if (active()) {
-      try {
-        // call the scope exit function
-        _func();
-      } catch (...) {
-        // we must not throw in destructors
-      }
+  void reset() noexcept { _value = false; }
+  explicit operator bool() const noexcept { return _value; }
+  [[nodiscard]] auto value() const noexcept -> bool { return _value; }
+  auto once() noexcept -> bool {
+    if (_value) {
+      _value = false;
+      return true;
     }
+    return false;
   }
-
-  // make the guard not trigger the function at scope exit
-  void cancel() noexcept { _active = false; }
-
-  // make the guard fire now and deactivate
-  void fire() noexcept {
-    if (active()) {
-      _active = false;
-
-      try {
-        // call the scope exit function
-        _func();
-      } catch (...) {
-        // we must not throw in destructors
-      }
-    }
-  }
-
-  // whether or not the guard will trigger the function at scope exit
-  bool active() const noexcept { return _active; }
-
  private:
-  // the function to be executed at scope exit
-  T _func;
-
-  // whether or not the guard will trigger the function at scope exit
-  bool _active;
+  bool _value = false;
 };
 
+template<bool isDeleted>
+struct ConditionalDeletedMoveConstructor {
+  ConditionalDeletedMoveConstructor() = default;
+};
+template<>
+struct ConditionalDeletedMoveConstructor<true> {
+  ConditionalDeletedMoveConstructor() = default;
+  ConditionalDeletedMoveConstructor(ConditionalDeletedMoveConstructor&&) noexcept = delete;
+};
+}
+
+template<typename F, typename Func = std::decay_t<F>>
+struct ScopeGuard : private Func, private detail::UniqueBool,
+                    private detail::ConditionalDeletedMoveConstructor<!std::is_nothrow_move_constructible_v<Func>> {
+  static_assert(std::is_nothrow_invocable_r_v<void, F>);
+
+  [[nodiscard]] explicit ScopeGuard(F&& fn) : Func(std::forward<F>(fn)), UniqueBool(true) {}
+
+  ScopeGuard(ScopeGuard&&) noexcept = default;
+  ScopeGuard& operator=(ScopeGuard&&) noexcept = default;
+
+  ~ScopeGuard() { fire(); }
+
+  void fire() noexcept {
+    if (UniqueBool::once()) {
+      std::invoke(std::forward<F>(*this));
+    }
+  }
+
+  void cancel() noexcept { UniqueBool::reset(); }
+  [[nodiscard]] auto active() const noexcept -> bool { return UniqueBool::value(); }
+};
+
+template<typename G>
+ScopeGuard(G&&) -> ScopeGuard<G>;
+
+// TODO can be deleted, because the deduction guide above allows to use
+//      the constructor directly.
 template <class T>
-ScopeGuard<T> scopeGuard(T&& f) {
+[[nodiscard]] ScopeGuard<T> scopeGuard(T&& f) {
   return ScopeGuard<T>(std::forward<T>(f));
+}
+
+[[nodiscard]] inline auto scopeGuard(void (*func)()noexcept) {
+  return ScopeGuard([func]() noexcept {
+    func();
+  });
 }
 
 }  // namespace arangodb
 
-#endif

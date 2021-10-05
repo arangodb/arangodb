@@ -1,5 +1,4 @@
 'use strict'
-const fs = require('fs')
 const path = require('path')
 
 // add bash completions to your
@@ -92,10 +91,8 @@ module.exports = function completion (yargs, usage, command) {
 
   // generate the completion script to add to your .bashrc.
   self.generateCompletionScript = function generateCompletionScript ($0, cmd) {
-    let script = fs.readFileSync(
-      path.resolve(__dirname, zshShell ? '../completion.zsh.hbs' : '../completion.sh.hbs'),
-      'utf-8'
-    )
+    const templates = require('./completion-templates')
+    let script = zshShell ? templates.completionZshTemplate : templates.completionShTemplate
     const name = path.basename($0)
 
     // add ./to applications not yet installed as bin.

@@ -67,12 +67,8 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
       _stable(stable),
       _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
 
-/// @brief toVelocyPack, for SortNode
-void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                  std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+/// @brief doToVelocyPack, for SortNode
+void SortNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add(VPackValue("elements"));
   {
     VPackArrayBuilder guard(&nodes);
@@ -93,9 +89,6 @@ void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   nodes.add("stable", VPackValue(_stable));
   nodes.add("limit", VPackValue(_limit));
   nodes.add("strategy", VPackValue(sorterTypeName(sorterType())));
-
-  // And close it:
-  nodes.close();
 }
 
 class SortNodeFindMyExpressions
@@ -269,6 +262,12 @@ CostEstimate SortNode::estimateCost() const {
                               std::log2(static_cast<double>(estimate.estimatedNrItems));
   }
   return estimate;
+}
+
+void SortNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  for (auto& variable : _elements) {
+    variable.var = Variable::replace(variable.var, replacements);
+  }
 }
 
 SortNode::SorterType SortNode::sorterType() const {

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_SIMPLE_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_SIMPLE_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestCursorHandler.h"
@@ -83,4 +82,3 @@ class RestSimpleHandler : public RestCursorHandler {
 };
 }  // namespace arangodb
 
-#endif

@@ -20,19 +20,25 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_CALCULATION_ANALYZER
-#define ARANGOD_IRESEARCH__IRESEARCH_CALCULATION_ANALYZER 1
+
+#pragma once
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "Aql/Ast.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlValue.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include "Basics/ResourceUsage.h"
+#include "Containers/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
+#include "IResearchAnalyzerValueTypeAttribute.h"
+#include "IResearchVPackTermAttribute.h"
 
 #include <string>
 
@@ -40,13 +46,15 @@ namespace arangodb {
 namespace iresearch {
 
 class AqlAnalyzer final : public irs::analysis::analyzer{
+
  public:
   struct Options {
     Options() = default;
 
-    Options(std::string&& query, bool collapse, bool keep, uint32_t batch, uint32_t limit)
+    Options(std::string&& query, bool collapse, bool keep, uint32_t batch, uint32_t limit,
+            AnalyzerValueType retType)
       : queryString(query), collapsePositions(collapse),
-      keepNull(keep), batchSize(batch), memoryLimit(limit) {}
+      keepNull(keep), batchSize(batch), memoryLimit(limit), returnType(retType) {}
 
     /// @brief Query string to be executed for each document.
     /// Field value is set with @param binded parameter.
@@ -67,11 +75,20 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
 
     /// @brief memory limit for query.  1Mb by default. Could be increased to 32Mb
     uint32_t memoryLimit{ 1048576U };
+
+    /// @brief target type to convert query output. Could be
+    ///        string, bool, number.
+    AnalyzerValueType returnType{AnalyzerValueType::String};
   };
 
   static constexpr irs::string_ref type_name() noexcept {
     return "aql";
   }
+
+ public:
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  bool isOptimized() const;
+#endif
 
   static bool normalize_vpack(const irs::string_ref& args, std::string& out);
   static irs::analysis::analyzer::ptr make_vpack(irs::string_ref const& args);
@@ -80,34 +97,47 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
 
   explicit AqlAnalyzer(Options const& options);
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    if (type == irs::type<irs::increment>::id()) {
-      return &_inc;
-    }
-
-    return type == irs::type<irs::term_attribute>::id()
-      ? &_term : nullptr;
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+    return irs::get_mutable(_attrs, type);
   }
 
   virtual bool next() override;
   virtual bool reset(irs::string_ref const& field) noexcept override;
 
  private:
-  irs::term_attribute _term;
-  irs::increment _inc;
-  std::string _str;
+
+  using ResetImplFunctor = void (*)(AqlAnalyzer* analyzer);
+
+  friend bool tryOptimize(AqlAnalyzer* analyzer);
+  friend void resetFromExpression(AqlAnalyzer* analyzer);
+  friend void resetFromQuery(AqlAnalyzer* analyzer);
+
+  using attributes = std::tuple<
+    irs::increment,
+    AnalyzerValueTypeAttribute,
+    irs::term_attribute,
+    VPackTermAttribute>;
+
   Options _options;
-  arangodb::ResourceMonitor _resourceMonitor;
-  std::unique_ptr<arangodb::aql::QueryContext> _query;
-  arangodb::aql::AqlItemBlockManager _itemBlockManager;
-  arangodb::aql::ExecutionEngine _engine;
-  std::unique_ptr<arangodb::aql::ExecutionPlan> _plan;
-  arangodb::aql::SharedAqlItemBlockPtr _queryResults;
+  aql::AqlValue _valueBuffer;
+  std::unique_ptr<aql::QueryContext> _query;
+  containers::SmallVector<
+    arangodb::aql::AqlValue>::allocator_type::arena_type _params_arena;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
+  aql::AqlItemBlockManager _itemBlockManager;
+  aql::ExecutionEngine _engine;
+  std::unique_ptr<aql::ExecutionPlan> _plan;
+
+  aql::CalculationNode* _nodeToOptimize{nullptr};
+  ResetImplFunctor _resetImpl;
+  aql::SharedAqlItemBlockPtr _queryResults;
+  std::vector<aql::AstNode*> _bindedNodes;
+  aql::ExecutionState _executionState{aql::ExecutionState::DONE};
+
+  aql::RegisterId _engineResultRegister;
+  attributes _attrs;
   size_t _resultRowIdx{ 0 };
-  std::vector<arangodb::aql::AstNode*> _bindedNodes;
-  arangodb::aql::ExecutionState _executionState{arangodb::aql::ExecutionState::DONE};
   uint32_t _nextIncVal{0};
 }; // AqlAnalyzer
 } // namespace iresearch
 } // namespace arangodb
-#endif // ARANGOD_IRESEARCH__IRESEARCH_CALCULATION_ANALYZER

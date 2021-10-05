@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_VALUE_FWD_H
-#define ARANGOD_AQL_AQL_VALUE_FWD_H 1
+#pragma once
 
 #include <functional>
 
@@ -51,4 +50,3 @@ struct equal_to<arangodb::aql::AqlValue> {
 
 }  // namespace std
 
-#endif  // ARANGOD_AQL_AQL_VALUE_FWD_H

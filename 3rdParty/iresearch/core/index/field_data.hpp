@@ -24,31 +24,35 @@
 #ifndef IRESEARCH_FIELD_DATA_H
 #define IRESEARCH_FIELD_DATA_H
 
+#include <vector>
+#include <tuple>
+
 #include "field_meta.hpp"
 #include "postings.hpp"
 #include "formats/formats.hpp"
 
+#include "index/index_features.hpp"
 #include "index/iterators.hpp"
 
 #include "utils/block_pool.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
-
-#include <vector>
-#include <tuple>
-#include <unordered_map>
+#include "utils/hash_set_utils.hpp"
 
 namespace iresearch {
 
 struct field_writer;
 class token_stream;
-class analyzer;
 struct offset;
 struct payload;
 class format;
 struct directory;
 class comparer;
 struct flush_state;
+
+namespace analysis {
+class analyzer;
+}
 
 typedef block_pool<size_t, 8192> int_block_pool;
 
@@ -58,47 +62,46 @@ class doc_iterator;
 class sorting_doc_iterator;
 }
 
-IRESEARCH_API bool memcmp_less(
-  const byte_type* lhs,
-  size_t lhs_size,
-  const byte_type* rhs,
-  size_t rhs_size
-) noexcept;
-
-inline bool memcmp_less(
-    const bytes_ref& lhs,
-    const bytes_ref& rhs
-) noexcept {
-  return memcmp_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
-}
-
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
     const string_ref& name,
+    const features_t& features,
+    const field_features_t& field_features,
+    const feature_column_info_provider_t& feature_columns,
+    columnstore_writer& columns,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
-    bool random_access
-  );
+    IndexFeatures index_features,
+    bool random_access);
 
   doc_id_t doc() const noexcept { return last_doc_; }
 
-  // returns number of terms in a field within a document
-  size_t size() const noexcept { return len_; }
-
   const field_meta& meta() const noexcept { return meta_; }
-
-  data_output& norms(columnstore_writer& writer);
 
   // returns false if field contains indexed data
   bool empty() const noexcept {
     return !doc_limits::valid(last_doc_);
   }
 
-  bool invert(token_stream& tokens, const flags& features, doc_id_t id);
+  bool invert(token_stream& tokens, doc_id_t id);
 
-  bool prox_random_access() const noexcept {
-    return TERM_PROCESSING_TABLES[1] == proc_table_;
+  const field_stats& stats() const noexcept { return stats_; }
+
+  bool seen() const noexcept { return seen_; }
+  void seen(bool value) noexcept { seen_ = value; }
+
+  void compute_features() const {
+    for (auto& entry : features_) {
+      auto& [type, handler, writer] = entry;
+      UNUSED(type);
+
+      handler(stats_, doc(), writer);
+    }
+  }
+
+  bool has_features() const noexcept {
+    return !features_.empty();
   }
 
  private:
@@ -107,7 +110,14 @@ class IRESEARCH_API field_data : util::noncopyable {
   friend class detail::sorting_doc_iterator;
   friend class fields_data;
 
-  typedef void(field_data::*process_term_f)(posting&, doc_id_t, const payload*, const offset*);
+  using feature_info = std::tuple<
+    type_info::type_id,
+    feature_handler_f,
+    columnstore_writer::values_writer_f>;
+
+  using process_term_f = void(field_data::*)(
+    posting&, doc_id_t,
+    const payload*, const offset*);
 
   static const process_term_f TERM_PROCESSING_TABLES[2][2];
 
@@ -119,34 +129,58 @@ class IRESEARCH_API field_data : util::noncopyable {
   void new_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
   void add_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
 
-  columnstore_writer::values_writer_f norms_;
-  field_meta meta_;
+  bool prox_random_access() const noexcept {
+    return TERM_PROCESSING_TABLES[1] == proc_table_;
+  }
+
+  mutable std::vector<feature_info> features_;
+  mutable columnstore_writer::values_writer_f norms_;
+  mutable field_meta meta_;
   postings terms_;
   byte_block_pool::inserter* byte_writer_;
   int_block_pool::inserter* int_writer_;
   const process_term_f* proc_table_;
-  doc_id_t last_doc_{ type_limits<type_t::doc_id_t>::invalid() };
+  field_stats stats_;
+  doc_id_t last_doc_{ doc_limits::invalid() };
   uint32_t pos_;
   uint32_t last_pos_;
-  uint32_t len_; // total number of terms
-  uint32_t num_overlap_; // number of overlapped terms
   uint32_t offs_;
   uint32_t last_start_offs_;
-  uint32_t max_term_freq_; // maximum number of terms in a field across all indexed documents 
-  uint32_t unq_term_cnt_;
-};
+  bool seen_{false};
+}; // field_data
 
 class IRESEARCH_API fields_data: util::noncopyable {
- public:
-  typedef std::unordered_map<hashed_string_ref, field_data> fields_map;
+ private:
+  struct field_ref_eq : value_ref_eq<field_data*> {
+    using self_t::operator();
 
-  explicit fields_data(const comparer* comparator);
+    bool operator()(const ref_t& lhs, const hashed_string_ref& rhs) const noexcept {
+      return lhs.second->meta().name == rhs;
+    }
+
+    bool operator()(const hashed_string_ref& lhs, const ref_t& rhs) const noexcept {
+      return this->operator()(rhs, lhs);
+    }
+  };
+
+  using fields_map = flat_hash_set<field_ref_eq>;
+
+ public:
+  using postings_ref_t = std::vector<const posting*>;
+
+  explicit fields_data(
+    const field_features_t& field_features,
+    const feature_column_info_provider_t& feature_columns,
+    const comparer* comparator);
 
   const comparer* comparator() const noexcept {
     return comparator_;
   }
 
-  field_data& emplace(const hashed_string_ref& name);
+  field_data* emplace(const hashed_string_ref& name,
+                      IndexFeatures index_features,
+                      const features_t& features,
+                      columnstore_writer& columns);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory actively in-use by this instance
@@ -154,37 +188,39 @@ class IRESEARCH_API fields_data: util::noncopyable {
   size_t memory_active() const noexcept {
     return byte_writer_.pool_offset()
       + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
-      + fields_.size() * sizeof(fields_map::value_type);
+      + fields_map_.size() * sizeof(fields_map::value_type)
+      + fields_.size() * sizeof(decltype(fields_)::value_type);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory reserved by this instance
   //////////////////////////////////////////////////////////////////////////////
   size_t memory_reserved() const noexcept {
-    return sizeof(fields_data) + byte_pool_.size() + int_pool_.size();
+    return sizeof(fields_data) +
+           byte_pool_.size() +
+           int_pool_.size();
   }
 
   size_t size() const { return fields_.size(); }
-  fields_data& operator+=(const flags& features) {
-    features_ |= features;
-    return *this;
-  }
-  const flags& features() { return features_; }
   void flush(field_writer& fw, flush_state& state);
   void reset() noexcept;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const comparer* comparator_;
-  fields_map fields_;
+  const field_features_t* field_features_;
+  const feature_column_info_provider_t* feature_columns_;
+  std::deque<field_data> fields_; // pointers remain valid
+  fields_map fields_map_;
+  postings_ref_t sorted_postings_;
+  std::vector<const field_data*> sorted_fields_;
   byte_block_pool byte_pool_;
   byte_block_pool::inserter byte_writer_;
   int_block_pool int_pool_; // FIXME why don't to use std::vector<size_t>?
   int_block_pool::inserter int_writer_;
-  flags features_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // fields_data
 
-}
+} // iresearch
 
 #endif

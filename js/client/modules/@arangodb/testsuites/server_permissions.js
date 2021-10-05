@@ -84,6 +84,9 @@ function startParameterTest(options, testpath, suiteName) {
       }
       if (runSetup) {
         delete paramsSecondRun.runSetup;
+        if (options.extremeVerbosity) {
+          print(paramsFirstRun);
+        }
         instanceInfo = pu.startInstance(options.protocol, options, paramsFirstRun, suiteName, rootDir); // first start
         pu.cleanupDBDirectoriesAppend(instanceInfo.rootDir);      
         try {
@@ -109,6 +112,9 @@ function startParameterTest(options, testpath, suiteName) {
           instanceInfo.arangods.forEach(function(arangod) {
             arangod.pid = null;
           });
+          if (options.extremeVerbosity) {
+            print(paramsSecondRun);
+          }
           pu.reStartInstance(clonedOpts, instanceInfo, paramsSecondRun);      // restart with restricted permissions
         }
         else {

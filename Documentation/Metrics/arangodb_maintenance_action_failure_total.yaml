@@ -1,0 +1,18 @@
+name: arangodb_maintenance_action_failure_total
+renamedFrom: arangodb_maintenance_action_failure_counter
+introducedIn: "3.8.0"
+help: |
+  Failure counter for the maintenance actions.
+unit: number
+type: counter
+category: Maintenance
+complexity: simple
+exposedBy:
+  - dbserver
+description: |
+  Database servers execute reconciliation actions to let the cluster converge
+  to the desired state. Actions are created, registered, queued and executed.
+  Once they are done they will eventually be removed.
+
+  Those action can fail for different reasons. This metric counts the failed
+  actions and can thus provide hints to investigate a malfunction.

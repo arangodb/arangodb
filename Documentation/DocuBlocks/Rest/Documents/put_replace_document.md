@@ -121,6 +121,10 @@ an error document in this case.
 @RESTRETURNCODE{404}
 is returned if the collection or the document was not found.
 
+@RESTRETURNCODE{409}
+is returned if the replace causes a unique constraint violation in 
+a secondary index.
+
 @RESTRETURNCODE{412}
 is returned if the precondition was violated. The response will
 also contain the found documents' current revisions in the *_rev*

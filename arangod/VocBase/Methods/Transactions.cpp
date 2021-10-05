@@ -374,30 +374,32 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  auto ctx = std::make_shared<transaction::V8Context>(vocbase, embed);
+  transaction::V8Context ctx(vocbase, embed);
 
   // start actual transaction
-  auto trx = std::make_unique<transaction::Methods>(ctx, readCollections, writeCollections,
-                                                    exclusiveCollections, trxOptions);
-  trx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  transaction::Methods trx(
+    std::shared_ptr<transaction::Context>(std::shared_ptr<transaction::Context>(), &ctx),
+    readCollections, writeCollections,
+    exclusiveCollections, trxOptions);
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (ServerState::instance()->isCoordinator()) {
     // No one knows our Transaction ID yet, so we an run FAST_LOCK_ROUND and potentialy reroll it.
-    trx->addHint(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
+    trx.addHint(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
   }
 
-  rv = trx->begin();
+  rv = trx.begin();
 
   if (rv.fail()) {
     return rv;
   }
   
-  auto guard = scopeGuard([&ctx] {
-    ctx->exitV8Context();
+  auto guard = scopeGuard([&ctx]() noexcept {
+    ctx.exitV8Context();
   });
   if (transaction::V8Context::isEmbedded()) { // do not enter context if already embedded
     guard.cancel();
   } else {
-    ctx->enterV8Context();
+    ctx.enterV8Context();
   }
 
   try {
@@ -406,7 +408,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     result = action->Call(TRI_IGETC, current, 1, &arguments).FromMaybe(v8::Local<v8::Value>());
 
     if (tryCatch.HasCaught()) {
-      trx->abort();
+      trx.abort();
 
       std::tuple<bool, bool, Result> rvTuple =
           extractArangoError(isolate, tryCatch, TRI_ERROR_TRANSACTION_INTERNAL);
@@ -429,7 +431,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     rv.reset(TRI_ERROR_INTERNAL, "caught unknown exception during transaction");
   }
 
-  rv = trx->finish(rv);
+  rv = trx.finish(rv);
 
   // if we do not remove unused V8Cursors, V8Context might not reset global
   // state

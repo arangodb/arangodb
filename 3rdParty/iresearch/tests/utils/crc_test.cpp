@@ -45,6 +45,14 @@
   // NOOP
 #endif
 
+TEST(crc_test, check_invalid_range) {
+  irs::crc32c crc;
+
+  char buf[1257] { 1, 2, 3 };
+  crc.process_block(std::end(buf), std::begin(buf));
+  ASSERT_EQ(0, crc.checksum());
+}
+
 TEST(crc_test, check) {
   typedef boost::crc_optimal<32, 0x1EDC6F41, 0, 0, true, true> crc32c_expected;
 
@@ -54,7 +62,7 @@ TEST(crc_test, check) {
 
   char buf[65536];
 
-  std::fstream stream(test_base::resource("simple_two_column.csv"));
+  std::fstream stream(test_base::resource("simple_two_column.csv").c_str());
   ASSERT_FALSE(!stream);
 
   while (stream) {

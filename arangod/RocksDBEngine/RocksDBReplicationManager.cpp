@@ -146,7 +146,10 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext(
       // for applying count patches.
     }
 
-    _contexts.try_emplace(id, context.get());
+    bool inserted =_contexts.try_emplace(id, context.get()).second;
+    if (!inserted) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to insert replication context");
+    }
   }
 
   LOG_TOPIC("27c43", TRACE, Logger::REPLICATION)
@@ -396,6 +399,9 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
   auto const now = TRI_microtime();
   std::vector<RocksDBReplicationContext*> found;
 
+  size_t foundUsed = 0;
+  size_t foundUsedDeleted = 0;
+
   try {
     found.reserve(maxCollectCount);
 
@@ -407,6 +413,11 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
 
       if (!force && context->isUsed()) {
         // must not physically destroy contexts that are currently used
+        ++foundUsed;
+        if (context->isDeleted()) {
+          ++foundUsedDeleted;
+        }
+
         ++it;
         continue;
       }
@@ -446,6 +457,12 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
     LOG_TOPIC("44874", TRACE, Logger::REPLICATION)
         << "garbage collecting replication context " << it->id();
     delete it;
+  }
+
+  if (foundUsed > 0 || foundUsedDeleted > 0) {
+    LOG_TOPIC("7b2b0", TRACE, Logger::REPLICATION) 
+      << "garbage-collection found used contexts: " << foundUsed 
+      << ", used deleted contexts: " << foundUsedDeleted;
   }
 
   return (!found.empty());

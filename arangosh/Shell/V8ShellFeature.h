@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SHELL_V8SHELL_FEATURE_H
-#define ARANGODB_SHELL_V8SHELL_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -61,7 +60,7 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   uint64_t _gcInterval;
 
  public:
-  int runShell(std::vector<std::string> const&);
+  ErrorCode runShell(std::vector<std::string> const& positionals);
   bool runScript(std::vector<std::string> const& files,
                  std::vector<std::string> const&, bool,
                  std::vector<std::string> const& mainArgs, bool);
@@ -88,4 +87,3 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

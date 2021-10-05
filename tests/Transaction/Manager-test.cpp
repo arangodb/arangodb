@@ -47,13 +47,13 @@ using namespace arangodb;
 static arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
                                                std::string const& queryString,
                                                std::shared_ptr<transaction::Context> ctx) {
-  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString), nullptr);
+  auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString), nullptr);
 
   arangodb::aql::QueryResult result;
   while (true) {
-    auto state = query.execute(result);
+    auto state = query->execute(result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
-      query.sharedState()->waitForAsyncWakeup();
+      query->sharedState()->waitForAsyncWakeup();
     } else {
       break;
     }
@@ -154,7 +154,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
 
   auto doc = arangodb::velocypack::Parser::fromJson("{ \"_key\": \"1\"}");
   {
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
@@ -169,7 +169,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
   ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()), transaction::Status::RUNNING);
 
   {  // lease again
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::READ);
@@ -205,7 +205,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
   ASSERT_TRUE(res.ok());
 
   {
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
@@ -231,7 +231,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
 
 TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
   auto beforeRole = arangodb::ServerState::instance()->getRole();
-  auto roleGuard = scopeGuard([&]() {
+  auto roleGuard = scopeGuard([&]() noexcept {
     arangodb::ServerState::instance()->setRole(beforeRole);
   });
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
@@ -249,7 +249,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
   ASSERT_TRUE(res.ok());
 
   {
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
@@ -288,7 +288,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
   ASSERT_TRUE(res.ok());
 
   {
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
@@ -330,19 +330,19 @@ TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
     transaction::Options opts;
     bool responsible;
 
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::READ);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false);
     ASSERT_NE(ctx.get(), nullptr);
     auto state1 = ctx->acquireState(opts, responsible);
     ASSERT_NE(state1.get(), nullptr);
     ASSERT_TRUE(!responsible);
 
-    auto ctx2 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ);
+    auto ctx2 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false);
     ASSERT_NE(ctx2.get(), nullptr);
     auto state2 = ctx2->acquireState(opts, responsible);
     EXPECT_EQ(state1.get(), state2.get());
     ASSERT_TRUE(!responsible);
 
-    auto ctx3 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ);
+    auto ctx3 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false);
     ASSERT_NE(ctx3.get(), nullptr);
     auto state3 = ctx3->acquireState(opts, responsible);
     EXPECT_EQ(state3.get(), state2.get());
@@ -369,12 +369,46 @@ TEST_F(TransactionManagerTest, lock_conflict) {
     transaction::Options opts;
     bool responsible;
 
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
     auto state1 = ctx->acquireState(opts, responsible);
     ASSERT_NE(state1.get(), nullptr);
     ASSERT_TRUE(!responsible);
-    ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::READ));
+    ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false));
+  }
+  ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).ok());
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()), transaction::Status::ABORTED);
+}
+
+TEST_F(TransactionManagerTest, lock_conflict_side_user) {
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json =
+        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
+    coll = vocbase.createCollection(json->slice());
+  }
+  ASSERT_NE(coll, nullptr);
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"collections\":{\"write\": [\"42\"]}}");
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
+  ASSERT_TRUE(res.ok());
+  {
+    transaction::Options opts;
+    bool responsible;
+
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+    ASSERT_NE(ctx.get(), nullptr);
+    auto state1 = ctx->acquireState(opts, responsible);
+    ASSERT_NE(state1.get(), nullptr);
+    ASSERT_TRUE(!responsible);
+    ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false));
+    
+    auto ctxSide = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, true);
+    ASSERT_NE(ctxSide.get(), nullptr);
+    auto state2 = ctxSide->acquireState(opts, responsible);
+    ASSERT_NE(state2.get(), nullptr);
+    ASSERT_TRUE(!responsible);
   }
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).ok());
   ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()), transaction::Status::ABORTED);
@@ -397,7 +431,7 @@ TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
     transaction::Options opts;
     bool responsible;
     
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
     auto state1 = ctx->acquireState(opts, responsible);
     ASSERT_NE(state1.get(), nullptr);
@@ -456,7 +490,7 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
   ASSERT_TRUE(res.ok());
 
   {
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);

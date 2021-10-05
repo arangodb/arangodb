@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -135,7 +136,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
 
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto& idx : _indexes) {
     static_cast<ClusterIndex*>(idx.get())->updateProperties(_info.slice());
   }
@@ -180,26 +181,13 @@ void ClusterCollection::figuresSpecific(bool /*details*/, arangodb::velocypack::
 }
 
 /// @brief closes an open collection
-int ClusterCollection::close() {
-  READ_LOCKER(guard, _indexesLock);
+ErrorCode ClusterCollection::close() {
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto it : _indexes) {
     it->unload();
   }
+
   return TRI_ERROR_NO_ERROR;
-}
-
-void ClusterCollection::load() {
-  READ_LOCKER(guard, _indexesLock);
-  for (auto it : _indexes) {
-    it->load();
-  }
-}
-
-void ClusterCollection::unload() {
-  READ_LOCKER(guard, _indexesLock);
-  for (auto it : _indexes) {
-    it->unload();
-  }
 }
 
 RevisionId ClusterCollection::revision(transaction::Methods* trx) const {
@@ -214,7 +202,7 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
 size_t ClusterCollection::memory() const { return 0; }
 
 void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
-  WRITE_LOCKER(guard, _indexesLock);
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   TRI_ASSERT(indexesSlice.isArray());
 
   StorageEngine& engine =
@@ -257,12 +245,12 @@ void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
 std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slice const& info,
                                                       bool restore, bool& created) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
+
   // prevent concurrent dropping
   WRITE_LOCKER(guard, _exclusiveLock);
-  std::shared_ptr<Index> idx;
 
-  WRITE_LOCKER(guard2, _indexesLock);
-  idx = lookupIndex(info);
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  std::shared_ptr<Index> idx = lookupIndex(info);
   if (idx) {
     created = false;
     // We already have this index.
@@ -291,7 +279,7 @@ bool ClusterCollection::dropIndex(IndexId iid) {
     return true;
   }
 
-  WRITE_LOCKER(guard, _indexesLock);
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto it  : _indexes) {
     if (iid == it->id()) {
       _indexes.erase(it);
@@ -307,7 +295,7 @@ bool ClusterCollection::dropIndex(IndexId iid) {
   return false;
 }
 
-std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* /*trx*/) const {
+std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* /*trx*/, ReadOwnWrites) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -319,33 +307,32 @@ Result ClusterCollection::truncate(transaction::Methods& /*trx*/, OperationOptio
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-/// @brief compact-data operation
-Result ClusterCollection::compact() {
-  return {};
-}
-
 Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRef /*key*/,
-                                    std::pair<LocalDocumentId, RevisionId>& /*result*/) const {
+                                    std::pair<LocalDocumentId, RevisionId>& /*result*/,
+                                    ReadOwnWrites) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                arangodb::velocypack::StringRef const& /*key*/,
-                               IndexIterator::DocumentCallback const& /*cb*/) const {
+                               IndexIterator::DocumentCallback const& /*cb*/,
+                               ReadOwnWrites) const {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
-bool ClusterCollection::read(transaction::Methods* /*trx*/,
+Result ClusterCollection::read(transaction::Methods* /*trx*/,
                              LocalDocumentId const& /*documentId*/,
-                             IndexIterator::DocumentCallback const& /*cb*/) const {
+                             IndexIterator::DocumentCallback const& /*cb*/,
+                             ReadOwnWrites) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
 bool ClusterCollection::readDocument(transaction::Methods* /*trx*/,
                                      LocalDocumentId const& /*documentId*/,
-                                     ManagedDocumentResult& /*result*/) const {
+                                     ManagedDocumentResult& /*result*/,
+                                     ReadOwnWrites) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_CONTEXT_H
-#define ARANGOD_V8_SERVER_V8_CONTEXT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -144,4 +143,3 @@ class V8ContextEntryGuard {
 
 }  // namespace arangodb
 
-#endif

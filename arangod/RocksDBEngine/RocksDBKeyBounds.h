@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_KEY_BOUNDS_H
-#define ARANGO_ROCKSDB_ROCKSDB_KEY_BOUNDS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -63,13 +62,6 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all documents belonging to a specified collection
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds CollectionDocuments(uint64_t objectId);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all documents belonging to a specified collection within
-  /// a certain range
-  //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds CollectionDocumentRange(uint64_t objectId,
-                                                  std::size_t min, std::size_t max);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries- belonging to a specified primary
@@ -149,19 +141,9 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds DatabaseViews(TRI_voc_tick_t databaseId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all counter values
+  /// @brief Bounds for all entries in a log
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds CounterValues();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all index estimate values
-  //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds IndexEstimateValues();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all key generators
-  //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds KeyGenerators();
+  static RocksDBKeyBounds LogRange(uint64_t objectId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching prefixes
@@ -172,6 +154,12 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all entries of a fulltext index, matching the word
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds FulltextIndexComplete(uint64_t, arangodb::velocypack::StringRef const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all index-entries belonging to a specified non-unique
+  /// index (hash, skiplist and permanent)
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds ZkdIndex(uint64_t indexId);
 
  public:
   RocksDBKeyBounds(RocksDBKeyBounds const& other);
@@ -313,4 +301,3 @@ std::ostream& operator<<(std::ostream&, RocksDBKeyBounds const&);
 
 }  // namespace arangodb
 
-#endif

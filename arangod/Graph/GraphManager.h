@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_GRAPHMANAGER_H
-#define ARANGOD_GRAPH_GRAPHMANAGER_H
+#pragma once
 
 #include <velocypack/Buffer.h>
 #include <chrono>
@@ -31,27 +30,24 @@
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
 #include "Basics/ReadWriteLock.h"
-#include "Cluster/ClusterInfo.h"
 #include "Basics/ResultT.h"
+#include "Cluster/ClusterInfo.h"
 #include "Graph/Graph.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
 
 namespace arangodb {
+
+struct CollectionCreationInfo;
+
 namespace graph {
 
 class GraphManager {
  private:
   TRI_vocbase_t& _vocbase;
-  
-  std::shared_ptr<transaction::Context> ctx() const;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief find or create vertex collection by name
-  ////////////////////////////////////////////////////////////////////////////////
-  Result findOrCreateVertexCollectionByName(const std::string& name,
-                                            bool waitForSync, VPackSlice options);
+  std::shared_ptr<transaction::Context> ctx() const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collection by name and type
@@ -92,13 +88,8 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collections by EdgeDefinitions
   ////////////////////////////////////////////////////////////////////////////////
-  Result findOrCreateCollectionsByEdgeDefinitions(Graph const& graph,
-                                                  std::map<std::string, EdgeDefinition> const& edgeDefinitions,
-                                                  bool waitForSync, VPackSlice options);
-
-  Result findOrCreateCollectionsByEdgeDefinition(Graph const& graph,
-                                                 EdgeDefinition const& edgeDefinition,
-                                                 bool waitForSync, VPackSlice options);
+  Result findOrCreateCollectionsByEdgeDefinition(Graph& graph, EdgeDefinition const& edgeDefinition,
+                                                 bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a vertex collection
@@ -141,7 +132,7 @@ class GraphManager {
    *
    * @return Either OK or an error.
    */
-  Result ensureCollections(Graph* graph, bool waitForSync) const;
+  Result ensureAllCollections(Graph* graph, bool waitForSync) const;
 
   /// @brief check if only SatelliteCollections are used
   bool onlySatellitesUsed(Graph const* graph) const;
@@ -173,13 +164,17 @@ class GraphManager {
 
  private:
 #ifdef USE_ENTERPRISE
-  Result ensureEnterpriseCollectionSharding(Graph const* graph, bool waitForSync,
-                                            std::unordered_set<std::string>& documentCollections) const;
-  Result ensureSmartCollectionSharding(Graph const* graph, bool waitForSync,
-                                       std::unordered_set<std::string>& documentCollections) const;
-  Result ensureSatelliteCollectionSharding(Graph const* graph, bool waitForSync,
-                                           std::unordered_set<std::string>& documentCollections) const;
+  std::pair<Result, std::string> ensureEnterpriseCollectionSharding(
+      Graph const* graph, bool waitForSync,
+      std::unordered_set<std::string>& documentCollections) const;
 #endif
+
+  Result ensureCollections(
+      Graph& graph, std::unordered_set<std::string>& documentCollectionsToCreate,
+      std::unordered_set<std::string> const& edgeCollectionsToCreate,
+      std::unordered_set<std::shared_ptr<LogicalCollection>> const& existentDocumentCollections,
+      std::unordered_set<std::shared_ptr<LogicalCollection>> const& existentEdgeCollections,
+      std::unordered_set<std::string> const& satellites, bool waitForSync) const;
 
   /**
    * @brief Create a new in memory graph object from the given input.
@@ -200,8 +195,18 @@ class GraphManager {
   Result checkDropGraphPermissions(Graph const& graph,
                                    std::unordered_set<std::string> const& followersToBeRemoved,
                                    std::unordered_set<std::string> const& leadersToBeRemoved);
+
+  ResultT<std::vector<CollectionCreationInfo>> prepareCollectionsToCreate(
+      Graph const* graph, bool waitForSync,
+      std::unordered_set<std::string> const& documentsCollectionNames,
+      std::unordered_set<std::string> const& edgeCollectionNames,
+      std::unordered_set<std::string> const& satellites,
+      std::vector<std::shared_ptr<VPackBuffer<uint8_t>>>& vpackLake) const;
+
+  Result ensureVertexShardingMatches(Graph const& graph, LogicalCollection& edgeColl,
+                                     std::unordered_set<std::string> const& satellites,
+                                     std::string const& vertexCollection,
+                                     bool fromSide) const;
 };
 }  // namespace graph
 }  // namespace arangodb
-
-#endif  // ARANGOD_GRAPH_GRAPHMANAGER_H

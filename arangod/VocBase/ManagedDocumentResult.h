@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H
-#define ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -66,7 +65,6 @@ class ManagedDocumentResult {
 
   inline RevisionId revisionId() const noexcept { return _revisionId; }
   void setRevisionId(RevisionId rid) noexcept { _revisionId = rid; }
-  void setRevisionId() noexcept;
 
   void clearData() noexcept {
     _string.clear();
@@ -94,4 +92,3 @@ class ManagedDocumentResult {
 
 }  // namespace arangodb
 
-#endif

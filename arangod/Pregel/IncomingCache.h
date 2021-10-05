@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IN_MESSAGE_CACHE_H
-#define ARANGODB_IN_MESSAGE_CACHE_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 
@@ -131,4 +130,3 @@ class CombiningInCache : public InCache<M> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

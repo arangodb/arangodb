@@ -89,7 +89,7 @@ void RestEngineHandler::getCapabilities() {
 void RestEngineHandler::getStats() {
   VPackBuilder result;
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  engine.getStatistics(result);
+  engine.getStatistics(result, true);
 
   generateResult(rest::ResponseCode::OK, result.slice());
 }

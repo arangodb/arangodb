@@ -1,0 +1,16 @@
+name: arangodb_maintenance_action_queue_time_msec
+introducedIn: "3.7.1"
+help: |
+  Time spent in the queue before execution for maintenance actions.
+unit: ms
+type: histogram
+category: Maintenance
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Database servers execute reconciliation actions to let the cluster converge
+  to the desired state. Actions are created, registered, queued and executed.
+  Once they are done they will eventually be removed.
+
+  This metric tracks the time actions spend waiting in the queue in a histogram.

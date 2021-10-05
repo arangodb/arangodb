@@ -303,11 +303,10 @@ public:
   /// @brief Create an engine-rocksdb directory with a few files
   void createDBDirectory() {
     std::string pathname, systemErrorStr;
-    int retVal;
     long systemError;
 
     pathname = getRocksDBPath();
-    retVal = TRI_CreateRecursiveDirectory(pathname.c_str(), systemError,
+    auto retVal = TRI_CreateRecursiveDirectory(pathname.c_str(), systemError,
                                           systemErrorStr);
     EXPECT_EQ(TRI_ERROR_NO_ERROR, retVal);
 
@@ -325,7 +324,6 @@ public:
 
   void createHotDirectory() {
     std::string pathname, systemErrorStr;
-    int retVal;
     long systemError;
 
     pathname = getDatabasePath();
@@ -335,7 +333,7 @@ public:
     pathname += _idRestore;
     pathname += TRI_DIR_SEPARATOR_CHAR;
     pathname += "engine_rocksdb";
-    retVal = TRI_CreateRecursiveDirectory(pathname.c_str(), systemError,
+    auto retVal = TRI_CreateRecursiveDirectory(pathname.c_str(), systemError,
                                           systemErrorStr);
 
     EXPECT_EQ(TRI_ERROR_NO_ERROR, retVal);

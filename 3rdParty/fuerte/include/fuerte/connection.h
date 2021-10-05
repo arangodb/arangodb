@@ -35,6 +35,7 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 // Connection is the base class for a connection between a client
 // and a server.
 // Different protocols (HTTP, VST) are implemented in derived classes.
+// For details of the setup see the top of src/GeneralConnection.h .
 class Connection : public std::enable_shared_from_this<Connection> {
   friend class ConnectionBuilder;
 
@@ -204,7 +205,7 @@ class ConnectionBuilder {
 
   /// @brief tcp, ssl or unix
   inline SocketType socketType() const { return _conf._socketType; }
-  /// @brief protocol typr
+  /// @brief protocol type
   inline ProtocolType protocolType() const { return _conf._protocolType; }
   void protocolType(ProtocolType pt) { _conf._protocolType = pt; }
 

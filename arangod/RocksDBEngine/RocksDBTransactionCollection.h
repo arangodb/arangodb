@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_COLLECTION_H
-#define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_COLLECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -142,6 +141,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 
   /// @brief request an unlock for a collection
   Result doUnlock(AccessMode::Type) override;
+  
+  Result ensureCollection();
 
  private:
   uint64_t _initialNumberDocuments;
@@ -163,4 +164,3 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 };
 }  // namespace arangodb
 
-#endif

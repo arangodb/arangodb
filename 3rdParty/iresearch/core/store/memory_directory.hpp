@@ -25,14 +25,16 @@
 #define IRESEARCH_MEMORYDIRECTORY_H
 
 #include "directory.hpp"
-#include "directory_attributes.hpp"
+
+#include <mutex>
+#include <shared_mutex>
+
+#include <absl/container/flat_hash_map.h>
+
+#include "store/directory_attributes.hpp"
 #include "utils/attributes.hpp"
 #include "utils/string.hpp"
 #include "utils/async_utils.hpp"
-
-#include <mutex>
-#include <unordered_map>
-#include <unordered_set>
 
 namespace iresearch {
 
@@ -171,7 +173,12 @@ class IRESEARCH_API memory_index_input final : public index_input {
   virtual bool eof() const override;
   virtual byte_type read_byte() override;
   virtual const byte_type* read_buffer(size_t size, BufferHint hint) noexcept override;
+  virtual const byte_type* read_buffer(size_t offset, size_t size, BufferHint hint) noexcept override;
   virtual size_t read_bytes(byte_type* b, size_t len) override;
+  virtual size_t read_bytes(size_t offset, byte_type* b, size_t len) override {
+    seek(offset);
+    return read_bytes(b, len);
+  }
   virtual index_input::ptr reopen() const override;
   virtual size_t length() const override;
 
@@ -179,6 +186,7 @@ class IRESEARCH_API memory_index_input final : public index_input {
 
   virtual void seek(size_t pos) override;
 
+  virtual int16_t read_short() override;
   virtual int32_t read_int() override;
   virtual int64_t read_long() override;
   virtual uint32_t read_vint() override;
@@ -257,7 +265,7 @@ class IRESEARCH_API memory_index_output : public index_output {
  private:
   memory_file& file_; // underlying file
   byte_type* end_;
-};
+}; // memory_index_output
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class memory_directory
@@ -265,42 +273,40 @@ class IRESEARCH_API memory_index_output : public index_output {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API memory_directory final : public directory {
  public:
-  // 0 == pool_size -> use global allocator, noexcept
-  explicit memory_directory(size_t pool_size = 0);
+  explicit memory_directory(
+    directory_attributes attributes = directory_attributes{});
 
   virtual ~memory_directory() noexcept;
 
-  using directory::attributes;
-
-  virtual attribute_store& attributes() noexcept override;
+  virtual directory_attributes& attributes() noexcept override {
+    return attrs_;
+  }
 
   virtual index_output::ptr create(const std::string& name) noexcept override;
 
   virtual bool exists(
-    bool& result, const std::string& name
-  ) const noexcept override;
+    bool& result,
+    const std::string& name) const noexcept override;
 
   virtual bool length(
-    uint64_t& result, const std::string& name
-  ) const noexcept override;
+    uint64_t& result,
+    const std::string& name) const noexcept override;
 
   virtual index_lock::ptr make_lock(const std::string& name) noexcept override;
 
   virtual bool mtime(
-    std::time_t& result, const std::string& name
-  ) const noexcept override;
+    std::time_t& result,
+    const std::string& name) const noexcept override;
 
   virtual index_input::ptr open(
     const std::string& name,
-    IOAdvice advice
-  ) const noexcept override;
+    IOAdvice advice) const noexcept override;
 
   virtual bool remove(const std::string& name) noexcept override;
 
   virtual bool rename(
     const std::string& src,
-    const std::string& dst
-  ) noexcept override;
+    const std::string& dst) noexcept override;
 
   virtual bool sync(const std::string& name) noexcept override;
 
@@ -308,14 +314,13 @@ class IRESEARCH_API memory_directory final : public directory {
 
  private:
   friend class single_instance_lock;
-  typedef std::unordered_map<std::string, std::unique_ptr<memory_file>> file_map; // unique_ptr because of rename
-  typedef std::unordered_set<std::string> lock_map;
+  using file_map = absl::flat_hash_map<std::string, std::unique_ptr<memory_file>>; // unique_ptr because of rename
+  using lock_map = absl::flat_hash_set<std::string>;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  const memory_allocator* alloc_;
-  mutable async_utils::read_write_mutex flock_;
+  directory_attributes attrs_;
+  mutable std::shared_mutex flock_;
   std::mutex llock_;
-  attribute_store attributes_;
   file_map files_;
   lock_map locks_;
   IRESEARCH_API_PRIVATE_VARIABLES_END

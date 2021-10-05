@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H 1
+#pragma once
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -32,7 +31,6 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -87,8 +85,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
-  RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
-  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;
+  RocksDBCuckooIndexEstimatorType* estimator() override;
+  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override;
   void recalculateEstimates() override;
 
   void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
@@ -101,7 +99,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
                                                       arangodb::aql::AstNode const* node,
                                                       arangodb::aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts) override;
+                                                      IndexIteratorOptions const& opts,
+                                                      ReadOwnWrites readOwnWrites) override;
 
   arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
                                               arangodb::aql::Variable const* reference) const override;
@@ -114,18 +113,19 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                      arangodb::transaction::Methods* trx) override;
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const doc,
-                OperationOptions& options) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/,
+                bool /*performChecks*/) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const doc) override;
+                velocypack::Slice doc) override;
 
  private:
   /// @brief create the iterator
   std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*,
                                                   arangodb::aql::AstNode const*,
-                                                  arangodb::aql::AstNode const*, bool) const;
+                                                  arangodb::aql::AstNode const*, bool, ReadOwnWrites) const;
 
   std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*,
                                                   arangodb::aql::AstNode const*,
@@ -153,7 +153,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   /// @brief A fixed size library to estimate the selectivity of the index.
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
-  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
+  std::unique_ptr<RocksDBCuckooIndexEstimatorType> _estimator;
 
   /// @brief The list of attributes covered by this index.
   ///        First is the actual index attribute (e.g. _from), second is the
@@ -162,4 +162,3 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 };
 }  // namespace arangodb
 
-#endif

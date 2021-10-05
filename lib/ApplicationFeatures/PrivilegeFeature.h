@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_PRIVILEGE_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_PRIVILEGE_FEATURE_H 1
+#pragma once
 
 #include <sys/types.h>
 #include <memory>
@@ -61,4 +60,3 @@ class PrivilegeFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

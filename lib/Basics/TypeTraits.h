@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TYPETRAITS_H
-#define ARANGODB_BASICS_TYPETRAITS_H
+#pragma once
 
 namespace arangodb {
 
@@ -38,4 +37,3 @@ constexpr bool can_static_cast_v = can_static_cast<Base, Derived>::value;
 
 }  // namespace arangodb
 
-#endif  // ARANGODB_BASICS_TYPETRAITS_H

@@ -21,8 +21,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_VERSION_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_VERSION_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestBaseHandler.h"
 
@@ -39,4 +38,3 @@ class RestVersionHandler : public arangodb::RestBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

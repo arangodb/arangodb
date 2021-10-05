@@ -32,6 +32,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
 #include "Logger/LogMacros.h"
 

@@ -21,6 +21,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -28,9 +30,6 @@
 #include <string>
 #include <vector>
 #include "Pregel/Graph.h"
-
-#ifndef ARANGODB_PREGEL_AGG_DENSE_VECTOR_H
-#define ARANGODB_PREGEL_AGG_DENSE_VECTOR_H 1
 
 namespace arangodb {
 namespace pregel {
@@ -145,4 +144,3 @@ struct VertexSumAggregator : public IAggregator {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

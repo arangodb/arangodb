@@ -22,15 +22,13 @@
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_SETTINGS_MANAGER_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_SETTINGS_MANAGER_H 1
+#pragma once
 
 #include <rocksdb/types.h>
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/voc-types.h"
 
@@ -67,11 +65,15 @@ class RocksDBSettingsManager {
 
   bool lockForSync(bool force);
 
- private:
   RocksDBEngine& _engine;
 
-  /// @brief a reusable builder, used inside sync() to serialize objects
+  /// @brief a reusable builder, used inside sync() to serialize objects.
+  /// implicitly protected by _syncing.
   arangodb::velocypack::Builder _tmpBuilder;
+
+  /// @brief a reusable string object used for serialization.
+  /// implicitly protected by _syncing.
+  std::string _scratch;
 
   /// @brief last sync sequence number
   std::atomic<rocksdb::SequenceNumber> _lastSync;
@@ -86,4 +88,3 @@ class RocksDBSettingsManager {
 };
 }  // namespace arangodb
 
-#endif

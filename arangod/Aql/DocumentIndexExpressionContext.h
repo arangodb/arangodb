@@ -21,8 +21,7 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_DOCUMENT_INDEX_EXPRESSION_CONTEXT_H
-#define ARANGOD_AQL_DOCUMENT_INDEX_EXPRESSION_CONTEXT_H 1
+#pragma once
 
 #include "Aql/QueryExpressionContext.h"
 
@@ -60,4 +59,3 @@ class DocumentIndexExpressionContext final : public QueryExpressionContext {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_DOCUMENT_INDEX_EXPRESSION_CONTEXT_H

@@ -35,18 +35,20 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 
 namespace {
 void throwArrayExpectedException(AqlValue const& value) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_QUERY_ARRAY_EXPECTED,
-      std::string("collection or ") + TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
-          std::string(
-              " as operand to FOR loop; you provided a value of type '") +
-          value.getTypeString() + std::string("'"));
+      StringUtils::concatT(
+          "collection or ", TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED),
+          " as operand to FOR loop; you provided a value of type '",
+          value.getTypeString(), "'"));
 }
 }  // namespace
 
@@ -147,7 +149,6 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
 
 std::tuple<ExecutorState, NoStats, size_t, AqlCall> EnumerateListExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
-  AqlCall upstreamCall{};
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (inputRange.hasDataRow() && call.shouldSkip()) {
@@ -177,9 +178,9 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> EnumerateListExecutor::skipR
 
   if (_inputArrayPosition < _inputArrayLength) {
     // fullCount will always skip the complete array
-    return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall};
+    return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), AqlCall{}};
   }
-  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), upstreamCall};
+  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), AqlCall{}};
 }
 
 void EnumerateListExecutor::initialize() {

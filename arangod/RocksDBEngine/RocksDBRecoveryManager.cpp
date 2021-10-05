@@ -198,7 +198,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     if (vocbase == nullptr) {
       return nullptr;
     }
-    TRI_DEFER(vocbase->release());
+    auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
     return static_cast<RocksDBCollection*>(
         vocbase->lookupCollection(dbColPair.second)->getPhysical());
   }
@@ -216,7 +216,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     if (vb == nullptr) {
       return nullptr;
     }
-    TRI_DEFER(vb->release());
+    auto sg = arangodb::scopeGuard([&]() noexcept { vb->release(); });
 
     auto coll = vb->lookupCollection(std::get<1>(triple));
 
@@ -352,7 +352,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (hashval != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
         if (idx) {
-          RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
+          RocksDBCuckooIndexEstimatorType* est = idx->estimator();
           if (est && est->appliedSeq() < _currentSequence) {
             // We track estimates for this index
             est->insert(hashval);
@@ -407,7 +407,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (hashval != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
         if (idx) {
-          RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
+          RocksDBCuckooIndexEstimatorType* est = idx->estimator();
           if (est && est->appliedSeq() < _currentSequence) {
             // We track estimates for this index
             est->remove(hashval);
@@ -476,7 +476,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       }
       for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
         RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-        RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+        RocksDBCuckooIndexEstimatorType* est = ridx->estimator();
         TRI_ASSERT(ridx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || est);
         if (est) {
           est->clearInRecovery(_currentSequence);

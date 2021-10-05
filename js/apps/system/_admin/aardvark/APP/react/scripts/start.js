@@ -1,5 +1,3 @@
-'use strict';
-
 // Do this as the first thing so that any code reading it knows the right env.
 process.env.BABEL_ENV = 'development';
 process.env.NODE_ENV = 'development';
@@ -25,7 +23,7 @@ const {
   choosePort,
   createCompiler,
   prepareProxy,
-  prepareUrls,
+  prepareUrls
 } = require('react-dev-utils/WebpackDevServerUtils');
 const openBrowser = require('react-dev-utils/openBrowser');
 const paths = require('../config/paths');
@@ -101,13 +99,13 @@ checkBrowsers(paths.appPath, isInteractive)
       openBrowser(urls.localUrlForBrowser + '_db/_system/_admin/aardvark/index.html');
     });
 
-    ['SIGINT', 'SIGTERM'].forEach(function(sig) {
-      process.on(sig, function() {
-        devServer.close();
-        process.exit();
-      });
+  ['SIGINT', 'SIGTERM'].forEach(function (sig) {
+    process.on(sig, function () {
+      devServer.close();
+      process.exit();
     });
-  })
+  });
+})
   .catch(err => {
     if (err && err.message) {
       console.log(err.message);

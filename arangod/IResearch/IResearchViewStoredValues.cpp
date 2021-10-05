@@ -133,8 +133,10 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
       if (!newField) {
         continue;
       }
+      // cppcheck-suppress accessMoved
       sc.fields.emplace_back(fieldName, std::move(field));
       columnLength += fieldName.size() + 1; // + 1 for FIELDS_DELIMITER
+      // cppcheck-suppress accessMoved
       fieldNames.emplace_back(std::move(fieldName));
     }
     // skip empty column

@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_REQUEST_CONTEXT_H
-#define ARANGODB_REST_REQUEST_CONTEXT_H 1
+#pragma once
 
 namespace arangodb {
 class RequestContext {
@@ -35,4 +34,3 @@ class RequestContext {
 };
 }  // namespace arangodb
 
-#endif

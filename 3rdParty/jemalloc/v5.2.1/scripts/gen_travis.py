@@ -36,8 +36,12 @@ MAX_UNUSUAL_OPTIONS = 2
 os_default = 'linux'
 os_unusual = 'osx'
 
+arch_default = 'amd64'
+arch_unusual = 'ppc64le'
+
 compilers_default = 'CC=gcc CXX=g++'
 compilers_unusual = 'CC=clang CXX=clang++'
+compilers_ppc_default = 'CC=gcc-8 CXX=g++-8'
 
 compiler_flag_unusuals = ['-m32']
 
@@ -47,6 +51,7 @@ configure_flag_unusuals = [
     '--disable-stats',
     '--disable-libdl',
     '--enable-opt-safety-checks',
+    '--with-lg-page=16',
 ]
 
 malloc_conf_unusuals = [
@@ -57,7 +62,7 @@ malloc_conf_unusuals = [
 ]
 
 all_unusuals = (
-    [os_unusual] + [compilers_unusual] + compiler_flag_unusuals
+    [os_unusual] + [arch_unusual] + [compilers_unusual] + compiler_flag_unusuals
     + configure_flag_unusuals + malloc_conf_unusuals
 )
 
@@ -66,13 +71,15 @@ for i in xrange(MAX_UNUSUAL_OPTIONS + 1):
     unusual_combinations_to_test += combinations(all_unusuals, i)
 
 gcc_multilib_set = False
+gcc_ppc_set = False
 # Formats a job from a combination of flags
 def format_job(combination):
     global gcc_multilib_set
+    global gcc_ppc_set
 
     os = os_unusual if os_unusual in combination else os_default
     compilers = compilers_unusual if compilers_unusual in combination else compilers_default
-
+    arch = arch_unusual if arch_unusual in combination else arch_default
     compiler_flags = [x for x in combination if x in compiler_flag_unusuals]
     configure_flags = [x for x in combination if x in configure_flag_unusuals]
     malloc_conf = [x for x in combination if x in malloc_conf_unusuals]
@@ -89,14 +96,18 @@ def format_job(combination):
     if os == 'osx' and '--enable-prof' in configure_flags:
         return ""
 
-    # We get some spurious errors when -Warray-bounds is enabled.
-    env_string = ('{} COMPILER_FLAGS="{}" CONFIGURE_FLAGS="{}" '
-	'EXTRA_CFLAGS="-Werror -Wno-array-bounds"').format(
-        compilers, " ".join(compiler_flags), " ".join(configure_flags))
+    # Filter out unsupported OSX configuration on PPC64LE
+    if arch == 'ppc64le' and (
+        os == 'osx'
+        or '-m32' in combination
+        or compilers_unusual in combination
+        ):
+        return ""
 
     job = ""
     job += '    - os: %s\n' % os
-    job += '      env: %s\n' % env_string
+    job += '      arch: %s\n' % arch
+
     if '-m32' in combination and os == 'linux':
         job += '      addons:'
         if gcc_multilib_set:
@@ -107,6 +118,25 @@ def format_job(combination):
             job += '          packages:\n'
             job += '            - gcc-multilib\n'
             gcc_multilib_set = True
+
+    if arch == 'ppc64le':
+        job += '      addons:'
+        if gcc_ppc_set:
+            job += ' *gcc_ppc\n'
+        else:
+            job += ' &gcc_ppc\n'
+            job += '        apt:\n'
+            job += '          packages:\n'
+            job += '            - g++-8\n'
+        # Compilers overwritten for PPC64LE to gcc-8
+        compilers = compilers_ppc_default
+
+    # We get some spurious errors when -Warray-bounds is enabled.
+    env_string = ('{} COMPILER_FLAGS="{}" CONFIGURE_FLAGS="{}" '
+                'EXTRA_CFLAGS="-Werror -Wno-array-bounds"').format(
+                compilers, " ".join(compiler_flags), " ".join(configure_flags))
+
+    job += '      env: %s\n' % env_string
     return job
 
 include_rows = ""

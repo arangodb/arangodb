@@ -50,6 +50,24 @@ using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
 using namespace std::chrono;
 
+
+struct AppendScale {
+  static log_scale_t<float> scale() { return {2.f, 0.f, 1000.f, 10}; }
+};
+struct AgentScale {
+  static log_scale_t<float> scale() { return {std::exp(1.f), 0.f, 200.f, 10}; }
+};
+
+DECLARE_HISTOGRAM(arangodb_agency_append_hist, AppendScale, "Agency write histogram [ms]");
+DECLARE_HISTOGRAM(arangodb_agency_commit_hist, AgentScale, "Agency RAFT commit histogram [ms]");
+DECLARE_HISTOGRAM(arangodb_agency_compaction_hist, AgentScale, "Agency compaction histogram [ms]");
+DECLARE_GAUGE(arangodb_agency_local_commit_index, uint64_t, "This agent's commit index");
+DECLARE_COUNTER(arangodb_agency_read_no_leader_total, "Agency read no leader");
+DECLARE_COUNTER(arangodb_agency_read_ok_total, "Agency read ok");
+DECLARE_HISTOGRAM(arangodb_agency_write_hist, AgentScale, "Agency write histogram [ms]");
+DECLARE_COUNTER(arangodb_agency_write_no_leader_total, "Agency write no leader");
+DECLARE_COUNTER(arangodb_agency_write_ok_total, "Agency write ok");
+
 namespace arangodb {
 namespace consensus {
 
@@ -76,36 +94,23 @@ Agent::Agent(application_features::ApplicationServer& server, config_t const& co
       _preparing(0),
       _loaded(false),
       _write_ok(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_write_ok", 0, "Agency write ok")),
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_ok_total{})),
       _write_no_leader(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_write_no_leader", 0, "Agency write no leader")),
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_no_leader_total{})),
       _read_ok(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_read_ok", 0, "Agency read ok")),
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_read_ok_total{})),
       _read_no_leader(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_read_no_leader", 0, "Agency read no leader")),
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_read_no_leader_total{})),
       _write_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_agency_write_hist", log_scale_t(2.f, 0.f, 200.f, 10),
-          "Agency write histogram [ms]")),
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_hist{})),
       _commit_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_agency_commit_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
-          "Agency RAFT commit histogram [ms]")),
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_commit_hist{})),
       _append_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_agency_append_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
-          "Agency RAFT follower append histogram [ms]")),
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_append_hist{})),
       _compaction_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_agency_compaction_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
-          "Agency compaction histogram [ms]")),
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_compaction_hist{})),
       _local_index(
-        _server.getFeature<arangodb::MetricsFeature>().gauge(
-          "arangodb_agency_local_commit_index", uint64_t(0), "This agent's commit index")) {
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_local_commit_index{})) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
@@ -571,12 +576,14 @@ void Agent::sendAppendEntriesRPC() {
       auto startTime = steady_clock::now();
       SteadyTimePoint earliestPackage;
       SteadyTimePoint lastAcked;
+      SteadyTimePoint lastSent;
 
       {
         t = this->term();
         MUTEX_LOCKER(tiLocker, _tiLock);
         TRI_ASSERT(_lastAckedIndex.find(followerId) != _lastAckedIndex.end());
         std::tie(lastAcked, lastConfirmed) = _lastAckedIndex.at(followerId);
+        lastSent = _lastSent[followerId];
       }
 
       // We essentially have to send some log entries from their lastConfirmed+1
@@ -640,10 +647,9 @@ void Agent::sendAppendEntriesRPC() {
       // if lastConfirmed is equal to the last index in our log, in which
       // case there is nothing to replicate.
 
-      duration<double> m = steady_clock::now() - _lastSent[followerId];
+      duration<double> m = steady_clock::now() - lastSent;
 
-      if (m.count() > _config.minPing() &&
-          _lastSent[followerId].time_since_epoch().count() != 0) {
+      if (m.count() > _config.minPing() && lastSent.time_since_epoch().count() != 0) {
         LOG_TOPIC("0ddbd", DEBUG, Logger::AGENCY)
             << "Note: sent out last AppendEntriesRPC "
             << "to follower " << followerId
@@ -756,7 +762,10 @@ void Agent::sendAppendEntriesRPC() {
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
 
-      _lastSent[followerId] = steady_clock::now();
+      {
+        MUTEX_LOCKER(tiLocker, _tiLock);
+        _lastSent[followerId] = steady_clock::now();
+      }
       // _constituent.notifyHeartbeatSent(followerId);
       // Do not notify constituent, because the AppendEntriesRPC here could
       // take a very long time, so this must not disturb the empty ones
@@ -1178,7 +1187,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
   size_t failed;
   auto ret = std::make_shared<arangodb::velocypack::Builder>();
   {
-    TRI_DEFER(removeTrxsOngoing(qs));
+    auto sg = arangodb::scopeGuard([&]() noexcept { removeTrxsOngoing(qs); });
     // Note that once the transactions are in our log, we can remove them
     // from the list of ongoing ones, although they might not yet be committed.
     // This is because then, inquire will find them in the log and draw its
@@ -1353,8 +1362,9 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   }
 
   {
-    addTrxsOngoing(query->slice());  // remember that these are ongoing
-    TRI_DEFER(removeTrxsOngoing(query->slice()));
+    auto slice = query->slice();
+    addTrxsOngoing(slice);  // remember that these are ongoing
+    auto sg = arangodb::scopeGuard([&]() noexcept { removeTrxsOngoing(slice); });
     // Note that once the transactions are in our log, we can remove them
     // from the list of ongoing ones, although they might not yet be committed.
     // This is because then, inquire will find them in the log and draw its
@@ -1362,7 +1372,6 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
     // from when we receive the request until we have appended the trxs
     // ourselves.
 
-    auto slice = query->slice();
     size_t ntrans = slice.length();
     size_t npacks = ntrans / _config.maxAppendSize();
     if (ntrans % _config.maxAppendSize() != 0) {
@@ -1410,7 +1419,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       indices.insert(indices.end(), tmp.begin(), tmp.end());
     }
     _write_hist_msec.count(
-      duration<float, std::milli>(high_resolution_clock::now()-start).count());
+      duration<float, std::milli>(high_resolution_clock::now() - start).count());
   }
 
   // Maximum log index
@@ -1508,13 +1517,7 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
   while (pit != _promises.end()) {
     if (pit->first < tp) {
       auto pp = std::make_shared<futures::Promise<query_t>>(std::move(pit->second));
-      bool queued = scheduler->queue(
-        RequestLane::CLUSTER_INTERNAL, [pp, qu] { pp->setValue(qu); });
-      if (!queued) {
-        LOG_TOPIC("3647c", WARN, Logger::AGENCY) <<
-          "Failed to schedule logsForTrigger running in main thread";
-        pp->setValue(qu);
-      }
+      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [pp, qu] { pp->setValue(qu); });
       pit = _promises.erase(pit);
     } else {
       ++pit;
@@ -1918,7 +1921,7 @@ void Agent::compact() {
         << _config.compactionKeepSize() << " did not work.";
     } else {
       _compaction_hist_msec.count(
-        duration<float, std::milli>(clock::now()-start).count());
+        duration<float, std::milli>(clock::now() - start).count());
     }
   }
 }
@@ -2032,7 +2035,7 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
 
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        20001,
+        TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,
         std::string("Gossip message must be an object. Incoming type is ") +
             slice.typeName());
   }
@@ -2052,7 +2055,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
 
   if (!slice.hasKey("id") || !slice.get("id").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        20002, "Gossip message must contain string parameter 'id'");
+        TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,
+        "Gossip message must contain string parameter 'id'");
   }
   std::string id = slice.get("id").copyString();
 
@@ -2072,7 +2076,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
 
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        20003, "Gossip message must contain string parameter 'endpoint'");
+        TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,
+        "Gossip message must contain string parameter 'endpoint'");
   }
   std::string endpoint = slice.get("endpoint").copyString();
 
@@ -2085,7 +2090,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
 
   if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        20003, "Gossip message must contain object parameter 'pool'");
+        TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,
+        "Gossip message must contain object parameter 'pool'");
   }
   VPackSlice pslice = slice.get("pool");
 
@@ -2093,7 +2099,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
   for (auto pair : VPackObjectIterator(pslice)) {
     if (!pair.value.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          20004, "Gossip message pool must contain string parameters");
+          TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,
+          "Gossip message pool must contain string parameters");
     }
   }
 
@@ -2301,13 +2308,12 @@ void Agent::emptyCbTrashBin() {
   // queue + write.
   auto* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {
-    bool ok = scheduler->queue(RequestLane::INTERNAL_LOW, [&server = server(), envelope = std::move(envelope)] {
+    scheduler->queue(RequestLane::INTERNAL_LOW, [&server = server(), envelope = std::move(envelope)] {
         auto* agent = server.getFeature<AgencyFeature>().agent();
         if (!server.isStopping() && agent) {
           agent->write(envelope);
         }
       });
-    LOG_TOPIC_IF("52461", DEBUG, Logger::AGENCY, !ok) << "Could not schedule callback cleanup job.";
   }
 
 }
@@ -2366,7 +2372,7 @@ void Agent::addTrxsOngoing(Slice trxs) {
   }
 }
 
-void Agent::removeTrxsOngoing(Slice trxs) {
+void Agent::removeTrxsOngoing(Slice trxs) noexcept {
   try {
     MUTEX_LOCKER(guard, _trxsLock);
     for (auto const& trx : VPackArrayIterator(trxs)) {

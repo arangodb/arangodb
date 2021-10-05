@@ -22,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_REPLICATION_CONTEXT_H
-#define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_CONTEXT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -159,8 +158,9 @@ class RocksDBReplicationContext {
   // ========================= Dump API =============================
 
   struct DumpResult {
-    explicit DumpResult(int res) : hasMore(false), includedTick(0), _result(res) {}
-    DumpResult(int res, bool hm, uint64_t tick)
+    explicit DumpResult(ErrorCode res)
+        : hasMore(false), includedTick(0), _result(res) {}
+    DumpResult(ErrorCode res, bool hm, uint64_t tick)
         : hasMore(hm), includedTick(tick), _result(res) {}
     bool hasMore;
     uint64_t includedTick;  // tick increases for each fetch
@@ -168,9 +168,9 @@ class RocksDBReplicationContext {
     // forwarded methods
     bool ok() const { return _result.ok(); }
     bool fail() const { return _result.fail(); }
-    int errorNumber() const { return _result.errorNumber(); }
+    ErrorCode errorNumber() const { return _result.errorNumber(); }
     std::string_view errorMessage() const { return _result.errorMessage(); }
-    bool is(int code) const { return _result.is(code); }
+    bool is(ErrorCode code) const { return _result.is(code); }
 
     // access methods
     Result const& result() const& { return _result; }
@@ -272,4 +272,3 @@ class RocksDBReplicationContext {
 
 }  // namespace arangodb
 
-#endif

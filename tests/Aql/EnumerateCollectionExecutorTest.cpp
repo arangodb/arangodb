@@ -44,6 +44,7 @@
 #include "Aql/Projections.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
@@ -109,7 +110,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         count(false),
         registerInfos({}, RegIdSet{0}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{}, {{}}),
         executorInfos(0 /*outReg*/, *fakedQuery, &aqlCollection, &outVariable, varUsedLater,
-                      nullptr, projections, random, count),
+                      nullptr, projections, random, count, arangodb::ReadOwnWrites::no),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     try {
       collection = vocbase.createCollection(json->slice());
@@ -255,7 +256,8 @@ using EnumerateCollectionInputParam = std::tuple<EnumerateCollectionSplitType>;
 class EnumerateCollectionExecutorTestProduce
     : public AqlExecutorTestCaseWithParam<EnumerateCollectionInputParam> {
  protected:
-  arangodb::ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
 
   TRI_vocbase_t& vocbase;
@@ -293,10 +295,10 @@ class EnumerateCollectionExecutorTestProduce
         registerInfos({}, RegIdSet{1}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{},
                       RegIdFlatSetStack{{}}),
         executorInfos(1, *fakedQuery, &aqlCollection, &outVariable, varUsedLater, nullptr,
-                      projections, random, count) {}
+                      projections, random, count, arangodb::ReadOwnWrites::no) {}
 
-  auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
-                         RegisterId nrOutputRegister = 1, RegIdFlatSet regToClear = {},
+  auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterCount nrInputRegister = 1,
+                         RegisterCount nrOutputRegister = 1, RegIdFlatSet regToClear = {},
                          RegIdFlatSetStack regToKeep = {{}}) -> RegisterInfos {
     RegisterInfos registerInfos{{},
                                 RegIdSet{outputRegister},
@@ -307,14 +309,15 @@ class EnumerateCollectionExecutorTestProduce
     return registerInfos;
   }
 
-  auto makeExecutorInfos(RegisterId outputRegister = 0, RegisterId nrOutputRegister = 1)
+  auto makeExecutorInfos(RegisterId outputRegister = 0, RegisterCount nrOutputRegister = 1)
       -> EnumerateCollectionExecutorInfos {
     auto infos = EnumerateCollectionExecutorInfos{
         outputRegister, *fakedQuery,
         &aqlCollection, &outVariable,
         varUsedLater,   nullptr,
         projections,    
-        random, count};
+        random, count,
+        arangodb::ReadOwnWrites::no};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;
   }

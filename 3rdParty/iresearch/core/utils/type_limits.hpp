@@ -24,7 +24,6 @@
 #ifndef IRESEARCH_TYPE_LIMITS_H
 #define IRESEARCH_TYPE_LIMITS_H
 
-#include "integer.hpp"
 #include "shared.hpp"
 
 namespace iresearch {
@@ -51,7 +50,7 @@ template<typename TYPE> struct type_limits;
 
 template<> struct type_limits<type_t::address_t> {
   constexpr static uint64_t invalid() noexcept {
-    return integer_traits<uint64_t>::const_max;
+    return std::numeric_limits<uint64_t>::max();
   }
   constexpr static bool valid(uint64_t addr) noexcept {
     return invalid() != addr;
@@ -60,7 +59,7 @@ template<> struct type_limits<type_t::address_t> {
 
 template<> struct type_limits<type_t::doc_id_t> {
   constexpr static doc_id_t eof() noexcept {
-    return integer_traits<doc_id_t>::const_max;
+    return std::numeric_limits<doc_id_t>::max();
   }
   constexpr static bool eof(doc_id_t id) noexcept {
     return eof() == id;
@@ -78,7 +77,7 @@ typedef irs::type_limits<irs::type_t::doc_id_t> doc_limits;
 
 template<> struct type_limits<type_t::field_id_t> {
   constexpr static field_id invalid() noexcept {
-    return integer_traits<field_id>::const_max;
+    return std::numeric_limits<field_id>::max();
   }
   constexpr static bool valid(field_id id) noexcept {
     return invalid() != id;
@@ -89,7 +88,7 @@ typedef irs::type_limits<irs::type_t::field_id_t> field_limits;
 
 template<> struct type_limits<type_t::index_gen_t> {
   constexpr static uint64_t invalid() noexcept {
-    return integer_traits<field_id>::const_max;
+    return std::numeric_limits<field_id>::max();
   }
   constexpr static bool valid(uint64_t id) noexcept {
     return invalid() != id;
@@ -103,7 +102,7 @@ template<> struct type_limits<type_t::pos_t> {
   constexpr static bool valid(uint32_t pos) noexcept {
     return invalid() != pos;
   }
-  constexpr static uint32_t eof() noexcept { return integer_traits<uint32_t>::const_max; }
+  constexpr static uint32_t eof() noexcept { return std::numeric_limits<uint32_t>::max(); }
   constexpr static bool eof(uint32_t pos) noexcept { return eof() == pos; }
   constexpr static uint32_t (min)() noexcept { return 1; }
 };

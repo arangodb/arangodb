@@ -36,13 +36,13 @@
 using namespace arangodb;
 using namespace arangodb::result;
 
-Error::Error(int errorNumber) noexcept(noexcept(decltype(Error::_errorMessage)::allocator_type()))
+Error::Error(ErrorCode errorNumber) noexcept(noexcept(decltype(Error::_errorMessage)::allocator_type()))
     : _errorNumber(errorNumber) {}
 
-Error::Error(int errorNumber, std::string_view errorMessage)
+Error::Error(ErrorCode errorNumber, std::string_view errorMessage)
     : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
 
-auto Error::errorNumber() const noexcept -> int { return _errorNumber; }
+auto Error::errorNumber() const noexcept -> ErrorCode { return _errorNumber; }
 
 auto Error::errorMessage() const& noexcept -> std::string_view {
   if (!_errorMessage.empty()) {
@@ -55,6 +55,7 @@ auto Error::errorMessage() && noexcept -> std::string {
   if (!_errorMessage.empty()) {
     return std::move(_errorMessage);
   }
+  // Note that this can throw.
   return std::string{TRI_errno_string(_errorNumber)};
 }
 

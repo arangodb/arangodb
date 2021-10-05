@@ -28,6 +28,8 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "AqlItemBlockHelper.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
@@ -45,7 +47,8 @@ namespace aql {
 // Test empty constructor
 class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
  protected:
-  ResourceMonitor monitor;
+  GlobalResourceMonitor global;
+  ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   AqlItemBlockInputRange createEmpty() {

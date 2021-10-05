@@ -43,6 +43,8 @@ std::string const StaticStrings::IndexGt("gt");
 std::string const StaticStrings::AttachmentString("_attachment");
 std::string const StaticStrings::IdString("_id");
 std::string const StaticStrings::KeyString("_key");
+std::string const StaticStrings::PrefixOfKeyString("_key:");
+std::string const StaticStrings::PostfixOfKeyString(":_key");
 std::string const StaticStrings::RevString("_rev");
 std::string const StaticStrings::FromString("_from");
 std::string const StaticStrings::ToString("_to");
@@ -66,7 +68,6 @@ std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::Overwrite("overwrite");
 std::string const StaticStrings::OverwriteMode("overwriteMode");
-std::string const StaticStrings::PreserveRevisionIds("preserveRevisionIds");
 std::string const StaticStrings::Compact("compact");
 
 // replication headers
@@ -134,6 +135,7 @@ std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
+std::string const StaticStrings::IndexEstimates("estimates");
 
 // static index names
 std::string const StaticStrings::IndexNameEdge("edge");
@@ -217,6 +219,7 @@ std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
+std::string const StaticStrings::XArangoQueueTimeSeconds("x-arango-queue-time-seconds");
 
 // mime types
 std::string const StaticStrings::MimeTypeDump(
@@ -233,6 +236,9 @@ std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 std::string const StaticStrings::EncodingIdentity("identity");
 std::string const StaticStrings::EncodingDeflate("deflate");
 
+std::string const StaticStrings::Body("body");
+std::string const StaticStrings::ParsedBody("parsedBody");
+
 // collection attributes
 std::string const StaticStrings::CacheEnabled("cacheEnabled");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
@@ -241,7 +247,6 @@ std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
-std::string const StaticStrings::MinRevision("minRevision");
 std::string const StaticStrings::ObjectId("objectId");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
 std::string const StaticStrings::Satellite("satellite");
@@ -253,21 +258,28 @@ std::string const StaticStrings::SyncByRevision("syncByRevision");
 std::string const StaticStrings::UsesRevisionsAsDocumentIds(
     "usesRevisionsAsDocumentIds");
 std::string const StaticStrings::Schema("schema");
+std::string const StaticStrings::InternalValidatorTypes(
+    "internalValidatorType");
 std::string const StaticStrings::Version("version");
 std::string const StaticStrings::WriteConcern("writeConcern");
 std::string const StaticStrings::ShardingSingle("single");
+std::string const StaticStrings::ReplicationVersion("replicationVersion");
+std::string const StaticStrings::ReplicatedLogs("replicatedLogs");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
 std::string const StaticStrings::IsDisjoint("isDisjoint");
+std::string const StaticStrings::IsHybrid("isHybrid");
 std::string const StaticStrings::GraphIsSmart("isSmart");
 std::string const StaticStrings::GraphIsSatellite("isSatellite");
+std::string const StaticStrings::GraphSatellites("satellites");
 std::string const StaticStrings::GraphFrom("from");
 std::string const StaticStrings::GraphTo("to");
 std::string const StaticStrings::GraphOptions("options");
 std::string const StaticStrings::GraphSmartGraphAttribute(
     "smartGraphAttribute");
 std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
+std::string const StaticStrings::GraphEdgeDefinitionType("type");
 std::string const StaticStrings::GraphOrphans("orphanCollections");
 std::string const StaticStrings::GraphInitial("initial");
 std::string const StaticStrings::GraphInitialCid("initialCid");
@@ -287,7 +299,8 @@ std::string const StaticStrings::AccumulatorName("accumulator");
 std::string const StaticStrings::VertexComputationPregelId("pregel-id");
 std::string const StaticStrings::VertexComputationVertexId("vertex");
 std::string const StaticStrings::VertexComputationPhase("phase");
-std::string const StaticStrings::VertexComputationGlobalSuperstep("global-superstep");
+std::string const StaticStrings::VertexComputationGlobalSuperstep(
+    "global-superstep");
 std::string const StaticStrings::VertexComputationPhaseStep("phase-step");
 std::string const StaticStrings::VertexComputationMessage("message");
 std::string const StaticStrings::VertexComputationVoteActive("vote-active");
@@ -315,22 +328,37 @@ std::string const StaticStrings::GraphQueryShortestPathType("shortestPathType");
 // rest query parameter
 std::string const StaticStrings::GraphDropCollections("dropCollections");
 std::string const StaticStrings::GraphDropCollection("dropCollection");
-std::string const StaticStrings::GraphCreateCollections("createCollections");
 std::string const StaticStrings::GraphCreateCollection("createCollection");
 
 // Replication
 std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 std::string const StaticStrings::FailoverCandidates("failoverCandidates");
-std::string const StaticStrings::RevisionTreeBranchingFactor("branchingFactor");
 std::string const StaticStrings::RevisionTreeCount("count");
 std::string const StaticStrings::RevisionTreeHash("hash");
 std::string const StaticStrings::RevisionTreeMaxDepth("maxDepth");
 std::string const StaticStrings::RevisionTreeNodes("nodes");
 std::string const StaticStrings::RevisionTreeRangeMax("rangeMax");
 std::string const StaticStrings::RevisionTreeRangeMin("rangeMin");
+std::string const StaticStrings::RevisionTreeInitialRangeMin("initialRangeMin");
 std::string const StaticStrings::RevisionTreeRanges("ranges");
 std::string const StaticStrings::RevisionTreeResume("resume");
 std::string const StaticStrings::RevisionTreeVersion("version");
+std::string const StaticStrings::FollowingTermId("followingTermId");
+
+// Replication 2.0
+std::string const StaticStrings::Config("config");
+std::string const StaticStrings::CurrentTerm("currentTerm");
+std::string const StaticStrings::Follower("follower");
+std::string const StaticStrings::Id("id");
+std::string const StaticStrings::Index("index");
+std::string const StaticStrings::Leader("leader");
+std::string const StaticStrings::LocalStatus("localStatus");
+std::string const StaticStrings::Participants("participants");
+std::string const StaticStrings::ServerId("serverId");
+std::string const StaticStrings::Spearhead("spearhead");
+std::string const StaticStrings::TargetConfig("targetConfig");
+std::string const StaticStrings::Term("term");
+std::string const StaticStrings::CommitIndex("commitIndex");
 
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");
@@ -354,6 +382,7 @@ std::string const StaticStrings::BackupSearchToDeleteName(
 
 // aql api strings
 std::string const StaticStrings::SerializationFormat("serializationFormat");
+std::string const StaticStrings::AqlDocumentCall("x-arango-aql-document-aql");
 std::string const StaticStrings::AqlRemoteExecute("execute");
 std::string const StaticStrings::AqlRemoteCallStack("callStack");
 std::string const StaticStrings::AqlRemoteLimit("limit");
@@ -389,77 +418,7 @@ std::string const StaticStrings::ValidationLevelStrict("strict");
 std::string const StaticStrings::ValidationParameterMessage("message");
 std::string const StaticStrings::ValidationParameterLevel("level");
 std::string const StaticStrings::ValidationParameterRule("rule");
-
-// metrics prometheus labels
-std::string const StaticStrings::HeartbeatSendTimeMs(
-    "arangodb_heartbeat_send_time_msec");
-std::string const StaticStrings::HeartbeatFailureCounter(
-    "arangodb_heartbeat_failures");
-
-std::string const StaticStrings::MaintenancePhaseOneRuntimeMs(
-    "arangodb_maintenance_phase1_runtime_msec");
-std::string const StaticStrings::MaintenancePhaseTwoRuntimeMs(
-    "arangodb_maintenance_phase2_runtime_msec");
-std::string const StaticStrings::MaintenanceAgencySyncRuntimeMs(
-    "arangodb_maintenance_agency_sync_runtime_msec");
-
-std::string const StaticStrings::MaintenanceActionRuntimeMs(
-    "arangodb_maintenance_action_runtime_msec");
-std::string const StaticStrings::MaintenanceActionAccumRuntimeMs(
-    "arangodb_maintenance_action_accum_runtime_msec");
-std::string const StaticStrings::MaintenanceActionFailureCounter(
-    "arangodb_maintenance_action_failure_counter");
-std::string const StaticStrings::MaintenanceActionQueueTimeMs(
-    "arangodb_maintenance_action_queue_time_msec");
-std::string const StaticStrings::MaintenanceActionAccumQueueTimeMs(
-    "arangodb_maintenance_action_accum_queue_time_msec");
-
-std::string const StaticStrings::MaintenancePhaseOneAccumRuntimeMs(
-    "arangodb_maintenance_phase1_accum_runtime_msec");
-std::string const StaticStrings::MaintenancePhaseTwoAccumRuntimeMs(
-    "arangodb_maintenance_phase2_accum_runtime_msec");
-std::string const StaticStrings::MaintenanceAgencySyncAccumRuntimeMs(
-    "arangodb_maintenance_agency_sync_accum_runtime_msec");
-
-std::string const StaticStrings::ActionDuplicateCounter(
-    "arangodb_maintenance_action_duplicate_counter");
-std::string const StaticStrings::ActionRegisteredCounter(
-    "arangodb_maintenance_action_registered_counter");
-std::string const StaticStrings::ActionDoneCounter(
-    "arangodb_maintenance_action_done_counter");
-
-std::string const StaticStrings::ShardsOutOfSync("arangodb_shards_out_of_sync");
-std::string const StaticStrings::ShardsTotalCount(
-    "arangodb_shards_total_count");
-std::string const StaticStrings::ShardsLeaderCount(
-    "arangodb_shards_leader_count");
-std::string const StaticStrings::ShardsNotReplicated(
-    "arangodb_shards_not_replicated");
-
-std::string const StaticStrings::AgencyCommRequestTimeMs(
-    "arangodb_agencycomm_request_time_msec");
-
-std::string const StaticStrings::SchedulerQueueLength(
-    "arangodb_scheduler_queue_length");
-std::string const StaticStrings::SchedulerAwakeWorkers(
-    "arangodb_scheduler_awake_threads");
-std::string const StaticStrings::SchedulerNumWorker(
-    "arangodb_scheduler_num_worker_threads");
-
-std::string const StaticStrings::DroppedFollowerCount(
-    "arangodb_dropped_followers_count");
-
-std::string const StaticStrings::SupervisionRuntimeMs(
-    "arangodb_agency_supervision_runtime_msec");
-std::string const StaticStrings::SupervisionRuntimeWaitForSyncMs(
-    "arangodb_agency_supervision_runtime_wait_for_replication_msec");
-
-std::string const StaticStrings::SupervisionAccumRuntimeMs(
-    "arangodb_agency_supervision_accum_runtime_msec");
-std::string const StaticStrings::SupervisionAccumRuntimeWaitForSyncMs(
-    "arangodb_agency_supervision_accum_runtime_wait_for_replication_msec");
-std::string const StaticStrings::SupervisionFailedServerCount(
-    "arangodb_agency_supervision_failed_server_count");
+std::string const StaticStrings::ValidationParameterType("type");
 
 // TODO REMOVE ME AFTER REFACTOR IS DONE
 std::string const StaticStrings::GraphRefactorFlag("refactor");

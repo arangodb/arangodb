@@ -22,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_VST_COMM_TASK_H
-#define ARANGOD_GENERAL_SERVER_VST_COMM_TASK_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "GeneralServer/GeneralCommTask.h"
@@ -104,7 +103,7 @@ class VstCommTask final : public GeneralCommTask<T> {
 
  private:
 
-  std::string const& url(VstRequest* req);
+  std::string url(VstRequest const* req) const;
 
   std::map<uint64_t, Message> _messages;
 
@@ -130,4 +129,3 @@ class VstCommTask final : public GeneralCommTask<T> {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

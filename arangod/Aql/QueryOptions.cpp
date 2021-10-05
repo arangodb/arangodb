@@ -38,14 +38,23 @@ using namespace arangodb::aql;
 
 size_t QueryOptions::defaultMemoryLimit = 0;
 size_t QueryOptions::defaultMaxNumberOfPlans = 128;
+#ifdef __APPLE__
+// On OSX the default stack size for worker threads (non-main thread) is 512kb
+// which is rather low, so we have to use a lower default
+size_t QueryOptions::defaultMaxNodesPerCallstack = 200;
+#else
+size_t QueryOptions::defaultMaxNodesPerCallstack = 250;
+#endif
 double QueryOptions::defaultMaxRuntime = 0.0;
 double QueryOptions::defaultTtl;
-bool QueryOptions::defaultFailOnWarning;
+bool QueryOptions::defaultFailOnWarning = false;
+bool QueryOptions::allowMemoryLimitOverride = true;
 
 QueryOptions::QueryOptions()
     : memoryLimit(0),
       maxNumberOfPlans(QueryOptions::defaultMaxNumberOfPlans),
       maxWarningCount(10),
+      maxNodesPerCallstack(QueryOptions::defaultMaxNodesPerCallstack),
       maxRuntime(0.0),
       satelliteSyncWait(60.0),
       ttl(QueryOptions::defaultTtl),  // get global default ttl
@@ -98,11 +107,18 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
 
   VPackSlice value;
 
+  // use global memory limit value first
+  if (QueryOptions::defaultMemoryLimit > 0) {
+    memoryLimit = QueryOptions::defaultMemoryLimit;
+  }
+
   // numeric options
   value = slice.get("memoryLimit");
   if (value.isNumber()) {
     size_t v = value.getNumber<size_t>();
-    if (v > 0) {
+    if (v > 0 && (allowMemoryLimitOverride || v < memoryLimit)) {
+      // only allow increasing the memory limit if the respective startup option
+      // is set. and if it is set, only allow decreasing the memory limit
       memoryLimit = v;
     }
   }
@@ -117,6 +133,11 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   value = slice.get("maxWarningCount");
   if (value.isNumber()) {
     maxWarningCount = value.getNumber<size_t>();
+  }
+
+  value = slice.get("maxNodesPerCallstack");
+  if (value.isNumber()) {
+    maxNodesPerCallstack = value.getNumber<size_t>();
   }
 
   value = slice.get("maxRuntime");
@@ -150,55 +171,43 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     traversalProfile = static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
   }
 
-  value = slice.get("stream");
-  if (value.isBool()) {
-    stream = value.getBool();
-  }
-
-  value = slice.get("allPlans");
-  if (value.isBool()) {
+  if (value = slice.get("allPlans"); value.isBool()) {
     allPlans = value.getBool();
   }
-  value = slice.get("verbosePlans");
-  if (value.isBool()) {
+  if (value = slice.get("verbosePlans"); value.isBool()) {
     verbosePlans = value.getBool();
   }
-  value = slice.get("stream");
-  if (value.isBool()) {
+  if (value = slice.get("stream"); value.isBool()) {
     stream = value.getBool();
   }
-  value = slice.get("silent");
-  if (value.isBool()) {
+  if (value = slice.get("silent"); value.isBool()) {
     silent = value.getBool();
   }
-  value = slice.get("failOnWarning");
-  if (value.isBool()) {
+  if (value = slice.get("failOnWarning"); value.isBool()) {
     failOnWarning = value.getBool();
   }
-  value = slice.get("cache");
-  if (value.isBool()) {
+  if (value = slice.get("cache"); value.isBool()) {
     cache = value.getBool();
   }
-  value = slice.get("fullCount");
-  if (value.isBool()) {
+  if (value = slice.get("fullCount"); value.isBool()) {
     fullCount = value.getBool();
   }
-  value = slice.get("count");
-  if (value.isBool()) {
+  if (value = slice.get("count"); value.isBool()) {
     count = value.getBool();
   }
-  value = slice.get("verboseErrors");
-  if (value.isBool()) {
+  if (value = slice.get("verboseErrors"); value.isBool()) {
     verboseErrors = value.getBool();
   }
-  value = slice.get("explainRegisters");
-  if (value.isBool()) {
-    explainRegisters =
-        value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
+  if (value = slice.get("explainRegisters"); value.isBool()) {
+    explainRegisters = value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
   }
-
+  
   // note: skipAudit is intentionally not read here.
   // the end user cannot override this setting
+  
+  if (value = slice.get("forceOneShardAttributeValue"); value.isString()) {
+    forceOneShardAttributeValue = value.copyString();
+  }
 
   VPackSlice optimizer = slice.get("optimizer");
   if (optimizer.isObject()) {
@@ -237,11 +246,6 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   }
 #endif
 
-  value = slice.get("exportCollection");
-  if (value.isString()) {
-    exportCollection = value.copyString();
-  }
-
   // also handle transaction options
   transactionOptions.fromVelocyPack(slice);
 }
@@ -252,11 +256,13 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("memoryLimit", VPackValue(memoryLimit));
   builder.add("maxNumberOfPlans", VPackValue(maxNumberOfPlans));
   builder.add("maxWarningCount", VPackValue(maxWarningCount));
+  builder.add("maxNodesPerCallstack", VPackValue(maxNodesPerCallstack));
   builder.add("maxRuntime", VPackValue(maxRuntime));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));
-  builder.add(StaticStrings::GraphTraversalProfileLevel, VPackValue(static_cast<uint32_t>(traversalProfile)));
+  builder.add(StaticStrings::GraphTraversalProfileLevel,
+              VPackValue(static_cast<uint32_t>(traversalProfile)));
   builder.add("allPlans", VPackValue(allPlans));
   builder.add("verbosePlans", VPackValue(verbosePlans));
   builder.add("stream", VPackValue(stream));
@@ -266,6 +272,10 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
   builder.add("verboseErrors", VPackValue(verboseErrors));
+
+  if (!forceOneShardAttributeValue.empty()) {
+    builder.add("forceOneShardAttributeValue", VPackValue(forceOneShardAttributeValue));
+  }
   
   // note: skipAudit is intentionally not serialized here.
   // the end user cannot override this setting anyway.
@@ -304,8 +314,6 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
     builder.close();  // inaccessibleCollections
   }
 #endif
-
-  // "exportCollection" is only used internally and not exposed via toVelocyPack
 
   // also handle transaction options
   transactionOptions.toVelocyPack(builder);

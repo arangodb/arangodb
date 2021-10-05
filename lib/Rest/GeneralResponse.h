@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_GENERAL_RESPONSE_H
-#define ARANGODB_REST_GENERAL_RESPONSE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -63,7 +62,7 @@ class GeneralResponse {
   static ResponseCode responseCode(std::string const& str);
 
   // response code from integer error code
-  static ResponseCode responseCode(int);
+  static ResponseCode responseCode(ErrorCode code);
 
   /// @brief set content-type this sets the contnt type like you expect it
   void setContentType(ContentType type) { _contentType = type; }
@@ -154,7 +153,7 @@ class GeneralResponse {
                           arangodb::velocypack::Options const* = nullptr,
                           bool resolveExternals = true) = 0;
   virtual void addRawPayload(velocypack::StringRef payload) = 0;
-  virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
+  virtual ErrorCode reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
 
   /// used for head
   bool generateBody() const { return _generateBody; }
@@ -164,7 +163,7 @@ class GeneralResponse {
     return _generateBody = generateBody;
   }
   
-  virtual int deflate(size_t size = 16384) = 0;
+  virtual ErrorCode deflate(size_t size = 16384) = 0;
 
  protected:
   std::unordered_map<std::string, std::string> _headers;  // headers/metadata map
@@ -177,4 +176,3 @@ class GeneralResponse {
 };
 }  // namespace arangodb
 
-#endif

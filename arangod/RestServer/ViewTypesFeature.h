@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_VIEW_TYPES_FEATURE_H
-#define ARANGODB_REST_SERVER_VIEW_TYPES_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "VocBase/LogicalView.h"
@@ -40,14 +39,15 @@ struct ViewFactory {
   ///        persistence
   /// @return if success then 'view' is set, else 'view' state is undefined
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                        velocypack::Slice const& definition) const = 0;
+  virtual Result create(
+    LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+    velocypack::Slice definition, bool isUserRequest) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief LogicalView factory for internal instantiation only
   //////////////////////////////////////////////////////////////////////////////
   virtual Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                             velocypack::Slice const& definition) const = 0;
+                             velocypack::Slice definition) const = 0;
 };
 
 class ViewTypesFeature final : public application_features::ApplicationFeature {
@@ -71,4 +71,3 @@ class ViewTypesFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

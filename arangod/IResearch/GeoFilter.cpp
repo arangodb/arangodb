@@ -34,6 +34,7 @@
 #include "search/collectors.hpp"
 #include "search/disjunction.hpp"
 #include "search/multiterm_query.hpp"
+#include "utils/memory.hpp"
 
 #include "Basics/voc-errors.h"
 #include "Geo/GeoParams.h"
@@ -157,7 +158,7 @@ class GeoIterator : public irs::doc_iterator {
 
  private:
   bool accept() {
-    TRI_ASSERT(_columnIt->value() < _doc->value)
+    TRI_ASSERT(_columnIt->value() < _doc->value);
 
     if (_doc->value != _columnIt->seek(_doc->value) ||
         _storedValue->value.empty()) {
@@ -208,7 +209,7 @@ irs::doc_iterator::ptr make_iterator(
 /// @brief cached per reader state
 //////////////////////////////////////////////////////////////////////////////
 struct GeoState {
-  using TermState = irs::seek_term_iterator::seek_cookie::ptr;
+  using TermState = irs::seek_cookie::ptr;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief corresponding stored field
@@ -223,7 +224,7 @@ struct GeoState {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief geo term states
   //////////////////////////////////////////////////////////////////////////////
-  std::vector<irs::seek_term_iterator::seek_cookie::ptr> states;
+  std::vector<irs::seek_cookie::ptr> states;
 }; // GeoState
 
 using GeoStates = irs::states_cache<GeoState>;
@@ -258,26 +259,15 @@ class GeoQuery final : public irs::filter::prepared {
       return irs::doc_iterator::empty();
     }
 
-    // get terms iterator
-    TRI_ASSERT(state->reader);
-    auto terms = state->reader->iterator();
-
-    if (IRS_UNLIKELY(!terms)) {
-      return irs::doc_iterator::empty();
-    }
+    auto field = state->reader;
+    TRI_ASSERT(field);
 
     typename Disjunction::doc_iterators_t itrs;
     itrs.reserve(state->states.size());
 
-    const auto& features = irs::flags::empty_instance();
-
     for (auto& entry : state->states) {
       assert(entry);
-      if (!terms->seek(irs::bytes_ref::NIL, *entry)) {
-        return irs::doc_iterator::empty(); // internal error
-      }
-
-      auto docs = terms->postings(features);
+      auto docs = field->postings(*entry, irs::IndexFeatures::NONE);
 
       itrs.emplace_back(std::move(docs));
 
@@ -352,7 +342,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
 
   std::pair<GeoStates, irs::bstring> res(
     std::piecewise_construct,
-    std::forward_as_tuple(index.size()),
+    std::forward_as_tuple(index),
     std::forward_as_tuple(order.stats_size(), 0));
 
   auto const size = sortedTerms.size();
@@ -366,7 +356,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
       continue;
     }
 
-    auto terms = reader->iterator();
+    auto terms = reader->iterator(irs::SeekMode::NORMAL);
 
     if (IRS_UNLIKELY(!terms)) {
       continue;

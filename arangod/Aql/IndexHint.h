@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_INDEX_HINT_H
-#define ARANGOD_AQL_INDEX_HINT_H 1
+#pragma once
 
 #include <iosfwd>
 #include <string>
@@ -36,6 +35,7 @@ class Slice;
 
 namespace aql {
 struct AstNode;
+class QueryContext;
 
 /// @brief container for index hint information
 class IndexHint {
@@ -44,7 +44,7 @@ class IndexHint {
 
  public:
   explicit IndexHint();
-  explicit IndexHint(AstNode const* node);
+  explicit IndexHint(QueryContext& query, AstNode const* node);
   explicit IndexHint(arangodb::velocypack::Slice const& slice);
 
  public:
@@ -73,4 +73,3 @@ std::ostream& operator<<(std::ostream& stream, arangodb::aql::IndexHint const& h
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

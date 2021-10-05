@@ -22,9 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
-#include "field_data.hpp"
-#include "field_meta.hpp"
-#include "comparer.hpp"
+
+#include <set>
+#include <algorithm>
+#include <cassert>
+
+#include "index/comparer.hpp"
+#include "index/field_data.hpp"
+#include "index/field_meta.hpp"
+#include "index/norm.hpp"
 
 #include "formats/formats.hpp"
 
@@ -46,25 +52,21 @@
 #include "utils/type_limits.hpp"
 #include "utils/bytes_utils.hpp"
 
-#include <set>
-#include <algorithm>
-#include <cassert>
-
 namespace {
 
 using namespace irs;
 
 const byte_block_pool EMPTY_POOL;
 
-const column_info NORM_COLUMN{
-  type<compression::lz4>::get(),
-  compression::options(),
-  false
-};
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
 // -----------------------------------------------------------------------------
+
+void accumulate_features(feature_set_t& accum, const feature_map_t& features) {
+  for (auto& entry : features) {
+    accum.emplace(entry.first);
+  }
+}
 
 template<typename Stream>
 void write_offset(
@@ -88,8 +90,7 @@ void write_prox(
     Stream& out,
     uint32_t prox,
     const irs::payload* pay,
-    flags& features
-) {
+    IndexFeatures& features) {
   if (!pay || pay->value.empty()) {
     irs::vwrite<uint32_t>(out, shift_pack_32(prox, false));
   } else {
@@ -98,7 +99,7 @@ void write_prox(
     out.write(pay->value.c_str(), pay->value.size());
 
     // saw payloads
-    features.add<payload>();
+    features |= IndexFeatures::PAY;
   }
 }
 
@@ -109,7 +110,7 @@ FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
 }
 
 FORCE_INLINE uint64_t cookie(size_t slice_offset, size_t offset) noexcept {
-  assert(offset <= integer_traits<byte_type>::const_max);
+  assert(offset <= std::numeric_limits<byte_type>::max());
   return static_cast<uint64_t>(slice_offset) << 8 | static_cast<byte_type>(offset);
 }
 
@@ -128,8 +129,7 @@ FORCE_INLINE uint64_t cookie(const byte_block_pool::sliced_greedy_inserter& stre
 
 FORCE_INLINE byte_block_pool::sliced_greedy_reader greedy_reader(
     const byte_block_pool& pool,
-    uint64_t cookie
-) noexcept {
+    uint64_t cookie) noexcept {
   return byte_block_pool::sliced_greedy_reader(
     pool,
     static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
@@ -139,8 +139,7 @@ FORCE_INLINE byte_block_pool::sliced_greedy_reader greedy_reader(
 
 FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
     byte_block_pool::inserter& writer,
-    uint64_t cookie
-) noexcept {
+    uint64_t cookie) noexcept {
   return byte_block_pool::sliced_greedy_inserter(
     writer,
     static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
@@ -152,17 +151,10 @@ FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
 /// @class pos_iterator
 ///////////////////////////////////////////////////////////////////////////////
 template<typename Reader>
-class pos_iterator final
-    : public frozen_attributes<2, irs::position> {
+class pos_iterator final : public irs::position {
  public:
   pos_iterator()
-    : attributes{{
-        { type<offset>::id(), nullptr },
-        { type<payload>::id(), nullptr },
-      }},
-      prox_in_(EMPTY_POOL),
-      ppay_(attributes::ref(type<payload>::id())),
-      poffs_(attributes::ref(type<offset>::id())) {
+    : prox_in_(EMPTY_POOL) {
   }
 
   void clear() noexcept {
@@ -173,26 +165,26 @@ class pos_iterator final
   }
 
   // reset field
-  void reset(const flags& features, const frequency& freq) {
-    assert(features.check<frequency>());
+  void reset(IndexFeatures features, const frequency& freq) {
+    assert(IndexFeatures::FREQ == (features & IndexFeatures::FREQ));
 
     freq_ = &freq;
-    *poffs_ = nullptr;
-    *ppay_ = nullptr;
 
-    if (features.check<offset>()) {
-      *poffs_ = &offs_;
-    }
+    std::get<attribute_ptr<offset>>(attrs_) =
+      IndexFeatures::NONE != (features & IndexFeatures::OFFS) ? &offs_ : nullptr;
 
-    if (features.check<payload>()) {
-      *ppay_ = &pay_;
-    }
+    std::get<attribute_ptr<payload>>(attrs_) =
+      IndexFeatures::NONE != (features & IndexFeatures::PAY) ? &pay_ : nullptr;
   }
 
   // reset value
   void reset(const Reader& prox) {
     clear();
     prox_in_ = prox;
+  }
+
+  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override final {
+    return irs::get_mutable(attrs_, id);
   }
 
   virtual bool next() override {
@@ -216,7 +208,7 @@ class pos_iterator final
     value_ += pos;
     assert(pos_limits::valid(value_));
 
-    if (*poffs_) {
+    if (std::get<attribute_ptr<offset>>(attrs_).ptr) {
       offs_.start += irs::vread<uint32_t>(prox_in_);
       offs_.end = offs_.start + irs::vread<uint32_t>(prox_in_);
     }
@@ -231,68 +223,47 @@ class pos_iterator final
   }
 
  private:
+  using attributes = std::tuple<attribute_ptr<offset>, attribute_ptr<payload>>;
+
   Reader prox_in_;
   bstring payload_value_;
   const frequency* freq_{}; // number of term positions in a document
   payload pay_;
   offset offs_;
-  attribute** ppay_{};
-  attribute** poffs_{};
+  attributes attrs_;
   uint32_t pos_{}; // current position
 }; // pos_iterator
 
 }
 
 namespace iresearch {
-
-bool memcmp_less(
-    const byte_type* lhs, size_t lhs_size,
-    const byte_type* rhs, size_t rhs_size) noexcept {
-  assert(lhs && rhs);
-
-  const size_t size = std::min(lhs_size, rhs_size);
-  const auto res = ::memcmp(lhs, rhs, size);
-
-  if (0 == res) {
-    return lhs_size < rhs_size;
-  }
-
-  return res < 0;
-}
-
 namespace detail {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 ////////////////////////////////////////////////////////////////////////////////
-class doc_iterator final
-  : public frozen_attributes<3, irs::doc_iterator> {
+class doc_iterator final : public irs::doc_iterator {
  public:
   doc_iterator() noexcept
-   : attributes{{
-       { type<document>::id(), &doc_ },
-       { type<frequency>::id(), nullptr },
-       { type<position>::id(), nullptr },
-     }},
-     freq_in_(EMPTY_POOL),
-     pfreq_(attributes::ref(type<frequency>::id())),
-     ppos_(attributes::ref(type<position>::id())) {
+   : freq_in_(EMPTY_POOL) {
   }
 
   // reset field
   void reset(const field_data& field) {
     field_ = &field;
-    *pfreq_ = nullptr;
-    *ppos_ = nullptr;
+    auto& freq = std::get<attribute_ptr<frequency>>(attrs_);
+    auto& pos = std::get<attribute_ptr<position>>(attrs_);
+    freq = nullptr;
+    pos = nullptr;
     has_cookie_ = false;
 
-    auto& features = field.meta().features;
-    if (features.check<frequency>()) {
-      *pfreq_ = &freq_;
+    const auto features = field.meta().index_features;
+    if (IndexFeatures::NONE != (features & IndexFeatures::FREQ)) {
+      freq = &freq_;
 
-      if (features.check<position>()) {
+      if (IndexFeatures::NONE != (features & IndexFeatures::POS)) {
         pos_.reset(features, freq_);
-        *ppos_ = &pos_;
+        pos = &pos_;
         has_cookie_ = field.prox_random_access();
       }
     }
@@ -309,7 +280,9 @@ class doc_iterator final
     freq_in_ = freq;
     posting_ = &posting;
 
-    if (*ppos_ && prox) {
+    auto& ppos = std::get<attribute_ptr<position>>(attrs_);
+
+    if (ppos.ptr && prox) {
       // reset positions only once,
       // as we need iterator for sequential reads
       pos_.reset(*prox);
@@ -322,6 +295,10 @@ class doc_iterator final
 
   size_t cost() const noexcept {
     return posting_->size;
+  }
+
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
   }
 
   virtual doc_id_t seek(doc_id_t doc) override {
@@ -349,7 +326,7 @@ class doc_iterator final
 
       posting_ = nullptr;
     } else {
-      if (*pfreq_) {
+      if (std::get<attribute_ptr<frequency>>(attrs_).ptr) {
         uint64_t delta;
 
         if (shift_unpack_64(irs::vread<uint64_t>(freq_in_), delta)) {
@@ -377,6 +354,9 @@ class doc_iterator final
   }
 
  private:
+  using attributes = std::tuple<
+    attribute_ptr<frequency>, attribute_ptr<position>>;
+
   const field_data* field_{};
   uint64_t cookie_{};
   document doc_;
@@ -384,42 +364,32 @@ class doc_iterator final
   pos_iterator<byte_block_pool::sliced_reader> pos_;
   byte_block_pool::sliced_reader freq_in_;
   const posting* posting_{};
-  attribute** pfreq_{};
-  attribute** ppos_{};
+  attributes attrs_;
   bool has_cookie_{false}; // FIXME remove
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sorting_doc_iterator
 ////////////////////////////////////////////////////////////////////////////////
-class sorting_doc_iterator final
-    : public frozen_attributes<3, irs::doc_iterator> {
+class sorting_doc_iterator final : public irs::doc_iterator {
  public:
-  sorting_doc_iterator() noexcept
-   : attributes{{
-       { type<document>::id(), &doc_ },
-       { type<frequency>::id(), nullptr },
-       { type<position>::id(), nullptr },
-     }},
-     pfreq_(attributes::ref(type<frequency>::id())),
-     ppos_(attributes::ref(type<position>::id())) {
-  }
-
   // reset field
   void reset(const field_data& field) {
     assert(field.prox_random_access());
     byte_pool_ = &field.byte_writer_->parent();
 
-    *pfreq_ = nullptr;
-    *ppos_ = nullptr;
+    auto& pfreq = std::get<attribute_ptr<frequency>>(attrs_);
+    auto& ppos = std::get<attribute_ptr<position>>(attrs_);
+    pfreq = nullptr;
+    ppos = nullptr;
 
-    auto& features = field.meta().features;
-    if (features.check<frequency>()) {
-      *pfreq_ = &freq_;
+    const auto features = field.meta().index_features;
+    if (IndexFeatures::NONE != (features & IndexFeatures::FREQ)) {
+      pfreq = &freq_;
 
-      if (features.check<position>()) {
+      if (IndexFeatures::NONE != (features & IndexFeatures::POS)) {
         pos_.reset(features, freq_);
-        *ppos_ = &pos_;
+        ppos = &pos_;
       }
     }
   }
@@ -446,9 +416,13 @@ class sorting_doc_iterator final
       reset_sparse(it, *freq, *docmap);
     }
 
-    doc_.value = irs::doc_limits::invalid();
+    std::get<document>(attrs_).value = irs::doc_limits::invalid();
     freq_.value = 0;
     it_ = docs_.begin();
+  }
+
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
   }
 
   virtual doc_id_t seek(doc_id_t doc) noexcept override {
@@ -457,10 +431,12 @@ class sorting_doc_iterator final
   }
 
   virtual doc_id_t value() const noexcept override {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
   virtual bool next() noexcept override {
+    auto& value = std::get<document>(attrs_);
+
     while (it_ != docs_.end()) {
       if (doc_limits::eof(it_->doc)) {
         // skip invalid docs
@@ -469,7 +445,7 @@ class sorting_doc_iterator final
       }
 
       auto& doc = *it_;
-      doc_.value = doc.doc;
+      value.value = doc.doc;
       freq_.value = doc.freq;
 
       if (doc.cookie) {
@@ -482,12 +458,15 @@ class sorting_doc_iterator final
 
     }
 
-    doc_.value = doc_limits::eof();
+    value.value = doc_limits::eof();
     freq_.value = 0;
     return false;
   }
 
  private:
+  using attributes = std::tuple<
+    document, attribute_ptr<frequency>, attribute_ptr<position>>;
+
   struct doc_entry {
     doc_entry() = default;
     doc_entry(doc_id_t doc, uint32_t freq, uint64_t cookie) noexcept
@@ -559,11 +538,9 @@ class sorting_doc_iterator final
   const byte_block_pool* byte_pool_{};
   std::vector<doc_entry>::const_iterator it_;
   std::vector<doc_entry> docs_;
-  document doc_;
-  frequency freq_;
   pos_iterator<byte_block_pool::sliced_greedy_reader> pos_;
-  attribute** pfreq_{};
-  attribute** ppos_{};
+  frequency freq_;
+  attributes attrs_;
 }; // sorting_doc_iterator
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -571,23 +548,18 @@ class sorting_doc_iterator final
 ////////////////////////////////////////////////////////////////////////////////
 class term_iterator : public irs::term_iterator {
  public:
+  explicit term_iterator(
+      fields_data::postings_ref_t& postings,
+      const doc_map* docmap) noexcept
+    : postings_(&postings),
+      doc_map_(docmap) {
+  }
+
   void reset(
       const field_data& field,
-      const doc_map* docmap,
       const bytes_ref*& min,
       const bytes_ref*& max) {
-    // refill postings
-    postings_.clear();
-    postings_.insert(field.terms_.begin(), field.terms_.end());
-
-    max = min = &irs::bytes_ref::NIL;
-    if (!postings_.empty()) {
-      min = &(postings_.begin()->first);
-      max = &((--postings_.end())->first);
-    }
-
     field_ = &field;
-    doc_map_ = docmap;
 
     doc_itr_.reset(field);
     if (field.prox_random_access()) {
@@ -595,16 +567,23 @@ class term_iterator : public irs::term_iterator {
     }
 
     // reset state
-    it_ = postings_.begin();
-    next_ = postings_.begin();
+    field_->terms_.get_sorted_postings(*postings_);
+    next_ = it_ = postings_->begin();
+    end_ = postings_->end();
+
+    max = min = &irs::bytes_ref::NIL;
+    if (it_ != end_) {
+      min = &(*it_)->term;
+      max = &(*(end_ - 1))->term;
+    }
   }
 
   virtual const bytes_ref& value() const noexcept override {
-    assert(it_ != postings_.end());
-    return it_->first;
+    assert(it_ != end_);
+    return (*it_)->term;
   }
 
-  virtual attribute* get_mutable(type_info::type_id) noexcept override {
+  virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 
@@ -612,15 +591,15 @@ class term_iterator : public irs::term_iterator {
     // Does nothing now
   }
 
-  virtual irs::doc_iterator::ptr postings(const flags& /*features*/) const override {
+  virtual irs::doc_iterator::ptr postings(IndexFeatures /*features*/) const override {
     REGISTER_TIMER_DETAILED();
-    assert(it_ != postings_.end());
+    assert(it_ != end_);
 
-    return (this->*POSTINGS[size_t(field_->prox_random_access())])(it_->second);
+    return (this->*POSTINGS[size_t(field_->prox_random_access())])(**it_);
   }
 
   virtual bool next() override {   
-    if (next_ == postings_.end()) {
+    if (next_ == end_) {
       return false;
     }
 
@@ -634,18 +613,6 @@ class term_iterator : public irs::term_iterator {
   }
 
  private:
-  struct less_t {
-    bool operator()(const bytes_ref& lhs, const bytes_ref& rhs) const noexcept {
-      return memcmp_less(lhs, rhs);
-    }
-  };
-
-  typedef std::map<
-    bytes_ref,
-    std::reference_wrapper<const posting>,
-    less_t
-  > map_t;
-
   typedef irs::doc_iterator::ptr(term_iterator::*postings_f)(const posting&) const;
 
   static const postings_f POSTINGS[2];
@@ -682,9 +649,10 @@ class term_iterator : public irs::term_iterator {
     return memory::to_managed<irs::doc_iterator, false>(&sorting_doc_itr_);
   }
 
-  map_t postings_;
-  map_t::iterator next_{ postings_.end() };
-  map_t::iterator it_{ postings_.end() };
+  fields_data::postings_ref_t* postings_{};
+  fields_data::postings_ref_t::const_iterator end_;
+  fields_data::postings_ref_t::const_iterator next_;
+  fields_data::postings_ref_t::const_iterator it_;
   const field_data* field_{};
   const doc_map* doc_map_{};
   mutable detail::doc_iterator doc_itr_;
@@ -702,8 +670,15 @@ class term_iterator : public irs::term_iterator {
 class term_reader final : public irs::basic_term_reader,
                           private util::noncopyable {
  public:
-  void reset(const field_data& field, const doc_map* docmap) {
-    it_.reset(field, docmap, min_, max_);
+  explicit term_reader(
+      fields_data::postings_ref_t& postings,
+      const doc_map* docmap) noexcept
+    : it_(postings, docmap) {
+  }
+
+
+  void reset(const field_data& field) {
+    it_.reset(field, min_, max_);
   }
 
   virtual const irs::bytes_ref& (min)() const noexcept override {
@@ -722,7 +697,7 @@ class term_reader final : public irs::basic_term_reader,
     return memory::to_managed<irs::term_iterator, false>(&it_);
   }
 
-  virtual attribute* get_mutable(type_info::type_id) noexcept override {
+  virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 
@@ -752,17 +727,41 @@ class term_reader final : public irs::basic_term_reader,
   }
 };
 
-field_data::field_data( 
+field_data::field_data(
     const string_ref& name,
+    const features_t& features,
+    const field_features_t& field_features,
+    const feature_column_info_provider_t& feature_columns,
+    columnstore_writer& columns,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
+    IndexFeatures index_features,
     bool random_access)
-  : meta_(name, flags::empty_instance()),
+  : meta_(name, index_features),
     terms_(*byte_writer),
     byte_writer_(&byte_writer),
     int_writer_(&int_writer),
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
     last_doc_(doc_limits::invalid()) {
+  features_.reserve(field_features.size());
+  for (type_info::type_id feature : features) {
+    const auto it = field_features.find(feature);
+
+    if (IRS_UNLIKELY(it == field_features.end())) {
+      assert(false);
+      continue;
+    }
+
+    if (it->second) {
+      assert(feature_columns);
+      auto [id, handler] = columns.push_column(feature_columns(feature));
+      features_.emplace_back(feature, it->second, std::move(handler));
+
+      meta_.features[feature] = id;
+    } else {
+      meta_.features[feature] = field_limits::invalid();
+    }
+  }
 }
 
 void field_data::reset(doc_id_t doc_id) {
@@ -774,33 +773,18 @@ void field_data::reset(doc_id_t doc_id) {
 
   pos_ = pos_limits::invalid();
   last_pos_ = 0;
-  len_ = 0;
-  num_overlap_ = 0;
+  stats_ = {};
   offs_ = 0;
   last_start_offs_ = 0;
-  max_term_freq_ = 0;
-  unq_term_cnt_ = 0;
   last_doc_ = doc_id;
-}
-
-data_output& field_data::norms(columnstore_writer& writer) {
-  if (!norms_) {
-    // FIXME encoder for norms???
-    // do not encrypt norms
-    auto handle = writer.push_column(NORM_COLUMN);
-    norms_ = std::move(handle.second);
-    meta_.norm = handle.first;
-  }
-
-  return norms_(doc());
+  seen_ = false;
 }
 
 void field_data::new_term(
     posting& p,
     doc_id_t did,
     const payload* pay,
-    const offset* offs
-) {
+    const offset* offs) {
   // where pointers to data starts
   p.int_start = int_writer_->pool_offset();
 
@@ -811,22 +795,20 @@ void field_data::new_term(
   *int_writer_ = freq_start; // freq stream start
   *int_writer_ = prox_start; // prox stream start
 
-  auto& features = meta_.features;
-
   p.doc = did;
-  if (!features.check<frequency>()) {
+  if (IndexFeatures::NONE == (meta_.index_features & IndexFeatures::FREQ)) {
     p.doc_code = did;
   } else {
     p.doc_code = uint64_t(did) << 1;
     p.freq = 1;
 
-    if (features.check<position>()) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start + 1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(prox_out, pos_, pay, meta_.features);
+      write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (features.check<offset>()) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -836,18 +818,16 @@ void field_data::new_term(
     }
   }
 
-  max_term_freq_ = std::max(1U, max_term_freq_);
-  ++unq_term_cnt_;
+  stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
+  ++stats_.num_unique;
 }
 
 void field_data::add_term(
     posting& p,
     doc_id_t did,
     const payload* pay,
-    const offset* offs
-) {
-  auto& features = meta_.features;
-  if (!features.check<frequency>()) {
+    const offset* offs) {
+  if (IndexFeatures::NONE == (meta_.index_features & IndexFeatures::FREQ)) {
     if (p.doc != did) {
       assert(did > p.doc);
 
@@ -858,7 +838,7 @@ void field_data::add_term(
 
       p.doc_code = did - p.doc;
       p.doc = did;
-      ++unq_term_cnt_;
+      ++stats_.num_unique;
     }
   } else if (p.doc != did) {
     assert(did > p.doc);
@@ -877,16 +857,16 @@ void field_data::add_term(
     p.freq = 1;
 
     p.doc = did;
-    max_term_freq_ = std::max(1U, max_term_freq_);
-    ++unq_term_cnt_;
+    stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
+    ++stats_.num_unique;
 
-    if (features.check<position>()) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(prox_out, pos_, pay, meta_.features);
+      write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (features.check<offset>()) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         p.offs = 0; // reset base offset
         write_offset(p, prox_out, offs_, *offs);
@@ -898,14 +878,14 @@ void field_data::add_term(
 
     doc_stream_end = doc_out.pool_offset();
   } else { // exists in current doc
-    max_term_freq_ = std::max(++p.freq, max_term_freq_);
-    if (features.check<position>() ) {
+    stats_.max_term_freq = std::max(++p.freq, stats_.max_term_freq);
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(prox_out, pos_ - p.pos, pay, meta_.features);
+      write_prox(prox_out, pos_ - p.pos, pay, meta_.index_features);
 
-      if (features.check<offset>()) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -920,8 +900,7 @@ void field_data::new_term_random_access(
     posting& p,
     doc_id_t did,
     const payload* pay,
-    const offset* offs
-) {
+    const offset* offs) {
   // where pointers to data starts
   p.int_start = int_writer_->pool_offset();
 
@@ -935,21 +914,19 @@ void field_data::new_term_random_access(
   *int_writer_ = cookie; // start cookie
   *int_writer_ = 0;      // last start cookie
 
-  auto& features = meta_.features;
-
   p.doc = did;
-  if (!features.check<frequency>()) {
+  if (IndexFeatures::NONE == (meta_.index_features & IndexFeatures::FREQ)) {
     p.doc_code = did;
   } else {
     p.doc_code = uint64_t(did) << 1;
     p.freq = 1;
 
-    if (features.check<position>()) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       byte_block_pool::sliced_greedy_inserter prox_out(*byte_writer_, prox_start, 1);
 
-      write_prox(prox_out, pos_, pay, meta_.features);
+      write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (features.check<offset>()) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -961,18 +938,16 @@ void field_data::new_term_random_access(
     }
   }
 
-  max_term_freq_ = std::max(1U, max_term_freq_);
-  ++unq_term_cnt_;
+  stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
+  ++stats_.num_unique;
 }
 
 void field_data::add_term_random_access(
     posting& p,
     doc_id_t did,
     const payload* pay,
-    const offset* offs
-) {
-  auto& features = meta_.features;
-  if (!features.check<frequency>()) {
+    const offset* offs) {
+  if (IndexFeatures::NONE == (meta_.index_features & IndexFeatures::FREQ)) {
     if (p.doc != did) {
       assert(did > p.doc);
 
@@ -984,7 +959,7 @@ void field_data::add_term_random_access(
       ++p.size;
       p.doc_code = did - p.doc;
       p.doc = did;
-      ++unq_term_cnt_;
+      ++stats_.num_unique;
     }
   } else if (p.doc != did) {
     assert(did > p.doc);
@@ -1004,10 +979,10 @@ void field_data::add_term_random_access(
     p.freq = 1;
 
     p.doc = did;
-    max_term_freq_ = std::max(1U, max_term_freq_);
-    ++unq_term_cnt_;
+    stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
+    ++stats_.num_unique;
 
-    if (features.check<position>()) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       auto prox_stream_cookie = int_writer_->parent().seek(p.int_start+2);
 
       auto& end_cookie = *prox_stream_cookie; ++prox_stream_cookie;
@@ -1020,9 +995,9 @@ void field_data::add_term_random_access(
 
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);
 
-      write_prox(prox_out, pos_, pay, meta_.features);
+      write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (features.check<offset>()) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         p.offs = 0; // reset base offset
         write_offset(p, prox_out, offs_, *offs);
@@ -1034,15 +1009,15 @@ void field_data::add_term_random_access(
 
     doc_stream_end = doc_out.pool_offset();
   } else { // exists in current doc
-    max_term_freq_ = std::max(++p.freq, max_term_freq_);
-    if (features.check<position>() ) {
+    stats_.max_term_freq = std::max(++p.freq, stats_.max_term_freq);
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       // update end cookie
       auto& end_cookie = *int_writer_->parent().seek(p.int_start+2);
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);
 
-      write_prox(prox_out, pos_ - p.pos, pay, meta_.features);
+      write_prox(prox_out, pos_ - p.pos, pay, meta_.index_features);
 
-      if (features.check<offset>()) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -1053,14 +1028,9 @@ void field_data::add_term_random_access(
   }
 }
 
-bool field_data::invert(
-    token_stream& stream, 
-    const flags& features, 
-    doc_id_t id) {
-  assert(id < doc_limits::eof()); // 0-based document id
+bool field_data::invert(token_stream& stream, doc_id_t id) {
   REGISTER_TIMER_DETAILED();
-
-  meta_.features |= features; // accumulate field features
+  assert(id < doc_limits::eof()); // 0-based document id
 
   const auto* term = get<term_attribute>(stream);
   const auto* inc = get<increment>(stream);
@@ -1070,20 +1040,18 @@ bool field_data::invert(
   if (!inc) {
     IR_FRMT_ERROR(
       "field '%s' missing required token_stream attribute '%s'",
-      meta_.name.c_str(), type<increment>::name().c_str()
-    );
+      meta_.name.c_str(), type<increment>::name().c_str());
     return false;
   }
 
   if (!term) {
     IR_FRMT_ERROR(
       "field '%s' missing required token_stream attribute '%s'",
-      meta_.name.c_str(), type<term_attribute>::name().c_str()
-    );
+      meta_.name.c_str(), type<term_attribute>::name().c_str());
     return false;
   }
 
-  if (meta_.features.check<offset>()) {
+  if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
     offs = get<offset>(stream);
 
     if (offs) {
@@ -1097,17 +1065,19 @@ bool field_data::invert(
     pos_ += inc->value;
 
     if (pos_ < last_pos_) {
-      IR_FRMT_ERROR("invalid position %u < %u in field '%s'", pos_, last_pos_, meta_.name.c_str());
+      IR_FRMT_ERROR("invalid position %u < %u in field '%s'",
+                    pos_, last_pos_, meta_.name.c_str());
       return false;
     }
 
     if (pos_ >= pos_limits::eof()) {
-      IR_FRMT_ERROR("invalid position %u >= %u in field '%s'", pos_, pos_limits::eof(), meta_.name.c_str());
+      IR_FRMT_ERROR("invalid position %u >= %u in field '%s'",
+                    pos_, pos_limits::eof(), meta_.name.c_str());
       return false;
     }
 
     if (0 == inc->value) {
-      ++num_overlap_;
+      ++stats_.num_overlap;
     }
 
     if (offs) {
@@ -1115,7 +1085,8 @@ bool field_data::invert(
       const uint32_t end_offset = offs_ + offs->end;
 
       if (start_offset < last_start_offs_ || end_offset < start_offset) {
-        IR_FRMT_ERROR("invalid offset start=%u end=%u in field '%s'", start_offset, end_offset, meta_.name.c_str());
+        IR_FRMT_ERROR("invalid offset start=%u end=%u in field '%s'",
+                      start_offset, end_offset, meta_.name.c_str());
         return false;
       }
 
@@ -1124,18 +1095,20 @@ bool field_data::invert(
 
     const auto res = terms_.emplace(term->value);
 
-    if (terms_.end() == res.first) {
-      IR_FRMT_ERROR("field '%s' has invalid term '%s'", meta_.name.c_str(), ref_cast<char>(term->value).c_str());
+    if (nullptr == res.first) {
+      IR_FRMT_ERROR("field '%s' has invalid term of size '" IR_SIZE_T_SPECIFIER "'",
+                    meta_.name.c_str(), term->value.size());
+      IR_FRMT_TRACE("field '%s' has invalid term '%s'",
+                    meta_.name.c_str(), ref_cast<char>(term->value).c_str());
       continue;
     }
 
-    (this->*proc_table_[size_t(res.second)])(res.first->second, id, pay, offs);
+    (this->*proc_table_[size_t(res.second)])(*res.first, id, pay, offs);
 
-    if (0 == ++len_) {
+    if (0 == ++stats_.len) {
       IR_FRMT_ERROR(
         "too many tokens in field '%s', document '" IR_UINT32_T_SPECIFIER "'",
-         meta_.name.c_str(), id
-      );
+         meta_.name.c_str(), id);
       return false;
     }
 
@@ -1153,64 +1126,86 @@ bool field_data::invert(
 // --SECTION--                                        fields_data implementation
 // -----------------------------------------------------------------------------
 
-fields_data::fields_data(const comparer* comparator /*= nullptr*/)
+fields_data::fields_data(
+    const field_features_t& field_features,
+    const feature_column_info_provider_t& feature_columns,
+    const comparer* comparator /*= nullptr*/)
   : comparator_(comparator),
+    field_features_(&field_features),
+    feature_columns_(&feature_columns),
     byte_writer_(byte_pool_.begin()),
     int_writer_(int_pool_.begin()) {
 }
 
-field_data& fields_data::emplace(const hashed_string_ref& name) {
-  static auto generator = [](
-      const hashed_string_ref& key,
-      const field_data& value) noexcept {
-    // reuse hash but point ref at value
-    return hashed_string_ref(key.hash(), value.meta().name);
-  };
+field_data* fields_data::emplace(
+    const hashed_string_ref& name,
+    IndexFeatures index_features,
+    const features_t& features,
+    columnstore_writer& columns) {
+  assert(fields_map_.size() == fields_.size());
 
-  // replace original reference to 'name' provided by the caller
-  // with a reference to the cached copy in 'value'
-  return map_utils::try_emplace_update_key(
-    fields_,                                                  // container
-    generator,                                                // key generator
-    name,                                                     // key
-    name, byte_writer_, int_writer_, (nullptr != comparator_) // value
-  ).first->second;
+  auto it = fields_map_.lazy_emplace(
+    name,
+    [&name](const fields_map::constructor& ctor) {
+      ctor(name.hash(), nullptr);
+  });
+
+  if (!it->second) {
+    try {
+      fields_.emplace_back(
+        name, features, *field_features_,
+        *feature_columns_, columns,
+        byte_writer_, int_writer_,
+        index_features, (nullptr != comparator_));
+    } catch (...) {
+      fields_map_.erase(it);
+    }
+
+    const_cast<field_data*&>(it->second) = &fields_.back();
+  }
+
+  return it->second;
 }
 
 void fields_data::flush(field_writer& fw, flush_state& state) {
   REGISTER_TIMER_DETAILED();
 
-  state.features = &features_;
+  IndexFeatures index_features{IndexFeatures::NONE};
+  feature_set_t features;
 
-  struct less_t {
-    bool operator()(
-        const field_data* lhs,
-        const field_data* rhs
-    ) const noexcept {
-      return lhs->meta().name < rhs->meta().name;
-    }
-  };
-
-  std::set<const field_data*, less_t> fields;
-
-  // ensure fields are sorted
+  // sort fields
+  sorted_fields_.resize(fields_.size());
+  auto begin = sorted_fields_.begin();
   for (auto& entry : fields_) {
-    fields.emplace(&entry.second);
+    *begin = &entry;
+    ++begin;
+
+    const auto& meta = entry.meta();
+    index_features |= static_cast<IndexFeatures>(meta.index_features);
+    accumulate_features(features, meta.features);
   }
 
+  state.index_features = static_cast<IndexFeatures>(index_features);
+  state.features = &features;
+
+  std::sort(
+    sorted_fields_.begin(), sorted_fields_.end(),
+    [](const field_data* lhs, const field_data* rhs) noexcept {
+      return lhs->meta().name < rhs->meta().name;
+  });
+
+  detail::term_reader terms(sorted_postings_, state.docmap);
+
   fw.prepare(state);
-
-  detail::term_reader terms;
-
-  for (auto* field : fields) {
+  for (auto* field : sorted_fields_) {
     auto& meta = field->meta();
 
     // reset reader
-    terms.reset(*field, state.docmap);
+    terms.reset(*field);
 
     // write inverted data
     auto it = terms.iterator();
-    fw.write(meta.name, meta.norm, meta.features, *it);
+    fw.write(meta.name, meta.index_features, meta.features, *it);
   }
 
   fw.end();
@@ -1218,8 +1213,8 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
 void fields_data::reset() noexcept {
   byte_writer_ = byte_pool_.begin(); // reset position pointer to start of pool
-  features_.clear();
   fields_.clear();
+  fields_map_.clear();
   int_writer_ = int_pool_.begin(); // reset position pointer to start of pool
 }
 

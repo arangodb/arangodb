@@ -24,6 +24,8 @@
 
 #include "RestAnalyzerHandler.h"
 
+#include <string_view>
+
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
@@ -33,8 +35,9 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-
+#include "Utilities/NameValidator.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -91,8 +94,10 @@ void RestAnalyzerHandler::createAnalyzer( // create
       return;
   }
 
-  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(splittedAnalyzerName.second.c_str(),
-                                                                 splittedAnalyzerName.second.size()))) {
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+  if (!AnalyzerNameValidator::isAllowedName(extendedNames,
+                                            std::string_view(splittedAnalyzerName.second.c_str(),
+                                                             splittedAnalyzerName.second.size()))) {
     generateError(arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       "invalid characters in analyzer name '" + static_cast<std::string>(splittedAnalyzerName.second) + "'"
@@ -120,7 +125,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
   auto properties = body.get(StaticStrings::AnalyzerPropertiesField);
   if (properties.isString()) { // string still could be parsed to an object
     auto string_ref = getStringRef(properties);
-    propertiesFromStringBuilder = arangodb::velocypack::Parser::fromJson(string_ref);
+    propertiesFromStringBuilder = arangodb::velocypack::Parser::fromJson(string_ref.c_str(), string_ref.size());
     properties = propertiesFromStringBuilder->slice();
   }
   
@@ -132,7 +137,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
 
-  irs::flags features;
+  Features features;
 
   if (body.hasKey(StaticStrings::AnalyzerFeaturesField)) { // optional parameter
     auto featuresSlice = body.get(StaticStrings::AnalyzerFeaturesField);
@@ -153,9 +158,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
           return;
         }
 
-        const auto feature = irs::attributes::get(getStringRef(value), false);
-
-        if (!feature) {
+        if (!features.add(value.stringView())) {
           generateError(arangodb::Result(
             TRI_ERROR_BAD_PARAMETER,
             "unknown value in 'features', expecting body to be of the form { name: <string>, type: <string>[, properties: <object>[, features: <string-array>]] }"
@@ -163,8 +166,6 @@ void RestAnalyzerHandler::createAnalyzer( // create
 
           return;
         }
-
-        features.add(feature.id());
       }
     } else {
       generateError(arangodb::Result(
@@ -380,7 +381,9 @@ void RestAnalyzerHandler::removeAnalyzer(
   auto splittedAnalyzerName = IResearchAnalyzerFeature::splitAnalyzerName(requestedName);
   auto name = splittedAnalyzerName.second;
 
-  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(name.c_str(), name.size()))) {
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+  if (!AnalyzerNameValidator::isAllowedName(extendedNames,
+                                            std::string_view(name.c_str(), name.size()))) {
     generateError(arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("Invalid characters in analyzer name '").append(name)

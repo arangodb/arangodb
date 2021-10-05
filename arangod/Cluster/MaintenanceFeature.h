@@ -22,12 +22,12 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_MAINTENANCE_FEATURE
-#define ARANGOD_CLUSTER_MAINTENANCE_FEATURE 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
@@ -40,6 +40,9 @@
 #include <queue>
 
 namespace arangodb {
+namespace maintenance {
+enum ActionState;
+}
 
 template <typename T>
 struct SharedPtrComparer {
@@ -55,7 +58,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   explicit MaintenanceFeature(application_features::ApplicationServer&);
 
-  virtual ~MaintenanceFeature() = default;
+  virtual ~MaintenanceFeature();
 
   struct errors_t {
     std::map<std::string, std::map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>> indexes;
@@ -130,10 +133,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   std::shared_ptr<maintenance::Action> postAction(
       std::shared_ptr<maintenance::ActionDescription> const& description);
 
-  /// @brief Check if a shard is locked for a maintenance action.
-  /// returns the ActionDescription of the job if locked. If the shard
-  /// is not locked, a nullptr is returned.
-  std::shared_ptr<maintenance::ActionDescription> isShardLocked(ShardID const& shardId) const;
+  /// returns whether or not the shard has an action of the specified type
+  /// (equivalent to NAME) that has the specified state
+  bool hasAction(maintenance::ActionState state, ShardID const& shardId, std::string const& type) const;
 
   /// @brief Lock a shard for a certain action description. Returns `false` if
   /// the shard is already locked and `true` otherwise. If the lock succeeds, the
@@ -141,7 +143,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   bool lockShard(ShardID const& shardId, std::shared_ptr<maintenance::ActionDescription> const& description);
 
   /// @brief Release shard lock. Returns `true` if the shard was locked and `false` otherwise.
-  bool unlockShard(ShardID const& shardId);
+  bool unlockShard(ShardID const& shardId) noexcept;
 
   /// @brief Get shard locks, this copies the whole map of shard locks.
   ShardActionMap getShardLocks() const;
@@ -302,6 +304,23 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   arangodb::Result removeDBError(std::string const& database);
 
+
+  /// @brief remove all replication errors for a particular database
+  void removeReplicationError(std::string const& database);
+  
+  /// @brief remove all replication errors for a particular shard.
+  /// this will be called after a successful SynchronizeShard job for the shard
+  void removeReplicationError(std::string const& database, std::string const& shard);
+
+  /// @brief store a replication error for a particular shard.
+  /// this will be called after a failed SynchronizeShard job for the shard
+  void storeReplicationError(std::string const& database, std::string const& shard);
+
+  /// @brief return the number of replication errors for a particular shard.
+  /// note: we will return only those errors which happened not longer than
+  /// maxReplicationErrorsPerShardAge  ago
+  size_t replicationErrors(std::string const& database, std::string const& shard) const;
+
   /**
    * @brief copy all error maps (shards, indexes and databases) for Maintenance
    *
@@ -334,9 +353,17 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   std::unordered_set<std::string> dirty(
     std::unordered_set<std::string> const& = std::unordered_set<std::string>());
   /// @brief get n random db names
-  std::unordered_set<std::string> pickRandomDirty (size_t n);
+  std::unordered_set<std::string> pickRandomDirty(size_t n);
 
-
+  /// @brief maximum number of replication error occurrences that are kept per 
+  /// shard.
+  static constexpr size_t maxReplicationErrorsPerShard = 20;
+    
+  /// @brief maximum age of replication error occurrences that are kept per shard.
+  /// error occurrences older than this max age will be removed only lazily and
+  /// will not be considered when counting the number of errors.
+  static constexpr auto maxReplicationErrorsPerShardAge = std::chrono::hours(24);
+  
  protected:
   void initializeMetrics();
 
@@ -383,14 +410,14 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   ///  duplicates from adding to _actionRegistry
   int32_t _secondsActionsBlock;
 
-  /// @brief tunable option for number of seconds COMPLETE and FAILE actions remain
+  /// @brief tunable option for number of seconds COMPLETE and FAILED actions remain
   ///  within _actionRegistry
   int32_t _secondsActionsLinger;
 
   /// @brief flag to indicate when it is time to stop thread pool
   std::atomic<bool> _isShuttingDown;
 
-  /// @brief simple counter for creating MaintenanceAction id.  Ok for it to roll over.
+  /// @brief simple counter for creating MaintenanceAction id. Ok for it to roll over.
   std::atomic<uint64_t> _nextActionId;
 
   //
@@ -425,11 +452,11 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief condition variable to motivate workers to find new action
   arangodb::basics::ConditionVariable _actionRegistryCond;
 
-  /// @brief list of background workers
-  std::vector<std::unique_ptr<maintenance::MaintenanceWorker>> _activeWorkers;
-
   /// @brief condition variable to indicate thread completion
   arangodb::basics::ConditionVariable _workerCompletion;
+
+  /// @brief list of background workers
+  std::vector<std::unique_ptr<maintenance::MaintenanceWorker>> _activeWorkers;
 
   /// Errors are managed through raiseIndexError / removeIndexError and
   /// raiseShardError / renoveShardError. According locks must be held in said
@@ -449,12 +476,19 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   mutable arangodb::Mutex _dbeLock;
   /// @brief pending errors raised by CreateDatabase
   std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
-
+  
   /// @brief lock for shard version map
   mutable arangodb::Mutex _versionLock;
   /// @brief shards have versions in order to be able to distinguish between
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
+  
+  /// @brief lock for replication error bucket
+  mutable arangodb::Mutex _replLock;
+  /// @brief shard replication errors { database => { shard => [ timestamps ] } }
+  /// we store up to  maxReplicationErrorsPerShard  errors per shard.
+  /// all errors for a shard will be cleared after a successful SynchronizeShard job
+  std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::chrono::steady_clock::time_point>>> _replErrors;
 
   std::atomic<std::chrono::steady_clock::duration> _pauseUntil;
 
@@ -514,4 +548,3 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

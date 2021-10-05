@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_ADMIN_CLUSTER_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_ADMIN_CLUSTER_HANDLER_H 1
+#pragma once
 
 #include "Futures/Future.h"
 #include "Futures/Unit.h"
@@ -47,6 +46,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
  private:
+  static std::string const CancelJob;
   static std::string const Health;
   static std::string const NumberOfServers;
   static std::string const Maintenance;
@@ -62,6 +62,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const QueryJobStatus;
   static std::string const RemoveServer;
   static std::string const RebalanceShards;
+  static std::string const ShardStatistics;
 
   RestStatus handleHealth();
   RestStatus handleNumberOfServers();
@@ -81,10 +82,12 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   RestStatus handleShardDistribution();
   RestStatus handleCollectionShardDistribution();
+  RestStatus handleShardStatistics();
 
   RestStatus handleCleanoutServer();
   RestStatus handleResignLeadership();
   RestStatus handleMoveShard();
+  RestStatus handleCancelJob();
   RestStatus handleQueryJobStatus();
 
   RestStatus handleRemoveServer();
@@ -173,4 +176,3 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

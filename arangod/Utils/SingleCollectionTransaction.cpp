@@ -75,7 +75,7 @@ TransactionCollection* SingleCollectionTransaction::resolveTrxCollection() {
   TRI_ASSERT(_cid.isSet());
 
   if (_trxCollection == nullptr) {
-    _trxCollection = _state->collection(_cid, _accessType);
+    _trxCollection = state()->collection(_cid, _accessType);
 
     if (_trxCollection != nullptr) {
       _documentCollection = _trxCollection->collection().get();

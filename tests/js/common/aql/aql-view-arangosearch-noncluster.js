@@ -56,6 +56,7 @@ function iResearchAqlTestSuite () {
   var c2;
   var v;
   var v2;
+  const longValue  = "VeryLongValueToNotFitIntoSSOAndTriggerBufferCopyingIssuesIfAnyBlaBlaBla";
   return {
     setUpAll : function () {
       db._drop("AuxUnitTestsCollection");
@@ -88,7 +89,7 @@ function iResearchAqlTestSuite () {
         }
       };
       arrayV.properties(meta);
-      
+
       db._drop("TestsCollectionWithManyFields");
       let mfc = db._create("TestsCollectionWithManyFields");
       mfc.save({field1:"1value", field2:"2value", field3: 1, field4: 11111, field5: 1, field6: 1});
@@ -96,6 +97,13 @@ function iResearchAqlTestSuite () {
       mfc.save({field1:"1value2", field2:"2value2", field3: 3, field4: 11113, field5: 3, field6: 3});
       mfc.save({field1:"1value3", field2:"2value3", field3: 4, field4: 11114, field5: 4, field6: 4});
       
+      db._drop("TestsCollectionWithLongFields");
+      let longData = [];
+      let lfc = db._create("TestsCollectionWithLongFields");
+      for (let k = 0; k < 1500; ++k) {
+        longData.push({field1:longValue + k, field2:longValue, field3: k});
+      }
+      lfc.save(longData);
       try { analyzers.remove("customAnalyzer", true); } catch(err) {}
       analyzers.save("customAnalyzer", "text",  {"locale": "en.utf-8",
                                                  "case": "lower",
@@ -103,14 +111,14 @@ function iResearchAqlTestSuite () {
                                                  "accent": false,
                                                  "stemming": false},
                                                  ["position", "norm", "frequency"]);
-                                                 
+
       let wps = db._createView("WithPrimarySort", "arangosearch", 
                                {primarySort: [{field: "field1", direction: "asc"},
                                               {field: "field2", direction: "asc"},
                                               {field: "field3", direction: "asc"},
                                               {field: "field4", direction: "asc"},
                                               {field: "_key", direction: "asc"}]});
-                                    
+
       wps.properties({links:{TestsCollectionWithManyFields: {
                               storeValues: "id",
                               analyzers: ["customAnalyzer"],
@@ -122,6 +130,27 @@ function iResearchAqlTestSuite () {
                                 field5: {},
                                 field6: {},
                                 _key: {}}}}});
+                                
+                                
+      let wsv = db._createView("WithStoredValues", "arangosearch", 
+                               {storedValues: [["field1"], ["field2"], ["field3"]]});
+      wsv.properties({links:{TestsCollectionWithLongFields: {
+                              storeValues: "id",
+                              analyzers: ["customAnalyzer"],
+                              fields: {
+                                field1: {},
+                                field2: {},
+                                field3: {}}}}});
+      let wpsl = db._createView("WithLongPrimarySort", "arangosearch", 
+                               {primarySort: [{field: "field1", direction: "asc"}],
+                                storedValues: [["field2"], ["field3"]]});
+      wpsl.properties({links:{TestsCollectionWithLongFields: {
+                              storeValues: "id",
+                              analyzers: ["customAnalyzer"],
+                              fields: {
+                                field1: {},
+                                field2: {},
+                                field3: {}}}}});
     },
     tearDownAll : function () {
       db._drop("AnotherUnitTestsCollection");
@@ -130,6 +159,9 @@ function iResearchAqlTestSuite () {
       db._drop("UnitTestsWithArrayCollection");
       db._dropView("WithPrimarySort");
       db._drop("TestsCollectionWithManyFields");
+      db._dropView("WithStoredValues");
+      db._dropView("WithLongPrimarySort");
+      db._drop("TestsCollectionWithLongFields");
       analyzers.remove("customAnalyzer", true);
     },
     setUp : function () {
@@ -208,6 +240,12 @@ function iResearchAqlTestSuite () {
       } catch (e) {
         assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
       }
+    },
+
+    testAnalyzerFunctionInReturnStatement: function () {
+      var result = db._query("FOR doc IN CompoundView SEARCH doc.name == 'full' OPTIONS { waitForSync: true } RETURN ANALYZER(doc.text, 'text_en')").toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0], "the quick brown fox jumps over the lazy dog");
     },
 
     testViewCollectionOptions : function() {
@@ -308,8 +346,22 @@ function iResearchAqlTestSuite () {
     },
 
     testTransactionRegistration : function () {
-      // read lock
+      // ensure data is synced
+      db._query("FOR d IN CompoundView OPTIONS {waitForSync:true} LIMIT 1 RETURN 1");
+
+      // implicit read lock
       var result = db._executeTransaction({
+        collections: { },
+        action: function () {
+          var db = require("@arangodb").db;
+          return db._query("FOR d IN CompoundView SEARCH d.name == 'full' RETURN d.text").toArray();
+        }
+      });
+      assertEqual("the quick brown fox jumps over the lazy dog", result[0]);
+      assertEqual(1, result.length);
+
+      // read lock
+      result = db._executeTransaction({
         collections: {
           allowImplicit: false,
           read: [ v.name() ]
@@ -1931,8 +1983,8 @@ function iResearchAqlTestSuite () {
             " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
           assertEqual(3, res.length);  
           assertEqual('1', res[0].value1);
-          assertEqual('3', res[1].value1);
-          assertEqual('2', res[2].value1);
+          assertEqual('2', res[1].value1);
+          assertEqual('3', res[2].value1);
         }
         {
           let res = db._query("FOR d IN " + queryView  + 
@@ -2003,6 +2055,13 @@ function iResearchAqlTestSuite () {
       assertEqual("half", res[1].name);
     },
 
+    testLevenshteinDamerauMatchPrefix : function() {
+      var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'zi', 1, true, 64, 'la'), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
+      assertEqual(2, res.length);
+      assertEqual("full", res[0].name);
+      assertEqual("half", res[1].name);
+    },
+
     testLevenshteinDamerauMatch1Default : function() {
       var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lzai', 1), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
       assertEqual(2, res.length);
@@ -2035,7 +2094,7 @@ function iResearchAqlTestSuite () {
     testLevenshteinMatch2BM25 : function() {
       var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'dog', 2, false), 'text_en') OPTIONS { waitForSync : true } SORT BM25(doc) DESC LIMIT 1 RETURN doc").toArray();
       assertEqual(1, res.length);
-      assertEqual("full", res[0].name);
+      assertEqual("other half", res[0].name);
     },
 
     testAnalyzerNotOrFalse : function () {
@@ -2547,7 +2606,80 @@ function iResearchAqlTestSuite () {
         db._dropView(queryView);
         analyzers.remove(queryAnalyzer, true);
       }
+    },
+    
+    testDisjunctionVisit : function() {
+      let queryColl = "DisjunctionCollection";
+      let queryView = "DisjunctionView";
+      try {
+        db._drop(queryColl);
+        db._dropView(queryView);
+        let coll = db._create(queryColl);
+        let view = db._createView(queryView, "arangosearch", { 
+              links: { 
+                  [queryColl] : { 
+                      fields: {
+                        value: { analyzers:['identity', 'text_en'] }
+                      }
+                  }
+              }
+        });
+        let documents = [
+          {"value":"test"},
+          // these docs will make STARTS_WITH more "costly" than PHRASE and conjunction will use PHRASE as lead! 
+          {"value":"test1234"},
+          {"value":"test21321312312"},
+          {"value":"test213213123122"},
+          {"value":"test2132131231222"},
+          {"value":"test21321312312222"},
+          {"value":"test2132131231222322"},
+          {"value":"test2132131231231231222322"},
+          // this will make PHRASE iterator not use small_disjunction (more than 5 candidates for LEVENSHTEIN)
+          {"value":"rest"},
+          {"value":"arest"},
+          {"value":"brest"},
+          {"value":"zest"},
+          {"value":"qest"}];
+        db[queryColl].save(documents);
+        let res = db._query("FOR d IN " + queryView +" SEARCH "
+                  + " (ANALYZER(PHRASE(d.value, {LEVENSHTEIN_MATCH : ['test', 2, true]}), 'text_en') "
+                  + " && ANALYZER(STARTS_WITH(d.value, 'test'),'text_en')) OR "
+                  + " BOOST(PHRASE(d.value, 'test144', 'identity'), 10) "
+                  + " OPTIONS {waitForSync:true} SORT BM25(d) DESC LIMIT 20 "
+                  + " RETURN {'Score':BM25(d), 'Id' : d.value, 'Entity' : d }").toArray();
+        assertEqual(1, res.length);
+        
+      } finally {
+        db._drop(queryColl);
+        db._dropView(queryView);
+      }
+    },
+
+    testReadPrimarySortStoredValues : function() {
+      var result = db._query("FOR doc IN WithLongPrimarySort SEARCH doc.field3 > 0 OPTIONS { waitForSync : true } SORT doc.field1 ASC " +
+                             " RETURN {f1:doc.field1, f2: doc.field2, f3: doc.field3}").toArray();
+      assertEqual(1499, result.length);
+      let expected = [];
+      for (let k = 1; k < 1500; ++k) {
+        expected.push(longValue + k);
+      }
+      expected.sort();
+      for (let k = 0; k < 1499; ++k) {
+        assertEqual(expected[k], result[k].f1);
+      }
+    },
+
+    testReadStoredValues : function() {
+      var result = db._query("FOR doc IN WithStoredValues SEARCH doc.field3 > 0 OPTIONS { waitForSync : true } SORT doc.field3 ASC " +
+                             " RETURN {f1:doc.field1, f2: doc.field2, f3: doc.field3}").toArray();
+      assertEqual(1499, result.length);
+      for (let k = 0; k < 1499; ++k) {
+        assertEqual(k + 1, result[k].f3);
+        assertEqual(longValue + (k + 1), result[k].f1);
+        assertEqual(longValue, result[k].f2);
+      }
     }
+    
   };
 }
 

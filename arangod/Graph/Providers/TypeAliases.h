@@ -22,18 +22,14 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PROVIDERS_TYPE_ALIASES_H
-#define ARANGOD_GRAPH_PROVIDERS_TYPE_ALIASES_H 1
+#pragma once
+
+#include <velocypack/HashedStringRef.h>
 
 namespace arangodb {
-namespace velocypack {
-class HashedStringRef;
-}
-
 namespace graph {
 using VertexType = arangodb::velocypack::HashedStringRef;
-
+using EdgeType = arangodb::velocypack::HashedStringRef;
 }
 }  // namespace arangodb
 
-#endif

@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_MAINTENANCE_ACTION_H
-#define ARANGODB_CLUSTER_MAINTENANCE_ACTION_H
+#pragma once
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
@@ -155,7 +154,7 @@ class Action {
   bool done() const { return _action->done(); }
 
   /// @brief waiting for a worker to grab it and go!
-  bool runable() const { return _action->runable(); }
+  bool runnable() const { return _action->runnable(); }
 
   /// @brief When object was constructed
   std::chrono::system_clock::time_point getCreateTime() const {
@@ -209,4 +208,3 @@ class Action {
 namespace std {
 ostream& operator<<(ostream& o, arangodb::maintenance::Action const& d);
 }
-#endif

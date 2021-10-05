@@ -1,0 +1,38 @@
+<div id="maintenanceContent" class="innerContent">
+
+  <div class="pure-g">
+
+    <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1">
+      <% if (error) { %>
+        <div id="maintenanceMode" class="infoBox errorBox" style="margin-top: 15px; margin-bottom: 20px">
+          <h4>Attention <i class="fa fa-check fa-exclamation"></i></h4>
+          <p>Could not fetch maintenance mode information. This may be due to missing privileges.</p>
+        </div>
+      <% } else if (maintenanceMode) { %>
+        <div id="maintenanceMode" class="infoBox warningBox" style="margin-top: 15px; margin-bottom: 20px">
+          <h4>Maintenance mode enabled <i class="fa fa-check fa-exclamation"></i></h4>
+          <p>The cluster supervision maintenance mode is currently enabled.</p>
+          <p>While the maintenance mode is enabled, the agency will not organize failovers for shards that are located on unavailable leaders or follower DB servers. This mode can be used for controlled shutdown/restart of servers, e.g. or for upgrading or other planned maintenance.</p>
+        </div>
+        <% if (canChange) { %>
+          <button id="disableMaintenanceMode" class="button-success pull-right"
+                  style="margin-right: 20px;">Disable Maintenance Mode
+          </button>
+        <% } %>
+      <% } else { %>
+        <div id="maintenanceMode" class="infoBox successBox" style="margin-top: 15px; margin-bottom: 20px">
+          <h4>Maintenance mode disabled <i class="fa fa-check"></i></h4>
+          <p>The cluster supervision maintenance mode is currently disabled.</p>
+          <p>This is the expected setting for normal operations: in case a leader or follower DB server becomes unavailable, the agency will organize failovers for all affected shards.
+        </div>
+        <% if (canChange) { %>
+          <button id="enableMaintenanceMode" class="button-warning pull-right"
+                  style="margin-right: 20px; margin-bottom: 20px;">Enable Maintenance Mode
+          </button>
+        <% } %>
+      <% } %>
+    </div>
+
+  </div>
+
+</div>

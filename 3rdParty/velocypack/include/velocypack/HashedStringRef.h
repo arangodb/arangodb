@@ -190,7 +190,7 @@ class HashedStringRef {
 
  private:
   inline uint32_t hash(char const* data, uint32_t length) const noexcept {
-    return VELOCYPACK_HASH32(data, length, 0xdeadbeef);
+    return static_cast<uint32_t>(VELOCYPACK_HASH_WYHASH(data, length, 0xdeadbeef));
   }
 
  private:

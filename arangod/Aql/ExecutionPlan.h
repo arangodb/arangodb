@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_PLAN_H
-#define ARANGOD_AQL_EXECUTION_PLAN_H 1
+#pragma once
 
 #include <array>
 
@@ -61,8 +60,13 @@ class ExecutionPlan {
 
   /// @brief destroy the plan, frees all assigned nodes
   ~ExecutionPlan();
+ 
+  /// @brief maximum number of execution nodes allowed per query
+  /// (at the time the initial execution plan is created). we have to limit
+  /// this to prevent super-long runtimes for query optimization and
+  /// execution)
+  static constexpr uint64_t maxPlanNodes = 4000;
 
- public:
   /// @brief create an execution plan from an AST
   /// note: tracking memory usage requires accessing the Ast/Query objects,
   /// which can be inherently unsafe when running within the gtest unit tests.
@@ -165,6 +169,10 @@ class ExecutionPlan {
   bool shouldExcludeFromScatterGather(ExecutionNode const* node) const {
     return (_excludeFromScatterGather.find(node) != _excludeFromScatterGather.end());
   }
+
+  void enableAsyncPrefetching() noexcept { _isAsyncPrefetchEnabled = true; }
+  
+  bool isAsyncPrefetchEnabled() const noexcept { return _isAsyncPrefetchEnabled; }
 
   /// @brief get the node where variable with id <id> is introduced . . .
   ExecutionNode* getVarSetBy(VariableId id) const {
@@ -280,6 +288,15 @@ class ExecutionPlan {
   void increaseCounter(ExecutionNode::NodeType type) noexcept;
 
   bool fullCount() const noexcept;
+  
+  /// @brief parses modification options from an AST node
+  static ModificationOptions parseModificationOptions(QueryContext& query,
+                                                      char const* operationNode, AstNode const*,
+                                                      bool addWarnings);
+  
+  /// @brief registers a warning for an invalid OPTIONS attribute
+  static void invalidOptionAttribute(QueryContext& query,
+                                     char const* operationName, char const* name, size_t length);
 
  private:
   template <WalkerUniqueness U>
@@ -303,13 +320,8 @@ class ExecutionPlan {
 
   /// @brief create modification options by parsing an AST node
   /// and adding plan specific options.
-  ModificationOptions createModificationOptions(AstNode const*);
+  ModificationOptions createModificationOptions(char const* operationName, AstNode const*);
 
- public:
-  /// @brief parses modification options form an AST node
-  static ModificationOptions parseModificationOptions(AstNode const*);
-
- private:
   /// @brief create COLLECT options from an AST node
   CollectOptions createCollectOptions(AstNode const*);
 
@@ -401,6 +413,10 @@ class ExecutionPlan {
   /// @brief flag to indicate whether the variable usage is computed
   bool _varUsageComputed;
 
+  /// @brief flag to indicate whether the postprocessing step to enable async
+  /// prefetching on the node level should be executed.
+  bool _isAsyncPrefetchEnabled{false};
+
   /// @brief current nesting level while building the plan
   int _nestingLevel;
 
@@ -433,4 +449,3 @@ Node* ::arangodb::aql::ExecutionPlan::createNode(Args&&... args) {
   return ExecutionNode::castTo<Node*>(registerNode(std::move(node)));
 }
 
-#endif

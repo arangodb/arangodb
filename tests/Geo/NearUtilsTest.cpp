@@ -126,7 +126,7 @@ typedef geo_index::NearUtils<geo_index::DocumentsAscending> AscIterator;
 typedef geo_index::NearUtils<geo_index::DocumentsDescending> DescIterator;
 
 class SimpleNearQueriesTest : public ::testing::Test {
-protected:
+ protected:
   // simulated index
   index_t index;
   coords_t docs;

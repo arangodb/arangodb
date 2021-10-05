@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertNotEqual, assertTrue */
+/* global fail, assertEqual, assertNotEqual, assertTrue, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -28,64 +28,34 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
 let errors = arangodb.errors;
-let { getServerById, getServersByType, getEndpointById, getEndpointsByType } = require('@arangodb/test-helper');
-const request = require('@arangodb/request');
-
-/// @brief set failure point
-function debugCanUseFailAt(endpoint) {
-  let res = request.get({
-    url: endpoint + '/_admin/debug/failat',
-  });
-  return res.status === 200;
-}
-
-/// @brief set failure point
-function debugSetFailAt(endpoint, failAt) {
-  let res = request.put({
-    url: endpoint + '/_admin/debug/failat/' + failAt,
-    body: ""
-  });
-  if (res.status !== 200) {
-    throw "Error setting failure point";
-  }
-}
-
-/// @brief remove failure point
-function debugRemoveFailAt(endpoint, failAt) {
-  let res = request.delete({
-    url: endpoint + '/_admin/debug/failat/' + failAt,
-    body: ""
-  });
-  if (res.status !== 200) {
-    throw "Error removing failure point";
-  }
-}
-
-function debugClearFailAt(endpoint) {
-  let res = request.delete({
-    url: endpoint + '/_admin/debug/failat',
-    body: ""
-  });
-  if (res.status !== 200) {
-    throw "Error removing failure points";
-  }
-}
+let { getEndpointById,
+      getEndpointsByType,
+      getServersByType,
+      debugCanUseFailAt,
+      debugSetFailAt,
+      debugClearFailAt,
+      reconnectRetry
+    } = require('@arangodb/test-helper');
+const primaryEndpoint = arango.getEndpoint();
 
 function waitUntil(coordinator, targetStatus, id, timeout) {
   let tries = 0;
-  while (++tries < timeout * 2) {
-    let res = request.get({
-      url: coordinator + '/_admin/cluster/health'
-    });
-    let health = res.json.Health;
-    let servers = Object.keys(health);
-    let ourServer = health[id];
-    if (ourServer.Status === targetStatus) {
-      return ourServer;
+  try {
+    while (++tries < timeout * 2) {
+      reconnectRetry(coordinator, "_system", "root", "");
+      let res = arango.GET_RAW('/_admin/cluster/health');
+      let health = res.parsedBody.Health;
+      let servers = Object.keys(health);
+      let ourServer = health[id];
+      if (ourServer.Status === targetStatus) {
+        return ourServer;
+      }
+      internal.sleep(0.5);
     }
-    internal.sleep(0.5);
+    return {};
+  } finally {
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
   }
-  return {};
 }
 
 function storageEngineErrorSuite() {
@@ -97,11 +67,9 @@ function storageEngineErrorSuite() {
       let dbservers = getServersByType("dbserver");
       assertTrue(dbservers.length > 0);
 
-      let res = request.get({
-        url: coordinators[0] + '/_admin/cluster/health'
-      });
+      let res = arango.GET_RAW('/_admin/cluster/health');
      
-      let health = res.json.Health;
+      let health = res.parsedBody.Health;
       let servers = Object.keys(health);
       dbservers.forEach((s) => {
         assertNotEqual(-1, servers.indexOf(s.id));

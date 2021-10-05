@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ARANGO_GLOBAL_CONTEXT_H
-#define ARANGODB_BASICS_ARANGO_GLOBAL_CONTEXT_H 1
+#pragma once
 
 #include <string>
 #include <vector>
@@ -41,7 +40,6 @@ class ArangoGlobalContext {
  public:
   std::string binaryName() const { return _binaryName; }
   std::string runRoot() const { return _runRoot; }
-  void createMiniDumpFilename();
   void normalizePath(std::vector<std::string>& path, char const* whichPath, bool fatal);
   void normalizePath(std::string& path, char const* whichPath, bool fatal);
   std::string const& getBinaryPath() const { return _binaryPath; }
@@ -56,4 +54,3 @@ class ArangoGlobalContext {
 };
 }  // namespace arangodb
 
-#endif

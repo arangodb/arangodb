@@ -1,0 +1,18 @@
+name: arangodb_document_insert_time
+introducedIn: "3.8.0"
+help: |
+  Total time spent in document insert operations.
+unit: s
+type: histogram
+category: Transactions
+complexity: simple
+exposedBy:
+  - agent
+  - dbserver
+  - single
+description: |
+  Total time spent in document insert operations, including both
+  user-initiated insert operations and insert operations executed by
+  the synchronous replication on followers. This metric
+  is only present if the option `--server.export-read-write-metrics` is set
+  to `true`.

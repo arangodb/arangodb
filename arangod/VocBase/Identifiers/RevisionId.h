@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_IDENTIFIERS_REVISION_ID_H
-#define ARANGOD_VOCBASE_IDENTIFIERS_REVISION_ID_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
@@ -58,13 +57,16 @@ class RevisionId : public arangodb::basics::Identifier {
   std::string toString() const;
 
   /// @brief Convert a revision ID to a string
-  /// the buffer must be at least 11 chars long
+  /// the buffer should be at least arangodb::basics::maxUInt64StringSize
+  /// bytes long
   /// the length of the encoded value and the start position into
   /// the result buffer are returned
   std::pair<size_t, size_t> toString(char* buffer) const;
 
   /// @brief Convert revision ID to a string using the provided buffer,
   /// returning the result as a value pair for convenience
+  /// the buffer should be at least arangodb::basics::maxUInt64StringSize
+  /// bytes long
   arangodb::velocypack::ValuePair toValuePair(char* buffer) const;
 
   /// @brief Write revision ID to string for storage with correct endianness
@@ -78,6 +80,9 @@ class RevisionId : public arangodb::basics::Identifier {
   static constexpr RevisionId max() {
     return RevisionId{std::numeric_limits<std::uint64_t>::max()};
   }
+
+  /// @brief create a revision id with a lower-bound HLC value
+  static RevisionId lowerBound();
 
   /// @brief create a revision id using an HLC value
   static RevisionId create();
@@ -112,4 +117,3 @@ static_assert(sizeof(RevisionId) == sizeof(RevisionId::BaseType),
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::RevisionId)
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::RevisionId)
 
-#endif

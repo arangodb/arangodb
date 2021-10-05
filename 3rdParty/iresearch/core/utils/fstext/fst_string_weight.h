@@ -23,22 +23,22 @@
 #ifndef IRESEARCH_FST_STRING_WEIGHT_H
 #define IRESEARCH_FST_STRING_WEIGHT_H
 
+#include <string>
+
 #if defined(_MSC_VER)
   #pragma warning(disable : 4267) // conversion from 'size_t' to 'uint32_t', possible loss of data
 #endif
 
-  #include <fst/string-weight.h>
+#include <fst/string-weight.h>
 
 #if defined(_MSC_VER)
   #pragma warning(default: 4267)
 #endif
 
 #include "shared.hpp"
+#include "utils/bytes_utils.hpp"
 #include "utils/string.hpp"
 #include "utils/std.hpp"
-#include "utils/bytes_utils.hpp"
-
-#include <string>
 
 namespace fst {
 
@@ -171,6 +171,10 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     return str_.c_str();
   }
 
+  void Resize(size_t size) noexcept {
+    str_.resize(size);
+  }
+
   bool Empty() const noexcept {
     return str_.empty();
   }
@@ -206,6 +210,11 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
   // intentionally implicit
   operator irs::basic_string_ref<Label>() const noexcept {
     return str_;
+  }
+
+  // intentionally implicit
+  operator std::basic_string<Label>() && noexcept {
+    return std::move(str_);
   }
 
  private:

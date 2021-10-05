@@ -64,7 +64,7 @@ void ShortestPathFinder::destroyEngines() {
   for (auto const& it : *ch->engines()) {
     incHttpRequests(1);
 
-    auto res = network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
+    auto res = network::sendRequestRetry(pool, "server:" + it.first, fuerte::RestVerb::Delete,
                                     "/_internal/traverser/" +
                                         arangodb::basics::StringUtils::itoa(it.second),
                                     VPackBuffer<uint8_t>(), options)
@@ -73,10 +73,9 @@ void ShortestPathFinder::destroyEngines() {
     if (res.error != fuerte::Error::NoError) {
       // Note If there was an error on server side we do not have
       // CL_COMM_SENT
-      std::string message("Could not destroy all traversal engines");
-      message += std::string(": ") +
-                 TRI_errno_string(network::fuerteToArangoErrorCode(res));
-      LOG_TOPIC("d31a4", ERR, arangodb::Logger::FIXME) << message;
+      LOG_TOPIC("d31a4", ERR, arangodb::Logger::GRAPHS)
+          << "Could not destroy all traversal engines: "
+          << TRI_errno_string(network::fuerteToArangoErrorCode(res));
     }
   }
 }

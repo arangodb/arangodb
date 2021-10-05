@@ -22,10 +22,11 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_CURSORS_REFACTOREDSINGLESERVEREDGECURSOR_H
-#define ARANGOD_GRAPH_CURSORS_REFACTOREDSINGLESERVEREDGECURSOR_H 1
+#pragma once
 
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/Expression.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/QueryContext.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
@@ -52,28 +53,36 @@ struct IndexAccessor;
 
 struct EdgeDocumentToken;
 
+template <class StepType>
+class SingleServerProvider;
+
+template <class StepType>
 class RefactoredSingleServerEdgeCursor {
  public:
   struct LookupInfo {
     LookupInfo(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-               std::optional<size_t> memberToUpdate);
+               std::optional<size_t> memberToUpdate,
+               aql::Expression* expression, size_t cursorID);
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&) = delete;
-    LookupInfo(LookupInfo&&) noexcept;
+    LookupInfo(LookupInfo&&);
     LookupInfo& operator=(LookupInfo const&) = delete;
 
     void rearmVertex(VertexType vertex, transaction::Methods* trx,
                      arangodb::aql::Variable const* tmpVar);
 
     IndexIterator& cursor();
+    aql::Expression* getExpression();
+
+    size_t getCursorID() const;
 
    private:
-    // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
     transaction::Methods::IndexHandle _idxHandle;
-    std::unique_ptr<aql::Expression> _expression;
+    aql::Expression* _expression;
     aql::AstNode* _indexCondition;
+    size_t _cursorID;
 
     std::unique_ptr<IndexIterator> _cursor;
 
@@ -84,9 +93,12 @@ class RefactoredSingleServerEdgeCursor {
   enum Direction { FORWARD, BACKWARD };
 
  public:
-  RefactoredSingleServerEdgeCursor(arangodb::transaction::Methods* trx,
-                                   arangodb::aql::Variable const* tmpVar,
-                                   std::vector<IndexAccessor> const& indexConditions);
+  RefactoredSingleServerEdgeCursor(
+      transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
+      std::vector<IndexAccessor> const& globalIndexConditions,
+      std::unordered_map<uint64_t, std::vector<IndexAccessor>> const& depthBasedIndexConditions,
+      arangodb::aql::FixedVarExpressionContext& expressionContext, bool requiresFullDocument);
+
   ~RefactoredSingleServerEdgeCursor();
 
   using Callback =
@@ -94,20 +106,23 @@ class RefactoredSingleServerEdgeCursor {
 
  private:
   aql::Variable const* _tmpVar;
-  size_t _currentCursor;
   std::vector<LookupInfo> _lookupInfo;
+  std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
-  arangodb::transaction::Methods* _trx;
+  transaction::Methods* _trx;
+  arangodb::aql::FixedVarExpressionContext& _expressionCtx;
+  bool _requiresFullDocument;
 
  public:
-  void readAll(aql::TraversalStats& stats, Callback const& callback);
+  void readAll(SingleServerProvider<StepType>& provider,
+               aql::TraversalStats& stats, size_t depth, Callback const& callback);
 
   void rearm(VertexType vertex, uint64_t depth);
 
+  bool evaluateEdgeExpression(arangodb::aql::Expression* expression, VPackSlice value);
+
  private:
-  [[nodiscard]] transaction::Methods* trx() const;
+  auto getLookupInfos(uint64_t depth) -> std::vector<LookupInfo>&;
 };
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

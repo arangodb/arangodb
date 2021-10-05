@@ -26,14 +26,97 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-BaseProviderOptions::BaseProviderOptions(aql::Variable const* tmpVar,
-                                         std::vector<IndexAccessor> indexInfo)
-    : _temporaryVariable(tmpVar), _indexInformation(std::move(indexInfo)) {}
+IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
+                             aql::AstNode* condition, std::optional<size_t> memberToUpdate,
+                             std::unique_ptr<arangodb::aql::Expression> expression,
+                             size_t cursorId)
+    : _idx(idx),
+      _indexCondition(condition),
+      _memberToUpdate(memberToUpdate),
+      _cursorId(cursorId) {
+  if (expression != nullptr) {
+    _expression = std::move(expression);
+  }
+}
+
+aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
+
+aql::Expression* IndexAccessor::getExpression() const {
+  return _expression.get();
+}
+
+transaction::Methods::IndexHandle IndexAccessor::indexHandle() const {
+  return _idx;
+}
+
+std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
+  return _memberToUpdate;
+}
+
+size_t IndexAccessor::cursorId() const { return _cursorId; }
+
+BaseProviderOptions::BaseProviderOptions(
+    aql::Variable const* tmpVar,
+    std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&& indexInfo,
+    aql::FixedVarExpressionContext& expressionContext,
+    std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap)
+    : _temporaryVariable(tmpVar),
+      _indexInformation(std::move(indexInfo)),
+      _expressionContext(expressionContext),
+      _collectionToShardMap(collectionToShardMap),
+      _weightCallback(std::nullopt) {}
 
 aql::Variable const* BaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
 }
 
-std::vector<IndexAccessor> const& BaseProviderOptions::indexInformations() const {
+// first is global index information, second is depth-based index information.
+std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> const&
+BaseProviderOptions::indexInformations() const {
   return _indexInformation;
+}
+
+std::unordered_map<std::string, std::vector<std::string>> const& BaseProviderOptions::collectionToShardMap() const {
+  return _collectionToShardMap;
+}
+
+aql::FixedVarExpressionContext& BaseProviderOptions::expressionContext() const {
+  return _expressionContext;
+}
+
+bool BaseProviderOptions::hasWeightMethod() const {
+  return _weightCallback.has_value();
+}
+
+void BaseProviderOptions::setWeightEdgeCallback(WeightCallback callback) {
+  _weightCallback = std::move(callback);
+}
+
+double BaseProviderOptions::weightEdge(double prefixWeight,
+                                       arangodb::velocypack::Slice edge) const {
+  if (!hasWeightMethod()) {
+    // We do not have a weight. Hardcode.
+    return 1.0;
+  }
+  return _weightCallback.value()(prefixWeight, edge);
+}
+
+ClusterBaseProviderOptions::ClusterBaseProviderOptions(
+    std::shared_ptr<RefactoredClusterTraverserCache> cache,
+    std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward)
+    : _cache(std::move(cache)), _engines(engines), _backward(backward) {
+  TRI_ASSERT(_cache != nullptr);
+  TRI_ASSERT(_engines != nullptr);
+}
+
+RefactoredClusterTraverserCache* ClusterBaseProviderOptions::getCache() {
+  TRI_ASSERT(_cache != nullptr);
+  return _cache.get();
+}
+
+bool ClusterBaseProviderOptions::isBackward() const { return _backward; }
+
+std::unordered_map<ServerID, aql::EngineId> const* ClusterBaseProviderOptions::engines() const {
+  TRI_ASSERT(_engines != nullptr);
+  return _engines;
 }

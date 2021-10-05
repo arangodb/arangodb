@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_EVALUATOR_H
-#define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_EVALUATOR_H 1
+#pragma once
 
 #include <functional>
 #include <map>
@@ -37,11 +36,14 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <Containers/ImmerMemoryPolicy.h>
+
 #include "EvalResult.h"
 
 namespace arangodb::greenspun {
 
-using VariableBindings = immer::map<std::string, VPackSlice>;
+using VariableBindings =
+    ::immer::map<std::string, VPackSlice, std::hash<std::string>, std::equal_to<>, arangodb::immer::arango_memory_policy>;
 
 struct StackFrame {
   VariableBindings bindings;
@@ -142,4 +144,3 @@ std::string paramsToString(VPackSlice params);
 
 }  // namespace arangodb::greenspun
 
-#endif

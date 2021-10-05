@@ -22,11 +22,13 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_MUTEX_H
-#define ARANGODB_BASICS_MUTEX_H 1
+#pragma once
 
+#if defined __has_include
+// cppcheck-suppress preprocessorErrorDirective
 #if __has_include(<pthread.h>)
 #include <pthread.h>
+#endif
 #endif
 
 #include "Basics/operating-system.h"
@@ -54,24 +56,25 @@
 namespace arangodb {
 
 class Mutex {
- private:
+ public:
   Mutex(Mutex const&) = delete;
   Mutex& operator=(Mutex const&) = delete;
 
- public:
-  Mutex();
+  Mutex() noexcept;
   ~Mutex();
 
  public:
-  void lock();
-  bool tryLock();
-  void unlock();
+  void lock() noexcept;
+  // purposefully violate our naming convention (try_lock instead of tryLock)
+  // in order to be compatible with std::mutex
+  bool try_lock() noexcept;
+  void unlock() noexcept;
 
   // assert that the mutex is locked by the current thread. will do
   // nothing in non-maintainer mode and will do nothing for non-posix locks
 #ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
-  void assertLockedByCurrentThread();
-  void assertNotLockedByCurrentThread();
+  void assertLockedByCurrentThread() const noexcept;
+  void assertNotLockedByCurrentThread() const noexcept;
 #else
   inline void assertLockedByCurrentThread() {}
   inline void assertNotLockedByCurrentThread() {}
@@ -94,4 +97,3 @@ class Mutex {
 };
 }  // namespace arangodb
 
-#endif

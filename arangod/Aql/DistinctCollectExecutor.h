@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
-#define ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
@@ -129,4 +128,3 @@ class DistinctCollectExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

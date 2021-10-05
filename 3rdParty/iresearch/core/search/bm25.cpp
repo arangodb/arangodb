@@ -20,24 +20,27 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
-
 #include "bm25.hpp"
 
-#include "scorers.hpp"
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/vpack.h"
+#include "velocypack/velocypack-aliases.h"
+
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
+#include "index/norm.hpp"
 #include "index/field_meta.hpp"
 #include "utils/math_utils.hpp"
 
 namespace {
 
-const irs::math::sqrt<uint32_t, float_t, 1024> SQRT;
+const auto SQRT = irs::cache_func<uint32_t, 2048>(
+  0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
 
-irs::sort::ptr make_from_object(
-    const rapidjson::Document& json,
-    const irs::string_ref& args) {
-  assert(json.IsObject());
+irs::sort::ptr make_from_object(const VPackSlice slice) {
+  assert(slice.isObject());
 
   auto ptr = irs::memory::make_unique<irs::bm25_sort>();
 
@@ -51,14 +54,14 @@ irs::sort::ptr make_from_object(
     // optional float
     const auto* key = "b";
 
-    if (json.HasMember(key)) {
-      if (!json[key].IsNumber()) {
-        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
+    if (slice.hasKey(key)) {
+      if (!slice.get(key).isNumber()) {
+        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from VPack arguments", key);
 
         return nullptr;
       }
 
-      scorer.b(json[key].GetFloat());
+      scorer.b(slice.get(key).getNumber<float>());
     }
   }
 
@@ -66,68 +69,57 @@ irs::sort::ptr make_from_object(
     // optional float
     const auto* key = "k";
 
-    if (json.HasMember(key)) {
-      if (!json[key].IsNumber()) {
-        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
+    if (slice.hasKey(key)) {
+      if (!slice.get(key).isNumber()) {
+        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from VPack arguments", key);
 
         return nullptr;
       }
 
-      scorer.k(json[key].GetFloat());
+      scorer.k(slice.get(key).getNumber<float>());
     }
   }
 
   return ptr;
 }
 
-irs::sort::ptr make_from_array(
-    const rapidjson::Document& json,
-    const irs::string_ref& args) {
-  assert(json.IsArray());
+irs::sort::ptr make_from_array(const VPackSlice slice) {
+  assert(slice.isArray());
 
-  const auto array = json.GetArray();
-  const auto size = array.Size();
-
+  VPackArrayIterator array(slice);
+  VPackValueLength size = array.size();
   if (size > 2) {
     // wrong number of arguments
     IR_FRMT_ERROR(
-      "Wrong number of arguments while constructing bm25 scorer from jSON arguments (must be <= 2): %s",
-      args.c_str()
-    );
+      "Wrong number of arguments while constructing bm25 scorer from VPack arguments (must be <= 2)");
     return nullptr;
   }
 
   // default args
   auto k = irs::bm25_sort::K();
   auto b = irs::bm25_sort::B();
-
-  for (rapidjson::SizeType i = 0; i < size; ++i) {
-    auto& arg = array[i];
+  int i = 0;
+  for (auto arg_slice : array) {
 
     switch (i) {
-     case 0: // parse `b` coefficient
-      if (!arg.IsNumber()) {
+     case 0: // parse `k` coefficient
+      if (!arg_slice.isNumber<decltype (k)>()) {
         IR_FRMT_ERROR(
-          "Non-float value at position '%u' while constructing bm25 scorer from jSON arguments: %s",
-          i, args.c_str()
-        );
-
+          "Non-float value at position '%u' while constructing bm25 scorer from VPack arguments", i);
         return nullptr;
       }
 
-      k = static_cast<float_t>(arg.GetDouble());
+      k = static_cast<float_t>(arg_slice.getNumber<decltype (k)>());
+      ++i;
       break;
      case 1: // parse `b` coefficient
-      if (!arg.IsNumber()) {
+      if (!arg_slice.isNumber<decltype (b)>()) {
         IR_FRMT_ERROR(
-          "Non-float value at position '%u' while constructing bm25 scorer from jSON arguments: %s",
-          i, args.c_str()
-        );
-
+          "Non-float value at position '%u' while constructing bm25 scorer from VPack arguments", i);
         return nullptr;
       }
 
-      b = static_cast<float_t>(arg.GetDouble());
+      b = static_cast<float_t>(arg_slice.getNumber<decltype (b)>());
       break;
     }
   }
@@ -135,39 +127,52 @@ irs::sort::ptr make_from_array(
   return irs::memory::make_unique<irs::bm25_sort>(k, b);
 }
 
-irs::sort::ptr make_json(const irs::string_ref& args) {
-  if (args.null()) {
-    // default args
-    return irs::memory::make_unique<irs::bm25_sort>();
-  }
+irs::sort::ptr make_vpack(const VPackSlice slice) {
 
-  rapidjson::Document json;
-
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-      "Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", 
-      args.c_str()
-    );
-
-    return nullptr;
-  }
-
-  switch (json.GetType()) {
-    case rapidjson::kObjectType:
-      return make_from_object(json, args);
-    case rapidjson::kArrayType:
-      return make_from_array(json, args);
+  switch (slice.type()) {
+    case VPackValueType::Object:
+      return make_from_object(slice);
+    case VPackValueType::Array:
+      return make_from_array(slice);
     default: // wrong type
       IR_FRMT_ERROR(
-        "Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", 
-        args.c_str()
-      );
-
+        "Invalid VPack arguments passed while constructing bm25 scorer");
       return nullptr;
   }
 }
 
+irs::sort::ptr make_vpack(const irs::string_ref& args) {
+  if (args.null()) {
+    // default args
+    return irs::memory::make_unique<irs::bm25_sort>();
+  } else {
+    VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+    return make_vpack(slice);
+  }
+}
+
+irs::sort::ptr make_json(const irs::string_ref& args) {
+  if (args.null()) {
+    // default args
+    return irs::memory::make_unique<irs::bm25_sort>();
+  } else {
+    try {
+      auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+      return make_vpack(vpack->slice());
+    } catch(const VPackException& ex) {
+        IR_FRMT_ERROR(
+          "Caught error '%s' while constructing VPack from JSON for bm25 scorer",
+          ex.what());
+    } catch(...) {
+        IR_FRMT_ERROR(
+          "Caught error while constructing VPack from JSON for bm25 scorer");
+    }
+    return nullptr;
+  }
+}
+
 REGISTER_SCORER_JSON(irs::bm25_sort, make_json);
+REGISTER_SCORER_VPACK(irs::bm25_sort, make_vpack);
 
 struct byte_ref_iterator {
   using iterator_category = std::input_iterator_tag;
@@ -300,7 +305,7 @@ struct stats final {
   float_t norm_length; // precomputed k*b/avgD
 }; // stats
 
-typedef bm25_sort::score_t score_t;
+using score_t = bm25_sort::score_t;
 
 struct score_ctx : public irs::score_ctx {
   score_ctx(
@@ -310,10 +315,11 @@ struct score_ctx : public irs::score_ctx {
       const bm25::stats& stats,
       const frequency* freq,
       const filter_boost* fb = nullptr) noexcept
-    : score_buf(score_buf),
-      freq_(freq ? freq : &EMPTY_FREQ), filter_boost_(fb),
-      num_(boost * (k + 1) * stats.idf),
-      norm_const_(k)  {
+    : score_buf{score_buf},
+      freq_{freq ? freq : &EMPTY_FREQ},
+      filter_boost_{fb},
+      num_{boost * (k + 1) * stats.idf},
+      norm_const_{k}  {
     assert(freq_);
   }
 
@@ -324,6 +330,24 @@ struct score_ctx : public irs::score_ctx {
   float_t norm_const_; // 'k' factor
 }; // score_ctx
 
+template<typename Norm>
+struct norm_adapter;
+
+template<>
+struct norm_adapter<norm> : norm {
+  FORCE_INLINE float_t read() const {
+    return 1.f/norm::read();
+  }
+}; // norm_adapter<norm>
+
+template<>
+struct norm_adapter<norm2> : norm2 {
+  FORCE_INLINE float_t read() const {
+    return SQRT(norm2::read());
+  }
+}; // norm_adapter<norm2>
+
+template<typename Norm>
 struct norm_score_ctx final : public score_ctx {
   norm_score_ctx(
       byte_type* score_buf,
@@ -331,10 +355,10 @@ struct norm_score_ctx final : public score_ctx {
       irs::boost_t boost,
       const bm25::stats& stats,
       const frequency* freq,
-      irs::norm&& norm,
+      Norm&& norm,
       const filter_boost* fb = nullptr) noexcept
-    : score_ctx(score_buf, k, boost, stats, freq, fb),
-      norm_(std::move(norm)) {
+    : score_ctx{score_buf, k, boost, stats, freq, fb},
+      norm_{std::forward<Norm>(norm)} {
     // if there is no norms, assume that b==0
     if (!norm_.empty()) {
       norm_const_ = stats.norm_const;
@@ -342,14 +366,14 @@ struct norm_score_ctx final : public score_ctx {
     }
   }
 
-  irs::norm norm_;
+  norm_adapter<Norm> norm_;
   float_t norm_length_{ 0.f }; // precomputed 'k*b/avgD' if norms present, '0' otherwise
 }; // norm_score_ctx
 
 class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
  public:
   sort(float_t k, float_t b, bool boost_as_score) noexcept
-    : k_(k), b_(b), boost_as_score_(boost_as_score) {
+    : k_{k}, b_{b}, boost_as_score_{boost_as_score} {
   }
 
   virtual void collect(
@@ -397,16 +421,8 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     }
   }
 
-  virtual const flags& features() const override {
-
-
-    static const irs::flags FEATURES[] = {
-
-      irs::flags({ type<frequency>::get() }), // without normalization
-      irs::flags({ type<frequency>::get(), type<norm>::get() }), // with normalization
-    };
-
-    return FEATURES[b_ != 0.f];
+  virtual IndexFeatures features() const noexcept override {
+    return IndexFeatures::FREQ;
   }
 
   virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
@@ -442,8 +458,6 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     auto* filter_boost = irs::get<irs::filter_boost>(doc_attrs);
 
     if (b_ != 0.f) {
-      irs::norm norm;
-
       auto* doc = irs::get<document>(doc_attrs);
 
       if (!doc) {
@@ -451,34 +465,60 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
         return { nullptr, nullptr };
       }
 
-      if (norm.reset(segment, field.meta().norm, *doc)) {
-        if (filter_boost) {
-          return {
-            memory::make_unique<bm25::norm_score_ctx>(score_buf, k_, boost, stats, freq, std::move(norm), filter_boost),
-            [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-              auto& state = *static_cast<bm25::norm_score_ctx*>(ctx);
-              assert(state.filter_boost_);
-              const float_t tf = ::SQRT(state.freq_->value);
-              irs::sort::score_cast<score_t>(state.score_buf) = state.filter_boost_->value *
-                                                                state.num_ *
-                                                                tf /
-                                                                (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
-              return state.score_buf;
-            }
-          };
-        } else {
-          return {
-            memory::make_unique<bm25::norm_score_ctx>(score_buf, k_, boost, stats, freq, std::move(norm)),
-            [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-              auto& state = *static_cast<bm25::norm_score_ctx*>(ctx);
+      auto prepare_norm_scorer = [&](auto norm_factory) -> std::optional<score_function> {
+        using norm_type = std::invoke_result_t<decltype(norm_factory)>;
 
-              const float_t tf = ::SQRT(state.freq_->value);
-              irs::sort::score_cast<score_t>(state.score_buf) = state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
+        const auto it = field.meta().features.find(irs::type<norm_type>::id());
 
-              return state.score_buf;
+        if (it != field.meta().features.end()) {
+          norm_type norm = norm_factory();
+          if (norm.reset(segment, it->second, *doc)) {
+            if (filter_boost) {
+              return score_function{
+                memory::make_unique<bm25::norm_score_ctx<norm_type>>(score_buf, k_, boost, stats, freq, std::move(norm), filter_boost),
+                [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+                  auto& state = *static_cast<bm25::norm_score_ctx<norm_type>*>(ctx);
+                  assert(state.filter_boost_);
+
+                  const float_t tf = ::SQRT(state.freq_->value);
+
+                  // FIXME optimize for norm2
+                  // at least we can cache "state.norm_const_ + state.norm_length_ * state.norm_.read()"
+                  irs::sort::score_cast<score_t>(state.score_buf)
+                    = state.filter_boost_->value * state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
+
+                  return state.score_buf;
+                }
+              };
+            } else {
+              return score_function{
+                memory::make_unique<bm25::norm_score_ctx<norm_type>>(score_buf, k_, boost, stats, freq, std::move(norm)),
+                [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+                  auto& state = *static_cast<bm25::norm_score_ctx<norm_type>*>(ctx);
+
+                  const float_t tf = ::SQRT(state.freq_->value);
+
+                  // FIXME optimize for norm2
+                  // at least we can cache "state.norm_const_ + state.norm_length_ * state.norm_.read()"
+                  irs::sort::score_cast<score_t>(state.score_buf)
+                    = state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
+
+                  return state.score_buf;
+                }
+              };
             }
-          };
+          }
         }
+
+        return std::nullopt;
+      };
+
+      if (auto func = prepare_norm_scorer([](){ return irs::norm2(); }); func) {
+        return std::move(func).value();
+      }
+
+      if (auto func = prepare_norm_scorer([](){ return irs::norm(); }); func) {
+        return std::move(func).value();
       }
     }
 
@@ -530,16 +570,16 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
 bm25_sort::bm25_sort(
     float_t k /*= 1.2f*/,
     float_t b /*= 0.75f*/,
-    bool boost_as_score /*= false*/
-) noexcept
-  : sort(irs::type<bm25_sort>::get()),
-    k_(k),
-    b_(b),
-    boost_as_score_(boost_as_score) {
+    bool boost_as_score /*= false*/) noexcept
+  : sort{irs::type<bm25_sort>::get()},
+    k_{k},
+    b_{b},
+    boost_as_score_{boost_as_score} {
 }
 
 /*static*/ void bm25_sort::init() {
   REGISTER_SCORER_JSON(bm25_sort, make_json); // match registration above
+  REGISTER_SCORER_VPACK(bm25_sort, make_vpack); // match registration above
 }
 
 sort::prepared::ptr bm25_sort::prepare() const {

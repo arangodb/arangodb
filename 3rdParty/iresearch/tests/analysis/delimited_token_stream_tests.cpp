@@ -21,9 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "analysis/delimited_token_stream.hpp"
+
 #include "gtest/gtest.h"
 #include "tests_config.hpp"
-#include "analysis/delimited_token_stream.hpp"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
 namespace {
 
@@ -480,7 +483,19 @@ TEST_F(delimited_token_stream_tests, test_make_config_json) {
     std::string config = "{\"delimiter\":\",\",\"invalid_parameter\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"delimiter\":\",\"}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"delimiter\":\",\"}")->toString(), actual);
+  }
+
+  // test vpack
+  {
+    std::string config = "{\"delimiter\":\",\",\"invalid_parameter\":true}";
+    auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
+    std::string in_str;
+    in_str.assign(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
+    std::string out_str;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "delimiter", irs::type<irs::text_format::vpack>::get(), in_str));
+    VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
+    ASSERT_EQ(VPackParser::fromJson("{\"delimiter\":\",\"}")->toString(), out_slice.toString());
   }
 }
 
@@ -489,10 +504,4 @@ TEST_F(delimited_token_stream_tests, test_make_config_text) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::text>::get(), config));
   ASSERT_EQ(config, actual);
-}
-
-TEST_F(delimited_token_stream_tests, test_make_config_invalid_format) {
-  std::string config = ",";
-  std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::csv>::get(), config));
 }

@@ -30,6 +30,7 @@
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "index/norm.hpp"
 #include "utils/utf8_path.hpp"
 
 #include "IResearch/common.h"
@@ -49,8 +50,14 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/Methods/Collections.h"
 
+inline auto GetLinkVersions() noexcept {
+  return testing::Values(
+    arangodb::iresearch::LinkVersion::MIN,
+    arangodb::iresearch::LinkVersion::MAX);
+}
+
 class IResearchQueryTest
-    : public ::testing::Test,
+    : public ::testing::TestWithParam<arangodb::iresearch::LinkVersion>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
@@ -81,8 +88,8 @@ class IResearchQueryTest
     auto res =
         analyzers.emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                           VPackParser::fromJson("\"abc\"")->slice(),
-                          irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get()}  // required for PHRASE
-        );  // cache analyzer
+                          arangodb::iresearch::Features(
+                            {}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)); // required for PHRASE
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(result, "testVocbase::test_csv_analyzer",
@@ -95,7 +102,9 @@ class IResearchQueryTest
         VPackParser::fromJson(
             "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
             ->slice(),
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()});  // cache analyzer
+         arangodb::iresearch::Features{
+           arangodb::iresearch::FieldFeatures::NORM,
+           irs::IndexFeatures::FREQ | irs::IndexFeatures::POS});  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     auto sysVocbase = server.getFeature<arangodb::SystemDatabaseFeature>().use();
@@ -106,8 +115,19 @@ class IResearchQueryTest
 
     res = analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
                             VPackParser::fromJson("\"abc\"")->slice(),
-                            irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get()}  // required for PHRASE
-    );  // cache analyzer
+                            arangodb::iresearch::Features{
+                              irs::IndexFeatures::FREQ | irs::IndexFeatures::POS});  // required for PHRASE
+
+    res = analyzers.emplace(result, "_system::ngram_test_analyzer13", "ngram",
+                            VPackParser::fromJson("{\"min\":1, \"max\":3, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
+                            arangodb::iresearch::Features{
+                              irs::IndexFeatures::FREQ | irs::IndexFeatures::POS});  // required for PHRASE
+
+    res = analyzers.emplace(result, "_system::ngram_test_analyzer2", "ngram",
+                            VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
+                            arangodb::iresearch::Features{
+                              irs::IndexFeatures::FREQ | irs::IndexFeatures::POS});  // required for PHRASE
+
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(result, "_system::test_csv_analyzer",
@@ -162,6 +182,10 @@ class IResearchQueryTest
   TRI_vocbase_t& vocbase() {
     TRI_ASSERT(_vocbase != nullptr);
     return *_vocbase;
+  }
+
+  arangodb::iresearch::LinkVersion linkVersion() const noexcept {
+    return GetParam();
   }
 };  // IResearchQueryTest
 

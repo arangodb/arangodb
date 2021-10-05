@@ -22,8 +22,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_FOLLOWER_INFO_H
-#define ARANGOD_CLUSTER_FOLLOWER_INFO_H 1
+#pragma once
 
 #include "ClusterInfo.h"
 
@@ -55,6 +54,20 @@ class FollowerInfo {
   // soon as we can guarantee at least so many followers locally.
   std::shared_ptr<std::vector<ServerID>> _failoverCandidates;
 
+  // The following map holds a random number for each follower, this
+  // random number is given and sent to the follower when it gets in sync
+  // (actually, when it acquires the exclusive lock to get in sync), and is
+  // then subsequently sent alongside every synchronous replication
+  // request. If the number does not match, the follower will refuse the
+  // replication request. This is to ensure that replication requests cannot
+  // be delayed into the "next" leader/follower relationship.
+  // And here is the proof that this works: The exclusive lock divides the
+  // write operations between "before" and "after". The id is changed
+  // when the exclusive lock is established. Therefore, it is OK for the
+  // replication requests to send along the "current" id, directly
+  // from this map.
+  std::unordered_map<ServerID, uint64_t> _followingTermId;
+
   // The agencyMutex is used to synchronise access to the agency.
   // the _dataLock is used to sync the access to local data.
   // The _canWriteLock is used to protect flag if we do have enough followers
@@ -84,6 +97,8 @@ class FollowerInfo {
     // On replicationfactor 1 we do not have any failover servers to maintain.
     // This should also disable satellite tracking.
   }
+
+  enum class WriteState { ALLOWED = 0, FORBIDDEN, STARTUP };
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
@@ -135,6 +150,28 @@ class FollowerInfo {
   Result remove(ServerID const& s);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief for each run of the "get-in-sync" protocol we generate a
+  /// random number to identify this "following term". This is created
+  /// when the follower fetches the exclusive lock to finally get in sync
+  /// and is stored in _followingTermId, so that it can be forwarded with
+  /// each synchronous replication request. The follower can then decline
+  /// the replication in case it is not "in the same term".
+  //////////////////////////////////////////////////////////////////////////////
+
+  uint64_t newFollowingTermId(ServerID const& s) noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief for each run of the "get-in-sync" protocol we generate a
+  /// random number to identify this "following term". This is created
+  /// when the follower fetches the exclusive lock to finally get in sync
+  /// and is stored in _followingTermId, so that it can be forwarded with
+  /// each synchronous replication request. The follower can then decline
+  /// the replication in case it is not "in the same term".
+  //////////////////////////////////////////////////////////////////////////////
+
+  uint64_t getFollowingTermId(ServerID const& s) const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief clear follower list, no changes in agency necesary
   //////////////////////////////////////////////////////////////////////////////
 
@@ -177,12 +214,12 @@ class FollowerInfo {
     return _theLeaderTouched;
   }
 
-  bool allowedToWrite() {
+  WriteState allowedToWrite() {
     {
       auto& engine =
           _docColl->vocbase().server().getFeature<EngineSelectorFeature>().engine();
       if (engine.inRecovery()) {
-        return true;
+        return WriteState::ALLOWED;
       }
       READ_LOCKER(readLocker, _canWriteLock);
       if (_canWrite) {
@@ -196,16 +233,17 @@ class FollowerInfo {
         // needs to be at least writeConcern.
         TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
 #endif
-        return _canWrite;
+        return WriteState::ALLOWED;
       }
       READ_LOCKER(readLockerData, _dataLock);
       TRI_ASSERT(_docColl != nullptr);
+
       if (!_theLeaderTouched) {
         // prevent writes before `TakeoverShardLeadership` has run
         LOG_TOPIC("7c1d4", INFO, Logger::REPLICATION)
             << "Shard "
             << _docColl->name() << " is temporarily in read-only mode, since we have not yet run TakeoverShardLeadership since the last restart.";
-        return false;
+        return WriteState::STARTUP;
       }
       if (_followers->size() + 1 < _docColl->writeConcern()) {
         // We know that we still do not have enough followers
@@ -213,7 +251,7 @@ class FollowerInfo {
             << "Shard " << _docColl->name() << " is temporarily in read-only mode, since we have less than writeConcern ("
             << basics::StringUtils::itoa(_docColl->writeConcern())
             << ") replicas in sync.";
-        return false;
+        return WriteState::FORBIDDEN;
       }
     }
     bool res = updateFailoverCandidates();
@@ -222,7 +260,7 @@ class FollowerInfo {
           << "Shard "
           << _docColl->name() << " is temporarily in read-only mode, since we could not update the failover candidates in the agency.";
     }
-    return res;
+    return res ? WriteState::ALLOWED : WriteState::FORBIDDEN;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -246,5 +284,3 @@ class FollowerInfo {
   arangodb::velocypack::Builder newShardEntry(arangodb::velocypack::Slice oldValue) const;
 };
 }  // end namespace arangodb
-
-#endif

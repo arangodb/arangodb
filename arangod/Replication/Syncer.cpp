@@ -27,6 +27,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
@@ -154,7 +155,9 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       // the target document exists. if yes, we don't try an insert (which would
       // fail anyway) but carry on with a replace.
       std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
-      if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
+      // We must see our own writes, because we may have to remove conflicting documents
+      // (that we just inserted) as documents may be replicated in unexpected order.
+      if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult, arangodb::ReadOwnWrites::yes).ok()) {
         // determine if we already have this revision or need to replace the
         // one we have
         arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(slice);
@@ -373,25 +376,15 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
-  try {
-    bool queued = SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), cb]() {
-      // whatever happens next, when we leave this here, we need to indicate
-      // that there is no more posted job.
-      // otherwise the calling thread may block forever waiting on the
-      // posted jobs to finish
-      auto guard = scopeGuard([self]() { self->jobDone(); });
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), cb]() {
+    // whatever happens next, when we leave this here, we need to indicate
+    // that there is no more posted job.
+    // otherwise the calling thread may block forever waiting on the
+    // posted jobs to finish
+    auto guard = scopeGuard([self]() noexcept { self->jobDone(); });
 
-      cb();
-    });
-
-    if (!queued) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
-    }
-  } catch (...) {
-    // will get here only if Scheduler::post threw
-    jobDone();
-    throw;
-  }
+    cb();
+  });
 }
 
 /// @brief notifies that a job was posted
@@ -420,7 +413,7 @@ bool Syncer::JobSynchronizer::jobPosted() {
 }
 
 /// @brief notifies that a job was done
-void Syncer::JobSynchronizer::jobDone() {
+void Syncer::JobSynchronizer::jobDone() noexcept {
   CONDITION_LOCKER(guard, _condition);
 
   TRI_ASSERT(_jobsInFlight == 1);
@@ -505,9 +498,9 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   }
   TRI_ASSERT(!s->_state.databaseName.empty());
   if (location[0] == '/') {
-    return "/_db/" + s->_state.databaseName + location;
+    return "/_db/" + basics::StringUtils::urlEncode(s->_state.databaseName) + location;
   }
-  return "/_db/" + s->_state.databaseName + "/" + location;
+  return "/_db/" + basics::StringUtils::urlEncode(s->_state.databaseName) + "/" + location;
 }
 
 void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }
@@ -554,18 +547,17 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
+
+  VPackSlice uuid;
+
+  if ((uuid = slice.get(::cuidRef)).isString()) {
+    return vocbase.lookupCollectionByUuid(uuid.copyString());
+  } else if ((uuid = slice.get(::globallyUniqueIdRef)).isString()) {
+    return vocbase.lookupCollectionByUuid(uuid.copyString());
+  }
+  
   // extract "cid"
   DataSourceId cid = ::getCid(slice);
-
-  if (!_state.leader.simulate32Client() || cid.empty()) {
-    VPackSlice uuid;
-
-    if ((uuid = slice.get(::cuidRef)).isString()) {
-      return vocbase.lookupCollectionByUuid(uuid.copyString());
-    } else if ((uuid = slice.get(::globallyUniqueIdRef)).isString()) {
-      return vocbase.lookupCollectionByUuid(uuid.copyString());
-    }
-  }
 
   if (cid.empty()) {
     LOG_TOPIC("fbf1a", ERR, Logger::REPLICATION)
@@ -645,18 +637,9 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   // resolve collection by uuid, name, cid (in that order of preference)
   auto col = resolveCollection(vocbase, slice);
 
-  if (col != nullptr && col->type() == type &&
-      (!_state.leader.simulate32Client() || col->name() == name)) {
+  if (col != nullptr && col->type() == type) {
     // collection already exists. TODO: compare attributes
     return Result();
-  }
-
-  bool forceRemoveCid = false;
-  if (col != nullptr && _state.leader.simulate32Client()) {
-    forceRemoveCid = true;
-    LOG_TOPIC("01f9f", INFO, Logger::REPLICATION)
-        << "would have got a wrong collection!";
-    // go on now and truncate or drop/re-create the collection
   }
 
   // conflicting collections need to be dropped from 3.3 onwards
@@ -664,7 +647,6 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
 
   if (col != nullptr) {
     if (col->system()) {
-      TRI_ASSERT(!_state.leader.simulate32Client() || col->guid() == col->name());
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                       *col, AccessMode::Type::WRITE);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
@@ -696,7 +678,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   s.openObject();
   s.add(StaticStrings::DataSourceSystem, VPackValue(true));
 
-  if ((uuid.isString() && !_state.leader.simulate32Client()) || forceRemoveCid) {  // need to use cid for 3.2 leader
+  if (uuid.isString()) {
     // if we received a globallyUniqueId from the remote, then we will always
     // use this id so we can discard the "cid" and "id" values for the
     // collection
@@ -954,7 +936,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
       }
     }
 
-    return view->properties(slice, false);  // always a full-update
+    // always a full-update
+    return view->properties(slice, false, false);
   }
 
   // check for name conflicts
@@ -977,7 +960,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
 
   try {
     LogicalView::ptr empty;  // ignore result
-    return LogicalView::create(empty, vocbase, merged.slice());
+    return LogicalView::create(
+      empty, vocbase, merged.slice(), false);
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -988,7 +972,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
 }
 
 /// @brief drops a view, based on the VelocyPack provided
-Result Syncer::dropView(arangodb::velocypack::Slice const& slice, bool reportError) {
+Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
+                        bool /*reportError*/) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

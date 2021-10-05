@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__HELPER_H
-#define ARANGODB_V8_V8__HELPER_H 1
+#pragma once
 
 #include <v8.h>
 #include "Basics/Common.h"
@@ -30,6 +29,8 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "v8-globals.h"
+
+#include <optional>
 
 namespace arangodb {
 
@@ -96,7 +97,7 @@ inline bool isContextCanceled(v8::Isolate* isolate) {
 
 inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
                                                          v8::TryCatch& tryCatch,
-                                                         int errorCode) {
+                                                         ErrorCode errorCode) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   // function tries to receive arango error form tryCatch Object
   // return tuple:
@@ -144,19 +145,18 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
 
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(exception);
 
-  int errorNum = -1;
+  auto errorNum = std::optional<ErrorCode>{};
 
   if (TRI_HasProperty(context, isolate, object, "errorNum")) {
-    errorNum = static_cast<
-      int>(TRI_ObjectToInt64(isolate,
-                             object->Get(context,
-                                         TRI_V8_ASCII_STRING(isolate, "errorNum"))
-                             .FromMaybe(v8::Local<v8::Value>())));
+    errorNum = ErrorCode{static_cast<int>(TRI_ObjectToInt64(
+        isolate, object->Get(context, TRI_V8_ASCII_STRING(isolate, "errorNum"))
+                     .FromMaybe(v8::Local<v8::Value>())))};
   }
 
   try {
-    if ((errorNum != -1) && (TRI_HasProperty(context, isolate, object, "errorMessage") ||
-                             TRI_HasProperty(context, isolate, object, "message"))) {
+    if (errorNum.has_value() &&
+        (TRI_HasProperty(context, isolate, object, "errorMessage") ||
+         TRI_HasProperty(context, isolate, object, "message"))) {
       std::string errorMessage;
       if (TRI_HasProperty(context, isolate, object, "errorMessage")) {
         v8::String::Utf8Value msg(isolate,
@@ -176,7 +176,7 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
         }
       }
       std::get<1>(rv) = true;
-      std::get<2>(rv).reset(errorNum, errorMessage);
+      std::get<2>(rv).reset(*errorNum, errorMessage);
       tryCatch.Reset();
       return rv;
     }
@@ -203,10 +203,10 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
       if (name == "TypeError") {
         std::get<2>(rv).reset(TRI_ERROR_TYPE_ERROR, message);
       } else {
-        if (errorNum == -1) {
+        if (!errorNum.has_value()) {
           errorNum = errorCode;
         }
-        std::get<2>(rv).reset(errorNum, name + ": " + message);
+        std::get<2>(rv).reset(*errorNum, name + ": " + message);
       }
       std::get<1>(rv) = true;
       tryCatch.Reset();
@@ -219,4 +219,3 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
   return rv;
 }
 }  // namespace arangodb
-#endif

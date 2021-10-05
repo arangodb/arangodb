@@ -110,9 +110,11 @@ struct term {
 
 class field : public irs::field_meta {
  public:
-  field(const irs::string_ref& name, const irs::flags& features);
-  field(field&& rhs) noexcept;
-  field& operator=(field&& rhs) noexcept;
+  field(const irs::string_ref& name,
+        irs::IndexFeatures index_features,
+        const irs::features_t& features);
+  field(field&& rhs) = default;
+  field& operator=(field&& rhs) = default;
 
   term& add(const irs::bytes_ref& term);
   term* find(const irs::bytes_ref& term);
@@ -234,23 +236,29 @@ class term_reader : public irs::term_reader {
     : data_(data),
       min_(data_.terms.begin()->value),
       max_(data_.terms.rbegin()->value) {
-    if (meta().features.check<irs::frequency>()) {
+    if (irs::IndexFeatures::NONE != (meta().index_features & irs::IndexFeatures::FREQ)) {
       for (auto& term : data.terms) {
         for (auto& p : term.postings) {
-          freq_.value += p.positions().size();
+          freq_.value += static_cast<uint32_t>(p.positions().size());
         }
       }
       pfreq_ = &freq_;
     }
   }
 
-  virtual irs::seek_term_iterator::ptr iterator() const override;
+  virtual irs::seek_term_iterator::ptr iterator(irs::SeekMode) const override;
   virtual irs::seek_term_iterator::ptr iterator(irs::automaton_table_matcher& a) const override;
   virtual const irs::field_meta& meta() const override { return data_; }
   virtual size_t size() const override { return data_.terms.size(); }
   virtual uint64_t docs_count() const override { return data_.docs.size(); }
   virtual const irs::bytes_ref& (min)() const override { return min_; }
   virtual const irs::bytes_ref& (max)() const override { return max_; }
+  virtual size_t bit_union(
+    const cookie_provider& provider,
+    size_t* bitset) const override;
+  virtual irs::doc_iterator::ptr postings(
+      const irs::seek_cookie& cookie,
+      irs::IndexFeatures features) const override;
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (irs::type<irs::frequency>::id() == type) {
       return pfreq_;
@@ -343,28 +351,23 @@ class field_reader : public irs::field_reader {
 
 class field_writer : public irs::field_writer {
  public:
-  field_writer(const index_segment& data, const irs::flags& features = irs::flags());
-
-  /* returns features which should be checked
-   * in "write" method */
-  irs::flags features() const { return features_; }
-
-  /* sets features which should be checked
-   * in "write" method */
-  void features(const irs::flags& features) { features_ = features; }
+  explicit field_writer(const index_segment& data);
 
   virtual void prepare(const irs::flush_state& state) override;
-  virtual void write(const std::string& name, irs::field_id norm, const irs::flags& expected_field, irs::term_iterator& actual_term) override;
+  virtual void write(const std::string& name,
+                     irs::IndexFeatures index_features,
+                     const irs::feature_map_t& custom_features,
+                     irs::term_iterator& actual_term) override;
   virtual void end() override;
 
  private:
   field_reader readers_;
-  irs::flags features_;
+  irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
 };
 
 class format : public irs::format {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
   format();
   format(const index_segment& data);
 
@@ -377,13 +380,13 @@ class format : public irs::format {
   virtual document_mask_writer::ptr get_document_mask_writer() const override;
   virtual irs::document_mask_reader::ptr get_document_mask_reader() const override;
 
-  virtual irs::field_writer::ptr get_field_writer(bool volatile_attributes) const override;
+  virtual irs::field_writer::ptr get_field_writer(bool consolidation) const override;
   virtual irs::field_reader::ptr get_field_reader() const override;
 
   virtual irs::column_meta_writer::ptr get_column_meta_writer() const override;
   virtual irs::column_meta_reader::ptr get_column_meta_reader() const override;
 
-  virtual irs::columnstore_writer::ptr get_columnstore_writer() const override;
+  virtual irs::columnstore_writer::ptr get_columnstore_writer(bool consolidation) const override;
   virtual irs::columnstore_reader::ptr get_columnstore_reader() const override;
 
  private:
@@ -396,37 +399,29 @@ typedef std::vector<index_segment> index_t;
 void assert_term(
   const irs::term_iterator& expected_term,
   const irs::term_iterator& actual_term,
-  const irs::flags& features);
-
-void assert_terms_next(
-  const irs::term_reader& expected_term_reader,
-  const irs::term_reader& actual_term_reader,
-  irs::automaton_table_matcher* acceptor,
-  const irs::flags& features);
+  irs::IndexFeatures features);
 
 void assert_terms_seek(
   const irs::term_reader& expected_term_reader,
   const irs::term_reader& actual_term_reader,
-  const irs::flags& features,
+  irs::IndexFeatures features,
   irs::automaton_table_matcher* acceptor,
   size_t lookahead = 10); // number of steps to iterate after the seek
 
 void assert_index(
   const index_t& expected_index,
   const irs::index_reader& actual_index,
-  const irs::flags& features,
+  irs::IndexFeatures features,
   size_t skip = 0, // do not validate the first 'skip' segments
-  irs::automaton_table_matcher* matcher = nullptr
-);
+  irs::automaton_table_matcher* matcher = nullptr);
 
 void assert_index(
   const irs::directory& dir,
   irs::format::ptr codec,
   const index_t& index,
-  const irs::flags& features,
+  irs::IndexFeatures features,
   size_t skip = 0, // no not validate the first 'skip' segments
-  irs::automaton_table_matcher* matcher = nullptr
-);
+  irs::automaton_table_matcher* matcher = nullptr);
 
 } // tests
 

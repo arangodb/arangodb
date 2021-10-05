@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_AGENT_H
-#define ARANGOD_CONSENSUS_AGENT_H 1
+#pragma once
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgencyStrings.h"
@@ -136,7 +135,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void addTrxsOngoing(Slice trxs);
 
   /// @brief Remove trxs from list of ongoing ones.
-  void removeTrxsOngoing(Slice trxs);
+  void removeTrxsOngoing(Slice trxs) noexcept;
 
   /// @brief Check whether a trx is ongoing.
   bool isTrxOngoing(std::string& id);
@@ -554,4 +553,3 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_USERS_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_USERS_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestBaseHandler.h"
 
@@ -59,4 +58,3 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

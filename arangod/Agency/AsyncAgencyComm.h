@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGOD_CLUSTER_ASYNC_AGENCY_COMM_H
-#define ARANGOD_CLUSTER_ASYNC_AGENCY_COMM_H 1
+
+#pragma once
 
 #include <fuerte/message.h>
 
@@ -37,8 +37,10 @@
 
 #include "Agency/PathComponent.h"
 #include "Basics/ResultT.h"
+#include "Basics/debugging.h"
 #include "Futures/Future.h"
 #include "Network/Methods.h"
+#include "Network/Utils.h"
 
 namespace arangodb {
 
@@ -52,30 +54,47 @@ struct AsyncAgencyCommResult {
 
   [[nodiscard]] bool fail() const { return !ok(); }
 
-  VPackSlice slice() const { return response->slice(); }
+  VPackSlice slice() const {
+    TRI_ASSERT(response != nullptr);
+    return response->slice();
+  }
 
   std::shared_ptr<velocypack::Buffer<uint8_t>> copyPayload() const {
+    TRI_ASSERT(response != nullptr);
     return response->copyPayload();
   }
+
   std::shared_ptr<velocypack::Buffer<uint8_t>> stealPayload() const {
+    TRI_ASSERT(response != nullptr);
     return response->stealPayload();
   }
+
   std::string payloadAsString() const {
+    TRI_ASSERT(response != nullptr);
     return response->payloadAsString();
   }
-  std::size_t payloadSize() const { return response->payloadSize(); }
+
+  std::size_t payloadSize() const {
+    TRI_ASSERT(response != nullptr);
+    return response->payloadSize();
+  }
 
   arangodb::fuerte::StatusCode statusCode() const {
+    TRI_ASSERT(response != nullptr);
     return response->statusCode();
   }
 
-  Result asResult() {
+  [[nodiscard]] Result asResult() const {
+    using namespace arangodb::network;
     if (!ok()) {
-      return Result{int(error), to_string(error)};
-    } else if (200 <= statusCode() && statusCode() <= 299) {
-      return Result{};
+      return Result{fuerteToArangoErrorCode(error), to_string(error)};
     } else {
-      return Result{int(statusCode())};
+      auto code = statusCode();
+      auto internalCode = fuerteStatusToArangoErrorCode(code);
+      if (internalCode == TRI_ERROR_NO_ERROR) {
+        return Result(internalCode);
+      }
+      return Result{internalCode, fuerteStatusToArangoErrorMessage(code)};
     }
   }
 };
@@ -121,7 +140,6 @@ class AsyncAgencyCommManager final {
     INSTANCE = std::make_unique<AsyncAgencyCommManager>(server);
   }
 
-
   static bool isEnabled() { return INSTANCE != nullptr; }
   static AsyncAgencyCommManager& getInstance();
 
@@ -156,8 +174,8 @@ class AsyncAgencyCommManager final {
   void setStopping(bool stopping) { _isStopping = stopping; }
 
  private:
-  bool _isStopping = false;
-  bool _skipScheduler = true;
+  std::atomic<bool> _isStopping = false;
+  std::atomic<bool> _skipScheduler = true;
   application_features::ApplicationServer& _server;
   mutable std::mutex _lock;
   std::deque<std::string> _endpoints;
@@ -250,9 +268,9 @@ class AsyncAgencyComm final {
                                               network::Timeout timeout, RequestType type,
                                               velocypack::Buffer<uint8_t>&& body) const;
 
-  [[nodiscard]] FutureResult sendWithFailover(
-    arangodb::fuerte::RestVerb method, std::string const& url,
-    network::Timeout timeout, RequestType type, uint64_t index) const;
+  [[nodiscard]] FutureResult sendWithFailover(arangodb::fuerte::RestVerb method,
+                                              std::string const& url, network::Timeout timeout,
+                                              RequestType type, uint64_t index) const;
 
   AsyncAgencyComm() : _manager(AsyncAgencyCommManager::getInstance()) {}
   explicit AsyncAgencyComm(AsyncAgencyCommManager& manager)
@@ -269,4 +287,3 @@ class AsyncAgencyComm final {
 };
 
 }  // namespace arangodb
-#endif

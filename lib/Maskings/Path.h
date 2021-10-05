@@ -21,8 +21,7 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_PATH_H
-#define ARANGODB_MASKINGS_PATH_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -50,4 +49,3 @@ class Path {
 }  // namespace maskings
 }  // namespace arangodb
 
-#endif

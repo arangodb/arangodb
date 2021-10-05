@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_REPLICATION_TIMEOUT_FEATURE_H
-#define ARANGOD_CLUSTER_REPLICATION_TIMEOUT_FEATURE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestServer/Metrics.h"
@@ -47,4 +46,3 @@ class ReplicationTimeoutFeature : public application_features::ApplicationFeatur
 
 }  // namespace arangodb
 
-#endif

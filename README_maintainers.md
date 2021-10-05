@@ -16,7 +16,12 @@ Main sections:
   - [Linux Core Dumps](#linux-core-dumps)
   - [Windows Core Dumps](#windows-core-dumps)
 - [Unittests](#unittests)
-
+  - [invoking driver tests](#driver-tests) via scripts/unittests
+  - [capturing test HTTP communication](#running-tcpdump--windump-for-the-sut) but
+    [forcing communication to use plain-text JSON](#forcing-downgrade-from-vpack-to-json)
+  - [Evaluating previous testruns](#evaluating-json-test-reports-from-previous-testruns)
+    sorting by setup time etc. 
+- [what to test where and how](tests/README.md)
 ---
 
 ## Source Code
@@ -76,21 +81,90 @@ compiler is for C/C++. You can invoke it like this:
 
     bin/arangosh --jslint js/client/modules/@arangodb/testing.js
 
+### Adding metrics
+
+As of 3.8 we have enforced documentation for metrics. This works as
+follows. Every metric which is generated has a name. The metric must be
+declared by using one of the macros
+
+```
+  DECLARE_COUNTER(name, helpstring);
+  DECLARE_GAUGE(name, type, helpstring);
+  DECLARE_HISTOGRAM(name, scaletype, helpstring);
+```
+
+in some `.cpp` file (please put only one on a line). Then, when the
+metric is actually requested in the source code, it gets a template
+added to the metrics feature with the `add` method and its name.
+Labels can be added with the `withLabel` method. In this way, the
+compiler ensures that the metric declaration is actually there if
+the metric is used.
+
+Then there is a helper script `utils/generateAllMetricsDocumentation.py`
+which needs `python3` with the `yaml` module. It will check and do the
+following things:
+
+ - every declared metric in some `.cpp` file in the source has a
+   corresponding documentation snippet in `Documentation/Metrics`
+   under the name of the metric with `.yaml` appended
+ - each such file is a YAML file of a certain format (see template
+   under `Documentation/Metrics/template.yaml`)
+ - many of the componentes are required, so please provide adequate
+   information about your metric
+ - the script can also assemble all these YAML documentation snippets
+   into a single file under `Documentation/Metrics/allMetrics.yaml`,
+   the format is again a structured YAML file which can easily be
+   processed by the documentation tools, this is only needed when
+   we update the documentation web pages.
+
+Please, if you have added or modified a metric, make sure to declare
+the metric as shown above and add a documentation YAML snippet in the
+correct format. Afterwards, run
+
+    utils/generateAllMetricsDocumentation.py
+
+but do not include `Documentation/Metrics/allMetrics.yaml` in your PR
+(as was a previous policy). The file is only generated if you add
+`-d` as command line option to the script.
+
+
 ---
 
 ## Building
+
+Note: Make sure that your source path does not contain spaces otherwise the build process will likely fail.
 
 ### Building the binaries
 
 ArangoDB uses a build system called [Oskar](https://github.com/arangodb/oskar).
 Please refer to the documentation of Oskar for details.
 
+Optimizations and limit of architecture (list of possible CPU instuctions) are set using this `cmake` option
+in addition to the other options:
+
+```
+-DTARGET_ARCHITECTURE
+```
+
+Oskar uses predefined architecture which is defined in `./VERSIONS` file or `westmere` if it's not defined.
+
+Note: if you use more modern architecture for optimizations or any additional implementation with extended
+set of CPU instructions please notice that result could be different to the default one.
+
+If you would like to disable architecture-specific optimizations or your CPU architecture isn't recognized
+by `cmake` module the following option could be used:
+
+```
+-DUSE_OPTIMIZE_FOR_ARCHITECTURE="OFF"
+```
+
 For building the ArangoDB starter checkout the
 [ArangoDB Starter](https://github.com/arangodb-helper/arangodb).
 
 ### Building the Web Interface
 
-To build Web UI, also known as frontend or *Aardvark*, use CMake in the
+To build Web UI, also known as frontend or *Aardvark*, [Node.js](https://nodejs.org/)
+and [Yarn](https://yarnpkg.com/) need to be installed. You can then use CMake in the
 build directory:
 
     cmake --build . --target frontend
@@ -99,7 +173,7 @@ For Oskar you may use the following:
 
     shellInAlpineContainer
 
-    apk add --no-cache nodejs npm && cd /work/ArangoDB/build && cmake --build . --target frontend
+    apk add --no-cache nodejs yarn && cd /work/ArangoDB/build && cmake --build . --target frontend
 
 To remove all available node modules and start a clean installation run:
 
@@ -108,13 +182,13 @@ To remove all available node modules and start a clean installation run:
 The frontend can also be built using these commands:
 
     cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/react
-    npm install
-    npm run build
+    yarn install
+    yarn run build
 
 For development purposes, go to `js/apps/system/_admin/aardvark/APP/react` and
 run:
 
-    npm start
+    yarn start
 
 This will deploy a development server (Port: 3000) and automatically start your
 favorite browser and open the web UI.
@@ -163,7 +237,7 @@ Depending on the platform, ArangoDB tries to locate the temporary directory:
 ### Local Cluster Startup
 
 The scripts `scripts/startLocalCluster` helps you to quickly fire up a testing
-cluster on your local machine. `scripts/stopLocalCluster` stops it again.
+cluster on your local machine. `scripts/shutdownLocalCluster` stops it again.
 
 `scripts/startLocalCluster [numDBServers numCoordinators [mode]]`
 
@@ -612,7 +686,7 @@ There are several major places where unittests live:
 | `js/client/modules/@arangodb/testutils/crash-utils.js`       | if somethings goes wrong, this contains the crash analysis tools
 | `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched seperately to monitor the cluster instances and their resource usage
 | `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each
-| `js/common/modules/jsunity[.js|/jsunity.js`                  | jsunity testing framework; invoked via jsunity.js next to the module
+| `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module
 | `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb
 
 ### Filename conventions
@@ -644,9 +718,13 @@ To locate the suite(s) associated with a specific test file use:
 
     ./scripts/unittest find --test tests/js/common/shell/shell-aqlfunctions.js
 
-Run all suite(s) associated with a specific test file:
+Run all suite(s) associated with a specific test file in single server mode:
 
     ./scripts/unittest auto --test tests/js/common/shell/shell-aqlfunctions.js
+
+Run all suite(s) associated with a specific test file in cluster mode:
+
+    ./scripts/unittest auto --cluster true --test tests/js/common/shell/shell-aqlfunctions.js
 
 Run all C++ based Google Test (gtest) tests using the `arangodbtests` binary:
 
@@ -852,9 +930,9 @@ Once this is completed, you may run it like this:
         --cluster true
 
 For possible `javaOptions` see
-[arangodb-java-driver/dev-README.md#test-provided-deployment](https://github.com/arangodb/arangodb-java-driver/blob/next/arangodb-java-driver/dev-README.md)
+[arangodb-java-driver/dev-README.md#test-provided-deployment](https://github.com/arangodb/arangodb-java-driver/blob/master/dev-README.md)
 in the java source, or the
-[surefire documentation](https://maven.apache.org/surefire/maven-surefire-plugin/examples/single-test.html]
+[surefire documentation](https://maven.apache.org/surefire/maven-surefire-plugin/examples/single-test.html)
 
 #### ArangoJS
 
@@ -931,13 +1009,24 @@ Debugging rspec with gdb:
 
     server> ./scripts/unittest http_server --test api-import-spec.rb --server tcp://127.0.0.1:7777
     - or -
-    server> ARANGO_SERVER="127.0.0.1:6666" rspec -Itests/rb/HttpInterface --format d --color tests/rb/HttpInterface/api-import-spec.rb
+    server> ARANGO_SERVER="127.0.0.1:6666" \
+        rspec -Itests/rb/HttpInterface --format d \
+              --color tests/rb/HttpInterface/api-import-spec.rb
 
-    client> gdb --args ./build/bin/arangod --server.endpoint http+tcp://127.0.0.1:6666 --server.authentication false --log.level communication=trace ../arangodb-data-test-mmfiles
+    client> gdb --args ./build/bin/arangod --server.endpoint http+tcp://127.0.0.1:6666 \
+                                           --server.authentication false \
+                                           --log.level communication=trace \
+                                           ../arangodb-data-test
 
 Debugging a storage engine:
 
-    host> rm -fr ../arangodb-data-rocksdb/; gdb --args ./build/bin/arangod --console --server.storage-engine rocksdb --foxx.queues false --server.statistics false --server.endpoint http+tcp://0.0.0.0:7777 ../arangodb-data-rocksdb
+    host> rm -fr ../arangodb-data-rocksdb/; \
+       gdb --args ./build/bin/arangod \
+           --console \
+           --foxx.queues false \
+           --server.statistics false \
+           --server.endpoint http+tcp://0.0.0.0:7777 \
+           ../arangodb-data-rocksdb
     (gdb) catch throw
     (gdb) r
     arangod> require("jsunity").runTest("tests/js/client/shell/shell-client.js");
@@ -994,6 +1083,69 @@ Currently available Analyzers are:
   - locateShortServerLife - whether the servers lifetime for the tests isn't at least 10 times as long as startup/shutdown
   - locateLongSetupTeardown - locate tests that may use a lot of time in setup/teardown
   - yaml - dumps the json file as a yaml file
+  - unitTestTabularPrintResults - prints a table, add one (or more) of the following columns to print by adding it to `--tableColumns`:
+    - `duration` - the time spent in the complete testfile
+    - `status` - sucess/fail
+    - `failed` - fail?
+    - `total` - the time spent in the testcase
+    - `totalSetUp` - the time spent in setup summarized
+    - `totalTearDown` - the time spent in teardown summarized
+    - `processStats.sum_servers.minorPageFaults` - Delta run values from `/proc/<pid>/io` summarized over all instances
+    - `processStats.sum_servers.majorPageFaults` - 
+    - `processStats.sum_servers.userTime` - 
+    - `processStats.sum_servers.systemTime` - 
+    - `processStats.sum_servers.numberOfThreads` - 
+    - `processStats.sum_servers.residentSize` - 
+    - `processStats.sum_servers.residentSizePercent` - 
+    - `processStats.sum_servers.virtualSize` - 
+    - `processStats.sum_servers.rchar` - 
+    - `processStats.sum_servers.wchar` - 
+    - `processStats.sum_servers.syscr` - 
+    - `processStats.sum_servers.syscw` - 
+    - `processStats.sum_servers.read_bytes` - 
+    - `processStats.sum_servers.write_bytes` - 
+    - `processStats.sum_servers.cancelled_write_bytes` - 
+    - `processStats.sum_servers.sockstat_sockets_used` - Absolute values from `/proc/<pid>/net/sockstat` summarized over all instances
+    - `processStats.sum_servers.sockstat_TCP_inuse` - 
+    - `processStats.sum_servers.sockstat_TCP_orphan` - 
+    - `processStats.sum_servers.sockstat_TCP_tw` - 
+    - `processStats.sum_servers.sockstat_TCP_alloc` - 
+    - `processStats.sum_servers.sockstat_TCP_mem` - 
+    - `processStats.sum_servers.sockstat_UDP_inuse` - 
+    - `processStats.sum_servers.sockstat_UDP_mem` - 
+    - `processStats.sum_servers.sockstat_UDPLITE_inuse` - 
+    - `processStats.sum_servers.sockstat_RAW_inuse` - 
+    - `processStats.sum_servers.sockstat_FRAG_inuse` - 
+    - `processStats.sum_servers.sockstat_FRAG_memory` -
+    
+    Process stats are kept by process.
+    So if your DB-Server had the PID `1721882`, you can dial its values by specifying
+    `processStats.1721882_dbserver.sockstat_TCP_tw`
+    into the generated table.
 
+i.e.
 
     ./scripts/examine_results.js -- 'yaml,locateLongRunning' --readFile out/UNITTEST_RESULT.json
+
+or:
+
+    ./scripts/examine_results.js -- 'unitTestTabularPrintResults' \
+       --readFile out/UNITTEST_RESULT.json \
+       --tableColumns 'duration,processStats.sum_servers.sockstat_TCP_orphan,processStats.sum_servers.sockstat_TCP_tw
+
+revalidating one testcase using jq:
+
+    jq '.shell_client."enterprise/tests/js/common/shell/smart-graph-enterprise-cluster.js"' < \
+      out/UNITTEST_RESULT.json |grep sockstat_TCP_tw
+
+getting the PIDs of the server in the testrun using jq:
+
+    jq '.shell_client."enterprise/tests/js/common/shell/smart-graph-enterprise-cluster.js"' < \
+      out/UNITTEST_RESULT.json |grep '"[0-9]*_[agent|dbserver|coordinator]'
+    "1721674_agent": {
+    "1721675_agent": {
+    "1721676_agent": {
+    "1721882_dbserver": {
+    "1721883_dbserver": {
+    "1721884_dbserver": {
+    "1721885_coordinator": {

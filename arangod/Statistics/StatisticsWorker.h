@@ -21,8 +21,7 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STATISTICS_STATISTICS_WORKER_H
-#define ARANGOD_STATISTICS_STATISTICS_WORKER_H 1
+#pragma once
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
@@ -98,4 +97,3 @@ class StatisticsWorker final : public Thread {
 
 }  // namespace arangodb
 
-#endif

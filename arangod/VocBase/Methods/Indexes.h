@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_INDEXES_H
-#define ARANGOD_VOC_BASE_API_INDEXES_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -42,7 +41,7 @@ namespace methods {
 /// Common code for ensureIndexes and api-index.js
 struct Indexes {
   static arangodb::Result getIndex(LogicalCollection const* collection,
-                                   velocypack::Slice const& indexId, velocypack::Builder&,
+                                   velocypack::Slice indexId, velocypack::Builder&,
                                    transaction::Methods* trx = nullptr);
 
   /// @brief get all indexes, skips view links
@@ -53,10 +52,11 @@ struct Indexes {
 
   static arangodb::Result createIndex(LogicalCollection*, Index::IndexType,
                                       std::vector<std::string> const&,
-                                      bool unique, bool sparse);
+                                      bool unique, bool sparse,
+                                      bool estimates);
 
   static arangodb::Result ensureIndex(LogicalCollection* collection,
-                                      velocypack::Slice const& definition,
+                                      velocypack::Slice definition,
                                       bool create, velocypack::Builder& output);
 
   static arangodb::Result drop(LogicalCollection* collection,
@@ -83,4 +83,3 @@ struct Indexes {
 }  // namespace methods
 }  // namespace arangodb
 
-#endif

@@ -73,10 +73,10 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
       _server(server),
       _distributeId(distributeId),
       _queryId(queryId),
-      _isResponsibleForInitializeCursor(node->isResponsibleForInitializeCursor()),
       _lastError(TRI_ERROR_NO_ERROR),
-      _lastTicket(0),
-      _requestInFlight(false) {
+      _isResponsibleForInitializeCursor(node->isResponsibleForInitializeCursor()),
+      _requestInFlight(false),
+      _lastTicket(0) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && distributeId.empty()) ||
              (!arangodb::ServerState::instance()->isCoordinator() && !distributeId.empty()));
@@ -126,17 +126,15 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
 
     VPackSlice responseBody = response->slice();
 
+    if (!responseBody.hasKey("data")) {
+      return {ExecutionState::DONE, nullptr};
+    }
+
     ExecutionState state = ExecutionState::HASMORE;
     if (VelocyPackHelper::getBooleanValue(responseBody, "done", true)) {
       state = ExecutionState::DONE;
     }
-    if (responseBody.hasKey("data")) {
-      SharedAqlItemBlockPtr r =
-          _engine->itemBlockManager().requestAndInitBlock(responseBody);
-
-      return {state, std::move(r)};
-    }
-    return {ExecutionState::DONE, nullptr};
+    return {state, _engine->itemBlockManager().requestAndInitBlock(responseBody) };
   }
 
   // We need to send a request here
@@ -163,7 +161,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
 
   if (_requestInFlight) {
     // Already sent a shutdown request, but haven't got an answer yet.
-    return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+    return {ExecutionState::WAITING, 0};
   }
 
   if (_lastError.fail()) {
@@ -262,14 +260,14 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
     auto response = std::move(_lastResponse);
 
     // Result is the response which is an object containing the ErrorCode
-    int errorNumber = TRI_ERROR_INTERNAL;  // default error code
+    auto errorNumber = TRI_ERROR_INTERNAL;  // default error code
     VPackSlice slice = response->slice();
     VPackSlice errorSlice = slice.get(StaticStrings::ErrorNum);
     if (!errorSlice.isNumber()) {
       errorSlice = slice.get(StaticStrings::Code);
     }
     if (errorSlice.isNumber()) {
-      errorNumber = errorSlice.getNumericValue<int>();
+      errorNumber = ErrorCode{errorSlice.getNumericValue<int>()};
     }
 
     errorSlice = slice.get(StaticStrings::ErrorMessage);
@@ -314,7 +312,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
+auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
@@ -328,12 +326,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
   return res;
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack stack)
-    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
-  return executeViaNewApi(stack);
-}
-
-auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack)
+auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
@@ -388,8 +381,8 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack
   }
 
   // We need to send a request here
-  auto buffer = serializeExecuteCallBody(callStack);
-  this->traceExecuteRequest(VPackSlice(buffer.data()), callStack);
+  auto buffer = serializeExecuteCallBody(stack);
+  this->traceExecuteRequest(VPackSlice(buffer.data()), stack);
 
   auto res = sendAsyncRequest(fuerte::RestVerb::Put,
                               RestAqlHandler::Route::execute(), std::move(buffer));
@@ -405,7 +398,8 @@ auto ExecutionBlockImpl<RemoteExecutor>::deserializeExecuteCallResultBody(VPackS
     -> ResultT<AqlExecuteResult> {
   // Errors should have been caught earlier
   TRI_ASSERT(TRI_ERROR_NO_ERROR ==
-             VelocyPackHelper::getNumericValue<int>(slice, StaticStrings::Code, -1));
+             VelocyPackHelper::getNumericValue<ErrorCode>(slice, StaticStrings::Code,
+                                                          TRI_ERROR_INTERNAL));
 
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
@@ -452,7 +446,7 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
         .append("': ");
   }
 
-  int res = TRI_ERROR_INTERNAL;
+  auto res = TRI_ERROR_INTERNAL;
   if (err != fuerte::Error::NoError) {
     res = network::fuerteToArangoErrorCode(err);
     msg.append(TRI_errno_string(res));
@@ -461,7 +455,7 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
     if (slice.isObject()) {
       VPackSlice errSlice = slice.get(StaticStrings::Error);
       if (errSlice.isBool() && errSlice.getBool()) {
-        res = VelocyPackHelper::getNumericValue(slice, StaticStrings::ErrorNum, res);
+        res = VelocyPackHelper::getNumericValue<ErrorCode>(slice, StaticStrings::ErrorNum, res);
         VPackStringRef ref =
             VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
                                            VPackStringRef(
@@ -487,7 +481,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   }
 
   arangodb::network::EndpointSpec spec;
-  int res = network::resolveDestination(nf, _server, spec);
+  auto res = network::resolveDestination(nf, _server, spec);
   if (res != TRI_ERROR_NO_ERROR) { 
     return Result(res);
   }
@@ -510,7 +504,8 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
       << "request to '" << _server << "' '" << fuerte::to_string(type) << " "
       << req->header.path << "'";
 
-  network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint);
+  bool isFromPool;
+  network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint, isFromPool);
 
   _requestInFlight = true;
   auto ticket = generateRequestTicket();
@@ -539,7 +534,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   return {TRI_ERROR_NO_ERROR};
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(VPackSlice const slice,
+void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(VPackSlice slice,
                                                              AqlCallStack const& callStack) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
@@ -549,8 +544,8 @@ void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(VPackSlice const sl
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice const slice,
-                                                             size_t const atMost) {
+void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice slice,
+                                                             size_t atMost) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
@@ -559,8 +554,8 @@ void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice const sl
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice const slice,
-                                                              size_t const atMost) {
+void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice slice,
+                                                              size_t atMost) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
@@ -569,7 +564,7 @@ void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice const s
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice const slice) {
+void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice slice) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
@@ -578,8 +573,8 @@ void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* const rpc,
-                                                      VPackSlice const slice,
+void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* rpc,
+                                                      VPackSlice slice,
                                                       std::string const& args) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {

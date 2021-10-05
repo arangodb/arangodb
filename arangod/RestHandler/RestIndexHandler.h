@@ -21,12 +21,17 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_INDEX_HANDLER_H
-#define ARANGOD_REST_HANDLER_INDEX_HANDLER_H 1
+#pragma once
 
 #include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
+
+#include "Basics/Result.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 class LogicalCollection;
@@ -35,11 +40,15 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestIndexHandler(application_features::ApplicationServer&, GeneralRequest*,
                    GeneralResponse*);
+  
+  ~RestIndexHandler();
 
  public:
   char const* name() const override final { return "RestIndexHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
+  RestStatus continueExecute() override;
+  void shutdownExecute(bool isFinalized) noexcept override;
 
  private:
   RestStatus getIndexes();
@@ -47,8 +56,18 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus createIndex();
   RestStatus dropIndex();
 
+  void shutdownBackgroundThread();
+
   std::shared_ptr<LogicalCollection> collection(std::string const& cName);
+
+  struct CreateInBackgroundData {
+    std::unique_ptr<std::thread> thread;
+    Result result;
+    arangodb::velocypack::Builder response;
+  };
+
+  std::mutex _mutex;
+  CreateInBackgroundData _createInBackgroundData;
 };
 }  // namespace arangodb
 
-#endif

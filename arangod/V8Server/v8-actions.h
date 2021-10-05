@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_ACTIONS_H
-#define ARANGOD_V8_SERVER_V8_ACTIONS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -44,4 +43,3 @@ void TRI_InitV8Actions(v8::Isolate* isolate);
 
 void TRI_InitV8ServerUtils(v8::Isolate* isolate);
 
-#endif

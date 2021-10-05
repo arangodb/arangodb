@@ -40,28 +40,18 @@ void analyzed_json_field_factory(
  
   class string_field : public templates::string_field {
    public:
-    string_field(const irs::string_ref& name, const irs::string_ref& value)
-      : templates::string_field(name, value) {
-    }
-
-    const irs::flags& features() const {
-      static irs::flags features{ irs::type<irs::frequency>::get() };
-      return features;
+    string_field(const std::string& name, const irs::string_ref& value)
+      : templates::string_field(name, value, irs::IndexFeatures::FREQ) {
     }
   }; // string_field
 
   if (data.is_string()) {
     // analyzed field
     doc.indexed.push_back(std::make_shared<text_field>(
-      std::string(name.c_str()) + "_anl",
-      data.str
-    ));
+      std::string(name.c_str()) + "_anl", data.str));
 
     // not analyzed field
-    doc.insert(std::make_shared<string_field>(
-      irs::string_ref(name),
-      data.str
-    ));
+    doc.insert(std::make_shared<string_field>(name, data.str));
   }
 }
 
@@ -2296,7 +2286,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    q.mutable_options()->push_back<irs::by_term_options>(irs::integer_traits<size_t>::const_max).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+    q.mutable_options()->push_back<irs::by_term_options>(std::numeric_limits<size_t>::max()).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
     auto prepared = q.prepare(rdr);
  #ifndef IRESEARCH_DLL
@@ -2395,7 +2385,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& pt = q.mutable_options()->push_back<irs::by_prefix_options>(irs::integer_traits<size_t>::const_max);
+    auto& pt = q.mutable_options()->push_back<irs::by_prefix_options>(std::numeric_limits<size_t>::max());
     pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
 
     auto prepared = q.prepare(rdr);
@@ -2541,7 +2531,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>(irs::integer_traits<size_t>::const_max);
+    auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>(std::numeric_limits<size_t>::max());
     wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo%"));
 
     auto prepared = q.prepare(rdr);
@@ -2687,7 +2677,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>(irs::integer_traits<size_t>::const_max);
+    auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>(std::numeric_limits<size_t>::max());
     wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("f%x"));
 
     auto prepared = q.prepare(rdr);
@@ -2787,7 +2777,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_filter_options>(irs::integer_traits<size_t>::const_max);
+    auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_filter_options>(std::numeric_limits<size_t>::max());
     lt.max_distance = 1;
     lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fkx"));
 
@@ -2888,7 +2878,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& rt = q.mutable_options()->push_back<irs::by_range_options>(irs::integer_traits<size_t>::const_max);
+    auto& rt = q.mutable_options()->push_back<irs::by_range_options>(std::numeric_limits<size_t>::max());
     rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
     rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
     rt.range.min_type = irs::BoundType::INCLUSIVE;
@@ -6323,7 +6313,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    q.mutable_options()->push_back<irs::by_term_options>(irs::integer_traits<size_t>::const_max).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+    q.mutable_options()->push_back<irs::by_term_options>(std::numeric_limits<size_t>::max()).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
     q.mutable_options()->push_back<irs::by_term_options>(1).term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
     auto prepared = q.prepare(rdr);
@@ -6366,7 +6356,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    q.mutable_options()->push_back<irs::by_term_options>(irs::integer_traits<size_t>::const_max).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+    q.mutable_options()->push_back<irs::by_term_options>(std::numeric_limits<size_t>::max()).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
     q.mutable_options()->push_back<irs::by_term_options>(0).term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
     auto prepared = q.prepare(rdr);
@@ -6403,7 +6393,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& pt1 = q.mutable_options()->push_back<irs::by_prefix_options>(irs::integer_traits<size_t>::const_max);
+    auto& pt1 = q.mutable_options()->push_back<irs::by_prefix_options>(std::numeric_limits<size_t>::max());
     auto& pt2 = q.mutable_options()->push_back<irs::by_prefix_options>(0);
     pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
     pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
@@ -6442,7 +6432,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& pt = q.mutable_options()->push_back<irs::by_prefix_options>(irs::integer_traits<size_t>::const_max);
+    auto& pt = q.mutable_options()->push_back<irs::by_prefix_options>(std::numeric_limits<size_t>::max());
     pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
     q.mutable_options()->push_back<irs::by_term_options>(1).term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
@@ -6486,7 +6476,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>(irs::integer_traits<size_t>::const_max);
+    auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>(std::numeric_limits<size_t>::max());
     wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("f_x"));
     q.mutable_options()->push_back<irs::by_term_options>(1).term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
@@ -6530,7 +6520,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    q.mutable_options()->push_back<irs::by_term_options>(irs::integer_traits<size_t>::const_max).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+    q.mutable_options()->push_back<irs::by_term_options>(std::numeric_limits<size_t>::max()).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
     auto& pt = q.mutable_options()->push_back<irs::by_prefix_options>(1);
     pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
 
@@ -6574,7 +6564,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    q.mutable_options()->push_back<irs::by_term_options>(irs::integer_traits<size_t>::const_max).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+    q.mutable_options()->push_back<irs::by_term_options>(std::numeric_limits<size_t>::max()).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>(1);
     wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui%k"));
 
@@ -6618,7 +6608,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& pt1 = q.mutable_options()->push_back<irs::by_prefix_options>(irs::integer_traits<size_t>::const_max);
+    auto& pt1 = q.mutable_options()->push_back<irs::by_prefix_options>(std::numeric_limits<size_t>::max());
     auto& pt2 = q.mutable_options()->push_back<irs::by_prefix_options>(1);
     pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
     pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
@@ -6663,7 +6653,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& wt1 = q.mutable_options()->push_back<irs::by_wildcard_options>(irs::integer_traits<size_t>::const_max);
+    auto& wt1 = q.mutable_options()->push_back<irs::by_wildcard_options>(std::numeric_limits<size_t>::max());
     auto& wt2 = q.mutable_options()->push_back<irs::by_wildcard_options>(1);
     wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo%"));
     wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui%"));
@@ -6708,7 +6698,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>(irs::integer_traits<size_t>::const_max);
+    auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>(std::numeric_limits<size_t>::max());
     auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_filter_options>(1);
     wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo%"));
     lt.max_distance = 1;
@@ -7418,10 +7408,9 @@ TEST(by_phrase_test, ctor) {
   ASSERT_EQ(irs::by_phrase_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
 
-  auto& features = irs::by_phrase::required();
-  ASSERT_EQ(2, features.size());
-  ASSERT_TRUE(features.check<irs::frequency>());
-  ASSERT_TRUE(features.check<irs::position>());
+  static_assert(
+    (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) ==
+    irs::by_phrase::required());
 }
 
 TEST(by_phrase_test, boost) {
@@ -7876,17 +7865,16 @@ TEST(by_phrase_test, copy_move) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   phrase_filter_test,
   phrase_filter_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_3", "1_0"})
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      tests::format_info{"1_0"},
+      tests::format_info{"1_3", "1_0"})),
+  phrase_filter_test_case::to_string
 );

@@ -65,12 +65,14 @@ struct IRESEARCH_API by_same_position_options {
 class IRESEARCH_API by_same_position
     : public filter_with_options<by_same_position_options> {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns features required for filter
   //////////////////////////////////////////////////////////////////////////////
-  static const flags& required();
+  static constexpr IndexFeatures required() noexcept {
+    return IndexFeatures::FREQ | IndexFeatures::POS;
+  }
 
   using filter::prepare;
 

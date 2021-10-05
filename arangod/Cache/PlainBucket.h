@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_PLAIN_BUCKET_H
-#define ARANGODB_CACHE_PLAIN_BUCKET_H
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -164,4 +163,3 @@ static_assert(sizeof(PlainBucket) == BUCKET_SIZE,
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

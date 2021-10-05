@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOSH_UTILS_CLIENT_TASK_QUEUE_H
-#define ARANGOSH_UTILS_CLIENT_TASK_QUEUE_H 1
+#pragma once
 
 #include <memory>
 #include <queue>
@@ -229,7 +228,7 @@ inline bool ClientTaskQueue<JobData>::spawnWorkers(ClientManager& manager,
   try {
     MUTEX_LOCKER(lock, _workersLock);
     for (; spawned < numWorkers; spawned++) {
-      auto client = manager.getConnectedClient(false, false, true);
+      auto client = manager.getConnectedClient(false, false, true, spawned);
       auto worker = std::make_unique<Worker>(_server, *this, std::move(client));
       _workers.emplace_back(std::move(worker));
       _workers.back()->start();
@@ -409,4 +408,3 @@ inline void ClientTaskQueue<JobData>::Worker::run() {
 
 }  // namespace arangodb
 
-#endif

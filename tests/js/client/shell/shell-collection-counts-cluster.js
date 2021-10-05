@@ -33,7 +33,7 @@ const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const request = require("@arangodb/request");
 const _ = require("lodash");
-const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const { deriveTestSuite, getEndpointById, getMetric } = require('@arangodb/test-helper');
   
 const cn = "UnitTestsCollection";
 
@@ -64,10 +64,16 @@ let getCoordinators = function() {
   return getServers('coordinator');
 };
 
-let clearFailurePoints = function () {
+let clearFailurePoints = function (failurePointsToKeep) {
   getDBServers().forEach((server) => {
     // clear all failure points
     request({ method: "DELETE", url: server.url + "/_admin/debug/failat" });
+    failurePointsToKeep.forEach((fp) => {
+      getDBServers().forEach((server) => {
+        let result = request({ method: "PUT", url: server.url + "/_admin/debug/failat/" + encodeURIComponent(fp), body: {} });
+        assertEqual(200, result.status);
+      });
+    });
   });
 };
 
@@ -109,7 +115,7 @@ function BaseTestConfig () {
           }
         } else if (tries === 20) {
           // wait several seconds so we can be sure the
-          clearFailurePoints();
+          clearFailurePoints([]);
         }
         require("internal").sleep(0.5);
       }
@@ -161,7 +167,7 @@ function BaseTestConfig () {
 
       assertNotEqual(200, c.count());
       assertEqual(200, c.toArray().length);
-      clearFailurePoints();
+      clearFailurePoints([]);
 
       c.properties({ replicationFactor: 2 });
 
@@ -280,7 +286,7 @@ function BaseTestConfig () {
 
       assertNotEqual(200, c.count());
       assertEqual(200, c.toArray().length);
-      clearFailurePoints();
+      clearFailurePoints([]);
 
       c.properties({ replicationFactor: 2 });
 
@@ -346,7 +352,7 @@ function BaseTestConfig () {
 
       assertNotEqual(100000, c.count());
       assertEqual(100000, c.toArray().length);
-      clearFailurePoints();
+      clearFailurePoints([]);
 
       c.properties({ replicationFactor: 2 });
 
@@ -412,7 +418,7 @@ function BaseTestConfig () {
 
       assertNotEqual(200, c.count());
       assertEqual(200, c.toArray().length);
-      clearFailurePoints();
+      clearFailurePoints([]);
 
       c.properties({ replicationFactor: 3 });
 
@@ -543,7 +549,7 @@ function BaseTestConfig () {
 
       assertNotEqual(100000, c.count());
       assertEqual(100000, c.toArray().length);
-      clearFailurePoints();
+      clearFailurePoints([]);
 
       c.properties({ replicationFactor: 3 });
 
@@ -726,7 +732,7 @@ function BaseTestConfig () {
 
       assertEqual(101, c.toArray().length);
       
-      clearFailurePoints();
+      clearFailurePoints([]);
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -801,7 +807,7 @@ function BaseTestConfig () {
 
       assertEqual(101, c.toArray().length);
       
-      clearFailurePoints();
+      clearFailurePoints([]);
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -879,7 +885,7 @@ function BaseTestConfig () {
       assertEqual(101, c.toArray().length);
       assertEqual(101, c.count());
       
-      clearFailurePoints();
+      clearFailurePoints([]);
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -919,6 +925,94 @@ function BaseTestConfig () {
       }
       assertEqual(2 * 101, total);
     },
+    
+    testWrongCountOnFollowerIncrementalSyncManyFailures : function () {
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 }); 
+
+      let servers = getDBServers();
+      let shardInfo = c.shards(true);
+      let shard = Object.keys(shardInfo)[0];
+      assertEqual(2, shardInfo[shard].length);
+      let leader = shardInfo[shard][0];
+      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+      let follower = shardInfo[shard][1];
+      let followerUrl = servers.filter((server) => server.id === follower)[0].url;
+      
+      // set a failure point to get the counts wrong on the follower
+      let result = request({ method: "PUT", url: followerUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
+      assertEqual(200, result.status);
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i }); 
+      }
+      
+      // wait until we have an in-sync follower
+      let tries = 0;
+      while (tries++ < 120) {
+        shardInfo = c.shards(true);
+        servers = shardInfo[shard];
+        if (servers.length === 2) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+        
+      // follower count must be broken
+      result = request({ method: "GET", url: followerUrl + "/_api/collection/" + shard + "/count" });
+      assertEqual(200, result.status);
+      assertEqual(0, result.json.count);
+      
+      let rebuildFailuresBefore = getMetric(followerUrl, "arangodb_sync_rebuilds_total");
+      let checksumFailuresBefore = getMetric(followerUrl, "arangodb_sync_wrong_checksum_total");
+      
+      // set a failure point on the leader to drop the follower
+      result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/replicateOperationsDropFollower", body: {} });
+      assertEqual(200, result.status);
+      
+      // set failure points on the follower to always retry shard synchronization
+      result = request({ method: "PUT", url: followerUrl + "/_admin/debug/failat/SynchronizeShard%3A%3AnoSleepOnSyncError", body: {} });
+      assertEqual(200, result.status);
+      result = request({ method: "PUT", url: followerUrl + "/_admin/debug/failat/SynchronizeShard%3A%3AwrongChecksum", body: {} });
+      assertEqual(200, result.status);
+      result = request({ method: "PUT", url: followerUrl + "/_admin/debug/failat/disableCountAdjustment", body: {} });
+      assertEqual(200, result.status);
+      
+      c.insert({ _key: "test100" });
+
+      assertEqual(101, c.toArray().length);
+      assertEqual(101, c.count());
+    
+      tries = 0;
+      let rebuildFailuresAfter;
+      let checksumFailuresAfter;
+      while (tries++ < 120) {
+        rebuildFailuresAfter = getMetric(followerUrl, "arangodb_sync_rebuilds_total");
+        checksumFailuresAfter = getMetric(followerUrl, "arangodb_sync_wrong_checksum_total");
+
+        if (rebuildFailuresAfter > rebuildFailuresBefore) {
+          break;
+        }
+        require("internal").sleep(0.25);
+      }
+
+      assertTrue(rebuildFailuresAfter > rebuildFailuresBefore);
+      assertTrue(checksumFailuresAfter > checksumFailuresBefore);
+
+      // follower count must be ok now
+      tries = 0;
+      let count;
+      while (tries++ < 120) {
+        let result = request({ method: "GET", url: followerUrl + "/_api/collection/" + shard + "/count" });
+        assertEqual(200, result.status);
+        count = result.json.count;
+        
+        if (count === 101) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      assertEqual(101, count);
+    },
 
   };
 }
@@ -928,17 +1022,13 @@ function collectionCountsSuiteOldFormat () {
 
   let suite = {
     setUp : function () {
+      // this disables usage of the new collection format
+      clearFailurePoints(["disableRevisionsAsDocumentIds"]);
       db._drop(cn);
-      clearFailurePoints();
-      getDBServers().forEach((server) => {
-        // this disables usage of the new collection format
-        let result = request({ method: "PUT", url: server.url + "/_admin/debug/failat/disableRevisionsAsDocumentIds", body: {} });
-        assertEqual(200, result.status);
-      });
     },
 
     tearDown : function () {
-      clearFailurePoints();
+      clearFailurePoints([]);
       db._drop(cn);
     }
   };
@@ -952,12 +1042,12 @@ function collectionCountsSuiteNewFormat () {
 
   let suite = {
     setUp : function () {
+      clearFailurePoints([]);
       db._drop(cn);
-      clearFailurePoints();
     },
 
     tearDown : function () {
-      clearFailurePoints();
+      clearFailurePoints([]);
       db._drop(cn);
     }
   };

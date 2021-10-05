@@ -21,10 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_INDEX_H
-#define ARANGOD_INDEXES_INDEX_H 1
+#pragma once
 
 #include <iosfwd>
+#include <string_view>
 
 #include <velocypack/StringRef.h>
 
@@ -103,7 +103,8 @@ class Index {
     TRI_IDX_TYPE_TTL_INDEX,
     TRI_IDX_TYPE_PERSISTENT_INDEX,
     TRI_IDX_TYPE_IRESEARCH_LINK,
-    TRI_IDX_TYPE_NO_ACCESS_INDEX
+    TRI_IDX_TYPE_NO_ACCESS_INDEX,
+    TRI_IDX_TYPE_ZKD_INDEX
   };
   
   /// @brief: helper struct returned by index methods that determine the costs
@@ -123,7 +124,7 @@ class Index {
     
     static FilterCosts zeroCosts();
 
-    static FilterCosts defaultCosts(size_t itemsInIndex);
+    static FilterCosts defaultCosts(size_t itemsInIndex, size_t numLookups = 1);
   };
   
   /// @brief: helper struct returned by index methods that determine the costs
@@ -140,10 +141,9 @@ class Index {
     
     static SortCosts zeroCosts(size_t coveredAttributes);
     
-    static SortCosts defaultCosts(size_t itemsInIndex, bool isPersistent);
+    static SortCosts defaultCosts(size_t itemsInIndex);
   };
 
- public:
   /// @brief return the index id
   inline IndexId id() const { return _iid; }
 
@@ -157,7 +157,7 @@ class Index {
 
   /// @brief set the name, if it is currently unset
   void name(std::string const&);
-
+  
   /// @brief return the index fields
   inline std::vector<std::vector<arangodb::basics::AttributeName>> const& fields() const {
     return _fields;
@@ -267,17 +267,14 @@ class Index {
   /// @brief return the name of an index type
   static char const* oldtypeName(IndexType);
 
-  /// @brief validate an index id
-  static bool validateId(char const*);
-
-  /// @brief validate an index name
-  static bool validateName(char const*);
-
   /// @brief validate an index handle (collection name + / + index id)
-  static bool validateHandle(char const*, size_t*);
+  static bool validateHandle(bool extendedNames, arangodb::velocypack::StringRef handle) noexcept;
 
   /// @brief validate an index handle (by name) (collection name + / + index name)
-  static bool validateHandleName(char const*, size_t*);
+  static bool validateHandleName(bool extendedNames, arangodb::velocypack::StringRef name) noexcept;
+  
+  /// @brief validate an index id (i.e. ^[0-9]+$)
+  static bool validateId(std::string_view id);
 
   /// @brief generate a new index id
   static IndexId generateId();
@@ -290,10 +287,6 @@ class Index {
   static bool Compare(StorageEngine&, velocypack::Slice const& lhs,
                       velocypack::Slice const& rhs,
                       std::string const& dbname);
-
-  /// @brief whether or not the index is persistent (storage on durable media)
-  /// or not (RAM only)
-  virtual bool isPersistent() const = 0;
 
   virtual bool canBeDropped() const = 0;
 
@@ -375,7 +368,6 @@ class Index {
       std::underlying_type<Serialize>::type flags) const;
 
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
   virtual void load() = 0;
   virtual void unload() = 0;
@@ -414,7 +406,8 @@ class Index {
   virtual std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
                                                               aql::AstNode const* node,
                                                               aql::Variable const* reference,
-                                                              IndexIteratorOptions const& opts);
+                                                              IndexIteratorOptions const& opts,
+                                                              ReadOwnWrites readOwnWrites);
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,
@@ -442,8 +435,8 @@ class Index {
   /// @brief generate error result
   /// @param code the error key
   /// @param key the conflicting key
-  arangodb::Result& addErrorMsg(Result& r, int code,
-                                std::string const& key = "") {
+  arangodb::Result& addErrorMsg(Result& r, ErrorCode code,
+                                std::string const& key = "") const {
     if (code != TRI_ERROR_NO_ERROR) {
       r.reset(code);
       return addErrorMsg(r, key);
@@ -453,8 +446,8 @@ class Index {
 
   /// @brief generate error result
   /// @param key the conflicting key
-  arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
-  void addErrorMsg(result::Error& err, std::string const& key);
+  arangodb::Result& addErrorMsg(Result& r, std::string const& key = "") const;
+  void addErrorMsg(result::Error& err, std::string const& key) const;
 
   /// @brief extracts a timestamp value from a document
   /// returns a negative value if the document does not contain the specified
@@ -502,4 +495,3 @@ struct AttributeAccessParts {
 std::ostream& operator<<(std::ostream&, arangodb::Index const*);
 std::ostream& operator<<(std::ostream&, arangodb::Index const&);
 
-#endif

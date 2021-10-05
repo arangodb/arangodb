@@ -38,7 +38,7 @@ static bool testInternalIdValid(size_t id, std::vector<RegisterId> const& regs) 
     return true;
   }
   TRI_ASSERT(id < regs.size());
-  return regs[id] == RegisterPlan::MaxRegisterId;
+  return regs[id].value() == RegisterId::maxRegisterId;
 }
 
 InAndOutRowExpressionContext::InAndOutRowExpressionContext(

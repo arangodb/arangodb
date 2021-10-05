@@ -37,7 +37,10 @@
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ResultT.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterHelpers.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
@@ -194,12 +197,12 @@ void buildHealthResult(VPackBuilder& builder,
         VPackObjectBuilder obMember(&builder, serverId);
 
         builder.add(VPackObjectIterator(member.value));
-        if (serverId.compare(0, 4, "PRMR", 4) == 0) {
+        if (ClusterHelpers::isDBServerName(serverId)) {
           builder.add("Role", VPackValue("DBServer"));
           builder.add("CanBeDeleted",
                       VPackValue(VPackValue(member.value.get("Status").isEqualString("FAILED") &&
                                             canBeDeleted->count(serverId) == 1)));
-        } else if (serverId.compare(0, 4, "CRDN", 4) == 0) {
+        } else if (ClusterHelpers::isCoordinatorName(serverId)) {
           builder.add("Role", VPackValue("Coordinator"));
           builder.add("CanBeDeleted", VPackValue(member.value.get("Status").isEqualString("FAILED")));
         }
@@ -268,11 +271,34 @@ std::string const RestAdminClusterHandler::ResignLeadership =
     "resignLeadership";
 std::string const RestAdminClusterHandler::MoveShard = "moveShard";
 std::string const RestAdminClusterHandler::QueryJobStatus = "queryAgencyJob";
+std::string const RestAdminClusterHandler::CancelJob = "cancelAgencyJob";
 std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
+std::string const RestAdminClusterHandler::ShardStatistics = "shardStatistics";
 
 RestStatus RestAdminClusterHandler::execute() {
-  // No more check for admin rights here, since we handle this in every individual
+  // here we first do a glboal check, which is based on the setting in startup option
+  // `--cluster.api-jwt-policy`:
+  // - "jwt-all"    = JWT required to access all operations
+  // - "jwt-write"  = JWT required to access post/put/delete operations
+  // - "jwt-compat" = compatibility mode = same permissions as in 3.7 (default)
+  // this is a convenient way to lock the entire /_admin/cluster API for users w/o JWT.
+  if (!ExecContext::current().isSuperuser()) {
+    // no superuser... now check if the API policy is set to jwt-all or jwt-write.
+    // in this case only requests with valid JWT will have access to the operations
+    // (jwt-all = all operations require the JWT, jwt-write = POST/PUT/DELETE operations
+    // require the JWT, GET operations are handled as before).
+    bool const isWriteOperation =  (request()->requestType() != rest::RequestType::GET);
+    std::string const& apiJwtPolicy = server().getFeature<ClusterFeature>().apiJwtPolicy();
+
+    if (apiJwtPolicy == "jwt-all" ||
+        (apiJwtPolicy == "jwt-write" && isWriteOperation)) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+      return RestStatus::DONE;
+    }
+  }
+
+  // No further check for admin rights here, since we handle this in every individual
   // method below. Some of them do no longer require admin access
   // (e.g. /_admin/cluster/health). If you add a new API below here, please
   // make sure to check for permissions!
@@ -307,12 +333,16 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleResignLeadership();
     } else if (command == MoveShard) {
       return handleMoveShard();
+    } else if (command == CancelJob) {
+      return handleCancelJob();
     } else if (command == QueryJobStatus) {
       return handleQueryJobStatus();
     } else if (command == RemoveServer) {
       return handleRemoveServer();
     } else if (command == RebalanceShards) {
       return handleRebalanceShards();
+    } else if (command == ShardStatistics) {
+      return handleShardStatistics();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
@@ -415,12 +445,21 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
                     resetResponse(rest::ResponseCode::OK);
                     return futures::makeFuture();
                   } else if (result.statusCode() == fuerte::StatusPreconditionFailed) {
+                    TRI_IF_FAILURE("removeServer::noRetry") {
+                      generateError(result.asResult());
+                      return futures::makeFuture();
+                    }
                     return retryTryDeleteServer(std::move(ctx));
                   }
                 }
                 generateError(result.asResult());
                 return futures::makeFuture();
               });
+        }
+
+        TRI_IF_FAILURE("removeServer::noRetry") {
+          generateError(Result(TRI_ERROR_HTTP_PRECONDITION_FAILED));
+          return futures::makeFuture();
         }
 
         return retryTryDeleteServer(std::move(ctx));
@@ -438,14 +477,15 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
 RestStatus RestAdminClusterHandler::handlePostRemoveServer(std::string const& server) {
   auto ctx = std::make_unique<RemoveServerContext>(server);
 
-  return waitForFuture(tryDeleteServer(std::move(ctx))
-                           .thenError<VPackException>([this](VPackException const& e) {
-                             generateError(Result{e.errorCode(), e.what()});
-                           })
-                           .thenError<std::exception>([this](std::exception const& e) {
-                             generateError(rest::ResponseCode::SERVER_ERROR,
-                                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-                           }));
+  return waitForFuture(
+      tryDeleteServer(std::move(ctx))
+          .thenError<VPackException>([this](VPackException const& e) {
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+          })
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
 }
 
 RestStatus RestAdminClusterHandler::handleRemoveServer() {
@@ -479,6 +519,51 @@ RestStatus RestAdminClusterHandler::handleRemoveServer() {
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                 "expecting string or object with key `server`");
+  return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleShardStatistics() {
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+    return RestStatus::DONE;
+  }
+
+  if (!_vocbase.isSystem()) {
+    generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
+                  TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    return RestStatus::DONE;
+  }
+
+  std::string const& restrictServer = _request->value("DBserver");
+  bool details = _request->parsedValue("details", false);
+
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  VPackBuilder builder;
+  Result res;
+
+  if (restrictServer == "all") {
+    res = ci.getShardStatisticsGlobalByServer(builder);
+  } else if (details) {
+    res = ci.getShardStatisticsGlobalDetailed(restrictServer, builder);
+  } else {
+    res = ci.getShardStatisticsGlobal(restrictServer, builder);
+  }
+  if (res.ok()) {
+    generateOk(rest::ResponseCode::OK, builder.slice());
+  } else {
+    generateError(res);
+  }
+
   return RestStatus::DONE;
 }
 
@@ -648,18 +733,13 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
       .thenValue([this, ctx = std::move(ctx),
                   jobId = std::move(jobId)](AsyncAgencyCommResult&& result) {
         if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-          VPackBuffer<uint8_t> payload;
+          VPackBuilder builder;;
           {
-            VPackBuilder builder(payload);
             VPackObjectBuilder ob(&builder);
-            builder.add(StaticStrings::Error, VPackValue(false));
-            builder.add("code", VPackValue(int(ResponseCode::ACCEPTED)));
             builder.add("id", VPackValue(jobId));
           }
 
-          resetResponse(rest::ResponseCode::ACCEPTED);
-          response()->setPayload(std::move(payload));
-
+          generateOk(rest::ResponseCode::ACCEPTED, builder);
         } else {
           generateError(result.asResult());
         }
@@ -717,7 +797,7 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(std::unique_ptr<MoveShar
             return futures::makeFuture();
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -797,12 +877,160 @@ RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
           }));
+}
+
+RestStatus RestAdminClusterHandler::handleCancelJob() {
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  bool parseSuccess;
+  VPackSlice body = parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return RestStatus::DONE;
+  }
+
+  std::string jobId;
+  if (body.isObject() && body.hasKey("id") && body.get("id").isString()) {
+    jobId = body.get("id").copyString();
+  } else {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "object with key `id`");
+    return RestStatus::DONE;
+  }
+
+  auto targetPath = arangodb::cluster::paths::root()->arango()->target();
+  std::vector<std::string> paths = {
+      targetPath->pending()->job(jobId)->str(),
+      targetPath->failed()->job(jobId)->str(),
+      targetPath->finished()->job(jobId)->str(),
+      targetPath->toDo()->job(jobId)->str(),
+  };
+
+  try {
+    auto& agencyCache = server().getFeature<ClusterFeature>().agencyCache();
+    auto [acb, idx] = agencyCache.read(paths);
+    auto res = acb->slice();
+
+    auto paths = std::vector{
+      targetPath->pending()->job(jobId)->vec(),
+      targetPath->failed()->job(jobId)->vec(),
+      targetPath->finished()->job(jobId)->vec(),
+      targetPath->toDo()->job(jobId)->vec(),
+    };
+
+    for (auto const& path : paths) {
+      VPackSlice job = res.at(0).get(path);
+
+      if (job.isObject()) {
+        LOG_TOPIC("eb139", INFO, Logger::SUPERVISION)
+          << "Attempting to abort supervision job " << job.toJson();
+        auto type = job.get("type").stringView();
+         // only moveshard and cleanoutserver may be aborted
+        if (type != "moveShard" && type != "cleanOutServer") {
+          generateError(
+            Result{TRI_ERROR_BAD_PARAMETER, "Only MoveShard and CleanOutServer jobs can be aborted"});
+          return RestStatus::DONE;
+        } else if (path[2] != "Pending" && path[2] != "ToDo") {
+          generateError(Result{TRI_ERROR_BAD_PARAMETER, path[2] + " jobs can no longer be cancelled."});
+          return RestStatus::DONE;
+        }
+
+        // This tranaction aims at killing a job that is todo or pending.
+        // A todo job could be pending in the meantime however a pending
+        // job can never be todo again. Response ist evaluated in 412 result
+        // below.
+        auto sendTransaction = [&] {
+          VPackBuffer<uint8_t> trxBody;
+          { VPackBuilder builder(trxBody);
+            { VPackArrayBuilder trxs(&builder);
+              if (path[2] == "ToDo") {
+                VPackArrayBuilder trx(&builder);
+                { VPackObjectBuilder op(&builder);
+                  builder.add("arango/Target/ToDo/" + jobId + "/abort", VPackValue(true)); }
+                { VPackObjectBuilder pre(&builder);
+                  builder.add(VPackValue("arango/Target/ToDo/" + jobId));
+                  { VPackObjectBuilder val(&builder);
+                    builder.add("oldEmpty", VPackValue(false)); }}
+              }
+              VPackArrayBuilder trx(&builder);
+              { VPackObjectBuilder op(&builder);
+                builder.add("arango/Target/Pending/" + jobId + "/abort", VPackValue(true)); }
+              { VPackObjectBuilder pre(&builder);
+                builder.add(VPackValue("arango/Target/Pending/" + jobId));
+                { VPackObjectBuilder val(&builder);
+                  builder.add("oldEmpty", VPackValue(false)); }}
+            }
+          }
+          return AsyncAgencyComm().sendWriteTransaction(60s, std::move(trxBody));
+        };
+
+        return waitForFuture(
+          sendTransaction()
+          .thenValue([=](AsyncAgencyCommResult&& wr) {
+            if (!wr.ok()) {
+              // Only if no longer pending or todo.
+              if (wr.statusCode() == 412) {
+                auto results = wr.slice().get("results");
+                if (results[0].getNumber<uint64_t>() == 0 &&
+                    results[1].getNumber<uint64_t>() == 0) {
+                  generateError(
+                    Result{TRI_ERROR_HTTP_PRECONDITION_FAILED, "Job is no longer pending or to do"});
+                  return;
+                }
+              } else {
+                generateError(wr.asResult());
+                return;
+              }
+            }
+
+            VPackBuffer<uint8_t> payload;
+            {
+              VPackBuilder builder(payload);
+              VPackObjectBuilder ob(&builder);
+              builder.add("job", VPackValue(jobId));
+              builder.add("status", VPackValue("aborted"));
+              builder.add("error", VPackValue(false));
+            }
+            resetResponse(rest::ResponseCode::OK);
+            response()->setPayload(std::move(payload));
+          })
+          .thenError<VPackException>([this](VPackException const& e) {
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+          })
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
+      }
+    }
+
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+  }
+
+  return RestStatus::DONE;
 }
 
 RestStatus RestAdminClusterHandler::handleSingleServerJob(std::string const& job) {
@@ -864,23 +1092,19 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string cons
           .setValue(20s, jobToDoPath, builder.slice())
           .thenValue([this, jobId = std::move(jobId)](AsyncAgencyCommResult&& result) {
             if (result.ok() && result.statusCode() == 200) {
-              VPackBuffer<uint8_t> payload;
+              VPackBuilder builder;
               {
-                VPackBuilder builder(payload);
                 VPackObjectBuilder ob(&builder);
-                builder.add("error", VPackValue(false));
-                builder.add("code", VPackValue(int(ResponseCode::ACCEPTED)));
                 builder.add("id", VPackValue(jobId));
               }
 
-              resetResponse(rest::ResponseCode::ACCEPTED);
-              response()->setPayload(std::move(payload));
+              generateOk(arangodb::rest::ResponseCode::ACCEPTED, builder);
             } else {
               generateError(result.asResult());
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -941,7 +1165,7 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(std::string const& url
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -983,17 +1207,14 @@ RestStatus RestAdminClusterHandler::handleShardDistribution() {
   }
 
   auto reporter = cluster::ShardDistributionReporter::instance(server());
-  VPackBuffer<uint8_t> resultBody;
+
+  VPackBuilder builder;
   {
-    VPackBuilder result(resultBody);
-    VPackObjectBuilder body(&result);
-    result.add(VPackValue("results"));
-    reporter->getDistributionForDatabase(_vocbase.name(), result);
-    result.add(StaticStrings::Error, VPackValue(false));
-    result.add(StaticStrings::Code, VPackValue(200));
+    VPackObjectBuilder obj(&builder);
+    builder.add(VPackValue("results"));
+    reporter->getDistributionForDatabase(_vocbase.name(), builder);
   }
-  resetResponse(rest::ResponseCode::OK);
-  response()->setPayload(std::move(resultBody));
+  generateOk(rest::ResponseCode::OK, builder);
   return RestStatus::DONE;
 }
 
@@ -1005,17 +1226,14 @@ RestStatus RestAdminClusterHandler::handleGetCollectionShardDistribution(std::st
   }
 
   auto reporter = cluster::ShardDistributionReporter::instance(server());
-  VPackBuffer<uint8_t> resultBody;
+
+  VPackBuilder builder;
   {
-    VPackBuilder result(resultBody);
-    VPackObjectBuilder body(&result);
-    result.add(VPackValue("results"));
-    reporter->getCollectionDistributionForDatabase(_vocbase.name(), collection, result);
-    result.add(StaticStrings::Error, VPackValue(false));
-    result.add(StaticStrings::Code, VPackValue(200));
+    VPackObjectBuilder obj(&builder);
+    builder.add(VPackValue("results"));
+    reporter->getCollectionDistributionForDatabase(_vocbase.name(), collection, builder);
   }
-  resetResponse(rest::ResponseCode::OK);
-  response()->setPayload(std::move(resultBody));
+  generateOk(rest::ResponseCode::OK, builder);
   return RestStatus::DONE;
 }
 
@@ -1075,22 +1293,13 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
           .getValues(maintenancePath)
           .thenValue([this](AgencyReadResult&& result) {
             if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-              VPackBuffer<uint8_t> body;
-              {
-                VPackBuilder bodyBuilder(body);
-                VPackObjectBuilder ob(&bodyBuilder);
-                bodyBuilder.add(StaticStrings::Error, VPackValue(false));
-                bodyBuilder.add("result", result.value());
-              }  // use generateOk instead
-
-              resetResponse(rest::ResponseCode::OK);
-              response()->setPayload(std::move(body));
+              generateOk(rest::ResponseCode::OK, result.value());
             } else {
               generateError(result.asResult());
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -1125,16 +1334,12 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::waitForSupervisionS
                                "reactivated automatically in 60 minutes unless "
                                "this call is repeated until then."
                              : "Cluster supervision reactivated.";
-            VPackBuffer<uint8_t> body;
+            VPackBuilder builder;
             {
-              VPackBuilder bodyBuilder(body);
-              VPackObjectBuilder ob(&bodyBuilder);
-              bodyBuilder.add(StaticStrings::Error, VPackValue(false));
-              bodyBuilder.add("warning", VPackValue(msg));
+              VPackObjectBuilder obj(&builder);
+              builder.add("warning", VPackValue(msg));
             }
-
-            resetResponse(rest::ResponseCode::OK);
-            response()->setPayload(std::move(body));
+            generateOk(rest::ResponseCode::OK, builder);
           }
         } else {
           generateError(result.asResult());
@@ -1144,14 +1349,14 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::waitForSupervisionS
       });
 }
 
-RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActive) {
+RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActivate) {
   auto maintenancePath =
       arangodb::cluster::paths::root()->arango()->supervision()->maintenance();
 
   auto sendTransaction = [&] {
-    if (wantToActive) {
+    if (wantToActivate) {
       constexpr int timeout = 3600; // 1 hour
-      return AsyncAgencyComm().setValue(60s, maintenancePath, 
+      return AsyncAgencyComm().setValue(60s, maintenancePath,
           VPackValue(timepointToString(
               std::chrono::system_clock::now() + std::chrono::seconds(timeout))), 3600);
     } else {
@@ -1161,22 +1366,23 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActive) {
 
   auto self(shared_from_this());
 
-  return waitForFuture(sendTransaction()
-                           .thenValue([this, wantToActive](AsyncAgencyCommResult&& result) {
-                             if (result.ok() && result.statusCode() == 200) {
-                               return waitForSupervisionState(wantToActive);
-                             } else {
-                               generateError(result.asResult());
-                             }
-                             return futures::makeFuture();
-                           })
-                           .thenError<VPackException>([this](VPackException const& e) {
-                             generateError(Result{e.errorCode(), e.what()});
-                           })
-                           .thenError<std::exception>([this](std::exception const& e) {
-                             generateError(rest::ResponseCode::SERVER_ERROR,
-                                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-                           }));
+  return waitForFuture(
+      sendTransaction()
+          .thenValue([this, wantToActivate](AsyncAgencyCommResult&& result) {
+            if (result.ok() && result.statusCode() == 200) {
+              return waitForSupervisionState(wantToActivate);
+            } else {
+              generateError(result.asResult());
+            }
+            return futures::makeFuture();
+          })
+          .thenError<VPackException>([this](VPackException const& e) {
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+          })
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
 }
 
 RestStatus RestAdminClusterHandler::handlePutMaintenance() {
@@ -1264,9 +1470,8 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
             auto targetPath = arangodb::cluster::paths::root()->arango()->target();
 
             if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-              VPackBuffer<uint8_t> body;
+              VPackBuilder builder;
               {
-                VPackBuilder builder(body);
                 VPackObjectBuilder ob(&builder);
                 builder.add("numberOfDBServers",
                             result.slice().at(0).get(
@@ -1276,19 +1481,16 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
                                 targetPath->numberOfCoordinators()->vec()));
                 builder.add("cleanedServers", result.slice().at(0).get(
                                                   targetPath->cleanedServers()->vec()));
-                builder.add(StaticStrings::Error, VPackValue(false));
-                builder.add(StaticStrings::Code, VPackValue(200));
               }
 
-              resetResponse(rest::ResponseCode::OK);
-              response()->setPayload(std::move(body));
+              generateOk(rest::ResponseCode::OK, builder);
             } else {
               generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                             "agency communication failed");
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -1393,21 +1595,13 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
           .sendWriteTransaction(20s, std::move(trx))
           .thenValue([this](AsyncAgencyCommResult&& result) {
             if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-              VPackBuffer<uint8_t> responseBody;
-              {
-                VPackBuilder builder(responseBody);
-                VPackObjectBuilder ob(&builder);
-                builder.add(StaticStrings::Error, VPackValue(false));
-                builder.add("code", VPackValue(200));
-              }
-              response()->setPayload(std::move(responseBody));
-              resetResponse(rest::ResponseCode::OK);
+              generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
             } else {
               generateError(result.asResult());
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -1479,7 +1673,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
                             AsyncAgencyComm::RequestType::READ, VPackBuffer<uint8_t>())
           .thenValue([self](AsyncAgencyCommResult&& result) {
             // this lambda has to capture self since collect returns early on an
-            // exception and the RestHandle might be freed too early otherwise
+            // exception and the RestHandler might be freed too early otherwise
 
             if (result.fail() || result.statusCode() != fuerte::StatusOK) {
               THROW_ARANGO_EXCEPTION(result.asResult());
@@ -1532,23 +1726,19 @@ RestStatus RestAdminClusterHandler::handleHealth() {
             auto rootPath = arangodb::cluster::paths::root()->arango();
             auto& [configResult, storeResult] = result;
             if (storeResult.ok() && storeResult.statusCode() == fuerte::StatusOK) {
-              VPackBuffer<uint8_t> responseBody;
+              VPackBuilder builder;
               {
-                VPackBuilder builder(responseBody);
                 VPackObjectBuilder ob(&builder);
                 ::buildHealthResult(builder, configResult, storeResult.slice().at(0));
-                builder.add(StaticStrings::Error, VPackValue(false));
-                builder.add(StaticStrings::Code, VPackValue(200));
               }
-              resetResponse(rest::ResponseCode::OK);
-              response()->setPayload(std::move(responseBody));
+              generateOk(rest::ResponseCode::OK, builder);
             } else {
               generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                             "agency communication failed");
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -1701,16 +1891,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalance
 
   return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue([this](AsyncAgencyCommResult&& result) {
     if (result.ok() && result.statusCode() == 200) {
-      VPackBuffer<uint8_t> responseBody;
-      {
-        VPackBuilder builder(responseBody);
-        VPackObjectBuilder ob(&builder);
-        builder.add(StaticStrings::Error, VPackValue(false));
-        builder.add("code", VPackValue(202));
-      }
-      resetResponse(rest::ResponseCode::ACCEPTED);
-      response()->setPayload(std::move(responseBody));
-
+      generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
     } else {
       generateError(result.asResult());
     }
@@ -1748,12 +1929,13 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
     return RestStatus::DONE;
   }
 
-  return waitForFuture(handlePostRebalanceShards(algorithm)
-                           .thenError<VPackException>([this](VPackException const& e) {
-                             generateError(Result{e.errorCode(), e.what()});
-                           })
-                           .thenError<std::exception>([this](std::exception const& e) {
-                             generateError(rest::ResponseCode::SERVER_ERROR,
-                                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-                           }));
+  return waitForFuture(
+      handlePostRebalanceShards(algorithm)
+          .thenError<VPackException>([this](VPackException const& e) {
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+          })
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
 }

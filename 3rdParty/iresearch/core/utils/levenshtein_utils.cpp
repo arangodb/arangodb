@@ -22,9 +22,11 @@
 
 #include "levenshtein_utils.hpp"
 
-#include <unordered_map>
 #include <queue>
 #include <cmath>
+
+#include <absl/container/flat_hash_map.h>
+#include <absl/hash/hash.h>
 
 #include "shared.hpp"
 #include "store/store_utils.hpp"
@@ -157,6 +159,8 @@ class parametric_state {
     return positions_.end();
   }
 
+  size_t size() const noexcept { return positions_.size(); }
+
   bool empty() const noexcept { return positions_.empty(); }
 
   void clear() noexcept { return positions_.clear(); }
@@ -213,20 +217,32 @@ class parametric_states {
 
  private:
   struct parametric_state_hash {
+    static size_t seed() noexcept {
+      return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(SEED));
+    }
+
     bool operator()(const parametric_state& state) const noexcept {
-      size_t seed = 0;
+      size_t seed = parametric_state_hash::seed();
       for (auto& pos: state) {
-        seed = irs::hash_combine(seed, pos.offset);
-        seed = irs::hash_combine(seed, pos.distance);
-        seed = irs::hash_combine(seed, pos.transpose);
+        const size_t hash = absl::hash_internal::CityHashState::hash(
+          size_t(pos.offset) << 33  |
+          size_t(pos.distance) << 1 |
+          size_t(pos.transpose));
+
+        seed = irs::hash_combine(seed, hash);
       }
       return seed;
     }
+
+    static const void* SEED;
   };
 
-  std::unordered_map<parametric_state, uint32_t, parametric_state_hash> states_;
+  absl::flat_hash_map<parametric_state, uint32_t, parametric_state_hash> states_;
   std::vector<const parametric_state*> states_by_id_;
 }; // parametric_states
+
+const void* parametric_states::parametric_state_hash::SEED
+  = &parametric_states::parametric_state_hash::SEED;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds elementary transition denoted by 'pos' to parametric state
@@ -391,7 +407,7 @@ std::vector<character> make_alphabet(
   // ensure we have enough capacity
   const auto capacity = utf8_size + bits_required<bitset::word_t>();
 
-  begin->cp = fst::fsa::kRho;
+  begin->cp = std::numeric_limits<uint32_t>::max();
   begin->chi.reset(capacity);
   ++begin;
 
@@ -566,6 +582,7 @@ parametric_description read(data_input& in) {
 
 automaton make_levenshtein_automaton(
     const parametric_description& description,
+    const bytes_ref& prefix,
     const bytes_ref& target) {
   assert(description);
 
@@ -597,18 +614,31 @@ automaton make_levenshtein_automaton(
   UNUSED(invalid_state);
 
   // initial state
-  a.SetStart(a.AddState());
+  auto start_state = a.AddState();
+  a.SetStart(start_state);
+
+  auto begin = prefix.begin();
+  auto end = prefix.end();
+  decltype(start_state) to;
+  for (; begin != end; ) {
+    const byte_type* next = utf8_utils::next(begin, end);
+    to = a.AddState();
+    auto dist = std::distance(begin, next);
+    irs::utf8_emplace_arc(a, start_state, bytes_ref(begin, dist), to);
+    start_state = to;
+    begin = next;
+  }
 
   // check if start state is final
   const auto distance = description.distance(1, utf8_size);
 
   if (distance <= description.max_distance()) {
-    a.SetFinal(a.Start(), {true, distance});
+    a.SetFinal(start_state, {true, distance});
   }
 
   // state stack
   std::vector<state> stack;
-  stack.emplace_back(0, 1, a.Start());  // 0 offset, 1st parametric state, initial automaton state
+  stack.emplace_back(0, 1, start_state);  // 0 offset, 1st parametric state, initial automaton state
 
   std::vector<std::pair<bytes_ref, automaton::StateId>> arcs;
   arcs.resize(utf8_size); // allocate space for max possible number of arcs
@@ -654,12 +684,12 @@ automaton make_levenshtein_automaton(
 
     if (INVALID_STATE == default_state && arcs.empty()) {
       // optimization for invalid terminal state
-      a.EmplaceArc(state.from, fst::fsa::kRho, INVALID_STATE);
+      a.EmplaceArc(state.from, range_label{0, 255}, INVALID_STATE);
     } else if (INVALID_STATE == default_state && ascii && !a.Final(state.from)) {
       // optimization for ascii only input without default state and weight
       for (auto& arc: arcs) {
         assert(1 == arc.first.size());
-        a.EmplaceArc(state.from, arc.first.front(), arc.second);
+        a.EmplaceArc(state.from, range_label::fromRange(arc.first.front()), arc.second);
       }
     } else {
       builder.insert(a, state.from, default_state, arcs.begin(), arcs.end());
@@ -698,7 +728,7 @@ size_t edit_distance(const parametric_description& description,
     const auto c = utf8_utils::next(rhs);
 
     const auto begin = lhs_chars.begin() + ptrdiff_t(offset);
-    const auto end = std::min(begin + ptrdiff_t(description.chi_size()), lhs_chars.end());
+    const auto end = lhs_chars.begin() + std::min(offset + description.chi_size(), static_cast<uint64_t>(lhs_chars.size()));
     const auto chi = ::chi(begin, end, c);
     const auto& transition = description.transition(state, chi);
 
@@ -737,7 +767,7 @@ bool edit_distance(
     }
 
     const auto begin = lhs_chars.begin() + ptrdiff_t(offset);
-    const auto end = std::min(begin + ptrdiff_t(description.chi_size()), lhs_chars.end());
+    const auto end = lhs_chars.begin() + std::min(offset + description.chi_size(), static_cast<uint64_t>(lhs_chars.size()));
     const auto chi = ::chi(begin, end, c);
     const auto& transition = description.transition(state, chi);
 

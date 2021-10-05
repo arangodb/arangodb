@@ -21,8 +21,7 @@
 /// @author Andreas Streichardt <andreas@arangodb.com>
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_AUTHENTICATION_FEATURE_H
-#define APPLICATION_FEATURES_AUTHENTICATION_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/TokenCache.h"
@@ -67,12 +66,12 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   }
 
   bool hasUserdefinedJwt() const;
-  /// secret used for signing & verification secrets
-  std::string jwtActiveSecret() const;
 #ifdef USE_ENTERPRISE
   /// verification only secrets
   std::pair<std::string, std::vector<std::string>> jwtSecrets() const;
 #endif
+
+  double sessionTimeout() const { return _sessionTimeout; }
   
   // load secrets from file(s)
   [[nodiscard]] Result loadJwtSecretsFromFile();
@@ -92,6 +91,7 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   bool _localAuthentication;
   bool _active;
   double _authenticationTimeout;
+  double _sessionTimeout;
   
   mutable std::mutex _jwtSecretsLock;
 
@@ -109,4 +109,3 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
 
 }  // namespace arangodb
 
-#endif

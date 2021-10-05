@@ -28,14 +28,16 @@
 #include "s2/s2point_region.h"
 #include "s2/s2latlng.h"
 
-#include "analysis/analyzers.hpp"
 
+#include "analysis/analyzers.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
-
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
 #include "IResearch/Geo.h"
+
+
+
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
@@ -233,7 +235,7 @@ irs::analysis::analyzer::ptr make(
     return nullptr;
   }
 
-  return std::make_shared<Analyzer>(opts);
+  return std::make_unique<Analyzer>(opts);
 }
 
 }

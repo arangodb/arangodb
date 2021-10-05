@@ -27,6 +27,9 @@
 
 #include "tests_shared.hpp" 
 #include "iql/query_builder.hpp"
+#include "index/field_meta.hpp"
+#include "index/norm.hpp"
+#include "index/field_meta.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/lz4compression.hpp"
@@ -80,25 +83,23 @@ bool token_stream_payload::next() {
 // ----------------------------------------------------------------------------
 
 string_field::string_field(
-    const irs::string_ref& name,
-    const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }) {
-  features_ |= extra_features;
-  this->name(name);
+    const std::string& name,
+    irs::IndexFeatures index_features,
+    const std::vector<irs::type_info::type_id>& extra_features) {
+  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
+  features_ = extra_features;
+  name_ = name;
 }
 
 string_field::string_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::string_ref& value,
-    const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-  ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }),
-     value_(value) {
-  features_ |= extra_features;
-  this->name(name);
-}
-
-const irs::flags& string_field::features() const {
-  return features_;
+    irs::IndexFeatures index_features,
+    const std::vector<irs::type_info::type_id>& extra_features)
+  : value_(value) {
+  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
+  features_ = extra_features;
+  name_ = name;
 }
 
 // reject too long terms
@@ -127,25 +128,23 @@ irs::token_stream& string_field::get_tokens() const {
 // ----------------------------------------------------------------------------
 
 string_ref_field::string_ref_field(
-    const irs::string_ref& name,
-    const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }) {
-  features_ |= extra_features;
-  this->name(name);
+    const std::string& name,
+    irs::IndexFeatures extra_index_features,
+    const std::vector<irs::type_info::type_id>& extra_features) {
+  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
+  features_ = extra_features;
+  name_ = name;
 }
 
 string_ref_field::string_ref_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::string_ref& value,
-    const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-  ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }),
-     value_(value) {
-  features_ |= extra_features;
-  this->name(name);
-}
-
-const irs::flags& string_ref_field::features() const {
-  return features_;
+    irs::IndexFeatures extra_index_features,
+    const std::vector<irs::type_info::type_id>& extra_features)
+  : value_(value) {
+  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
+  features_ = extra_features;
+  name_ = name;
 }
 
 // truncate very long terms
@@ -182,14 +181,14 @@ void europarl_doc_template::init() {
   {
     insert(std::make_shared<tests::long_field>());
     auto& field = static_cast<tests::long_field&>(indexed.back());
-    field.name(irs::string_ref("date"));
+    field.name("date");
   }
   insert(std::make_shared<tests::templates::string_field>("datestr"));
   insert(std::make_shared<tests::templates::string_field>("body"));
   {
     insert(std::make_shared<tests::int_field>());
     auto& field = static_cast<tests::int_field&>(indexed.back());
-    field.name(irs::string_ref("id"));
+    field.name("id");
   }
   insert(std::make_shared<string_field>("idstr"));
 }
@@ -240,30 +239,27 @@ void generic_json_field_factory(
     const std::string& name,
     const json_doc_generator::json_value& data) {
   if (json_doc_generator::ValueType::STRING == data.vt) {
-    doc.insert(std::make_shared<templates::string_field>(
-      irs::string_ref(name),
-      data.str
-    ));
+    doc.insert(std::make_shared<templates::string_field>(name, data.str));
   } else if (json_doc_generator::ValueType::NIL == data.vt) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<tests::double_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(data.as_number<double_t>());
   }
 }
@@ -278,65 +274,58 @@ void payloaded_json_field_factory(
     // analyzed && pyaloaded
     doc.indexed.push_back(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl_pay",
-      data.str,
-      true
-    ));
+      data.str, true));
 
     // analyzed field
     doc.indexed.push_back(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl",
-      data.str
-    ));
+      data.str));
 
     // not analyzed field
-    doc.insert(std::make_shared<templates::string_field>(
-      irs::string_ref(name),
-      data.str
-    ));
+    doc.insert(std::make_shared<templates::string_field>(name, data.str));
   } else if (json_doc_generator::ValueType::NIL == data.vt) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<tests::double_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(data.as_number<double_t>());
   }
 }
 
 void normalized_string_json_field_factory(
-  tests::document& doc,
-  const std::string& name,
-  const json_doc_generator::json_value& data) {
-  static irs::flags norm{ irs::type<irs::norm>::get() };
+    tests::document& doc,
+    const std::string& name,
+    const json_doc_generator::json_value& data) {
   if (json_doc_generator::ValueType::STRING == data.vt) {
-    doc.insert(std::make_shared<templates::string_field>(
-      irs::string_ref(name),
-      data.str,
-      norm
-      ));
+    doc.insert(
+      std::make_shared<templates::string_field>(
+        name,
+        data.str,
+        irs::IndexFeatures::NONE,
+        std::vector<irs::type_info::type_id>{ irs::type<irs::norm>::id() }));;
   } else {
     generic_json_field_factory(doc, name, data);
   }
 }
 
-std::string to_string(const testing::TestParamInfo<index_test_context>& info) {
-  dir_factory_f factory;
-  format_info codec;
-  std::tie(factory, codec) = info.param;
+/*static*/ std::string index_test_base::to_string(
+    const testing::TestParamInfo<index_test_context>& info) {
+  auto [factory, codec] = info.param;
 
   std::string str = (*factory)(nullptr).second;
   if (codec.codec) {
@@ -348,7 +337,7 @@ std::string to_string(const testing::TestParamInfo<index_test_context>& info) {
 }
 
 std::shared_ptr<irs::directory> index_test_base::get_directory(const test_base& ctx) const {
-  dir_factory_f factory;
+  dir_param_f factory;
   std::tie(factory, std::ignore) = GetParam();
 
   return (*factory)(&ctx).first;
@@ -366,13 +355,12 @@ irs::format::ptr index_test_base::get_codec() const {
 class index_test_case : public tests::index_test_base {
  public:
   void assert_index(size_t skip = 0, irs::automaton_table_matcher* matcher = nullptr) const {
-    index_test_base::assert_index(irs::flags(), skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::NONE, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::FREQ, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY, skip, matcher);
   }
 
   void clear_writer() {
@@ -380,10 +368,7 @@ class index_test_case : public tests::index_test_base {
       resource("simple_sequential.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
-          data.str
-        ));
+        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
       }
     });
 
@@ -406,16 +391,13 @@ class index_test_case : public tests::index_test_base {
         auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
         ASSERT_TRUE(insert(*data_writer,
           doc1->indexed.begin(), doc1->indexed.end(),
-          doc1->stored.begin(), doc1->stored.end()
-        ));
+          doc1->stored.begin(), doc1->stored.end()));
         ASSERT_TRUE(insert(*data_writer,
           doc2->indexed.begin(), doc2->indexed.end(),
-          doc2->stored.begin(), doc2->stored.end()
-        ));
+          doc2->stored.begin(), doc2->stored.end()));
         ASSERT_TRUE(insert(*data_writer,
           doc3->indexed.begin(), doc3->indexed.end(),
-          doc3->stored.begin(), doc3->stored.end()
-        ));
+          doc3->stored.begin(), doc3->stored.end()));
         data_writer->commit();
 
         auto reader = irs::directory_reader::open(data_dir);
@@ -453,7 +435,7 @@ class index_test_case : public tests::index_test_base {
 
       // add insert/remove/import
       {
-        auto query_doc4 = iresearch::iql::query_builder().build("name==D", std::locale::classic());
+        auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
         auto reader = irs::directory_reader::open(data_dir);
 
         ASSERT_TRUE(insert(*writer,
@@ -560,8 +542,7 @@ class index_test_case : public tests::index_test_base {
     {
       tests::json_doc_generator gen(
         resource("simple_single_column_multi_term.json"),
-        &tests::payloaded_json_field_factory
-      );
+        &tests::payloaded_json_field_factory);
       add_segment(gen);
     }
 
@@ -584,7 +565,7 @@ class index_test_case : public tests::index_test_base {
       expected_segments.emplace_back(expected_index[0]);
       expected_terms.emplace_back(expected_segments.back().field("name_anl_pay"));
       ASSERT_TRUE(nullptr != expected_terms.back());
-      expected_term_itrs.emplace_back(expected_terms.back()->iterator());
+      expected_term_itrs.emplace_back(expected_terms.back()->iterator(irs::SeekMode::NORMAL));
       ASSERT_FALSE(!expected_term_itrs.back());
     }
 
@@ -607,8 +588,8 @@ class index_test_case : public tests::index_test_base {
               std::lock_guard<std::mutex> lock(mutex);
             }
 
-            auto act_term_itr = act_terms->iterator();
-            auto exp_terms_itr = exp_terms->iterator();
+            auto act_term_itr = act_terms->iterator(irs::SeekMode::NORMAL);
+            auto exp_terms_itr = exp_terms->iterator(irs::SeekMode::NORMAL);
             ASSERT_FALSE(!act_term_itr);
             ASSERT_FALSE(!exp_terms_itr);
 
@@ -627,7 +608,7 @@ class index_test_case : public tests::index_test_base {
 
     // validate docs async
     {
-      auto actual_term_itr = actual_terms->iterator();
+      auto actual_term_itr = actual_terms->iterator(irs::SeekMode::NORMAL);
 
       while (actual_term_itr->next()) {
         for (size_t i = 0; i < thread_count; ++i) {
@@ -645,7 +626,9 @@ class index_test_case : public tests::index_test_base {
             auto& exp_term_itr = expected_term_itrs[i];
 
             pool.run([&mutex, &act_term_itr, &exp_term_itr]()->void {
-              const irs::flags features({ irs::type<irs::frequency>::get(), irs::type<irs::offset>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get() });
+              constexpr irs::IndexFeatures features =
+                irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+                irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
               irs::doc_iterator::ptr act_docs_itr;
               irs::doc_iterator::ptr exp_docs_itr;
 
@@ -718,48 +701,35 @@ class index_test_case : public tests::index_test_base {
     // use global allocator everywhere
     {
       irs::memory_directory dir;
-      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
 
       // open writer
       auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
-      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
     }
 
     // use global allocator in directory
     {
       irs::memory_directory dir;
-      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
 
       // open writer
       irs::index_writer::init_options options;
-      options.memory_pool_size = 42;
       auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE, options);
       ASSERT_NE(nullptr, writer);
-      auto* alloc_attr = dir.attributes().get<irs::memory_allocator>();
-      ASSERT_NE(nullptr, alloc_attr);
-      ASSERT_NE(nullptr, *alloc_attr);
-      ASSERT_NE(&irs::memory_allocator::global(), alloc_attr->get());
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
     }
 
     // use memory directory allocator everywhere
     {
-      irs::memory_directory dir(42);
-      auto* alloc_attr_before = dir.attributes().get<irs::memory_allocator>();
-      ASSERT_NE(nullptr, alloc_attr_before);
-      ASSERT_NE(nullptr, *alloc_attr_before);
-      ASSERT_EQ(alloc_attr_before->get(), &irs::directory_utils::get_allocator(dir));
+      irs::memory_directory dir{irs::directory_attributes{42}};
+      ASSERT_NE(&irs::memory_allocator::global(), &dir.attributes().allocator());
 
       // open writer
       auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
-      auto* alloc_attr_after = dir.attributes().get<irs::memory_allocator>();
-      ASSERT_EQ(alloc_attr_after, alloc_attr_before);
-      ASSERT_EQ(*alloc_attr_after, *alloc_attr_before);
-      ASSERT_EQ(alloc_attr_after->get(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_NE(&irs::memory_allocator::global(), &dir.attributes().allocator());
     }
   }
 
@@ -779,7 +749,7 @@ class index_test_case : public tests::index_test_base {
       ASSERT_NE(nullptr, writer);
 
       writer->commit();
-      iresearch::directory_cleaner::clean(dir());
+      irs::directory_cleaner::clean(dir());
       // can't open another writer at the same time on the same directory
       ASSERT_THROW(irs::index_writer::make(dir(), codec(), irs::OM_CREATE), irs::lock_obtain_failed);
       ASSERT_EQ(0, writer->buffered_docs());
@@ -868,9 +838,8 @@ class index_test_case : public tests::index_test_base {
     {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_APPEND);
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"), 
-        &tests::generic_json_field_factory
-      );
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       ASSERT_EQ(0, writer->buffered_docs());
       ASSERT_TRUE(
@@ -898,8 +867,7 @@ class index_test_case : public tests::index_test_base {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_APPEND | irs::OM_CREATE);
       tests::json_doc_generator gen(
         resource("simple_sequential.json"),
-        &tests::generic_json_field_factory
-      );
+        &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       ASSERT_EQ(0, writer->buffered_docs());
       ASSERT_TRUE(
@@ -928,10 +896,7 @@ class index_test_case : public tests::index_test_base {
       resource("simple_sequential.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (tests::json_doc_generator::ValueType::STRING == data.vt) {
-          doc.insert(std::make_shared<tests::templates::string_field>(
-            irs::string_ref(name),
-            data.str
-          ));
+          doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
         }
       });
       tests::document const* doc1 = gen.next();
@@ -939,21 +904,15 @@ class index_test_case : public tests::index_test_base {
 
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
 
-      ASSERT_TRUE(
-        insert(*writer,
-          doc1->indexed.begin(), doc1->indexed.end(),
-          doc1->stored.begin(), doc1->stored.end()
-        )
-      );
+      ASSERT_TRUE(insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()));
       ASSERT_EQ(1, writer->buffered_docs());
       writer->begin(); // start transaction #1 
       ASSERT_EQ(0, writer->buffered_docs());
-      ASSERT_TRUE(
-        insert(*writer,
-          doc2->indexed.begin(), doc2->indexed.end(),
-          doc2->stored.begin(), doc2->stored.end()
-        )
-      ); // add another document while transaction in opened
+      ASSERT_TRUE(insert(*writer,
+        doc2->indexed.begin(), doc2->indexed.end(),
+        doc2->stored.begin(), doc2->stored.end())); // add another document while transaction in opened
       ASSERT_EQ(1, writer->buffered_docs());
       writer->commit(); // finish transaction #1
       ASSERT_EQ(1, writer->buffered_docs()); // still have 1 buffered document not included into transaction #1
@@ -991,9 +950,9 @@ class index_test_case : public tests::index_test_base {
           auto values = column->values();
           auto terms = segment.field("same");
           ASSERT_NE(nullptr, terms);
-          auto termItr = terms->iterator();
+          auto termItr = terms->iterator(irs::SeekMode::NORMAL);
           ASSERT_TRUE(termItr->next());
-          auto docsItr = termItr->postings(iresearch::flags());
+          auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
           ASSERT_TRUE(docsItr->next());
           ASSERT_TRUE(values(docsItr->value(), actual_value));
           ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1008,9 +967,9 @@ class index_test_case : public tests::index_test_base {
           auto values = column->values();
           auto terms = segment.field("same");
           ASSERT_NE(nullptr, terms);
-          auto termItr = terms->iterator();
+          auto termItr = terms->iterator(irs::SeekMode::NORMAL);
           ASSERT_TRUE(termItr->next());
-          auto docsItr = termItr->postings(iresearch::flags());
+          auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
           ASSERT_TRUE(docsItr->next());
           ASSERT_TRUE(values(docsItr->value(), actual_value));
           ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1021,9 +980,8 @@ class index_test_case : public tests::index_test_base {
 
   void writer_begin_rollback() {
     tests::json_doc_generator gen(
-      resource("simple_sequential.json"), 
-      &tests::generic_json_field_factory
-    );
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
 
     irs::bytes_ref actual_value;
 
@@ -1034,12 +992,9 @@ class index_test_case : public tests::index_test_base {
     {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
 
-      ASSERT_TRUE(
-        insert(*writer,
-          doc1->indexed.begin(), doc1->indexed.end(),
-          doc1->stored.begin(), doc1->stored.end()
-        )
-      );
+      ASSERT_TRUE(insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()));
       writer->rollback(); // does nothing
       ASSERT_EQ(1, writer->buffered_docs());
       ASSERT_TRUE(writer->begin());
@@ -1069,8 +1024,7 @@ class index_test_case : public tests::index_test_base {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
       ASSERT_TRUE(insert(*writer,
         doc2->indexed.begin(), doc2->indexed.end(),
-        doc2->stored.begin(), doc2->stored.end()
-      ));
+        doc2->stored.begin(), doc2->stored.end()));
       ASSERT_TRUE(writer->begin()); // prepare for commit tx #1
       writer->commit(); // commit tx #1
       auto file_count = 0;
@@ -1080,11 +1034,10 @@ class index_test_case : public tests::index_test_base {
       auto file_count_before = file_count;
       ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
-        doc3->stored.begin(), doc3->stored.end()
-      ));
+        doc3->stored.begin(), doc3->stored.end()));
       ASSERT_TRUE(writer->begin()); // prepare for commit tx #2
       writer->rollback(); // rollback tx #2
-      iresearch::directory_utils::remove_all_unreferenced(dir());
+      irs::directory_utils::remove_all_unreferenced(dir());
       file_count = 0;
       dir().visit(dir_visitor);
       ASSERT_EQ(file_count_before, file_count); // ensure rolled back file refs were released
@@ -1097,9 +1050,9 @@ class index_test_case : public tests::index_test_base {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -1108,7 +1061,8 @@ class index_test_case : public tests::index_test_base {
   }
 
   void concurrent_read_single_column_smoke() {
-    tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
+    tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                  &tests::generic_json_field_factory);
     std::vector<const tests::document*> expected_docs;
 
     // write some data into columnstore
@@ -1136,8 +1090,7 @@ class index_test_case : public tests::index_test_base {
             return false;
           }
           auto values = column->values();
-          const auto docs = segment.docs_count();
-          for (iresearch::doc_id_t doc = (iresearch::type_limits<iresearch::type_t::doc_id_t>::min)(), max = segment.docs_count(); doc <= max; ++doc) {
+          for (irs::doc_id_t doc = (irs::type_limits<irs::type_t::doc_id_t>::min)(), max = segment.docs_count(); doc <= max; ++doc) {
             if (!values(doc, actual_value)) {
               return false;
             }
@@ -1238,7 +1191,7 @@ class index_test_case : public tests::index_test_base {
 
     // read columns 
     {
-      auto visit_column = [&segment] (const iresearch::string_ref& column_name) {
+      auto visit_column = [&segment] (const irs::string_ref& column_name) {
         auto* meta = segment.column(column_name);
         if (!meta) {
           return false;
@@ -1280,13 +1233,12 @@ class index_test_case : public tests::index_test_base {
         return column->visit(visitor);
       };
 
-      auto read_column_offset = [&segment](const iresearch::string_ref& column_name, irs::doc_id_t offset) {
+      auto read_column_offset = [&segment](const irs::string_ref& column_name, irs::doc_id_t offset) {
         auto* meta = segment.column(column_name);
         if (!meta) {
           return false;
         }
 
-        irs::doc_id_t expected_id = 0;
         csv_doc_template_t csv_doc_template;
         tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
         const tests::document* doc = nullptr;
@@ -1396,8 +1348,8 @@ class index_test_case : public tests::index_test_base {
       std::vector<int> results(thread_count, 0);
       std::vector<std::thread> pool;
 
-      const iresearch::string_ref id_column = "id";
-      const iresearch::string_ref label_column = "label";
+      const irs::string_ref id_column = "id";
+      const irs::string_ref label_column = "label";
 
       std::mutex mutex;
       bool ready = false;
@@ -1477,13 +1429,11 @@ class index_test_case : public tests::index_test_base {
         return name_;
       }
 
-      float_t boost() const {
-        return 1.f;
+      irs::IndexFeatures index_features() const {
+        return irs::IndexFeatures::NONE;
       }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       irs::token_stream& get_tokens() const {
         stream_.reset(name_);
@@ -1686,9 +1636,7 @@ class index_test_case : public tests::index_test_base {
         return name_;
       }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output&) const noexcept {
         return true;
@@ -1887,14 +1835,14 @@ class index_test_case : public tests::index_test_base {
           value_(std::move(other.value_)) {
       }
       irs::string_ref name() const { return name_; }
-      float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
         stream_->reset(value_);
         return *stream_;
       }
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
+      irs::IndexFeatures index_features() const {
+        return irs::IndexFeatures::NONE;
       }
+      irs::features_t features() const { return {}; }
 
       private:
       mutable std::unique_ptr<irs::string_token_stream> stream_;
@@ -1943,7 +1891,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_NE(nullptr, field);
         ASSERT_EQ(1, field->size());
         ASSERT_EQ(2, field->docs_count());
-        auto term = field->iterator();
+        auto term = field->iterator(irs::SeekMode::NORMAL);
         ASSERT_TRUE(term->next());
         ASSERT_EQ(0, term->value().size());
         ASSERT_FALSE(term->next());
@@ -1954,7 +1902,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_NE(nullptr, field);
         ASSERT_EQ(1, field->size());
         ASSERT_EQ(1, field->docs_count());
-        auto term = field->iterator();
+        auto term = field->iterator(irs::SeekMode::NORMAL);
         ASSERT_TRUE(term->next());
         ASSERT_EQ(0, term->value().size());
         ASSERT_FALSE(term->next());
@@ -1965,13 +1913,15 @@ class index_test_case : public tests::index_test_base {
   void writer_bulk_insert() {
     class indexed_and_stored_field {
      public:
-      indexed_and_stored_field(std::string&& name, const irs::string_ref& value, bool stored_valid = true, bool indexed_valid = true)
+      indexed_and_stored_field(
+          std::string&& name, const irs::string_ref& value,
+          bool stored_valid = true, bool indexed_valid = true)
         : stream_(std::make_unique<irs::string_token_stream>()),
           name_(std::move(name)),
           value_(value),
           stored_valid_(stored_valid) {
         if (!indexed_valid) {
-          features_.add<tests::incompatible_attribute>();
+          index_features_ |= irs::IndexFeatures::FREQ;
         }
       }
       indexed_and_stored_field(indexed_and_stored_field&& other) noexcept
@@ -1982,13 +1932,15 @@ class index_test_case : public tests::index_test_base {
           stored_valid_(other.stored_valid_) {
       }
       irs::string_ref name() const { return name_; }
-      float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
         stream_->reset(value_);
         return *stream_;
       }
-      const irs::flags& features() const {
-        return features_;
+      irs::IndexFeatures index_features() const {
+        return index_features_;
+      }
+      irs::features_t features() const {
+        return { features_.data(), features_.size() };
       }
       bool write(irs::data_output& out) const noexcept {
         irs::write_string(out, value_);
@@ -1996,10 +1948,11 @@ class index_test_case : public tests::index_test_base {
       }
 
      private:
-      irs::flags features_;
+      std::vector<irs::type_info::type_id> features_;
       mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
+      irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
       bool stored_valid_;
     }; // indexed_and_stored_field
 
@@ -2009,30 +1962,29 @@ class index_test_case : public tests::index_test_base {
         : stream_(std::make_unique<irs::string_token_stream>()),
           name_(std::move(name)), value_(value) {
         if (!valid) {
-          features_.add<tests::incompatible_attribute>();
+          index_features_ |= irs::IndexFeatures::FREQ;
         }
       }
-      indexed_field(indexed_field&& other) noexcept
-        : features_(std::move(other.features_)),
-          stream_(std::move(other.stream_)),
-          name_(std::move(other.name_)),
-          value_(std::move(other.value_)) {
-      }
+      indexed_field(indexed_field&& other) noexcept = default;
+
       irs::string_ref name() const { return name_; }
-      float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
         stream_->reset(value_);
         return *stream_;
       }
-      const irs::flags& features() const {
-        return features_;
+      irs::IndexFeatures index_features() const {
+        return index_features_;
+      }
+      irs::features_t features() const {
+        return { features_.data(), features_.size() };
       }
 
      private:
-      irs::flags features_;
+      std::vector<irs::type_info::type_id> features_;
       mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
+      irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
     }; // indexed_field
 
     struct stored_field {
@@ -2044,9 +1996,7 @@ class index_test_case : public tests::index_test_base {
         return name_;
       }
 
-      const irs::flags& features() const noexcept {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) const {
         write_string(out, value_);
@@ -2059,7 +2009,11 @@ class index_test_case : public tests::index_test_base {
     }; // stored_field
 
     // insert documents
-    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<tests::incompatible_attribute>::id(), nullptr);
+
+    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, opts);
 
     size_t i = 0;
     const size_t max = 8;
@@ -2205,15 +2159,14 @@ class index_test_case : public tests::index_test_base {
     // error while commiting index (during sync in index_meta_writer)
     {
       override_sync_directory override_dir(
-        dir(), [this] (const irs::string_ref& name) {
+        dir(), [] (const irs::string_ref&) {
           throw irs::io_error();
           return true;
       });
 
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"), 
-        &tests::generic_json_field_factory
-      );
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       tests::document const* doc2 = gen.next();
       tests::document const* doc3 = gen.next();
@@ -2223,27 +2176,23 @@ class index_test_case : public tests::index_test_base {
 
       ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
-        doc1->stored.begin(), doc1->stored.end()
-      ));
+        doc1->stored.begin(), doc1->stored.end()));
       ASSERT_TRUE(insert(*writer,
         doc2->indexed.begin(), doc2->indexed.end(),
-        doc2->stored.begin(), doc2->stored.end()
-      ));
+        doc2->stored.begin(), doc2->stored.end()));
       ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
-        doc3->stored.begin(), doc3->stored.end()
-      ));
+        doc3->stored.begin(), doc3->stored.end()));
       ASSERT_TRUE(insert(*writer,
         doc4->indexed.begin(), doc4->indexed.end(),
-        doc4->stored.begin(), doc4->stored.end()
-      ));
+        doc4->stored.begin(), doc4->stored.end()));
       ASSERT_THROW(writer->commit(), irs::io_error);
     }
 
     // error while commiting index (during sync in index_writer)
     {
       override_sync_directory override_dir(
-        dir(), [this] (const irs::string_ref& name) {
+        dir(), [] (const irs::string_ref& name) {
         if (irs::starts_with(name, "_")) {
           throw irs::io_error();
         }
@@ -2251,9 +2200,8 @@ class index_test_case : public tests::index_test_base {
       });
 
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"), 
-        &tests::generic_json_field_factory
-      );
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       tests::document const* doc2 = gen.next();
       tests::document const* doc3 = gen.next();
@@ -2263,20 +2211,16 @@ class index_test_case : public tests::index_test_base {
 
       ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
-        doc1->stored.begin(), doc1->stored.end()
-      ));
+        doc1->stored.begin(), doc1->stored.end()));
       ASSERT_TRUE(insert(*writer,
         doc2->indexed.begin(), doc2->indexed.end(),
-        doc2->stored.begin(), doc2->stored.end()
-      ));
+        doc2->stored.begin(), doc2->stored.end()));
       ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
-        doc3->stored.begin(), doc3->stored.end()
-      ));
+        doc3->stored.begin(), doc3->stored.end()));
       ASSERT_TRUE(insert(*writer,
         doc4->indexed.begin(), doc4->indexed.end(),
-        doc4->stored.begin(), doc4->stored.end()
-      ));
+        doc4->stored.begin(), doc4->stored.end()));
       ASSERT_THROW(writer->commit(), irs::io_error);
     }
 
@@ -2289,7 +2233,91 @@ class index_test_case : public tests::index_test_base {
       ASSERT_EQ(reader.begin(), reader.end());
     }
   }
+
+  void docs_bit_union(irs::IndexFeatures features);
 }; // index_test_case
+
+void index_test_case::docs_bit_union(irs::IndexFeatures features) {
+  tests::templates::string_ref_field field("0", features);
+  const size_t N = irs::bits_required<uint64_t>(2) + 7;
+
+  {
+    auto writer = open_writer();
+
+    {
+      auto docs = writer->documents();
+      for (size_t i = 1; i <= N; ++i) {
+        const irs::string_ref value = i % 2 ? "A" : "B";
+        field.value(value);
+        ASSERT_TRUE(docs.insert().insert<irs::Action::INDEX>(field));
+      }
+
+      field.value("C");
+      ASSERT_TRUE(docs.insert().insert<irs::Action::INDEX>(field));
+    }
+
+    writer->commit();
+  }
+
+  auto reader = open_reader();
+  ASSERT_NE(nullptr, reader);
+  ASSERT_EQ(1, reader->size());
+  auto& segment = (*reader)[0];
+  ASSERT_EQ(N+1, segment.docs_count());
+  ASSERT_EQ(N+1, segment.live_docs_count());
+
+  const auto* term_reader = segment.field(field.name());
+  ASSERT_NE(nullptr, term_reader);
+  ASSERT_EQ(N+1, term_reader->docs_count());
+  ASSERT_EQ(3, term_reader->size());
+  ASSERT_EQ("A", irs::ref_cast<char>(term_reader->min()));
+  ASSERT_EQ("C", irs::ref_cast<char>(term_reader->max()));
+  ASSERT_EQ(field.name(), term_reader->meta().name);
+  ASSERT_TRUE(term_reader->meta().features.empty());
+  ASSERT_EQ(field.index_features(), term_reader->meta().index_features);
+  ASSERT_TRUE(term_reader->meta().features.empty());
+
+  constexpr size_t expected_docs_B[] {
+    0b0101010101010101010101010101010101010101010101010101010101010100,
+    0b0101010101010101010101010101010101010101010101010101010101010101,
+    0b0000000000000000000000000000000000000000000000000000000001010101
+  };
+
+  constexpr size_t expected_docs_A[] {
+    0b1010101010101010101010101010101010101010101010101010101010101010,
+    0b1010101010101010101010101010101010101010101010101010101010101010,
+    0b0000000000000000000000000000000000000000000000000000000010101010
+  };
+
+  irs::seek_cookie::ptr cookies[2];
+
+  auto term = term_reader->iterator(irs::SeekMode::NORMAL);
+  ASSERT_TRUE(term->next());
+  ASSERT_EQ("A", irs::ref_cast<char>(term->value()));
+  term->read();
+  cookies[0] = term->cookie();
+  ASSERT_TRUE(term->next());
+  term->read();
+  cookies[1] = term->cookie();
+  ASSERT_EQ("B", irs::ref_cast<char>(term->value()));
+
+  auto cookie_provider = [
+      begin = std::begin(cookies),
+      end = std::end(cookies)]()mutable -> const irs::seek_cookie*{
+    if (begin != end) {
+      auto cookie = begin->get();
+      ++begin;
+      return cookie;
+    }
+    return nullptr;
+  };
+
+  size_t actual_docs_AB[3]{};
+  ASSERT_EQ(N, term_reader->bit_union(cookie_provider, actual_docs_AB));
+  ASSERT_EQ(expected_docs_A[0] | expected_docs_B[0], actual_docs_AB[0]);
+  ASSERT_EQ(expected_docs_A[1] | expected_docs_B[1], actual_docs_AB[1]);
+  ASSERT_EQ(expected_docs_A[2] | expected_docs_B[2], actual_docs_AB[2]);
+}
 
 TEST_P(index_test_case, arango_demo_docs) {
   {
@@ -2484,6 +2512,11 @@ TEST_P(index_test_case, europarl_docs) {
   assert_index();
 }
 
+TEST_P(index_test_case, docs_bit_union) {
+  docs_bit_union(irs::IndexFeatures::NONE);
+  docs_bit_union(irs::IndexFeatures::FREQ);
+}
+
 TEST_P(index_test_case, europarl_docs_automaton) {
   {
     tests::templates::europarl_doc_template doc;
@@ -2494,21 +2527,21 @@ TEST_P(index_test_case, europarl_docs_automaton) {
   // prefix
   {
     auto acceptor = irs::from_wildcard("forb%");
-    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // part
   {
     auto acceptor = irs::from_wildcard("%ende%");
-    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // suffix
   {
     auto acceptor = irs::from_wildcard("%ione");
-    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 }
@@ -2533,7 +2566,9 @@ TEST_P(index_test_case, concurrent_read_index_mt) {
 }
 
 TEST_P(index_test_case, concurrent_add_mt) {
-  tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
   std::vector<const tests::document*> docs;
 
   for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc)) {}
@@ -2564,7 +2599,7 @@ TEST_P(index_test_case, concurrent_add_mt) {
     thread1.join();
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader.size() == 1 || reader.size() == 2); // can be 1 if thread0 finishes before thread1 starts
     ASSERT_EQ(docs.size(), reader.docs_count());
   }
@@ -2575,10 +2610,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
     }
   });
   std::vector<const tests::document*> docs;
@@ -2587,7 +2619,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
   for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc)) {}
 
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
     std::thread thread0([&writer, docs, &first_doc]() {
@@ -2626,7 +2658,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
     writer->commit();
 
     std::unordered_set<irs::string_ref> expected = { "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "~", "!", "@", "#", "$", "%" };
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader.size() == 1 || reader.size() == 2 || reader.size() == 3); // can be 1 if thread0 finishes before thread1 starts, can be 2 if thread0 and thread1 finish before thread2 starts
     ASSERT_TRUE(reader.docs_count() == docs.size() || reader.docs_count() == docs.size() - 1); // removed doc might have been on its own segment
 
@@ -2638,9 +2670,9 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       while(docsItr->next()) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expected.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
@@ -2657,7 +2689,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -2670,7 +2702,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
   {
     std::condition_variable cond;
     std::mutex mutex;
-    auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A || name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A || name==B", std::locale::classic());
     auto writer = open_writer();
     auto lock = irs::make_unique_lock(mutex);
     std::atomic<bool> stop(false);
@@ -2726,7 +2758,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
 
     thread.join();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     /* FIXME TODO add once segment_context will not block flush_all()
     ASSERT_EQ(0, reader.docs_count());
     ASSERT_EQ(0, reader.live_docs_count());
@@ -2739,7 +2771,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
 
   // remove added docs, add same docs again commit separate thread after end of add
   {
-    auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A || name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A || name==B", std::locale::classic());
     auto writer = open_writer();
 
     // initial add docs
@@ -2777,7 +2809,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
     });
     thread.join();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.docs_count());
     ASSERT_EQ(2, reader.live_docs_count());
   }
@@ -2789,7 +2821,7 @@ TEST_P(index_test_case, document_context) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -2805,14 +2837,22 @@ TEST_P(index_test_case, document_context) {
     std::condition_variable cond;
     std::mutex cond_mutex;
     std::mutex mutex;
+    std::condition_variable wait_cond;
+    std::atomic<bool> wait;
     const irs::string_ref& name() { return irs::string_ref::EMPTY; }
-    const irs::flags& features() const { return irs::flags::empty_instance(); }
-    bool write(irs::data_output& out) {
+    irs::features_t features() const { return {}; }
+    bool write(irs::data_output&) {
       {
         auto cond_lock = irs::make_lock_guard(cond_mutex);
-        cond.notify_all();
       }
-      auto lock = irs::make_lock_guard(mutex);
+
+      cond.notify_all();
+
+      while (wait) {
+        auto lock = irs::make_unique_lock(mutex);
+        wait_cond.wait_for(lock, 100ms);
+      }
+
       return true;
     }
   } field;
@@ -2821,32 +2861,42 @@ TEST_P(index_test_case, document_context) {
   {
     auto writer = open_writer();
     auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
-    auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
+    field.wait = true; // prevent field from finishing
 
-    writer->documents().insert().insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end()); // ensure segment is prsent in the active flush_context
+    // ensure segment is prsent in the active flush_context
+    writer->documents().insert().insert<irs::Action::STORE>(
+      doc1->stored.begin(), doc1->stored.end());
 
     std::thread thread0([&writer, &field]()->void {
       writer->documents().insert().insert<irs::Action::STORE>(field);
     });
 
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, 1000ms)); // wait for insertion to start
+    ASSERT_EQ(std::cv_status::no_timeout,
+              field.cond.wait_for(field_cond_lock, 1000ms)); // wait for insertion to start
 
     std::atomic<bool> stop(false);
     std::thread thread1([&writer, &field, &stop]()->void {
       writer->commit();
       stop = true;
-      auto lock = irs::make_lock_guard(field.cond_mutex);
+      {
+        auto lock = irs::make_lock_guard(field.cond_mutex);
+      }
       field.cond.notify_all();
     });
 
     auto result = field.cond.wait_for(field_cond_lock, 100ms);
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
+    while (!stop && result == std::cv_status::no_timeout) {
+      result = field.cond.wait_for(field_cond_lock, 100ms);
+    }
 
     ASSERT_EQ(std::cv_status::timeout, result); // verify commit() blocks
-    field_lock.unlock();
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000))); // verify commit() finishes
+    field.wait = false;
+    field.wait_cond.notify_all();
+    ASSERT_EQ(std::cv_status::no_timeout,
+              field.cond.wait_for(field_cond_lock, 10000ms)); // verify commit() finishes
+
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(stop);
     thread0.join();
@@ -2864,7 +2914,7 @@ TEST_P(index_test_case, document_context) {
     ));
 
     auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
-    auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
+    field.wait = true; // prevent field from finishing
 
     std::thread thread0([&writer, &query_doc1, &field]()->void {
       writer->documents().replace(*query_doc1.filter).insert<irs::Action::STORE>(field);
@@ -2886,8 +2936,10 @@ TEST_P(index_test_case, document_context) {
     while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
 
     ASSERT_EQ(std::cv_status::timeout, result);
-    field_lock.unlock();
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000))); // verify commit() finishes
+    field.wait = false;
+    field.wait_cond.notify_all();
+    ASSERT_EQ(std::cv_status::no_timeout,
+              field.cond.wait_for(field_cond_lock, 10000ms)); // verify commit() finishes
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(commit);
     thread0.join();
@@ -2904,7 +2956,8 @@ TEST_P(index_test_case, document_context) {
       doc1->stored.begin(), doc1->stored.end()
     ));
     auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
-    auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
+   // auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
+    field.wait = true; // prevent field from finishing
 
     std::thread thread0([&writer, &query_doc1, &field]()->void {
       writer->documents().replace(
@@ -2932,8 +2985,10 @@ TEST_P(index_test_case, document_context) {
     while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
 
     ASSERT_EQ(std::cv_status::timeout, result);
-    field_lock.unlock();
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000))); // verify commit() finishes
+    field.wait = false;
+    field.wait_cond.notify_all();
+    ASSERT_EQ(std::cv_status::no_timeout,
+              field.cond.wait_for(field_cond_lock, 10000ms)); // verify commit() finishes
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(commit);
     thread0.join();
@@ -2960,7 +3015,7 @@ TEST_P(index_test_case, document_context) {
     { irs::index_writer::documents_context(std::move(ctx)); } // release ctx before join() in case of test failure
     thread1.join();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -2968,9 +3023,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3016,7 +3071,7 @@ TEST_P(index_test_case, document_context) {
     // FIXME TODO add once segment_context will not block flush_all()
     //writer->commit(); // commit doc removal
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -3024,9 +3079,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -3073,7 +3128,7 @@ TEST_P(index_test_case, document_context) {
     // FIXME TODO add once segment_context will not block flush_all()
     //writer->commit(); // commit doc replace
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -3081,9 +3136,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -3097,8 +3152,7 @@ TEST_P(index_test_case, document_context) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     auto ctx = writer->documents();
     auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
@@ -3132,7 +3186,7 @@ TEST_P(index_test_case, document_context) {
     // FIXME TODO add once segment_context will not block flush_all()
     //writer->commit(); // commit doc replace
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -3140,9 +3194,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -3166,7 +3220,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -3174,9 +3228,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3205,7 +3259,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -3213,9 +3267,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3244,7 +3298,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -3252,9 +3306,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -3294,7 +3348,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -3302,9 +3356,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3348,7 +3402,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-   auto reader = iresearch::directory_reader::open(dir(), codec());
+   auto reader = irs::directory_reader::open(dir(), codec());
    ASSERT_EQ(2, reader.size());
 
    {
@@ -3358,9 +3412,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3374,9 +3428,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
@@ -3403,7 +3457,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -3411,9 +3465,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3444,7 +3498,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -3452,9 +3506,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3502,7 +3556,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-   auto reader = iresearch::directory_reader::open(dir(), codec());
+   auto reader = irs::directory_reader::open(dir(), codec());
    ASSERT_EQ(2, reader.size());
 
    {
@@ -3512,9 +3566,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3528,9 +3582,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
@@ -3561,7 +3615,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -3569,9 +3623,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3606,7 +3660,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -3614,9 +3668,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3662,7 +3716,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-   auto reader = iresearch::directory_reader::open(dir(), codec());
+   auto reader = irs::directory_reader::open(dir(), codec());
    ASSERT_EQ(2, reader.size());
 
    {
@@ -3672,9 +3726,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3688,9 +3742,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
@@ -3724,7 +3778,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -3732,9 +3786,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3772,7 +3826,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -3780,9 +3834,9 @@ TEST_P(index_test_case, document_context) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3834,7 +3888,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-   auto reader = iresearch::directory_reader::open(dir(), codec());
+   auto reader = irs::directory_reader::open(dir(), codec());
    ASSERT_EQ(2, reader.size());
 
    {
@@ -3844,9 +3898,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3860,9 +3914,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
@@ -3893,7 +3947,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -3903,9 +3957,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3919,9 +3973,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -3958,7 +4012,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(3, reader.size());
 
     {
@@ -3968,9 +4022,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -3984,9 +4038,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -4000,9 +4054,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -4034,7 +4088,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -4044,9 +4098,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -4060,9 +4114,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -4099,7 +4153,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(3, reader.size());
 
     {
@@ -4109,9 +4163,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -4125,9 +4179,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -4141,9 +4195,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -4176,9 +4230,9 @@ TEST_P(index_test_case, document_context) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(irs::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -4208,7 +4262,7 @@ TEST_P(index_test_case, doc_removal) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -4236,7 +4290,7 @@ TEST_P(index_test_case, doc_removal) {
     ));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -4244,9 +4298,9 @@ TEST_P(index_test_case, doc_removal) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -4255,7 +4309,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove 1st (as reference)
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4269,7 +4323,7 @@ TEST_P(index_test_case, doc_removal) {
     writer->documents().remove(*(query_doc1.filter.get()));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -4277,9 +4331,9 @@ TEST_P(index_test_case, doc_removal) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -4288,7 +4342,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove 1st (as unique_ptr)
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4303,7 +4357,7 @@ TEST_P(index_test_case, doc_removal) {
     writer->documents().remove(std::unique_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -4311,9 +4365,9 @@ TEST_P(index_test_case, doc_removal) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -4322,7 +4376,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove 1st (as shared_ptr)
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4333,11 +4387,11 @@ TEST_P(index_test_case, doc_removal) {
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->documents().remove(std::shared_ptr<iresearch::filter>(std::move(query_doc1.filter)));
+    writer->documents().remove(std::shared_ptr<irs::filter>(std::move(query_doc1.filter)));
     writer->documents().remove(std::shared_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -4345,9 +4399,9 @@ TEST_P(index_test_case, doc_removal) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -4356,7 +4410,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: remove + add
   {
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4370,7 +4424,7 @@ TEST_P(index_test_case, doc_removal) {
     ));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -4378,9 +4432,9 @@ TEST_P(index_test_case, doc_removal) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -4392,7 +4446,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove + readd
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4406,7 +4460,7 @@ TEST_P(index_test_case, doc_removal) {
     ));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -4414,9 +4468,9 @@ TEST_P(index_test_case, doc_removal) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -4425,8 +4479,8 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove, old segment: remove
   {
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4446,7 +4500,7 @@ TEST_P(index_test_case, doc_removal) {
     writer->documents().remove(std::move(query_doc2.filter));
     writer->commit(); // new document mask with 'doc2','doc3' created
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -4454,9 +4508,9 @@ TEST_P(index_test_case, doc_removal) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -4465,7 +4519,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + add, old segment: remove + remove + add
   {
-    auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4484,7 +4538,7 @@ TEST_P(index_test_case, doc_removal) {
     ));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -4492,9 +4546,9 @@ TEST_P(index_test_case, doc_removal) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -4503,7 +4557,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add, old segment: remove
   {
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4523,7 +4577,7 @@ TEST_P(index_test_case, doc_removal) {
     writer->documents().remove(std::unique_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -4533,9 +4587,9 @@ TEST_P(index_test_case, doc_removal) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -4549,9 +4603,9 @@ TEST_P(index_test_case, doc_removal) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -4561,7 +4615,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove, old segment: remove
   {
-    auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A || name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A || name==C", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4585,7 +4639,7 @@ TEST_P(index_test_case, doc_removal) {
     writer->documents().remove(std::shared_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -4595,9 +4649,9 @@ TEST_P(index_test_case, doc_removal) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -4611,9 +4665,9 @@ TEST_P(index_test_case, doc_removal) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
@@ -4623,9 +4677,9 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove, old segment: add + remove old-old segment: remove
   {
-    auto query_doc2_doc6_doc9 = iresearch::iql::query_builder().build("name==B||name==F||name==I", std::locale::classic());
-    auto query_doc3_doc7 = iresearch::iql::query_builder().build("name==C||name==G", std::locale::classic());
-    auto query_doc4 = iresearch::iql::query_builder().build("name==D", std::locale::classic());
+    auto query_doc2_doc6_doc9 = irs::iql::query_builder().build("name==B||name==F||name==I", std::locale::classic());
+    auto query_doc3_doc7 = irs::iql::query_builder().build("name==C||name==G", std::locale::classic());
+    auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4671,7 +4725,7 @@ TEST_P(index_test_case, doc_removal) {
     writer->documents().remove(std::move(query_doc2_doc6_doc9.filter));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(3, reader.size());
 
     {
@@ -4681,9 +4735,9 @@ TEST_P(index_test_case, doc_removal) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -4697,9 +4751,9 @@ TEST_P(index_test_case, doc_removal) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc5
@@ -4713,9 +4767,9 @@ TEST_P(index_test_case, doc_removal) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc8
@@ -4730,7 +4784,7 @@ TEST_P(index_test_case, doc_update) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -4745,7 +4799,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update (as reference)
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4759,7 +4813,7 @@ TEST_P(index_test_case, doc_update) {
     ));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -4767,9 +4821,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -4778,7 +4832,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update (as unique_ptr)
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4792,7 +4846,7 @@ TEST_P(index_test_case, doc_update) {
     ));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -4800,9 +4854,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -4811,7 +4865,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update (as shared_ptr)
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4819,13 +4873,13 @@ TEST_P(index_test_case, doc_update) {
       doc1->stored.begin(), doc1->stored.end()
     ));
     ASSERT_TRUE(update(*writer,
-      std::shared_ptr<iresearch::filter>(std::move(query_doc1.filter)),
+      std::shared_ptr<irs::filter>(std::move(query_doc1.filter)),
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -4833,9 +4887,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -4844,7 +4898,7 @@ TEST_P(index_test_case, doc_update) {
 
   // old segment update
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4863,7 +4917,7 @@ TEST_P(index_test_case, doc_update) {
     ));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -4873,9 +4927,9 @@ TEST_P(index_test_case, doc_update) {
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -4889,9 +4943,9 @@ TEST_P(index_test_case, doc_update) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -4901,9 +4955,9 @@ TEST_P(index_test_case, doc_update) {
 
   // 3x updates (same segment)
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4927,7 +4981,7 @@ TEST_P(index_test_case, doc_update) {
     ));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -4935,9 +4989,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
@@ -4946,9 +5000,9 @@ TEST_P(index_test_case, doc_update) {
 
   // 3x updates (different segments)
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4975,7 +5029,7 @@ TEST_P(index_test_case, doc_update) {
     ));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -4983,9 +5037,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
@@ -4994,7 +5048,7 @@ TEST_P(index_test_case, doc_update) {
 
   // no matching documnts
   {
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5009,7 +5063,7 @@ TEST_P(index_test_case, doc_update) {
     )); // non-existent document
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -5017,9 +5071,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5028,7 +5082,7 @@ TEST_P(index_test_case, doc_update) {
 
   // update + delete (same segment)
   {
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5047,7 +5101,7 @@ TEST_P(index_test_case, doc_update) {
     writer->documents().remove(*(query_doc2.filter)); // remove no longer existent
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -5055,9 +5109,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5069,7 +5123,7 @@ TEST_P(index_test_case, doc_update) {
 
   // update + delete (different segments)
   {
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5090,7 +5144,7 @@ TEST_P(index_test_case, doc_update) {
     writer->documents().remove(*(query_doc2.filter)); // remove no longer existent
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -5100,9 +5154,9 @@ TEST_P(index_test_case, doc_update) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5116,9 +5170,9 @@ TEST_P(index_test_case, doc_update) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -5128,7 +5182,7 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update (same segment)
   {
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5147,7 +5201,7 @@ TEST_P(index_test_case, doc_update) {
     )); // update no longer existent
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -5155,9 +5209,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5166,28 +5220,25 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update (different segments)
   {
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     writer->documents().remove(*(query_doc2.filter));
     writer->commit();
     ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    )); // update no longer existent
+      doc3->stored.begin(), doc3->stored.end())); // update no longer existent
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -5195,9 +5246,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5206,32 +5257,28 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update then update (2nd - update of modified doc) (same segment)
   {
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->documents().remove(*(query_doc2.filter));
     ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(update(*writer,
       *(query_doc3.filter),
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -5239,9 +5286,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5250,35 +5297,31 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update then update (2nd - update of modified doc) (different segments)
   {
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     writer->documents().remove(*(query_doc2.filter));
     writer->commit();
     ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
     ASSERT_TRUE(update(*writer,
       *(query_doc3.filter),
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -5286,9 +5329,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5299,15 +5342,15 @@ TEST_P(index_test_case, doc_update) {
   {
     class test_field: public tests::field_base {
      public:
-      iresearch::flags features_;
-      iresearch::string_token_stream tokens_;
+      irs::string_token_stream tokens_;
       bool write_result_;
-      virtual bool write(iresearch::data_output& out) const override { 
+      virtual bool write(irs::data_output& out) const override {
         out.write_byte(1);
         return write_result_;
       }
-      virtual iresearch::token_stream& get_tokens() const override { return const_cast<test_field*>(this)->tokens_; }
-      virtual const iresearch::flags& features() const override { return features_; }
+      virtual irs::token_stream& get_tokens() const override {
+        return const_cast<test_field*>(this)->tokens_;
+      }
     };
 
     tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
@@ -5315,18 +5358,24 @@ TEST_P(index_test_case, doc_update) {
     auto doc2 = gen.next();
     auto doc3 = gen.next();
     auto doc4 = gen.next();
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
-    auto writer = open_writer();
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::offset>::id(), nullptr);
+    opts.features.emplace(irs::type<irs::frequency>::id(), nullptr);
+    opts.features.emplace(irs::type<irs::increment>::id(), nullptr);
+
+    auto writer = open_writer(irs::OM_CREATE, opts);
     auto test_field0 = std::make_shared<test_field>();
     auto test_field1 = std::make_shared<test_field>();
     auto test_field2 = std::make_shared<test_field>();
     auto test_field3 = std::make_shared<test_field>();
     std::string test_field_name("test_field");
 
-    test_field0->features_.add<iresearch::offset>().add<iresearch::frequency>(); // feature superset
-    test_field1->features_.add<iresearch::offset>(); // feature subset of 'test_field0'
-    test_field2->features_.add<iresearch::offset>();
-    test_field3->features_.add<iresearch::increment>();
+    test_field0->index_features_ = irs::IndexFeatures::FREQ | irs::IndexFeatures::OFFS; // feature superset
+    test_field1->index_features_ = irs::IndexFeatures::FREQ; // feature subset of 'test_field0'
+    test_field2->index_features_ = irs::IndexFeatures::FREQ | irs::IndexFeatures::OFFS;
+    test_field3->index_features_ = irs::IndexFeatures::FREQ | irs::IndexFeatures::PAY;
     test_field0->name(test_field_name);
     test_field1->name(test_field_name);
     test_field2->name(test_field_name);
@@ -5347,28 +5396,23 @@ TEST_P(index_test_case, doc_update) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    )); // field features subset
+      doc2->stored.begin(), doc2->stored.end())); // index features subset
     ASSERT_FALSE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    )); // serializer returs false
+      doc3->stored.begin(), doc3->stored.end())); // serializer returs false
     ASSERT_FALSE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    )); // field features differ
+      doc4->stored.begin(), doc4->stored.end())); // index features differ
     ASSERT_FALSE(update(*writer,
       *(query_doc1.filter.get()), 
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -5376,9 +5420,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5395,8 +5439,7 @@ TEST_P(index_test_case, doc_update) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->documents().replace(
       *query_doc1.filter,
       [&doc2](irs::segment_writer::document& doc)->bool {
@@ -5415,9 +5458,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -5453,9 +5496,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -5495,9 +5538,9 @@ TEST_P(index_test_case, doc_update) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5510,10 +5553,7 @@ TEST_P(index_test_case, import_reader) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
     }
   });
 
@@ -5555,8 +5595,7 @@ TEST_P(index_test_case, import_reader) {
     {
       ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
-        doc1->stored.begin(), doc1->stored.end()
-      ));
+        doc1->stored.begin(), doc1->stored.end()));
       writer->commit();
 
       irs::index_meta meta;
@@ -5591,8 +5630,7 @@ TEST_P(index_test_case, import_reader) {
 
     ASSERT_TRUE(insert(*data_writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     data_writer->commit();
     data_writer->documents().remove(std::move(query_doc1.filter));
     data_writer->commit();
@@ -5608,8 +5646,7 @@ TEST_P(index_test_case, import_reader) {
     {
       ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
-        doc1->stored.begin(), doc1->stored.end()
-      ));
+        doc1->stored.begin(), doc1->stored.end()));
       writer->commit();
 
       irs::index_meta meta;
@@ -5624,23 +5661,21 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 1 full segment
   {
-    iresearch::memory_directory data_dir;
-    auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
+    irs::memory_directory data_dir;
+    auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*data_writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*data_writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     data_writer->commit();
-    ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
+    ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
@@ -5649,9 +5684,9 @@ TEST_P(index_test_case, import_reader) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5663,9 +5698,9 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 1 sparse segment
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
-    iresearch::memory_directory data_dir;
-    auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    irs::memory_directory data_dir;
+    auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*data_writer,
@@ -5678,10 +5713,10 @@ TEST_P(index_test_case, import_reader) {
     ));
     data_writer->documents().remove(std::move(query_doc1.filter));
     data_writer->commit();
-    ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
+    ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count());
@@ -5690,9 +5725,9 @@ TEST_P(index_test_case, import_reader) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -5701,32 +5736,28 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 2 full segments
   {
-    iresearch::memory_directory data_dir;
-    auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
+    irs::memory_directory data_dir;
+    auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*data_writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*data_writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     data_writer->commit();
     ASSERT_TRUE(insert(*data_writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*data_writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     data_writer->commit();
-    ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
+    ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(4, segment.docs_count());
@@ -5735,9 +5766,9 @@ TEST_P(index_test_case, import_reader) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5755,9 +5786,9 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 2 sparse segments
   {
-    auto query_doc2_doc3 = iresearch::iql::query_builder().build("name==B||name==C", std::locale::classic());
-    iresearch::memory_directory data_dir;
-    auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B||name==C", std::locale::classic());
+    irs::memory_directory data_dir;
+    auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*data_writer,
@@ -5779,10 +5810,10 @@ TEST_P(index_test_case, import_reader) {
     ));
     data_writer->documents().remove(std::move(query_doc2_doc3.filter));
     data_writer->commit();
-    ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
+    ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
@@ -5791,9 +5822,9 @@ TEST_P(index_test_case, import_reader) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5805,9 +5836,9 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 2 mixed segments
   {
-    auto query_doc4 = iresearch::iql::query_builder().build("name==D", std::locale::classic());
-    iresearch::memory_directory data_dir;
-    auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
+    auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+    irs::memory_directory data_dir;
+    auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*data_writer,
@@ -5829,10 +5860,10 @@ TEST_P(index_test_case, import_reader) {
     ));
     data_writer->documents().remove(std::move(query_doc4.filter));
     data_writer->commit();
-    ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
+    ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count());
@@ -5841,9 +5872,9 @@ TEST_P(index_test_case, import_reader) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5858,9 +5889,9 @@ TEST_P(index_test_case, import_reader) {
 
   // new: add + add + delete, old: import
   {
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
-    iresearch::memory_directory data_dir;
-    auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    irs::memory_directory data_dir;
+    auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*data_writer,
@@ -5877,10 +5908,10 @@ TEST_P(index_test_case, import_reader) {
       doc3->stored.begin(), doc3->stored.end()
     ));
     writer->documents().remove(std::move(query_doc2.filter)); // should not match any documents
-    ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
+    ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -5891,9 +5922,9 @@ TEST_P(index_test_case, import_reader) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5911,9 +5942,9 @@ TEST_P(index_test_case, import_reader) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -5928,7 +5959,7 @@ TEST_P(index_test_case, refresh_reader) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -5957,7 +5988,7 @@ TEST_P(index_test_case, refresh_reader) {
   }
 
   // refreshable reader
-  auto reader = iresearch::directory_reader::open(dir(), codec());
+  auto reader = irs::directory_reader::open(dir(), codec());
 
   // validate state
   {
@@ -5968,9 +5999,9 @@ TEST_P(index_test_case, refresh_reader) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -5983,7 +6014,7 @@ TEST_P(index_test_case, refresh_reader) {
   // modify state (delete doc2)
   {
     auto writer = open_writer(irs::OM_APPEND);
-    auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
 
     writer->documents().remove(std::move(query_doc2.filter));
     writer->commit();
@@ -5999,9 +6030,9 @@ TEST_P(index_test_case, refresh_reader) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -6020,9 +6051,9 @@ TEST_P(index_test_case, refresh_reader) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -6054,9 +6085,9 @@ TEST_P(index_test_case, refresh_reader) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -6072,9 +6103,9 @@ TEST_P(index_test_case, refresh_reader) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -6088,9 +6119,9 @@ TEST_P(index_test_case, refresh_reader) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -6104,7 +6135,7 @@ TEST_P(index_test_case, refresh_reader) {
   // modify state (delete doc1)
   {
     auto writer = open_writer(irs::OM_APPEND);
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
 
     writer->documents().remove(std::move(query_doc1.filter));
     writer->commit();
@@ -6121,9 +6152,9 @@ TEST_P(index_test_case, refresh_reader) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -6137,9 +6168,9 @@ TEST_P(index_test_case, refresh_reader) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -6157,9 +6188,9 @@ TEST_P(index_test_case, refresh_reader) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -6256,45 +6287,49 @@ TEST_P(index_test_case, reuse_segment_writer) {
 TEST_P(index_test_case, segment_column_user_system) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [](tests::document& doc,
+       const std::string& name,
+       const tests::json_doc_generator::json_value& data) {
       // add 2 identical fields (without storing) to trigger non-default norm value
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
-          data.str
-        ));
+        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
       }
   });
 
   // document to add a system column not present in subsequent documents
   tests::document doc0;
 
+  const std::vector<irs::type_info::type_id> features{ irs::type<irs::norm>::id() };
+
   // add 2 identical fields (without storing) to trigger non-default norm value
   for (size_t i = 2; i; --i) {
     doc0.insert(std::make_shared<tests::templates::string_field>(
-      irs::string_ref("test-field"),
-      "test-value",
-      irs::flags({ irs::type<irs::norm>::get() }) // trigger addition of a system column
-    ), true, false);
+        "test-field",
+        "test-value",
+        irs::IndexFeatures::NONE,
+        features), // trigger addition of a system column
+      true, false);
   }
 
   irs::bytes_ref actual_value;
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
-  auto writer = open_writer();
+
+
+  irs::index_writer::init_options opts;
+  opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+
+  auto writer = open_writer(irs::OM_CREATE, opts);
 
   ASSERT_TRUE(insert(*writer,
     doc0.indexed.begin(), doc0.indexed.end(),
-    doc0.stored.begin(), doc0.stored.end()
-  ));
+    doc0.stored.begin(), doc0.stored.end()));
   ASSERT_TRUE(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end()
-  ));
+    doc1->stored.begin(), doc1->stored.end()));
   ASSERT_TRUE(insert(*writer,
     doc2->indexed.begin(), doc2->indexed.end(),
-    doc2->stored.begin(), doc2->stored.end()
-  ));
+    doc2->stored.begin(), doc2->stored.end()));
   writer->commit();
 
   std::unordered_set<irs::string_ref> expectedName = { "A", "B" };
@@ -6307,7 +6342,12 @@ TEST_P(index_test_case, segment_column_user_system) {
 
   auto* field = segment.field("test-field"); // 'norm' column added by doc0 above
   ASSERT_NE(nullptr, field);
-  auto* column = segment.column_reader(field->meta().norm); // system column
+
+  const auto norm = field->meta().features.find(irs::type<irs::norm>::id());
+  ASSERT_NE(field->meta().features.end(), norm);
+  ASSERT_TRUE(irs::field_limits::valid(norm->second));
+
+  auto* column = segment.column_reader(norm->second); // system column
   ASSERT_NE(nullptr, column);
 
   column = segment.column_reader("name");
@@ -6316,10 +6356,10 @@ TEST_P(index_test_case, segment_column_user_system) {
   ASSERT_EQ(expectedName.size() + 1, segment.docs_count()); // total count of documents (+1 for doc0)
   auto terms = segment.field("same");
   ASSERT_NE(nullptr, terms);
-  auto termItr = terms->iterator();
+  auto termItr = terms->iterator(irs::SeekMode::NORMAL);
   ASSERT_TRUE(termItr->next());
 
-  for (auto docsItr = termItr->postings(irs::flags()); docsItr->next();) {
+  for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
   }
@@ -6362,10 +6402,7 @@ TEST_P(index_test_case, import_concurrent) {
     resource("simple_sequential.json"),
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
-          data.str
-        ));
+        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
 
         if (name == "name") {
           names.emplace(data.str.data, data.str.size);
@@ -6428,7 +6465,7 @@ TEST_P(index_test_case, import_concurrent) {
 
   writer->commit(); // commit changes
 
-  auto reader = iresearch::directory_reader::open(dir);
+  auto reader = irs::directory_reader::open(dir);
   ASSERT_EQ(workers.size(), reader.size());
   ASSERT_EQ(names.size(), reader.docs_count());
   ASSERT_EQ(names.size(), reader.live_docs_count());
@@ -6440,12 +6477,12 @@ TEST_P(index_test_case, import_concurrent) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     while (docsItr->next()) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+      ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
       ++removed;
     }
     ASSERT_FALSE(docsItr->next());
@@ -6464,7 +6501,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
 
@@ -6487,17 +6524,16 @@ TEST_P(index_test_case, concurrent_consolidation) {
   ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
 
   auto consolidate_range = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
       size_t begin,
-      size_t end
-  ) {
+      size_t end) {
     if (begin > meta.size() || end > meta.size()) {
       return;
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6520,14 +6556,13 @@ TEST_P(index_test_case, concurrent_consolidation) {
     pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, i] () mutable {
       wait_for_all();
 
-      size_t num_segments = irs::integer_traits<size_t>::const_max;
+      size_t num_segments = std::numeric_limits<size_t>::max();
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
-            std::set<const irs::segment_meta*>& candidates,
+            irs::index_writer::consolidation_t& candidates,
             const irs::index_meta& meta,
-            const irs::index_writer::consolidating_segments_t&
-        ) mutable {
+            const irs::index_writer::consolidating_segments_t&) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
         };
@@ -6555,7 +6590,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
   writer->commit();
 
   irs::bytes_ref actual_value;
-  auto reader = iresearch::directory_reader::open(this->dir(), codec());
+  auto reader = irs::directory_reader::open(this->dir(), codec());
   ASSERT_EQ(1, reader.size());
 
   ASSERT_EQ(names.size(), reader.docs_count());
@@ -6568,12 +6603,12 @@ TEST_P(index_test_case, concurrent_consolidation) {
   auto values = column->values();
   auto terms = segment.field("same");
   ASSERT_NE(nullptr, terms);
-  auto termItr = terms->iterator();
+  auto termItr = terms->iterator(irs::SeekMode::NORMAL);
   ASSERT_TRUE(termItr->next());
-  auto docsItr = termItr->postings(iresearch::flags());
+  auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
   while (docsItr->next()) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
     ++removed;
   }
   ASSERT_FALSE(docsItr->next());
@@ -6592,7 +6627,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
 
@@ -6615,17 +6650,16 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
   ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
 
   auto consolidate_range = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
       size_t begin,
-      size_t end
-  ) {
+      size_t end) {
     if (begin > meta.size() || end > meta.size()) {
       return;
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6648,14 +6682,13 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
     pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, i] () mutable {
       wait_for_all();
 
-      size_t num_segments = irs::integer_traits<size_t>::const_max;
+      size_t num_segments = std::numeric_limits<size_t>::max();
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
-            std::set<const irs::segment_meta*>& candidates,
+            irs::index_writer::consolidation_t& candidates,
             const irs::index_meta& meta,
-            const irs::index_writer::consolidating_segments_t&
-        ) mutable {
+            const irs::index_writer::consolidating_segments_t&) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
         };
@@ -6696,7 +6729,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
   writer->commit();
 
   irs::bytes_ref actual_value;
-  auto reader = iresearch::directory_reader::open(this->dir(), codec());
+  auto reader = irs::directory_reader::open(this->dir(), codec());
   ASSERT_EQ(1, reader.size());
 
   ASSERT_EQ(names.size(), reader.docs_count());
@@ -6709,12 +6742,12 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
   auto values = column->values();
   auto terms = segment.field("same");
   ASSERT_NE(nullptr, terms);
-  auto termItr = terms->iterator();
+  auto termItr = terms->iterator(irs::SeekMode::NORMAL);
   ASSERT_TRUE(termItr->next());
-  auto docsItr = termItr->postings(iresearch::flags());
+  auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
   while (docsItr->next()) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
     ++removed;
   }
   ASSERT_FALSE(docsItr->next());
@@ -6733,7 +6766,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
 
@@ -6756,17 +6789,16 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
   ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
 
   auto consolidate_range = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
       size_t begin,
-      size_t end
-  ) {
+      size_t end) {
     if (begin > meta.size() || end > meta.size()) {
       return;
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6789,14 +6821,13 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
     pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, i] () mutable {
       wait_for_all();
 
-      size_t num_segments = irs::integer_traits<size_t>::const_max;
+      size_t num_segments = std::numeric_limits<size_t>::max();
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
-            std::set<const irs::segment_meta*>& candidates,
+            irs::index_writer::consolidation_t& candidates,
             const irs::index_meta& meta,
-            const irs::index_writer::consolidating_segments_t&
-        ) mutable {
+            const irs::index_writer::consolidating_segments_t&) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
         };
@@ -6840,7 +6871,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
   writer->commit();
 
   irs::bytes_ref actual_value;
-  auto reader = iresearch::directory_reader::open(this->dir(), codec());
+  auto reader = irs::directory_reader::open(this->dir(), codec());
   ASSERT_EQ(1, reader.size());
 
   ASSERT_EQ(names.size(), reader.docs_count());
@@ -6853,12 +6884,12 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
   auto values = column->values();
   auto terms = segment.field("same");
   ASSERT_NE(nullptr, terms);
-  auto termItr = terms->iterator();
+  auto termItr = terms->iterator(irs::SeekMode::NORMAL);
   ASSERT_TRUE(termItr->next());
-  auto docsItr = termItr->postings(iresearch::flags());
+  auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
   while (docsItr->next()) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
     ++removed;
   }
   ASSERT_FALSE(docsItr->next());
@@ -6877,9 +6908,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
-          data.str
-        ));
+          name, data.str));
 
         if (name == "name") {
           names.emplace(data.str.data, data.str.size);
@@ -6900,17 +6929,16 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
   ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
 
   auto consolidate_range = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
       size_t begin,
-      size_t end
-  ) {
+      size_t end) {
     if (begin > meta.size() || end > meta.size()) {
       return;
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6934,14 +6962,13 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
     pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, &dir, i] () mutable {
       wait_for_all();
 
-      size_t num_segments = irs::integer_traits<size_t>::const_max;
+      size_t num_segments = std::numeric_limits<size_t>::max();
 
       while (num_segments > 1) {
-        auto policy = [&consolidate_range, &i, &num_segments, &dir] (
-            std::set<const irs::segment_meta*>& candidates,
+        auto policy = [&consolidate_range, &i, &num_segments] (
+            irs::index_writer::consolidation_t& candidates,
             const irs::index_meta& meta,
-            const irs::index_writer::consolidating_segments_t&
-        ) mutable {
+            const irs::index_writer::consolidating_segments_t&) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
         };
@@ -6971,7 +6998,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
   irs::directory_cleaner::clean(const_cast<irs::directory&>(dir));
 
   irs::bytes_ref actual_value;
-  auto reader = iresearch::directory_reader::open(this->dir(), codec());
+  auto reader = irs::directory_reader::open(this->dir(), codec());
   ASSERT_EQ(1, reader.size());
 
   ASSERT_EQ(names.size(), reader.docs_count());
@@ -6984,12 +7011,12 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
   auto values = column->values();
   auto terms = segment.field("same");
   ASSERT_NE(nullptr, terms);
-  auto termItr = terms->iterator();
+  auto termItr = terms->iterator(irs::SeekMode::NORMAL);
   ASSERT_TRUE(termItr->next());
-  auto docsItr = termItr->postings(iresearch::flags());
+  auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
   while (docsItr->next()) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
     ++removed;
   }
   ASSERT_FALSE(docsItr->next());
@@ -7003,10 +7030,9 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
   ASSERT_NE(nullptr, writer);
 
   auto check_consolidating_segments = [](
-      std::set<const irs::segment_meta*>& candidates,
-      const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      irs::index_writer::consolidation_t& /*candidates*/,
+      const irs::index_meta& /*meta*/,
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_TRUE(consolidating_segments.empty());
   };
 
@@ -7015,7 +7041,7 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -7034,11 +7060,10 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
   // null candidate
   {
     auto invalid_candidate_policy = [](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& /*meta*/,
-        const irs::index_writer::consolidating_segments_t&
-    ) {
-      candidates.insert(nullptr);
+        const irs::index_writer::consolidating_segments_t&) {
+      candidates.emplace_back(nullptr);
     };
 
     ASSERT_FALSE(writer->consolidate(invalid_candidate_policy)); // invalid candidate
@@ -7052,11 +7077,10 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
     const irs::segment_meta meta("foo", nullptr, 6, 5, false, irs::segment_meta::file_set(), irs::field_limits::invalid());
 
     auto invalid_candidate_policy = [&meta](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& /*meta*/,
-        const irs::index_writer::consolidating_segments_t&
-    ) {
-      candidates.insert(&meta);
+        const irs::index_writer::consolidating_segments_t&) {
+      candidates.emplace_back(&meta);
     };
 
     ASSERT_FALSE(writer->consolidate(invalid_candidate_policy)); // invalid candidate
@@ -7072,7 +7096,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -7081,15 +7105,16 @@ TEST_P(index_test_case, consolidate_single_segment) {
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
 
-  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
+  constexpr irs::IndexFeatures all_features =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
   irs::bytes_ref actual_value;
 
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& /*candidates*/,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i : expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -7137,11 +7162,11 @@ TEST_P(index_test_case, consolidate_single_segment) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     writer->documents().remove(*query_doc1.filter);
     writer->commit();
     ASSERT_EQ(3, irs::directory_cleaner::clean(dir())); // segments_1 + stale segment meta + unused column store
-    ASSERT_EQ(1, iresearch::directory_reader::open(this->dir(), codec()).size());
+    ASSERT_EQ(1, irs::directory_reader::open(this->dir(), codec()).size());
 
     // get number of files in 1st segment
     count = 0;
@@ -7159,7 +7184,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
     expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(this->dir(), codec());
+    auto reader = irs::directory_reader::open(this->dir(), codec());
     ASSERT_EQ(1, reader.size());
 
     // assume 0 is 'merged' segment
@@ -7171,9 +7196,9 @@ TEST_P(index_test_case, consolidate_single_segment) {
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -7183,14 +7208,32 @@ TEST_P(index_test_case, consolidate_single_segment) {
 }
 
 TEST_P(index_test_case, segment_consolidate_long_running) {
+  const auto blocker = [this](irs::string_ref segment) {
+    irs::memory_directory dir;
+    auto writer = codec()->get_columnstore_writer(false);
+
+    irs::segment_meta meta;
+    meta.name = segment;
+    writer->prepare(dir, meta);
+
+    std::string filename;
+    dir.visit([&filename](const std::string& name) {
+      filename = name;
+      return false;
+    });
+
+    writer->rollback();
+
+    return filename;
+  }("_3");
+
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [] (tests::document& doc,
+        const std::string& name,
+        const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
-          data.str
-        ));
+        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
       }
   });
 
@@ -7200,7 +7243,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   tests::document const* doc4 = gen.next();
 
   irs::bytes_ref actual_value;
-  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
+  constexpr irs::IndexFeatures all_features =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   size_t count = 0;
   auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
@@ -7210,7 +7255,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
   // long running transaction
   {
-    tests::blocking_directory dir(this->dir(), "_3.cs");
+    tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
     ASSERT_NE(nullptr, writer);
 
@@ -7235,15 +7280,14 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
 
-    std::thread consolidation_thread([&writer, &dir]() {
+    std::thread consolidation_thread([&writer]() {
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& /*candidates*/,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
         for (auto i : expected_consolidating_segments) {
           auto& expected_consolidating_segment = meta[i];
@@ -7303,7 +7347,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(this->dir(), codec());
+    auto reader = irs::directory_reader::open(this->dir(), codec());
     ASSERT_EQ(3, reader.size());
 
     // assume 0 is 'segment 3'
@@ -7315,9 +7359,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -7333,9 +7377,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -7351,9 +7395,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -7367,9 +7411,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   // long running transaction + segment removal
   {
     SetUp(); // recreate directory
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
 
-    tests::blocking_directory dir(this->dir(), "_3.cs");
+    tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
     ASSERT_NE(nullptr, writer);
 
@@ -7395,15 +7439,14 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
 
-    std::thread consolidation_thread([&writer, &dir]() {
+    std::thread consolidation_thread([&writer]() {
       // consolidation will fail because of
       ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       auto check_consolidating_segments = [](
-          std::set<const irs::segment_meta*>& candidates,
-          const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+          irs::index_writer::consolidation_t& /*candidates*/,
+          const irs::index_meta& /*meta*/,
+          const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_TRUE(consolidating_segments.empty());
       };
       ASSERT_TRUE(writer->consolidate(check_consolidating_segments)); // check segments registered for consolidation
@@ -7459,7 +7502,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(this->dir(), codec());
+    auto reader = irs::directory_reader::open(this->dir(), codec());
     ASSERT_EQ(3, reader.size());
 
     // assume 0 is 'segment 2'
@@ -7471,9 +7514,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -7489,9 +7532,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -7507,9 +7550,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -7520,9 +7563,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   // long running transaction + document removal
   {
     SetUp(); // recreate directory
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
 
-    tests::blocking_directory dir(this->dir(), "_3.cs");
+    tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
     ASSERT_NE(nullptr, writer);
 
@@ -7552,16 +7595,15 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
 
-    std::thread consolidation_thread([&writer, &dir]() {
+    std::thread consolidation_thread([&writer]() {
       // consolidation will fail because of
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& /*candidates*/,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
         for (auto i : expected_consolidating_segments) {
           auto& expected_consolidating_segment = meta[i];
@@ -7605,7 +7647,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(this->dir(), codec());
+    auto reader = irs::directory_reader::open(this->dir(), codec());
     ASSERT_EQ(1, reader.size());
 
     // assume 0 is 'merged segment'
@@ -7618,12 +7660,12 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_EQ(2, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // including deleted docs
       {
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -7638,7 +7680,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       // only live docs
       {
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -7653,9 +7695,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   // long running transaction + document removal
   {
     SetUp(); // recreate directory
-    auto query_doc1_doc4 = iresearch::iql::query_builder().build("name==A||name==D", std::locale::classic());
+    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", std::locale::classic());
 
-    tests::blocking_directory dir(this->dir(), "_3.cs");
+    tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
     ASSERT_NE(nullptr, writer);
 
@@ -7689,16 +7731,15 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
 
-    std::thread consolidation_thread([&writer, &dir]() {
+    std::thread consolidation_thread([&writer]() {
       // consolidation will fail because of
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& /*candidates*/,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
         for (auto i : expected_consolidating_segments) {
           auto& expected_consolidating_segment = meta[i];
@@ -7743,7 +7784,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(this->dir(), codec());
+    auto reader = irs::directory_reader::open(this->dir(), codec());
     ASSERT_EQ(1, reader.size());
 
     // assume 0 is 'merged segment'
@@ -7756,12 +7797,12 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_EQ(2, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // including deleted docs
       {
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -7779,7 +7820,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       // only live docs
       {
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -7795,10 +7836,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 TEST_P(index_test_case, segment_consolidate_clear_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& /*candidates*/,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i : expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -7811,29 +7851,13 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
-          data.str
-        ));
+          name, data.str));
       }
   });
 
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
   tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
-  tests::document const* doc5 = gen.next();
-  tests::document const* doc6 = gen.next();
-
-  irs::bytes_ref actual_value;
-  auto const all_features = irs::flags{
-    irs::type<irs::document>::get(),
-    irs::type<irs::frequency>::get(),
-    irs::type<irs::position>::get(),
-    irs::type<irs::payload>::get(),
-    irs::type<irs::offset>::get()
-  };
-
-  size_t count = 0;
 
   // 2-phase: clear + consolidate
   {
@@ -7843,29 +7867,26 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     // segment 3
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
 
     writer->begin();
     writer->clear();
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
     writer->commit(); // commit transaction
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(0, reader.size());
   }
 
@@ -7877,29 +7898,26 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     // segment 3
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
 
     writer->begin();
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
     writer->clear();
     writer->commit(); // commit transaction
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(0, reader.size());
   }
 
@@ -7911,15 +7929,13 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
@@ -7936,7 +7952,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
 
     writer->commit(); // commit transaction
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(0, reader.size());
   }
 
@@ -7948,15 +7964,13 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     writer->clear();
@@ -7968,7 +7982,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
 
     writer->commit(); // commit transaction
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(0, reader.size());
   }
 }
@@ -7976,10 +7990,9 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
 TEST_P(index_test_case, segment_consolidate_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& /*candidates*/,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i : expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -7992,7 +8005,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -8003,10 +8016,11 @@ TEST_P(index_test_case, segment_consolidate_commit) {
   tests::document const* doc3 = gen.next();
   tests::document const* doc4 = gen.next();
   tests::document const* doc5 = gen.next();
-  tests::document const* doc6 = gen.next();
 
   irs::bytes_ref actual_value;
-  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
+  constexpr irs::IndexFeatures all_features =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   size_t count = 0;
   auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
@@ -8068,7 +8082,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
 
     // assume 0 is merged segment
@@ -8080,9 +8094,9 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -8156,7 +8170,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     // assume 0 is merged segment
@@ -8168,9 +8182,9 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -8189,9 +8203,9 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -8273,7 +8287,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -8286,9 +8300,9 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -8307,9 +8321,9 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       ASSERT_EQ(3, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -8330,7 +8344,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -8342,10 +8356,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // ensure consolidating segments is empty
   {
     auto check_consolidating_segments = [](
-        std::set<const irs::segment_meta*>& candidates,
-        const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    ) {
+        irs::index_writer::consolidation_t& /*candidates*/,
+        const irs::index_meta& /*meta*/,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_TRUE(consolidating_segments.empty());
     };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
@@ -8364,14 +8377,13 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // register 'SEGMENTS_COUNT/2' consolidations
   for (size_t i = 0, j = 0; i < SEGMENTS_COUNT/2; ++i) {
     auto merge_adjacent = [&j](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    ) {
+        const irs::index_writer::consolidating_segments_t& /*consolidating_segments*/) {
       ASSERT_TRUE(j < meta.size());
-      candidates.emplace(&meta[j++].meta);
+      candidates.emplace_back(&meta[j++].meta);
       ASSERT_TRUE(j < meta.size());
-      candidates.emplace(&meta[j++].meta);
+      candidates.emplace_back(&meta[j++].meta);
     };
 
     ASSERT_TRUE(writer->consolidate(merge_adjacent));
@@ -8380,10 +8392,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // check all segments registered
   {
     auto check_consolidating_segments = [](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& /*candidates*/,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    ) {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_EQ(meta.size(), consolidating_segments.size());
       for (auto& segment : meta) {
         ASSERT_TRUE(consolidating_segments.end() != consolidating_segments.find(&segment.meta));
@@ -8397,10 +8408,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // ensure consolidating segments is empty
   {
     auto check_consolidating_segments = [](
-        std::set<const irs::segment_meta*>& candidates,
-        const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    ) {
+        irs::index_writer::consolidation_t& /*candidates*/,
+        const irs::index_meta& /*meta*/,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_TRUE(consolidating_segments.empty());
     };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
@@ -8408,16 +8418,12 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
 
   // validate structure
   irs::bytes_ref actual_value;
-  const auto all_features = irs::flags{
-    irs::type<irs::document>::get(),
-    irs::type<irs::frequency>::get(),
-    irs::type<irs::position>::get(),
-    irs::type<irs::payload>::get(),
-    irs::type<irs::offset>::get()
-  };
+  constexpr irs::IndexFeatures all_features =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
   gen.reset();
   tests::index_t expected;
-  for (auto i = 0; i < SEGMENTS_COUNT/2; ++i) {
+  for (size_t i = 0; i < SEGMENTS_COUNT/2; ++i) {
     expected.emplace_back();
     const auto* doc = gen.next();
     expected.back().add(doc->indexed.begin(), doc->indexed.end());
@@ -8426,12 +8432,12 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   }
   tests::assert_index(dir(), codec(), expected, all_features);
 
-  auto reader = iresearch::directory_reader::open(dir(), codec());
+  auto reader = irs::directory_reader::open(dir(), codec());
   ASSERT_EQ(SEGMENTS_COUNT/2, reader.size());
 
   std::string expected_name = "A";
 
-  for (auto i = 0; i < SEGMENTS_COUNT/2; ++i) {
+  for (size_t i = 0; i < SEGMENTS_COUNT/2; ++i) {
     auto& segment = reader[i];
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
@@ -8439,9 +8445,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ(expected_name, irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -8457,10 +8463,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
 TEST_P(index_test_case, segment_consolidate_pending_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& /*candidates*/,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i : expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -8473,9 +8478,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
-          data.str
-        ));
+          name, data.str));
       }
   });
 
@@ -8487,7 +8490,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   tests::document const* doc6 = gen.next();
 
   irs::bytes_ref actual_value;
-  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
+  constexpr irs::IndexFeatures all_features =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   size_t count = 0;
   auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
@@ -8503,16 +8508,14 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
@@ -8560,7 +8563,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(2, reader.live_docs_count());
 
@@ -8573,9 +8576,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -8667,7 +8670,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(4, reader.live_docs_count());
 
@@ -8680,9 +8683,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -8701,9 +8704,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -8811,7 +8814,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().add(doc6->indexed.begin(), doc6->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(3, reader.size());
     ASSERT_EQ(6, reader.live_docs_count());
@@ -8825,9 +8828,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -8846,9 +8849,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -8867,9 +8870,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -8883,7 +8886,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes
   {
     SetUp();
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -8958,7 +8961,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(2, reader.live_docs_count());
@@ -8973,12 +8976,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -8993,7 +8996,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // without deleted docs
       {
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -9008,7 +9011,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes
   {
     SetUp();
-    auto query_doc1_doc4 = iresearch::iql::query_builder().build("name==A||name==D", std::locale::classic());
+    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", std::locale::classic());
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9088,7 +9091,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(2, reader.live_docs_count());
@@ -9103,12 +9106,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -9126,7 +9129,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // without deleted docs
       {
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -9141,8 +9144,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with delete committed and pending
   {
     SetUp();
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc4 = iresearch::iql::query_builder().build("name==D", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9184,10 +9187,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     auto do_commit_and_consolidate_count = [&writer](
-      std::set<const irs::segment_meta*>& candidates,
-      const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+        irs::index_writer::consolidation_t& candidates,
+        const irs::index_meta& meta,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
       sub_policy(candidates, meta, consolidating_segments);
       writer->commit();
@@ -9220,7 +9222,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
     {
-      auto reader = iresearch::directory_reader::open(dir(), codec());
+      auto reader = irs::directory_reader::open(dir(), codec());
       ASSERT_TRUE(reader);
       ASSERT_EQ(1, reader.size());
       ASSERT_EQ(2, reader.live_docs_count());
@@ -9234,12 +9236,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
         auto terms = segment.field("same");
         ASSERT_NE(nullptr, terms);
-        auto termItr = terms->iterator();
+        auto termItr = terms->iterator(irs::SeekMode::NORMAL);
         ASSERT_TRUE(termItr->next());
 
         // with deleted docs
         {
-          auto docsItr = termItr->postings(iresearch::flags());
+          auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
           ASSERT_TRUE(docsItr->next());
           ASSERT_TRUE(values(docsItr->value(), actual_value));
           ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -9257,7 +9259,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
         // without deleted docs
         {
-          auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+          auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
           ASSERT_TRUE(docsItr->next());
           ASSERT_TRUE(values(docsItr->value(), actual_value));
           ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -9273,33 +9275,34 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // first create new segment
     // segment 5
     ASSERT_TRUE(insert(*writer,
-        doc5->indexed.begin(), doc5->indexed.end(),
-        doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end()));
     ASSERT_TRUE(insert(*writer,
-        doc6->indexed.begin(), doc6->indexed.end(),
-        doc6->stored.begin(), doc6->stored.end()
-    ));
+      doc6->indexed.begin(), doc6->indexed.end(),
+      doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
 
     // remove one doc from new and old segment to make conolidation do something
-    auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
-    auto query_doc5 = iresearch::iql::query_builder().build("name==E", std::locale::classic());
+    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc5 = irs::iql::query_builder().build("name==E", std::locale::classic());
     writer->documents().remove(*query_doc3.filter);
     writer->documents().remove(*query_doc5.filter);
     writer->commit();
+
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
     writer->commit();
 
     // check all old segments are deleted (no old version of segments is left in cache and blocking )
-    ASSERT_EQ(23, irs::directory_cleaner::clean(dir()));
+    ASSERT_EQ(count+3, irs::directory_cleaner::clean(dir())); // +3 segment files
   }
 
   // repeatable consolidation of already consolidated segment
   {
     SetUp();
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9347,15 +9350,14 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     auto do_commit_and_consolidate_count = [&writer](
-      std::set<const irs::segment_meta*>& candidates,
-      const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
-        writer->commit();
-        writer->begin(); // another commit to process pending consolidating_segments
-        writer->commit();
-        auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
-        sub_policy(candidates, meta, consolidating_segments);
+        irs::index_writer::consolidation_t& candidates,
+        const irs::index_meta& meta,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
+      writer->commit();
+      writer->begin(); // another commit to process pending consolidating_segments
+      writer->commit();
+      auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
+      sub_policy(candidates, meta, consolidating_segments);
     };
 
     // this should fail as segments 1 and 0 are actually consolidated on previous  commit
@@ -9373,8 +9375,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // repeatable consolidation of already consolidated segment during two phase commit
   {
     SetUp();
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc4 = iresearch::iql::query_builder().build("name==D", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9422,18 +9424,17 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     auto do_commit_and_consolidate_count = [&writer, &query_doc4](
-      std::set<const irs::segment_meta*>& candidates,
-      const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
-        writer->commit();
-        writer->begin(); // another commit to process pending consolidating_segments
-        writer->commit();
-        // new transaction with passed 1st phase
-        writer->documents().remove(*query_doc4.filter);
-        writer->begin();
-        auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
-        sub_policy(candidates, meta, consolidating_segments);
+        irs::index_writer::consolidation_t& candidates,
+        const irs::index_meta& meta,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
+      writer->commit();
+      writer->begin(); // another commit to process pending consolidating_segments
+      writer->commit();
+      // new transaction with passed 1st phase
+      writer->documents().remove(*query_doc4.filter);
+      writer->begin();
+      auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
+      sub_policy(candidates, meta, consolidating_segments);
     };
 
     // this should fail as segments 1 and 0 are actually consolidated on previous  commit
@@ -9452,7 +9453,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // check commit rollback and consolidation
   {
     SetUp();
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9516,7 +9517,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
     expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size()); // should be one consolidated segment
     ASSERT_EQ(3, reader.live_docs_count());
@@ -9525,7 +9526,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes + inserts
   {
     SetUp();
-    auto query_doc1_doc4 = iresearch::iql::query_builder().build("name==A||name==D", std::locale::classic());
+    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", std::locale::classic());
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9611,7 +9612,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(3, reader.live_docs_count());
@@ -9626,12 +9627,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -9649,7 +9650,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // without deleted docs
       {
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -9670,10 +9671,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -9683,7 +9684,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes + inserts
   {
     SetUp();
-    auto query_doc1_doc4 = iresearch::iql::query_builder().build("name==A||name==D", std::locale::classic());
+    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", std::locale::classic());
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9769,7 +9770,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(3, reader.live_docs_count());
@@ -9784,10 +9785,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -9803,12 +9804,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -9826,7 +9827,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // without deleted docs
       {
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -9841,7 +9842,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes + inserts
   {
     SetUp();
-    auto query_doc3_doc4 = iresearch::iql::query_builder().build("name==C||name==D", std::locale::classic());
+    auto query_doc3_doc4 = irs::iql::query_builder().build("name==C||name==D", std::locale::classic());
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9947,7 +9948,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(3, reader.live_docs_count());
@@ -9962,10 +9963,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -9985,10 +9986,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -9999,10 +10000,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 TEST_P(index_test_case, consolidate_segment_versions) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i: expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -10057,13 +10057,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10073,7 +10073,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10117,13 +10117,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10133,7 +10133,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10176,13 +10176,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10192,7 +10192,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10236,13 +10236,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10252,7 +10252,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10308,13 +10308,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10324,7 +10324,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10342,13 +10342,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10361,7 +10361,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -10416,13 +10416,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10432,7 +10432,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10450,13 +10450,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10469,7 +10469,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -10505,10 +10505,9 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
       // segment 2 (version 0) created entirely while consolidate is in progress
       auto policy = [&writer, doc3](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& candidates,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      )->void {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments)->void {
         auto policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
         policy(candidates, meta, consolidating_segments); // compute policy first then add segment
         {
@@ -10540,13 +10539,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -10556,7 +10555,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -10574,13 +10573,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10590,7 +10589,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10608,13 +10607,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10627,7 +10626,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -10681,13 +10680,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10697,7 +10696,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10715,13 +10714,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10734,7 +10733,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -10789,13 +10788,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10808,7 +10807,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10849,10 +10848,9 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
     // segment 2 (version 0) created entirely while consolidate is in progress
     auto policy = [&writer, doc3](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    )->void {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments)->void {
       auto policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
       policy(candidates, meta, consolidating_segments); // compute policy first then add segment
       {
@@ -10882,13 +10880,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10901,7 +10899,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10919,13 +10917,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -10938,7 +10936,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -10956,13 +10954,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -10972,7 +10970,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -11010,10 +11008,9 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
     // segment 2 (version 0) created entirely while consolidate is in progress
     auto policy = [&writer, doc3, &doc4](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    )->void {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments)->void {
       auto policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
       policy(candidates, meta, consolidating_segments); // compute policy first then add segment
       // segment 2 (version 0)
@@ -11056,13 +11053,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -11075,7 +11072,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -11093,13 +11090,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -11112,7 +11109,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -11130,13 +11127,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -11149,7 +11146,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -11167,13 +11164,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -11186,7 +11183,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
@@ -11197,7 +11194,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
   // consolidate with uncommitted (inserts + deletes)
   {
-    auto query_doc2_doc3 = iresearch::iql::query_builder().build("name==B || name==C", std::locale::classic());
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", std::locale::classic());
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -11277,13 +11274,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -11296,7 +11293,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -11314,13 +11311,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(1, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -11339,7 +11336,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc5
@@ -11350,7 +11347,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
   // consolidate with committed (inserts) + uncomitted (deletes)
   {
-    auto query_doc2_doc3 = iresearch::iql::query_builder().build("name==B || name==C", std::locale::classic());
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", std::locale::classic());
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -11434,13 +11431,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -11459,7 +11456,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -11473,7 +11470,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
   // consolidate with committed (inserts + deletes)
   {
-    auto query_doc2_doc3 = iresearch::iql::query_builder().build("name==B || name==C", std::locale::classic());
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", std::locale::classic());
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -11564,13 +11561,13 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       // with deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = termItr->postings(iresearch::flags());
+        auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -11583,7 +11580,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
       // without deleted docs
       {
         irs::bytes_ref actual_value;
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+        auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
@@ -11685,7 +11682,7 @@ TEST_P(index_test_case, consolidate_progress) {
     irs::memory_directory dir;
     auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
 
-    for (auto size = 0; size < MAX_DOCS; ++size) {
+    for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(
         *writer,
         doc1->indexed.begin(), doc1->indexed.end(),
@@ -11694,7 +11691,7 @@ TEST_P(index_test_case, consolidate_progress) {
     }
     writer->commit(); // create segment0
 
-    for (auto size = 0; size < MAX_DOCS; ++size) {
+    for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(
         *writer,
         doc2->indexed.begin(), doc2->indexed.end(),
@@ -11728,7 +11725,7 @@ TEST_P(index_test_case, consolidate_progress) {
     size_t call_count = i;
     irs::memory_directory dir;
     auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
-    for (auto size = 0; size < MAX_DOCS; ++size) {
+    for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(
         *writer,
         doc1->indexed.begin(), doc1->indexed.end(),
@@ -11737,7 +11734,7 @@ TEST_P(index_test_case, consolidate_progress) {
     }
     writer->commit(); // create segment0
 
-    for (auto size = 0; size < MAX_DOCS; ++size) {
+    for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(
         *writer,
         doc2->indexed.begin(), doc2->indexed.end(),
@@ -11772,7 +11769,7 @@ TEST_P(index_test_case, segment_consolidate) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -11788,11 +11785,13 @@ TEST_P(index_test_case, segment_consolidate) {
   tests::document const* doc6 = gen.next();
 
   auto always_merge = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
-  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
+  constexpr irs::IndexFeatures all_features =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   // remove empty new segment
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11802,13 +11801,13 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->documents().remove(std::move(query_doc1.filter));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(0, reader.size());
   }
 
   // remove empty old segment
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11819,13 +11818,13 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->documents().remove(std::move(query_doc1.filter));
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(0, reader.size());
   }
 
   // remove empty old, defragment new
   {
-    auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11853,7 +11852,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -11862,9 +11861,9 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -11873,7 +11872,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment new
   {
-    auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11900,7 +11899,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
@@ -11909,9 +11908,9 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -11920,7 +11919,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment old
   {
-    auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11948,7 +11947,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
@@ -11957,9 +11956,9 @@ TEST_P(index_test_case, segment_consolidate) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -11968,7 +11967,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment old
   {
-    auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11996,7 +11995,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
@@ -12005,9 +12004,9 @@ TEST_P(index_test_case, segment_consolidate) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -12015,20 +12014,19 @@ TEST_P(index_test_case, segment_consolidate) {
   }
 
   auto merge_if_masked = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t&
-  )->void {
+      const irs::index_writer::consolidating_segments_t&)->void {
     for (auto& segment : meta) {
       if (segment.meta.live_docs_count != segment.meta.docs_count) {
-        candidates.insert(&segment.meta);
+        candidates.emplace_back(&segment.meta);
       }
     }
   };
 
   // do defragment old segment with uncommited removal (i.e. do not consider uncomitted removals)
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12046,7 +12044,7 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->commit();
 
     {
-      auto reader = iresearch::directory_reader::open(dir(), codec());
+      auto reader = irs::directory_reader::open(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0]; // assume 0 is id of first/only segment
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
@@ -12055,7 +12053,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // do not defragment old segment with uncommited removal (i.e. do not consider uncomitted removals)
   {
-    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12072,7 +12070,7 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->commit();
 
     {
-      auto reader = iresearch::directory_reader::open(dir(), codec());
+      auto reader = irs::directory_reader::open(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0]; // assume 0 is id of first/only segment
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
@@ -12082,7 +12080,7 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->commit();
 
     {
-      auto reader = iresearch::directory_reader::open(dir(), codec());
+      auto reader = irs::directory_reader::open(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0]; // assume 0 is id of first/only segment
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
@@ -12091,7 +12089,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge new+old segment
   {
-    auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12123,7 +12121,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
@@ -12132,9 +12130,9 @@ TEST_P(index_test_case, segment_consolidate) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -12146,7 +12144,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge new+old segment
   {
-    auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12178,7 +12176,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
@@ -12187,9 +12185,9 @@ TEST_P(index_test_case, segment_consolidate) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -12201,7 +12199,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old segment
   {
-    auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12234,7 +12232,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
@@ -12243,9 +12241,9 @@ TEST_P(index_test_case, segment_consolidate) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -12257,7 +12255,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old segment
   {
-    auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12290,7 +12288,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
@@ -12299,9 +12297,9 @@ TEST_P(index_test_case, segment_consolidate) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -12313,7 +12311,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old+old segment
   {
-    auto query_doc1_doc3_doc5 = iresearch::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
+    auto query_doc1_doc3_doc5 = irs::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12356,7 +12354,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().add(doc6->indexed.begin(), doc6->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count()); // total count of documents
@@ -12365,9 +12363,9 @@ TEST_P(index_test_case, segment_consolidate) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -12382,7 +12380,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old+old segment
   {
-    auto query_doc1_doc3_doc5 = iresearch::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
+    auto query_doc1_doc3_doc5 = irs::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12425,7 +12423,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().add(doc6->indexed.begin(), doc6->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count()); // total count of documents
@@ -12434,9 +12432,9 @@ TEST_P(index_test_case, segment_consolidate) {
     auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -12473,7 +12471,7 @@ TEST_P(index_test_case, segment_consolidate) {
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
           doc.insert(std::make_shared<tests::templates::string_field>(
-            irs::string_ref(name),
+            name,
             data.str
           ));
         }
@@ -12501,7 +12499,7 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->commit();
 
     // validate merged segment
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(6, segment.docs_count()); // total count of documents
@@ -12516,9 +12514,9 @@ TEST_P(index_test_case, segment_consolidate) {
 
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -12564,7 +12562,7 @@ TEST_P(index_test_case, segment_consolidate) {
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
           doc.insert(std::make_shared<tests::templates::string_field>(
-            irs::string_ref(name),
+            name,
             data.str
           ));
         }
@@ -12592,7 +12590,7 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->commit();
 
     // validate merged segment
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(6, segment.docs_count()); // total count of documents
@@ -12607,9 +12605,9 @@ TEST_P(index_test_case, segment_consolidate) {
 
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
@@ -12638,7 +12636,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -12687,7 +12685,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing merge
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size()); // 1+(2|3)
 
     // check 1st segment
@@ -12700,11 +12698,11 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       irs::bytes_ref actual_value;
-      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -12722,11 +12720,11 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       irs::bytes_ref actual_value;
-      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -12766,7 +12764,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing non-merge
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -12777,13 +12775,13 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
       auto values = column->values();
-      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -12799,13 +12797,13 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
       auto values = column->values();
-      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -12837,19 +12835,19 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     std::unordered_set<irs::string_ref> expectedName = { "A", "B" };
     irs::bytes_ref actual_value;
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
     auto values = column->values();
-    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -12876,7 +12874,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing non-merge
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -12887,13 +12885,13 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
       auto values = column->values();
-      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -12909,13 +12907,13 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       ASSERT_EQ(expectedName.size(), segment.docs_count());
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
       auto values = column->values();
-      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -12960,19 +12958,19 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     std::unordered_set<irs::string_ref> expectedName = { "A", "E" };
     irs::bytes_ref actual_value;
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
     auto values = column->values();
-    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -12982,7 +12980,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
   // valid docs count policy (not modified)
   {
-    auto query_doc2_doc3_doc4 = iresearch::iql::query_builder().build("name==B||name==C||name==D", std::locale::classic());
+    auto query_doc2_doc3_doc4 = irs::iql::query_builder().build("name==B||name==C||name==D", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -13013,7 +13011,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing non-merge
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -13024,13 +13022,13 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       ASSERT_EQ(expectedName.size() + 3, segment.docs_count()); // total count of documents (+3 == B, C, D masked)
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
       auto values = column->values();
-      for (auto docsItr = segment.mask(termItr->postings(iresearch::flags())); docsItr->next();) {
+      for (auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE)); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -13046,13 +13044,13 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
       auto values = column->values();
-      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -13063,7 +13061,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
   // valid segment fill policy (merge)
   {
-    auto query_doc2_doc4 = iresearch::iql::query_builder().build("name==B||name==D", std::locale::classic());
+    auto query_doc2_doc4 = irs::iql::query_builder().build("name==B||name==D", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -13094,19 +13092,19 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     std::unordered_set<irs::string_ref> expectedName = { "A", "C" };
     irs::bytes_ref actual_value;
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
     auto values = column->values();
-    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -13116,7 +13114,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
   // valid segment fill policy (not modified)
   {
-    auto query_doc2_doc4 = iresearch::iql::query_builder().build("name==B||name==D", std::locale::classic());
+    auto query_doc2_doc4 = irs::iql::query_builder().build("name==B||name==D", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -13144,7 +13142,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing non-merge
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -13155,13 +13153,13 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       ASSERT_EQ(expectedName.size() + 1, segment.docs_count()); // total count of documents (+1 == B masked)
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
       auto values = column->values();
-      for (auto docsItr = segment.mask(termItr->postings(iresearch::flags())); docsItr->next();) {
+      for (auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE)); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -13177,13 +13175,13 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       ASSERT_EQ(expectedName.size() + 1, segment.docs_count()); // total count of documents (+1 == D masked)
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
       auto values = column->values();
-      for (auto docsItr = segment.mask(termItr->postings(iresearch::flags())); docsItr->next();) {
+      for (auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE)); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -13198,10 +13196,7 @@ TEST_P(index_test_case, segment_options) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
     }
   });
 
@@ -13215,10 +13210,8 @@ TEST_P(index_test_case, segment_options) {
 
     {
       auto doc = ctx.insert();
-      ASSERT_TRUE(
-        doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end())
-        && doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end())
-      );
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end()));
+      ASSERT_TRUE(doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end()));
     }
 
     irs::index_writer::segment_options options;
@@ -13256,7 +13249,7 @@ TEST_P(index_test_case, segment_options) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
 
     // check only segment
@@ -13269,11 +13262,11 @@ TEST_P(index_test_case, segment_options) {
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       irs::bytes_ref actual_value;
-      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -13302,7 +13295,7 @@ TEST_P(index_test_case, segment_options) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size()); // 1+2
 
     // check 1st segment
@@ -13315,11 +13308,11 @@ TEST_P(index_test_case, segment_options) {
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       irs::bytes_ref actual_value;
-      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -13337,11 +13330,11 @@ TEST_P(index_test_case, segment_options) {
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       irs::bytes_ref actual_value;
-      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -13370,7 +13363,7 @@ TEST_P(index_test_case, segment_options) {
 
     writer->commit();
 
-    auto reader = iresearch::directory_reader::open(dir(), codec());
+    auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(2, reader.size()); // 1+2
 
     // check 1st segment
@@ -13383,11 +13376,11 @@ TEST_P(index_test_case, segment_options) {
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       irs::bytes_ref actual_value;
-      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -13405,11 +13398,11 @@ TEST_P(index_test_case, segment_options) {
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
       irs::bytes_ref actual_value;
-      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
@@ -13499,13 +13492,13 @@ TEST_P(index_test_case, writer_insert_immediate_remove) {
     doc2->stored.begin(), doc2->stored.end()
   ));
 
-  auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
   writer->documents().remove(*(query_doc1.filter.get()));
   writer->commit();
 
   // remove for initial segment to trigger consolidation
   // consolidation is needed to force opening all file handles and make cached readers indeed hold reference to a file
-  auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
+  auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
   writer->documents().remove(*(query_doc3.filter.get()));
   writer->commit();
 
@@ -13565,15 +13558,15 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
     doc2->stored.begin(), doc2->stored.end()
   ));
 
-  auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
   writer->documents().remove(*(query_doc1.filter.get()));
-  auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
+  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
   writer->documents().remove(*(query_doc2.filter.get()));
   writer->commit();
 
   // remove for initial segment to trigger consolidation
   // consolidation is needed to force opening all file handles and make cached readers indeed hold reference to a file
-  auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
+  auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
   writer->documents().remove(*(query_doc3.filter.get()));
   writer->commit();
 
@@ -13588,6 +13581,133 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
   count = 0;
   directory.visit(get_number_of_files_in_segments);
   ASSERT_EQ(count, one_segment_files_count);
+}
+
+
+TEST_P(index_test_case, writer_remove_all_from_last_segment) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+  auto& directory = dir();
+  auto* doc1 = gen.next();
+  auto* doc2 = gen.next();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()
+  ));
+
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end()
+  ));
+
+  writer->commit(); // index should be non-empty
+  size_t count = 0;
+  auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
+    count += size_t(name.size() && '_' == name[0]);
+    return true;
+  };
+  directory.visit(get_number_of_files_in_segments);
+  ASSERT_GT(count, 0);
+
+  // Remove all documents from segment
+  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+  writer->documents().remove(*(query_doc1.filter.get()));
+  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+  writer->documents().remove(*(query_doc2.filter.get()));
+  writer->commit();
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(0, reader.size());
+    // file removal should pass for all files (especially valid for Microsoft Windows)
+    irs::directory_utils::remove_all_unreferenced(directory);
+
+    // validate that all files from old segments have been removed
+    count = 0;
+    directory.visit(get_number_of_files_in_segments);
+    ASSERT_EQ(count, 0);
+  }
+
+  // this consolidation should still be ok
+  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+  writer->commit();
+}
+
+TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+  auto& directory = dir();
+  auto* doc1 = gen.next();
+  auto* doc2 = gen.next();
+  auto* doc3 = gen.next();
+  auto* doc4 = gen.next();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()
+  ));
+
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end()
+  ));
+
+  writer->commit(); // segment 1
+  
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end()
+  ));
+
+  ASSERT_TRUE(insert(*writer,
+    doc4->indexed.begin(), doc4->indexed.end(),
+    doc4->stored.begin(), doc4->stored.end()
+  ));
+
+  writer->commit(); //  segment 2
+
+
+  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+  writer->documents().remove(*(query_doc1.filter.get()));
+  auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+  writer->documents().remove(*(query_doc3.filter.get()));
+  writer->commit();
+
+  // this consolidation should bring us to one consolidated segment without removes.
+  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+  // Remove all documents from 'new' segment
+  auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+  writer->documents().remove(*(query_doc4.filter.get()));
+  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+  writer->documents().remove(*(query_doc2.filter.get()));
+  writer->commit();
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(0, reader.size());
+    // file removal should pass for all files (especially valid for Microsoft Windows)
+    irs::directory_utils::remove_all_unreferenced(directory);
+
+    // validate that all files from old segments have been removed
+    size_t count{0};
+    auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
+      count += size_t(name.size() && '_' == name[0]);
+      return true;
+    };
+    directory.visit(get_number_of_files_in_segments);
+    ASSERT_EQ(count, 0);
+  }
+
+  // this consolidation should still be ok
+  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+  writer->commit();
 }
 
 TEST_P(index_test_case, ensure_no_empty_norms_written) {
@@ -13611,20 +13731,25 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
 
   struct empty_field {
     irs::string_ref name() const { return "test"; };
-    irs::flags features() const {
-      return { irs::type<irs::position>::get(),
-               irs::type<irs::frequency>::get(),
-               irs::type<irs::norm>::get() };
+    irs::IndexFeatures index_features() const {
+      return irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
+    }
+    irs::features_t features() const {
+      return { &features_, 1 };
     }
     irs::token_stream& get_tokens() const noexcept {
       return stream;
     }
 
+    irs::type_info::type_id features_{irs::type<irs::norm>::id()};
     mutable empty_token_stream stream;
   } empty;
 
   {
-    auto writer = open_writer();
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+
+    auto writer = open_writer(irs::OM_CREATE, opts);
 
     // no norms is written as there is nothing to index
     {
@@ -13636,7 +13761,10 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     // we don't write default norms
     {
       const tests::templates::string_field field(
-        empty.name(), "bar", empty.features());
+        static_cast<std::string>(empty.name()),
+        "bar",
+        empty.index_features(),
+        { empty.features().begin(), empty.features().end() });
       auto docs = writer->documents();
       auto doc = docs.insert();
       ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
@@ -13644,7 +13772,10 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
 
     {
       const tests::templates::string_field field(
-        empty.name(), "bar", empty.features());
+        static_cast<std::string>(empty.name()),
+        "bar",
+        empty.index_features(),
+        { empty.features().begin(), empty.features().end() });
       auto docs = writer->documents();
       auto doc = docs.insert();
       ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
@@ -13666,11 +13797,14 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     ASSERT_TRUE(field->next());
     auto& field_reader = field->value();
     ASSERT_EQ(empty.name(), field_reader.meta().name);
-    ASSERT_TRUE(irs::field_limits::valid(field_reader.meta().norm));
+    ASSERT_EQ(1, field_reader.meta().features.count(irs::type<irs::norm>::id()));
+    const auto norm = field_reader.meta().features.find(irs::type<irs::norm>::id());
+    ASSERT_NE(field_reader.meta().features.end(), norm);
+    ASSERT_TRUE(irs::field_limits::valid(norm->second));
     ASSERT_FALSE(field->next());
     ASSERT_FALSE(field->next());
 
-    auto column_reader = segment.column_reader(field_reader.meta().norm);
+    auto column_reader = segment.column_reader(norm->second);
     ASSERT_NE(nullptr, column_reader);
     ASSERT_EQ(1, column_reader->size());
     auto it = column_reader->iterator();
@@ -13687,32 +13821,28 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_test_10,
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0")
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values("1_0")),
+  index_test_case::to_string
 );
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_test_11,
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-    ),
-    ::testing::Values(tests::format_info{"1_1", "1_0"})
-  ),
-  tests::to_string
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    ::testing::Values(tests::format_info{"1_1", "1_0"})),
+  index_test_case::to_string
 );
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
@@ -13725,18 +13855,16 @@ const auto index_test_case_12_values = ::testing::Values(tests::format_info{"1_2
 #endif
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_test_12,
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-    ),
-    index_test_case_12_values
-  ),
-  tests::to_string
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    index_test_case_12_values),
+  index_test_case::to_string
 );
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
@@ -13749,18 +13877,16 @@ const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_3
 #endif
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_test_13,
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-    ),
-    index_test_case_13_values
-  ),
-  tests::to_string
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    index_test_case_13_values),
+  index_test_case::to_string
 );
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
@@ -13769,22 +13895,252 @@ namespace {
 const auto index_test_case_14_values = ::testing::Values(tests::format_info{"1_4", "1_0"},
                                                          tests::format_info{"1_4simd", "1_0"});
 #else
-const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_4", "1_0"});
+const auto index_test_case_14_values = ::testing::Values(tests::format_info{"1_4", "1_0"});
 #endif
 }
 
-INSTANTIATE_TEST_CASE_P(
+class index_test_case_14 : public index_test_case { };
+
+TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
+  struct feature1 { };
+  struct feature2 { };
+  struct feature3 { };
+
+  REGISTER_ATTRIBUTE(feature1);
+  REGISTER_ATTRIBUTE(feature2);
+  REGISTER_ATTRIBUTE(feature3);
+
+  struct test_field {
+    irs::string_ref name() const { return "test"; };
+    irs::IndexFeatures index_features() const {
+      return irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ;
+    }
+    irs::features_t features() const {
+      return { features_.data(), features_.size() };
+    }
+    irs::token_stream& get_tokens() const noexcept {
+      stream_.reset(value_);
+      return stream_;
+    }
+
+    std::array<irs::type_info::type_id, 3> features_ {
+      irs::type<feature1>::id(),
+      irs::type<feature2>::id(),
+      irs::type<feature3>::id()
+    };
+    std::string value_;
+    mutable irs::string_token_stream stream_;
+  } field;
+
+  {
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<feature1>::id(), [](
+        const irs::field_stats& stats,
+        irs::doc_id_t doc,
+        std::function<irs::column_output&(irs::doc_id_t)>& writer) {
+      if (doc == 2) {
+        return;
+      }
+
+      auto& stream = writer(doc);
+      stream.write_int(doc);
+      stream.write_int(stats.len);
+      stream.write_int(stats.num_overlap);
+      stream.write_int(stats.max_term_freq);
+      stream.write_int(stats.num_unique);
+    });
+    opts.features.emplace(irs::type<feature2>::id(), nullptr); // marker feature
+    opts.features.emplace(irs::type<feature3>::id(), [](
+        const irs::field_stats& stats,
+        irs::doc_id_t doc,
+        std::function<irs::column_output&(irs::doc_id_t)>& writer) {
+      if (doc == 1) {
+        return;
+      }
+
+      auto& stream = writer(doc);
+      stream.write_int(doc);
+      stream.write_int(stats.len);
+      stream.write_int(stats.num_overlap);
+      stream.write_int(stats.max_term_freq);
+      stream.write_int(stats.num_unique);
+    });
+
+    auto writer = open_writer(irs::OM_CREATE, opts);
+
+    // doc1
+    {
+      auto docs = writer->documents();
+      auto doc = docs.insert();
+      field.value_ = "foo";
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    }
+
+    // doc2
+    {
+      auto docs = writer->documents();
+      auto doc = docs.insert();
+
+      field.value_ = "foo";
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    }
+
+    // doc3
+    {
+      auto docs = writer->documents();
+      auto doc = docs.insert();
+
+      field.value_ = "foo";
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+
+      field.value_ = "bar";
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    }
+
+    writer->commit();
+  }
+
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = (*reader)[0];
+    ASSERT_EQ(3, segment.docs_count());
+    ASSERT_EQ(3, segment.live_docs_count());
+
+    auto fields = segment.fields();
+    ASSERT_NE(nullptr, fields);
+    ASSERT_TRUE(fields->next());
+    auto& field_reader = fields->value();
+    ASSERT_EQ(field.name(), field_reader.meta().name);
+    ASSERT_EQ(3, field_reader.meta().features.size());
+    {
+      ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature1>::id()));
+      const auto [type, id] = *field_reader.meta().features.find(irs::type<feature1>::id());
+      ASSERT_EQ(irs::type<feature1>::id(), type);
+      ASSERT_EQ(0, id);
+    }
+    {
+      ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature2>::id()));
+      const auto [type, id] = *field_reader.meta().features.find(irs::type<feature2>::id());
+      ASSERT_EQ(irs::type<feature2>::id(), type);
+      ASSERT_FALSE(irs::field_limits::valid(id));
+    }
+    {
+      ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature3>::id()));
+      const auto [type, id] = *field_reader.meta().features.find(irs::type<feature3>::id());
+      ASSERT_EQ(irs::type<feature3>::id(), type);
+      ASSERT_EQ(1, id);
+    }
+
+    // check feature1
+    {
+      auto feature = field_reader.meta().features.find(irs::type<feature1>::id());
+      ASSERT_NE(feature, field_reader.meta().features.end());
+      auto column_reader = segment.column_reader(feature->second);
+      ASSERT_NE(nullptr, column_reader);
+      ASSERT_EQ(2, column_reader->size());
+      auto it = column_reader->iterator();
+      ASSERT_NE(nullptr, it);
+      auto payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+
+      // doc1
+      {
+        ASSERT_TRUE(it->next());
+        ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+        ASSERT_EQ(1, it->value());
+        auto* p = payload->value.c_str();
+
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // doc id
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // field length
+        ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // max term freq
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // num unique terms
+      }
+
+      // doc3
+      {
+        ASSERT_TRUE(it->next());
+        ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+        ASSERT_EQ(3, it->value());
+        auto* p = payload->value.c_str();
+        ASSERT_EQ(3, irs::read<uint32_t>(p)); // doc id
+        ASSERT_EQ(6, irs::read<uint32_t>(p)); // field length
+        ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+        ASSERT_EQ(4, irs::read<uint32_t>(p)); // max term freq
+        ASSERT_EQ(2, irs::read<uint32_t>(p)); // num unique terms
+      }
+
+      ASSERT_FALSE(it->next());
+      ASSERT_FALSE(it->next());
+      ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+    }
+
+    // check feature3
+    {
+      auto feature = field_reader.meta().features.find(irs::type<feature3>::id());
+      ASSERT_NE(feature, field_reader.meta().features.end());
+      auto column_reader = segment.column_reader(feature->second);
+      ASSERT_NE(nullptr, column_reader);
+      ASSERT_EQ(2, column_reader->size());
+      auto it = column_reader->iterator();
+      ASSERT_NE(nullptr, it);
+      auto payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+
+      // doc2
+      {
+        ASSERT_TRUE(it->next());
+        ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+        ASSERT_EQ(2, it->value());
+        auto* p = payload->value.c_str();
+
+        ASSERT_EQ(2, irs::read<uint32_t>(p)); // doc id
+        ASSERT_EQ(2, irs::read<uint32_t>(p)); // field length
+        ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+        ASSERT_EQ(2, irs::read<uint32_t>(p)); // max term freq
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // num unique terms
+      }
+
+      // doc3
+      {
+        ASSERT_TRUE(it->next());
+        ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+        ASSERT_EQ(3, it->value());
+        auto* p = payload->value.c_str();
+        ASSERT_EQ(3, irs::read<uint32_t>(p)); // doc id
+        ASSERT_EQ(6, irs::read<uint32_t>(p)); // field length
+        ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+        ASSERT_EQ(4, irs::read<uint32_t>(p)); // max term freq
+        ASSERT_EQ(2, irs::read<uint32_t>(p)); // num unique terms
+      }
+
+      ASSERT_FALSE(it->next());
+      ASSERT_FALSE(it->next());
+      ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+    }
+
+    ASSERT_FALSE(fields->next());
+    ASSERT_FALSE(fields->next());
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
   index_test_14,
-  index_test_case,
+  index_test_case_14,
   ::testing::Combine(
     ::testing::Values(
-      tests::memory_directory,
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-    ),
-    index_test_case_14_values
-  ),
-  tests::to_string
+      &tests::directory<tests::mmap_directory>,
+      &tests::directory<tests::memory_directory>,
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    index_test_case_14_values),
+  index_test_case_14::to_string
 );
 
 class index_test_case_10 : public tests::index_test_base { };
@@ -13896,7 +14252,6 @@ TEST_P(index_test_case_10, commit_payload) {
 
     payload_committed_tick = 0;
 
-    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
@@ -13939,7 +14294,6 @@ TEST_P(index_test_case_10, commit_payload) {
 
     payload_committed_tick = 0;
 
-    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
@@ -14031,18 +14385,16 @@ TEST_P(index_test_case_10, commit_payload) {
   ASSERT_EQ(reader, reader.reopen());
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_test_10,
   index_test_case_10,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0")
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values("1_0")),
+  index_test_case_10::to_string
 );
 
 class index_test_case_11 : public tests::index_test_base { };
@@ -14052,19 +14404,15 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
-          data.str
-          ));
+        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
       }
     });
 
   tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
 
   irs::index_writer::init_options writer_options;
   uint64_t payload_committed_tick{ 0 };
-  irs::bstring input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  irs::bstring input_payload = static_cast<irs::bstring>(irs::ref_cast<irs::byte_type>(irs::string_ref("init")));
   bool payload_provider_result{ false };
   writer_options.meta_payload_provider = 
     [&payload_provider_result, &payload_committed_tick, &input_payload](uint64_t tick, irs::bstring& out) {
@@ -14578,16 +14926,14 @@ const auto index_test_case_11_values = ::testing::Values(tests::format_info{"1_1
 #endif
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_test_11,
   index_test_case_11,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    index_test_case_11_values
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    index_test_case_11_values),
+  index_test_case_11::to_string
 );

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_INITIAL_SYNCER_H
-#define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -32,6 +31,8 @@
 #include "Scheduler/Scheduler.h"
 
 #include <velocypack/Slice.h>
+
+#include <mutex>
 
 struct TRI_vocbase_t;
 
@@ -66,8 +67,8 @@ class InitialSyncer : public Syncer {
   replutils::ProgressInfo _progress;
   
   /// recurring task to keep the batch alive
+  std::mutex _batchPingMutex;
   Scheduler::WorkHandle _batchPingTimer;
 };
 }  // namespace arangodb
 
-#endif

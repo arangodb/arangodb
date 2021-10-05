@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_TRANSACTIONAL_CACHE_H
-#define ARANGODB_CACHE_TRANSACTIONAL_CACHE_H
+#pragma once
 
 #include <atomic>
 #include <chrono>
@@ -139,4 +138,3 @@ class TransactionalCache final : public Cache {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

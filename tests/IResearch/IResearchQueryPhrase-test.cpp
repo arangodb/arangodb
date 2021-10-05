@@ -33,6 +33,8 @@
 
 #include <velocypack/Iterator.h>
 
+#include "utils/string_utils.hpp"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
@@ -1768,6 +1770,54 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase, const std::vector<arangodb::ve
     EXPECT_EQ(i, expected.size());
   }
 
+  // test custom analyzer with LEVenshtein_match via [] with prefix
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[38].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.foo, {LEVENSHTEIN_MATCH: [\"cd\", 1, true, 64, \"ab\"]}, "
+      "'::ngram_test_analyzer13') RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test custom analyzer with LEVenshtein_match via [] with prefix
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[38].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.foo, [{LEVENSHTEIN_MATCH: [\"b\", 0, true, 64, \"a\"]}, 1, {LEVENSHTEIN_MATCH: [\"d\", 0, true, 64, \"c\"]}], "
+      "'::ngram_test_analyzer2') RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
   // test custom analyzer with LEVenshtein_match via [] + limit
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1893,6 +1943,33 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase, const std::vector<arangodb::ve
     EXPECT_EQ(i, expected.size());
   }
 
+  // test custom analyzer with levenshtein_match via [] (not Damerau-Levenshtein) with prefix
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(), insertedDocs[10].slice(),
+      insertedDocs[16].slice(), insertedDocs[26].slice(),
+      insertedDocs[32].slice(), insertedDocs[36].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, [{levenshtein_match: ['f', 1, false, 64, '']}, 'b', 'c', "
+      "{levenshtein_match: ['', 1, false, 64, 'd']}], "
+      "'test_analyzer') SORT d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
   // test custom analyzer with levenshtein_match (Damerau-Levenshtein)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1929,6 +2006,32 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase, const std::vector<arangodb::ve
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d.duplicated, [{levenshtein_match: ['f', 1, true]}, 'b', 'c', 'd'], "
+      "'test_analyzer') SORT d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test custom analyzer with levenshtein_match via [] (Damerau-Levenshtein) and prefix
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(), insertedDocs[10].slice(),
+      insertedDocs[16].slice(), insertedDocs[26].slice(),
+      insertedDocs[32].slice(), insertedDocs[36].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, [{levenshtein_match: ['', 0, true, 64, 'a']}, 'b', 'c', 'd'], "
       "'test_analyzer') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -3610,11 +3713,7 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-TEST_F(IResearchQueryPhraseTest, SysVocbase) {
+TEST_P(IResearchQueryPhraseTest, SysVocbase) {
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
@@ -3669,11 +3768,11 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
     ASSERT_NE(nullptr, collection);
 
     irs::utf8_path resource;
-    resource /= irs::string_ref(arangodb::tests::testResourceDir);
-    resource /= irs::string_ref("simple_sequential.json");
+    resource /= std::string_view(arangodb::tests::testResourceDir);
+    resource /= std::string_view("simple_sequential.json");
 
     auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
@@ -3704,15 +3803,27 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_FALSE(!impl);
 
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\": {"
-        "\"testCollection0\": { \"analyzers\": [ \"test_analyzer\", "
-        "\"identity\" ], \"includeAllFields\": true, \"trackListPositions\": "
-        "true },"
-        "\"testCollection1\": { \"analyzers\": [ \"::test_analyzer\", "
-        "\"identity\" ], \"includeAllFields\": true }"
-        "}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    auto viewDefinitionTemplate = R"({
+      "links": {
+        "testCollection0": {
+          "analyzers": [ "test_analyzer", "identity", "::ngram_test_analyzer13", "::ngram_test_analyzer2" ],
+          "includeAllFields": true,
+          "version": %u,
+          "trackListPositions": true },
+        "testCollection1": {
+          "analyzers": [ "::test_analyzer", "identity", "::ngram_test_analyzer13", "::ngram_test_analyzer2" ],
+          "version": %u,
+          "includeAllFields": true }
+    }})";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = VPackParser::fromJson(viewDefinition);
+
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
@@ -4590,7 +4701,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
   }
 }
 
-TEST_F(IResearchQueryPhraseTest, test) {
+TEST_P(IResearchQueryPhraseTest, test) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
@@ -4641,11 +4752,11 @@ TEST_F(IResearchQueryPhraseTest, test) {
     ASSERT_NE(nullptr, collection);
 
     irs::utf8_path resource;
-    resource /= irs::string_ref(arangodb::tests::testResourceDir);
-    resource /= irs::string_ref("simple_sequential.json");
+    resource /= std::string_view(arangodb::tests::testResourceDir);
+    resource /= std::string_view("simple_sequential.json");
 
     auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
@@ -4658,6 +4769,18 @@ TEST_F(IResearchQueryPhraseTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto res = trx.insert(collection->name(), itr.value(), options);
+      EXPECT_TRUE(res.ok());
+      insertedDocs.emplace_back(res.slice().get("new"));
+    }
+
+    // data set for prefix test in levenshtein
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> levenshtein_docs{
+      arangodb::velocypack::Parser::fromJson(
+               "{\"seq\": -7, \"foo\": \"abcd\" }"),
+    };
+
+    for (auto& entry : levenshtein_docs) {
+      auto res = trx.insert(collection->name(), entry->slice(), options);
       EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
     }
@@ -4676,16 +4799,27 @@ TEST_F(IResearchQueryPhraseTest, test) {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_FALSE(!impl);
 
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\": {"
-        "\"testCollection0\": { \"analyzers\": [ \"test_analyzer\", "
-        "\"::test_analyzer\", \"identity\" ], \"includeAllFields\": true, "
-        "\"trackListPositions\": true },"
-        "\"testCollection1\": { \"analyzers\": [ \"test_analyzer\", "
-        "\"_system::test_analyzer\", \"identity\" ], \"includeAllFields\": "
-        "true }"
-        "}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    auto viewDefinitionTemplate = R"({
+      "links": {
+        "testCollection0": {
+          "analyzers": [ "test_analyzer", "::test_analyzer", "identity", "::ngram_test_analyzer13", "::ngram_test_analyzer2" ],
+          "includeAllFields": true,
+          "version": %u,
+          "trackListPositions": true },
+        "testCollection1": {
+          "analyzers": [ "test_analyzer", "_system::test_analyzer", "identity", "::ngram_test_analyzer13", "::ngram_test_analyzer2" ],
+          "version": %u,
+          "includeAllFields": true }
+    }})";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = VPackParser::fromJson(viewDefinition);
+
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
@@ -5929,3 +6063,8 @@ TEST_F(IResearchQueryPhraseTest, test) {
     EXPECT_EQ(i, expected.size());
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryPhraseTest,
+  IResearchQueryPhraseTest,
+  GetLinkVersions());

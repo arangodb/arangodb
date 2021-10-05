@@ -25,14 +25,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 #include <velocypack/Dumper.h>
+#include <velocypack/HexDump.h>
 #include <velocypack/Options.h>
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
@@ -40,6 +39,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
+#include <unordered_set>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -118,22 +118,44 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
 VPackFeature::VPackFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "VPack"),
       _result(result),
-      _prettyPrint(true),
-      _jsonInput(false),
-      _hexInput(false),
-      _printNonJson(true) {
+      _inputType("vpack"),
+      _outputType("json-pretty"),
+      _failOnNonJson(true) {
   requiresElevatedPrivileges(false);
   setOptional(false);
 }
 
 void VPackFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption("--input-file", "input filename", new StringParameter(&_inputFile));
-  options->addOption("--output-file", "output filename", new StringParameter(&_outputFile));
-  options->addOption("--pretty", "pretty print result", new BooleanParameter(&_prettyPrint));
-  options->addOption("--hex", "read hex-encoded input", new BooleanParameter(&_hexInput));
-  options->addOption("--json", "treat input as JSON", new BooleanParameter(&_jsonInput));
-  options->addOption("--print-non-json", "print non-JSON types",
-                     new BooleanParameter(&_printNonJson));
+  std::unordered_set<std::string> const inputTypes{{"json", "json-hex", "vpack", "vpack-hex" }};
+  std::unordered_set<std::string> const outputTypes{{"json", "json-pretty", "vpack", "vpack-hex" }};
+
+  options->addOption("--input-file", 
+#ifdef __linux__
+                     "input filename (leave empty or use \"-\" for stdin)",
+#else
+                     "input filename",
+#endif
+                     new StringParameter(&_inputFile));
+
+  options->addOption("--output-file", 
+#ifdef __linux__
+                     "output filename (leave empty or use \"+\" for stdout)",
+#else
+                     "output filename", 
+#endif
+                     new StringParameter(&_outputFile));
+
+  options->addOption("--input-type", "type of input",
+                     new DiscreteValuesParameter<StringParameter>(&_inputType, inputTypes))
+                     .setIntroducedIn(30800);
+  
+  options->addOption("--output-type", "type of output",
+                     new DiscreteValuesParameter<StringParameter>(&_outputType, outputTypes))
+                     .setIntroducedIn(30800);
+  
+  options->addOption("--fail-on-non-json", "fail when trying to emit non-JSON types to JSON output",
+                     new BooleanParameter(&_failOnNonJson))
+                     .setIntroducedIn(30800);
 }
 
 void VPackFeature::start() {
@@ -153,74 +175,55 @@ void VPackFeature::start() {
   }
 #endif
 
-  std::string s = basics::FileUtils::slurp(_inputFile);
+  // read ipnut
+  std::string input = basics::FileUtils::slurp(_inputFile);
 
-  if (_hexInput) {
-    s = ::convertFromHex(s);
+  bool const inputIsJson = (_inputType == "json" || _inputType == "json-hex" || _inputType == "json-pretty");
+  bool const inputIsHex = (_inputType == "json-hex" || _inputType == "vpack-hex");
+  if (inputIsHex) {
+    input = ::convertFromHex(input);
   }
 
   ::CustomTypeHandler customTypeHandler;
 
-  VPackOptions options;
-  options.prettyPrint = _prettyPrint;
-  options.unsupportedTypeBehavior =
-      (_printNonJson ? VPackOptions::ConvertUnsupportedType : VPackOptions::FailOnUnsupportedType);
-  options.customTypeHandler = &customTypeHandler;
-
   VPackSlice slice;
   std::shared_ptr<VPackBuilder> builder;
 
-  if (_jsonInput) {
+  if (inputIsJson) {
+    // JSON input
     try {
-      builder = VPackParser::fromJson(s);
+      builder = VPackParser::fromJson(input);
       slice = builder->slice();
     } catch (std::exception const& ex) {
       LOG_TOPIC("d654d", ERR, Logger::FIXME)
           << "invalid JSON input while processing infile '" << _inputFile
           << "': " << ex.what();
-      *_result = TRI_ERROR_INTERNAL;
+      *_result = EXIT_FAILURE;
       return;
     }
   } else {
+    // vpack input
     try {
-      VPackValidator validator(&options);
-      validator.validate(s.c_str(), s.size(), false);
+      VPackValidator validator;
+      validator.validate(input.data(), input.size(), false);
     } catch (std::exception const& ex) {
       LOG_TOPIC("4c05d", ERR, Logger::FIXME)
           << "invalid VPack input while processing infile '" << _inputFile
           << "': " << ex.what();
-      *_result = TRI_ERROR_INTERNAL;
+      *_result = EXIT_FAILURE;
       return;
     }
 
-    slice = VPackSlice(reinterpret_cast<uint8_t const*>(s.data()));
+    slice = VPackSlice(reinterpret_cast<uint8_t const*>(input.data()));
   }
 
-  VPackBuffer<char> buffer(4096);
-  VPackCharBufferSink sink(&buffer);
-  VPackDumper dumper(&sink, &options);
-
-  try {
-    dumper.dump(slice);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("ed2fb", ERR, Logger::FIXME)
-        << "caught exception while processing infile '" << _inputFile
-        << "': " << ex.what();
-    *_result = TRI_ERROR_INTERNAL;
-    return;
-  } catch (...) {
-    LOG_TOPIC("29ad4", ERR, Logger::FIXME)
-        << "caught unknown exception occurred while processing infile '"
-        << _inputFile << "'";
-    *_result = TRI_ERROR_INTERNAL;
-    return;
-  }
-
+  
+  // produce output
   std::ofstream ofs(_outputFile, std::ofstream::out);
 
   if (!ofs.is_open()) {
     LOG_TOPIC("bb8a7", ERR, Logger::FIXME) << "cannot write outfile '" << _outputFile << "'";
-    *_result = TRI_ERROR_INTERNAL;
+    *_result = EXIT_FAILURE;
     return;
   }
 
@@ -230,18 +233,50 @@ void VPackFeature::start() {
     ofs.seekp(0);
   }
 
-  // write into stream
-  char const* start = buffer.data();
-  ofs.write(start, buffer.size());
+  bool const outputIsJson = (_outputType == "json" || _outputType == "json-pretty");
+  bool const outputIsHex = (_outputType == "vpack-hex");
+  if (outputIsJson) {
+    // JSON output
+    VPackOptions options;
+    options.prettyPrint = (_outputType == "json-pretty");
+    options.unsupportedTypeBehavior =
+        (_failOnNonJson ? VPackOptions::ConvertUnsupportedType : VPackOptions::FailOnUnsupportedType);
+    options.customTypeHandler = &customTypeHandler;
+  
+    arangodb::velocypack::OutputFileStreamSink sink(&ofs);
+    VPackDumper dumper(&sink, &options);
+
+    try {
+      dumper.dump(slice);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("ed2fb", ERR, Logger::FIXME)
+          << "caught exception while processing infile '" << _inputFile
+          << "': " << ex.what();
+      *_result = EXIT_FAILURE;
+      return;
+    } catch (...) {
+      LOG_TOPIC("29ad4", ERR, Logger::FIXME)
+          << "caught unknown exception occurred while processing infile '"
+          << _inputFile << "'";
+      *_result = EXIT_FAILURE;
+      return;
+    }
+  } else if (outputIsHex) {
+    // vpack hex output
+    ofs << VPackHexDump(slice);
+  } else {
+    // vpack output
+    char const* start = slice.startAs<char const>();
+    ofs.write(start, slice.byteSize());
+  }
+
   ofs.close();
 
   // cppcheck-suppress *
   if (!toStdOut) {
     LOG_TOPIC("0a90f", INFO, Logger::FIXME)
         << "successfully processed infile '" << _inputFile << "'";
-    LOG_TOPIC("1f88b", INFO, Logger::FIXME) << "infile size: " << s.size();
-    LOG_TOPIC("7c311", INFO, Logger::FIXME) << "outfile size: " << buffer.size();
   }
 
-  *_result = TRI_ERROR_NO_ERROR;
+  *_result = EXIT_SUCCESS;
 }

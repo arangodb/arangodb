@@ -34,7 +34,7 @@ namespace graph {
 
 TraceEntry::TraceEntry() {}
 TraceEntry::~TraceEntry() = default;
-void TraceEntry::addTiming(double timeTaken) {
+void TraceEntry::addTiming(double timeTaken) noexcept {
   _count++;
   _total += timeTaken;
   if (_min > timeTaken) {

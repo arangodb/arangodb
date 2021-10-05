@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_SHORTEST_PATH_RESULT_H
-#define ARANGOD_GRAPH_SHORTEST_PATH_RESULT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -83,6 +82,11 @@ class ShortestPathResult {
 
   void addVertex(arangodb::velocypack::StringRef v);
   void addEdge(arangodb::graph::EdgeDocumentToken e);
+    
+  static constexpr size_t resultItemMemoryUsage() {
+    return sizeof(typename decltype(_vertices)::value_type) +
+           sizeof(typename decltype(_edges)::value_type);
+  }
 
  private:
   /// @brief Count how many documents have been read
@@ -100,4 +104,3 @@ class ShortestPathResult {
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

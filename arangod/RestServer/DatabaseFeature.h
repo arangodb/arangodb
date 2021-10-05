@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_DATABASE_FEATURE_H
-#define APPLICATION_FEATURES_DATABASE_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/DataProtector.h"
@@ -82,7 +81,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   // used by catch tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  inline int loadDatabases(velocypack::Slice const& databases) {
+  inline ErrorCode loadDatabases(velocypack::Slice const& databases) {
     return iterateDatabases(databases);
   }
 #endif
@@ -120,8 +119,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   Result createDatabase(arangodb::CreateDatabaseInfo&& , TRI_vocbase_t*& result);
 
-  int dropDatabase(std::string const& name, bool removeAppsDirectory);
-  int dropDatabase(TRI_voc_tick_t id, bool removeAppsDirectory);
+  ErrorCode dropDatabase(std::string const& name, bool removeAppsDirectory);
+  ErrorCode dropDatabase(TRI_voc_tick_t id, bool removeAppsDirectory);
 
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
@@ -138,10 +137,21 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
   bool checkVersion() const { return _checkVersion; }
   bool upgrade() const { return _upgrade; }
-  bool useOldSystemCollections() const { return _useOldSystemCollections; }
   bool forceSyncProperties() const { return _forceSyncProperties; }
   void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
+  
+  /// @brief whether or not extended names for databases can be used
+  bool extendedNamesForDatabases() const { return _extendedNamesForDatabases; }
+  /// @brief will be called only during startup when reading stored value from storage engine
+  void extendedNamesForDatabases(bool value) { _extendedNamesForDatabases = value; }
+
+  /// @brief currently always false, until feature is implemented
+  bool extendedNamesForCollections() const { return false; }
+  /// @brief currently always false, until feature is implemented
+  bool extendedNamesForViews() const { return false; }
+  /// @brief currently always false, until feature is implemented
+  bool extendedNamesForAnalyzers() const { return false; }
 
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
@@ -154,7 +164,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   };
 
   static TRI_vocbase_t& getCalculationVocbase();
-  
 
  private:
   static void initCalculationVocbase(application_features::ApplicationServer& server);
@@ -162,13 +171,15 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void stopAppliers();
 
   /// @brief create base app directory
-  int createBaseApplicationDirectory(std::string const& appPath, std::string const& type);
+  ErrorCode createBaseApplicationDirectory(std::string const& appPath,
+                                           std::string const& type);
 
   /// @brief create app subdirectory for a database
-  int createApplicationDirectory(std::string const& name, std::string const& basePath, bool removeExisting);
+  ErrorCode createApplicationDirectory(std::string const& name,
+                                       std::string const& basePath, bool removeExisting);
 
   /// @brief iterate over all databases in the databases directory and open them
-  int iterateDatabases(arangodb::velocypack::Slice const& databases);
+  ErrorCode iterateDatabases(arangodb::velocypack::Slice const& databases);
 
   /// @brief close all opened databases
   void closeOpenDatabases();
@@ -184,6 +195,12 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
+  bool _isInitiallyEmpty;
+  bool _checkVersion;
+  bool _upgrade;
+
+  /// @brief whether or not the allow extended database names
+  bool _extendedNamesForDatabases;
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 
@@ -192,11 +209,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   // arangodb::basics::DataProtector<64>
   mutable arangodb::basics::DataProtector _databasesProtector;
   mutable arangodb::Mutex _databasesMutex;
-
-  bool _isInitiallyEmpty;
-  bool _checkVersion;
-  bool _upgrade;
-  bool _useOldSystemCollections;
 
   std::atomic<bool> _started;
 
@@ -218,4 +230,3 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

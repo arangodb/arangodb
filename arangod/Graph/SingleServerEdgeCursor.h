@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_SINGLE_SERVER_EDGE_CURSOR_H
-#define ARANGOD_GRAPH_SINGLE_SERVER_EDGE_CURSOR_H 1
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -100,4 +99,3 @@ class SingleServerEdgeCursor final : public EdgeCursor {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

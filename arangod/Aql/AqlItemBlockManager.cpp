@@ -38,7 +38,14 @@ AqlItemBlockManager::AqlItemBlockManager(arangodb::ResourceMonitor& resourceMoni
     : _resourceMonitor(resourceMonitor), _format(format) {}
 
 /// @brief destroy the manager
-AqlItemBlockManager::~AqlItemBlockManager() = default;
+AqlItemBlockManager::~AqlItemBlockManager() {
+  delete _constValueBlock;
+}
+
+void AqlItemBlockManager::initializeConstValueBlock(RegisterCount nrRegs) {
+  TRI_ASSERT(_constValueBlock == nullptr);
+  _constValueBlock = new AqlItemBlock(*this, 1, nrRegs);
+}
 
 /// @brief request a block with the specified size
 SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t numRows, RegisterCount numRegisters) {
@@ -67,7 +74,12 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t numRows, Register
   if (block == nullptr) {
     block = new AqlItemBlock(*this, numRows, numRegisters);
   } else {
-    block->rescale(numRows, numRegisters);
+    try {
+      block->rescale(numRows, numRegisters);
+    } catch (...) {
+      delete block;
+      throw;
+    }
   }
 
   TRI_ASSERT(block != nullptr);
@@ -121,7 +133,7 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(arangodb::velocyp
   auto const nrItemsSigned =
       VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
   auto const nrRegs =
-      VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
+      VelocyPackHelper::getNumericValue<RegisterCount>(slice, "nrRegs", 0);
   if (nrItemsSigned <= 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
   }

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_VIEWS_H
-#define ARANGOD_V8_SERVER_V8_VIEWS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "V8/v8-globals.h"
@@ -35,4 +34,3 @@ void TRI_InitV8Views( // init views
                      TRI_v8_global_t& v8g, // V8 globals
                      v8::Isolate* isolate);
 
-#endif

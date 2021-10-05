@@ -85,7 +85,9 @@ static bool inline IsRole(std::string const& name) {
 
 #ifndef USE_ENTERPRISE
 auth::UserManager::UserManager(application_features::ApplicationServer& server)
-    : _server(server), _globalVersion(1), _internalVersion(0) {}
+    : _server(server), 
+      _globalVersion(1), 
+      _internalVersion(0) {}
 #else
 auth::UserManager::UserManager(application_features::ApplicationServer& server)
     : _server(server),
@@ -127,6 +129,11 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
 }
 
 static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::ApplicationServer& server) {
+  TRI_IF_FAILURE("QueryAllUsers") {
+    // simulates the case that the _users collection is not yet available
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+  
   auto vocbase = getSystemDatabase(server);
 
   if (vocbase == nullptr) {
@@ -139,18 +146,18 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   std::string const queryStr("FOR user IN _users RETURN user");
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(*vocbase),
-                             arangodb::aql::QueryString(queryStr), nullptr);
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*vocbase),
+                                            arangodb::aql::QueryString(queryStr), nullptr);
 
-  query.queryOptions().cache = false;
-  query.queryOptions().ttl = 30;
-  query.queryOptions().maxRuntime = 30;
-  query.queryOptions().skipAudit = true;
+  query->queryOptions().cache = false;
+  query->queryOptions().ttl = 30;
+  query->queryOptions().maxRuntime = 30;
+  query->queryOptions().skipAudit = true;
 
   LOG_TOPIC("f3eec", DEBUG, arangodb::Logger::AUTHENTICATION)
       << "starting to load authentication and authorization information";
 
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -204,6 +211,13 @@ void auth::UserManager::loadFromDB() {
     return;
   }
 
+  TRI_IF_FAILURE("UserManager::performDBLookup") {
+    // Used in GTest. It is used to identify
+    // if the UserManager would have updated it's
+    // cache in a specific situation.
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   try {
     std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_server);
     if (builder) {
@@ -230,14 +244,14 @@ void auth::UserManager::loadFromDB() {
       _internalVersion.store(tmp);
     }
   } catch (basics::Exception const& ex) {
-    if (ex.code() != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ||
-        (_server.hasFeature<BootstrapFeature>() &&
-         _server.getFeature<BootstrapFeature>().isReady())) {
-      LOG_TOPIC("aa45c", WARN, Logger::AUTHENTICATION)
-          << "Exception when loading users from db: " << ex.what();
+    if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND &&
+        _server.hasFeature<BootstrapFeature>() &&
+        !_server.getFeature<BootstrapFeature>().isReady()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_STARTING_UP,
+        "Cannot load users because the _users collection is not yet available");
     }
-    // suppress log messgage if we get here during the normal course of an
-    // agency callback during bootstrapping and carry on
+    LOG_TOPIC("aa45c", WARN, Logger::AUTHENTICATION)
+        << "Exception when loading users from db: " << ex.what();
   } catch (std::exception const& ex) {
     LOG_TOPIC("b7342", WARN, Logger::AUTHENTICATION)
         << "Exception when loading users from db: " << ex.what();

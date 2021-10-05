@@ -30,6 +30,7 @@
 #include "Basics/StaticStrings.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
+#include "IResearch/IResearchFilterOptimization.h"
 
 #include <string>
 #include <vector>
@@ -112,7 +113,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
 
-std::unique_ptr<arangodb::aql::Query> prepareQuery(
+std::shared_ptr<arangodb::aql::Query> prepareQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
@@ -138,7 +139,7 @@ std::string mangleAnalyzer(std::string name);
 std::string mangleBool(std::string name);
 std::string mangleNull(std::string name);
 std::string mangleNumeric(std::string name);
-std::string mangleString(std::string name, std::string suffix);
+std::string mangleString(std::string name, std::string_view suffix);
 std::string mangleStringIdentity(std::string name);
 
 inline arangodb::aql::AstNode* defaultExpressionExtractor(arangodb::aql::AstNode* root) {
@@ -166,13 +167,17 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
                   std::string const& queryString, irs::filter const& expected,
                   arangodb::aql::ExpressionContext* exprCtx = nullptr,
                   std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-                  std::string const& refName = "d");
+                  std::string const& refName = "d",
+                  arangodb::iresearch::FilterOptimization filterOptimization
+                    = arangodb::iresearch::FilterOptimization::NONE);
 
 void assertFilterSuccess(TRI_vocbase_t& vocbase, std::string const& queryString,
                          irs::filter const& expected,
                          arangodb::aql::ExpressionContext* exprCtx = nullptr,
                          std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-                         std::string const& refName = "d");
+                         std::string const& refName = "d",
+                         arangodb::iresearch::FilterOptimization filterOptimization
+                           = arangodb::iresearch::FilterOptimization::NONE);
 
 void assertFilterFail(TRI_vocbase_t& vocbase, std::string const& queryString,
                       arangodb::aql::ExpressionContext* exprCtx = nullptr,

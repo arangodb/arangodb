@@ -40,15 +40,15 @@ class utf8_path_tests: public test_base {
     // Code here will be called immediately after the constructor (right before each test).
 
     test_base::SetUp();
-    cwd_ = irs::utf8_path(true);
-    test_dir().mkdir(); // ensure path exists
-    test_dir().chdir(); // ensure all files/directories created in a valid place
+    cwd_ = irs::current_path();
+    irs::file_utils::mkdir(test_dir().c_str(), false); // ensure path exists
+    irs::file_utils::set_cwd(test_dir().c_str()); // ensure all files/directories created in a valid place
   }
 
   virtual void TearDown() {
     // Code here will be called immediately after each test (right before the destructor).
 
-    cwd_.chdir();
+    irs::file_utils::set_cwd(cwd_.c_str());
     test_base::TearDown();
   }
 };
@@ -58,7 +58,7 @@ class utf8_path_tests: public test_base {
 TEST_F(utf8_path_tests, current) {
   // absolute path
   {
-    irs::utf8_path path(true);
+    auto path = irs::current_path();
     std::string directory("deleteme");
     std::string directory2("deleteme2");
     bool tmpBool;
@@ -68,39 +68,39 @@ TEST_F(utf8_path_tests, current) {
     #ifdef _WIN32
       wchar_t buf[_MAX_PATH];
       std::basic_string<wchar_t> current_dir(_wgetcwd(buf, _MAX_PATH));
-      std::basic_string<wchar_t> prefix(L"\\\\?\\"); // prepended by chdir() and returned by win32
+      //std::basic_string<wchar_t> prefix(L"\\\\?\\"); // prepended by chdir() and returned by win32
     #else
       char buf[PATH_MAX];
       std::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
-      std::basic_string<char> prefix;
+      //std::basic_string<char> prefix;
     #endif
 
-    ASSERT_TRUE(current_dir == (prefix + path.native()));
-    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path.file_size(tmpUint));
+    ASSERT_TRUE(current_dir == path.native());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path.c_str()));
 
     path /= directory;
-    ASSERT_TRUE(path.mkdir());
-    ASSERT_TRUE(path.chdir());
-
-    ASSERT_TRUE(path.native() == irs::utf8_path(true).native());
-    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path.file_size(tmpUint));
-
+    ASSERT_TRUE(irs::file_utils::mkdir(path.c_str(), true));
+    ASSERT_TRUE(irs::file_utils::set_cwd(path.c_str()));
+    ASSERT_TRUE(path.native() == irs::current_path().native());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path.c_str()));
+    
     path /= directory2;
-    ASSERT_TRUE(path.mkdir());
-    ASSERT_TRUE(path.chdir());
-
-    ASSERT_TRUE(path.native() == irs::utf8_path(true).native());
-    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::mkdir(path.c_str(), true));
+    ASSERT_TRUE(irs::file_utils::set_cwd(path.c_str()));
+    ASSERT_TRUE(path.native() == irs::current_path().native());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path.c_str()));
   }
 
   // relative path
@@ -122,27 +122,27 @@ TEST_F(utf8_path_tests, current) {
       std::basic_string<char> prefix;
     #endif
 
-    ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path.mtime(tmpTime));
-    ASSERT_FALSE(path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path.c_str()));
 
     path /= directory;
-    ASSERT_TRUE(path.mkdir());
-
-    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::mkdir(path.c_str(), true));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path.c_str()));
 
     path /= directory2;
-    ASSERT_TRUE(path.mkdir());
-
-    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::mkdir(path.c_str(), true));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path.c_str()));
   }
 }
 
@@ -153,44 +153,41 @@ TEST_F(utf8_path_tests, empty) {
   std::time_t tmpTime;
   uint64_t tmpUint;
 
-  ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.mtime(tmpTime));
-  ASSERT_FALSE(path.file_size(tmpUint));
+  ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path.c_str()));
+  ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path.c_str()));
   path/=empty;
-  ASSERT_FALSE(path.mkdir());
+  ASSERT_FALSE(irs::file_utils::mkdir(path.c_str(), true));
 }
 
 TEST_F(utf8_path_tests, absolute) {
   // empty
   {
     irs::utf8_path path;
-    bool tmpBool;
-    ASSERT_TRUE(path.absolute(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path.is_absolute());
   }
 
   // cwd
   {
-    irs::utf8_path path(true);
-    bool tmpBool;
-    ASSERT_TRUE(path.absolute(tmpBool) && tmpBool);
+    auto path = irs::current_path();
+    ASSERT_TRUE(path.is_absolute());
   }
 
   // relative
   {
     irs::utf8_path path;
-    bool tmpBool;
     path += "deleteme";
-    ASSERT_TRUE(path.absolute(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path.is_absolute());
   }
 
   // absolute
   {
-    irs::utf8_path cwd(true);
+    auto cwd = irs::current_path();
     irs::utf8_path path;
-    bool tmpBool;
     path += cwd.native();
-    ASSERT_TRUE(path.absolute(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.is_absolute());
   }
 }
 
@@ -205,73 +202,24 @@ TEST_F(utf8_path_tests, path) {
   std::string file1("deleteme");
   std::string file2(file1 + suffix);
   std::string dir1("deleteme.dir");
-  auto pwd_native = irs::utf8_path(true).native();
-  auto pwd_utf8 = irs::utf8_path(true).utf8();
-  auto file1_abs_native = (irs::utf8_path(true) /= file1).native();
-  auto file1f_abs_native = ((irs::utf8_path(true) += "/") += file1).native(); // abs file1 with forward slash
-  auto file1n_abs_native = ((irs::utf8_path(true) += native_path_sep) += file1).native(); // abs file1 with native slash
-  auto file1_abs_utf8 = (irs::utf8_path(true) /= file1).utf8();
-  auto file1f_abs_utf8 = ((irs::utf8_path(true) += "/") += file1).utf8(); // abs file1 with forward slash
-  auto file1n_abs_utf8 = ((irs::utf8_path(true) += native_path_sep) += file1).utf8(); // abs file1 with native slash
-  auto file2_abs_native = (irs::utf8_path(true) /= file2).native();
-  auto file2_abs_utf8 = (irs::utf8_path(true) /= file2).utf8();
-  auto dir_abs_native = (irs::utf8_path(true) /= dir1).native();
-  auto dir_abs_utf8 = (irs::utf8_path(true) /= dir1).utf8();
+  auto pwd_native = irs::current_path().native();
+  auto pwd_utf8 = irs::current_path().u8string();
+  auto file1_abs_native = (irs::current_path() /= file1).native();
+  auto file1f_abs_native = ((irs::current_path() += "/") += file1).native(); // abs file1 with forward slash
+  auto file1n_abs_native = ((irs::current_path() += native_path_sep) += file1).native(); // abs file1 with native slash
+  auto file1_abs_utf8 = (irs::current_path() /= file1).u8string();
+  auto file1f_abs_utf8 = ((irs::current_path() += "/") += file1).u8string(); // abs file1 with forward slash
+  auto file1n_abs_utf8 = ((irs::current_path() += native_path_sep) += file1).u8string(); // abs file1 with native slash
+  auto file2_abs_native = (irs::current_path() /= file2).native();
+  auto file2_abs_utf8 = (irs::current_path() /= file2).u8string();
+  auto dir_abs_native = (irs::current_path() /= dir1).native();
+  auto dir_abs_utf8 = (irs::current_path() /= dir1).u8string();
 
   // create file
   {
     std::ofstream out(file1.c_str());
     out << data;
     out.close();
-  }
-
-  // from native string
-  {
-    irs::utf8_path path1(file1_abs_native);
-    irs::utf8_path path1f(file1f_abs_native);
-    irs::utf8_path path1n(file1n_abs_native);
-    irs::utf8_path path2(file2_abs_native);
-    irs::utf8_path dir1(pwd_native);
-    irs::utf8_path dir2(dir_abs_native);
-    bool tmpBool;
-    std::time_t tmpTime;
-    uint64_t tmpUint;
-
-    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1.file_size(tmpUint) && tmpUint == data.size());
-
-    ASSERT_TRUE(path1f.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1f.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1f.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1f.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1f.file_size(tmpUint) && tmpUint == data.size());
-
-    ASSERT_TRUE(path1n.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1n.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1n.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1n.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1n.file_size(tmpUint) && tmpUint == data.size());
-
-    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path2.mtime(tmpTime));
-    ASSERT_FALSE(path2.file_size(tmpUint));
-
-    ASSERT_TRUE(dir1.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dir1.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(dir1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dir1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dir1.file_size(tmpUint));
-
-    ASSERT_TRUE(dir2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dir2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dir2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dir2.mtime(tmpTime));
-    ASSERT_FALSE(dir2.file_size(tmpUint));
   }
 
   // from native string_ref
@@ -283,44 +231,30 @@ TEST_F(utf8_path_tests, path) {
     irs::utf8_path dir1(pwd_native.c_str());
     irs::utf8_path dir2(dir_abs_native.c_str());
     bool tmpBool;
-    std::time_t tmpTime;
-    uint64_t tmpUint;
 
-    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && tmpBool);
 
-    ASSERT_TRUE(path1f.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1f.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1f.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1f.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1f.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1f.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1f.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1f.c_str()) && tmpBool);
 
-    ASSERT_TRUE(path1n.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1n.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1n.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1n.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1n.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1n.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1n.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1n.c_str()) && tmpBool);
 
-    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path2.mtime(tmpTime));
-    ASSERT_FALSE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
 
-    ASSERT_TRUE(dir1.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dir1.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(dir1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dir1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dir1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, dir1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, dir1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, dir1.c_str()) && !tmpBool);
 
-    ASSERT_TRUE(dir2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dir2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dir2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dir2.mtime(tmpTime));
-    ASSERT_FALSE(dir2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, dir2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, dir2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, dir2.c_str()) && !tmpBool);
   }
 
   // from utf8 string
@@ -332,44 +266,30 @@ TEST_F(utf8_path_tests, path) {
     irs::utf8_path dir1(pwd_utf8);
     irs::utf8_path dir2(dir_abs_utf8);
     bool tmpBool;
-    std::time_t tmpTime;
-    uint64_t tmpUint;
 
-    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && tmpBool);
 
-    ASSERT_TRUE(path1f.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1f.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1f.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1f.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1f.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1f.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1f.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1f.c_str()) && tmpBool);
 
-    ASSERT_TRUE(path1n.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1n.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1n.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1n.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1n.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1n.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1n.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1n.c_str()) && tmpBool);
 
-    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path2.mtime(tmpTime));
-    ASSERT_FALSE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
 
-    ASSERT_TRUE(dir1.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dir1.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(dir1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dir1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dir1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, dir1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, dir1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, dir1.c_str()) && !tmpBool);
 
-    ASSERT_TRUE(dir2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dir2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dir2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dir2.mtime(tmpTime));
-    ASSERT_FALSE(dir2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, dir2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, dir2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, dir2.c_str()) && !tmpBool);
   }
 
   // from utf8 string_ref
@@ -381,44 +301,30 @@ TEST_F(utf8_path_tests, path) {
     irs::utf8_path dir1(pwd_utf8.c_str());
     irs::utf8_path dir2(dir_abs_utf8.c_str());
     bool tmpBool;
-    std::time_t tmpTime;
-    uint64_t tmpUint;
 
-    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && tmpBool);
 
-    ASSERT_TRUE(path1f.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1f.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1f.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1f.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1f.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1f.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1f.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1f.c_str()) && tmpBool);
 
-    ASSERT_TRUE(path1n.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1n.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1n.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1n.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1n.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1n.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1n.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1n.c_str()) && tmpBool);
 
-    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path2.mtime(tmpTime));
-    ASSERT_FALSE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
 
-    ASSERT_TRUE(dir1.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dir1.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(dir1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dir1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dir1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, dir1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, dir1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, dir1.c_str()) && !tmpBool);
 
-    ASSERT_TRUE(dir2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dir2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dir2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dir2.mtime(tmpTime));
-    ASSERT_FALSE(dir2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, dir2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, dir2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, dir2.c_str()) && !tmpBool);
   }
 }
 
@@ -431,46 +337,52 @@ TEST_F(utf8_path_tests, file) {
   std::time_t tmpTime;
   uint64_t tmpUint;
 
-  ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.mtime(tmpTime));
-  ASSERT_FALSE(path.file_size(tmpUint));
+  ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path.c_str()));
+  ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path.c_str()));
 
   path/=file1;
-  ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.mtime(tmpTime));
-  ASSERT_FALSE(path.file_size(tmpUint));
+  ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path.c_str()));
+  ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path.c_str()));
 
   std::string data("data");
   std::ofstream out1(file1.c_str());
   out1 << data;
   out1.close();
-  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_TRUE(path.file_size(tmpUint) && tmpUint == data.size());
+  ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
+  ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && tmpBool);
+  ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path.c_str()) && tmpTime > 0);
+  ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path.c_str()) && tmpUint == data.size());
 
-  ASSERT_FALSE(path.mkdir());
+  ASSERT_FALSE(irs::file_utils::mkdir(path.c_str(), true));
 
   path+=suffix;
-  ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.mtime(tmpTime));
-  ASSERT_FALSE(path.file_size(tmpUint));
+  ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path.c_str()));
+  ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path.c_str()));
 
   std::ofstream out2(file2.c_str());
   out2 << data << data;
   out2.close();
-  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_TRUE(path.file_size(tmpUint) && tmpUint == data.size() * 2);
+  ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
+  ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && !tmpBool);
+  ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && tmpBool);
+  ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path.c_str()) && tmpTime > 0);
+  ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path.c_str()) && tmpUint == data.size() * 2);
+
+  // assign test
+  auto other = irs::current_path();
+  other.assign(path.c_str());
+  ASSERT_EQ(other.u8string(), path.u8string());
+
 }
 
 TEST_F(utf8_path_tests, directory) {
@@ -480,28 +392,28 @@ TEST_F(utf8_path_tests, directory) {
 
   // absolute path creation
   {
-    irs::utf8_path path(true);
+    auto path = irs::current_path();
     std::string directory("deletemeA");
 
-    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path.c_str()));
 
     path /= directory;
-    ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path.mtime(tmpTime));
-    ASSERT_FALSE(path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path.c_str()));
 
-    ASSERT_TRUE(path.mkdir());
-    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::mkdir(path.c_str(), true));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path.c_str()));
   }
 
   // relative path creation
@@ -509,79 +421,79 @@ TEST_F(utf8_path_tests, directory) {
     irs::utf8_path path;
     std::string directory("deletemeR");
 
-    ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path.mtime(tmpTime));
-    ASSERT_FALSE(path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path.c_str()));
 
     path /= directory;
-    ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path.mtime(tmpTime));
-    ASSERT_FALSE(path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path.c_str()));
 
-    ASSERT_TRUE(path.mkdir());
-    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::mkdir(path.c_str(), true));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path.c_str()));
   }
 
   // recursive path creation (absolute)
   {
     std::string directory1("deleteme1");
     std::string directory2("deleteme2");
-    irs::utf8_path path1(true);
-    irs::utf8_path path2(true);
+    auto path1 = irs::current_path();
+    auto path2 = irs::current_path();
 
     path1 /= directory1;
     path2 /= directory1;
     path2 /= directory2;
 
-    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path1.mtime(tmpTime));
-    ASSERT_FALSE(path1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path1.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path1.c_str()));
 
-    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path2.mtime(tmpTime));
-    ASSERT_FALSE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path2.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
-    ASSERT_TRUE(path2.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(path2.c_str(), true));
 
-    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path1.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path1.c_str()));
 
-    ASSERT_TRUE(path2.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path2.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
-    ASSERT_TRUE(path1.remove()); // recursive remove successful
+    ASSERT_TRUE(irs::file_utils::remove(path1.c_str())); // recursive remove successful
 
-    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path1.mtime(tmpTime));
-    ASSERT_FALSE(path1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path1.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path1.c_str()));
 
-    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path2.mtime(tmpTime));
-    ASSERT_FALSE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path2.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
-    ASSERT_FALSE(path2.remove()); // path already removed
+    ASSERT_FALSE(irs::file_utils::remove(path2.c_str())); // path already removed
   }
 
   // recursive path creation (relative)
@@ -595,47 +507,47 @@ TEST_F(utf8_path_tests, directory) {
     path2 /= directory1;
     path2 /= directory2;
 
-    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path1.mtime(tmpTime));
-    ASSERT_FALSE(path1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path1.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path1.c_str()));
 
-    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path2.mtime(tmpTime));
-    ASSERT_FALSE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path2.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
-    ASSERT_TRUE(path2.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(path2.c_str(), true));
 
-    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path1.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path1.c_str()));
 
-    ASSERT_TRUE(path2.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path2.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
-    ASSERT_TRUE(path1.remove()); // recursive remove successful
+    ASSERT_TRUE(irs::file_utils::remove(path1.c_str())); // recursive remove successful
 
-    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path1.mtime(tmpTime));
-    ASSERT_FALSE(path1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path1.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path1.c_str()));
 
-    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path2.mtime(tmpTime));
-    ASSERT_FALSE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path2.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
-    ASSERT_FALSE(path2.remove()); // path already removed
+    ASSERT_FALSE(irs::file_utils::remove(path2.c_str())); // path already removed
   }
 
   // recursive path creation failure
@@ -657,80 +569,80 @@ TEST_F(utf8_path_tests, directory) {
       out.close();
     }
 
-    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path1.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path1.c_str()) && tmpUint == data.size());
 
-    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path2.mtime(tmpTime));
-    ASSERT_FALSE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path2.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
-    ASSERT_FALSE(path2.mkdir());
+    ASSERT_FALSE(irs::file_utils::mkdir(path2.c_str(), true));
 
-    ASSERT_TRUE(path1.remove()); // file remove successful
-    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path1.mtime(tmpTime));
-    ASSERT_FALSE(path1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::remove(path1.c_str())); // file remove successful
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path1.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path1.c_str()));
   }
 
   // recursive multi-level path creation (absolute)
   {
     std::string directory1("deleteme1");
     std::string directory2("deleteme2/deleteme3"); // explicitly use '/' and not native
-    irs::utf8_path path1(true);
-    irs::utf8_path path2(true);
+    auto path1 = irs::current_path();
+    auto path2 = irs::current_path();
 
     path1 /= directory1;
     path2 /= directory1;
     path2 /= directory2;
 
-    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path1.mtime(tmpTime));
-    ASSERT_FALSE(path1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path1.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path1.c_str()));
 
-    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path2.mtime(tmpTime));
-    ASSERT_FALSE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path2.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
-    ASSERT_TRUE(path2.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(path2.c_str(), true));
 
-    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path1.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path1.c_str()));
 
-    ASSERT_TRUE(path2.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path2.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
-    ASSERT_TRUE(path1.remove()); // recursive remove successful
+    ASSERT_TRUE(irs::file_utils::remove(path1.c_str())); // recursive remove successful
 
-    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path1.mtime(tmpTime));
-    ASSERT_FALSE(path1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path1.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path1.c_str()));
 
-    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path2.mtime(tmpTime));
-    ASSERT_FALSE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path2.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
-    ASSERT_FALSE(path2.remove()); // path already removed
+    ASSERT_FALSE(irs::file_utils::remove(path2.c_str())); // path already removed
   }
 
   // recursive multi-level path creation (relative)
@@ -744,47 +656,47 @@ TEST_F(utf8_path_tests, directory) {
     path2 /= directory1;
     path2 /= directory2;
 
-    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path1.mtime(tmpTime));
-    ASSERT_FALSE(path1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path1.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path1.c_str()));
 
-    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path2.mtime(tmpTime));
-    ASSERT_FALSE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path2.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
-    ASSERT_TRUE(path2.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(path2.c_str(), true));
 
-    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path1.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path1.c_str()));
 
-    ASSERT_TRUE(path2.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, path2.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
-    ASSERT_TRUE(path1.remove()); // recursive remove successful
+    ASSERT_TRUE(irs::file_utils::remove(path1.c_str())); // recursive remove successful
 
-    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path1.mtime(tmpTime));
-    ASSERT_FALSE(path1.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path1.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path1.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path1.c_str()));
 
-    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(path2.mtime(tmpTime));
-    ASSERT_FALSE(path2.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path2.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, path2.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
-    ASSERT_FALSE(path2.remove()); // path already removed
+    ASSERT_FALSE(irs::file_utils::remove(path2.c_str())); // path already removed
   }
 
   // recursive path creation with concurrency (full path exists)
@@ -796,12 +708,12 @@ TEST_F(utf8_path_tests, directory) {
     path1 /= directory1;
     path2 /= directory1;
    
-    EXPECT_TRUE(path1.mkdir());
-    EXPECT_FALSE(path2.mkdir()); // directory already exists 
-    EXPECT_TRUE(path2.mkdir(false)); // directory exists, but creation is not mandatory
+    EXPECT_TRUE(irs::file_utils::mkdir(path1.c_str(), true));
+    EXPECT_FALSE(irs::file_utils::mkdir(path2.c_str(), true)); // directory already exists 
+    EXPECT_TRUE(irs::file_utils::mkdir(path2.c_str(), false)); // directory exists, but creation is not mandatory
 
-    ASSERT_TRUE(path1.remove());
-    ASSERT_FALSE(path2.remove()); // path already removed
+    ASSERT_TRUE(irs::file_utils::remove(path1.c_str()));
+    ASSERT_FALSE(irs::file_utils::remove(path2.c_str())); // path already removed
   }
   // recursive path creation with concurrency (only last sement added)
   {
@@ -814,11 +726,11 @@ TEST_F(utf8_path_tests, directory) {
     path2 /= directory1;
     path2 /= directory2;
 
-    ASSERT_TRUE(path1.mkdir());
-    ASSERT_TRUE(path2.mkdir()); // last segment created
+    ASSERT_TRUE(irs::file_utils::mkdir(path1.c_str(), true));
+    ASSERT_TRUE(irs::file_utils::mkdir(path2.c_str(), true)); // last segment created
 
-    ASSERT_TRUE(path1.remove());
-    ASSERT_FALSE(path2.remove()); // path already removed
+    ASSERT_TRUE(irs::file_utils::remove(path1.c_str()));
+    ASSERT_FALSE(irs::file_utils::remove(path2.c_str())); // path already removed
   }
   // race condition test inside path tree building
   {
@@ -832,7 +744,7 @@ TEST_F(utf8_path_tests, directory) {
     std::condition_variable ready_cv;
 
     for (size_t j = 0; j < 3; ++j) {
-      pathRoot.remove(); // make sure full path tree building always needed
+      irs::file_utils::remove(pathRoot.c_str()); // make sure full path tree building always needed
       
       const auto thread_count = 20;
       std::vector<int> results(thread_count, false);
@@ -857,7 +769,7 @@ TEST_F(utf8_path_tests, directory) {
             ready_cv.wait(lk);
           }
           lk.unlock();
-          result = path.mkdir(true) ? 1 : 0;
+          result = irs::file_utils::mkdir(path.c_str(), true) ? 1 : 0;
         }));
       }
      
@@ -880,7 +792,7 @@ TEST_F(utf8_path_tests, directory) {
       ASSERT_TRUE(std::all_of(
         results.begin(), results.end(), [](bool res) { return res != 0; }
       ));
-      pathRoot.remove(); // cleanup
+      irs::file_utils::remove(pathRoot.c_str()); // cleanup
     }
   }
 
@@ -897,77 +809,77 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.src");
     std::string dst("deleteme.dst0");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
     dst_path/=missing;
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path.mtime(tmpTime));
-    ASSERT_FALSE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
 
-    ASSERT_FALSE(src_path.rename(dst_path));
+    ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path.mtime(tmpTime));
-    ASSERT_FALSE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
   }
 
   // non-existent -> directory/
   {
     std::string src("deleteme.src");
     std::string dst("deleteme.dst1");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
-    ASSERT_TRUE(dst_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(dst_path.c_str(), true));
     dst_path/="";
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
 
-    ASSERT_FALSE(src_path.rename(dst_path));
+    ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
   }
 
   // non-existent -> directory/non-existent
@@ -975,39 +887,39 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.src");
     std::string dst("deleteme.dst2");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
-    ASSERT_TRUE(dst_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(dst_path.c_str(), true));
     dst_path/=missing;
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path.mtime(tmpTime));
-    ASSERT_FALSE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
 
-    ASSERT_FALSE(src_path.rename(dst_path));
+    ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path.mtime(tmpTime));
-    ASSERT_FALSE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
   }
 
   // non-existent -> directory/file
@@ -1015,8 +927,8 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string file("deleteme.file");
     std::string src("deleteme.src");
     std::string dst("deleteme.dst3");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -1030,31 +942,31 @@ void validate_move(bool src_abs, bool dst_abs) {
       out.close();
     }
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path.mtime(tmpTime));
-    ASSERT_FALSE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
 
-    ASSERT_FALSE(src_path.rename(dst_path));
+    ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path.mtime(tmpTime));
-    ASSERT_FALSE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
   }
 
   // non-existent -> directory/directory
@@ -1062,39 +974,39 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string directory("deleteme");
     std::string src("deleteme.src");
     std::string dst("deleteme.dst4");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
     dst_path/=directory;
-    ASSERT_TRUE(dst_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(dst_path.c_str(), true));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
 
-    ASSERT_FALSE(src_path.rename(dst_path));
+    ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
   }
 
   // directory -> non-existent/non-existent
@@ -1102,88 +1014,88 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.src5");
     std::string dst("deleteme.dst5");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
     dst_path/=missing;
 
-    ASSERT_TRUE(src_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(src_path.c_str(), true));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path.mtime(tmpTime));
-    ASSERT_FALSE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
 
-    ASSERT_FALSE(src_path.rename(dst_path));
+    ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path.mtime(tmpTime));
-    ASSERT_FALSE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
   }
 
   // directory -> directory/
   {
     std::string src("deleteme.src6");
     std::string dst("deleteme.dst6");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
-    irs::utf8_path dst_path_expected(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path_expected = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
-    ASSERT_TRUE(dst_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(dst_path.c_str(), true));
     dst_path/="";
     dst_path_expected/=dst;
     dst_path_expected/=src;
 
-    ASSERT_TRUE(src_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(src_path.c_str(), true));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path_expected.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path_expected.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path_expected.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path_expected.mtime(tmpTime));
-    ASSERT_FALSE(dst_path_expected.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path_expected.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
 
 #ifdef _WIN32
     // Boost fails to rename on win32
-    ASSERT_FALSE(src_path.rename(dst_path));
+    ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 #else
-    ASSERT_TRUE(src_path.rename(dst_path));
+    ASSERT_TRUE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path_expected.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path_expected.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path_expected.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path_expected.mtime(tmpTime));
-    ASSERT_FALSE(dst_path_expected.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path_expected.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
 #endif
   }
 
@@ -1192,41 +1104,41 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.src7");
     std::string dst("deleteme.dst7");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
-    ASSERT_TRUE(dst_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(dst_path.c_str(), true));
     dst_path/=missing;
 
-    ASSERT_TRUE(src_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(src_path.c_str(), true));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path.mtime(tmpTime));
-    ASSERT_FALSE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.rename(dst_path));
+    ASSERT_TRUE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
   }
 
   // directory -> directory/file
@@ -1234,16 +1146,16 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string file("deleteme");
     std::string src("deleteme.src8");
     std::string dst("deleteme.dst8");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
     std::string dst_data("data");
 
     src_path/=src;
     dst_path/=dst;
-    ASSERT_TRUE(dst_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(dst_path.c_str(), true));
     dst_path/=file;
 
-    ASSERT_TRUE(src_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(src_path.c_str(), true));
 
     // create file
     {
@@ -1252,35 +1164,35 @@ void validate_move(bool src_abs, bool dst_abs) {
       out.close();
     }
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dst_path.file_size(tmpUint) && tmpUint == dst_data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()) && tmpUint == dst_data.size());
 
 #ifdef _WIN32
     // Boost forces overwrite on win32
-    ASSERT_TRUE(src_path.rename(dst_path));
+    ASSERT_TRUE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 #else
-    ASSERT_FALSE(src_path.rename(dst_path));
+    ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dst_path.file_size(tmpUint) && tmpUint == dst_data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()) && tmpUint == dst_data.size());
 #endif
   }
 
@@ -1290,14 +1202,14 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string dst_dir("deleteme.dst");
     std::string src("deleteme.src9");
     std::string dst("deleteme.dst9");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
-    irs::utf8_path src_path_expected(src_abs);
-    irs::utf8_path dst_path_expected(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path src_path_expected = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path_expected = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
-    ASSERT_TRUE(dst_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(dst_path.c_str(), true));
     dst_path/=dst_dir;
     src_path_expected/=src;
     src_path_expected/=src_dir;
@@ -1306,39 +1218,39 @@ void validate_move(bool src_abs, bool dst_abs) {
     dst_path_expected/=dst_dir;
     dst_path_expected/=src_dir; // expected another nested directory from src
 
-    ASSERT_TRUE(src_path.mkdir());
-    ASSERT_TRUE(dst_path.mkdir());
-    ASSERT_TRUE(src_path_expected.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(src_path.c_str(), true));
+    ASSERT_TRUE(irs::file_utils::mkdir(dst_path.c_str(), true));
+    ASSERT_TRUE(irs::file_utils::mkdir(src_path_expected.c_str(), true));
 
-    ASSERT_TRUE(src_path_expected.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path_expected.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path_expected.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path_expected.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path_expected.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path_expected.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path_expected.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path_expected.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path_expected.c_str()));
 
-    ASSERT_TRUE(dst_path_expected.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path_expected.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path_expected.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path_expected.mtime(tmpTime));
-    ASSERT_FALSE(dst_path_expected.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path_expected.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
 
 #ifdef _WIN32
-    ASSERT_FALSE(src_path.rename(dst_path));
+    ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 #else
     // Boost on Posix merges directories
-    ASSERT_TRUE(src_path.rename(dst_path));
+    ASSERT_TRUE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path_expected.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path_expected.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path_expected.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path_expected.mtime(tmpTime));
-    ASSERT_FALSE(src_path_expected.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path_expected.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path_expected.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path_expected.c_str()));
 
-    ASSERT_TRUE(dst_path_expected.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path_expected.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path_expected.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path_expected.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dst_path_expected.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path_expected.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path_expected.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path_expected.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
 #endif
   }
 
@@ -1348,8 +1260,8 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.srcA");
     std::string dst("deleteme.dstA");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -1362,31 +1274,31 @@ void validate_move(bool src_abs, bool dst_abs) {
       out.close();
     }
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()) && tmpUint == data.size());
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path.mtime(tmpTime));
-    ASSERT_FALSE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
 
-    ASSERT_FALSE(src_path.rename(dst_path));
+    ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()) && tmpUint == data.size());
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path.mtime(tmpTime));
-    ASSERT_FALSE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
   }
 
   // file -> directory/
@@ -1394,13 +1306,13 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string data("ABCdata123");
     std::string src("deleteme.srcB");
     std::string dst("deleteme.dstB");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
-    irs::utf8_path dst_path_expected(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path_expected = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
-    ASSERT_TRUE(dst_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(dst_path.c_str(), true));
     dst_path/="";
     dst_path_expected/=dst;
     dst_path_expected/=src;
@@ -1412,31 +1324,31 @@ void validate_move(bool src_abs, bool dst_abs) {
       out.close();
     }
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()) && tmpUint == data.size());
 
-    ASSERT_TRUE(dst_path_expected.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path_expected.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path_expected.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path_expected.mtime(tmpTime));
-    ASSERT_FALSE(dst_path_expected.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path_expected.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
 
-    ASSERT_FALSE(src_path.rename(dst_path));
+    ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()) && tmpUint == data.size());
 
-    ASSERT_TRUE(dst_path_expected.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path_expected.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path_expected.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path_expected.mtime(tmpTime));
-    ASSERT_FALSE(dst_path_expected.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path_expected.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path_expected.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
   }
 
   // file -> directory/non-existent
@@ -1445,12 +1357,12 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.srcC");
     std::string dst("deleteme.dstC");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
-    ASSERT_TRUE(dst_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(dst_path.c_str(), true));
     dst_path/=missing;
 
     // create file
@@ -1460,31 +1372,31 @@ void validate_move(bool src_abs, bool dst_abs) {
       out.close();
     }
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()) && tmpUint == data.size());
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(dst_path.mtime(tmpTime));
-    ASSERT_FALSE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.rename(dst_path));
+    ASSERT_TRUE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dst_path.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()) && tmpUint == data.size());
   }
 
   // file -> directory/file
@@ -1494,12 +1406,12 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string file("deleteme");
     std::string src("deleteme.srcD");
     std::string dst("deleteme.dstD");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
-    ASSERT_TRUE(dst_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(dst_path.c_str(), true));
     dst_path/=file;
 
     // create file
@@ -1516,31 +1428,31 @@ void validate_move(bool src_abs, bool dst_abs) {
       out.close();
     }
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint) && tmpUint == src_data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()) && tmpUint == src_data.size());
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dst_path.file_size(tmpUint) && tmpUint == dst_data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()) && tmpUint == dst_data.size());
 
-    ASSERT_TRUE(src_path.rename(dst_path));
+    ASSERT_TRUE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_FALSE(src_path.mtime(tmpTime));
-    ASSERT_FALSE(src_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path.c_str()));
+    ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, src_path.c_str()));
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dst_path.file_size(tmpUint) && tmpUint == src_data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()) && tmpUint == src_data.size());
   }
 
   // file -> directory/directory
@@ -1549,12 +1461,12 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string file("deleteme");
     std::string src("deleteme.srcE");
     std::string dst("deleteme.dstE");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
-    ASSERT_TRUE(dst_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(dst_path.c_str(), true));
     dst_path/=file;
 
     // create file
@@ -1564,33 +1476,33 @@ void validate_move(bool src_abs, bool dst_abs) {
       out.close();
     }
 
-    ASSERT_TRUE(dst_path.mkdir());
+    ASSERT_TRUE(irs::file_utils::mkdir(dst_path.c_str(), true));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()) && tmpUint == data.size());
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
 
-    ASSERT_FALSE(src_path.rename(dst_path));
+    ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
-    ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(src_path.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(src_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(src_path.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  src_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  src_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path.c_str()) && tmpUint == data.size());
 
-    ASSERT_TRUE(dst_path.exists(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_directory(tmpBool) && tmpBool);
-    ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);
-    ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(dst_path.file_size(tmpUint));
+    ASSERT_TRUE(irs::file_utils::exists(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool,  dst_path.c_str()) && tmpBool);
+    ASSERT_TRUE(irs::file_utils::exists_file(tmpBool,  dst_path.c_str()) && !tmpBool);
+    ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path.c_str()) && tmpTime > 0);
+    ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path.c_str()));
   }
 }
 
@@ -1608,126 +1520,4 @@ TEST_F(utf8_path_tests, move_relative_absolute) {
 
 TEST_F(utf8_path_tests, move_relative_relative) {
   validate_move(false, false);
-}
-
-TEST_F(utf8_path_tests, utf8_absolute) {
-  // relative -> absolute
-  {
-    std::string directory("deleteme");
-    irs::utf8_path expected(true);
-    irs::utf8_path path;
-    bool tmpBool;
-
-    expected /= directory;
-    path /= directory;
-
-    ASSERT_TRUE(expected.absolute(tmpBool) && tmpBool); // tests below assume expected is absolute
-    ASSERT_TRUE(path.absolute(tmpBool) && !tmpBool);
-    ASSERT_TRUE(expected.utf8() == path.utf8_absolute());
-    ASSERT_TRUE(irs::utf8_path(path.utf8_absolute()).absolute(tmpBool) && tmpBool);
-  }
-
-  // absolute -> absolute
-  {
-    std::basic_string<std::remove_pointer<file_path_t>::type> expected;
-    irs::utf8_path path(true);
-    bool tmpBool;
-
-    ASSERT_TRUE(irs::file_utils::read_cwd(expected));
-    ASSERT_TRUE(path.absolute(tmpBool) && tmpBool);
-    ASSERT_TRUE(irs::utf8_path(expected).utf8() == path.utf8_absolute());
-    ASSERT_TRUE(path.utf8() == path.utf8_absolute());
-  }
-}
-
-TEST_F(utf8_path_tests, visit) {
-  irs::utf8_path path;
-  std::string data("data");
-  std::string file1("deleteme.file1");
-  std::string file2("deleteme.file2");
-  std::string directory("deleteme.dir");
-  bool tmpBool;
-  std::time_t tmpTime;
-  uint64_t tmpUint;
-  size_t actual_count = 0;
-  auto visit_max = irs::integer_traits<size_t>::max();
-  auto visitor = [&actual_count, &visit_max](const file_path_t name)->bool {
-    ++actual_count;
-
-    return --visit_max;
-  };
-
-  // create file
-  {
-    std::ofstream out1(file1.c_str());
-    std::ofstream out2(file2.c_str());
-    out1 << data;
-    out2 << data << data;
-    out1.close();
-    out2.close();
-  }
-
-  ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.mtime(tmpTime));
-  ASSERT_FALSE(path.file_size(tmpUint));
-  ASSERT_FALSE(path.visit_directory(visitor));
-
-  path = irs::utf8_path(true);
-  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_TRUE(path.file_size(tmpUint));
-  actual_count = 0;
-  visit_max = irs::integer_traits<size_t>::max();
-  ASSERT_TRUE(path.visit_directory(visitor) && actual_count > 1);
-  actual_count = 0;
-  visit_max = 1;
-  ASSERT_TRUE(path.visit_directory(visitor) && actual_count == 1);
-
-  path/=directory;
-  ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.mtime(tmpTime));
-  ASSERT_FALSE(path.file_size(tmpUint));
-  ASSERT_FALSE(path.visit_directory(visitor));
-
-  ASSERT_TRUE(path.mkdir());
-  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_TRUE(path.file_size(tmpUint));
-  actual_count = 0;
-  visit_max = irs::integer_traits<size_t>::max();
-  ASSERT_TRUE(path.visit_directory(visitor, false) && actual_count == 0);
-
-  // create file
-  {
-    irs::utf8_path filepath = path;
-    filepath /= file1;
-    std::ofstream out(filepath.utf8().c_str());
-    out << data << data << data;
-    out.close();
-  }
-
-  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_TRUE(path.file_size(tmpUint));
-  actual_count = 0;
-  visit_max = irs::integer_traits<size_t>::max();
-  ASSERT_TRUE(path.visit_directory(visitor, false) && actual_count > 0);
-
-  path /= file1;
-  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_TRUE(path.file_size(tmpUint));
-  ASSERT_FALSE(path.visit_directory(visitor));
 }

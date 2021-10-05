@@ -54,7 +54,7 @@ void CacheRebalancerThread::beginShutdown() {
 void CacheRebalancerThread::run() {
   while (!isStopping()) {
     try {
-      int result = _rebalancer.rebalance();
+      auto result = _rebalancer.rebalance();
       std::uint64_t interval = (result != TRI_ERROR_ARANGO_BUSY) ? _fullInterval : _shortInterval;
 
       CONDITION_LOCKER(guard, _condition);

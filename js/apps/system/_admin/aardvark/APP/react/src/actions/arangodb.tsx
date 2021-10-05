@@ -1,12 +1,12 @@
 import { Database } from "arangojs";
 import store from "../configureStore";
 import { MoveShardInfo } from '../store/cluster/types';
-import { fetchShardDetailsSuccess, checkHealthSuccess } from "../store/cluster/actions";
+import { checkHealthSuccess, fetchShardDetailsSuccess } from "../store/cluster/actions";
 
-const dispatchError = (error: {message: string}) => {
+const dispatchError = (error: { message: string }) => {
   console.log(error);
   // store.dispatch({type: REPORT_ERROR, payload: error}
-}
+};
 
 class ArangoDB {
   private db: Database;
@@ -15,7 +15,7 @@ class ArangoDB {
   constructor () {
     let url;
 
-    const env = process.env.NODE_ENV
+    const env = process.env.NODE_ENV;
     if (env === 'development') {
       url = process.env.REACT_APP_ARANGODB_HOST;
     } else {
@@ -31,7 +31,7 @@ class ArangoDB {
   public async fetchShardSpecifics (collection: string) : Promise<void> {
     const { body, statusCode } = await this.clusterApi.put('collectionShardDistribution', {collection});
     if (statusCode === 200) {
-      store.dispatch(fetchShardDetailsSuccess(body.results))
+      store.dispatch(fetchShardDetailsSuccess(body.results));
     } else {
       dispatchError({
         message: `Collection ${collection} shard distribution resulted in HTTP Code: ${statusCode}`
@@ -42,7 +42,7 @@ class ArangoDB {
   public async fetchShardsOverview () : Promise<void> {
     const { body, statusCode } = await this.clusterApi.get('shardDistribution');
     if (statusCode === 200) {
-      store.dispatch(fetchShardDetailsSuccess(body.results))
+      store.dispatch(fetchShardDetailsSuccess(body.results));
     } else {
       dispatchError({
         message: `Shard distribution overview resulted in HTTP Code: ${statusCode}`
@@ -85,8 +85,8 @@ class ArangoDB {
 const Instance = new ArangoDB();
 const WrappedInstance = new Proxy<ArangoDB>(Instance, {
   // We intercept in all method getters
-  get(target: ArangoDB, name: keyof ArangoDB) : any {
-    const wrapped : any = target[name];
+  get (target: ArangoDB, name: keyof ArangoDB): any {
+    const wrapped: any = target[name];
     if (typeof wrapped === 'function') {
       return async function () {
         try {

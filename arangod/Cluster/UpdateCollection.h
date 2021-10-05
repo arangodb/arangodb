@@ -22,18 +22,15 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_UPDATE_COLLECTION_H
-#define ARANGODB_MAINTENANCE_UPDATE_COLLECTION_H
+#pragma once
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
 
-#include <chrono>
-
 namespace arangodb {
 namespace maintenance {
 
-class UpdateCollection : public ActionBase {
+class UpdateCollection : public ActionBase, public ShardDefinition {
  public:
   UpdateCollection(MaintenanceFeature&, ActionDescription const&);
 
@@ -46,4 +43,3 @@ class UpdateCollection : public ActionBase {
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

@@ -26,13 +26,16 @@
 #include "Aql/Query.h"
 #include "Aql/QueryCursor.h"
 #include "Basics/MutexLocker.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/SoftShutdownFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <Basics/ScopeGuard.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -55,8 +58,18 @@ size_t const CursorRepository::MaxCollectCount = 32;
 ////////////////////////////////////////////////////////////////////////////////
 
 CursorRepository::CursorRepository(TRI_vocbase_t& vocbase)
-    : _vocbase(vocbase), _lock(), _cursors() {
+    : _vocbase(vocbase), _lock(), _cursors(), _softShutdownOngoing(nullptr) {
   _cursors.reserve(64);
+  if (ServerState::instance()->isCoordinator()) {
+    try {
+      auto const& softShutdownFeature{_vocbase.server().getFeature<SoftShutdownFeature>()};
+      auto& softShutdownTracker{softShutdownFeature.softShutdownTracker()};
+      _softShutdownOngoing = softShutdownTracker.getSoftShutdownFlag();
+    } catch(...) {
+      // Ignore problem, happens only in unit tests and at worst, we do
+      // not have access to the flag.
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,6 +130,11 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
     _cursors.emplace(id, std::make_pair(cursor.get(), std::move(user)));
   }
 
+  TRI_IF_FAILURE(
+      "CursorRepository::directKillStreamQueryAfterCursorIsBeingCreated") {
+    cursor->debugKillQuery();
+  }
+
   return cursor.release();
 }
 
@@ -130,6 +148,13 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
 Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_t batchSize,
                                                 double ttl, bool hasCount) {
   TRI_ASSERT(result.data != nullptr);
+
+  if (_softShutdownOngoing != nullptr &&
+      _softShutdownOngoing->load(std::memory_order_relaxed)) {
+    // Refuse to create the cursor:
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+        "Coordinator soft shutdown ongoing.");
+  }
 
   auto cursor = std::make_unique<aql::QueryResultCursor>(
             _vocbase, std::move(result), batchSize, ttl, hasCount);
@@ -145,7 +170,14 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
 /// the cursor will create a query internally and retain it until deleted
 //////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::createQueryStream(std::unique_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl) {
+Cursor* CursorRepository::createQueryStream(std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl) {
+  if (_softShutdownOngoing != nullptr &&
+      _softShutdownOngoing->load(std::memory_order_relaxed)) {
+    // Refuse to create the cursor:
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+        "Coordinator soft shutdown ongoing.");
+  }
+
   auto cursor = std::make_unique<aql::QueryStreamCursor>(std::move(q), batchSize, ttl);
   cursor->use();
 
@@ -169,11 +201,6 @@ bool CursorRepository::remove(CursorId id) {
     }
 
     cursor = (*it).second.first;
-
-    if (cursor->isDeleted()) {
-      // already deleted
-      return false;
-    }
 
     if (cursor->isUsed()) {
       // cursor is in use by someone else. now mark as deleted
@@ -326,6 +353,7 @@ bool CursorRepository::garbageCollect(bool force) {
 
   // remove cursors outside the lock
   for (auto it : found) {
+    TRI_ASSERT(it != nullptr);
     delete it;
   }
 

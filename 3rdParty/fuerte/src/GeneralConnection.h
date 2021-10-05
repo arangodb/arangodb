@@ -24,6 +24,48 @@
 #ifndef ARANGO_CXX_DRIVER_GENERAL_CONNECTION_H
 #define ARANGO_CXX_DRIVER_GENERAL_CONNECTION_H 1
 
+/// Here is an overview over the class structure for connections in fuerte.
+/// There is a lot of inheritance and templating going on which can be a
+/// bit confusing at first sight.
+///
+/// The base class for all connections is `Connection` in `connection.h`
+/// which has `std::enable_shared_from_this<Connection>` to sort out
+/// memory allocation and object lifetimes. In this way, a callback
+/// closure can own a shared_ptr to the connection object it is working
+/// on. This base class basically only defines the interface for all
+/// other derived classes. There is not a lot implemented in there.
+///
+/// The class template GeneralConnection<ST, RT> implements code which
+/// is the same for all three cases HTTP/1, VST and HTTP/2. Here, ST
+/// stands for the socket type (which can be Tcp (unencrypted), Ssl (TLS
+/// encryption with openssl) and Unix (unix domain socket, no encryption).
+/// Note that all 9 combination between protocol version and socket type
+/// are possible. RT is a type which represents a request which is run
+/// on the connection. For HTTP/1, this will be a `RequestItem`, for
+/// HTTP/2 it will be a `Stream` and for VST it will be a `vst::RequestItem`.
+/// All three RTs are separate classes but behave similarly and have
+/// similar methods, such that the generic code can use them. They also
+/// have differences, since requests have to be handled differently
+/// in the three protocols.
+///
+/// For the VST and HTTP/2 cases there is an intermediate class template
+/// `MultiConnection<ST, RT>`, which inherits from `GeneralConnection<ST, RT>`
+/// and is needed, because - contrary to HTTP/1 - there can be more than
+/// one request in flight on a connection due to multiplexing. Furthermore,
+/// for VST a single request or response can be distributed across muliple
+/// "chunks" in the communication, and for HTTP/2, a single request or
+/// response can be distributed across multiple "frames".
+///
+/// Therefore, the `MultiConnection<ST, RT>` implementation has a member
+/// `_streams` which holds the current list of requests (instances of RT)
+/// which are currently in flight.
+///
+/// Finally, there are the three class templates
+///   `H1Connection` inheriting from `GeneralConnection<ST, RequestItem>`,
+///   `H2Connection` inheriting from `MultiConnection<ST, Stream>` and
+///   `VstConnection` inheriting from `MultiConnection<ST, vst::RequestItem>`.
+/// 
+
 #include <fuerte/connection.h>
 #include <fuerte/types.h>
 
@@ -403,7 +445,7 @@ struct MultiConnection : public GeneralConnection<ST, RT> {
       }
     }
 
-    const bool wasReading = this->_writing;
+    const bool wasReading = this->_reading;
     const bool wasWriting = this->_writing;
     if (wasReading || wasWriting) {
       FUERTE_ASSERT(_lastIO + kIOTimeout > now);

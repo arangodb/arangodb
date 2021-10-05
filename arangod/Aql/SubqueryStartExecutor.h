@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SUBQUERY_START_EXECUTOR_H
-#define ARANGOD_AQL_SUBQUERY_START_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
@@ -82,4 +81,3 @@ class SubqueryStartExecutor {
 };
 }  // namespace aql
 }  // namespace arangodb
-#endif

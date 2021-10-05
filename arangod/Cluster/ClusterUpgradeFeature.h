@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_CLUSTER_UPGRADE_FEATURE_H
-#define APPLICATION_FEATURES_CLUSTER_UPGRADE_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -53,4 +52,3 @@ class ClusterUpgradeFeature final : public application_features::ApplicationFeat
 
 }  // namespace arangodb
 
-#endif

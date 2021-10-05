@@ -22,15 +22,18 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_ACTION_BASE_H
-#define ARANGODB_MAINTENANCE_ACTION_BASE_H
+#pragma once
 
 #include "ActionDescription.h"
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 
+#include <atomic>
 #include <chrono>
+#include <memory>
+#include <mutex>
+#include <unordered_set>
 
 namespace arangodb {
 
@@ -71,7 +74,7 @@ class ActionBase {
   virtual bool done() const;
 
   /// @brief waiting for a worker to grab it and go!
-  bool runable() const { return READY == _state; }
+  bool runnable() const { return READY == _state; }
 
   /// @brief did initialization have issues?
   bool ok() const { return FAILED != _state; }
@@ -153,8 +156,13 @@ class ActionBase {
   ///  Thread safety of this function is questionable for some member objects
   //  virtual Result toJson(/* builder */) {return Result;}
 
-  /// @brief Return Result object contain action specific status
-  Result result() const { return _result; }
+  /// @brief Return Result object containing action specific status
+  Result result() const;
+
+  /// @brief Set the contained result object
+  void result(Result const& result);
+  void result(ErrorCode errorNumber, std::string const& errorMessage = std::string());
+
 
   /// @brief When object was constructed
   std::chrono::system_clock::time_point getCreateTime() const {
@@ -216,19 +224,47 @@ class ActionBase {
 
   std::atomic<uint64_t> _progress;
 
+  int _priority;
+
+private: 
+  mutable std::mutex resLock;
   Result _result;
 
-  int _priority;
 };  // class ActionBase
+
+class ShardDefinition {
+ public:
+  ShardDefinition(ShardDefinition const&) = delete;
+  ShardDefinition& operator=(ShardDefinition const&) = delete;
+
+  ShardDefinition(std::string const& database, std::string const& shard);
+  
+  virtual ~ShardDefinition() = default;
+
+  std::string const& getDatabase() const noexcept {
+    return _database;
+  }
+  
+  std::string const& getShard() const noexcept {
+    return _shard;
+  }
+
+  bool isValid() const noexcept {
+    return !_database.empty() && !_shard.empty();
+  }
+
+ private:
+  std::string const _database;
+  std::string const _shard;
+};
 
 }  // namespace maintenance
 
-Result actionError(int errorCode, std::string const& errorMessage);
-Result actionWarn(int errorCode, std::string const& errorMessage);
+Result actionError(ErrorCode errorCode, std::string const& errorMessage);
+Result actionWarn(ErrorCode errorCode, std::string const& errorMessage);
 
 }  // namespace arangodb
 
 namespace std {
 ostream& operator<<(ostream& o, arangodb::maintenance::ActionBase const& d);
 }
-#endif

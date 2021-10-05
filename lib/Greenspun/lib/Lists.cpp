@@ -60,11 +60,11 @@ EvalResult checkArrayParams(VPackSlice const& arr, VPackSlice const& index) {
     return EvalError("expect second parameter to be a number");
   }
 
-  if (index.getInt() < 0) {
+  if (index.getNumber<int>() < 0) {
     return EvalError("number cannot be less than zero");
   }
 
-  if (index.getUInt() + 1 > arr.length()) {
+  if (index.getNumber<unsigned int>() + 1 > arr.length()) {
     return EvalError("array index is out of bounds");
   }
 
@@ -147,7 +147,27 @@ EvalResult Prim_ListRef(Machine& ctx, VPackSlice const params, VPackBuilder& res
     return check;
   }
 
-  result.add(arr.at(index.getUInt()));
+  result.add(arr.at(index.getNumber<unsigned int>()));
+
+  return {};
+}
+
+EvalResult Prim_ListRepeat(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() || params.length() != 2) {
+    return EvalError("expected exactly two parameters");
+  }
+
+  auto&& value = params.at(0);
+  auto&& num = params.at(1);
+
+  if (!num.isNumber<size_t>()) {
+    return EvalError("invalid repeat count");
+  }
+
+  VPackArrayBuilder ab(&result);
+  for (size_t i = 0; i < num.getNumber<size_t>(); i++) {
+    result.add(value);
+  }
 
   return {};
 }
@@ -169,7 +189,7 @@ EvalResult Prim_ListSet(Machine& ctx, VPackSlice const params, VPackBuilder& res
   uint64_t pos = 0;
   result.openArray();
   for (auto&& element : VPackArrayIterator(arr)) {
-    if (pos == index.getUInt()) {
+    if (pos == index.getNumber<unsigned int>()) {
       result.add(value);
     } else {
       result.add(element);
@@ -258,6 +278,7 @@ void arangodb::greenspun::RegisterAllListFunctions(Machine& ctx) {
   ctx.setFunction("list-length", Prim_ListLength);
   ctx.setFunction("list-join", Prim_ListJoin);
   ctx.setFunction("list-sort", Prim_Sort);
+  ctx.setFunction("list-repeat", Prim_ListRepeat);
   ctx.setFunction("sort", Prim_Sort);
 
   // deprecated list functions

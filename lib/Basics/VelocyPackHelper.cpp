@@ -61,10 +61,6 @@
 #include "Basics/system-compiler.h"
 #include "Logger/LogMacros.h"
 
-extern "C" {
-unsigned long long XXH64(const void* input, size_t length, unsigned long long seed);
-}
-
 using namespace arangodb;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
@@ -498,7 +494,7 @@ VPackBuilder VelocyPackHelper::velocyPackFromFile(std::string const& path) {
   size_t length;
   char* content = TRI_SlurpFile(path.c_str(), &length);
   if (content != nullptr) {
-    auto guard = scopeGuard([&content]() { TRI_Free(content); });
+    auto guard = scopeGuard([&content]() noexcept { TRI_Free(content); });
     // The Parser might throw;
     VPackBuilder builder;
     VPackParser parser(builder);
@@ -593,9 +589,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     }
   }
 
-  int res = TRI_CLOSE(fd);
-
-  if (res < 0) {
+  if (int res = TRI_CLOSE(fd); res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_TOPIC("3f835", WARN, arangodb::Logger::FIXME)
         << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
@@ -603,9 +597,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     return false;
   }
 
-  res = TRI_RenameFile(tmp.c_str(), filename.c_str());
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (auto res = TRI_RenameFile(tmp.c_str(), filename.c_str()); res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
     LOG_TOPIC("7f5c9", WARN, arangodb::Logger::FIXME)
         << "cannot rename saved file '" << tmp << "' to '" << filename
@@ -630,7 +622,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
         LOG_TOPIC("6b8f6", WARN, arangodb::Logger::FIXME)
             << "cannot sync directory '" << filename << "': " << TRI_LAST_ERROR_STR;
       }
-      res = TRI_CLOSE(fd);
+      int res = TRI_CLOSE(fd);
       if (res < 0) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("7ceee", WARN, arangodb::Logger::FIXME)

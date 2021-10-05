@@ -77,6 +77,9 @@ function unflatten (target, opts) {
     var recipient = result
 
     while (key2 !== undefined) {
+      if (key1 === '__proto__') {
+        return
+      }
       var type = Object.prototype.toString.call(recipient[key1])
       var isobject = (
         type === '[object Object]' ||

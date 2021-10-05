@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_GEO_INDEX_H
-#define ARANGOD_ROCKSDB_GEO_INDEX_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 
@@ -61,7 +60,8 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
                                                       arangodb::aql::AstNode const* node,
                                                       arangodb::aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts) override;
+                                                      IndexIteratorOptions const& opts,
+                                                      ReadOwnWrites readOwnWrites) override;
 
   bool canBeDropped() const override { return true; }
 
@@ -76,16 +76,16 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const doc,
-                arangodb::OperationOptions& options) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                arangodb::OperationOptions const& /*options*/,
+                bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const docs) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc) override;
 
  private:
   std::string const _typeName;
 };
 }  // namespace arangodb
 
-#endif

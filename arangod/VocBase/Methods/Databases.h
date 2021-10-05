@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_DATABASE_H
-#define ARANGOD_VOC_BASE_API_DATABASE_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -43,6 +42,9 @@ namespace methods {
 
 /// Common code for the db._database(),
 struct Databases {
+  
+  static std::string normalizeName(std::string const& name);
+
   static std::vector<std::string> list(application_features::ApplicationServer& server,
                                        std::string const& user = "");
   static arangodb::Result info(TRI_vocbase_t* vocbase, VPackBuilder& result);
@@ -62,4 +64,3 @@ struct Databases {
 }  // namespace methods
 }  // namespace arangodb
 
-#endif

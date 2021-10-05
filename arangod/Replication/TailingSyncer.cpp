@@ -127,17 +127,7 @@ TailingSyncer::~TailingSyncer() {
 /// @brief decide based on _state.leader which api to use
 ///        GlobalTailingSyncer should overwrite this probably
 std::string TailingSyncer::tailingBaseUrl(std::string const& cc) {
-  bool act32 = _state.leader.simulate32Client();
-  std::string const& base = act32 ? replutils::ReplicationUrl : TailingSyncer::WalAccessUrl;
-  if (act32) {  // fallback pre 3.3
-    if (cc == "tail") {
-      return base + "/logger-follow?";
-    } else if (cc == "open-transactions") {
-      return base + "/determine-open-transactions?";
-    }
-    // should not be used for anything else
-    TRI_ASSERT(false);
-  }
+  std::string const& base = TailingSyncer::WalAccessUrl;
   return base + "/" + cc + "?";
 }
 
@@ -932,7 +922,8 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   VPackSlice properties = data.get("properties");
 
   if (properties.isObject()) {
-    return view->properties(properties, false);  // always a full-update
+    // always a full-update
+    return view->properties(properties, false, false);
   }
 
   return {};
@@ -941,8 +932,8 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
 /// @brief apply a single marker from the continuous log
 Result TailingSyncer::applyLogMarker(VPackSlice const& slice, 
                                      ApplyStats& applyStats,
-                                     TRI_voc_tick_t firstRegularTick,
-                                     TRI_voc_tick_t markerTick, 
+                                     TRI_voc_tick_t /*firstRegularTick*/,
+                                     TRI_voc_tick_t /*markerTick*/,
                                      TRI_replication_operation_e type) {
   // handle marker type
   if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_REMOVE) {
@@ -1102,7 +1093,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
       _analyzersModified.clear();
     }
   };
-  TRI_DEFER(reloader());
+  auto sg = arangodb::scopeGuard([&]() noexcept { reloader(); });
 
   StringBuffer& data = response->getBody();
   char const* p = data.begin();
@@ -1218,8 +1209,12 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
 /// catches exceptions
 Result TailingSyncer::run() {
   try {
-    auto guard = scopeGuard([this]() {
-      abortOngoingTransactions();
+    auto guard = scopeGuard([this]() noexcept {
+      try {
+          abortOngoingTransactions();
+      } catch(std::exception const& ex) {
+          LOG_TOPIC("6f832", ERR, Logger::REPLICATION) << "Failed to abort ongoing transactions: " << ex.what();
+      }
     });
     return runInternal();
   } catch (arangodb::basics::Exception const& ex) {
@@ -1735,8 +1730,7 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
 
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
 
-  if (!fromIncluded && fromTick > 0 &&
-      (!_state.leader.simulate32Client() || fromTick != readTick)) {
+  if (!fromIncluded && fromTick > 0) {
     Result r = handleRequiredFromPresentFailure(fromTick, readTick, "initial");
     TRI_ASSERT(_ongoingTransactions.empty());
 
@@ -1834,6 +1828,13 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
     double time = TRI_microtime();
 
     _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      // set request timeout to a maximum of 10 seconds. we do this to be able
+      // to get out of stalled requests to failed/non-responsive leaders quicker.
+      double oldTimeout = client->params().getRequestTimeout();
+      client->params().setRequestTimeout(std::min(_state.applier._requestTimeout, 10.0));
+      auto guard = scopeGuard([&]() noexcept {
+        client->params().setRequestTimeout(oldTimeout);
+      });
       auto headers = replutils::createHeaders();
       response.reset(client->request(rest::RequestType::PUT, url, body.c_str(),
                                      body.size(), headers));
@@ -1899,7 +1900,6 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
   }
 
   worked = false;
-  TRI_voc_tick_t const originalFetchTick = fetchTick;
 
   if (!hasHeader(response, StaticStrings::ReplicationHeaderCheckMore)) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -1978,8 +1978,7 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
     _applier->_state._totalFetchInstances++;
   }
 
-  if (!fromIncluded && fetchTick > 0 &&
-      (!_state.leader.simulate32Client() || originalFetchTick != tick)) {
+  if (!fromIncluded && fetchTick > 0) {
     Result r = handleRequiredFromPresentFailure(fetchTick, tick, "ongoing");
     TRI_ASSERT(_ongoingTransactions.empty());
 
@@ -1995,8 +1994,7 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
     // do not fetch the same batch next time we enter processLeaderLog
     // (that would be duplicate work)
     mustFetchBatch = false;
-    auto self = shared_from_this();
-    sharedStatus->request([this, self, sharedStatus, fetchTick, lastScannedTick,
+    sharedStatus->request([this, self = shared_from_this(), sharedStatus, fetchTick, lastScannedTick,
                            firstRegularTick]() {
       fetchLeaderLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
     });

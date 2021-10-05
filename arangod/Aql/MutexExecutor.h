@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MUTEX_EXECUTOR_H
-#define ARANGOD_AQL_MUTEX_EXECUTOR_H
+#pragma once
 
 #include "Aql/BlocksWithClients.h"
 #include "Aql/DistributeClientBlock.h"
@@ -66,14 +65,16 @@ class MutexExecutor {
    * @param skipped The rows that have been skipped from upstream
    * @param blockMap Map client => Data. Will provide the required data to the correct client.
    */
-  auto distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
+  auto distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                        std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
   
-  void acquireLock() {
+  void acquireLock() noexcept {
+    // don't continue if locking fails
     _mutex.lock();
   }
 
-  void releaseLock() {
+  void releaseLock() noexcept {
+    // don't continue if locking fails
     _mutex.unlock();
   }
 
@@ -109,4 +110,3 @@ class ExecutionBlockImpl<MutexExecutor>
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

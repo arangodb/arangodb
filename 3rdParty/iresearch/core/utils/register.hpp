@@ -23,22 +23,23 @@
 #ifndef IRESEARCH_REGISTER_H
 #define IRESEARCH_REGISTER_H
 
+#include <memory>
+#include <vector>
+#include <string>
+
+#include <absl/container/flat_hash_map.h>
+
 #include "singleton.hpp"
 #include "so_utils.hpp"
 #include "log.hpp"
 #include "string.hpp"
-
-#include <memory>
-#include <unordered_map>
-#include <vector>
-#include <string>
 
 // use busywait implementation for Win32 since std::mutex cannot be used in calls going through dllmain()
 #ifdef _WIN32
 #include "async_utils.hpp"
 
 namespace {
-  typedef irs::async_utils::busywait_mutex mutex_t;
+typedef irs::async_utils::busywait_mutex mutex_t;
 }
 #else
 #include <mutex>
@@ -56,7 +57,7 @@ template<
   typename KeyType,
   typename EntryType,
   typename RegisterType,
-  typename Hash = std::hash<KeyType>,
+  typename Hash = absl::Hash<KeyType>,
   typename Pred = std::equal_to<KeyType>
 > class generic_register : public singleton<RegisterType> {
  public:
@@ -64,7 +65,6 @@ template<
   typedef EntryType entry_type;
   typedef Hash hash_type;
   typedef Pred pred_type;
-  typedef std::unordered_map<key_type, entry_type, hash_type, pred_type> register_map_t;
   typedef std::function<bool(const key_type& key)> visitor_t;
 
   virtual ~generic_register() = default;
@@ -171,6 +171,8 @@ template<
   }
 
  private:
+  using register_map_t = absl::flat_hash_map<key_type, entry_type, hash_type, pred_type>;
+
   mutable mutex_t mutex_;
   register_map_t reg_map_;
   std::vector<std::unique_ptr<void, std::function<void(void*)>>> so_handles_;
@@ -182,7 +184,7 @@ template<
   typename EntryType,
   typename TagType,
   typename RegisterType,
-  typename Hash = std::hash<KeyType>,
+  typename Hash = absl::Hash<KeyType>,
   typename Pred = std::equal_to<KeyType>
 > class tagged_generic_register : public generic_register<KeyType, EntryType, RegisterType, Hash, Pred> {
  public:
@@ -216,7 +218,8 @@ template<
   }
 
   private:
-   typedef std::unordered_map<key_type, tag_type, hash_type, pred_type> tag_map_t;
+   using tag_map_t = absl::flat_hash_map<key_type, tag_type, hash_type, pred_type>;
+
    mutable mutex_t mutex_;
    tag_map_t tag_map_;
 };

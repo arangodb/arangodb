@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_GENERAL_GRAPH_H
-#define ARANGOD_V8_SERVER_V8_GENERAL_GRAPH_H 1
+#pragma once
 
 #include <v8.h>
 
@@ -32,4 +31,3 @@ struct TRI_v8_global_t;
 void TRI_InitV8GeneralGraph(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
                             TRI_v8_global_t* v8g, v8::Isolate* isolate);
 
-#endif

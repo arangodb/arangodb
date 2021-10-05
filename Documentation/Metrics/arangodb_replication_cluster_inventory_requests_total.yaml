@@ -1,0 +1,20 @@
+name: arangodb_replication_cluster_inventory_requests_total
+renamedFrom: arangodb_replication_cluster_inventory_requests
+introducedIn: "3.8.0"
+help: |
+  (DC-2-DC only) Number of times the database and collection overviews have been requested.
+unit: number
+type: counter
+category: Replication
+complexity: advanced
+exposedBy:
+  - coordinator
+description: |
+  When using a DC-2-DC configuration of ArangoDB this metric is active on both data-centers.
+  It indicates that the follower data-center periodically matches the available databases and collections
+  in order to mirror them. If no DC-2-DC is set up this value is expected to be 0.
+troubleshoot: |
+  If you have a DC-2-DC installation, and this metric stays constant over a longer period of time in any of the two data centers
+  this indicates that the follower data center is not properly connected anymore.
+  The issue most likely is within the sync process on either of the two data-centers as they do not compare their inventory anymore.
+  This gives no information about the healthiness of the ArangoDB cluster itself, please check other metrics for this.

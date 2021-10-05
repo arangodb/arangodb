@@ -21,15 +21,16 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-#include "utils/memory_pool.hpp"
-#include "utils/memory.hpp"
-#include "utils/timer_utils.hpp"
-
 #include <fstream>
 #include <list>
 #include <set>
 #include <map>
+
+#include "tests_shared.hpp"
+#include "utils/memory_pool.hpp"
+#include "utils/memory.hpp"
+#include "utils/timer_utils.hpp"
+#include "utils/file_utils.hpp"
 
 namespace {
 
@@ -375,7 +376,9 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
 
   irs::timer_utils::flush_stats(out);
   out.close();
-  std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
+
+  irs::file_utils::ensure_absolute(path);
+  std::cout << "Path to timing log: " << path.u8string() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, profile_std_multimap) {
@@ -578,7 +581,9 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
 
   irs::timer_utils::flush_stats(out);
   out.close();
-  std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
+
+  irs::file_utils::ensure_absolute(path);
+  std::cout << "Path to timing log: " << path.u8string() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, profile_std_list) {
@@ -725,7 +730,9 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
 
   irs::timer_utils::flush_stats(out);
   out.close();
-  std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
+
+  irs::file_utils::ensure_absolute(path);
+  std::cout << "Path to timing log: " << path.u8string() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, profile_std_set) {
@@ -898,7 +905,9 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
 
   irs::timer_utils::flush_stats(out);
   out.close();
-  std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
+
+  irs::file_utils::ensure_absolute(path);
+  std::cout << "Path to timing log: " << path.u8string() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, allocate_unique) {

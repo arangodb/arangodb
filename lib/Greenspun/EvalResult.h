@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GREENSPUN_EVALRESULT_H
-#define ARANGODB_GREENSPUN_EVALRESULT_H 1
+#pragma once
 
 #include <vector>
 #include <string>
@@ -153,4 +152,3 @@ using EvalResult = EvalResultT<std::monostate>;
 }  // namespace greenspun
 }  // namespace arangodb
 
-#endif

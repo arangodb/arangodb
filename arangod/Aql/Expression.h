@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXPRESSION_H
-#define ARANGOD_AQL_EXPRESSION_H 1
+#pragma once
 
 #include <cstdint>
 #include <unordered_map>
@@ -101,7 +100,7 @@ class Expression {
   bool willUseV8();
 
   /// @brief clone the expression, needed to clone execution plans
-  std::unique_ptr<Expression> clone(Ast* ast);
+  std::unique_ptr<Expression> clone(Ast* ast, bool deepCopy = false);
 
   /// @brief return all variables used in the expression
   void variables(VarSet&) const;
@@ -272,4 +271,3 @@ class Expression {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

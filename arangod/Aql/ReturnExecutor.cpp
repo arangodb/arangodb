@@ -26,6 +26,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 
 #include <algorithm>
 

@@ -25,8 +25,15 @@
 #include "./PathResult.h"
 #include "Basics/StaticStrings.h"
 
+#include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
+
+#include "Graph/Steps/SingleServerProviderStep.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -112,8 +119,22 @@ auto PathResult<ProviderType, Step>::isEmpty() const -> bool {
   return _vertices.empty();
 }
 
-template class ::arangodb::graph::PathResult<::arangodb::graph::SingleServerProvider,
-                                             ::arangodb::graph::SingleServerProvider::Step>;
+/* SingleServerProvider Section */
 
-template class ::arangodb::graph::PathResult<::arangodb::graph::ProviderTracer<::arangodb::graph::SingleServerProvider>,
-                                             ::arangodb::graph::SingleServerProvider::Step>;
+using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
+
+template class ::arangodb::graph::PathResult<::arangodb::graph::SingleServerProvider<SingleServerProviderStep>, SingleServerProviderStep>;
+template class ::arangodb::graph::PathResult<::arangodb::graph::ProviderTracer<SingleServerProvider<SingleServerProviderStep>>, SingleServerProviderStep>;
+
+#ifdef USE_ENTERPRISE
+template class ::arangodb::graph::PathResult<::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>, enterprise::SmartGraphStep>;
+template class ::arangodb::graph::PathResult<
+    ::arangodb::graph::ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>, enterprise::SmartGraphStep>;
+#endif
+
+/* ClusterProvider Section */
+
+template class ::arangodb::graph::PathResult<::arangodb::graph::ClusterProvider, ::arangodb::graph::ClusterProvider::Step>;
+
+template class ::arangodb::graph::PathResult<::arangodb::graph::ProviderTracer<::arangodb::graph::ClusterProvider>,
+                                             ::arangodb::graph::ClusterProvider::Step>;

@@ -23,30 +23,11 @@
 #ifndef IRESEARCH_MISC_H
 #define IRESEARCH_MISC_H
 
-#include "utils/math_utils.hpp"
-#include "utils/string.hpp"
+#include <array>
+
+#include "shared.hpp"
 
 namespace iresearch {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief SFINAE
-////////////////////////////////////////////////////////////////////////////////
-#define DEFINE_HAS_MEMBER(member)                                            \
-  template<typename T>                                                       \
-  class has_member_##member {                                                \
-   private:                                                                  \
-    using yes_type = char;                                                   \
-    using no_type = long;                                                    \
-    using type = std::remove_reference_t<std::remove_cv_t<T>>;               \
-    template<typename U> static yes_type test(decltype(&U::member));         \
-    template<typename U> static no_type  test(...);                          \
-   public:                                                                   \
-    static constexpr bool value = sizeof(test<type>(0)) == sizeof(yes_type); \
-  };                                                                         \
-  template<typename T>                                                       \
-  inline constexpr auto has_member_##member##_v = has_member_##member<T>::value
-
-#define HAS_MEMBER(type, member) has_member_##member##_v<type>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Cross-platform 'COUNTOF' implementation
@@ -71,22 +52,21 @@ namespace iresearch {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compile-time type identifier
-////////////////////////////////////////////////////////////////////////////////
-template<typename T>
-constexpr string_ref ctti() noexcept {
-  return { IRESEARCH_CURRENT_FUNCTION };
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convenient helper for simulating 'try/catch/finally' semantic
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Func>
 class finally {
  public:
-  finally(const Func& func) : func_(func) { }
-  finally(Func&& func) noexcept : func_(std::move(func)) { }
-  ~finally() { func_(); }
+  // FIXME uncomment when no comments left:
+  // "FIXME make me noexcept as I'm begin called from within ~finally()"
+  //static_assert(std::is_nothrow_invocable_v<Func>);
+
+  finally(Func&& func)
+    : func_(std::forward<Func>(func)) {
+  }
+  ~finally() {
+    func_();
+  }
 
  private:
   Func func_;
@@ -104,7 +84,7 @@ finally<Func> make_finally(Func&& func) {
 template<typename T>
 class move_on_copy {
  public:
-  move_on_copy(T&& value) noexcept : value_(std::move(value)) {}
+  move_on_copy(T&& value) noexcept : value_(std::forward<T>(value)) {}
   move_on_copy(const move_on_copy& rhs) noexcept : value_(std::move(rhs.value_)) {}
 
   T& value() noexcept { return value_; }
@@ -119,8 +99,49 @@ class move_on_copy {
 
 template<typename T>
 move_on_copy<T> make_move_on_copy(T&& value) noexcept {
-  static_assert(std::is_rvalue_reference<decltype(value)>::value, "parameter should be an rvalue");
-  return move_on_copy<T>(std::move(value));
+  static_assert(std::is_rvalue_reference_v<decltype(value)>, "parameter must be an rvalue");
+  return move_on_copy<T>(std::forward<T>(value));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convenient helper for caching function results
+////////////////////////////////////////////////////////////////////////////////
+template<
+  typename Input,
+  Input Size,
+  typename Func,
+  typename = typename std::enable_if_t<std::is_integral_v<Input>>
+> class cached_func {
+ public:
+  using input_type = Input;
+  using output_type = std::invoke_result_t<Func, Input>;
+
+  constexpr explicit cached_func(size_t offset, Func&& func)
+    : func_{std::forward<Func>(func)} {
+    for (input_type i = offset; i < size(); ++i) {
+      cache_[i] = func_(i);
+    }
+  }
+
+  constexpr FORCE_INLINE output_type operator()(input_type value) const
+      noexcept(std::is_nothrow_invocable_v<Func, Input>) {
+    return value < size() ? cache_[value] : func_(value);
+  }
+
+  constexpr size_t size() const noexcept {
+    return IRESEARCH_COUNTOF(cache_);
+  }
+
+ private:
+  Func func_;
+  output_type cache_[Size]{};
+
+  static_assert(IRESEARCH_COUNTOF(decltype(cache_){}) == Size);
+}; // cached_func
+
+template<typename Input, size_t Size, typename Func>
+constexpr cached_func<Input, Size, Func> cache_func(size_t offset, Func&& func) {
+  return cached_func<Input, Size, Func>{ offset, std::forward<Func>(func) };
 }
 
 }

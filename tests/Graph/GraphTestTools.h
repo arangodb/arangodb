@@ -83,6 +83,7 @@ struct GraphTestSetup
     // setup required application features
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::transaction::ManagerFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(), false);
     server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
@@ -221,53 +222,7 @@ struct MockGraphDatabase {
   void addGraph(MockGraph const& graph) {
     auto vertices = generateVertexCollection("v");
     auto edges = generateEdgeCollection("e");
-
-    {
-      // Insert vertices
-      arangodb::OperationOptions options;
-      arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), *vertices,
-          arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE((trx.begin().ok()));
-
-      size_t added = 0;
-      velocypack::Builder b;
-      for (auto& v : graph.vertices()) {
-        b.clear();
-        v.addToBuilder(b);
-        auto res = trx.insert(vertices->name(), b.slice(), options);
-        EXPECT_TRUE((res.ok()));
-        added++;
-      }
-
-      EXPECT_TRUE((trx.commit().ok()));
-      EXPECT_TRUE(added == graph.vertices().size());
-      EXPECT_TRUE(vertices->type());
-    }
-
-    {
-      // Insert edges
-      arangodb::OperationOptions options;
-      arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), *edges,
-          arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE((trx.begin().ok()));
-      size_t added = 0;
-      velocypack::Builder b;
-      for (auto& edge : graph.edges()) {
-        b.clear();
-        edge.addToBuilder(b);
-        auto res = trx.insert(edges->name(), b.slice(), options);
-        if (res.fail()) {
-          LOG_DEVEL << res.errorMessage() << " " << b.toJson();
-        }
-        EXPECT_TRUE((res.ok()));
-        added++;
-      }
-
-      EXPECT_TRUE((trx.commit().ok()));
-      EXPECT_TRUE(added == graph.edges().size());
-    }
+    graph.storeData(vocbase, "v", "e");
   }
 
   auto generateEdgeCollection(std::string name)
@@ -309,12 +264,12 @@ struct MockGraphDatabase {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::unique_ptr<arangodb::aql::Query> getQuery(std::string qry,
+  std::shared_ptr<arangodb::aql::Query> getQuery(std::string qry,
                                                  std::vector<std::string> collections) {
     auto queryString = arangodb::aql::QueryString(qry);
 
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    auto query = std::make_unique<arangodb::aql::Query>(ctx, queryString, nullptr);
+    auto query = arangodb::aql::Query::create(ctx, queryString, nullptr);
     for (auto const& c : collections) {
       query->collections().add(c, AccessMode::Type::READ,
                                arangodb::aql::Collection::Hint::Collection);

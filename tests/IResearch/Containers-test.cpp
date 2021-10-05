@@ -88,8 +88,13 @@ TEST(ContainersTest, testResourceMutex) {
     while (!reset && result0 == std::cv_status::no_timeout) result0 =
                       cond.wait_for(cond_lock, std::chrono::milliseconds(50));
 
+    EXPECT_FALSE(reset);
     lock.unlock();
     auto result1 = cond.wait_for(cond_lock, std::chrono::milliseconds(50));
+    int nTryCount = 3;
+    while (std::cv_status::timeout == result1 && nTryCount--) {
+      result1 = cond.wait_for(cond_lock, std::chrono::milliseconds(50));
+    }
     cond_lock.unlock();
     thread.join();
     EXPECT_EQ(std::cv_status::timeout, result0);  // check only after joining with thread to avoid early exit
@@ -309,7 +314,7 @@ TEST(ContainersTest, test_UnorderedRefKeyMap) {
     std::set<std::string> expected({"abc", "def", "ghi"});
 
     for (auto& entry : map) {
-      EXPECT_TRUE((1 == expected.erase(entry.key())));
+      EXPECT_TRUE((1 == expected.erase(static_cast<std::string>(entry.key())))); // FIXME: after C++20 remove cast and use heterogeneous lookup
     }
 
     EXPECT_TRUE((expected.empty()));

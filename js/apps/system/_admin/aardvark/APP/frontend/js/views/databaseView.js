@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, Backbone, $, arangoHelper, templateEngine, Joi, frontendConfig */
+/* global window, Backbone, $, arangoHelper, templateEngine, Joi, frontendConfig, _ */
 (function () {
   'use strict';
 
@@ -136,32 +136,12 @@
 
     handleError: function (err, dbname) {
       if (err.status === 409) {
-        arangoHelper.arangoError('DB', 'Database ' + dbname + ' already exists.');
+        arangoHelper.arangoError('DB', 'Database ' + _.escape(dbname) + ' already exists.');
       } else if (err.status === 400) {
-        arangoHelper.arangoError('DB', 'Invalid Parameters: ' + err.responseJSON.errorMessage);
+        arangoHelper.arangoError('DB', 'Invalid Parameters: ' + _.escape(err.responseJSON.errorMessage));
       } else if (err.status === 403) {
         arangoHelper.arangoError('DB', 'Insufficient rights. Execute this from _system database');
       }
-    },
-
-    validateDatabaseInfo: function (db, user) {
-      if (user === '') {
-        arangoHelper.arangoError('DB', 'You have to define an owner for the new database');
-        return false;
-      }
-      if (db === '') {
-        arangoHelper.arangoError('DB', 'You have to define a name for the new database');
-        return false;
-      }
-      if (db.indexOf('_') === 0) {
-        arangoHelper.arangoError('DB ', 'Database name should not start with _');
-        return false;
-      }
-      if (!db.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
-        arangoHelper.arangoError('DB', 'Database name may only contain numbers, letters, _ and -');
-        return false;
-      }
-      return true;
     },
 
     createDatabase: function (e) {
@@ -183,7 +163,13 @@
 
     submitCreateDatabase: function () {
       var self = this; // userPassword,
-      var dbname = $('#newDatabaseName').val();
+      var dbname = String($('#newDatabaseName').val()).trim();
+      try {
+        // create NFC-normalized variant of the database name
+        dbname = dbname.normalize("NFC");
+      } catch (err) {
+        // for browsers not supporting the normalize API
+      }
       var userName = $('#newUser').val();
 
       var sharding = $('#newSharding').val();
@@ -213,7 +199,7 @@
           if (window.location.hash === '#databases') {
             self.updateDatabases();
           }
-          arangoHelper.arangoNotification('Database ' + data.get('name') + ' created.');
+          arangoHelper.arangoNotification('Database ' + _.escape(data.get('name')) + ' created.');
         }
       });
 
@@ -223,7 +209,7 @@
 
     submitDeleteDatabase: function (dbname) {
       var toDelete = this.collection.where({name: dbname});
-      toDelete[0].destroy({wait: true, url: arangoHelper.databaseUrl('/_api/database/' + dbname)});
+      toDelete[0].destroy({wait: true, url: arangoHelper.databaseUrl('/_api/database/' + encodeURIComponent(dbname))});
       this.updateDatabases();
       window.App.naviView.dbSelectionView.render($('#dbSelect'));
       window.modalView.hide();
@@ -317,7 +303,7 @@
       var tableContent = [];
 
       tableContent.push(
-        window.modalView.createReadOnlyEntry('id_name', 'Name', dbName, '')
+        window.modalView.createReadOnlyEntry('id_name', 'Name', _.escape(dbName), '')
       );
       
       if (isDeletable) {
@@ -371,14 +357,6 @@
           true,
           [
             {
-              rule: Joi.string().regex(/^[a-zA-Z]/),
-              msg: 'Database name must start with a letter.'
-            },
-            {
-              rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-              msg: 'Only Symbols "_" and "-" are allowed.'
-            },
-            {
               rule: Joi.string().required(),
               msg: 'No database name given.'
             }
@@ -428,10 +406,10 @@
       //if enterprise
       if (window.App.isCluster && frontendConfig.isEnterprise && !frontendConfig.forceOneShard) {
         var sharding = [ { value : "",
-                           label : "flexible"
+                           label : "Sharded"
                          },
                          { value : "single",
-                           label : "single"
+                           label : "OneShard"
                          }
                        ];
 
@@ -440,7 +418,7 @@
             'newSharding',
             'Sharding',
             'flexible',
-            'Selects the default sharding setup for new collections in this database. *flexible* means that shards of different collections by default will be randomly distributed to database servers. *single* means that collections by default will use the same sharding setup (number of shards and shard distribution) as one of the system collections.',
+            'Selects the default sharding setup for new collections in this database.\n*Sharded* means that collections can have any number of shards, and that shards will be randomly distributed to database servers.\n*OneShard* means that all collections in the database will have only have a single but are all distributed to the same database server. This enables performance optimizations, e.g. pushing down entire queries to database servers. Use *OneShard* when it is known that the dataset fits on a single instance, and *Sharded* for larger datasets.',
             sharding
           )
         );

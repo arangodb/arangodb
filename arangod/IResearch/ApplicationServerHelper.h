@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__APPLICATION_SERVER_HELPER_H
-#define ARANGOD_IRESEARCH__APPLICATION_SERVER_HELPER_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationServer.h"
 
@@ -44,7 +43,12 @@ bool addFunction(arangodb::aql::AqlFunctionFeature& functions,
 arangodb::aql::Function const* getFunction(arangodb::aql::AqlFunctionFeature& functions,
                                            std::string const& name);
 
+// FIXME: remove this overload after C++20 and use heterogenious lookup in functions Feature
+inline arangodb::aql::Function const* getFunction(arangodb::aql::AqlFunctionFeature& functions,
+                                                  std::string_view  name) {
+  return getFunction(functions, static_cast<std::string>(name));
+}
+
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

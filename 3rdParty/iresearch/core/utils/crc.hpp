@@ -46,7 +46,7 @@ class crc32c {
    const auto* begin = process_block_32(buffer_begin, buffer_end);
    const auto* end = reinterpret_cast<const uint8_t*>(buffer_end);
 
-   for (;begin != end; ++begin) {
+   for (; begin < end; ++begin) {
      value_ = _mm_crc32_u8(value_, *begin);
    }
  }
@@ -67,7 +67,7 @@ class crc32c {
     const auto* begin = reinterpret_cast<const uint32_t*>(buffer_begin);
     const auto* end = reinterpret_cast<const uint32_t*>(reinterpret_cast<const uint8_t*>(buffer_begin) + k*BLOCK_SIZE);
 
-    for (; begin != end; ++begin) {
+    for (; begin < end; ++begin) {
       value_ = _mm_crc32_u32(value_, *begin);
     }
 

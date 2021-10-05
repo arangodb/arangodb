@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PATHMANAGEMENT_PATHSTORE_TRACER_H
-#define ARANGOD_GRAPH_PATHMANAGEMENT_PATHSTORE_TRACER_H 1
+#pragma once
 
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Helpers/TraceEntry.h"
@@ -61,11 +60,14 @@ class PathStoreTracer {
   // returns the index of inserted element
   size_t append(Step step);
 
+  auto getStep(size_t position) const -> Step;
+  auto getStepReference(size_t position) -> Step&;
+
   // @brief returns the current vector size
   size_t size() const;
 
-  template <class ProviderType>
-  auto buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> void;
+  template <class PathResultType>
+  auto buildPath(Step const& vertex, PathResultType& path) const -> void;
 
   template <class ProviderType>
   auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const
@@ -73,6 +75,8 @@ class PathStoreTracer {
 
   auto visitReversePath(Step const& step, std::function<bool(Step const&)> const& visitor) const
       -> bool;
+
+  auto modifyReversePath(Step& step, std::function<bool(Step&)> const& visitor) -> bool;
 
  private:
   PathStoreImpl _impl;
@@ -85,4 +89,3 @@ class PathStoreTracer {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

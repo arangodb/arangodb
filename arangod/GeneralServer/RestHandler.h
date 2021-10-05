@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_REST_HANDLER_H
-#define ARANGOD_HTTP_SERVER_REST_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ResultT.h"
@@ -146,10 +145,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   void resetResponse(rest::ResponseCode);
 
-  void generateError(rest::ResponseCode, int errorNumber, std::string_view errorMessage);
+  void generateError(rest::ResponseCode code, ErrorCode errorNumber,
+                     std::string_view errorMessage);
 
   // generates an error
-  void generateError(rest::ResponseCode, int errorCode);
+  void generateError(rest::ResponseCode code, ErrorCode errorNumber);
 
   // generates an error
   void generateError(arangodb::Result const&);
@@ -224,4 +224,3 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

@@ -106,7 +106,7 @@ void BaseWindowExecutor::applyAggregators(InputAqlItemRow& input) {
   TRI_ASSERT(_aggregators.size() == _infos.getAggregatedRegisters().size());
   size_t j = 0;
   for (auto const& r : _infos.getAggregatedRegisters()) {
-    if (r.second == RegisterPlan::MaxRegisterId) {  // e.g. LENGTH / COUNT
+    if (r.second.value() == RegisterId::maxRegisterId) {  // e.g. LENGTH / COUNT
       _aggregators[j]->reduce(::EmptyValue);
     } else {
       _aggregators[j]->reduce(input.getValue(/*inRegister*/ r.second));
@@ -142,6 +142,7 @@ void BaseWindowExecutor::produceInvalidOutputRow(InputAqlItemRow& input, OutputA
   for (auto const& regId : _infos.getAggregatedRegisters()) {
     output.moveValueInto(/*outRegister*/ regId.first, input, nullSlice);
   }
+  output.advanceRow();
 }
 
 // -------------- AccuWindowExecutor --------------
@@ -223,7 +224,7 @@ ExecutorState WindowExecutor::consumeInputRange(AqlItemBlockInputRange& inputRan
     auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
     
-    if (rangeRegister != RegisterPlan::MaxRegisterId) {
+    if (rangeRegister.isValid()) {
       AqlValue val = input.getValue(rangeRegister);
       _windowRows.emplace_back(b.calcRow(val, qc));
     }

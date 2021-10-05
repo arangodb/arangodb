@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, arango */
+/* global getOptions, assertEqual, assertTrue, assertFalse, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
@@ -34,7 +34,10 @@ if (getOptions === true) {
     'javascript.allow-admin-execute': 'true',
   };
 }
-var jsunity = require('jsunity');
+
+const db = require("@arangodb").db;
+const fs = require("fs");
+const jsunity = require('jsunity');
 
 function testSuite() {
   const errors = require('@arangodb').errors;
@@ -44,12 +47,15 @@ function testSuite() {
     tearDown: function() {},
 
     testCanExecuteAction : function() {
-      // this test just does something, and it doesn't really matter
-      // the key thing in this test is to get the server started using
-      // the `--javascript.copy-installation true` setting without failing
-      let data = "return 'test!'";
-      let result = arango.POST("/_admin/execute", data);
-      assertEqual("test!", result);
+      // fetch server-side database directory name
+      let data = "return require('@arangodb').db._path();";
+      let dbPath = arango.POST("/_admin/execute", data);
+      let jsPath = fs.join(dbPath, "js");
+      assertTrue(fs.exists(jsPath));
+      assertTrue(fs.exists(fs.join(jsPath, "node")));
+      assertTrue(fs.exists(fs.join(jsPath, "node", "node_modules")));
+      assertTrue(fs.exists(fs.join(jsPath, "node", "node_modules", "lodash")));
+      assertFalse(fs.exists(fs.join(jsPath, "node", "eslint")));
     },
     
   };

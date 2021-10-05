@@ -61,7 +61,6 @@ struct top_term {
   key_type key;
 };
 
-// FIXME use C++14 with transparent comparison???
 template<typename T>
 struct top_term_comparer {
   bool operator()(const top_term<T>& lhs,
@@ -185,12 +184,15 @@ template<typename State,
   void visit(const key_type& key) {
     const auto& term = *state_.term;
 
-    if (terms_.size() < size_) {
+    if (left_) {
       const auto res = emplace(make_hashed_ref(term), key);
 
       if (res.second) {
         heap_.emplace_back(res.first);
-        push();
+
+        if (!--left_) {
+          make_heap();
+        }
       }
 
       res.first->second.emplace(state_);
@@ -249,12 +251,20 @@ template<typename State,
     const uint32_t* docs_count{};
   };
 
+  void make_heap() noexcept {
+    std::make_heap(
+      heap_.begin(),
+      heap_.end(),
+      [this](const auto lhs, const auto rhs) noexcept {
+       return comparer()(rhs->second, lhs->second);
+    });
+  }
+
   void push() noexcept {
     std::push_heap(
       heap_.begin(),
       heap_.end(),
-      [this](const typename states_map_t::iterator lhs,
-             const typename states_map_t::iterator rhs) noexcept {
+      [this](const auto lhs, const auto rhs) noexcept {
        return comparer()(rhs->second, lhs->second);
     });
   }
@@ -263,8 +273,7 @@ template<typename State,
     std::pop_heap(
       heap_.begin(),
       heap_.end(),
-      [this](const typename states_map_t::iterator lhs,
-             const typename states_map_t::iterator rhs) noexcept {
+      [this](const auto lhs, const auto rhs) noexcept {
        return comparer()(rhs->second, lhs->second);
     });
   }
@@ -291,6 +300,7 @@ template<typename State,
   std::vector<typename states_map_t::iterator> heap_;
   states_map_t terms_;
   size_t size_;
+  size_t left_{size_};
   const decltype(term_meta::docs_count) no_docs_{0};
 }; // top_terms_collector
 

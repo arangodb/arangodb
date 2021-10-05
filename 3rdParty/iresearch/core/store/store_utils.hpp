@@ -30,14 +30,12 @@
 #include "data_input.hpp"
 
 #include "utils/string.hpp"
+#include "utils/bitpack.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bytes_utils.hpp"
-#include "utils/bit_packing.hpp"
 #include "utils/numeric_utils.hpp"
 #include "utils/attributes.hpp"
 #include "utils/std.hpp"
-
-#include <unordered_set>
 
 namespace {
 
@@ -48,6 +46,28 @@ template<typename T, size_t N = sizeof(T)>
 struct read_write_helper{
   static T read(data_input& in);
   static T write(data_output& out, T size);
+};
+
+template<typename T>
+struct read_write_helper<T, sizeof(irs::byte_type)> {
+  inline static T read(data_input& in) {
+    return in.read_byte();
+  }
+
+  inline static void write(data_output& out, T in) {
+    out.write_byte(in);
+  }
+};
+
+template<typename T>
+struct read_write_helper<T, sizeof(uint16_t)> {
+  inline static T read(data_input& in) {
+    return in.read_short();
+  }
+
+  inline static void write(data_output& out, T in) {
+    out.write_short(in);
+  }
 };
 
 template<typename T>
@@ -164,13 +184,13 @@ inline int64_t read_zvlong(data_input& in) {
 }
 
 inline void write_string(data_output& out, const char* s, size_t len) {
-  assert(len < integer_traits<uint32_t>::const_max);
+  assert(len < std::numeric_limits<uint32_t>::max());
   out.write_vint(uint32_t(len));
   out.write_bytes(reinterpret_cast<const byte_type*>(s), len);
 }
 
 inline void write_string(data_output& out, const byte_type* s, size_t len) {
-  assert(len < integer_traits<uint32_t>::const_max);
+  assert(len < std::numeric_limits<uint32_t>::max());
   out.write_vint(uint32_t(len));
   out.write_bytes(s, len);
 }
@@ -325,14 +345,16 @@ FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) noexcept {
   return (val << 1) | uint32_t(b);
 }
 
-FORCE_INLINE bool shift_unpack_64(uint64_t in, uint64_t& out) noexcept {
-  out = in >> 1;
-  return in & 1;
+template<typename T = bool, typename U = uint64_t>
+FORCE_INLINE T shift_unpack_64(uint64_t in, U& out) noexcept {
+  out = static_cast<U>(in >> 1);
+  return static_cast<T>(in & 1);
 }
 
-FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) noexcept {
-  out = in >> 1;
-  return in & 1;
+template<typename T = bool, typename U = uint32_t>
+FORCE_INLINE T shift_unpack_32(uint32_t in, U& out) noexcept {
+  out = static_cast<U>(in >> 1);
+  return static_cast<T>(in & 1);
 }
 
 // ----------------------------------------------------------------------------
@@ -356,8 +378,6 @@ class IRESEARCH_API bytes_output final : public data_output {
     buf_->append(b, size);
   }
 
-  virtual void close() override { }
-
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring* buf_;
@@ -377,40 +397,54 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     pos_ += size;
   }
 
-  virtual void seek(size_t pos) noexcept override {
+  virtual void seek(size_t pos) noexcept override final {
     assert(data_.begin() + pos <= data_.end());
     pos_ = data_.begin() + pos;
   }
 
-  virtual size_t file_pointer() const noexcept override {
+  virtual size_t file_pointer() const noexcept override final {
     return std::distance(data_.begin(), pos_);
   }
 
-  virtual size_t length() const noexcept override {
+  virtual size_t length() const noexcept override final {
     return data_.size();
   }
 
-  virtual bool eof() const noexcept override {
+  virtual bool eof() const noexcept override final {
     return pos_ >= data_.end();
   }
 
-  virtual byte_type read_byte() override final {
+  virtual byte_type read_byte() noexcept override final {
     assert(pos_ < data_.end());
     return *pos_++;
+  }
+
+  virtual const byte_type* read_buffer(size_t offset, size_t size, BufferHint /*hint*/) noexcept override final {
+    const auto begin = data_.begin() + offset;
+    const auto end = begin + size;
+
+    if (end <= data_.end()) {
+      pos_ = end;
+      return begin;
+    }
+
+    return nullptr;
   }
 
   virtual const byte_type* read_buffer(size_t size, BufferHint /*hint*/) noexcept override final {
     const auto* pos = pos_ + size;
 
-    if (pos > data_.end()) {
-      return nullptr;
+    if (pos <= data_.end()) {
+      std::swap(pos, pos_);
+      return pos;
     }
 
-    std::swap(pos, pos_);
-    return pos;
+    return nullptr;
   }
 
-  virtual size_t read_bytes(byte_type* b, size_t size) override final;
+  virtual size_t read_bytes(byte_type* b, size_t size) noexcept override final;
+
+  virtual size_t read_bytes(size_t offset, byte_type* b, size_t size) noexcept override final;
 
   // append to buf
   void read_bytes(bstring& buf, size_t size);
@@ -432,19 +466,23 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return dup();
   }
 
-  virtual int32_t read_int() override final {
+  virtual int16_t read_short() noexcept override final {
+    return irs::read<uint16_t>(pos_);
+  }
+
+  virtual int32_t read_int() noexcept override final {
     return irs::read<uint32_t>(pos_);
   }
 
-  virtual int64_t read_long() override final {
+  virtual int64_t read_long() noexcept override final {
     return irs::read<uint64_t>(pos_);
   }
 
-  virtual uint64_t read_vlong() override final {
+  virtual uint64_t read_vlong() noexcept override final {
     return irs::vread<uint64_t>(pos_);
   }
 
-  virtual uint32_t read_vint() override final {
+  virtual uint32_t read_vint() noexcept override final {
     return irs::vread<uint32_t>(pos_);
   }
 
@@ -456,115 +494,6 @@ class IRESEARCH_API bytes_ref_input : public index_input {
 }; // bytes_ref_input
 
 namespace encode {
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                bit packing encode/decode helpers
-// ----------------------------------------------------------------------------
-//
-// Normal packed block has the following structure:
-//   <BlockHeader>
-//     </NumberOfBits>
-//   </BlockHeader>
-//   </PackedData>
-//
-// In case if all elements in a block are equal:
-//   <BlockHeader>
-//     <ALL_EQUAL>
-//   </BlockHeader>
-//   </PackedData>
-//
-// ----------------------------------------------------------------------------
-
-namespace bitpack {
-
-const uint32_t ALL_EQUAL = 0U;
-
-// returns true if one can use run length encoding for the specified numberof bits
-inline bool rl(const uint32_t bits) {
-  return ALL_EQUAL == bits;
-}
-
-// skip block of the specified size that was previously
-// written with the corresponding 'write_block' function
-IRESEARCH_API void skip_block32(index_input& in, uint32_t size);
-
-// skip block of the specified size that was previously
-// written with the corresponding 'write_block' function
-IRESEARCH_API void skip_block64(index_input& in, uint64_t size);
-
-// reads block of the specified size from the stream
-// that was previously encoded with the corresponding
-// 'write_block' funcion
-IRESEARCH_API void read_block(
-  data_input& in,
-  uint32_t size,
-  uint32_t* RESTRICT encoded,
-  uint32_t* RESTRICT decoded);
-
-// reads block of 128 integers from the stream
-// that was previously encoded with the corresponding
-// 'write_block' funcion
-IRESEARCH_API void read_block(
-  data_input& in,
-  uint32_t* RESTRICT encoded,
-  uint32_t* RESTRICT decoded);
-
-// reads block of the specified size from the stream
-// that was previously encoded with the corresponding
-// 'write_block' funcion
-IRESEARCH_API void read_block(
-  data_input& in,
-  uint32_t size,
-  uint64_t* RESTRICT encoded,
-  uint64_t* RESTRICT decoded);
-
-// reads block of 128 integers from the stream
-// that was previously encoded with the corresponding
-// 'write_block' funcion
-IRESEARCH_API void read_block(
-  data_input& in,
-  uint64_t* RESTRICT encoded,
-  uint64_t* RESTRICT decoded);
-
-// writes block of 128 integers to a stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
-IRESEARCH_API uint32_t write_block(
-  data_output& out,
-  const uint32_t* RESTRICT decoded,
-  uint32_t* RESTRICT encoded);
-
-// writes block of the specified size to stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
-IRESEARCH_API uint32_t write_block(
-  data_output& out,
-  const uint32_t* RESTRICT decoded,
-  uint32_t size,
-  uint32_t* RESTRICT encoded);
-
-// writes block of the specified size to stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
-IRESEARCH_API uint32_t write_block(
-  data_output& out,
-  const uint64_t* RESTRICT decoded,
-  uint64_t size, // same type as 'decoded'/'encoded'
-  uint64_t* RESTRICT encoded);
-
-// writes block of 128 integers to a stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
-IRESEARCH_API uint32_t write_block(
-  data_output& out,
-  const uint64_t* RESTRICT decoded,
-  uint64_t* RESTRICT encoded);
-
-}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                      delta encode/decode helpers
@@ -607,37 +536,37 @@ namespace avg {
 
 // Encodes block denoted by [begin;end) using average encoding algorithm
 // Returns block std::pair{ base, average }
-inline std::pair<uint64_t, uint64_t> encode(uint64_t* begin, uint64_t* end) {
+inline std::tuple<uint64_t, uint64_t, bool> encode(uint64_t* begin, uint64_t* end) noexcept {
   assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
   --end;
 
   const uint64_t base = *begin;
+  const std::ptrdiff_t distance = std::distance(begin, end);
 
-  const std::ptrdiff_t distance[] { 1, std::distance(begin, end) }; // prevent division by 0
   const uint64_t avg = std::lround(
-    static_cast<double_t>(*end - base) / distance[distance[1] > 0]
-  );
+    static_cast<double_t>(*end - base) / (distance > 0 ? distance : 1));
 
+  uint64_t value = 0;
   *begin++ = 0; // zig_zag_encode64(*begin - base - avg*0) == 0
   for (uint64_t avg_base = base; begin <= end; ++begin) {
     *begin = zig_zag_encode64(*begin - (avg_base += avg));
+    value |= *begin;
   }
 
-  return std::make_pair(base, avg);
+  return std::make_tuple(base, avg, !value);
 }
 
 // Encodes block denoted by [begin;end) using average encoding algorithm
 // Returns block std::pair{ base, average }
-inline std::pair<uint32_t, uint32_t> encode(uint32_t* begin, uint32_t* end) {
+inline std::pair<uint32_t, uint32_t> encode(uint32_t* begin, uint32_t* end) noexcept {
   assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
   --end;
 
   const uint32_t base = *begin;
+  const std::ptrdiff_t distance = std::distance(begin, end); // prevent division by 0
 
-  const std::ptrdiff_t distance[] { 1, std::distance(begin, end) }; // prevent division by 0
   const uint32_t avg = std::lround(
-    static_cast<float_t>(*end - base) / distance[distance[1] > 0]
-  );
+    static_cast<float_t>(*end - base) / (distance > 0 ? distance : 1));
 
   *begin++ = 0; // zig_zag_encode32(*begin - base - avg*0) == 0
   for (uint32_t avg_base = base; begin <= end; ++begin) {
@@ -713,7 +642,9 @@ inline void decode(
   });
 }
 
+template<typename PackFunc>
 inline uint32_t write_block(
+    PackFunc&& pack,
     data_output& out,
     const uint64_t base,
     const uint64_t avg,
@@ -722,10 +653,14 @@ inline uint32_t write_block(
     uint64_t* RESTRICT encoded) {
   out.write_vlong(base);
   out.write_vlong(avg);
-  return bitpack::write_block(out, decoded, size, encoded);
+  return bitpack::write_block64(
+    std::forward<PackFunc>(pack),
+    out, decoded, size, encoded);
 }
 
+template<typename PackFunc>
 inline uint32_t write_block(
+    PackFunc&& pack,
     data_output& out,
     const uint32_t base,
     const uint32_t avg,
@@ -734,7 +669,9 @@ inline uint32_t write_block(
     uint32_t* RESTRICT encoded) {
   out.write_vint(base);
   out.write_vint(avg);
-  return bitpack::write_block(out, decoded, size, encoded);
+  return bitpack::write_block32(
+    std::forward<PackFunc>(pack),
+    out, decoded, size, encoded);
 }
 
 // Skips average encoded 64-bit block
@@ -785,9 +722,9 @@ inline bool check_block_rl64(
   const uint32_t bits = in.read_vint();
   const uint64_t value = in.read_vlong();
 
-  return expected_avg == avg
-    && bitpack::ALL_EQUAL == bits
-    && 0 == value; // delta
+  return expected_avg == avg &&
+         bitpack::ALL_EQUAL == bits &&
+         0 == value; // delta
 }
 
 inline bool check_block_rl32(
@@ -798,13 +735,13 @@ inline bool check_block_rl32(
   const uint32_t bits = in.read_vint();
   const uint32_t value = in.read_vint();
 
-  return expected_avg == avg
-    && bitpack::ALL_EQUAL == bits
-    && 0 == value; // delta
+  return expected_avg == avg &&
+         bitpack::ALL_EQUAL == bits &&
+         0 == value; // delta
 }
 
 inline bool read_block_rl64(
-    irs::data_input& in,
+    data_input& in,
     uint64_t& base,
     uint64_t& avg) {
   base = in.read_vlong();
@@ -812,12 +749,12 @@ inline bool read_block_rl64(
   const uint32_t bits = in.read_vint();
   const uint64_t value = in.read_vlong();
 
-  return bitpack::ALL_EQUAL == bits
-    && 0 == value; // delta
+  return bitpack::ALL_EQUAL == bits &&
+         0 == value; // delta
 }
 
 inline bool read_block_rl32(
-    irs::data_input& in,
+    data_input& in,
     uint32_t& base,
     uint32_t& avg) {
   base = in.read_vint();
@@ -825,8 +762,8 @@ inline bool read_block_rl32(
   const uint32_t bits = in.read_vint();
   const uint32_t value = in.read_vint();
 
-  return bitpack::ALL_EQUAL == bits
-    && 0 == value; // delta
+  return bitpack::ALL_EQUAL == bits &&
+         0 == value; // delta
 }
 
 template<typename Visitor>

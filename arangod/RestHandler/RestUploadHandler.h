@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_UPLOAD_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_UPLOAD_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "GeneralServer/GeneralServer.h"
@@ -51,4 +50,3 @@ class RestUploadHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

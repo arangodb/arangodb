@@ -78,7 +78,12 @@ function clusterInventorySuite () {
     assertEqual("object", typeof view.links);
     Object.keys(view.links).forEach(function(collection) {
       let link = view.links[collection];
+      assertEqual(11, Object.keys(link).length);
+      assertEqual("number", typeof link.version);
+      assertEqual(1, link.version);
       assertTrue(Array.isArray(link.analyzerDefinitions));
+      assertEqual("string", typeof link.collectionName);
+      assertEqual(collection, link.collectionName);
       link.analyzerDefinitions.forEach(function(analyzer) {
         assertEqual("object", typeof analyzer);
         assertEqual("string", typeof analyzer.name);
@@ -88,7 +93,7 @@ function clusterInventorySuite () {
       });
       assertTrue(Array.isArray(link.analyzers));
       assertEqual("object", typeof link.fields);
-      
+
       assertEqual("boolean", typeof link.includeAllFields);
       assertTrue(Array.isArray(link.primarySort));
       assertTrue(link.hasOwnProperty("storeValues"));
@@ -97,7 +102,7 @@ function clusterInventorySuite () {
       assertEqual("boolean", typeof link.trackListPositions);
     });
   };
-  
+
   let validateCollectionAttributes = function (collection) {
     let parameters = collection.parameters;
     assertEqual("object", typeof parameters);
@@ -290,11 +295,16 @@ function clusterInventorySuite () {
       assertEqual(1, Object.keys(links).length);
       assertEqual("UnitTestsDumpEmpty", Object.keys(links)[0]);
       let link = links["UnitTestsDumpEmpty"];
+      assertEqual(11, Object.keys(link).length);
+      assertEqual("number", typeof link.version);
+      assertEqual(1, link.version);
+      assertEqual("string", typeof link.collectionName);
+      assertEqual("UnitTestsDumpEmpty", link.collectionName);
       assertTrue(link.includeAllFields);
       assertEqual([], link.primarySort);
       assertEqual("none", link.storeValues);
       assertFalse(link.trackListPositions);
-      
+
       assertTrue(Array.isArray(link.analyzers));
       assertEqual(1, link.analyzers.length);
       assertEqual("identity", link.analyzers[0]);
@@ -306,7 +316,7 @@ function clusterInventorySuite () {
       assertEqual("analyzers", Object.keys(field)[0]);
       assertTrue(Array.isArray(field.analyzers));
       assertEqual(["custom", "text_en"], field.analyzers.sort());
-      
+
       assertTrue(Array.isArray(link.analyzerDefinitions));
       assertEqual(3, link.analyzerDefinitions.length);
 

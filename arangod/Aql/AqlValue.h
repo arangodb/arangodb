@@ -22,11 +22,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_VALUE_H
-#define ARANGOD_AQL_AQL_VALUE_H 1
+#pragma once
 
 #include "Aql/AqlValueFwd.h"
 #include "Aql/types.h"
+#include "Basics/Endian.h"
+#include "IResearch/Misc.h"
 
 #include <velocypack/velocypack-common.h>
 #include <vector>
@@ -101,6 +102,7 @@ struct AqlValueHintDouble {
   double const value;
 };
 
+
 struct AqlValueHintInt {
   explicit AqlValueHintInt(int64_t v) noexcept;
   explicit AqlValueHintInt(int v) noexcept;
@@ -132,8 +134,17 @@ struct AqlValue final {
                            // not managed!
     VPACK_MANAGED_SLICE,   // contains vpack, via pointer to a managed uint8_t
                            // slice, allocated by new[] or malloc()
-    RANGE    // a pointer to a range remembering lower and upper bound, managed
+    RANGE,    // a pointer to a range remembering lower and upper bound, managed
+    VPACK_INLINE_INT48,    // contains vpack data, inline and unpacked 48bit stored as 64bit int number value (system endianess)
+    VPACK_INLINE_INT64,    // contains vpack data, inline and unpacked 64bit int number value (in little-endian)
+    VPACK_INLINE_UINT64,   // contains vpack data, inline and unpacked 64bit uint number value (in little-endian)
+    VPACK_INLINE_DOUBLE    // contains vpack data, inline and unpacked 64bit double number value (in little-endian)
   };
+
+  static_assert(iresearch::adjacencyChecker<AqlValueType>::checkAdjacency<
+                VPACK_INLINE_DOUBLE, VPACK_INLINE_UINT64, VPACK_INLINE_INT64,
+                VPACK_INLINE_INT48>(),
+                "Values are not adjacent");
 
   /// @brief Holds the actual data for this AqlValue
   /// The last byte of this union (_data.internal[15]) will be used to identify
@@ -150,16 +161,113 @@ struct AqlValue final {
   /// data and is managed by the AqlValue. The second-last byte contains info
   /// about how the memory was allocated:
   /// - MemoryOriginType::New: memory was allocated by new[] and must be deleted
-  /// - MemoryOriginType::Malloc: memory was malloc'd and needs to be free'd
+  /// - MemoryOriginType::Malloc: memory was malloc'd and needs to be free'd  
   /// RANGE: a managed range object. The memory is managed by the AqlValue
+  /// 
+  /// AqlValue memory layout:
+  /// Legend:
+  /// AT - AqlValue Type byte
+  /// ST - slice type byte
+  /// SD - slice data  (always little-endian for numbers)
+  /// ND - number data (in machine endianess)
+  /// PD - pointer data
+  /// MO - memory origin
+  /// ML - managed slice length
+  /// ID - isDocument flag
+  /// XX - unused
+  /// | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13 | 14 | 15 |   Bytes
+  /// | AT | ID | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD |   VPACK_SLICE_POINTER
+  /// | AT | MO | ML | ML | ML | ML | ML | ML | PD | PD | PD | PD | PD | PD | PD | PD |   VPACK_MANAGED_SLICE
+  /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD |   RANGE
+  /// | AT | ST | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD |   VPACK_INLINE
+  /// | AT | ST | SD | SD | SD | SD | SD | SD | ND | ND | ND | ND | ND | ND | ND | ND |   VPACK_48BIT_INLINE_INT
+  /// | AT | XX | XX | XX | XX | XX | XX | ST | SD | SD | SD | SD | SD | SD | SD | SD |   VPACK_64BIT_INLINE_(INT/UINT/DOUBLE)
  private:
+
   union {
-    uint64_t words[2];
-    uint8_t internal[16];
-    uint8_t const* pointer;
-    uint8_t* slice;
-    void* data;
-    Range const* range;
+    uint8_t aqlValueType;
+    uint64_t words[2]; // keep this for fast zeroing AqlValue
+
+    // RANGE
+    struct {
+      uint8_t padding[8];
+      Range const* range;
+    } rangeMeta;
+    static_assert(sizeof(rangeMeta) == 16, "RANGE layout is not 16 bytes!");
+
+    // VPACK_MANAGED_SLICE
+    struct {
+      uint64_t getLength() const noexcept {
+        if constexpr (basics::isLittleEndian()) {
+          return (lengthOrigin & 0xffffffffffff0000ULL) >> 16;
+        } else {
+          return (lengthOrigin & 0x0000ffffffffffffULL);
+        }
+      }
+
+      uint64_t getOrigin() const noexcept {
+        if constexpr (basics::isLittleEndian()) {
+          return (lengthOrigin & 0x000000000000ff00ULL) >> 8;
+        } else {
+          return (lengthOrigin & 0x00ff000000000000ULL) >> 48;
+        }
+      }
+
+      uint64_t lengthOrigin; // First byte is AqlValue type. Second -  Memory origin. Other 6 bytes  - length
+      uint8_t* managedPointer;
+    } managedSliceMeta;
+    static_assert(sizeof(managedSliceMeta) == 16, "VPACK_MANAGED_SLICE layout is not 16 bytes!");
+
+    // VPACK_SLICE_POINTER
+    struct {
+      uint8_t padding;
+      uint8_t isManagedDoc;
+      uint8_t padding2[6];
+      uint8_t const* pointer; 
+    } pointerMeta;
+    static_assert(sizeof(pointerMeta) == 16, "VPACK_SLICE_POINTER layout is not 16 bytes!");
+
+    // VPACK_INLINE
+    struct {
+      uint8_t padding;
+      uint8_t slice[15]; 
+    } inlineSliceMeta;
+
+    //VPACK_INLINE_INT48
+    struct {
+      union {
+        struct {
+          uint8_t padding;
+          uint8_t slice[7];
+        } slice;
+        struct {
+          uint8_t padding[8];
+          int64_t val;
+        } int48;
+      } data;
+    } shortNumberMeta;
+    static_assert(sizeof(shortNumberMeta) == 16, "VPACK_INLINE_INT48 layout is not 16 bytes!");
+    
+    // VPACK_INLINE_INT64
+    // VPACK_INLINE_UINT64
+    // VPACK_INLINE_DOUBLE
+    struct {
+      union {
+        struct {
+          uint8_t padding[7];
+          uint8_t slice[9];
+        } slice;
+        struct {
+          uint8_t padding[8];
+          uint64_t val;
+        } uintLittleEndian; // also stores double
+        struct {
+          uint8_t padding[8];
+          int64_t val;
+        } intLittleEndian;
+      } data;
+    } longNumberMeta;
+    static_assert(sizeof(longNumberMeta) == 16, "VPACK_INLINE_INT64 layout is not 16 bytes!");
   } _data;
 
   /// @brief type of memory that we are dealing with for values of type
@@ -355,8 +463,11 @@ struct AqlValue final {
                      AqlValue const& right, bool useUtf8);
 
   /// @brief Returns the type of this value. If true it uses an external pointer
-  /// if false it uses the internal data structure
-  AqlValueType type() const noexcept;
+  /// if false it uses the internal data structure.
+  /// Do not move it to cpp file as MSVC does not inline it.
+  AqlValueType type() const noexcept {
+    return static_cast<AqlValueType>(_data.aqlValueType);
+  }
 
  private:
   /// @brief initializes value from a slice
@@ -416,4 +527,3 @@ static_assert(sizeof(AqlValue) == 16, "invalid AqlValue size");
 
 }  // namespace arangodb
 
-#endif

@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SHELL_V8CLIENT_CONNECTION_H
-#define ARANGODB_SHELL_V8CLIENT_CONNECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -33,6 +32,10 @@
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
 #include <v8.h>
+
+#include <memory>
+#include <string>
+#include <unordered_map>
 
 namespace arangodb {
 class ClientFeature;
@@ -63,7 +66,6 @@ class V8ClientConnection {
   explicit V8ClientConnection(application_features::ApplicationServer&, ClientFeature&);
   ~V8ClientConnection();
 
- public:
   void setInterrupted(bool interrupted);
   bool isConnected() const;
 
@@ -77,7 +79,7 @@ class V8ClientConnection {
   std::string protocol() const;
 
   std::string const& databaseName() const { return _databaseName; }
-  void setDatabaseName(std::string const& value) { _databaseName = value; }
+  void setDatabaseName(std::string const& value);
   void setForceJson(bool value) { _forceJson = value; };
   std::string username() const { return _builder.user(); }
   std::string password() const { return _builder.password(); }
@@ -153,6 +155,7 @@ class V8ClientConnection {
     _lastHttpReturnCode = httpCode;
     _lastErrorMessage = msg;
   }
+
  private:
   application_features::ApplicationServer& _server;
   ClientFeature& _client;
@@ -172,8 +175,14 @@ class V8ClientConnection {
   std::shared_ptr<fuerte::Connection> _connection;
   velocypack::Options _vpackOptions;
   bool _forceJson;
-  bool _setCustomError;
+  std::atomic<bool> _setCustomError;
+
+  // a per-endpoint, per-user cache for connections. whenever we reconnect
+  // to another endpoint, we can put the old connection into this cache,
+  // and recycle it later. the goal is to not use too many separate connections
+  // and ephemeral ports for patterns such as "connect-to-leader" -> "connect-to-follower"
+  // -> "connect-to-leader" etc. 
+  std::unordered_map<std::string, std::shared_ptr<fuerte::Connection>> _connectionCache;
 };
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_CONVERSIONS_H
-#define ARANGODB_BASICS_CONVERSIONS_H 1
+#pragma once
 
 #include <string>
 
@@ -196,4 +195,3 @@ size_t TRI_StringUInt64OctalInPlace(uint64_t, char*);
 
 std::string TRI_StringTimeStamp(double, bool useLocalTime);
 
-#endif

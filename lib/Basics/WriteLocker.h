@@ -23,8 +23,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_WRITE_LOCKER_H
-#define ARANGODB_BASICS_WRITE_LOCKER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Locking.h"
@@ -185,4 +184,3 @@ class WriteLocker {
 
 }  // namespace arangodb::basics
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_PROFILE_H
-#define ARANGOD_AQL_QUERY_PROFILE_H 1
+#pragma once
 
 #include "Aql/QueryExecutionState.h"
 #include "Basics/Common.h"
@@ -83,4 +82,3 @@ static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) < 
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

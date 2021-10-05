@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_SERVER_TTL_FEATURE_H
-#define ARANGOD_REST_SERVER_TTL_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Mutex.h"
@@ -130,4 +129,3 @@ class TtlFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

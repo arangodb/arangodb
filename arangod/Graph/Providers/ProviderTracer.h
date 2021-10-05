@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PROVIDER_TRACER_H
-#define ARANGOD_GRAPH_PROVIDER_TRACER_H 1
+#pragma once
 
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Helpers/TraceEntry.h"
@@ -39,7 +38,7 @@ namespace arangodb {
 namespace aql {
 class QueryContext;
 class TraversalStats;
-}
+}  // namespace aql
 
 namespace graph {
 
@@ -47,10 +46,12 @@ template <class ProviderImpl>
 class ProviderTracer {
  public:
   using Step = typename ProviderImpl::Step;
+  using Options = typename ProviderImpl::Options;
 
  public:
-  ProviderTracer(arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts,
+  ProviderTracer(arangodb::aql::QueryContext& queryContext, Options opts,
                  arangodb::ResourceMonitor& resourceMonitor);
+
   ProviderTracer(ProviderTracer const&) = delete;
   ProviderTracer(ProviderTracer&&) = default;
   ~ProviderTracer();
@@ -58,12 +59,11 @@ class ProviderTracer {
   ProviderTracer& operator=(ProviderTracer const&) = delete;
   ProviderTracer& operator=(ProviderTracer&&) = default;
 
-  auto startVertex(VertexType vertex) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
-      -> futures::Future<std::vector<Step*>>;                           // rocks
-  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void; // index
-
-  void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
+      -> futures::Future<std::vector<Step*>>;
+  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback)
+      -> void;
 
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder);
@@ -71,13 +71,11 @@ class ProviderTracer {
                         arangodb::velocypack::Builder& builder);
 
   // Note: ClusterProvider will need to implement destroyEngines
-  void destroyEngines(){};
+  void destroyEngines();
 
   aql::TraversalStats stealStats();
 
   [[nodiscard]] transaction::Methods* trx();
-
-  arangodb::ResourceMonitor* resourceMonitor();
 
  private:
   ProviderImpl _impl;
@@ -89,5 +87,3 @@ class ProviderTracer {
 
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

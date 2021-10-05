@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IMPORT_IMPORT_HELPER_H
-#define ARANGODB_IMPORT_IMPORT_HELPER_H 1
+#pragma once
 
 #include <atomic>
 #include <unordered_map>
@@ -94,7 +93,9 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   bool importDelimited(std::string const& collectionName,
-                       std::string const& fileName, DelimitedImportType typeImport);
+                       std::string const& fileName, 
+                       std::string const& headersFile, 
+                       DelimitedImportType typeImport);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief imports a file with JSON objects
@@ -162,6 +163,10 @@ class ImportHelper {
 
   void setTranslations(std::unordered_map<std::string, std::string> const& translations) {
     _translations = translations;
+  }
+  
+  void setDatatypes(std::unordered_map<std::string, std::string> const& datatypes) {
+    _datatypes = datatypes;
   }
 
   void setRemoveAttributes(std::vector<std::string> const& attr) {
@@ -263,8 +268,8 @@ class ImportHelper {
 
   std::vector<std::string> getErrorMessages() { return _errorMessages; }
 
-  uint64_t getMaxUploadSize() { return (_maxUploadSize.load()); }
-  void setMaxUploadSize(uint64_t newSize) { _maxUploadSize.store(newSize); }
+  uint64_t getMaxUploadSize() { return (_maxUploadSize.load(std::memory_order_relaxed)); }
+  void setMaxUploadSize(uint64_t newSize) { _maxUploadSize.store(newSize, std::memory_order_relaxed); }
 
   uint64_t rotatePeriodByteCount() { return (_periodByteCount.exchange(0)); }
   void addPeriodByteCount(uint64_t add) { _periodByteCount.fetch_add(add); }
@@ -274,6 +279,11 @@ class ImportHelper {
   static unsigned const MaxBatchSize;
 
  private:
+  // read headers from separate file
+  bool readHeadersFile(std::string const& headersFile, 
+                       DelimitedImportType typeImport,
+                       char separator);
+
   static void ProcessCsvBegin(TRI_csv_parser_t*, size_t);
   static void ProcessCsvAdd(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
   static void ProcessCsvEnd(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
@@ -337,13 +347,14 @@ class ImportHelper {
   std::vector<std::string> _columnNames;
 
   std::unordered_map<std::string, std::string> _translations;
+  std::unordered_map<std::string, std::string> _datatypes;
   std::unordered_set<std::string> _removeAttributes;
 
   bool _hasError;
+  bool _headersSeen;
   std::vector<std::string> _errorMessages;
 
   static double const ProgressStep;
 };
 }  // namespace import
 }  // namespace arangodb
-#endif

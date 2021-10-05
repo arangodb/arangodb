@@ -24,7 +24,7 @@ TEST_BEGIN(test_malloc_free_overflow) {
 	free(ptr);
 	safety_check_set_abort(NULL);
 
-	assert_b_eq(fake_abort_called, true, "Redzone check didn't fire.");
+	expect_b_eq(fake_abort_called, true, "Redzone check didn't fire.");
 	fake_abort_called = false;
 }
 TEST_END
@@ -40,7 +40,7 @@ TEST_BEGIN(test_mallocx_dallocx_overflow) {
 	dallocx(ptr, 0);
 	safety_check_set_abort(NULL);
 
-	assert_b_eq(fake_abort_called, true, "Redzone check didn't fire.");
+	expect_b_eq(fake_abort_called, true, "Redzone check didn't fire.");
 	fake_abort_called = false;
 }
 TEST_END
@@ -56,7 +56,7 @@ TEST_BEGIN(test_malloc_sdallocx_overflow) {
 	sdallocx(ptr, 128, 0);
 	safety_check_set_abort(NULL);
 
-	assert_b_eq(fake_abort_called, true, "Redzone check didn't fire.");
+	expect_b_eq(fake_abort_called, true, "Redzone check didn't fire.");
 	fake_abort_called = false;
 }
 TEST_END
@@ -73,7 +73,7 @@ TEST_BEGIN(test_realloc_overflow) {
 	safety_check_set_abort(NULL);
 	free(ptr);
 
-	assert_b_eq(fake_abort_called, true, "Redzone check didn't fire.");
+	expect_b_eq(fake_abort_called, true, "Redzone check didn't fire.");
 	fake_abort_called = false;
 }
 TEST_END
@@ -90,7 +90,7 @@ TEST_BEGIN(test_rallocx_overflow) {
 	safety_check_set_abort(NULL);
 	free(ptr);
 
-	assert_b_eq(fake_abort_called, true, "Redzone check didn't fire.");
+	expect_b_eq(fake_abort_called, true, "Redzone check didn't fire.");
 	fake_abort_called = false;
 }
 TEST_END
@@ -104,9 +104,9 @@ TEST_BEGIN(test_xallocx_overflow) {
 	char* ptr = malloc(128);
 	ptr[128] = 0;
 	size_t result = xallocx(ptr, 129, 0, 0);
-	assert_zu_eq(result, 128, "");
+	expect_zu_eq(result, 128, "");
 	free(ptr);
-	assert_b_eq(fake_abort_called, true, "Redzone check didn't fire.");
+	expect_b_eq(fake_abort_called, true, "Redzone check didn't fire.");
 	fake_abort_called = false;
 	safety_check_set_abort(NULL);
 }

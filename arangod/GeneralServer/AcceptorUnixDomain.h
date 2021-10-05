@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGOD_GENERAL_SERVER_ACCEPTORUNIXDOMAIN_H
-#define ARANGOD_GENERAL_SERVER_ACCEPTORUNIXDOMAIN_H 1
 
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/AsioSocket.h"
@@ -44,9 +42,9 @@ class AcceptorUnixDomain final : public Acceptor {
 
  private:
   asio_ns::local::stream_protocol::acceptor _acceptor;
+  /// @brief protects the _asioSocket
+  std::mutex _mutex;
   std::unique_ptr<AsioSocket<SocketType::Unix>> _asioSocket;
 };
 }  // namespace rest
 }  // namespace arangodb
-
-#endif

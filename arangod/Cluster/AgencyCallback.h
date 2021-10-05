@@ -21,8 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_AGENCY_CALLBACK_H
-#define ARANGODB_CLUSTER_AGENCY_CALLBACK_H
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -165,4 +164,3 @@ class AgencyCallback {
 
 }  // namespace arangodb
 
-#endif

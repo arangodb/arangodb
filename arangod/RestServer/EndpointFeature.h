@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_ENDPOINT_FEATURE_H
-#define ARANGOD_HTTP_SERVER_ENDPOINT_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 
@@ -56,4 +55,3 @@ class EndpointFeature final : public HttpEndpointProvider {
 
 }  // namespace arangodb
 
-#endif

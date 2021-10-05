@@ -4,8 +4,7 @@
 //   license: you are granted a perpetual, irrevocable license to copy, modify,
 //   publish, and distribute this file as you see fit.
 
-#ifndef ARANGODB_CONTAINERS_HASH_SET_IMPL_H
-#define ARANGODB_CONTAINERS_HASH_SET_IMPL_H 1
+#pragma once
 
 #include <algorithm>
 #include <cstring>
@@ -548,5 +547,3 @@ class HashSet {
 };
 
 }  // namespace emilib
-
-#endif

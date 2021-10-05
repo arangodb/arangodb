@@ -1,0 +1,239 @@
+[/ Copyright (C) 2020 T. Zachary Laine
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+[library Boost.Text (Proposed)
+    [quickbook 1.3]
+    [authors [Laine, Zach]]
+    [copyright 2018 T. Zachary Laine]
+    [category template]
+    [id text]
+    [dirname text]
+    [purpose
+        A string and rope library targeting standardization.
+    ]
+    [license
+        Distributed under the Boost Software License, Version 1.0.
+        (See accompanying file LICENSE_1_0.txt or copy at
+        [@http://www.boost.org/LICENSE_1_0.txt])
+    ]
+]
+
+[/ QuickBook Document version 1.3 ]
+
+[/ Imports ]
+
+[import ../include/boost/text/concepts.hpp]
+[import ../include/boost/text/word_break.hpp]
+[import ../include/boost/text/line_break.hpp]
+[import ../include/boost/text/collation_search.hpp]
+
+[import ../example/transcoding.cpp]
+[import ../example/normalize.cpp]
+[import ../example/breaks.cpp]
+[import ../example/case_mapping.cpp]
+[import ../example/collation.cpp]
+[import ../example/collation_search.cpp]
+[import ../example/bidirectional.cpp]
+[import ../example/graphemes.cpp]
+[import ../example/segmented_vector.cpp]
+[import ../example/trie.cpp]
+
+[import ../example/editor/main.cpp]
+[import ../example/editor/key_mappings.hpp]
+[import ../example/editor/buffer.hpp]
+[import ../example/editor/app_state.hpp]
+[import ../example/editor/app_state.cpp]
+
+[/ Images ]
+
+[def __note__              [$images/note.png]]
+[def __tip__               [$images/tip.png]]
+[def __important__         [$images/important.png]]
+[def __caution__           [$images/caution.png]]
+[def __warning__           [$images/warning.png]]
+
+[/ Links ]
+
+[/ TODO: Change v1:: to v2:: throughout, once we have a Doxygen that can process concepts. ]
+
+[def _Text_                Boost.Text]
+[def _CharRng_             [link boost_text__proposed_.concepts CharRange]]
+[def _ContCharRng_         [link boost_text__proposed_.concepts ContigCharRange]]
+[def _GrIter_              [link boost_text__proposed_.concepts GraphemeIterator]]
+[def _GrRng_               [link boost_text__proposed_.concepts GraphemeRange]]
+[def _GrRngs_              [link boost_text__proposed_.concepts GraphemeRanges]]
+[def _ContGrRng_           [link boost_text__proposed_.concepts ContigGraphemeRange]]
+[def _CharIter_            [link boost_text__proposed_.concepts CharIter]]
+[def _CPRng_               [link boost_text__proposed_.concepts CPRange]]
+[def _CPRngs_              [link boost_text__proposed_.concepts CPRanges]]
+[def _CPIter_              [link boost_text__proposed_.concepts CPIter]]
+[def _CPIters_             [link boost_text__proposed_.concepts CPIters]]
+[def _CPExtentFunc_        [link boost_text__proposed_.concepts CPExtentFunc]]
+[def _WordPropFunc_        [link boost_text__proposed_.concepts WordPropFunc]]
+[def _CPWordBreakFunc_     [link boost_text__proposed_.concepts CPWordBreakFunc]]
+[def _BreakFunc_           [link boost_text__proposed_.concepts BreakFunc]]
+[def _Searcher_            [link boost_text__proposed_.concepts Searcher]]
+
+[def _s_                   [classref std::string `std::string`]]
+[def _ss_                  [classref std::string `std::string`s]]
+[def _sv_                  [classref std::string_view `std::string_view`]]
+[def _svs_                 [classref std::string_view `std::string_view`s]]
+[def _ur_                  [classref boost::text::unencoded_rope `unencoded_rope`]]
+[def _urs_                 [classref boost::text::unencoded_rope `unencoded_rope`s]]
+[def _urv_                 [classref boost::text::unencoded_rope_view `unencoded_rope_view`]]
+[def _urvs_                [classref boost::text::unencoded_rope_view `unencoded_rope_view`s]]
+
+[def _nf_                  [classref boost::text::nf `nf`]]
+
+[def _cu_                  code unit]
+[def _cus_                 code units]
+[def _cp_                  code point]
+[def _cps_                 code points]
+[def _gr_                  grapheme]
+[def _grs_                 graphemes]
+
+[def _null_sent_           [classref boost::text::null_sentinel  `null_sentinel`]]
+
+[def _32_to_8_iter_        [classref boost::text::utf_32_to_8_iterator  `utf_32_to_8_iterator`]]
+[def _32_to_16_iter_       [classref boost::text::utf_32_to_16_iterator `utf_32_to_16_iterator`]]
+[def _16_to_8_iter_        [classref boost::text::utf_16_to_8_iterator  `utf_16_to_8_iterator`]]
+[def _16_to_32_iter_       [classref boost::text::utf_16_to_32_iterator `utf_16_to_32_iterator`]]
+[def _8_to_16_iter_        [classref boost::text::utf_8_to_16_iterator  `utf_8_to_16_iterator`]]
+[def _8_to_32_iter_        [classref boost::text::utf_8_to_32_iterator  `utf_8_to_32_iterator`]]
+
+[def _8_iter_        [funcref boost::text::v1::utf8_iterator  `utf8_iterator()`]]
+[def _16_iter_       [funcref boost::text::v1::utf16_iterator  `utf16_iterator()`]]
+[def _32_iter_       [funcref boost::text::v1::utf32_iterator  `utf32_iterator()`]]
+
+[def _tc_to_8_       [funcref boost::text::v1::transcode_to_utf8  `transcode_to_utf8()`]]
+[def _tc_to_16_      [funcref boost::text::v1::transcode_to_utf16  `transcode_to_utf16()`]]
+[def _tc_to_32_      [funcref boost::text::v1::transcode_to_utf32  `transcode_to_utf32()`]]
+
+[def _norm_erase_          [funcref boost::text::v1::normalize_erase  `normalize_erase()`]]
+[def _norm_insert_         [funcref boost::text::v1::normalize_insert  `normalize_insert()`]]
+[def _norm_replace_        [funcref boost::text::v1::normalize_replace  `normalize_replace()`]]
+
+[def _norm_str_header_     [link header.boost.text.normalize_string_hpp normalize_string.hpp]]
+[def _norm_algo_header_    [link header.boost.text.normalize_algorithm_hpp normalize_algorithm.hpp]]
+[def _table_ser_           [link header.boost.text.table_serialization_hpp table_serialization.hpp]]
+[def _save_load_table_     [link header.boost.text.save_load_table_hpp save_load_table.hpp]]
+
+[def _line_brk_res_        [classref boost::text::line_break_result `line_break_result`]]
+[def _line_brk_cp_v_       [classref boost::text::line_break_cp_view `line_break_cp_view`]]
+[def _line_brk_cp_vs_      [classref boost::text::line_break_cp_view `line_break_cp_view`s]]
+[def _line_brk_gr_vs_      [classref boost::text::line_break_grapheme_view `line_break_grapheme_view`s]]
+
+[def _to_lower_            [funcref boost::text::to_lower `to_lower()`]]
+[def _to_title_            [funcref boost::text::to_title `to_title()`]]
+[def _to_upper_            [funcref boost::text::to_upper `to_upper()`]]
+[def _is_lower_            [funcref boost::text::is_lower `is_lower()`]]
+[def _is_title_            [funcref boost::text::is_title `is_title()`]]
+[def _is_upper_            [funcref boost::text::is_upper `is_upper()`]]
+[def _case_lang_           [enumref boost::text::case_language `case_language`]]
+[def _wbreak_call_         [classref boost::text::next_word_break_callable `next_word_break_callable`]]
+[def _next_wbreak_         [funcref boost::text::next_word_break `next_word_break()`]]
+
+[def _coll_flags_          [enumref boost::text::collation_flags `collation_flags`]]
+[def _collate_             [funcref boost::text::collate `collate()`]]
+[def _sort_key_            [classref boost::text::text_sort_key `text_sort_key`]]
+[def _sort_keys_           [classref boost::text::text_sort_key `text_sort_keys`]]
+
+[def _bidi_cp_subrng_      [classref boost::text::bidirectional_cp_subrange `bidirectional_cp_subrange`]]
+[def _bidi_gr_subrng_      [classref boost::text::bidirectional_grapheme_subrange `bidirectional_grapheme_subrange`]]
+
+[def _t_                   [classref boost::text::text `text`]]
+[def _bt_                  [classref boost::text::basic_text `basic_text`]]
+[def _ts_                  [classref boost::text::text `text`s]]
+[def _tv_                  [classref boost::text::text_view `text_view`]]
+[def _btv_                 [classref boost::text::basic_text_view `basic_text_view`]]
+[def _tvs_                 [classref boost::text::text_view `text_view`s]]
+[def _r_                   [classref boost::text::rope `rope`]]
+[def _br_                  [classref boost::text::basic_rope `basic_rope`]]
+[def _rs_                  [classref boost::text::rope `rope`s]]
+[def _rv_                  [classref boost::text::rope_view `rope_view`]]
+[def _brv_                 [classref boost::text::basic_rope_view `basic_rope_view`]]
+[def _rvs_                 [classref boost::text::rope_view `rope_view`s]]
+
+[def _gr_ref_              [classref boost::text::grapheme_ref `grapheme_ref`]]
+[def _grapheme_            [classref boost::text::grapheme `grapheme`]]
+[def _graphemes_           [classref boost::text::grapheme `graphemes`]]
+[def _gr_it_               [classref boost::text::grapheme_iterator `grapheme_iterator`]]
+[def _gr_its_              [classref boost::text::grapheme_iterator `grapheme_iterators`]]
+
+[def _u8v_                 [classref boost::text::utf8_view `utf8_view`]]
+[def _u16v_                [classref boost::text::utf16_view `utf16_view`]]
+[def _u32v_                [classref boost::text::utf32_view `utf32_view`]]
+[def _as_u8_               [funcref boost::text::as_utf8 `as_utf8()`]]
+[def _as_u16_              [funcref boost::text::as_utf16 `as_utf16()`]]
+[def _as_u32_              [funcref boost::text::as_utf32 `as_utf32()`]]
+[def _as_grs_              [funcref boost::text::as_graphemes `as_graphemes()`]]
+[def _to_str_              [funcref boost::text::to_string `to_string()`]]
+
+[def _segv_                [classref boost::text::segmented_vector `segmented_vector`]]
+[def _trie_                [classref boost::trie::trie `trie`]]
+[def _trie_m_              [classref boost::trie::trie_map `trie_map`]]
+[def _trie_s_              [classref boost::trie::trie_set `trie_set`]]
+
+[def _grapheme_property_   [enumref boost::text::grapheme_property `grapheme_property`]]
+[def _word_property_       [enumref boost::text::word_property `word_property`]]
+[def _sentence_property_   [enumref boost::text::sentence_property `sentence_property`]]
+[def _line_property_       [enumref boost::text::line_property `line_property`]]
+
+[def _word_prop_           [funcref boost::text::word_prop `word_prop`]]
+
+[def _prev_graph_          [funcref boost::text::prev_grapheme_break `prev_grapheme_break()`]]
+[def _next_graph_          [funcref boost::text::next_grapheme_break `next_grapheme_break()`]]
+
+[def _bm_searcher_         [classref boost::text::boyer_moore_collation_searcher `boyer_moore_collation_searcher`]]
+
+[def _string_max_m_         [macroref BOOST_TEXT_STRING_INSERT_MAX]]
+[def _disable_concepts_m_   [macroref BOOST_TEXT_DISABLE_CONCEPTS]]
+[def _disable_coroutines_m_ [macroref BOOST_TEXT_DISABLE_COROUTINES]]
+
+[def _ce_                  `constexpr`]
+
+[def _seg_vec_docs_        [link boost_text__proposed_.segmented_vector_ `segmented_vector` documentation]]
+[def _unpacking_           [link boost_text__proposed_.the_unicode_layer.encoding_and_normalization.iterator__quot_unpacking_quot_ iterator unpacking]]
+
+[def _Rope_                [@https://en.wikipedia.org/wiki/Rope_(data_structure) Rope]]
+[def _Trie_                [@https://en.wikipedia.org/wiki/Trie Trie]]
+[def _tn5_                 [@https://unicode.org/notes/tn5 Unicode Technical Note #5]]
+[def _text_seg_            [@https://unicode.org/reports/tr29 Unicode Text Segmention]]
+[def _text_seg_notes_      [@https://unicode.org/reports/tr29/#Word_Boundary_Rules word break notes in Unicode Text Segmention]]
+[def _bidi_h_tailorings_   [@https://unicode.org/reports/tr9/#Higher-Level_Protocols Higher Level Protocols]]
+[def _cldr_                [@http://cldr.unicode.org CLDR]]
+[def _ldml_coll_tail_      [@https://unicode.org/reports/tr35/tr35-collation.html LDML syntax]]
+[def _ldml_                [@https://unicode.org/reports/tr35/tr35-collation.html LDML]]
+[def _str_safe_            [@https://unicode.org/reports/tr15/#Stream_Safe_Text_Format Stream-Safe Format]]
+[def _curses_              [@https://en.wikipedia.org/wiki/Ncurses libcurses]]
+
+[/ TODO: Relative link! /]
+[def _StringAlgo_          [@https://www.boost.org/doc/libs/1_68_0/doc/html/string_algo.html Boost.StringAlgo]]
+
+[def _emdash_              \u2014]
+
+[include intro.qbk]
+[include overview.qbk]
+[include unicode_layer.qbk]
+[include ropes.qbk]
+[include text_layer.qbk]
+[include performance.qbk]
+[include segmented_vector.qbk]
+[include trie.qbk]
+[include examples.qbk]
+[include configuration.qbk]
+[include concepts.qbk]
+[include compiler_support.qbk]
+
+[xinclude text_reference.xml]
+
+[template named_index[type title]
+'''<index type="'''[type]'''"><title>'''[title]'''</title></index>'''
+]
+[named_index class_name Class Index]
+[named_index function_name Function Index]
+[named_index macro_name Macro Index]
+
+[include rationale.qbk]

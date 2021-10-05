@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_WAL_ACCESS_H
-#define ARANGOD_STORAGE_ENGINE_WAL_ACCESS_H 1
+#pragma once
 
 #include <map>
 
@@ -38,7 +37,7 @@ namespace arangodb {
 struct WalAccessResult {
   WalAccessResult() : WalAccessResult(TRI_ERROR_NO_ERROR, false, 0, 0, 0) {}
 
-  WalAccessResult(int code, bool ft, TRI_voc_tick_t included,
+  WalAccessResult(ErrorCode code, bool ft, TRI_voc_tick_t included,
                   TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest)
       : _result(code),
         _fromTickIncluded(ft),
@@ -56,7 +55,7 @@ struct WalAccessResult {
   void lastScannedTick(TRI_voc_tick_t tick) { _lastScannedTick = tick; }
   TRI_voc_tick_t latestTick() const { return _latestTick; }
 
-  WalAccessResult& reset(int errorNumber, bool ft, TRI_voc_tick_t included,
+  WalAccessResult& reset(ErrorCode errorNumber, bool ft, TRI_voc_tick_t included,
                          TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest) {
     _result.reset(errorNumber);
     _fromTickIncluded = ft;
@@ -69,7 +68,7 @@ struct WalAccessResult {
   // forwarded methods
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
-  int errorNumber() const { return _result.errorNumber(); }
+  ErrorCode errorNumber() const { return _result.errorNumber(); }
   std::string_view errorMessage() const { return _result.errorMessage(); }
   void reset(Result const& other) { _result.reset(); }
 
@@ -201,4 +200,3 @@ struct WalAccessContext {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_FUTURES_EXCEPTIONS_H
-#define ARANGODB_FUTURES_EXCEPTIONS_H 1
+#pragma once
 
 #include <cstdint>
 #include <exception>
@@ -67,4 +66,3 @@ struct FutureException : public std::exception {
 }  // namespace futures
 }  // namespace arangodb
 
-#endif

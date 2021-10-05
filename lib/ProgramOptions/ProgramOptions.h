@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H
-#define ARANGODB_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -96,6 +95,8 @@ class ProgramOptions {
   ProgramOptions(char const* progname, std::string const& usage,
                  std::string const& more, char const* binaryPath);
 
+  std::string progname() const { return _progname; }
+
   // sets a value translator
   void setTranslator(std::function<std::string(std::string const&, char const*)> const& translator);
 
@@ -140,13 +141,13 @@ class ProgramOptions {
   }
 
   // adds a (regular) section to the program options
-  auto addSection(std::string const& name, std::string const& description) {
-    return addSection(Section(name, description, "", false, false));
+  auto addSection(std::string const& name, std::string const& description, std::string const& link = "", bool hidden = false, bool obsolete = false) {
+    return addSection(Section(name, description, link, "", hidden, obsolete));
   }
 
   // adds an enterprise-only section to the program options
-  auto addEnterpriseSection(std::string const& name, std::string const& description) {
-    return addSection(EnterpriseSection(name, description, "", false, false));
+  auto addEnterpriseSection(std::string const& name, std::string const& description, std::string const& link = "", bool hidden = false, bool obsolete = false) {
+    return addSection(EnterpriseSection(name, description, link, "", hidden, obsolete));
   }
 
   // adds an option to the program options
@@ -164,6 +165,9 @@ class ProgramOptions {
                      makeFlags(Flags::Hidden, Flags::Obsolete)));
     return getOption(name);
   }
+ 
+  // adds a sub-headline for one option or a group of options
+  void addHeadline(std::string const& prefix, std::string const& description);
 
   // prints usage information
   void printUsage() const;
@@ -298,4 +302,3 @@ class ProgramOptions {
 }  // namespace options
 }  // namespace arangodb
 
-#endif

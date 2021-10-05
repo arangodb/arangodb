@@ -23,6 +23,7 @@
 // Do not include this file directly.  It is included by determinize-star.h
 
 #include "base/kaldi-error.h"
+#include "utils/automaton.hpp"
 
 #include <unordered_map>
 #include <algorithm>
@@ -175,15 +176,19 @@ template<class F> class DeterminizerStar {
   // Initializer.  After initializing the object you will typically call
   // Determinize() and then one of the Output functions.
   DeterminizerStar(const Fst<Arc> &ifst, float delta = kDelta,
-                   int max_states = -1, bool allow_partial = false):
-      ifst_(ifst.Copy()), delta_(delta), max_states_(max_states),
-      determinized_(false), allow_partial_(allow_partial),
+                   int max_states = -1, bool allow_partial = false)
+    : ifst_(ifst.Copy()),
+      delta_(delta),
+      max_states_(max_states),
+      determinized_(false),
+      allow_partial_(allow_partial),
       is_partial_(false),
       hash_(ifst.Properties(kExpanded, false) ?
               down_cast<const ExpandedFst<Arc>*,
               const Fst<Arc> >(&ifst)->NumStates()/2 + 3 : 20,
             SubsetKey(), SubsetEqual(delta_)),
-      epsilon_closure_(ifst_, max_states, &repository_, delta) { }
+      epsilon_closure_(ifst_, max_states, &repository_, delta) {
+  }
 
   void Determinize(bool *debug_ptr) {
     assert(!determinized_);
@@ -199,10 +204,12 @@ template<class F> class DeterminizerStar {
       OutputStateId cur_id = SubsetToStateId({elem});
       assert(cur_id == 0 && "Do not call Determinize twice.");
     }
+    std::vector<Element> closed_subset;
+    std::vector<std::pair<std::pair<Label, bool>, Element>> all_elems;
     while (!Q_.empty()) {
       std::pair<std::vector<Element>*, OutputStateId> cur_pair = Q_.front();
       Q_.pop_front();
-      ProcessSubset(cur_pair);
+      ProcessSubset(cur_pair, &all_elems, &closed_subset);
       if (debug_ptr && *debug_ptr) Debug();  // will exit.
       if (max_states_ > 0 && output_arcs_.size() > max_states_) {
         if (allow_partial_ == false) {
@@ -255,7 +262,8 @@ template<class F> class DeterminizerStar {
     InputStateId state;
     StringId string;
     Weight weight;
-    bool operator != (const Element &other) const  {
+
+    bool operator!=(const Element &other) const  {
       return (state != other.state || string != other.string ||
               weight != other.weight);
     }
@@ -355,16 +363,22 @@ template<class F> class DeterminizerStar {
    public:
     EpsilonClosure(const Fst<Arc> *ifst, int max_states,
         StringRepository<Label, StringId> *repository, float delta):
-      ifst_(ifst), max_states_(max_states), repository_(repository),
-      delta_(delta) {
+      ifst_(ifst),
+      max_states_(max_states),
+      repository_(repository),
+      delta_(delta),
+      sorted_(ifst->Properties(kILabelSorted, false) & kILabelSorted) {
+    }
 
+    bool FstSorted() const noexcept {
+      return sorted_;
     }
 
     // This function computes epsilon closure of subset of states by following epsilon links.
     // Called by ProcessSubset.
     // Has no side effects except on the repository.
     void GetEpsilonClosure(const std::vector<Element> &input_subset,
-                        std::vector<Element> *output_subset);
+                           std::vector<Element> *output_subset);
 
    private:
     struct EpsilonClosureInfo {
@@ -424,7 +438,6 @@ template<class F> class DeterminizerStar {
     // - then we save it to queue_2 s.t. if it's empty, we directly return
     // the input set
     void ExpandOneElement(const Element &elem,
-                          bool sorted,
                           const Weight &unprocessed_weight,
                           bool save_to_queue_2 = false);
 
@@ -433,6 +446,7 @@ template<class F> class DeterminizerStar {
     int max_states_;
     StringRepository<Label, StringId> *repository_;
     float delta_;
+    bool sorted_;
   };
 
 
@@ -440,7 +454,7 @@ template<class F> class DeterminizerStar {
   // called by ProcessSubset.
   // Has no side effects except on the variable repository_, and output_arcs_.
 
-  void ProcessFinal(const std::vector<Element> &closed_subset, OutputStateId state) {
+  void ProcessFinal(const std::vector<Element>& closed_subset, OutputStateId state) {
     // processes final-weights for this subset.
     bool is_final = false;
     StringId final_string = 0;  // = 0 to keep compiler happy.
@@ -491,16 +505,19 @@ template<class F> class DeterminizerStar {
   // with the same ilabel.
   // Side effects on repository, and (via ProcessTransition) on Q_, hash_,
   // and output_arcs_.
-  void ProcessTransitions(const std::vector<Element> &closed_subset, OutputStateId state) {
-    std::vector<std::pair<Label, Element> > all_elems;
+  void ProcessTransitions(
+      std::vector<Element>& closed_subset,
+      std::vector<std::pair<std::pair<Label, bool>, Element>>& all_elems,
+      OutputStateId state) {
+    all_elems.clear();
+
     {  // Push back into "all_elems", elements corresponding to all non-epsilon-input transitions
       // out of all states in "closed_subset".
       for (const Element& elem : closed_subset) {
         for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
           const Arc &arc = aiter.Value();
           if (arc.ilabel != 0) {  // Non-epsilon transition -- ignore epsilons here.
-            std::pair<Label, Element> this_pr;
-            this_pr.first = arc.ilabel;
+            std::pair<std::pair<Label, bool>, Element> this_pr;
             Element &next_elem(this_pr.second);
             next_elem.state = arc.nextstate;
             next_elem.weight = Times(elem.weight, arc.weight);
@@ -513,63 +530,66 @@ template<class F> class DeterminizerStar {
               seq.push_back(arc.olabel);
               next_elem.string = repository_.IdOfSeq(seq);
             }
-            all_elems.push_back(this_pr);
+
+            this_pr.first = { arc.min, false };
+            all_elems.emplace_back(this_pr);
+            this_pr.first = { arc.max, true };
+            all_elems.emplace_back(this_pr);
           }
         }
       }
     }
-    // now sorted first on input label, then on state.
-    std::sort(all_elems.begin(), all_elems.end(), [](const auto &p1, const auto &p2) noexcept {
-      if (p1.first < p2.first) {
-        return true;
-      } else if (p1.first > p2.first) {
-        return false;
-      } else {
-        return p1.second.state < p2.second.state;
-      }
-    });
-
-    auto begin = all_elems.begin();
-    const auto end = all_elems.end();
-
-    // where rho transitions start
-    const auto rho = std::find_if(all_elems.rbegin(), all_elems.rend(),
-      [](const auto& v) noexcept {
-        return v.first != std::numeric_limits<Label>::max(); }).base();
-
-    std::vector<Element> this_subset;
-
-    while (begin < rho) {
-      // Process ranges that share the same input symbol.
-      const Label ilabel = begin->first;
-      this_subset.clear();
-
-      while (begin < rho && begin->first == ilabel) {
-        this_subset.push_back(begin->second);
-        begin++;
-      }
-
-      // add rho transitions as they would labeled with the same ilabel
-      std::for_each(rho, end, [&this_subset](const auto& value) {
-        assert(value.first == RhoLabel);
-        this_subset.push_back(value.second);
+    // now sorted first on input label bound, bound type, then on state.
+    if (!epsilon_closure_.FstSorted() || closed_subset.size() > 1) {
+      std::sort(all_elems.begin(), all_elems.end(), [](const auto &p1, const auto &p2) noexcept {
+        if (p1.first.first < p2.first.first) {
+          return true;
+        } else if (p1.first.first > p2.first.first) {
+          return false;
+        } else if (p1.first.second < p2.first.second) {
+          return true;
+        } else if (p1.first.second > p2.first.second) {
+          return false;
+        } else {
+          return p1.second.state < p2.second.state;
+        }
       });
-
-      // We now have a subset for this ilabel.
-      ProcessTransition(state, ilabel, &this_subset);
     }
 
-    // explicitly add rho transitions
-    this_subset.clear();
-    std::for_each(rho, end, [&this_subset](const auto& value) {
-      assert(value.first == RhoLabel);
-      this_subset.push_back(value.second);
-    });
+   // reuse memory as we don't need data anymore
+   std::vector<Element>& subset = closed_subset;
+   subset.clear();
+   fsa::RangeLabel label;
 
-    // We now have a subset for RhoLabel
-    if (!this_subset.empty()) {
-      ProcessTransition(state, RhoLabel, &this_subset);
-    }
+   for (auto& e : all_elems) {
+     const auto [bound, is_max] = e.first;
+
+     if (!is_max) {
+       if (label.ilabel != fst::kNoLabel && label.min != bound) {
+         label.max = bound - 1;
+         assert(!subset.empty() && label.min <= label.max);
+         ProcessTransition(state, label.ilabel, &subset);
+       }
+
+       subset.emplace_back(e.second);
+       label.min = bound;
+     } else {
+       if (label.max != bound) {
+         label.max = bound;
+         assert(!subset.empty() && label.min <= label.max);
+         ProcessTransition(state, label.ilabel, &subset);
+         label.min = bound + 1;
+       }
+
+       assert(!subset.empty());
+       subset.pop_back();
+       if (subset.empty()) {
+         label.ilabel = fst::kNoLabel;
+       }
+     }
+   }
+
+    assert(subset.empty());
   }
 
   // SubsetToStateId converts a subset (vector of Elements) to a StateId in the output
@@ -608,24 +628,22 @@ template<class F> class DeterminizerStar {
   // of (states, weights)).  After that we ignore epsilons.  We process the final-weight
   // of the state, and then handle transitions out (this may add more determinized states
   // to the queue).
-  void ProcessSubset(const std::pair<std::vector<Element>*, OutputStateId> & pair) {
-    const std::vector<Element> *subset = pair.first;
+  void ProcessSubset(
+      const std::pair<std::vector<Element>*, OutputStateId>& pair,
+      std::vector<std::pair<std::pair<Label, bool>, Element>>* all_elems,
+      std::vector<Element>* closed_subset) {  // subset after epsilon closure.
     OutputStateId state = pair.second;
 
-    std::vector<Element> closed_subset;  // subset after epsilon closure.
-    epsilon_closure_.GetEpsilonClosure(*subset, &closed_subset);
+    epsilon_closure_.GetEpsilonClosure(*pair.first, closed_subset);
 
     // Now follow non-epsilon arcs [and also process final states]
-    ProcessFinal(closed_subset, state);
+    ProcessFinal(*closed_subset, state);
 
     // Now handle transitions out of these states.
-    ProcessTransitions(closed_subset, state);
+    ProcessTransitions(*closed_subset, *all_elems, state);
   }
 
   void Debug();
-
-  // Label denoting "Rho" transition (consume symbol, match rest)
-  static constexpr Label RhoLabel = std::numeric_limits<Label>::max();
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(DeterminizerStar);
   std::deque<std::pair<std::vector<Element>*, OutputStateId> > Q_;  // queue of subsets to be processed.
@@ -672,18 +690,15 @@ bool DeterminizeStar(F &ifst,
 }
 
 template<class F>
-void DeterminizerStar<F>::EpsilonClosure::
-            GetEpsilonClosure(const std::vector<Element> &input_subset,
-                                       std::vector<Element> *output_subset) {
+void DeterminizerStar<F>::EpsilonClosure::GetEpsilonClosure(
+    const std::vector<Element> &input_subset,
+    std::vector<Element> *output_subset) {
   ecinfo_.resize(0);
   size_t size = input_subset.size();
-  // find whether input fst is known to be sorted in input label.
-  bool sorted =
-          ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
 
   // size is still the input_subset.size()
   for (size_t i = 0; i < size; i++) {
-    ExpandOneElement(input_subset[i], sorted, input_subset[i].weight, true);
+    ExpandOneElement(input_subset[i], input_subset[i].weight, true);
   }
 
   size_t s = queue_2_.size();
@@ -695,9 +710,7 @@ void DeterminizerStar<F>::EpsilonClosure::
     for (size_t i = 0; i < size; i++) {
       // the weight has not been processed yet,
       // so put all of them in the "weight_to_process"
-      ecinfo_.push_back(EpsilonClosureInfo(input_subset[i],
-                                           input_subset[i].weight,
-                                           false));
+      ecinfo_.emplace_back(input_subset[i], input_subset[i].weight, false);
       ecinfo_.back().element.weight = Weight::Zero(); // clear the weight
 
       if (id_to_index_.size() < input_subset[i].state + 1) {
@@ -744,7 +757,7 @@ void DeterminizerStar<F>::EpsilonClosure::
     // here we pass a reference (elem), which could be an issue.
     // In the beginning of ExpandOneElement, we make a copy of elem.string
     // to avoid that issue
-    ExpandOneElement(elem, sorted, unprocessed_weight);
+    ExpandOneElement(elem, unprocessed_weight);
   }
 
   {
@@ -760,7 +773,7 @@ void DeterminizerStar<F>::EpsilonClosure::
       if (info.weight_to_process != Weight::Zero()) {
         info.element.weight = Plus(info.element.weight, info.weight_to_process);
       }
-      output_subset->push_back(info.element);
+      output_subset->emplace_back(info.element);
     }
   }
 }
@@ -839,7 +852,6 @@ void DeterminizerStar<F>::EpsilonClosure::
 template<class F>
 void DeterminizerStar<F>::EpsilonClosure::ExpandOneElement(
                                           const Element &elem,
-                                          bool sorted,
                                           const Weight &unprocessed_weight,
                                           bool save_to_queue_2) {
   StringId str = elem.string; // copy it here because there is an iterator-
@@ -849,7 +861,7 @@ void DeterminizerStar<F>::EpsilonClosure::ExpandOneElement(
   for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
        !aiter.Done(); aiter.Next()) {
     const Arc &arc = aiter.Value();
-    if (sorted && arc.ilabel > 0) {
+    if (sorted_ && arc.ilabel > 0) {
       break;
       // Break from the loop: due to sorting there will be no
       // more transitions with epsilons as input labels.

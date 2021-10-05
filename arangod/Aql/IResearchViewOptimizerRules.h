@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_OPTIMIZER_RULES_H
-#define ARANGOD_IRESEARCH__IRESEARCH_VIEW_OPTIMIZER_RULES_H 1
+#pragma once
 
 #include <memory>
 
@@ -62,4 +61,3 @@ void scatterViewInClusterRule(arangodb::aql::Optimizer* opt,
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__IRESEARCH_VIEW_OPTIMIZER_RULES_H

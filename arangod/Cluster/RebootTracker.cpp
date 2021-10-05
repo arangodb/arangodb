@@ -26,10 +26,15 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Cluster/ClusterTypes.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 #include <algorithm>
 
@@ -60,7 +65,7 @@ RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
 
 void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> const& state) {
   MUTEX_LOCKER(guard, _mutex);
-        
+
   LOG_TOPIC("77a6e", DEBUG, Logger::CLUSTER)
       << "updating reboot server state from " << _rebootIds << " to " << state;
 
@@ -280,13 +285,7 @@ void RebootTracker::queueCallbacks(
                           [](auto it) { return it->empty(); }));
 
   auto cb = createSchedulerCallback(std::move(callbacks));
-
-  if (!_scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(cb))) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUEUE_FULL,
-        "No available threads when trying to queue cleanup "
-        "callbacks due to a server reboot");
-  }
+  _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(cb));
 }
 
 void RebootTracker::unregisterCallback(PeerState const& peerState,
@@ -321,35 +320,22 @@ void RebootTracker::queueCallback(DescriptedCallback callback) {
       std::unordered_map<CallbackId, DescriptedCallback>{ { getNextCallbackId(), std::move(callback) } }
   )});
 }
-
-CallbackGuard::CallbackGuard() : _callback(nullptr) {}
-
-CallbackGuard::CallbackGuard(std::function<void(void)> callback)
-    : _callback(std::move(callback)) {}
-
-// NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-CallbackGuard::CallbackGuard(CallbackGuard&& other)
-    : _callback(std::move(other._callback)) {
-  other._callback = nullptr;
+    
+void RebootTracker::PeerState::toVelocyPack(velocypack::Builder& builder) const {
+  builder.openObject();
+  builder.add(StaticStrings::AttrCoordinatorId, VPackValue(_serverId));
+  builder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(_rebootId.value()));
+  builder.close();
 }
 
-// NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-CallbackGuard& CallbackGuard::operator=(CallbackGuard&& other) {
-  call();
-  _callback = std::move(other._callback);
-  other._callback = nullptr;
-  return *this;
-}
+RebootTracker::PeerState RebootTracker::PeerState::fromVelocyPack(velocypack::Slice slice) {
+  TRI_ASSERT(slice.isObject());
+  VPackSlice serverIdSlice = slice.get(StaticStrings::AttrCoordinatorId);
+  VPackSlice rebootIdSlice = slice.get(StaticStrings::AttrCoordinatorRebootId);
 
-CallbackGuard::~CallbackGuard() { call(); }
-
-void CallbackGuard::callAndClear() {
-  call();
-  _callback = nullptr;
-}
-
-void CallbackGuard::call() {
-  if (_callback) {
-    _callback();
+  if (!serverIdSlice.isString() || !rebootIdSlice.isInteger()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid reboot id");
   }
+  
+  return { serverIdSlice.copyString(), RebootId(rebootIdSlice.getUInt()) };
 }

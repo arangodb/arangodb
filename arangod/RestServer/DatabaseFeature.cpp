@@ -60,6 +60,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
+#include "Utilities/NameValidator.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -79,6 +80,13 @@ arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(arangodb::application_f
   auto rv = info.load("Z", std::numeric_limits<uint64_t>::max()); // name does not matter. We just need validity check to pass.
   TRI_ASSERT(rv.ok());
   return info;
+}
+
+/// @brief return either the name of the database to be used as a folder name, or its id if its name contains special characters and is not fully supported in every OS
+[[nodiscard]] std::string getDatabaseDirName(std::string const& databaseName, std::string const& id) { 
+  bool isOldStyleName =
+      DatabaseNameValidator::isAllowedName(/*allowSystem*/ true, /*extendedNames*/ false, databaseName);
+  return (isOldStyleName || id.empty()) ? databaseName : id;
 }
 
 /// @brief sandbox vocbase for executing calculation queries
@@ -164,7 +172,7 @@ void DatabaseManagerThread::run() {
 
           TRI_ASSERT(!database->isSystem());
 
-          {
+          if (dealer.isEnabled()) {
             // remove apps directory for database
             std::string const& appPath = dealer.appPath();
             if (database->isOwnAppsDirectory() && !appPath.empty()) {
@@ -175,11 +183,11 @@ void DatabaseManagerThread::run() {
               
               TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
               TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
-
               if (newInstance == nullptr) {
+                std::string const dirName = ::getDatabaseDirName(database->name(), std::to_string(database->id()));
                 std::string path = arangodb::basics::FileUtils::buildFilename(
                     arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
-                    database->name());
+                    dirName);
   
                 if (TRI_IsDirectory(path.c_str())) {
                   LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
@@ -233,9 +241,11 @@ void DatabaseManagerThread::run() {
         std::this_thread::sleep_for(std::chrono::microseconds(waitTime()));
 
         // The following is only necessary after a wait:
-        auto queryRegistry = QueryRegistryFeature::registry();
-        if (queryRegistry != nullptr) {
-          queryRegistry->expireQueries();
+        if (!ServerState::instance()->isSingleServer()) {
+          auto queryRegistry = QueryRegistryFeature::registry();
+          if (queryRegistry != nullptr) {
+            queryRegistry->expireQueries();
+          }
         }
 
         // perform cursor cleanup here
@@ -275,11 +285,11 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
-      _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _checkVersion(false),
       _upgrade(false),
-      _useOldSystemCollections(false),
+      _extendedNamesForDatabases(false),
+      _databasesLists(new DatabasesLists()),
       _started(false) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
@@ -298,7 +308,7 @@ DatabaseFeature::~DatabaseFeature() {
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("database", "Configure the database");
+  options->addSection("database", "database options");
 
   options->addOption("--database.wait-for-sync",
                      "default wait-for-sync behavior, can be overwritten "
@@ -317,15 +327,17 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "load collections even if datafiles may contain errors",
                      new BooleanParameter(&_ignoreDatafileErrors),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
-
-  options->addOption(
+  
+  options->addOption("--database.extended-names-databases",
+                     "allow extended characters in database names",
+                     new BooleanParameter(&_extendedNamesForDatabases),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Experimental))
+                     .setIntroducedIn(30900);
+  
+  // the following option was obsoleted in 3.9
+  options->addObsoleteOption(
       "--database.old-system-collections",
-      "create and use deprecated system collection (_modules, _fishbowl)",
-      new BooleanParameter(&_useOldSystemCollections),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30609)
-      .setIntroducedIn(30705)
-      .setDeprecatedIn(30800);
+      "create and use deprecated system collection (_modules, _fishbowl)", false);
   
   // the following option was obsoleted in 3.8
   options->addObsoleteOption(
@@ -374,6 +386,12 @@ void DatabaseFeature::initCalculationVocbase(application_features::ApplicationSe
 }
 
 void DatabaseFeature::start() {
+  if (_extendedNamesForDatabases) {
+    LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
+        << "Extended names for databases are an experimental feature which can "
+        << "cause incompatibility issues with not-yet-prepared drivers and applications - do not use in production!";
+  }
+
   verifyAppPaths();
 
   // scan all databases
@@ -383,7 +401,7 @@ void DatabaseFeature::start() {
 
   TRI_ASSERT(builder.slice().isArray());
 
-  int res = iterateDatabases(builder.slice());
+  auto res = iterateDatabases(builder.slice());
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC("0c49d", FATAL, arangodb::Logger::FIXME)
@@ -398,7 +416,7 @@ void DatabaseFeature::start() {
   }
 
   // start database manager thread
-  _databaseManager.reset(new DatabaseManagerThread(server()));
+  _databaseManager = std::make_unique<DatabaseManagerThread>(server());
 
   if (!_databaseManager->start()) {
     LOG_TOPIC("7eb06", FATAL, arangodb::Logger::FIXME)
@@ -487,14 +505,13 @@ void DatabaseFeature::stop() {
 #endif
     vocbase->stop();
 
-    vocbase->processCollections(
+    vocbase->processCollectionsOnShutdown(
         [](LogicalCollection* collection) {
           // no one else must modify the collection's status while we are in
           // here
           collection->executeWhileStatusWriteLocked(
               [collection]() { collection->close(); });
-        },
-        true);
+        });
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // i am here for debugging only.
@@ -632,7 +649,8 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   }
   result = nullptr;
 
-  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
+  bool extendedNames = extendedNamesForDatabases();
+  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, name)) {
     return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
   }
 
@@ -657,7 +675,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
     }
 
     // createDatabase must return a valid database or throw
-    int status = TRI_ERROR_NO_ERROR;
+    auto status = TRI_ERROR_NO_ERROR;
 
     vocbase = engine.createDatabase(std::move(info), status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
@@ -686,7 +704,8 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
       auto appPath = dealer.appPath();
 
       // create app directory for database if it does not exist
-      int res = createApplicationDirectory(name, appPath, true);
+      std::string const dirName = ::getDatabaseDirName(name, std::to_string(dbId));
+      auto res = createApplicationDirectory(dirName, appPath, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -742,8 +761,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
 }
 
 /// @brief drop database
-int DatabaseFeature::dropDatabase(std::string const& name,
-                                  bool removeAppsDirectory) {
+ErrorCode DatabaseFeature::dropDatabase(std::string const& name, bool removeAppsDirectory) {
   if (name == StaticStrings::SystemDatabase) {
     // prevent deletion of system database
     return TRI_ERROR_FORBIDDEN;
@@ -751,7 +769,7 @@ int DatabaseFeature::dropDatabase(std::string const& name,
 
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
   TRI_voc_tick_t id = 0;
-  int res = TRI_ERROR_NO_ERROR;
+  auto res = TRI_ERROR_NO_ERROR;
   {
     MUTEX_LOCKER(mutexLocker, _databasesMutex);
 
@@ -796,7 +814,7 @@ int DatabaseFeature::dropDatabase(std::string const& name,
         return true;  // try next DataSource
       };
 
-      vocbase->visitDataSources(visitor, true);  // acquire a write lock to avoid potential deadlocks
+      vocbase->visitDataSources(visitor);  // acquires a write lock to avoid potential deadlocks
 
       if (TRI_ERROR_NO_ERROR != res) {
         return res;
@@ -836,6 +854,11 @@ int DatabaseFeature::dropDatabase(std::string const& name,
     if (queryRegistry != nullptr) {
       queryRegistry->destroy(vocbase->name());
     }
+    // TODO Temporary fix, this full method needs to be unified.
+    try {
+      vocbase->cursorRepository()->garbageCollect(true);
+    } catch (...) {
+    }
 
     res = engine.prepareDropDatabase(*vocbase).errorNumber();
   }
@@ -850,8 +873,7 @@ int DatabaseFeature::dropDatabase(std::string const& name,
 }
 
 /// @brief drops an existing database
-int DatabaseFeature::dropDatabase(TRI_voc_tick_t id,
-                                  bool removeAppsDirectory) {
+ErrorCode DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool removeAppsDirectory) {
   std::string name;
 
   // find database by name
@@ -1150,9 +1172,9 @@ void DatabaseFeature::closeOpenDatabases() {
 }
 
 /// @brief create base app directory
-int DatabaseFeature::createBaseApplicationDirectory(std::string const& appPath,
-                                                    std::string const& type) {
-  int res = TRI_ERROR_NO_ERROR;
+ErrorCode DatabaseFeature::createBaseApplicationDirectory(std::string const& appPath,
+                                                          std::string const& type) {
+  auto res = TRI_ERROR_NO_ERROR;
   std::string path = arangodb::basics::FileUtils::buildFilename(appPath, type);
 
   if (!TRI_IsDirectory(path.c_str())) {
@@ -1179,10 +1201,16 @@ int DatabaseFeature::createBaseApplicationDirectory(std::string const& appPath,
 }
 
 /// @brief create app subdirectory for a database
-int DatabaseFeature::createApplicationDirectory(std::string const& name,
-                                                std::string const& basePath,
-                                                bool removeExisting) {
+ErrorCode DatabaseFeature::createApplicationDirectory(std::string const& name,
+                                                      std::string const& basePath,
+                                                      bool removeExisting) {
   if (basePath.empty()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
+  if (!dealer.isEnabled()) {
+    // no JavaScript enabled - no need to create the js/apps directory/ies
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -1209,7 +1237,7 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name,
   // directory does not yet exist - this should be the standard case
   long systemError;
   std::string errorMessage;
-  int res = TRI_CreateRecursiveDirectory(path.c_str(), systemError, errorMessage);
+  auto res = TRI_CreateRecursiveDirectory(path.c_str(), systemError, errorMessage);
 
   if (res == TRI_ERROR_NO_ERROR) {
     LOG_TOPIC("6745a", TRACE, arangodb::Logger::FIXME)
@@ -1230,13 +1258,13 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name,
 }
 
 /// @brief iterate over all databases in the databases directory and open them
-int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
+ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
   std::string const appPath = dealer.appPath();
 
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
-  int res = TRI_ERROR_NO_ERROR;
+  auto res = TRI_ERROR_NO_ERROR;
 
   // open databases in defined order
   MUTEX_LOCKER(mutexLocker, _databasesMutex);
@@ -1249,7 +1277,6 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   try {
     for (VPackSlice it : VPackArrayIterator(databases)) {
       TRI_ASSERT(it.isObject());
-
       LOG_TOPIC("95f68", TRACE, Logger::FIXME) << "processing database: " << it.toJson();
 
       VPackSlice deleted = it.get("deleted");
@@ -1259,9 +1286,11 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       }
 
       std::string const databaseName = it.get("name").copyString();
-
+      std::string const id = VelocyPackHelper::getStringValue(it, "id", "");
+      std::string const dirName = ::getDatabaseDirName(databaseName, id);
+      
       // create app directory for database if it does not exist
-      res = createApplicationDirectory(databaseName, appPath, false);
+      res = createApplicationDirectory(dirName, appPath, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         break;
@@ -1273,8 +1302,24 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       arangodb::CreateDatabaseInfo info(server(), ExecContext::current());
       auto res = info.load(it, VPackSlice::emptyArraySlice());
       if (res.fail()) {
+        if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID)) {
+          // special case: if we find an invalid database name during startup,
+          // we will give the user some hint how to fix it
+          std::string errorMsg(res.errorMessage());
+          errorMsg.append(": '").append(databaseName).append("'");
+          // check if the name would be allowed when using extended names
+          if (DatabaseNameValidator::isAllowedName(/*isSystem*/ false, /*extendedNames*/ true, databaseName)) {
+            errorMsg.append(
+                ". This database name would be allowed when using the "
+                "extended naming convention for databases, which is "
+                "currently disabled. The extended naming convention can "
+                "be enabled via the startup option `--database.extended-names-databases true`");
+          }
+          res.reset(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID, std::move(errorMsg));
+        }
         THROW_ARANGO_EXCEPTION(res);
       }
+
       auto database = engine.openDatabase(std::move(info), _upgrade);
 
       if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
@@ -1287,7 +1332,6 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
           FATAL_ERROR_EXIT();
         }
       }
-
       newLists->_databases.insert(std::make_pair(database->name(), database.get()));
       database.release();
     }
@@ -1358,12 +1402,17 @@ void DatabaseFeature::closeDroppedDatabases() {
 void DatabaseFeature::verifyAppPaths() {
   // create shared application directory js/apps
   V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
+  if (!dealer.isEnabled()) {
+    // no JavaScript enabled - no need to create the js/apps directory/ies
+    return;
+  }
+
   auto appPath = dealer.appPath();
 
   if (!appPath.empty() && !TRI_IsDirectory(appPath.c_str())) {
     long systemError;
     std::string errorMessage;
-    int res = TRI_CreateRecursiveDirectory(appPath.c_str(), systemError, errorMessage);
+    auto res = TRI_CreateRecursiveDirectory(appPath.c_str(), systemError, errorMessage);
 
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("1bf74", INFO, arangodb::Logger::FIXME)
@@ -1377,7 +1426,7 @@ void DatabaseFeature::verifyAppPaths() {
   }
 
   // create subdirectory js/apps/_db if not yet present
-  int res = createBaseApplicationDirectory(appPath, "_db");
+  auto res = createBaseApplicationDirectory(appPath, "_db");
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC("610c7", ERR, arangodb::Logger::FIXME)

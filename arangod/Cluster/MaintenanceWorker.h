@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_MAINTENANCE_WORKER
-#define ARANGOD_CLUSTER_MAINTENANCE_WORKER 1
+#pragma once
 
 #include "Basics/Thread.h"
 #include "Cluster/Action.h"
@@ -93,4 +92,3 @@ class MaintenanceWorker : public Thread {
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

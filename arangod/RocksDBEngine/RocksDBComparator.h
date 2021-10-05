@@ -22,8 +22,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_COMPARATOR_H
-#define ARANGO_ROCKSDB_ROCKSDB_COMPARATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -62,4 +61,3 @@ class RocksDBVPackComparator final : public rocksdb::Comparator {
 
 }  // namespace arangodb
 
-#endif

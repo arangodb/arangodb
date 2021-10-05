@@ -21,15 +21,18 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H 1
+#pragma once
 
+#include "Basics/Result.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+
+#include <set>
+#include <string>
 
 namespace arangodb {
 class LocalDocumentId;
@@ -87,7 +90,8 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
                                                       aql::AstNode const* node, 
                                                       aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts) override;
+                                                      IndexIteratorOptions const& opts,
+                                                      ReadOwnWrites readOwnWrites) override;
 
   arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
   Result executeQuery(transaction::Methods* trx, FulltextQuery const& query,
@@ -96,13 +100,13 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
  protected:
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const doc,
-                OperationOptions& options) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/, bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const doc) override;
+                velocypack::Slice doc) override;
 
  private:
   std::set<std::string> wordlist(arangodb::velocypack::Slice const&);
@@ -119,4 +123,3 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
 }  // namespace arangodb
 
-#endif

@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_GADGETS_H
-#define VELOCYPACK_GADGETS_H
+
+#pragma once
 #include <cstddef>
 #include <optional>
 #include <tuple>
@@ -164,4 +164,3 @@ std::tuple<Ts...> unpack_opt_tuple(std::tuple<std::optional<Ts>...> t) {
 }  // namespace deserializer::detail::gadgets
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_GADGETS_H

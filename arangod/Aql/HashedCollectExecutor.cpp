@@ -143,7 +143,7 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
     TRI_ASSERT(aggregateValues != nullptr && aggregateValues->size() == _infos.getAggregatedRegisters().size());
     size_t j = 0;
     for (auto const& r : _infos.getAggregatedRegisters()) {
-      if (r.second == RegisterPlan::MaxRegisterId) {
+      if (r.second.value() == RegisterId::maxRegisterId) {
         (*aggregateValues)[j].reduce(EmptyValue);
       } else {
         (*aggregateValues)[j].reduce(input.getValue(r.second));

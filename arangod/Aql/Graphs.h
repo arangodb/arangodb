@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_GRAPHS_H
-#define ARANGOD_AQL_GRAPHS_H 1
+#pragma once
 
 #include "Aql/VariableGenerator.h"
 
@@ -143,4 +142,3 @@ class EdgeConditionBuilderContainer final : public EdgeConditionBuilder {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

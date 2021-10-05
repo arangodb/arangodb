@@ -48,32 +48,40 @@ exports.Examples = {
   'mps_graph': {
     createDS: function() {
       examples.loadGraph("mps_graph");
-    },  
+    },
     removeDS: function() {
       examples.dropGraph("mps_graph");
-    }   
-  }, 
+    }
+  },
   'knows_graph': {
     createDS: function() {
       examples.loadGraph("knows_graph");
-    },  
+    },
     removeDS: function() {
       examples.dropGraph("knows_graph");
-    }   
+    }
   },
   'routeplanner': {
     createDS: function() {
       examples.loadGraph("routeplanner");
-    },  
+    },
     removeDS: function() {
       examples.dropGraph("routeplanner");
-    }   
+    }
+  },
+  'connectedComponentsGraph': {
+    createDS: function() {
+      examples.loadGraph("connectedComponentsGraph");
+    },
+    removeDS: function() {
+      examples.dropGraph("connectedComponentsGraph");
+    }
   },
   'joinSampleDataset': {
     createDS: function() {
       db._create("users");
       db._create("relations");
-      
+
       [ [1, "Abigail", true ],
         [2, "Fred", true ],
         [3, "Mary", true ],
@@ -112,6 +120,27 @@ exports.Examples = {
       } catch (e) {}
       try {
         db._drop("relations");
+      } catch (e) {}
+    }
+  },
+  'observationsSampleDataset': {
+    createDS: function() {
+      db._create("observations");
+      db.observations.save([
+        { "time": "2021-05-25 07:00:00", "subject": "st113", "val": 10 },
+        { "time": "2021-05-25 07:15:00", "subject": "st113", "val": 9 },
+        { "time": "2021-05-25 07:30:00", "subject": "st113", "val": 25 },
+        { "time": "2021-05-25 07:45:00", "subject": "st113", "val": 20 },
+        { "time": "2021-05-25 07:00:00", "subject": "xh458", "val": 0 },
+        { "time": "2021-05-25 07:15:00", "subject": "xh458", "val": 10 },
+        { "time": "2021-05-25 07:30:00", "subject": "xh458", "val": 5 },
+        { "time": "2021-05-25 07:45:00", "subject": "xh458", "val": 30 },
+        { "time": "2021-05-25 08:00:00", "subject": "xh458", "val": 25 },
+      ]);
+    },
+    removeDS: function() {
+      try {
+        db._drop("observations");
       } catch (e) {}
     }
   }

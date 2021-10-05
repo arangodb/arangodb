@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_REPLICATION_APPLIER_H
-#define ARANGOD_REPLICATION_REPLICATION_APPLIER_H 1
+#pragma once
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
@@ -194,4 +193,3 @@ class ReplicationApplier {
 
 }  // namespace arangodb
 
-#endif

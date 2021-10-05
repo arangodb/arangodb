@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_SUPERVISION_H
-#define ARANGOD_CONSENSUS_SUPERVISION_H 1
+#pragma once
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgentInterface.h"
@@ -50,6 +49,13 @@ struct check_t {
 void enforceReplicationFunctional(Node const& snapshot, 
                                   uint64_t& jobId,
                                   std::shared_ptr<VPackBuilder> envelope);
+
+// This is the functional version which actually does the work, it is
+// called by the private method Supervision::cleanupHotbackupTransferJobs
+// and the unit tests:
+void cleanupHotbackupTransferJobsFunctional(
+    Node const& snapshot, 
+    std::shared_ptr<VPackBuilder> envelope);
 
 class Supervision : public arangodb::Thread {
  public:
@@ -165,6 +171,9 @@ class Supervision : public arangodb::Thread {
   /// @brief Check for broken analyzers
   void checkBrokenAnalyzers();
 
+  /// @brief Check replicated logs
+  void checkReplicatedLogs();
+
   struct ResourceCreatorLostEvent {
     std::shared_ptr<Node> const& resource;
     std::string const& coordinatorId;
@@ -199,8 +208,11 @@ class Supervision : public arangodb::Thread {
   // @brief Check shards in agency
   std::vector<check_t> checkShards();
 
-  // @brief
+  /// @brief Cleanup old Supervision jobs
   void cleanupFinishedAndFailedJobs();
+
+  /// @brief Cleanup old hotbackup transfer jobs
+  void cleanupHotbackupTransferJobs();
 
   // @brief these servers have gone for too long without any responsibility
   //        and this are safely removable and so they are
@@ -246,8 +258,8 @@ class Supervision : public arangodb::Thread {
 
   bool handleJobs();
   void handleShutdown();
-  bool verifyCoordinatorRebootID(std::string const& coordinatorID,
-                                 uint64_t wantedRebootID, bool& coordinatorFound);
+  bool verifyServerRebootID(std::string const& serverID,
+                                 uint64_t wantedRebootID, bool& serverFound);
   void deleteBrokenDatabase(std::string const& database, std::string const& coordinatorID,
                             uint64_t rebootID, bool coordinatorFound);
   void deleteBrokenCollection(std::string const& database, std::string const& collection,
@@ -319,4 +331,3 @@ query_t removeTransactionBuilder(std::vector<std::string> const&);
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

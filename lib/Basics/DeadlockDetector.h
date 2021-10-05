@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_DEADLOCK_DETECTOR_H
-#define ARANGODB_BASICS_DEADLOCK_DETECTOR_H 1
+#pragma once
 
 #include <unordered_map>
 #include <unordered_set>
@@ -103,7 +102,7 @@ class DeadlockDetector {
 
  private:
   /// @brief add a thread to the list of blocked threads
-  int detectDeadlockNoLock(TID tid, T const* value, bool isWrite) const {
+  ErrorCode detectDeadlockNoLock(TID tid, T const* value, bool isWrite) const {
     if (!_enabled) {
       return TRI_ERROR_NO_ERROR;
     }
@@ -172,7 +171,7 @@ class DeadlockDetector {
   }
 
   /// @brief add a thread to the list of blocked threads
-  int setBlocked(TID tid, T const* value, bool isWrite) {
+  ErrorCode setBlocked(TID tid, T const* value, bool isWrite) {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     if (!_enabled) {
@@ -187,7 +186,7 @@ class DeadlockDetector {
     }
 
     try {
-      int res = detectDeadlockNoLock(tid, value, isWrite);
+      auto res = detectDeadlockNoLock(tid, value, isWrite);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // clean up
@@ -328,4 +327,3 @@ class DeadlockDetector {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

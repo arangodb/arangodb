@@ -171,11 +171,11 @@ std::string RestImportHandler::buildParseError(size_t i, char const* lineStart) 
 /// @brief process a single VelocyPack document of Object Type
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
-                                            VPackBuilder& tempBuilder,
-                                            RestImportResult& result,
-                                            VPackBuilder& babies, VPackSlice slice,
-                                            bool isEdgeCollection, size_t i) {
+ErrorCode RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
+                                                  VPackBuilder& tempBuilder,
+                                                  RestImportResult& result,
+                                                  VPackBuilder& babies, VPackSlice slice,
+                                                  bool isEdgeCollection, size_t i) {
   if (!slice.isObject()) {
     std::string part = VPackDumper::toString(slice);
     if (part.size() > 255) {
@@ -628,8 +628,8 @@ bool RestImportHandler::createFromKeyValueList() {
   bool const complete = _request->parsedValue("complete", false);
   bool const overwrite = _request->parsedValue("overwrite", false);
   _ignoreMissing = _request->parsedValue("ignoreMissing", false);
-  OperationOptions opOptions(_context);
-  opOptions.waitForSync = _request->parsedValue("waitForSync", false);
+  OperationOptions opOptions = buildOperationOptions();
+  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
   // extract the collection name
   bool found;
@@ -841,19 +841,22 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
                                         std::string const& collectionName,
                                         VPackBuilder const& babies, bool complete,
                                         OperationOptions const& opOptions) {
-  auto makeError = [&](size_t i, int res, VPackSlice const& slice, RestImportResult& result) {
+  auto makeError = [&](size_t i, ErrorCode res, VPackSlice const& slice,
+                       RestImportResult& result) {
     VPackOptions options(VPackOptions::Defaults);
     options.escapeUnicode = false;
     std::string part = VPackDumper::toString(slice, &options);
     if (part.size() > 255) {
       // UTF-8 chars in string will be escaped so we can truncate it at any
       // point
-      part = part.substr(0, 255) + "...";
+      part.resize(255);
+      part.append("...");
     }
 
-    std::string errorMsg =
-        positionize(i) + "creating document failed with error '" +
-        TRI_errno_string(res) + "', offending document: " + part;
+    auto errorMsg =
+        StringUtils::concatT(positionize(i),
+                             "creating document failed with error '",
+                             TRI_errno_string(res), "', offending document: ", part);
     registerError(result, errorMsg);
   };
 
@@ -864,8 +867,9 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
     VPackSlice resultSlice = opResult.slice();
 
     if (resultSlice.isArray()) {
-      size_t pos = 0;
+      VPackArrayIterator babiesIterator(babies.slice());
 
+      TRI_ASSERT(resultSlice.length() == babies.slice().length());
       for (VPackSlice it : VPackArrayIterator(resultSlice)) {
         VPackSlice s = it.get(StaticStrings::Error);
         if (!s.isBool() || !s.getBool()) {
@@ -880,8 +884,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
           }
         } else {
           // got an error, now handle it
-          int errorCode = it.get(StaticStrings::ErrorNum).getNumber<int>();
-          VPackSlice const which = babies.slice().at(pos);
+          auto errorCode = ErrorCode{it.get(StaticStrings::ErrorNum).getNumber<int>()};
           // special behavior in case of unique constraint violation . . .
           if (errorCode == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
               _onDuplicateAction == DUPLICATE_IGNORE) {
@@ -890,7 +893,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
             res = TRI_ERROR_NO_ERROR;
             ++result._numIgnored;
           } else { 
-            makeError(pos, errorCode, which, result);
+            makeError(babiesIterator.index(), errorCode, babiesIterator.value(), result);
             if (complete) {
               res = errorCode;
               break;
@@ -898,7 +901,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
           }
         }
 
-        ++pos;
+        babiesIterator.next();
       }
     }
   }

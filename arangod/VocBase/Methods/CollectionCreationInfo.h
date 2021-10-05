@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE__COLLECTION_CREATION_INFO_H
-#define ARANGOD_VOCBASE__COLLECTION_CREATION_INFO_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 
@@ -38,4 +37,3 @@ struct CollectionCreationInfo {
 };
 }  // namespace arangodb
 
-#endif

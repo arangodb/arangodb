@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_ENSURE_INDEX_H
-#define ARANGODB_MAINTENANCE_ENSURE_INDEX_H
+#pragma once
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
@@ -45,4 +44,3 @@ class EnsureIndex : public ActionBase {
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

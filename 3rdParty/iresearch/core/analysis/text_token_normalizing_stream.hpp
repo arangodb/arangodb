@@ -35,9 +35,9 @@ namespace analysis {
 /// @brief an analyser capable of normalizing the text, treated as a single
 ///        token, i.e. case conversion and accent removal
 ////////////////////////////////////////////////////////////////////////////////
-class text_token_normalizing_stream
-  : public frozen_attributes<4, analyzer>,
-    util::noncopyable {
+class text_token_normalizing_stream final
+  : public analyzer,
+    private util::noncopyable {
  public:
   struct options_t {
     enum case_convert_t { LOWER, NONE, UPPER };
@@ -46,22 +46,31 @@ class text_token_normalizing_stream
     bool accent{true}; // no extra normalization
   };
 
-  struct state_t;
-
   static constexpr string_ref type_name() noexcept { return "norm"; }
   static void init(); // for trigering registration in a static build
   static ptr make(const string_ref& locale);
 
   explicit text_token_normalizing_stream(const options_t& options);
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
+  }
   virtual bool next() override;
   virtual bool reset(const irs::string_ref& data) override;
 
  private:
-  irs::increment inc_;
-  irs::offset offset_;
-  irs::payload payload_; // raw token value
-  std::shared_ptr<state_t> state_;
-  irs::term_attribute term_; // token value with evaluated quotes
+  using attributes = std::tuple<
+    increment,
+    offset,
+    payload,         // raw token value
+    term_attribute>; // token value with evaluated quotes
+
+  struct state_t;
+  struct state_deleter_t {
+    void operator()(state_t*) const noexcept;
+  };
+
+  attributes attrs_;
+  std::unique_ptr<state_t, state_deleter_t> state_;
   bool term_eof_;
 };
 

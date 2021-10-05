@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONTAINERS_SMALL_UNORDERED_MAP_H
-#define ARANGODB_CONTAINERS_SMALL_UNORDERED_MAP_H 1
+#pragma once
 
 #include <unordered_map>
 
@@ -39,4 +38,3 @@ using SmallUnorderedMap =
 }  // namespace containers
 }  // namespace arangodb
 
-#endif

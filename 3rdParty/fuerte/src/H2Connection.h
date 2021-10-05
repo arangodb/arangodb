@@ -37,7 +37,8 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 // ongoing Http2 stream
 struct Stream {
   Stream(std::unique_ptr<Request>&& req, RequestCallback&& cb)
-      : callback(std::move(cb)), request(std::move(req)) {}
+      : callback(std::move(cb)), request(std::move(req)),
+        callbackCalled(false) {}
 
   velocypack::Buffer<uint8_t> data;
 
@@ -47,9 +48,18 @@ struct Stream {
   size_t responseOffset = 0;
   /// point in time when the message expires
   std::chrono::steady_clock::time_point expires;
+  bool callbackCalled;
 
   inline void invokeOnError(Error e) {
-    callback(e, std::move(request), nullptr);
+    // In the HTTP/2 case a stream in which the callback has been called
+    // is not deleted from _streams right away. Therefore it is possible
+    // that two timeouts happen and the callback would be called twice.
+    // This is prevented by this flag, which is only ever read and
+    // written in the I/O thread.
+    if (!callbackCalled) {
+      callbackCalled = true;
+      callback(e, std::move(request), nullptr);
+    }
   }
 };
 

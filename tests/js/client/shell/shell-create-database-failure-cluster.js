@@ -31,37 +31,12 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
 let errors = arangodb.errors;
-let { getEndpointById, getEndpointsByType } = require('@arangodb/test-helper');
-const request = require('@arangodb/request');
-
-/// @brief set failure point
-function debugCanUseFailAt(endpoint) {
-  let res = request.get({
-    url: endpoint + '/_admin/debug/failat',
-  });
-  return res.status === 200;
-}
-
-/// @brief set failure point
-function debugSetFailAt(endpoint, failAt) {
-  let res = request.put({
-    url: endpoint + '/_admin/debug/failat/' + failAt,
-    body: ""
-  });
-  if (res.status !== 200) {
-    throw "Error setting failure point";
-  }
-}
-
-function debugClearFailAt(endpoint) {
-  let res = request.delete({
-    url: endpoint + '/_admin/debug/failat',
-    body: ""
-  });
-  if (res.status !== 200) {
-    throw "Error removing failure points";
-  }
-}
+let { getEndpointById,
+      getEndpointsByType,
+      debugCanUseFailAt,
+      debugSetFailAt,
+      debugClearFailAt
+    } = require('@arangodb/test-helper');
 
 function createDatabaseFailureSuite() {
   'use strict';

@@ -45,6 +45,8 @@
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/UnsortedGatherExecutor.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
@@ -82,8 +84,9 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
  protected:
   std::string const collectionName = "UnitTestCollection";
   mocks::MockAqlServer server{};
-  ResourceMonitor monitor{};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery{
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  std::shared_ptr<arangodb::aql::Query> fakedQuery{
       server.createFakeQuery(false, "", [&](aql::Query& query) {
         if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
           // Create dummy collection
@@ -257,7 +260,8 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       auto col = collections.get(collectionName);
       TRI_ASSERT(col != nullptr);  // failed to add collection
       OperationOptions opts{};
-      ModificationExecutorInfos execInfos{0,
+      ModificationExecutorInfos execInfos{fakedQuery->rootEngine(), 
+                                          0,
                                           RegisterPlan::MaxRegisterId,
                                           RegisterPlan::MaxRegisterId,
                                           0,

@@ -173,34 +173,6 @@ std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH =
 std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE =
     "/_api/simple/by-example";
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief simple query first example path
-//////////////////////////////////////////////////////////////////////////////
-
-std::string const RestVocbaseBaseHandler::SIMPLE_FIRST_EXAMPLE =
-    "/_api/simple/first-example";
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief simple query remove by example path
-//////////////////////////////////////////////////////////////////////////////
-
-std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_BY_EXAMPLE =
-    "/_api/simple/remove-by-example";
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief simple query replace by example path
-//////////////////////////////////////////////////////////////////////////////
-
-std::string const RestVocbaseBaseHandler::SIMPLE_REPLACE_BY_EXAMPLE =
-    "/_api/simple/replace-by-example";
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief simple query replace by example path
-//////////////////////////////////////////////////////////////////////////////
-
-std::string const RestVocbaseBaseHandler::SIMPLE_UPDATE_BY_EXAMPLE =
-    "/_api/simple/update-by-example";
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document batch lookup path
 ////////////////////////////////////////////////////////////////////////////////
@@ -332,7 +304,7 @@ void RestVocbaseBaseHandler::generate20x(arangodb::OperationResult const& result
     VPackBuilder errorBuilder;
     errorBuilder.openObject();
     for (auto const& it : result.countErrorCodes) {
-      errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
+      errorBuilder.add(to_string(it.first), VPackValue(it.second));
     }
     errorBuilder.close();
     _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.toJson());
@@ -353,7 +325,7 @@ void RestVocbaseBaseHandler::generate20x(arangodb::OperationResult const& result
           assembleDocumentId(collectionName,
                              slice.get(StaticStrings::KeyString).copyString(), true));
       _response->setHeaderNC(StaticStrings::Location,
-                             std::string("/_db/" + _request->databaseName() +
+                             std::string("/_db/" + StringUtils::urlEncode(_request->databaseName()) +
                                          DOCUMENT_PATH + "/" + escapedHandle));
     }
   }
@@ -467,9 +439,9 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
                                                       OperationResult const& result,
                                                       std::string const& key,
                                                       RevisionId rev) {
-  int code = result.errorNumber();
-  switch (code) {
-    case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
+  auto const code = result.errorNumber();
+  switch (static_cast<int>(code)) {
+    case static_cast<int>(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND):
       if (collectionName.empty()) {
         // no collection name specified
         generateError(rest::ResponseCode::BAD, code,
@@ -481,16 +453,16 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
       }
       return;
 
-    case TRI_ERROR_ARANGO_READ_ONLY:
+    case static_cast<int>(TRI_ERROR_ARANGO_READ_ONLY):
       generateError(rest::ResponseCode::FORBIDDEN, code,
                     "collection is read-only");
       return;
 
-    case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
+    case static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND):
       generateDocumentNotFound(collectionName, key);
       return;
 
-    case TRI_ERROR_ARANGO_CONFLICT:
+    case static_cast<int>(TRI_ERROR_ARANGO_CONFLICT):
       if (result.buffer != nullptr && !result.slice().isNone()) {
         // This case happens if we come via the generateTransactionError that
         // has a proper OperationResult with a slice:
@@ -616,16 +588,38 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
       }
     }
   }
+ 
+  // if we have a read operation and the x-arango-aql-document-call header is set,
+  // it means this is a request by the DOCUMENT function inside an AQL query. in 
+  // this case, we cannot be sure to lease the transaction context successfully, 
+  // because the AQL query may have already acquired the write lock on the context
+  // for the entire duration of the query. if this is the case, then the query
+  // already has the lock, and it is ok if we lease the context here without 
+  // acquiring it again.
+  bool const isSideUser =
+      (ServerState::instance()->isDBServer() &&
+       AccessMode::isRead(type) &&
+       !_request->header(StaticStrings::AqlDocumentCall).empty());
 
-  auto ctx = mgr->leaseManagedTrx(tid, type);
+  std::shared_ptr<transaction::Context> ctx = mgr->leaseManagedTrx(tid, type, isSideUser);
+  
   if (!ctx) {
-    LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid.id()) + "' not found");
+    LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id " << tid << " not found";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction ") + std::to_string(tid.id()) + " not found");
   }
-  return std::make_unique<transaction::Methods>(std::move(ctx));
+  std::unique_ptr<transaction::Methods> trx;
+  if (ServerState::instance()->isDBServer() &&
+      !opOptions.isSynchronousReplicationFrom.empty()) {
+    TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
+    // inject at least the required collection name
+    trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName, type);
+  } else {
+    trx = std::make_unique<transaction::Methods>(std::move(ctx));
+  }
+  return trx;
 }
 
-/// @brief create proper transaction context, inclusing the proper IDs
+/// @brief create proper transaction context, including the proper IDs
 std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
@@ -666,7 +660,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
     }
   }
 
-  auto ctx = mgr->leaseManagedTrx(tid, mode);
+  auto ctx = mgr->leaseManagedTrx(tid, mode, /*isSideUser*/ false);
   if (!ctx) {
     LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND,

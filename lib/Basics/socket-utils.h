@@ -21,13 +21,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SOCKET__UTILS_H
-#define ARANGODB_BASICS_SOCKET__UTILS_H 1
+#pragma once
 
 #include <stddef.h>
 
 #include "Basics/Common.h"
 #include "Basics/operating-system.h"
+#include "ErrorCode.h"
 
 #ifdef TRI_HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -210,8 +210,6 @@ int TRI_closesocket(TRI_socket_t);
 
 int TRI_readsocket(TRI_socket_t, void* buffer, size_t numBytesToRead, int flags);
 
-int TRI_writesocket(TRI_socket_t, const void* buffer, size_t numBytesToWrite, int flags);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets non-blocking mode for a socket
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,7 +228,7 @@ bool TRI_SetCloseOnExecSocket(TRI_socket_t);
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton4(char const* src, unsigned char* dst);
+ErrorCode TRI_InetPton4(char const* src, unsigned char* dst);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translates for IPv6 address
@@ -238,6 +236,5 @@ int TRI_InetPton4(char const* src, unsigned char* dst);
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton6(char const* src, unsigned char* dst);
+ErrorCode TRI_InetPton6(char const* src, unsigned char* dst);
 
-#endif

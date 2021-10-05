@@ -41,11 +41,11 @@ using namespace arangodb::aql;
 // --SECTION--                          ViewExpressionContextBase implementation
 // -----------------------------------------------------------------------------
 
-void ViewExpressionContextBase::registerWarning(int errorCode, char const* msg) {
+void ViewExpressionContextBase::registerWarning(ErrorCode errorCode, char const* msg) {
   _query->warnings().registerWarning(errorCode, msg);
 }
 
-void ViewExpressionContextBase::registerError(int errorCode, char const* msg) {
+void ViewExpressionContextBase::registerError(ErrorCode errorCode, char const* msg) {
   _query->warnings().registerError(errorCode, msg);
 }
 

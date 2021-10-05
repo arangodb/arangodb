@@ -70,6 +70,23 @@ void ProgramOptions::setTranslator(
     std::function<std::string(std::string const&, char const*)> const& translator) {
   _translator = translator;
 }
+  
+// adds a sub-headline for one option or a group of options
+void ProgramOptions::addHeadline(std::string const& prefix, std::string const& description) {
+  checkIfSealed();
+  
+  auto parts = Option::splitName(prefix);
+  if (parts.first.empty()) {
+    std::swap(parts.first, parts.second);
+  }
+  auto it = _sections.find(parts.first);
+
+  if (it == _sections.end()) {
+    throw std::logic_error(std::string("section '") + parts.first + "' not found");
+  }
+    
+  (*it).second.headlines[parts.second] = description;
+}
 
 // prints usage information
 void ProgramOptions::printUsage() const {
@@ -77,26 +94,52 @@ void ProgramOptions::printUsage() const {
 }
 
 // prints a help for all options, or the options of a section
-// the special search string "*" will show help for all sections
 // the special search string "." will show help for all sections, even if
 // hidden
 void ProgramOptions::printHelp(std::string const& search) const {
   bool const colors = (isatty(STDOUT_FILENO) != 0);
-  printUsage();
-
   TRI_TerminalSize ts = TRI_DefaultTerminalSize();
   size_t const tw = ts.columns;
   size_t const ow = optionsWidth();
 
+  std::string normalized = search;
+  if (normalized == "uncommon" || normalized == "hidden") {
+    normalized = ".";
+  }
+
+  bool showHidden = normalized == ".";
+
+  printUsage();
+
+  if (!showHidden) {
+    std::cout << "Common options (excluding hidden/uncommon options):" << std::endl;
+    std::cout << std::endl;
+  }
+
   for (auto const& it : _sections) {
-    if (search == "*" || search == "." || search == it.second.name) {
-      it.second.printHelp(search, tw, ow, colors);
+    if (normalized == it.second.name ||
+        ((normalized == "*" || showHidden) && !it.second.obsolete)) {
+      it.second.printHelp(normalized, tw, ow, colors);
     }
   }
 
-  if (search == "*") {
+  if (normalized == "*") {
     printSectionsHelp();
   }
+  
+  std::cout << std::endl;
+  if (!showHidden) {
+    char const* colorStart = "";
+    char const* colorEnd = "";
+
+    if (isatty(STDOUT_FILENO)) {
+      colorStart = ShellColorsFeature::SHELL_COLOR_BRIGHT;
+      colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
+    }
+    std::cout << "More uncommon options are not shown by default. " 
+              << "To show these options, use  " << colorStart << "--help-uncommon" << colorEnd << std::endl;
+  }
+  std::cout << std::endl;
 }
 
 // prints the names for all section help options
@@ -112,7 +155,7 @@ void ProgramOptions::printSectionsHelp() const {
   // print names of sections
   std::cout << _more;
   for (auto const& it : _sections) {
-    if (!it.second.name.empty() && it.second.hasOptions()) {
+    if (!it.second.name.empty() && it.second.hasOptions() && !it.second.obsolete) {
       std::cout << "  " << colorStart << "--help-" << it.second.name << colorEnd;
     }
   }
@@ -143,12 +186,17 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
         if (detailed) {
           builder.openObject();
           builder.add("section", VPackValue(option.section));
+          if (!section.link.empty()) {
+            builder.add("link", VPackValue(section.link));
+          }
           builder.add("description", VPackValue(option.description));
           builder.add("category", VPackValue(option.hasFlag(arangodb::options::Flags::Command)
                                                  ? "command"
                                                  : "option"));
           builder.add("hidden", VPackValue(option.hasFlag(arangodb::options::Flags::Hidden)));
           builder.add("type", VPackValue(option.parameter->name()));
+          builder.add("experimental",
+                      VPackValue(option.hasFlag(arangodb::options::Flags::Experimental)));
           builder.add("obsolete",
                       VPackValue(option.hasFlag(arangodb::options::Flags::Obsolete)));
           builder.add("enterpriseOnly",

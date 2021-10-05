@@ -20,34 +20,34 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "mmap_directory.hpp"
-#include "store_utils.hpp"
-#include "utils/utf8_path.hpp"
+#include "store/mmap_directory.hpp"
+#include "store/store_utils.hpp"
 #include "utils/mmap_utils.hpp"
 #include "utils/memory.hpp"
 
 namespace {
 
-using irs::mmap_utils::mmap_handle;
+using namespace irs;
+using mmap_utils::mmap_handle;
 
-typedef std::shared_ptr<mmap_handle> mmap_handle_ptr;
+using mmap_handle_ptr = std::shared_ptr<mmap_handle>;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief converts the specified IOAdvice to corresponding posix madvice
 //////////////////////////////////////////////////////////////////////////////
-inline int get_posix_madvice(irs::IOAdvice advice) {
+inline int get_posix_madvice(IOAdvice advice) {
   switch (advice) {
-    case irs::IOAdvice::NORMAL:
+    case IOAdvice::NORMAL:
       return IR_MADVICE_NORMAL;
-    case irs::IOAdvice::SEQUENTIAL:
+    case IOAdvice::SEQUENTIAL:
       return IR_MADVICE_SEQUENTIAL;
-    case irs::IOAdvice::RANDOM:
+    case IOAdvice::RANDOM:
       return IR_MADVICE_RANDOM;
-    case irs::IOAdvice::READONCE:
+    case IOAdvice::READONCE:
       return IR_MADVICE_NORMAL;
-    case irs::IOAdvice::READONCE_SEQUENTIAL:
+    case IOAdvice::READONCE_SEQUENTIAL:
       return IR_MADVICE_SEQUENTIAL;
-    case irs::IOAdvice::READONCE_RANDOM:
+    case IOAdvice::READONCE_RANDOM:
       return IR_MADVICE_RANDOM;
   }
 
@@ -63,17 +63,17 @@ inline int get_posix_madvice(irs::IOAdvice advice) {
 /// @struct mmap_index_input
 /// @brief input stream for memory mapped directory
 //////////////////////////////////////////////////////////////////////////////
-class mmap_index_input : public irs::bytes_ref_input {
+class mmap_index_input : public bytes_ref_input {
  public:
-  static irs::index_input::ptr open(
+  static index_input::ptr open(
       const file_path_t file,
-      irs::IOAdvice advice) noexcept {
+      IOAdvice advice) noexcept {
     assert(file);
 
     mmap_handle_ptr handle;
 
     try {
-      handle = irs::memory::make_shared<mmap_handle>();
+      handle = memory::make_shared<mmap_handle>();
     } catch (...) {
       return nullptr;
     }
@@ -83,13 +83,17 @@ class mmap_index_input : public irs::bytes_ref_input {
       return nullptr;
     }
 
+    if (0 == handle->size()) {
+      return memory::make_unique<bytes_ref_input>();
+    }
+
     const int padvice = get_posix_madvice(advice);
 
     if (IR_MADVICE_NORMAL != padvice && !handle->advise(padvice)) {
       IR_FRMT_ERROR("Failed to madvise input file, path: " IR_FILEPATH_SPECIFIER ", error %d", file, errno);
     }
 
-    handle->dontneed(bool(advice & irs::IOAdvice::READONCE));
+    handle->dontneed(bool(advice & IOAdvice::READONCE));
 
     try {
       return ptr(new mmap_index_input(std::move(handle)));
@@ -110,7 +114,10 @@ class mmap_index_input : public irs::bytes_ref_input {
   mmap_index_input(mmap_handle_ptr&& handle) noexcept
     : handle_(std::move(handle)) {
     if (handle_) {
-      const auto* begin = reinterpret_cast<irs::byte_type*>(handle_->addr());
+      assert(handle_->addr() != MAP_FAILED);
+      assert(handle_->size());
+
+      const auto* begin = reinterpret_cast<byte_type*>(handle_->addr());
       bytes_ref_input::reset(begin, handle_->size());
     }
   }
@@ -133,22 +140,22 @@ namespace iresearch {
 // --SECTION--                                     mmap_directory implementation
 // -----------------------------------------------------------------------------
 
-mmap_directory::mmap_directory(const std::string& path)
-  : fs_directory(path) {
+mmap_directory::mmap_directory(
+    irs::utf8_path path,
+    directory_attributes attrs /* = {} */)
+  : fs_directory{std::move(path), std::move(attrs)} {
 }
 
 index_input::ptr mmap_directory::open(
     const std::string& name,
     IOAdvice advice) const noexcept {
-  utf8_path path;
-
   try {
-    (path/=directory())/=name;
+    const auto path = directory() / name;
+
+    return mmap_index_input::open(path.c_str(), advice);
   } catch(...) {
     return nullptr;
   }
-
-  return mmap_index_input::open(path.c_str(), advice);
 }
 
 } // ROOT

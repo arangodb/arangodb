@@ -1,0 +1,18 @@
+name: arangodb_aql_all_query_total
+renamedFrom: arangodb_aql_all_query
+introducedIn: "3.8.0"
+help: |
+  Total number of AQL queries finished.
+unit: number
+type: counter
+category: AQL
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of AQL queries finished.
+  This metric was named `arangodb_aql_all_query` in previous
+  versions of ArangoDB.

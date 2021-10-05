@@ -23,6 +23,8 @@
 #ifndef IRESEARCH_LIMITED_SAMPLE_COLLECTOR_H
 #define IRESEARCH_LIMITED_SAMPLE_COLLECTOR_H
 
+#include <absl/container/flat_hash_map.h>
+
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "search/collectors.hpp"
@@ -109,7 +111,6 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       pop();
 
       auto& min_state = scored_states_[min_state_idx];
-      auto state_term_it = min_state.state->reader->iterator(); // FIXME cache iterator???
 
       assert(min_state.cookie);
       // state will not be scored
@@ -143,30 +144,24 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     }
 
     // stats for a specific term
-    std::unordered_map<hashed_bytes_ref, stats_state> term_stats;
+    absl::flat_hash_map<hashed_bytes_ref, stats_state> term_stats;
 
     // iterate over all the states from which statistcis should be collected
     uint32_t stats_offset = 0;
     for (auto& scored_state : scored_states_) {
       assert(scored_state.cookie);
       auto& field = *scored_state.state->reader;
-      auto term_itr = field.iterator(); // FIXME
-      assert(term_itr);
 
       // find the stats for the current term
       const auto res = term_stats.try_emplace(
         make_hashed_ref(bytes_ref(scored_state.term)),
         index, field, order, stats_offset);
 
-      // find term attributes using cached state
-      if (!term_itr->seek(bytes_ref::NIL, *(scored_state.cookie))) {
-        continue; // some internal error that caused the term to disappear
-      }
 
       auto& stats_entry = res.first->second;
 
       // collect statistics, 0 because only 1 term
-      stats_entry.term_stats.collect(*scored_state.segment, field, 0, *term_itr);
+      stats_entry.term_stats.collect(*scored_state.segment, field, 0, *scored_state.cookie);
 
       scored_state.state->scored_states.emplace_back(
         std::move(scored_state.cookie),

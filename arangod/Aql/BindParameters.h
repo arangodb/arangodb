@@ -21,18 +21,20 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_BIND_PARAMETERS_H
-#define ARANGOD_AQL_BIND_PARAMETERS_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace velocypack {
 class Builder;
 }
@@ -45,17 +47,20 @@ class BindParameters {
   BindParameters(BindParameters const&) = delete;
   BindParameters& operator=(BindParameters const&) = delete;
 
-  BindParameters();
+  explicit BindParameters(ResourceMonitor& resourceMonitor);
 
   /// @brief create the parameters
-  explicit BindParameters(std::shared_ptr<arangodb::velocypack::Builder> builder);
+  explicit BindParameters(ResourceMonitor& resourceMonitor, std::shared_ptr<arangodb::velocypack::Builder> builder);
 
   /// @brief destroy the parameters
-  ~BindParameters() = default;
+  ~BindParameters();
 
- public:
-  /// @brief return all parameters
-  BindParametersType& get();
+  /// @brief mark a bind parameter as "used", and return its value.
+  /// will return VPackSlice::noneSlice() if the bind parameter does not exist!
+  arangodb::velocypack::Slice markUsed(std::string const& name) noexcept;
+ 
+  /// @brief run a visitor function on all bind parameters
+  void visit(std::function<void(std::string const& key, arangodb::velocypack::Slice value, bool used)> const& visitor) const;
 
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<arangodb::velocypack::Builder> builder() const;
@@ -65,7 +70,7 @@ class BindParameters {
 
   /// @brief strip collection name prefixes from the parameters
   /// the values must be a VelocyPack array
-  static void stripCollectionNames(arangodb::velocypack::Slice const&,
+  static void stripCollectionNames(arangodb::velocypack::Slice keys,
                                    std::string const& collectionName,
                                    arangodb::velocypack::Builder& result);
 
@@ -73,7 +78,12 @@ class BindParameters {
   /// @brief process the parameters
   void process();
 
+  /// @brief calculates memory usage for a bind parameter
+  std::size_t memoryUsage(std::string const& key, arangodb::velocypack::Slice value) const noexcept;
+
  private:
+  arangodb::ResourceMonitor& _resourceMonitor;
+
   /// @brief the parameter values
   std::shared_ptr<arangodb::velocypack::Builder> _builder;
 
@@ -86,4 +96,3 @@ class BindParameters {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

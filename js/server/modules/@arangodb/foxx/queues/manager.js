@@ -226,11 +226,6 @@ exports.manage = function () {
   }
 
   if (global.ArangoServerState.getFoxxmasterQueueupdate()) {
-    if (!isCluster) {
-      // On a Foxxmaster change FoxxmasterQueueupdate is set to true
-      // we use this to signify a Leader change to this server
-      foxxManager.healAll(true);
-    }
     // do not call again immediately
     global.ArangoServerState.setFoxxmasterQueueupdate(false);
 
@@ -247,6 +242,9 @@ exports.manage = function () {
       // update, so in the next round the code for the queue update
       // will be run
       global.ArangoServerState.setFoxxmasterQueueupdate(true);
+      if (err.errorNum === errors.ERROR_SHUTTING_DOWN.code) {
+        return;
+      }
       throw err;
     }
   }
@@ -274,7 +272,8 @@ exports.manage = function () {
     } catch (e) {
       // it is possible that the underlying database is deleted while we are in here.
       // this is not an error
-      if (e.errorNum !== errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code) {
+      if (e.errorNum !== errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code &&
+          e.errorNum !== errors.ERROR_SHUTTING_DOWN.code) {
         warn("An exception occurred during Foxx queue handling in database '"
               + database + "' "
               + e.message + ": "

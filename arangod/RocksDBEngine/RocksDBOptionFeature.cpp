@@ -118,7 +118,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
-      _maxWriteBufferNumber(7 + 2),  // number of column families plus 2
+      _maxWriteBufferNumber(8 + 2),  // number of column families plus 2
       _maxWriteBufferSizeToMaintain(0),
       _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
@@ -191,7 +191,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
 }
 
 void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("rocksdb", "Configure the RocksDB engine");
+  options->addSection("rocksdb", "RocksDB engine");
 
   options->addObsoleteOption("--rocksdb.enabled",
                              "obsolete always active - Whether or not the "
@@ -447,11 +447,10 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options
       ->addOption("--rocksdb.limit-open-files-at-startup",
                   "limit the amount of .sst files RocksDB will inspect at "
-                  "startup, in order to startup reduce IO",
+                  "startup, in order to reduce startup IO",
                   new BooleanParameter(&_limitOpenFilesAtStartup),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
 
   options
       ->addOption("--rocksdb.allow-fallocate",
@@ -459,8 +458,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   "fallocate calls are bypassed",
                   new BooleanParameter(&_allowFAllocate),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
   options
       ->addOption("--rocksdb.exclusive-writes",
                   "if true, writes are exclusive. This allows the RocksDB engine to mimic "
@@ -468,7 +466,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   "but will inhibit concurrent write operations",
                   new BooleanParameter(&_exclusiveWrites),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30504);
+      .setIntroducedIn(30504).setDeprecatedIn(30800);
 
   //////////////////////////////////////////////////////////////////////////////
   /// add column family-specific options now
@@ -480,7 +478,8 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       RocksDBColumnFamilyManager::Family::EdgeIndex,
       RocksDBColumnFamilyManager::Family::VPackIndex,
       RocksDBColumnFamilyManager::Family::GeoIndex,
-      RocksDBColumnFamilyManager::Family::FulltextIndex};
+      RocksDBColumnFamilyManager::Family::FulltextIndex,
+      RocksDBColumnFamilyManager::Family::ReplicatedLogs};
 
   auto addMaxWriteBufferNumberCf = [this, &options](RocksDBColumnFamilyManager::Family family) {
     std::string name =
@@ -556,16 +555,18 @@ void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
       "--rocksdb.min-write-buffer-number-to-merge");
  
   // limit memory usage of agent instances, if not otherwise configured
-  AgencyFeature& feature = server().getEnabledFeature<AgencyFeature>();
-  if (feature.activated()) {
-    // if we are an agency instance...
-    if (!options->processingResult().touched("--rocksdb.block-cache-size")) {
-      // restrict block cache size to 1 GB if not set explicitly
-      _blockCacheSize = std::min<uint64_t>(_blockCacheSize, uint64_t(1) << 30);
-    }
-    if (!options->processingResult().touched("--rocksdb.total-write-buffer-size")) {
-      // restrict total write buffer size to 512 MB if not set explicitly
-      _totalWriteBufferSize = std::min<uint64_t>(_totalWriteBufferSize, uint64_t(512) << 20);
+  if (server().hasFeature<AgencyFeature>()) {
+    AgencyFeature& feature = server().getFeature<AgencyFeature>();
+    if (feature.activated()) {
+      // if we are an agency instance...
+      if (!options->processingResult().touched("--rocksdb.block-cache-size")) {
+        // restrict block cache size to 1 GB if not set explicitly
+        _blockCacheSize = std::min<uint64_t>(_blockCacheSize, uint64_t(1) << 30);
+      }
+      if (!options->processingResult().touched("--rocksdb.total-write-buffer-size")) {
+        // restrict total write buffer size to 512 MB if not set explicitly
+        _totalWriteBufferSize = std::min<uint64_t>(_totalWriteBufferSize, uint64_t(512) << 20);
+      }
     }
   }
 }
@@ -634,7 +635,9 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::columnFamilyOptions(
     case RocksDBColumnFamilyManager::Family::Documents:
     case RocksDBColumnFamilyManager::Family::PrimaryIndex:
     case RocksDBColumnFamilyManager::Family::GeoIndex:
-    case RocksDBColumnFamilyManager::Family::FulltextIndex: {
+    case RocksDBColumnFamilyManager::Family::FulltextIndex:
+    case RocksDBColumnFamilyManager::Family::ZkdIndex:
+    case RocksDBColumnFamilyManager::Family::ReplicatedLogs: {
       // fixed 8 byte object id prefix
       options.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
           rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));

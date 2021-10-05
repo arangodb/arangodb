@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_IDENTIFIERS_SERVER_ID_H
-#define ARANGOD_VOCBASE_IDENTIFIERS_SERVER_ID_H 1
+#pragma once
 
 #include "Basics/Identifier.h"
 
@@ -51,4 +50,3 @@ static_assert(sizeof(ServerId) == sizeof(ServerId::BaseType),
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::ServerId)
 
-#endif

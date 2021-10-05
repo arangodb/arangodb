@@ -31,14 +31,15 @@
 #include <algorithm>
 #include <cstring>
 #include <map>
-#include <unordered_map>
+
+#include <absl/container/node_hash_map.h>
 
 #if defined (__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-  #include <boost/locale/generator.hpp>
+#include <boost/locale/generator.hpp>
 
 #if defined (__GNUC__)
   #pragma GCC diagnostic pop
@@ -72,7 +73,7 @@ namespace std {
 } // std
 
 namespace {
-
+using namespace irs;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of internal buffers, arbitrary size
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,32 +102,42 @@ std::string system_encoding() {
 /// @brief a thread-safe pool of ICU converters for a given encoding
 ///        may hold nullptr on ICU converter instantiation failure
 ////////////////////////////////////////////////////////////////////////////////
-class converter_pool: private irs::util::noncopyable {
+class converter_pool : private irs::util::noncopyable {
  public:
   using ptr = std::shared_ptr<UConverter>;
 
   converter_pool(std::string&& encoding)
-    : encoding_(std::move(encoding)), pool_(POOL_SIZE) {}
+    : encoding_(std::move(encoding)),
+      pool_(POOL_SIZE) {
+  }
+
   ptr get() { return pool_.emplace(encoding_).release(); }
+
   const std::string& encoding() const noexcept { return encoding_; }
 
  private:
-  struct builder {
-    using ptr = std::shared_ptr<UConverter>;
+  struct converter_factory {
+    struct ucnv_deleter {
+      void operator()(UConverter* p) const noexcept {
+        ucnv_close(p);
+      }
+    };
+
+    using ptr = std::unique_ptr<UConverter, ucnv_deleter>;
 
     static ptr make(const std::string& encoding) {
       UErrorCode status = U_ZERO_ERROR;
-      ptr value(
-        ucnv_open(encoding.c_str(), &status),
-        [](UConverter* ptr)->void{ ucnv_close(ptr); }
-      );
 
-      return U_SUCCESS(status) ? std::move(value) : nullptr;
+      ptr value{ucnv_open(encoding.c_str(), &status)};
+
+      return U_SUCCESS(status)
+        ? std::move(value)
+        : nullptr;
     }
   };
 
   std::string encoding_;
-  irs::unbounded_object_pool_volatile<builder> pool_;
+  irs::unbounded_object_pool_volatile<converter_factory> pool_;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,23 +145,26 @@ class converter_pool: private irs::util::noncopyable {
 /// @@return a converter for the specified encoding
 ////////////////////////////////////////////////////////////////////////////////
 converter_pool& get_converter(const irs::string_ref& encoding) {
-  static auto generator = [](
-      const irs::hashed_string_ref& key,
-      const converter_pool& pool
-  ) noexcept->irs::hashed_string_ref {
-    // reuse hash but point ref at value in pool
-    return irs::hashed_string_ref(key.hash(), pool.encoding());
-  };
   static std::mutex mutex;
-  static std::unordered_map<irs::hashed_string_ref, converter_pool> encodings;
+  static absl::node_hash_map<irs::hashed_string_ref, converter_pool> encodings;
+
   auto key = encoding;
   std::string tmp;
 
   // use system encoding if encoding.null()
-  if (key.null()) {
+  if (encoding.null()) {
     tmp = system_encoding();
     key = tmp;
+  } else {
+    tmp = static_cast<std::string>(key);
   }
+
+  auto generator = [](
+      const irs::hashed_string_ref& key,
+      const converter_pool& pool) noexcept->irs::hashed_string_ref {
+    // reuse hash but point ref at value in pool
+    return irs::hashed_string_ref(key.hash(), pool.encoding());
+  };
 
   auto lock = irs::make_lock_guard(mutex);
 
@@ -158,8 +172,7 @@ converter_pool& get_converter(const irs::string_ref& encoding) {
     encodings,
     generator,
     irs::make_hashed_ref(key, std::hash<irs::string_ref>()),
-    key
-  ).first->second;
+    std::move(tmp)).first->second;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +287,7 @@ int codecvtu_base<InternType>::do_length(
 
 template<typename InternType>
 std::codecvt_base::result codecvtu_base<InternType>::do_unshift(
-    state_type& state,
+    state_type&,
     extern_type* to,
     extern_type* to_end,
     extern_type*& to_next
@@ -373,7 +386,7 @@ int codecvt16_facet::do_encoding() const noexcept {
 }
 
 std::codecvt_base::result codecvt16_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -446,7 +459,7 @@ int codecvt16_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvt16_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -594,7 +607,7 @@ int codecvt32_facet::do_encoding() const noexcept {
 }
 
 std::codecvt_base::result codecvt32_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -742,7 +755,7 @@ int codecvt32_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvt32_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -928,7 +941,7 @@ bool codecvt8u_facet::append(
 }
 
 std::codecvt_base::result codecvt8u_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -1074,7 +1087,7 @@ int codecvt8u_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvt8u_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -1448,7 +1461,7 @@ int codecvt_base<InternType>::do_length(
 
 template<typename InternType>
 std::codecvt_base::result codecvt_base<InternType>::do_unshift(
-    state_type& state,
+    state_type&,
     extern_type* to,
     extern_type* to_end,
     extern_type*& to_next
@@ -1597,7 +1610,7 @@ int codecvt8_facet::do_encoding() const noexcept {
 }
 
 std::codecvt_base::result codecvt8_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -1723,7 +1736,7 @@ int codecvt8_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvt8_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -2024,7 +2037,7 @@ int codecvtw_facet::do_encoding() const noexcept {
 }
 
 std::codecvt_base::result codecvtw_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -2223,7 +2236,7 @@ int codecvtw_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvtw_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -2753,7 +2766,7 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
     return do_put_int_zero(out, str,fill); // optimization for '0'
   }
 
-  if ((unsigned long long)irs::integer_traits<int64_t>::const_max < value) {
+  if ((unsigned long long)std::numeric_limits<int64_t>::max() < value) {
     throw irs::io_error(
       "value too large while converting data from UTF8 in num_put_facet::do_put(...)"
     );
@@ -3064,7 +3077,7 @@ template<typename T>
 
   // strip leading/trailing zero half-bytes
   {
-    static_assert(std::numeric_limits<size_t>::digits < irs::integer_traits<int>::const_max, "std::numeric_limits<size_t>::digits >= std::numeric_limits<int>::max()");
+    static_assert(std::numeric_limits<size_t>::digits < std::numeric_limits<int>::max(), "std::numeric_limits<size_t>::digits >= std::numeric_limits<int>::max()");
     auto clz = int(irs::math::math_traits<size_t>::clz(mantissa_i));
     auto ctz = int(irs::math::math_traits<size_t>::ctz(mantissa_i));
 
@@ -3194,7 +3207,7 @@ template<typename T>
 
     len -= hi || full_width ? 0 : 1;
 
-    for (size_t i = lpad < len ? 0 : lpad - len; i; --i) {
+    for (size_t j = lpad < len ? 0 : lpad - len; j; --j) {
       *out++ = fill;
       ++size;
     }
@@ -3477,7 +3490,7 @@ locale_info_facet::locale_info_facet(const irs::string_ref& name)
     data += length;
 
     // normalize encoding and compare to 'utf8' (data already in lower case)
-    std::string buf = encoding_;
+    std::string buf = static_cast<std::string>(encoding_);
     auto* str = &buf[0];
     auto end = std::remove_if(
       str, str + buf.size(),
@@ -3725,6 +3738,16 @@ const irs::string_ref& language(std::locale const& locale) {
   return std::use_facet<locale_info_facet>(*loc).language();
 }
 
+const irs::string_ref& variant(std::locale const& locale) {
+  auto* loc = &locale;
+
+  if (!std::has_facet<locale_info_facet>(*loc)) {
+    loc = &get_locale(loc->name());
+  }
+
+  return std::use_facet<locale_info_facet>(*loc).variant();
+}
+
 bool is_utf8(std::locale const& locale) {
   auto* loc = &locale;
 
@@ -3738,14 +3761,13 @@ bool is_utf8(std::locale const& locale) {
 std::locale locale(
     irs::string_ref const& name,
     irs::string_ref const& encodingOverride /*= irs::string_ref::NIL*/,
-    bool forceUnicodeSystem /*= true*/
-) {
+    bool forceUnicodeSystem /*= true*/) {
   if (encodingOverride.null()) {
     return get_locale(name, forceUnicodeSystem);
   }
 
   locale_info_facet info(name);
-  std::string locale_name = info.language();
+  std::string locale_name = static_cast<std::string>(info.language());
 
   if (!info.country().empty()) {
     locale_name.append(1, '_').append(info.country());
@@ -3760,6 +3782,24 @@ std::locale locale(
   }
 
   return get_locale(locale_name, forceUnicodeSystem);
+}
+
+bool icu_locale(const string_ref& name, std::locale& locale) {
+  try {
+    // true == convert to unicode, required for ICU
+    locale = locale_utils::locale(name, string_ref::NIL, true);
+
+    // check if ICU supports locale
+    auto icu_locale =
+        icu::Locale(std::string(locale_utils::language(locale)).c_str(),
+                    std::string(locale_utils::country(locale)).c_str());
+    return !icu_locale.isBogus();
+  } catch (...) {
+    IR_FRMT_ERROR(
+      "Caught error while constructing a unicode locale from name: %s",
+      name.c_str());
+  }
+  return false;
 }
 
 const std::string& name(std::locale const& locale) {

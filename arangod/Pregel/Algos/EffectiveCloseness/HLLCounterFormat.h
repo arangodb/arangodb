@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_EC_HLLCounter_H
-#define ARANGODB_PREGEL_ALGOS_EC_HLLCounter_H 1
+#pragma once
 
 #include "Pregel/CommonFormats.h"
 #include "Pregel/Graph.h"
@@ -60,4 +59,3 @@ struct HLLCounterCombiner : MessageCombiner<HLLCounter> {
 }  // namespace pregel
 }  // namespace arangodb
 
-#endif

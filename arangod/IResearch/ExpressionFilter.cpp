@@ -32,6 +32,7 @@
 #include "search/all_filter.hpp"
 #include "search/all_iterator.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/memory.hpp"
 
 #include <type_traits>
 

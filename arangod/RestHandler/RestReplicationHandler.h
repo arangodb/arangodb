@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -246,12 +245,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandHoldReadLockCollection();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief check if we are holding a read lock on a collection
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandCheckHoldReadLockCollection();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief cancel holding a read lock on a collection
   //////////////////////////////////////////////////////////////////////////////
 
@@ -417,7 +410,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief creates a collection, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int createCollection(VPackSlice, arangodb::LogicalCollection**);
+  ErrorCode createCollection(VPackSlice slice);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -547,7 +540,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error, if the lock has expired.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<bool> isLockHeld(TransactionId tid) const;
+  Result isLockHeld(TransactionId tid) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compute a local checksum for the given collection
@@ -574,4 +567,3 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result testPermissions();
 };
 }  // namespace arangodb
-#endif

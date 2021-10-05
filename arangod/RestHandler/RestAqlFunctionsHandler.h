@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_AQL_FUNCTIONS_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_AQL_FUNCTIONS_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -45,4 +44,3 @@ class RestAqlFunctionsHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

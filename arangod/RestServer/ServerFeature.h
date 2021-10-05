@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef REST_SERVER_SERVER_FEATURE_H
-#define REST_SERVER_SERVER_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/OperationMode.h"
@@ -80,4 +79,3 @@ class ServerFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

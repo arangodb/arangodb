@@ -36,6 +36,8 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "ExecutorTestHelper.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Context.h"
@@ -60,8 +62,8 @@ class DistinctCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<std::tuple<DistinctCollectSplitType>> {
  protected:
   ExecutionState state;
-  arangodb::ResourceMonitor monitor;
-  // arangodb::transaction::Methods* trx;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
 
   RegIdSet readableInputRegisters = RegIdSet{0};
   RegIdSet writeableOutputRegisters = RegIdSet{1};

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SYSTEM__FUNCTIONS_H
-#define ARANGODB_BASICS_SYSTEM__FUNCTIONS_H 1
+#pragma once
 
 #include <string>
 
@@ -51,7 +50,7 @@ void TRI_gmtime(time_t, struct tm*);
 time_t TRI_timegm(struct tm*);
 
 // seconds with microsecond resolution
-double TRI_microtime();
+double TRI_microtime() noexcept;
 
 namespace arangodb {
 namespace utilities {
@@ -62,4 +61,3 @@ std::string hostname();
 }  // namespace utilities
 }  // namespace arangodb
 
-#endif

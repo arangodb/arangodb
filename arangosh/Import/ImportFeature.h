@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IMPORT_IMPORT_FEATURE_H
-#define ARANGODB_IMPORT_IMPORT_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Shell/ClientFeature.h"
@@ -48,7 +47,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   void start() override;
 
  private:
-  int tryCreateDatabase(ClientFeature&, std::string const& name);
+  ErrorCode tryCreateDatabase(ClientFeature& client, std::string const& name);
 
   std::string _filename;
   bool _useBackslash;
@@ -63,7 +62,9 @@ class ImportFeature final : public application_features::ApplicationFeature,
   bool _createDatabase;
   std::string _createCollectionType;
   std::string _typeImport;
+  std::string _headersFile;
   std::vector<std::string> _translations;
+  std::vector<std::string> _datatypes;
   std::vector<std::string> _removeAttributes;
   bool _overwrite;
   std::string _quote;
@@ -79,4 +80,3 @@ class ImportFeature final : public application_features::ApplicationFeature,
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_RANDOM_UNIFORM_CHARACTER_H
-#define ARANGODB_RANDOM_UNIFORM_CHARACTER_H 1
+#pragma once
 
 #include <cstdlib>
 #include <string>
@@ -51,4 +50,3 @@ class UniformCharacter {
 };
 }  // namespace arangodb
 
-#endif

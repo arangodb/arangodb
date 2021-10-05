@@ -1,0 +1,14 @@
+name: arangodb_replication2_replicated_log_started_following_total
+introducedIn: "3.9.0"
+help: |
+  Number of times started following a replicated log.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Number of times this server started following a replicated log
+  since server start.

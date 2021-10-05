@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_EDGEDOCUMENTTOKEN_H
-#define ARANGOD_GRAPH_EDGEDOCUMENTTOKEN_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Cluster/ServerState.h"
@@ -119,12 +118,15 @@ struct EdgeDocumentToken {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_type == TokenType::COORDINATOR);
 #endif
-    return velocypack::Slice(_data.vpack).binaryEquals(velocypack::Slice(other._data.vpack));
+    return velocypack::Slice(_data.vpack)
+        .binaryEquals(velocypack::Slice(other._data.vpack));
   }
 
   bool equalsLocal(EdgeDocumentToken const& other) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_type == TokenType::LOCAL);
+    // For local the cid and localDocumentId have illegal values on NONE
+    // and can be compared with real values
+    TRI_ASSERT(_type == TokenType::LOCAL || _type == TokenType::NONE);
 #endif
     return _data.document.cid == other.cid() &&
            _data.document.localDocumentId == other.localDocumentId();
@@ -135,6 +137,14 @@ struct EdgeDocumentToken {
       return equalsCoordinator(other);
     }
     return equalsLocal(other);
+  }
+
+  bool isValid() const {
+    if (ServerState::instance()->isCoordinator()) {
+      return _data.vpack != nullptr;
+    }
+    return _data.document.cid != DataSourceId::none() &&
+           _data.document.localDocumentId != LocalDocumentId::none();
   }
 
   size_t hash() const {
@@ -207,4 +217,3 @@ struct equal_to<arangodb::graph::EdgeDocumentToken> {
   }
 };
 }  // namespace std
-#endif

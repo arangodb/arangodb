@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_SYNCER_H
-#define ARANGOD_REPLICATION_SYNCER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -38,8 +37,6 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace httpclient {
-class GeneralClientConnection;
-class SimpleHttpClient;
 class SimpleHttpResult;
 }  // namespace httpclient
 
@@ -92,7 +89,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     bool jobPosted();
 
     /// @brief notifies that a job was done
-    void jobDone();
+    void jobDone() noexcept;
 
     /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
     bool hasJobInFlight() const noexcept;
@@ -241,4 +238,3 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
 }  // namespace arangodb
 
-#endif

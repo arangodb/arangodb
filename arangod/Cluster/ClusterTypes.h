@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTERTYPES_H
-#define ARANGOD_CLUSTER_CLUSTERTYPES_H
+#pragma once
 
 #include <limits>
 #include <string>
@@ -45,38 +44,39 @@ typedef std::string ServerShortName;  // Short name of a server
 
 class RebootId {
  public:
+  explicit constexpr RebootId() noexcept = delete;
   explicit constexpr RebootId(uint64_t rebootId) noexcept : _value(rebootId) {}
-  uint64_t value() const noexcept { return _value; }
+  [[nodiscard]] uint64_t value() const noexcept { return _value; }
 
-  bool initialized() const noexcept { return value() != 0; }
+  [[nodiscard]] bool initialized() const noexcept { return value() != 0; }
 
-  bool operator==(RebootId other) const noexcept {
+  [[nodiscard]] bool operator==(RebootId other) const noexcept {
     return value() == other.value();
   }
-  bool operator!=(RebootId other) const noexcept {
+  [[nodiscard]] bool operator!=(RebootId other) const noexcept {
     return value() != other.value();
   }
-  bool operator<(RebootId other) const noexcept {
+  [[nodiscard]] bool operator<(RebootId other) const noexcept {
     return value() < other.value();
   }
-  bool operator>(RebootId other) const noexcept {
+  [[nodiscard]] bool operator>(RebootId other) const noexcept {
     return value() > other.value();
   }
-  bool operator<=(RebootId other) const noexcept {
+  [[nodiscard]] bool operator<=(RebootId other) const noexcept {
     return value() <= other.value();
   }
-  bool operator>=(RebootId other) const noexcept {
+  [[nodiscard]] bool operator>=(RebootId other) const noexcept {
     return value() >= other.value();
   }
 
-  static constexpr RebootId max() noexcept {
+  [[nodiscard]] static constexpr RebootId max() noexcept {
     return RebootId{std::numeric_limits<decltype(_value)>::max()};
   }
   
   std::ostream& print(std::ostream& o) const;
 
  private:
-  uint64_t _value;
+  uint64_t _value{};
 };
 
 namespace velocypack {
@@ -166,7 +166,7 @@ struct QueryAnalyzerRevisions {
   /// @brief Gets analyzers revision to be used with specified database
   /// @param vocbase database name
   /// @return analyzers revision
-  AnalyzersRevision::Revision getVocbaseRevision(DatabaseID const& vocbase) const noexcept;
+  AnalyzersRevision::Revision getVocbaseRevision(std::string_view vocbase) const noexcept;
 
   static QueryAnalyzerRevisions QUERY_LATEST;
 
@@ -175,9 +175,15 @@ struct QueryAnalyzerRevisions {
   AnalyzersRevision::Revision systemDbRevision{ AnalyzersRevision::MIN};
 };
 
-}  // namespace arangodb
-
 std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r);
 std::ostream& operator<<(std::ostream& o, arangodb::QueryAnalyzerRevisions const& r);
 
-#endif  // ARANGOD_CLUSTER_CLUSTERTYPES_H
+template<>
+struct velocypack::Extractor<arangodb::RebootId> {
+  static auto extract(velocypack::Slice slice) -> RebootId {
+    return RebootId{slice.getNumericValue<std::size_t>()};
+  }
+};
+
+}  // namespace arangodb
+

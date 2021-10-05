@@ -26,6 +26,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRule.h"
+#include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryOptions.h"
 #include "Basics/system-functions.h"
@@ -209,17 +210,7 @@ void Optimizer::addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
   }
 }
 
-// @brief the actual optimization
-void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
-                            QueryOptions const& queryOptions, bool estimateAllPlans) {
-  _runOnlyRequiredRules = false;
-  ExecutionPlan* initialPlan = plan.get();
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto checker = PlanChecker{*plan};
-  plan->root()->walk(checker);
-#endif // ARANGODB_ENABLE_MAINTAINER_MODE
-
+void Optimizer::initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions) {
   if (ADB_LIKELY(_rules.empty())) {
     auto const& rules = OptimizerRulesFeature::rules();
     _rules.reserve(rules.size());
@@ -233,10 +224,36 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
       // insert position of rule inside OptimizerRulesFeature::_rules
       _rules.emplace_back(++index);
       if (rule.isDisabledByDefault()) {
-        disableRule(initialPlan, rule.level);
+        disableRule(plan, rule.level);
       }
     }
   }
+  
+  // enable/disable rules as per user request
+  for (auto const& name : queryOptions.optimizerRules) {
+    if (name.empty()) {
+      continue;
+    }
+    if (name[0] == '-') {
+      disableRule(plan, arangodb::velocypack::StringRef(name));
+    } else {
+      enableRule(plan, arangodb::velocypack::StringRef(name));
+    }
+  }
+}
+
+// @brief the actual optimization
+void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
+                            QueryOptions const& queryOptions, bool estimateAllPlans) {
+  _runOnlyRequiredRules = false;
+  ExecutionPlan* initialPlan = plan.get();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto checker = PlanChecker{*plan};
+  plan->root()->walk(checker);
+#endif // ARANGODB_ENABLE_MAINTAINER_MODE
+
+  initializeRules(initialPlan, queryOptions);
 
   TRI_ASSERT(!_rules.empty());
 
@@ -244,17 +261,6 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   _plans.clear();
   _plans.push_back(std::move(plan), _rules.begin());
 
-  // enable/disable rules as per user request
-  for (auto const& name : queryOptions.optimizerRules) {
-    if (name.empty()) {
-      continue;
-    }
-    if (name[0] == '-') {
-      disableRule(initialPlan, arangodb::velocypack::StringRef(name));
-    } else {
-      enableRule(initialPlan, arangodb::velocypack::StringRef(name));
-    }
-  }
   _newPlans.clear();
 
   while (true) {
@@ -358,21 +364,32 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
   TRI_ASSERT(_plans.size() >= 1);
 
-  // finalize plans
+  finalizePlans();
+  
+  estimateCosts(queryOptions, estimateAllPlans);
+  
+  LOG_TOPIC("5b5f6", TRACE, Logger::FIXME)
+      << "optimization ends with " << _plans.size() << " plans";
+}
+
+void Optimizer::finalizePlans() {
   for (auto& plan : _plans.list) {
+    insertDistributeInputCalculation(*plan.first);
+    enableReadOwnWritesForUpsertSubquery(*plan.first);
+    activateCallstackSplit(*plan.first);
+    if (plan.first->isAsyncPrefetchEnabled()) {
+      enableAsyncPrefetching(*plan.first);
+    }
+    
     plan.first->findVarUsage();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_IF_FAILURE("Optimizer::allowOldSubqueries") {
-      // intentionally let old subqueries pass. this is used only in testing and can be removed in 3.9
-      continue;
-    }
-
     NoSubqueryChecker checker;
     plan.first->root()->walk(checker);
 #endif // ARANGODB_ENABLE_MAINTAINER_MODE
   }
+}
 
-  // do cost estimation
+void Optimizer::estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans) {
   if (estimateAllPlans || _plans.size() > 1 || queryOptions.profile >= ProfileLevel::Blocks) {
     // if profiling is turned on, we must do the cost estimation here
     // because the cost estimation must be done while the transaction
@@ -392,9 +409,6 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
                 });
     }
   }
-
-  LOG_TOPIC("5b5f6", TRACE, Logger::FIXME)
-      << "optimization ends with " << _plans.size() << " plans";
 }
 
 void Optimizer::disableRule(ExecutionPlan* plan, int level) {

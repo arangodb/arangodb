@@ -24,8 +24,9 @@
 #include "AqlExecuteResult.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Basics/StaticStrings.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ResultT.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
@@ -33,6 +34,8 @@
 #include <velocypack/Iterator.h>
 
 #include <map>
+#include <string_view>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -47,7 +50,7 @@ auto getStringView(velocypack::Slice slice) -> std::string_view {
 
 AqlExecuteResult::AqlExecuteResult(ExecutionState state, SkipResult skipped,
                                    SharedAqlItemBlockPtr&& block)
-    : _state(state), _skipped(skipped), _block(std::move(block)) {
+    : _state(state), _skipped(std::move(skipped)), _block(std::move(block)) {
   // Make sure we only produce a valid response
   // The block should have checked as well.
   // We must return skipped and/or data when reporting HASMORE

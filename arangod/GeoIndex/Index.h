@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GEO_INDEX_H
-#define ARANGOD_GEO_INDEX_H 1
+#pragma once
 
 #include <s2/s2cell_id.h>
 #include <s2/s2latlng.h>
@@ -105,4 +104,3 @@ struct Index {
 }  // namespace geo_index
 }  // namespace arangodb
 
-#endif

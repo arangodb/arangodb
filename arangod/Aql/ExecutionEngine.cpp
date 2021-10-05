@@ -41,38 +41,16 @@
 #include "Aql/SkipResult.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/ScopeGuard.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
+#include "VocBase/Methods/Queries.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
-
-// @brief Local struct to create the
-// information required to build traverser engines
-// on DB servers.
-struct TraverserEngineShardLists {
-  explicit TraverserEngineShardLists(size_t length) {
-    // Make sure they all have a fixed size.
-    edgeCollections.resize(length);
-  }
-
-  ~TraverserEngineShardLists() = default;
-
-  // Mapping for edge collections to shardIds.
-  // We have to retain the ordering of edge collections, all
-  // vectors of these in one run need to have identical size.
-  // This is because the conditions to query those edges have the
-  // same ordering.
-  std::vector<std::vector<ShardID>> edgeCollections;
-
-  // Mapping for vertexCollections to shardIds.
-  std::unordered_map<std::string, std::vector<ShardID>> vertexCollections;
-
-#ifdef USE_ENTERPRISE
-  std::set<ShardID> inaccessibleShards;
-#endif
-};
 
 /**
  * @brief Create AQL blocks from a list of ExectionNodes
@@ -178,7 +156,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
     // put it into our cache:
     cache.try_emplace(en, eb);
   }
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 /// @brief create the engine
@@ -194,7 +172,7 @@ ExecutionEngine::ExecutionEngine(EngineId eId,
                        : std::make_shared<SharedQueryState>(query.vocbase().server())),
       _blocks(),
       _root(nullptr),
-      _resultRegister(0),
+      _resultRegister(RegisterId::maxRegisterId),
       _initializeCursorCalled(false) {
   TRI_ASSERT(_sharedState != nullptr);
   _blocks.reserve(8);
@@ -490,12 +468,46 @@ struct DistributedQueryInstanciator final
     TRI_ASSERT(snippets.size() > 0);
     TRI_ASSERT(snippets[0]->engineId() == 0);
     
+   
+    {
+      // install reboot trackers for all participating DB servers.
+      // we do this so we have a quick shutdown of queries if one of the participating DB servers fails.
+      // while it is not necessary for correctness to fail quickly, it can be beneficial
+      // to avoid carrying out a lot of operations on other servers only to realize at
+      // query end that the query cannot be committed everywhere.
+      auto engine = snippets[0].get();
+      
+      ClusterInfo& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+      engine->rebootTrackers().reserve(srvrQryId.size());
+      for (auto const& [server, queryId, rebootId] : srvrQryId) {
+        TRI_ASSERT(server.substr(0, 7) != "server:");
+        std::string comment = std::string("AQL query from coordinator ") + ServerState::instance()->getId();
+        
+        std::function<void(void)> f = [srvr = server, id = _query.id(), &vocbase = _query.vocbase()]() {
+          LOG_TOPIC("d2554", INFO, Logger::QUERIES) 
+            << "killing query " << id << " because participating DB server "
+            << srvr << " is unavailable";
+          try {
+            methods::Queries::kill(vocbase, id, false);
+          } catch (...) {
+            // it does not really matter if this fails.
+            // if the coordinator contacts the failed DB server next time, it will
+            // realize it has failed.
+          }
+        };
+
+        engine->rebootTrackers().emplace_back(
+          ci.rebootTracker().callMeOnChange(cluster::RebootTracker::PeerState(server, rebootId),
+                                            std::move(f), std::move(comment)));
+      }
+    }
+
     bool knowsAllQueryIds = snippetIds.empty() || !srvrQryId.empty();
     TRI_ASSERT(knowsAllQueryIds);
-    for (auto const& [serverDst, queryId] : srvrQryId) {
+    for (auto const& [server, queryId, rebootId] : srvrQryId) {
       if (queryId == 0) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       std::string("no query ID known for ") + serverDst);
+                                       std::string("no query ID known for ") + server);
       }
     }
     
@@ -516,10 +528,9 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlIte
     inputRow = InputAqlItemRow{std::move(items), pos};
   }
   auto res = _root->initializeCursor(inputRow);
-  if (res.first == ExecutionState::WAITING) {
-    return res;
+  if (res.first != ExecutionState::WAITING) {
+    _initializeCursorCalled = true;
   }
-  _initializeCursorCalled = true;
   return res;
 }
 
@@ -528,7 +539,17 @@ auto ExecutionEngine::execute(AqlCallStack const& stack)
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+
+  TRI_IF_FAILURE("ExecutionEngine::directKillBeforeAQLQueryExecute") {
+    _query.debugKillQuery();
+  }
+
   auto const res = _root->execute(stack);
+
+  TRI_IF_FAILURE("ExecutionEngine::directKillAfterAQLQueryExecute") {
+    _query.debugKillQuery();
+  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (std::get<ExecutionState>(res) == ExecutionState::WAITING) {
     auto const skipped = std::get<SkipResult>(res);
@@ -579,7 +600,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
   // we use a backwards compatible stack here.
   // This will always continue with a fetch-all on underlying subqueries (if any)
   AqlCallStack compatibilityStack{AqlCallList{AqlCall::SimulateGetSome(atMost)}};
-  auto const [state, skipped, block] = _root->execute(std::move(compatibilityStack));
+  auto const [state, skipped, block] = execute(std::move(compatibilityStack));
   // We cannot trigger a skip operation from here
   TRI_ASSERT(skipped.nothingSkipped());
   return {state, std::move(block)};
@@ -599,7 +620,7 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
   // we use a backwards compatible stack here.
   // This will always continue with a fetch-all on underlying subqueries (if any)
   AqlCallStack compatibilityStack{AqlCallList{AqlCall::SimulateSkipSome(atMost)}};
-  auto const [state, skipped, block] = _root->execute(std::move(compatibilityStack));
+  auto const [state, skipped, block] = execute(std::move(compatibilityStack));
   // We cannot be triggered within a subquery from earlier versions.
   // Also we cannot produce anything ourselfes here.
   TRI_ASSERT(block == nullptr);
@@ -628,7 +649,9 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
   bool const pushToSingleServer = false;
 #endif
   
-  AqlItemBlockManager& mgr = query.itemBlockManager();
+  auto& mgr = query.itemBlockManager();
+  initializeConstValueBlock(plan, mgr);
+
   aql::SnippetList& snippets = query.snippets();
   TRI_ASSERT(snippets.empty() || ServerState::instance()->isClusterRole(role));
 
@@ -693,14 +716,16 @@ void arangodb::aql::ExecutionEngine::setupEngineRoot(ExecutionBlock& root) {
     bool const returnInheritedResults =
       ExecutionNode::castTo<ReturnNode const*>(root.getPlanNode())->returnInheritedResults();
     if (returnInheritedResults) {
-      auto returnNode =
+      auto executor =
         dynamic_cast<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>*>(
           &root);
-      TRI_ASSERT(returnNode != nullptr);
-      resultRegister(returnNode->getOutputRegisterId());
+      TRI_ASSERT(executor != nullptr);
+      resultRegister(executor->getOutputRegisterId());
     } else {
-      auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor>*>(&root);
-      TRI_ASSERT(returnNode != nullptr);
+      auto executor = dynamic_cast<ExecutionBlockImpl<ReturnExecutor>*>(&root);
+      TRI_ASSERT(executor != nullptr);
+      // the ReturnExecutor always writes its output into register 0
+      resultRegister(RegisterId(0));
     }
   }
 
@@ -710,11 +735,34 @@ void arangodb::aql::ExecutionEngine::setupEngineRoot(ExecutionBlock& root) {
 void arangodb::aql::ExecutionEngine::initFromPlanForCalculation(ExecutionPlan& plan) {
   plan.findVarUsage();
   plan.planRegisters(ExplainRegisterPlan::No);
+  initializeConstValueBlock(plan, _itemBlockManager);
   //plan.findCollectionAccessVariables();
   SingleServerQueryInstanciator inst(*this);
   plan.root()->walk(inst);
-  TRI_ASSERT(inst.root)
+  TRI_ASSERT(inst.root);
   setupEngineRoot(*inst.root);
+}
+
+void ExecutionEngine::initializeConstValueBlock(ExecutionPlan& plan, AqlItemBlockManager& mgr) {
+  auto registerPlan = plan.root()->getRegisterPlan();
+  auto nrConstRegs = registerPlan->nrConstRegs;
+  if (nrConstRegs > 0 && mgr.getConstValueBlock() == nullptr) {
+    mgr.initializeConstValueBlock(nrConstRegs);
+    plan.getAst()->variables()->visit([plan = plan.root()->getRegisterPlan(),
+                                       block = mgr.getConstValueBlock()](Variable* var) {
+      if (var->type() == Variable::Type::Const) {
+        RegisterId reg = plan->variableToOptionalRegisterId(var->id);
+        if (reg.value() != RegisterId::maxRegisterId) {
+          TRI_ASSERT(reg.isConstRegister());
+          AqlValue value = var->constantValue();
+          TRI_ASSERT(!value.isNone());
+          // the constValueBlock takes ownership, so we have to create a copy here.
+          block->emplaceValue(0, reg.value(), AqlValue(value.slice()));
+        }
+      }
+    });
+  }
+  TRI_ASSERT(nrConstRegs == 0 || mgr.getConstValueBlock()->numRegisters() == nrConstRegs);
 }
 
 /// @brief add a block to the engine
@@ -729,7 +777,7 @@ ExecutionBlock* ExecutionEngine::addBlock(std::unique_ptr<ExecutionBlock> block)
 void arangodb::aql::ExecutionEngine::reset() {
   _root = nullptr;
   _blocks.clear();
-  _resultRegister = 0;
+  _resultRegister = RegisterId{RegisterId::maxRegisterId};
   _initializeCursorCalled = false;
   _sharedState.reset();
 }
@@ -772,3 +820,7 @@ bool ExecutionEngine::waitForSatellites(QueryContext& /*query*/, Collection cons
   return true;
 }
 #endif
+  
+std::vector<arangodb::cluster::CallbackGuard>& ExecutionEngine::rebootTrackers() {
+  return _rebootTrackers;
+}

@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SORTED_COLLECT_EXECUTOR_H
-#define ARANGOD_AQL_SORTED_COLLECT_EXECUTOR_H
+#pragma once
 
 #include "Aql/Aggregator.h"
 #include "Aql/AqlValueGroup.h"
@@ -211,4 +210,3 @@ class SortedCollectExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

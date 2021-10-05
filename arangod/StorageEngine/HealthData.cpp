@@ -33,7 +33,7 @@ using namespace arangodb;
 /*static*/ arangodb::HealthData arangodb::HealthData::fromVelocyPack(velocypack::Slice slice) {
   HealthData result;
   if (slice.isObject()) {
-    int code = TRI_ERROR_NO_ERROR;
+    auto code = TRI_ERROR_NO_ERROR;
     std::string message;
 
     if (VPackSlice status = slice.get("status"); status.isString() && status.isEqualString("BAD")) {

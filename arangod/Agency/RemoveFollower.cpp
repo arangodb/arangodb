@@ -50,17 +50,17 @@ RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
 
-  if (tmp_database.second && tmp_collection.second && tmp_shard.second &&
-      tmp_creator.second) {
-    _database = tmp_database.first;
-    _collection = tmp_collection.first;
-    _shard = tmp_shard.first;
-    _creator = tmp_creator.first;
+  if (tmp_database && tmp_collection && tmp_shard &&
+      tmp_creator) {
+    _database = tmp_database.value();
+    _collection = tmp_collection.value();
+    _shard = tmp_shard.value();
+    _creator = tmp_creator.value();
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
     LOG_TOPIC("ac178", ERR, Logger::SUPERVISION) << err.str();
-    finish("", tmp_shard.first, false, err.str());
+    finish("", tmp_shard.value(), false, err.str());
     _status = FAILED;
   }
 }
@@ -134,7 +134,7 @@ bool RemoveFollower::start(bool&) {
     return false;
   }
   Node const& collection =
-      _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection).first;
+      _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection).value().get();
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");
@@ -145,7 +145,7 @@ bool RemoveFollower::start(bool&) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice planned = _snapshot.hasAsSlice(planPath).first;
+  Slice planned = _snapshot.hasAsSlice(planPath).value();
 
   TRI_ASSERT(planned.isArray());
 
@@ -153,11 +153,11 @@ bool RemoveFollower::start(bool&) {
   // `replicationFactor`:
   size_t desiredReplFactor = 1;
   auto replFact = collection.hasAsUInt(StaticStrings::ReplicationFactor);
-  if (replFact.second) {
-    desiredReplFactor = replFact.first;
+  if (replFact) {
+    desiredReplFactor = *replFact;
   } else {
     auto replFact2 = collection.hasAsString(StaticStrings::ReplicationFactor);
-    if (replFact2.second && replFact2.first == StaticStrings::Satellite) {
+    if (replFact2 && *replFact2 == StaticStrings::Satellite) {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
       desiredReplFactor = Job::countGoodOrBadServersInList(_snapshot, available);
@@ -352,7 +352,7 @@ bool RemoveFollower::start(bool&) {
     // in _jb:
     if (_jb == nullptr) {
       auto tmp_todo = _snapshot.hasAsBuilder(toDoPrefix + _jobId, todo);
-      if (!tmp_todo.second) {
+      if (!tmp_todo) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("4fac6", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
@@ -441,8 +441,8 @@ arangodb::Result RemoveFollower::abort(std::string const& reason) {
   Result result;
   // We can assume that the job is in ToDo or not there:
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
-    result =
-        Result(1, "Failed aborting RemoveFollower job beyond pending stage");
+    result = Result(TRI_ERROR_INTERNAL,
+                    "Failed aborting RemoveFollower job beyond pending stage");
     return result;
   }
   // Can now only be TODO or PENDING

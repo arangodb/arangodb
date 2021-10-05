@@ -42,13 +42,10 @@ using namespace arangodb::traverser;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
 
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query)
-    : BaseOptions(query),
-      minDepth(1),
-      maxDepth(1),
-      weightAttribute(""),
-      defaultWeight(1),
-      bidirectional(true),
-      multiThreaded(true) {}
+    : BaseOptions(query), minDepth(1), maxDepth(1), bidirectional(true), multiThreaded(true) {
+  setWeightAttribute("");
+  setDefaultWeight(1);
+}
 
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query, VPackSlice const& info)
     : ShortestPathOptions(query) {
@@ -60,19 +57,16 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query, VPackSlice co
 #endif
   minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
   maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
-  weightAttribute =
-      VelocyPackHelper::getStringValue(info, "weightAttribute", "");
-  defaultWeight =
-      VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
+
+  setWeightAttribute(
+      VelocyPackHelper::getStringValue(info, "weightAttribute", ""));
+  setDefaultWeight(
+      VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1));
 }
 
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
                                          VPackSlice info, VPackSlice collections)
-    : BaseOptions(query, info, collections),
-      weightAttribute(""),
-      defaultWeight(1),
-      bidirectional(true),
-      multiThreaded(true) {
+    : BaseOptions(query, info, collections), bidirectional(true), multiThreaded(true) {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice type = info.get("type");
@@ -81,10 +75,12 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
 #endif
   minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
   maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
-  weightAttribute =
-      VelocyPackHelper::getStringValue(info, "weightAttribute", "");
-  defaultWeight =
-      VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
+
+  setWeightAttribute(
+      VelocyPackHelper::getStringValue(info, "weightAttribute", ""));
+  setDefaultWeight(
+      VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1));
+
   VPackSlice read = info.get("reverseLookupInfos");
   if (!read.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -105,8 +101,8 @@ void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
   result.openObject();
   injectEngineInfo(result);
   result.add("type", VPackValue("shortestPath"));
-  result.add("defaultWeight", VPackValue(defaultWeight));
-  result.add("weightAttribute", VPackValue(weightAttribute));
+  result.add("defaultWeight", VPackValue(getDefaultWeight()));
+  result.add("weightAttribute", VPackValue(getWeightAttribute()));
   result.add(VPackValue("reverseLookupInfos"));
   result.openArray();
   for (auto const& it : _reverseLookupInfos) {
@@ -117,14 +113,16 @@ void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
   result.close();
 }
 
-bool ShortestPathOptions::useWeight() const { return !weightAttribute.empty(); }
+bool ShortestPathOptions::useWeight() const {
+  return !_weightAttribute.empty();
+}
 
 void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
-  builder.add("weightAttribute", VPackValue(weightAttribute));
-  builder.add("defaultWeight", VPackValue(defaultWeight));
+  builder.add("weightAttribute", VPackValue(getWeightAttribute()));
+  builder.add("defaultWeight", VPackValue(getDefaultWeight()));
   builder.add("type", VPackValue("shortestPath"));
   builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
 }
@@ -162,8 +160,13 @@ void ShortestPathOptions::addReverseLookupInfo(aql::ExecutionPlan* plan,
 
 double ShortestPathOptions::weightEdge(VPackSlice edge) const {
   TRI_ASSERT(useWeight());
-  return arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-      edge, weightAttribute.c_str(), defaultWeight);
+  const auto weight = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+      edge, _weightAttribute.c_str(), _defaultWeight);
+  if (weight < 0.) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+  }
+
+  return weight;
 }
 
 std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
@@ -212,6 +215,27 @@ auto ShortestPathOptions::estimateDepth() const noexcept -> uint64_t {
   return 7;
 }
 
+auto ShortestPathOptions::setDefaultWeight(double weight) -> void {
+  if (weight < 0.) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,
+                                   "negative default weight not allowed");
+  }
+  _defaultWeight = weight;
+}
+
+auto ShortestPathOptions::setWeightAttribute(std::string attribute) -> void {
+  _weightAttribute = std::move(attribute);
+}
+
+auto ShortestPathOptions::getDefaultWeight() const -> double {
+  TRI_ASSERT(_defaultWeight > .0);
+  return _defaultWeight;
+}
+
+auto ShortestPathOptions::getWeightAttribute() const& -> std::string {
+  return _weightAttribute;
+}
+
 ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
                                          bool const allowAlreadyBuiltCopy)
     : BaseOptions(other, allowAlreadyBuiltCopy),
@@ -219,11 +243,13 @@ ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
       maxDepth(other.maxDepth),
       start{other.start},
       end{other.end},
-      weightAttribute{other.weightAttribute},
-      defaultWeight{other.defaultWeight},
       bidirectional{other.bidirectional},
       multiThreaded{other.multiThreaded},
-      _reverseLookupInfos{other._reverseLookupInfos} {}
+      _reverseLookupInfos{other._reverseLookupInfos},
+      _weightAttribute{other._weightAttribute},
+      _defaultWeight{other._defaultWeight} {
+  TRI_ASSERT(other._defaultWeight >= 0.);
+}
 
 template void ShortestPathOptions::fetchVerticesCoordinator<std::deque<arangodb::velocypack::StringRef>>(
     std::deque<arangodb::velocypack::StringRef> const& vertexIds);

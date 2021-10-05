@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H
-#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H 1
+#pragma once
 
 // public rocksdb headers
 #include <rocksdb/db.h>
@@ -38,6 +37,8 @@ class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
 
   void OnBackgroundError(rocksdb::BackgroundErrorReason reason, rocksdb::Status* error) override;
 
+  void OnErrorRecoveryCompleted(rocksdb::Status /* old_bg_error */) override;
+
   bool called() const { return _called.load(std::memory_order_relaxed); }
 
  private:
@@ -46,4 +47,3 @@ class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
 
 }  // namespace arangodb
 
-#endif

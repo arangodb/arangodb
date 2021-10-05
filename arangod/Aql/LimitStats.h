@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_LIMIT_STATS_H
-#define ARANGOD_AQL_LIMIT_STATS_H
+#pragma once
 
 #include "ExecutionStats.h"
 
@@ -61,4 +60,3 @@ auto operator==(LimitStats const&, LimitStats const&) noexcept -> bool;
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_LIMIT_STATS_H

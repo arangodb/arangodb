@@ -24,6 +24,7 @@
 
 #include "shared.hpp"
 #include "search/limited_sample_collector.hpp"
+#include "search/states_cache.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
@@ -38,8 +39,7 @@ void visit(
     const term_reader& reader,
     const bytes_ref& prefix,
     Visitor& visitor) {
-  // find term
-  auto terms = reader.iterator();
+  auto terms = reader.iterator(SeekMode::NORMAL);
 
   // seek to prefix
   if (IRS_UNLIKELY(!terms) || SeekResult::END == terms->seek_ge(prefix)) {
@@ -78,7 +78,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
     const bytes_ref& prefix,
     size_t scored_terms_limit) {
   limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
-  multiterm_query::states_t states(index.size());
+  multiterm_query::states_t states(index);
   multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   // iterate over the segments

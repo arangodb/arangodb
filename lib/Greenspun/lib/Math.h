@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GREENSPUN_MATH_H
-#define ARANGODB_GREENSPUN_MATH_H 1
+#pragma once
 
 #include <Greenspun/Interpreter.h>
 
@@ -32,4 +31,3 @@ namespace arangodb::greenspun {
 void RegisterAllMathFunctions(Machine& ctx);
 }  // namespace arangodb::greenspun
 
-#endif

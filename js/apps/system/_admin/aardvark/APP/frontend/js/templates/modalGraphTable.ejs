@@ -53,6 +53,12 @@
               <button style="float: right; margin-bottom: 10px;" graph-id="routeplanner" class="button-success createExampleGraphs">Create</button>
             </td>
           </tr>
+          <tr>
+            <td>Connected Components Graph</td>
+            <td>
+              <button style="float: right; margin-bottom: 10px;" graph-id="connectedComponentsGraph" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
         </tbody>
       </table>
      <p style="width: 100%; text-align: center;">Need help? Visit our <a style="font-weight: bold" href="https://www.arangodb.com/docs/stable/graphs.html#example-graphs" target="_blank">Graph Documentation</a></p>
@@ -63,6 +69,10 @@
 
     <div id="smartGraphInfo" class="infoMessage" style="display: none;">
       <span>SmartGraph Info: Only use non-existent collection names (vertices/edges).</span>
+    </div>
+
+    <div id="smartGraphInfoOneShard" class="infoMessage" style="display: none">
+      <span>Creating SmartGraphs in a OneShard database is discouraged. SmartGraphs only make sense when data are actually distributed, which is exactly opposite to the purpose of the OneShard feature. Using a SmartGraph in a OneShard database may lead to some OneShard query optimizations being disabled.</span>
     </div>
 
     <%

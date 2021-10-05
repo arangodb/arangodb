@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_VOIDIFY_H
-#define ARANGODB_LOGGER_LOG_VOIDIFY_H 1
+#pragma once
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper class for macros
@@ -39,4 +38,3 @@ class LogVoidify {
 
 }  // namespace arangodb
 
-#endif

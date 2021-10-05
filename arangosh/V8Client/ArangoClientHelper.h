@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8CLIENT_ARANGO_CLIENT_HELPER_H
-#define ARANGODB_V8CLIENT_ARANGO_CLIENT_HELPER_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -44,12 +43,11 @@ class ArangoClientHelper {
   static std::string rewriteLocation(void* data, std::string const& location);
 
  public:
-  std::string getHttpErrorMessage(httpclient::SimpleHttpResult*, int* err);
-  bool getArangoIsCluster(int* err);
+  std::string getHttpErrorMessage(httpclient::SimpleHttpResult* result, ErrorCode* err);
+  bool getArangoIsCluster(ErrorCode* err);
 
  protected:
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
 };
 }  // namespace arangodb
 
-#endif

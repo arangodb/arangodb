@@ -22,10 +22,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Wilfried Goesgens
+/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -448,30 +449,33 @@ function dumpTestSuite () {
       assertEqual(1, analyzer.features().length);
       assertEqual("frequency", analyzer.features()[0]);
       
-      assertNull(analyzers.analyzer("custom_dst"));
-    },
+      // enterprise graph tests:
+      "testVertices",
+      "testVerticesAqlRead",
+      "testVerticesAqlInsert",
+      "testOrphans",
+      "testOrphansAqlRead",
+      "testOrphansAqlInsert",
+      "testSatelliteCollections",
+      "testSatelliteGraph",
+      "testHiddenCollectionsOmitted",
+      "testShadowCollectionsOmitted",
+      "testEEEdges",
+      "testEdgesAqlRead",
+      "testEdgesAqlInsert",
+      "testAqlGraphQueryOutbound",
+      "testAqlGraphQueryAny",
+      "testSmartGraphSharding",
+      "testViewOnSmartEdgeCollection",
+      "testSmartGraphAttribute",
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test link on analyzers collection
-////////////////////////////////////////////////////////////////////////////////
-    testIndexAnalyzerCollection : function() {
-      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
-      assertEqual(1, db._analyzers.count());
-      assertEqual(1, res.length);
-      assertEqual(db._analyzers.toArray()[0], res[0]);
-    },
+      // Hotbackup tests:
+      "testLatestId"
+    ]
+  );
 
-    testJobsAndQueues : function() {
-      assertEqual("test", db._jobs.document("test")._key);
-      assertEqual("test", db._queues.document("test")._key);
-    },
-  };
-}
+  return suite;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
-jsunity.run(dumpTestSuite);
+});
 
 return jsunity.done();

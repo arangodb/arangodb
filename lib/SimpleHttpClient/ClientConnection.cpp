@@ -133,7 +133,7 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
 #endif
 
   if (status < 0) {
-    TRI_set_errno(errno);
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
     disconnect();
     return false;
   } else if (status == 0) {

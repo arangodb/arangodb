@@ -81,7 +81,7 @@ void Thread::startThread(void* arg) {
   LOCAL_THREAD_NAME = ptr->name().c_str();
 
   // make sure we drop our reference when we are finished!
-  auto guard = scopeGuard([ptr]() {
+  auto guard = scopeGuard([ptr]() noexcept {
     LOCAL_THREAD_NAME = nullptr;
     ptr->_state.store(ThreadState::STOPPED);
     ptr->releaseRef();
@@ -224,7 +224,7 @@ void Thread::shutdown() {
 
       // we still have to wait here until the thread has terminated, but this should
       // happen immediately after _state has been set to STOPPED!
-      int ret = _state.load() == ThreadState::STOPPED ? TRI_JoinThread(&_thread) : TRI_ERROR_FAILED;
+      auto ret = _state.load() == ThreadState::STOPPED ? TRI_JoinThread(&_thread) : TRI_ERROR_FAILED;
 #else
       auto ret = TRI_JoinThreadWithTimeout(&_thread, _terminationTimeout);
 #endif
@@ -312,7 +312,7 @@ void Thread::markAsStopped() noexcept {
 
 void Thread::runMe() {
   // make sure the thread is marked as stopped under all circumstances
-  TRI_DEFER(markAsStopped());
+  auto sg = arangodb::scopeGuard([&]() noexcept { markAsStopped(); });
 
   try {
     run();
@@ -331,7 +331,7 @@ void Thread::runMe() {
   }
 }
 
-void Thread::releaseRef() {
+void Thread::releaseRef() noexcept {
   auto refs = _refs.fetch_sub(1) - 1;
   TRI_ASSERT(refs >= 0);
   if (refs == 0 && _deleteOnExit) {

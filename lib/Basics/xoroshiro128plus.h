@@ -21,8 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_XOROSHIRO128PLUS_H
-#define ARANGO_XOROSHIRO128PLUS_H 1
+#pragma once
 
 #include <cstdint>
 #include <cstdlib>
@@ -115,4 +114,3 @@ struct xoroshiro128plus {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

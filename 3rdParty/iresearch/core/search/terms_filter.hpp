@@ -23,6 +23,8 @@
 #ifndef IRESEARCH_TERMS_FILTER_H
 #define IRESEARCH_TERMS_FILTER_H
 
+#include <set>
+
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 
@@ -88,7 +90,7 @@ struct IRESEARCH_API by_terms_options {
 class IRESEARCH_API by_terms final
     : public filter_base<by_terms_options> {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
 
   static void visit(
     const sub_reader& segment,

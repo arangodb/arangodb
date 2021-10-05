@@ -509,7 +509,7 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
 /// space, then collect a tax from each cache, say 5% of its current allocation.
 /// Then, given the pool of memory, and the expressed needs of each cache,
 /// attempt to allocate memory evenly, up to the additional amount requested.
-int Manager::rebalance(bool onlyCalculate) {
+ErrorCode Manager::rebalance(bool onlyCalculate) {
   SpinLocker guard(SpinLocker::Mode::Write, _lock, !onlyCalculate);
 
   if (!onlyCalculate) {

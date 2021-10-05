@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 params=("$@")
 
+if [ $(ulimit -S -n) -lt 131072 ]; then
+    if [ $(ulimit -H -n) -lt 131072 ]; then
+        ulimit -H -n 131072 || true
+    fi
+    ulimit -S -n 131072 || true
+fi
+
 rm -rf cluster
 if [ -d cluster-init ];then
   echo "== creating cluster directory from existing cluster-init directory"
@@ -154,6 +161,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --log.file cluster/$PORT.log \
           --log.force-direct false \
           --log.level $LOG_LEVEL_AGENCY \
+          --server.descriptors-minimum 0 \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
@@ -180,6 +188,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --log.file cluster/$PORT.log \
         --log.force-direct false \
         --log.level $LOG_LEVEL_AGENCY \
+        --server.descriptors-minimum 0 \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
@@ -216,7 +225,7 @@ start() {
 
     TYPE=$1
     PORT=$2
-    mkdir -p cluster/data$PORT cluster/apps$PORT
+    mkdir -p cluster/data$PORT
     echo == Starting $TYPE on port $PORT
     [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     if [ "$AUTOUPGRADE" == "1" ];then
@@ -230,12 +239,12 @@ start() {
           --log.role true \
           --log.file cluster/$PORT.log \
           --log.level $LOG_LEVEL \
-          --server.statistics true \
           --javascript.startup-directory $SRC_DIR/js \
           --javascript.module-directory $SRC_DIR/enterprise/js \
           --javascript.app-path cluster/apps$PORT \
           --log.force-direct false \
           --log.level $LOG_LEVEL_CLUSTER \
+          --server.descriptors-minimum 0 \
           --javascript.allow-admin-execute true \
           $SYSTEM_REPLICATION_FACTOR \
           $STORAGE_ENGINE \
@@ -255,13 +264,13 @@ start() {
         --log.role true \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
-        --server.statistics true \
         --javascript.startup-directory $SRC_DIR/js \
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path cluster/apps$PORT \
         --log.force-direct false \
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
+        --server.descriptors-minimum 0 \
         --javascript.allow-admin-execute true \
         $SYSTEM_REPLICATION_FACTOR \
         $STORAGE_ENGINE \

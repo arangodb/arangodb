@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_STATISTICS_H
-#define ARANGODB_PREGEL_STATISTICS_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -149,4 +148,3 @@ struct StatsManager {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

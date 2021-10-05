@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_COLLECTIONS_H
-#define ARANGOD_VOC_BASE_API_COLLECTIONS_H 1
+#pragma once
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
@@ -144,14 +143,10 @@ struct Collections {
   /// @brief filters properties for collection creation
   static arangodb::velocypack::Builder filterInput(arangodb::velocypack::Slice slice);
 };
-#ifdef USE_ENTERPRISE
-Result ULColCoordinatorEnterprise(ClusterFeature& feature, std::string const& databaseName,
-                                  std::string const& collectionCID,
-                                  TRI_vocbase_col_status_e status);
 
+#ifdef USE_ENTERPRISE
 Result DropColCoordinatorEnterprise(LogicalCollection* collection, bool allowDropSystem);
 #endif
 }  // namespace methods
 }  // namespace arangodb
 
-#endif

@@ -55,7 +55,7 @@ void setCollator(std::string const& language, void* icuDataPtr) {
   }
 }
 
-  void setLocale(icu::Locale& locale) {
+void setLocale(icu::Locale& locale) {
   using arangodb::basics::Utf8Helper;
   std::string languageName;
 
@@ -89,7 +89,8 @@ LanguageFeature::LanguageFeature(application_features::ApplicationServer& server
     : ApplicationFeature(server, "Language"),
       _locale(),
       _binaryPath(server.getBinaryPath()),
-      _icuDataPtr(nullptr) {
+      _icuDataPtr(nullptr),
+      _forceLanguageCheck(true) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
@@ -104,6 +105,11 @@ void LanguageFeature::collectOptions(std::shared_ptr<options::ProgramOptions> op
   options->addOption("--default-language", "ISO-639 language code",
                      new StringParameter(&_language),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--default-language-check", "check if default language matches stored language",
+                     new BooleanParameter(&_forceLanguageCheck),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30800);
 }
 
 void* LanguageFeature::prepareIcu(std::string const& binaryPath,
@@ -187,6 +193,10 @@ icu::Locale& LanguageFeature::getLocale() { return _locale; }
 
 std::string const& LanguageFeature::getDefaultLanguage() const {
   return _language;
+}
+
+bool LanguageFeature::forceLanguageCheck() const {
+  return _forceLanguageCheck;
 }
 
 std::string LanguageFeature::getCollatorLanguage() const {

@@ -60,8 +60,8 @@ class LoggerTest : public ::testing::Test {
         path(TRI_GetTempPath()),
         logfile1(path + "logfile1"),
         logfile2(path + "logfile2") {
-    FileUtils::remove(logfile1);
-    FileUtils::remove(logfile2);
+    std::ignore = FileUtils::remove(logfile1);
+    std::ignore = FileUtils::remove(logfile2);
     // remove any previous loggers
     LogAppenderFile::closeAll();
   }
@@ -71,8 +71,8 @@ class LoggerTest : public ::testing::Test {
     LogAppenderFile::setAppenders(backup);
     LogAppenderFile::reopenAll();
 
-    FileUtils::remove(logfile1);
-    FileUtils::remove(logfile2);
+    std::ignore = FileUtils::remove(logfile1);
+    std::ignore = FileUtils::remove(logfile2);
   }
 };
 
@@ -86,8 +86,8 @@ TEST_F(LoggerTest, test_fds) {
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
   EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
-  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR, 0, "some error message", 0));
-  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::WARN, 0, "some warning message", 0));
+  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR, 0, "some error message", 0, true));
+  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::WARN, 0, "some warning message", 0, true));
 
   std::string content = FileUtils::slurp(logfile1);
   EXPECT_NE(content.find("some error message"), std::string::npos);
@@ -110,8 +110,8 @@ TEST_F(LoggerTest, test_fds_after_reopen) {
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
   EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
-  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR, 0, "some error message", 0));
-  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::WARN, 0, "some warning message", 0));
+  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR, 0, "some error message", 0, true));
+  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::WARN, 0, "some warning message", 0, true));
 
   std::string content = FileUtils::slurp(logfile1);
 
@@ -131,8 +131,8 @@ TEST_F(LoggerTest, test_fds_after_reopen) {
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
   EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
-  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR, 0, "some other error message", 0));
-  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::WARN, 0, "some other warning message", 0));
+  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR, 0, "some other error message", 0, true));
+  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::WARN, 0, "some other warning message", 0, true));
 
   content = FileUtils::slurp(logfile1);
   EXPECT_EQ(content.find("some error message"), std::string::npos);

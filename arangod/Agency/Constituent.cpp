@@ -51,7 +51,7 @@ using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 using namespace arangodb;
 
-//  (std::numeric_limits<std::string>::max)();
+DECLARE_GAUGE(arangodb_agency_term, uint64_t, "Agency's term");
 
 /// Raft role names for display purposes
 const std::vector<std::string> roleStr({"Follower", "Candidate", "Leader"});
@@ -74,8 +74,8 @@ Constituent::Constituent(application_features::ApplicationServer& server)
     : Thread(server, "Constituent"),
       _vocbase(nullptr),
       _term(0),
-      _gterm(_server.getFeature<arangodb::MetricsFeature>().gauge(
-               "arangodb_agency_term", _term, "Agency's term")),
+      _gterm(
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_term{})),
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),
       _role(FOLLOWER),
@@ -579,10 +579,10 @@ void Constituent::run() {
   {
     std::string const aql(
         "FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-    arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                               arangodb::aql::QueryString(aql), nullptr);
+    auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*_vocbase),
+                                              arangodb::aql::QueryString(aql), nullptr);
 
-    aql::QueryResult queryResult = query.executeSync();
+    aql::QueryResult queryResult = query->executeSync();
 
     if (queryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(queryResult.result);

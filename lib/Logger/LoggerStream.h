@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOGGER_STREAM_H
-#define ARANGODB_LOGGER_LOGGER_STREAM_H 1
+#pragma once
 
 #include <cstddef>
 #include <sstream>
@@ -41,6 +40,7 @@ class LoggerStreamBase {
   LoggerStreamBase& operator=(LoggerStreamBase const&) = delete;
 
   LoggerStreamBase();
+  explicit LoggerStreamBase(bool enabled);
 
   // intentionally not virtual, as such objects can be created _very_ often!
   ~LoggerStreamBase() = default;
@@ -50,13 +50,13 @@ class LoggerStreamBase {
 
   LoggerStreamBase& operator<<(LogTopic const& topic) noexcept;
 
-  LoggerStreamBase& operator<<(Logger::BINARY const& binary);
+  LoggerStreamBase& operator<<(Logger::BINARY const& binary) noexcept;
 
-  LoggerStreamBase& operator<<(Logger::CHARS const& chars);
+  LoggerStreamBase& operator<<(Logger::CHARS const& chars) noexcept;
 
-  LoggerStreamBase& operator<<(Logger::RANGE const& range);
+  LoggerStreamBase& operator<<(Logger::RANGE const& range) noexcept;
 
-  LoggerStreamBase& operator<<(Logger::FIXED const& duration);
+  LoggerStreamBase& operator<<(Logger::FIXED const& duration) noexcept;
 
   LoggerStreamBase& operator<<(Logger::LINE const& line) noexcept;
 
@@ -79,11 +79,11 @@ class LoggerStreamBase {
  protected:
   std::stringstream _out;
   size_t _topicId;
-#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-  LogLevel _topicLevel;
-#endif
   LogLevel _level;
   int _line;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool const _enabled;
+#endif
   char const* _logid;
   char const* _file;
   char const* _function;
@@ -91,9 +91,12 @@ class LoggerStreamBase {
 
 class LoggerStream : public LoggerStreamBase {
  public:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  explicit LoggerStream(bool enabled);
+#endif
+  LoggerStream();
   ~LoggerStream();
 };
 
 }  // namespace arangodb
 
-#endif

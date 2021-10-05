@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GEO_SHAPES_H
-#define ARANGOD_GEO_SHAPES_H 1
+#pragma once
 
 #include <cmath>
 #include <string>
@@ -81,4 +80,3 @@ struct Coordinate {
 }  // namespace geo
 }  // namespace arangodb
 
-#endif

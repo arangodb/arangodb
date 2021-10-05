@@ -21,38 +21,39 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_RESULT_H
-#define ARANGODB_BASICS_RESULT_H 1
+#pragma once
 
 #include <iosfwd>
 #include <memory>
 #include <string>
 #include <string_view>
 
+#include "Basics/ErrorCode.h"
 #include "Basics/ResultError.h"
 
 namespace arangodb {
 class Result final {
  public:
   Result(bool /*avoidCastingErrors*/) = delete;
+  Result(int /*avoidCastingErrors*/) = delete;
 
   Result() noexcept = default;
 
   // cppcheck-suppress noExplicitConstructor
-  /* implicit */ Result(int errorNumber);
+  /* implicit */ Result(ErrorCode errorNumber);
 
-  Result(int errorNumber, std::string const& errorMessage);
+  Result(ErrorCode errorNumber, std::string const& errorMessage);
 
   /**
    * @brief Construct with error number and message
    * @param  errorNumber   Said error number
    * @param  errorMessage  Said error message
    */
-  Result(int errorNumber, std::string&& errorMessage);
+  Result(ErrorCode errorNumber, std::string&& errorMessage);
 
-  Result(int errorNumber, std::string_view errorMessage);
+  Result(ErrorCode errorNumber, std::string_view errorMessage);
 
-  Result(int errorNumber, const char* errorMessage);
+  Result(ErrorCode errorNumber, const char* errorMessage);
 
   /**
    * @brief Construct as copy
@@ -96,19 +97,19 @@ class Result final {
    * @brief  Get error number
    * @return error number
    */
-  [[nodiscard]] auto errorNumber() const noexcept -> int;
+  [[nodiscard]] auto errorNumber() const noexcept -> ErrorCode;
 
   /**
    * @brief  Is specific error
    * @param errorNumber Said specific error
    * @return            Equality with specific error
    */
-  [[nodiscard]] auto is(int errorNumber) const noexcept -> bool;
+  [[nodiscard]] auto is(ErrorCode errorNumber) const noexcept -> bool;
 
   /**
    * @see is(int errorNumber)
    */
-  [[nodiscard]] auto isNot(int errorNumber) const noexcept -> bool;
+  [[nodiscard]] auto isNot(ErrorCode errorNumber) const noexcept -> bool;
 
   /**
    * @brief  Reset to ok, error message is cleared.
@@ -122,7 +123,7 @@ class Result final {
    * @param errorNumber Said specific error number
    * @return            Reference to ourselves
    */
-  auto reset(int errorNumber) -> Result&;
+  auto reset(ErrorCode errorNumber) -> Result&;
 
   /**
    * @brief  Reset to specific error number with message.
@@ -131,9 +132,9 @@ class Result final {
    * @param errorMessage Said specific error message
    * @return            Reference to ourselves
    */
-  auto reset(int errorNumber, std::string_view errorMessage) -> Result&;
-  auto reset(int errorNumber, const char* errorMessage) -> Result&;
-  auto reset(int errorNumber, std::string&& errorMessage) -> Result&;
+  auto reset(ErrorCode errorNumber, std::string_view errorMessage) -> Result&;
+  auto reset(ErrorCode errorNumber, const char* errorMessage) -> Result&;
+  auto reset(ErrorCode errorNumber, std::string&& errorMessage) -> Result&;
 
   /**
    * @brief  Reset to other error.
@@ -172,12 +173,10 @@ class Result final {
   std::unique_ptr<arangodb::result::Error> _error = nullptr;
 };
 
-}  // namespace arangodb
-
 /**
  * @brief  Print to output stream
  * @return Said output stream
  */
 auto operator<<(std::ostream& out, arangodb::Result const& result) -> std::ostream&;
 
-#endif
+}  // namespace arangodb

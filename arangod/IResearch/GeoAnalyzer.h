@@ -21,13 +21,12 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_GEO_ANALYZER
-#define ARANGODB_IRESEARCH__IRESEARCH_GEO_ANALYZER 1
+#pragma once
 
 #include <s2/s2region_term_indexer.h>
-
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
+
 #include "analysis/analyzer.hpp"
 #include "utils/frozen_attributes.hpp"
 
@@ -185,4 +184,3 @@ inline bool isGeoAnalyzer(irs::string_ref const& type) noexcept {
 } // iresearch
 } // arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_GEO_ANALYZER

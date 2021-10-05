@@ -216,7 +216,7 @@ class unary_disjunction final : public compound_doc_iterator<Adapter> {
 template<typename DocIterator,
          typename Adapter = score_iterator_adapter<DocIterator>>
 class basic_disjunction final
-    : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
+    : public compound_doc_iterator<Adapter>,
       private score_ctx {
  public:
   using adapter = Adapter;
@@ -244,37 +244,49 @@ class basic_disjunction final
         resolve_overload_tag{}) {
   }
 
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
+  }
+
   virtual doc_id_t value() const noexcept override {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
   virtual bool next() override {
     next_iterator_impl(lhs_);
     next_iterator_impl(rhs_);
-    return !doc_limits::eof(doc_.value = std::min(lhs_.value(), rhs_.value()));
+
+    auto& doc = std::get<document>(attrs_);
+    return !doc_limits::eof(doc.value = std::min(lhs_.value(), rhs_.value()));
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= doc_.value) {
-      return doc_.value;
+    auto& doc = std::get<document>(attrs_);
+
+    if (target <= doc.value) {
+      return doc.value;
     }
 
     if (seek_iterator_impl(lhs_, target) || seek_iterator_impl(rhs_, target)) {
-      return doc_.value = target;
+      return doc.value = target;
     }
 
-    return (doc_.value = std::min(lhs_.value(), rhs_.value()));
+    return (doc.value = std::min(lhs_.value(), rhs_.value()));
   }
 
   virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
     assert(ctx);
     assert(visitor);
-    assert(lhs_.doc->value >= doc_.value); // assume that seek or next has been called
-    if (lhs_.value() == doc_.value && !visitor(ctx, lhs_)) {
+
+    auto& doc = std::get<document>(attrs_);
+    assert(lhs_.doc->value >= doc.value); // assume that seek or next has been called
+
+    if (lhs_.value() == doc.value && !visitor(ctx, lhs_)) {
       return;
     }
-    seek_iterator_impl(rhs_, doc_.value);
-    if (rhs_.value() == doc_.value) {
+
+    seek_iterator_impl(rhs_, doc.value);
+    if (rhs_.value() == doc.value) {
       visitor(ctx, rhs_);
     }
   }
@@ -290,17 +302,12 @@ class basic_disjunction final
       sort::MergeType merge_type,
       Estimation&& estimation,
       resolve_overload_tag)
-    : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
-        { type<document>::id(), &doc_   },
-        { type<cost>::id(),     &cost_  },
-        { type<score>::id(),    &score_ },
-      }},
-      lhs_(std::move(lhs)),
+    : lhs_(std::move(lhs)),
       rhs_(std::move(rhs)),
-      score_(ord),
       no_score_value_(ord.score_size(), 0),
-      cost_(std::forward<Estimation>(estimation)),
       merger_(ord.prepare_merger(merge_type)) {
+    std::get<cost>(attrs_).reset(std::forward<Estimation>(estimation));
+
     prepare_score(ord);
   }
 
@@ -311,37 +318,40 @@ class basic_disjunction final
 
     assert(lhs_.score && rhs_.score); // must be ensure by the adapter
 
+    auto& score = std::get<irs::score>(attrs_);
+    score.realloc(ord);
+
     const bool lhs_score_empty = lhs_.score->is_default();
     const bool rhs_score_empty = rhs_.score->is_default();
 
     if (!lhs_score_empty && !rhs_score_empty) {
       // both sub-iterators have score
-      score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
+      score.reset(this, [](score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<basic_disjunction*>(ctx);
 
         const byte_type* score_values[2] {
           self.score_iterator_impl(self.lhs_),
           self.score_iterator_impl(self.rhs_) };
 
-        auto* score_buf = self.score_.data();
+        auto* score_buf = std::get<irs::score>(self.attrs_).data();
         self.merger_(score_buf, score_values, 2);
 
         return score_buf;
       });
     } else if (!lhs_score_empty) {
       // only left sub-iterator has score
-      score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
+      score.reset(this, [](score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<basic_disjunction*>(ctx);
         return self.score_iterator_impl(self.lhs_);
       });
     } else if (!rhs_score_empty) {
       // only right sub-iterator has score
-      score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
+      score.reset(this, [](score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<basic_disjunction*>(ctx);
         return self.score_iterator_impl(self.rhs_);
       });
     } else {
-      assert(score_.is_default());
+      assert(score.is_default());
     }
   }
 
@@ -350,35 +360,37 @@ class basic_disjunction final
   }
 
   void next_iterator_impl(adapter& it) {
-    const auto doc = it.value();
+    auto& doc = std::get<document>(attrs_);
+    const auto value = it.value();
 
-    if (doc_.value == doc) {
+    if (doc.value == value) {
       it->next();
-    } else if (doc < doc_.value) {
-      it->seek(doc_.value + doc_id_t(!doc_limits::eof(doc_.value)));
+    } else if (value < doc.value) {
+      it->seek(doc.value + doc_id_t(!doc_limits::eof(doc.value)));
     }
   }
 
   const byte_type* score_iterator_impl(adapter& it) const {
-    auto doc = it.value();
+    auto& doc = std::get<document>(attrs_);
+    auto value = it.value();
 
-    if (doc < doc_.value) {
-      doc = it->seek(doc_.value);
+    if (value < doc.value) {
+      value = it->seek(doc.value);
     }
 
-    if (doc == doc_.value) {
+    if (value == doc.value) {
       return it.score->evaluate();
     }
 
     return no_score_value_.c_str();
   }
 
+  using attributes = std::tuple<document, score, cost>;
+
   mutable adapter lhs_;
   mutable adapter rhs_;
-  document doc_;
-  score score_;
+  attributes attrs_;
   bstring no_score_value_; // empty score value
-  cost cost_;
   order::prepared::merger merger_;
 }; // basic_disjunction
 
@@ -396,7 +408,7 @@ class basic_disjunction final
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
 class small_disjunction final
-    : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
+    : public compound_doc_iterator<Adapter>,
       private score_ctx {
  public:
   using adapter = Adapter;
@@ -426,24 +438,31 @@ class small_disjunction final
         resolve_overload_tag()) {
   }
 
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
+  }
+
   virtual doc_id_t value() const noexcept override {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
   bool next_iterator_impl(adapter& it) {
-    const auto doc = it.value();
+    auto& doc = std::get<document>(attrs_);
+    const auto value = it.value();
 
-    if (doc == doc_.value) {
+    if (value == doc.value) {
       return it->next();
-    } else if (doc < doc_.value) {
-      return !doc_limits::eof(it->seek(doc_.value+1));
+    } else if (value < doc.value) {
+      return !doc_limits::eof(it->seek(doc.value+1));
     }
 
     return true;
   }
 
   virtual bool next() override {
-    if (doc_limits::eof(doc_.value)) {
+    auto& doc = std::get<document>(attrs_);
+
+    if (doc_limits::eof(doc.value)) {
       return false;
     }
 
@@ -453,7 +472,7 @@ class small_disjunction final
       auto& it = *begin;
       if (!next_iterator_impl(it)) {
         if (!remove_iterator(begin)) {
-          doc_.value = doc_limits::eof();
+          doc.value = doc_limits::eof();
           return false;
         }
 #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
@@ -466,13 +485,15 @@ class small_disjunction final
       }
     }
 
-    doc_.value = min;
+    doc.value = min;
     return true;
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (doc_limits::eof(doc_.value)) {
-      return doc_.value;
+    auto& doc = std::get<document>(attrs_);
+
+    if (doc_limits::eof(doc.value)) {
+      return doc.value;
     }
 
     doc_id_t min = doc_limits::eof();
@@ -481,14 +502,14 @@ class small_disjunction final
       auto& it = *begin;
 
       if (it.value() < target) {
-        const auto doc = it->seek(target);
+        const auto value = it->seek(target);
 
-        if (doc == target) {
-          return doc_.value = doc;
-        } else if (doc_limits::eof(doc)) {
+        if (value == target) {
+          return doc.value = value;
+        } else if (doc_limits::eof(value)) {
           if (!remove_iterator(begin)) {
             // exhausted
-            return doc_.value = doc_limits::eof();
+            return doc.value = doc_limits::eof();
           }
 #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
           // workaround for Microsoft checked iterators
@@ -502,16 +523,17 @@ class small_disjunction final
       ++begin;
     }
 
-    return (doc_.value = min);
+    return (doc.value = min);
   }
 
   virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
     assert(ctx);
     assert(visitor);
+    auto& doc = std::get<document>(attrs_);
     hitch_all_iterators();
     for (auto begin = begin_; begin != end_; ++begin) {
       auto& it = *begin;
-      if (it->value() == doc_.value && !visitor(ctx, it)) {
+      if (it->value() == doc.value && !visitor(ctx, it)) {
         return;
       }
     }
@@ -527,21 +549,17 @@ class small_disjunction final
       sort::MergeType merge_type,
       Estimation&& estimation,
       resolve_overload_tag)
-    : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
-        { type<document>::id(), &doc_   },
-        { type<cost>::id(),     &cost_  },
-        { type<score>::id(),    &score_ },
-      }},
-      itrs_(itrs.size()),
+    : itrs_(itrs.size()),
       scored_begin_(itrs_.begin()),
       begin_(scored_begin_),
       end_(itrs_.end()),
-      doc_(itrs_.empty()
-        ? doc_limits::eof()
-        : doc_limits::invalid()),
-      score_(ord),
-      cost_(std::forward<Estimation>(estimation)),
       merger_(ord.prepare_merger(merge_type)) {
+    std::get<cost>(attrs_).reset(std::forward<Estimation>(estimation));
+
+    if (itrs_.empty()) {
+      std::get<document>(attrs_).value = doc_limits::eof();
+    }
+
     auto rbegin = itrs_.rbegin();
     for (auto& it : itrs) {
       if (it.score->is_default()) {
@@ -561,22 +579,26 @@ class small_disjunction final
       return;
     }
 
+    auto& score = std::get<irs::score>(attrs_);
+    score.realloc(ord);
+
     // prepare score
     if (scored_begin_ != end_) {
       scores_vals_.resize(size_t(std::distance(scored_begin_, end_)));
 
-      score_.reset(this, [](irs::score_ctx* ctx) -> const byte_type* {
+      score.reset(this, [](irs::score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<small_disjunction*>(ctx);
-        auto* score_buf = self.score_.data();
+        auto* score_buf = std::get<irs::score>(self.attrs_).data();
+        auto& doc = std::get<document>(self.attrs_);
         const irs::byte_type** pVal = self.scores_vals_.data();
         for (auto begin = self.scored_begin_, end = self.end_; begin != end; ++begin) {
-          auto doc = begin->value();
+          auto value = begin->value();
 
-          if (doc < self.doc_.value) {
-            doc = (*begin)->seek(self.doc_.value);
+          if (value < doc.value) {
+            value = (*begin)->seek(doc.value);
           }
 
-          if (doc == self.doc_.value) {
+          if (value == doc.value) {
             *pVal++ = begin->score->evaluate();
           }
         }
@@ -588,7 +610,7 @@ class small_disjunction final
         return score_buf;
       });
     } else {
-      assert(score_.is_default());
+      assert(score.is_default());
     }
   }
 
@@ -604,12 +626,14 @@ class small_disjunction final
   }
 
   void hitch_all_iterators() {
-    if (last_hitched_doc_ == doc_.value) {
+    auto& doc = std::get<document>(attrs_);
+
+    if (last_hitched_doc_ == doc.value) {
       return; // nothing to do
     }
     for (auto begin = begin_; begin != end_;++begin) {
       auto& it = *begin;
-      if (it.value() < doc_.value && doc_limits::eof(it->seek(doc_.value))) {
+      if (it.value() < doc.value && doc_limits::eof(it->seek(doc.value))) {
         #ifdef IRESEARCH_DEBUG
           assert(remove_iterator(begin));
         #else
@@ -617,9 +641,10 @@ class small_disjunction final
         #endif
       }
     }
-    last_hitched_doc_ = doc_.value;
+    last_hitched_doc_ = doc.value;
   }
 
+  using attributes = std::tuple<document, score, cost>;
   using iterator = typename doc_iterators_t::iterator;
 
   doc_id_t last_hitched_doc_{ doc_limits::invalid() };
@@ -627,9 +652,7 @@ class small_disjunction final
   iterator scored_begin_; // beginning of scored doc iterator range
   iterator begin_; // beginning of unscored doc iterators range
   iterator end_; // end of scored doc iterator range
-  document doc_;
-  score score_;
-  cost cost_;
+  attributes attrs_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
   order::prepared::merger merger_;
 }; // small_disjunction
@@ -648,7 +671,7 @@ class small_disjunction final
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>, bool EnableUnary = false>
 class disjunction final
-    : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
+    : public compound_doc_iterator<Adapter>,
       private score_ctx {
  public:
   using unary_disjunction_t = unary_disjunction<DocIterator, Adapter>;
@@ -687,54 +710,65 @@ class disjunction final
         resolve_overload_tag()) {
   }
 
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
+  }
+
   virtual doc_id_t value() const noexcept override {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
   virtual bool next() override {
-    if (doc_limits::eof(doc_.value)) {
+    auto& doc = std::get<document>(attrs_);
+
+    if (doc_limits::eof(doc.value)) {
       return false;
     }
 
-    while (lead().value() <= doc_.value) {
-      bool const exhausted = lead().value() == doc_.value
+    while (lead().value() <= doc.value) {
+      bool const exhausted = lead().value() == doc.value
         ? !lead()->next()
-        : doc_limits::eof(lead()->seek(doc_.value + 1));
+        : doc_limits::eof(lead()->seek(doc.value + 1));
 
       if (exhausted && !remove_lead()) {
-        doc_.value = doc_limits::eof();
+        doc.value = doc_limits::eof();
         return false;
       } else {
         refresh_lead();
       }
     }
 
-    doc_.value = lead().value();
+    doc.value = lead().value();
 
     return true;
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (doc_limits::eof(doc_.value)) {
-      return doc_.value;
+    auto& doc = std::get<document>(attrs_);
+
+    if (doc_limits::eof(doc.value)) {
+      return doc.value;
     }
 
     while (lead().value() < target) {
-      const auto doc = lead()->seek(target);
+      const auto value = lead()->seek(target);
 
-      if (doc_limits::eof(doc) && !remove_lead()) {
-        return doc_.value = doc_limits::eof();
-      } else if (doc != target) {
+      if (doc_limits::eof(value) && !remove_lead()) {
+        return doc.value = doc_limits::eof();
+      } else if (value != target) {
         refresh_lead();
       }
     }
 
-    return doc_.value = lead().value();
+    return doc.value = lead().value();
   }
 
   virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
     assert(ctx);
     assert(visitor);
+    if (heap_.empty()) {
+      return;
+    }
     hitch_all_iterators();
     auto& lead = itrs_[heap_.back()];
     auto cont = visitor(ctx, lead);
@@ -757,6 +791,8 @@ class disjunction final
  private:
   struct resolve_overload_tag{};
 
+  using attributes = std::tuple<document, score, cost>;
+
   template<typename Estimation>
   disjunction(
       doc_iterators_t&& itrs,
@@ -764,22 +800,17 @@ class disjunction final
       sort::MergeType merge_type,
       Estimation&& estimation,
       resolve_overload_tag)
-    : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
-        { type<document>::id(), &doc_   },
-        { type<cost>::id(),     &cost_  },
-        { type<score>::id(),    &score_ },
-      }},
-      itrs_(std::move(itrs)),
-      doc_(itrs_.empty()
-        ? doc_limits::eof()
-        : doc_limits::invalid()),
-      score_(ord),
-      cost_(std::forward<Estimation>(estimation)),
+    : itrs_(std::move(itrs)),
       merger_(ord.prepare_merger(merge_type)) {
     // since we are using heap in order to determine next document,
     // in order to avoid useless make_heap call we expect that all
     // iterators are equal here */
     //assert(irstd::all_equal(itrs_.begin(), itrs_.end()));
+    std::get<cost>(attrs_).reset(std::forward<Estimation>(estimation));
+
+    if (itrs_.empty()) {
+      std::get<document>(attrs_).value = doc_limits::eof();
+    }
 
     // prepare external heap
     heap_.resize(itrs_.size());
@@ -793,21 +824,25 @@ class disjunction final
       return;
     }
 
+    auto& score = std::get<irs::score>(attrs_);
+    score.realloc(ord);
+
     scores_vals_.resize(itrs_.size(), nullptr);
-    score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
+    score.reset(this, [](score_ctx* ctx) -> const byte_type* {
       auto& self = *static_cast<disjunction*>(ctx);
       assert(!self.heap_.empty());
-      auto* score_buf = self.score_.data();
+      auto* score_buf = std::get<irs::score>(self.attrs_).data();
+      auto& doc = std::get<document>(self.attrs_);
 
       const auto its = self.hitch_all_iterators();
       const irs::byte_type** pVal = self.scores_vals_.data();
       detail::evaluate_score_iter(pVal, self.lead());
-      if (self.top().value() == self.doc_.value) {
+      if (self.top().value() == doc.value) {
         irstd::heap::for_each_if(
           its.first, its.second,
-          [&self](const size_t it) {
+          [&self, &doc](const size_t it) noexcept {
             assert(it < self.itrs_.size());
-            return self.itrs_[it].value() == self.doc_.value;
+            return self.itrs_[it].value() == doc.value;
           },
           [&self, &pVal](size_t it) {
             assert(it < self.itrs_.size());
@@ -877,12 +912,14 @@ class disjunction final
 
   std::pair<heap_iterator, heap_iterator> hitch_all_iterators() {
     // hitch all iterators in head to the lead (current doc_)
+    assert(!heap_.empty());
     auto begin = heap_.begin(), end = heap_.end()-1;
 
-    while (begin != end && top().value() < doc_.value) {
-      const auto doc = top()->seek(doc_.value);
+    auto& doc = std::get<document>(attrs_);
+    while (begin != end && top().value() < doc.value) {
+      const auto value = top()->seek(doc.value);
 
-      if (doc_limits::eof(doc)) {
+      if (doc_limits::eof(value)) {
         // remove top
         pop(begin,end);
         std::swap(*--end, heap_.back());
@@ -899,9 +936,7 @@ class disjunction final
   doc_iterators_t itrs_;
   heap_container heap_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
-  document doc_;
-  score score_;
-  cost cost_;
+  attributes attrs_;
   order::prepared::merger merger_;
 }; // disjunction
 
@@ -914,7 +949,7 @@ enum class MatchType {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct block_disjunction_traits
 ////////////////////////////////////////////////////////////////////////////////
-template<bool Score, MatchType MinMatch, bool SeekReadahead, size_t NumBlocks = 32>
+template<bool Score, MatchType MinMatch, bool SeekReadahead, size_t NumBlocks = 8>
 struct block_disjunction_traits {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief "false" - iterator is used for filtering only,
@@ -959,9 +994,7 @@ struct block_disjunction_traits {
 template<typename DocIterator,
          typename Traits,
          typename Adapter = score_iterator_adapter<DocIterator>>
-class block_disjunction final
-    : public frozen_attributes<3, doc_iterator>,
-      private score_ctx {
+class block_disjunction final : public doc_iterator, private score_ctx {
  public:
   using traits_type = Traits;
   using adapter  = Adapter;
@@ -1022,11 +1055,17 @@ class block_disjunction final
     return match_count_;
   }
 
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
+  }
+
   virtual doc_id_t value() const noexcept override {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
   virtual bool next() override {
+    auto& doc = std::get<document>(attrs_);
+
     do {
       while (!cur_) {
         if (begin_ >= std::end(mask_)) {
@@ -1035,7 +1074,7 @@ class block_disjunction final
             break;
           }
 
-          doc_.value = doc_limits::eof();
+          doc.value = doc_limits::eof();
           match_count_ = 0;
 
           return false;
@@ -1061,7 +1100,7 @@ class block_disjunction final
         }
       }
 
-      doc_.value = doc_base_ + doc_id_t(offset);
+      doc.value = doc_base_ + doc_id_t(offset);
       if constexpr (traits_type::score()) {
         score_value_ = score_buf_.get(buf_offset);
       }
@@ -1074,8 +1113,10 @@ class block_disjunction final
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= doc_.value) {
-      return doc_.value;
+    auto& doc = std::get<document>(attrs_);
+
+    if (target <= doc.value) {
+      return doc.value;
     } else if (target < max_) {
       const doc_id_t block_base = (max_ - window());
 
@@ -1090,16 +1131,17 @@ class block_disjunction final
 
       next();
     } else {
-      doc_.value = doc_limits::eof();
+      doc.value = doc_limits::eof();
 
       if constexpr (traits_type::min_match()) {
         match_count_ = 0;
       }
 
-      visit_and_purge([this, target](auto& it) mutable {
-        const auto doc = it->seek(target);
+      visit_and_purge([this, target, &doc](auto& it) mutable {
+        UNUSED(this);
+        const auto value = it->seek(target);
 
-        if (doc_limits::eof(doc)) {
+        if (doc_limits::eof(value)) {
           // exhausted
           return false;
         }
@@ -1120,35 +1162,35 @@ class block_disjunction final
       });
 
       if (itrs_.empty()) {
-        doc_.value = doc_limits::eof();
+        doc.value = doc_limits::eof();
         match_count_ = 0;
 
         return doc_limits::eof();
       }
 
-      assert(!doc_limits::eof(doc_.value));
+      assert(!doc_limits::eof(doc.value));
       cur_ = 0;
       begin_ = std::end(mask_); // enforce "refill()" for upcoming "next()"
-      max_ = doc_.value;
+      max_ = doc.value;
 
       if constexpr (traits_type::seek_readahead()) {
-        min_ = doc_.value;
+        min_ = doc.value;
         next();
       } else {
-        min_ = doc_.value + 1;
+        min_ = doc.value + 1;
         buf_offset_ = 0;
 
         if constexpr (traits_type::min_match()) {
           if (match_count_ < match_buf_.min_match_count()) {
             next();
-            return doc_.value;
+            return doc.value;
           }
         }
 
         if constexpr (traits_type::score()) {
           std::memset(score_buf_.data(), 0, score_buf_.bucket_size());
           for (auto& it : itrs_) {
-            if (!it.score->is_default() && doc_.value == it->value()) {
+            if (!it.score->is_default() && doc.value == it->value()) {
               assert(it.score);
               merger_(score_buf_.data(), it.score->evaluate());
             }
@@ -1159,7 +1201,7 @@ class block_disjunction final
       }
     }
 
-    return doc_.value;
+    return doc.value;
   }
 
  private:
@@ -1168,7 +1210,7 @@ class block_disjunction final
   }
 
   static constexpr doc_id_t num_blocks() noexcept {
-    return std::max(size_t(1), traits_type::num_blocks());
+    return static_cast<doc_id_t>(std::max(size_t(1), traits_type::num_blocks()));
   }
 
   static constexpr doc_id_t window() noexcept {
@@ -1184,6 +1226,8 @@ class block_disjunction final
   using min_match_buffer_type = detail::min_match_buffer<
     traits_type::min_match() ? window() : 0>;
 
+  using attributes = std::tuple<document, score, cost>;
+
   struct resolve_overload_tag{};
 
   template<typename Estimation>
@@ -1194,24 +1238,24 @@ class block_disjunction final
       sort::MergeType merge_type,
       Estimation&& estimation,
       resolve_overload_tag)
-    : frozen_attributes<3, doc_iterator>{{
-        { type<document>::id(), &doc_   },
-        { type<cost>::id(),     &cost_  },
-        { type<score>::id(),    &score_ },
-      }},
-      itrs_(std::move(itrs)),
-      doc_(itrs_.empty()
-        ? doc_limits::eof()
-        : doc_limits::invalid()),
+    : itrs_(std::move(itrs)),
       match_count_(itrs_.empty()
         ? size_t(0)
         : static_cast<size_t>(!traits_type::min_match())),
-      cost_(std::forward<Estimation>(estimation)),
       score_buf_(ord, window()),
       match_buf_(min_match_count),
       merger_(ord.prepare_merger(merge_type)) {
+    std::get<cost>(attrs_).reset(std::forward<Estimation>(estimation));
+
+    if (itrs_.empty()) {
+      std::get<document>(attrs_).value = doc_limits::eof();
+    }
+
     if (traits_type::score() && !ord.empty()) {
-      score_.reset(this, [](score_ctx* ctx) noexcept -> const byte_type* {
+      auto& score = std::get<irs::score>(attrs_);
+      score.realloc(ord);
+
+      score.reset(this, [](score_ctx* ctx) noexcept -> const byte_type* {
         return static_cast<block_disjunction*>(ctx)->score_value_;
       });
     }
@@ -1323,15 +1367,17 @@ class block_disjunction final
 
     cur_ = *mask_;
     begin_ = mask_ + 1;
-    while (!cur_) {
-      cur_ = *begin_++;
-      doc_base_ += bits_required<uint64_t>();
-    }
-    assert(cur_);
-
     if constexpr (traits_type::min_match() || traits_type::score()) {
       buf_offset_ = 0;
     }
+    while (!cur_) {
+      cur_ = *begin_++;
+      doc_base_ += bits_required<uint64_t>();
+      if constexpr (traits_type::min_match() || traits_type::score()) {
+        buf_offset_ += bits_required<uint64_t>();
+      }
+    }
+    assert(cur_);
 
     return true;
   }
@@ -1378,20 +1424,18 @@ class block_disjunction final
     }
   }
 
-  doc_iterators_t itrs_;
   uint64_t mask_[num_blocks()]{};
+  doc_iterators_t itrs_;
   uint64_t* begin_{std::end(mask_)};
   uint64_t cur_{};
-  document doc_;
   doc_id_t doc_base_{doc_limits::invalid()};
   doc_id_t min_{doc_limits::min()}; // base doc id for the next mask
   doc_id_t max_{doc_limits::invalid()}; // max doc id in the current mask
-  score score_;
+  attributes attrs_;
   size_t match_count_;
-  cost cost_;
   size_t buf_offset_{}; // offset within a buffer
-  score_buffer_type score_buf_;
-  min_match_buffer_type match_buf_;
+  score_buffer_type score_buf_;     // FIXME EBO
+  min_match_buffer_type match_buf_; // FIXME EBO
   const byte_type* score_value_{score_buf_.data()};
   order::prepared::merger merger_;
 }; // block_disjunction

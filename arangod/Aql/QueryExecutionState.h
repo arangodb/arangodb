@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_EXECUTION_STATE_H
-#define ARANGOD_AQL_QUERY_EXECUTION_STATE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -60,4 +59,3 @@ std::string toStringWithPrefix(QueryExecutionState::ValueType state);
 
 std::ostream& operator<<(std::ostream&, arangodb::aql::QueryExecutionState::ValueType);
 
-#endif

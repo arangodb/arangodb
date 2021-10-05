@@ -99,7 +99,7 @@ AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
   TRI_ASSERT(_type != UNPROCESSED);
       
   _expressionContext = ctx;
-  auto guard = scopeGuard([this] {
+  auto guard = scopeGuard([this]() noexcept {
     _expressionContext = nullptr;
   });
 
@@ -945,7 +945,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
 
     auto old = v8g->_expressionContext;
     v8g->_expressionContext = _expressionContext;
-    TRI_DEFER(v8g->_expressionContext = old);
+    auto sg = arangodb::scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
 
     std::string jsName;
     size_t const n = member->numMembers();
@@ -1704,10 +1704,20 @@ bool Expression::willUseV8() {
   return (_type == SIMPLE && _node->willUseV8());
 }
 
-std::unique_ptr<Expression> Expression::clone(Ast* ast) {
+std::unique_ptr<Expression> Expression::clone(Ast* ast, bool deepCopy) {
   // We do not need to copy the _ast, since it is managed by the
   // query object and the memory management of the ASTs
-  return std::make_unique<Expression>(ast != nullptr ? ast : _ast, _node);
+  if (ast == nullptr) {
+    ast = _ast;
+  }
+  TRI_ASSERT(ast != nullptr);
+
+  AstNode* source = _node;
+  TRI_ASSERT(source != nullptr);
+  if (deepCopy) {
+    source = source->clone(ast);
+  }
+  return std::make_unique<Expression>(ast, source);
 }
 
 void Expression::toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const {

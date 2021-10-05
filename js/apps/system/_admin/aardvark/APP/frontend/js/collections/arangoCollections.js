@@ -14,8 +14,6 @@
       includeSystem: false,
       includeDocument: true,
       includeEdge: true,
-      includeLoaded: true,
-      includeUnloaded: true,
       sortBy: 'name',
       sortOrder: 1
     },
@@ -24,18 +22,10 @@
       switch (status) {
         case 0:
           return 'corrupted';
-        case 1:
-          return 'new born collection';
-        case 2:
-          return 'unloaded';
         case 3:
           return 'loaded';
-        case 4:
-          return 'unloading';
         case 5:
           return 'deleted';
-        case 6:
-          return 'loading';
         default:
           return 'unknown';
       }
@@ -121,12 +111,6 @@
           return;
         }
         if (options.includeDocument === false && model.get('type') === 'document') {
-          return;
-        }
-        if (options.includeLoaded === false && model.get('status') === 'loaded') {
-          return;
-        }
-        if (options.includeUnloaded === false && model.get('status') === 'unloaded') {
           return;
         }
 

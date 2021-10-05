@@ -28,8 +28,6 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/IdExecutor.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "Aql/SkipResult.h"
@@ -37,57 +35,26 @@
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-DistributeExecutorInfos::DistributeExecutorInfos(
-    std::vector<std::string> clientIds, Collection const* collection,
-    RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
-    bool allowKeyConversionToObject, bool createKeys, bool fixupGraphInput,
-     ScatterNode::ScatterType type)
+DistributeExecutorInfos::DistributeExecutorInfos(std::vector<std::string> clientIds,
+                                                 Collection const* collection, RegisterId regId,
+                                                 ScatterNode::ScatterType type,
+                                                 std::vector<aql::Collection*> satellites)
     : ClientsExecutorInfos(std::move(clientIds)),
       _regId(regId),
-      _alternativeRegId(alternativeRegId),
-      _allowKeyConversionToObject(allowKeyConversionToObject),
-      _createKeys(createKeys),
-      _usesDefaultSharding(collection->usesDefaultSharding()),
-      _allowSpecifiedKeys(allowSpecifiedKeys),
-      _fixupGraphInput(fixupGraphInput),
       _collection(collection),
       _logCol(collection->getCollection()),
-      _type(type) {}
+      _type(type),
+      _satellites(std::move(satellites)) {}
 
 auto DistributeExecutorInfos::registerId() const noexcept -> RegisterId {
-  TRI_ASSERT(_regId != RegisterPlan::MaxRegisterId);
+  TRI_ASSERT(_regId.isValid());
   return _regId;
-}
-auto DistributeExecutorInfos::hasAlternativeRegister() const noexcept -> bool {
-  return _alternativeRegId != RegisterPlan::MaxRegisterId;
-}
-auto DistributeExecutorInfos::alternativeRegisterId() const noexcept -> RegisterId {
-  TRI_ASSERT(_alternativeRegId != RegisterPlan::MaxRegisterId);
-  return _alternativeRegId;
-}
-
-auto DistributeExecutorInfos::allowKeyConversionToObject() const noexcept -> bool {
-  return _allowKeyConversionToObject;
-}
-
-auto DistributeExecutorInfos::createKeys() const noexcept -> bool {
-  return _createKeys;
-}
-auto DistributeExecutorInfos::usesDefaultSharding() const noexcept -> bool {
-  return _usesDefaultSharding;
-}
-auto DistributeExecutorInfos::allowSpecifiedKeys() const noexcept -> bool {
-  return _allowSpecifiedKeys;
-}
-
-auto DistributeExecutorInfos::needsToFixGraphInput() const -> bool {
-  return _fixupGraphInput;
 }
 
 auto DistributeExecutorInfos::scatterType() const noexcept -> ScatterNode::ScatterType {
@@ -97,7 +64,7 @@ auto DistributeExecutorInfos::scatterType() const noexcept -> ScatterNode::Scatt
 auto DistributeExecutorInfos::getResponsibleClient(arangodb::velocypack::Slice value) const
     -> ResultT<std::string> {
   std::string shardId;
-  int res = _logCol->getResponsibleShard(value, true, shardId);
+  auto res = _logCol->getResponsibleShard(value, true, shardId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return Result{res};
@@ -112,15 +79,39 @@ auto DistributeExecutorInfos::getResponsibleClient(arangodb::velocypack::Slice v
   return shardId;
 }
 
-/// @brief create a new document key
-auto DistributeExecutorInfos::createKey(VPackSlice input) const -> std::string {
-  return _logCol->createKey(input);
+auto DistributeExecutorInfos::shouldDistributeToAll(arangodb::velocypack::Slice value) const
+    -> bool {
+  if (_satellites.empty()) {
+    // We can only distribute to all on Satellite Collections
+    return false;
+  }
+  auto id = value.get(StaticStrings::IdString);
+  if (!id.isString()) {
+    // We can only distribute to all if we can detect the collection name
+    return false;
+  }
+
+  // NOTE: Copy Paste code, shall be unified
+  VPackStringRef vid(id);
+  size_t pos = vid.find('/');
+  if (pos == std::string::npos) {
+    // Invalid input. Let the sharding take care of it, one server shall complain
+    return false;
+  }
+  vid = vid.substr(0, pos);
+  for (auto const& it : _satellites) {
+    if (vid.equals(it->name())) {
+      // This vertex is from a satellite collection start everywhere!
+      return true;
+    }
+  }
+  return false;
 }
 
 DistributeExecutor::DistributeExecutor(DistributeExecutorInfos const& infos)
     : _infos(infos) {}
 
-auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
+auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                                          std::unordered_map<std::string, ClientBlockData>& blockMap)
     -> void {
   std::unordered_map<std::string, std::vector<std::size_t>> choosenMap;
@@ -134,10 +125,39 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult
           choosenMap[key].emplace_back(i);
         }
       } else {
-        auto client = getClient(block, i);
-        // We can only have clients we are prepared for
-        TRI_ASSERT(blockMap.find(client) != blockMap.end());
-        choosenMap[client].emplace_back(i);
+        // check first input register
+        AqlValue val = InputAqlItemRow{block, i}.getValue(_infos.registerId());
+
+        VPackSlice input = val.slice();  // will throw when wrong type
+        if (input.isNone()) {
+          continue;
+        }
+
+        if (!input.isObject()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL, "DistributeExecutor requires an object as input");
+        }
+        // NONE is ignored.
+        // Object is processd
+        // All others throw.
+        TRI_ASSERT(input.isObject());
+        if (_infos.shouldDistributeToAll(input)) {
+          // This input should be added to all clients
+          for (auto const& [key, value] : blockMap) {
+            choosenMap[key].emplace_back(i);
+          }
+        } else {
+          auto client = getClient(input);
+          if (!client.empty()) {
+            // We can only have clients we are prepared for
+            TRI_ASSERT(blockMap.find(client) != blockMap.end());
+            if (ADB_UNLIKELY(blockMap.find(client) == blockMap.end())) {
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+                  std::string("unexpected client id '") + client + "' found in blockMap");
+            }
+            choosenMap[client].emplace_back(i);
+          }
+        }
       }
     }
 
@@ -161,130 +181,11 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult
   }
 }
 
-auto DistributeExecutor::getClientByIdSlice(VPackSlice input) -> std::string {
-  // Need to fix this document.
-  // We need id and key as input.
-  auto keyPart = transaction::helpers::extractKeyPart(input);
-  _keyBuilder.clear();
-  _keyBuilder.openObject(true);
-  _keyBuilder.add(StaticStrings::KeyString,
-                  VPackValuePair(keyPart.data(), keyPart.size(), VPackValueType::String));
-  _keyBuilder.close();
-  // If _key is invalid, we will throw here.
-  auto res = _infos.getResponsibleClient(_keyBuilder.slice());
-  THROW_ARANGO_EXCEPTION_IF_FAIL(res.result());
-  return res.get();
-}
-
-auto DistributeExecutor::getClient(SharedAqlItemBlockPtr block, size_t rowIndex)
-    -> std::string {
-  InputAqlItemRow row{block, rowIndex};
-  AqlValue val = row.getValue(_infos.registerId());
-
-  VPackSlice input = val.slice();  // will throw when wrong type
-
-  bool usedAlternativeRegId = false;
-
-  if (input.isNull() && _infos.hasAlternativeRegister()) {
-    // value is set, but null
-    // check if there is a second input register available (UPSERT makes use of
-    // two input registers,
-    // one for the search document, the other for the insert document)
-    val = row.getValue(_infos.alternativeRegisterId());
-
-    input = val.slice();  // will throw when wrong type
-    usedAlternativeRegId = true;
+auto DistributeExecutor::getClient(VPackSlice input) const -> std::string {
+  auto res = _infos.getResponsibleClient(input);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(std::move(res).result());
   }
-
-  VPackSlice value = input;
-  if (_infos.needsToFixGraphInput()) {
-    if (input.isString()) {
-      return getClientByIdSlice(input);
-    } else if (input.isObject() && input.hasKey(StaticStrings::IdString) && !input.hasKey(StaticStrings::KeyString)) {
-      // The input is an object, but only contains an _id, not a _key value that could be extracted.
-      // We can work with _id value only however so let us do this.
-      return getClientByIdSlice(input.get(StaticStrings::IdString));
-    }
-    if (!input.isObject() || !input.hasKey(StaticStrings::IdString)) {
-      // non objects cannot be sharded.
-      // Need to throw here.
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     "invalid start vertex. Must either be "
-                                     "an _id string or an object with _id."
-                                     "Instead got: " + input.toJson());
-    }
-    // If the value is valid (like a document) it will simply work.
-    auto res = _infos.getResponsibleClient(value);
-    THROW_ARANGO_EXCEPTION_IF_FAIL(res.result());
-    return res.get();
-  } else {
-    bool hasCreatedKeyAttribute = false;
-
-    if (input.isString() && _infos.allowKeyConversionToObject()) {
-      _keyBuilder.clear();
-      _keyBuilder.openObject(true);
-      _keyBuilder.add(StaticStrings::KeyString, input);
-      _keyBuilder.close();
-
-      // clear the previous value
-      block->destroyValue(rowIndex, _infos.registerId());
-
-      // overwrite with new value
-      block->emplaceValue(rowIndex, _infos.registerId(), _keyBuilder.slice());
-
-      value = _keyBuilder.slice();
-      hasCreatedKeyAttribute = true;
-    } else if (!input.isObject()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    }
-
-    TRI_ASSERT(value.isObject());
-
-    if (_infos.createKeys()) {
-      bool buildNewObject = false;
-      // we are responsible for creating keys if none present
-
-      if (_infos.usesDefaultSharding()) {
-        // the collection is sharded by _key...
-        if (!hasCreatedKeyAttribute && !value.hasKey(StaticStrings::KeyString)) {
-          // there is no _key attribute present, so we are responsible for
-          // creating one
-          buildNewObject = true;
-        }
-      } else {
-        // the collection is not sharded by _key
-        if (hasCreatedKeyAttribute || value.hasKey(StaticStrings::KeyString)) {
-          // a _key was given, but user is not allowed to specify _key
-          if (usedAlternativeRegId || !_infos.allowSpecifiedKeys()) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
-          }
-        } else {
-          buildNewObject = true;
-        }
-      }
-
-      if (buildNewObject) {
-        _keyBuilder.clear();
-        _keyBuilder.openObject(true);
-        _keyBuilder.add(StaticStrings::KeyString, VPackValue(_infos.createKey(value)));
-        _keyBuilder.close();
-
-        _objectBuilder.clear();
-        VPackCollection::merge(_objectBuilder, input, _keyBuilder.slice(), true);
-
-        // clear the previous value and overwrite with new value:
-        auto reg = usedAlternativeRegId ? _infos.alternativeRegisterId()
-                                        : _infos.registerId();
-
-        block->destroyValue(rowIndex, reg);
-        block->emplaceValue(rowIndex, reg, _objectBuilder.slice());
-        value = _objectBuilder.slice();
-      }
-    }
-  }
-
-  auto res = _infos.getResponsibleClient(value);
-  THROW_ARANGO_EXCEPTION_IF_FAIL(res.result());
   return res.get();
 }
 

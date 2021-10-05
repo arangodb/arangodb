@@ -309,8 +309,8 @@ function SkipListCorrSuite() {
     },
 
     testFillIndexFailure:function() {
-      var arr = [];
-      for(var i = 0; i < 30000; i++) {
+      let arr = [];
+      for (let i = 0; i < 30000; i++) {
         arr.push({_key: "" + i, v: i >= 29900 ? "peng" : i });
       }
       coll.insert(arr);
@@ -324,9 +324,11 @@ function SkipListCorrSuite() {
       } catch (e) {
         assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, e.errorNum);
       }
+
+      let idx = coll.getIndexes();
     
       // should not have created an index
-      assertEqual(coll.getIndexes().length, 1);
+      assertEqual(idx.length, 1, idx);
     }
   };
 }

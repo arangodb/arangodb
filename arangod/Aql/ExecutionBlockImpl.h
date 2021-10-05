@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H
-#define ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H 1
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallSet.h"
@@ -36,9 +35,13 @@
 #include "Aql/Stats.h"
 #include "Aql/RegisterInfos.h"
 
-#include <functional>
+#include <condition_variable>
 #include <memory>
-#include <queue>
+#include <mutex>
+
+namespace arangodb {
+  class ExecContext;
+}
 
 namespace arangodb::aql {
 
@@ -201,7 +204,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ///          * DONE: Here is some data, and there will be no further data available.
   ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack) override;
 
   virtual void collectExecStats(ExecutionStats& stats) const override {
     ExecutionBlock::collectExecStats(stats);
@@ -219,13 +222,20 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 #endif
 
  private:
+  struct ExecutionContext {
+    ExecutionContext(ExecutionBlockImpl& block, AqlCallStack const& callstack);
+    AqlCallStack stack;
+    AqlCallList clientCallList;
+    AqlCall clientCall;
+  };
+
   /**
    * @brief Inner execute() part, without the tracing calls.
    */
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack const& stack);
 
   std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> executeFetcher(
-      AqlCallStack& stack, AqlCallType const& aqlCall, bool wasCalledWithContinueCall);
+      ExecutionContext& ctx, AqlCallType const& aqlCall);
 
   std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> executeProduceRows(
       typename Fetcher::DataRange& input, OutputAqlItemRow& output);
@@ -248,12 +258,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
 
   // Allocate an output block and install a call in it
-  [[nodiscard]] auto allocateOutputBlock(AqlCall&& call, DataRange const& inputRange)
+  [[nodiscard]] auto allocateOutputBlock(AqlCall&& call)
       -> std::unique_ptr<OutputAqlItemRow>;
 
   // Ensure that we have an output block of the desired dimensions
   // Will as a side effect modify _outputItemRow
-  void ensureOutputBlock(AqlCall&& call, DataRange const& inputRange);
+  void ensureOutputBlock(AqlCall&& call);
 
   // Compute the next state based on the given call.
   // Can only be one of Skip/Produce/FullCount/FastForward/Done
@@ -291,6 +301,111 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   auto countShadowRowProduced(AqlCallStack& stack, size_t depth) -> void;
 
  private:
+  /**
+   * @brief The PrefetchTask is used to asynchronously prefetch the next batch
+   * from upstream. Each block holds only a single instance (if any), so each
+   * block can have max one pending async prefetch task. This instance is
+   * created on demand when the first async request is spawned, later tasks can
+   * reuse that instance.
+   * The async task is queued on the global scheduler so it can be picked up by
+   * some worker thread. However, sometimes the original thread might that
+   * created the task might be faster, in which case we don't want to wait
+   * until a worker has picked up the task. Instead, any thread that wants to
+   * process the task has to _claim_ it. This is managed via the task's `state`.
+   * 
+   * Before the task is queued on the scheduler, `state` is set to `Pending`.
+   * When a thread wants to process the task, it must call `tryClaim` which
+   * sets `state` to `InProgress` iff it is still pending. If `tryClaim`
+   * returns true, the calling thread is now the owner. If a worker thread
+   * successfully claimed the task, it executes it, stores the result, sets
+   * `state` to `Finished` and signals the `bell`. If it fails to claim the
+   * task, it can immediately drop the task.
+   * If the original thread successfully claimed the task, it can continue as
+   * usual (i.e., as if we have never spawned the task in the first place). If
+   * it fails to claim the task, it has to wait until the worker sets `state`
+   * to `Finished`, then fetches the result and sets `state` to `Consumed`.
+   * This is necessary to avoid waiting for a task that has already been
+   * consumed.
+   */
+  struct PrefetchTask {
+    enum class State {
+      Pending,
+      InProgress,
+      Finished,
+      Consumed
+    };
+    using PrefetchResult = std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange>;
+    
+    bool isConsumed() const noexcept;
+    bool tryClaim() noexcept;
+    void waitFor() noexcept;
+    void reset() noexcept;
+    PrefetchResult stealResult() noexcept;
+    
+    void execute(ExecutionBlockImpl& block, AqlCallStack& stack);
+    
+   private:
+    std::atomic<State> _state{State::Pending};
+    std::mutex _lock;
+    std::condition_variable _bell;
+    std::optional<PrefetchResult> _result;
+  };
+  
+  /**
+   * @brief The CallstackSplit class is used for execution blocks that need to
+   * perform their calls to upstream nodes in a separate thread in order to
+   * prevent stack overflows.
+   * 
+   * Execution blocks for which the callstack split has been enabled create a
+   * single CallstackSplit instance upon creation. The CallstackSplit instance
+   * manages the new thread for the upstream execution. Instead of calling
+   * executeFetcher directly, we call Callsplit::execute which stores the call
+   * parameter, signals the thread and then blocks. The other thread fetches
+   * the parameters, performs the call to executeFetcher, stores the result and
+   * notifies the original thread.
+   * 
+   * This way we can split the callstack over multiple threads and thereby
+   * avoid stack overflows.
+   * 
+   */
+  struct CallstackSplit {
+    explicit CallstackSplit(ExecutionBlockImpl& block);
+    ~CallstackSplit();
+
+    using UpstreamResult =
+        std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange>;
+    UpstreamResult execute(ExecutionContext& ctx, AqlCallType const& aqlCall);
+
+   private:
+    enum class State {
+      /// @brief the thread is waiting to be notified about  a pending upstream
+      /// call or that it should terminate.
+      Waiting,
+      /// @brief the thread is currently executing an upstream call. As long
+      /// as we are in state `Executing` the previous thread is blocked waiting
+      /// for the result.
+      Executing,
+      /// @brief the CallstackSplit instance is getting destroyed and the thread
+      /// must terminate
+      Stopped
+    };
+    struct Params {
+      std::variant<UpstreamResult, std::exception_ptr, std::nullopt_t>& result;
+      ExecutionContext& ctx;
+      AqlCallType const& aqlCall;
+    };
+
+    void run(ExecContext const& execContext);
+    std::atomic<State> _state{State::Waiting};
+    Params* _params;
+    ExecutionBlockImpl& _block;
+
+    std::mutex _lock;
+    std::condition_variable _bell;
+
+    std::thread _thread;
+  };
+
   RegisterInfos _registerInfos;
 
   /**
@@ -336,6 +451,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   AqlCallStack _stackBeforeWaiting;
   
+  std::shared_ptr<PrefetchTask> _prefetchTask;
+
+  std::unique_ptr<CallstackSplit> _callstackSplit;
+
+  Result _firstFailure;
+
   bool _hasMemoizedCall{false};
 
   // Only used in passthrough variant.
@@ -350,4 +471,3 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 };
 
 }  // namespace arangodb::aql
-#endif

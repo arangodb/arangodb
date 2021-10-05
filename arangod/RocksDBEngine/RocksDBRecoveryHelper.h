@@ -21,8 +21,7 @@
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_RECOVERY_HELPER_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_RECOVERY_HELPER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -67,4 +66,3 @@ class RocksDBRecoveryHelper {
 
 }  // end namespace arangodb
 
-#endif

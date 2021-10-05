@@ -41,16 +41,8 @@ AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state)
   TRI_ASSERT(!hasDataRow());
 }
 
-// only used for block passthrough
-AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr const& block)
-    : _block{block}, _aqlItemMatrix{nullptr} {
-  TRI_ASSERT(_aqlItemMatrix == nullptr);
-  TRI_ASSERT(!hasDataRow());
-}
-
 AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state, AqlItemMatrix* aqlItemMatrix)
     : _finalState{state}, _aqlItemMatrix{aqlItemMatrix} {
-  TRI_ASSERT(_block == nullptr);
   TRI_ASSERT(_aqlItemMatrix != nullptr);
   if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow()) {
     // Fast forward to initialize the _shadowRow
@@ -64,7 +56,7 @@ AqlItemBlockInputRange& AqlItemBlockInputMatrix::getInputRange() {
   if (_lastRange.hasDataRow()) {
     return _lastRange;
   }
-  // Need initialze lastRange
+  // Need initialize lastRange
   if (_aqlItemMatrix->numberOfBlocks() == 0) {
     _lastRange = {AqlItemBlockInputRange{upstreamState()}};
   } else {
@@ -75,15 +67,8 @@ AqlItemBlockInputRange& AqlItemBlockInputMatrix::getInputRange() {
   return _lastRange;
 }
 
-SharedAqlItemBlockPtr AqlItemBlockInputMatrix::getBlock() const noexcept {
-  TRI_ASSERT(_aqlItemMatrix == nullptr);
-  return _block;
-}
-
 std::pair<ExecutorState, AqlItemMatrix const*> AqlItemBlockInputMatrix::getMatrix() noexcept {
   TRI_ASSERT(_aqlItemMatrix != nullptr);
-  TRI_ASSERT(_block == nullptr);
-  TRI_ASSERT(!_shadowRow.isInitialized());
 
   // We are always done. This InputMatrix
   // guarantees that we have all data in our hand at once.
@@ -109,7 +94,7 @@ bool AqlItemBlockInputMatrix::hasValidRow() const noexcept {
 
 bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
   return _aqlItemMatrix != nullptr && !hasShadowRow() &&
-         ((_aqlItemMatrix->stoppedOnShadowRow()) ||
+         (_aqlItemMatrix->stoppedOnShadowRow() ||
           (_aqlItemMatrix->size() > 0 && _finalState == ExecutorState::DONE));
 }
 

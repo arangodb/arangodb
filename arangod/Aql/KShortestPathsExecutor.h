@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_KSHORTEST_PATHS_EXECUTOR_H
-#define ARANGOD_AQL_KSHORTEST_PATHS_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
@@ -31,7 +30,6 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Graph/KShortestPathsFinder.h"
-#include "Graph/KPathFinder.h"
 
 #include <velocypack/Builder.h>
 
@@ -45,7 +43,6 @@ class Slice;
 
 namespace graph {
 class KShortestPathsFinder;
-class KPathFinder;
 class ShortestPathFinder;
 class ShortestPathResult;
 class TraverserCache;
@@ -201,4 +198,3 @@ class KShortestPathsExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

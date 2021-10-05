@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_CLIENT_BASIC_FEATURE_PHASE_H
-#define ARANGODB_APPLICATION_FEATURES_CLIENT_BASIC_FEATURE_PHASE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
@@ -37,4 +36,3 @@ class BasicFeaturePhaseClient : public ApplicationFeaturePhase {
 }  // namespace application_features
 }  // namespace arangodb
 
-#endif

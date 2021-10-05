@@ -891,7 +891,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,4]},"e":12},"d":false}],
                      [{"a":{"b":{"c":[1,2,3]}}}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{}},{a:{b:{c:[1,2,3]},d:false}}]);
+                  [{a:{}},{a:{b:{c:[1,2,3]}},d:false}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -982,6 +982,7 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOpPush : function () {
+      writeAndCheck([[{"/a/b/c":[1,2,3]}]]);
       writeAndCheck([[{"/a/b/c":{"op":"push","new":"max"}}]]);
       assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3,"max"]}}}]);
       writeAndCheck([[{"/a/euler":{"op":"push","new":2.71828182845904523536}}]]);
@@ -1429,17 +1430,17 @@ function agencyTestSuite () {
     testOrder : function () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]}},d:false}]);
       writeAndCheck([[{"/":{"op":"delete"}}]]);
       writeAndCheck([[{"d":false, "a":{"b":{"c":[1,2,3]},"e":12}}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]}},d:false}]);
       writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]}},d:false}]);
       writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
       assertEqual(readAndCheck([["a/e"],["a/b","d"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]}},d:false}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

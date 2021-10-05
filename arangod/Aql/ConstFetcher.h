@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CONST_FETCHER_H
-#define ARANGOD_AQL_CONST_FETCHER_H
+#pragma once
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
@@ -74,11 +73,7 @@ class ConstFetcher {
 
   void injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped);
 
-  void setDistributeId(std::string const&) {
-    // This is not implemented for this fetcher
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  void setDistributeId(std::string const&);
 
  private:
   /**
@@ -114,4 +109,3 @@ class ConstFetcher {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_SINGLE_ROW_FETCHER_H

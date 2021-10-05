@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_CLEAN_OUT_SERVER_H
-#define ARANGOD_CONSENSUS_CLEAN_OUT_SERVER_H 1
+#pragma once
 
 #include "Job.h"
 #include "Supervision.h"
@@ -55,4 +54,3 @@ struct CleanOutServer : public Job {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

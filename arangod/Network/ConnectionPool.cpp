@@ -32,30 +32,45 @@
 
 #include <fuerte/connection.h>
 
+DECLARE_GAUGE(arangodb_connection_pool_connections_current,
+              uint64_t, "Current number of connections in pool");
+DECLARE_COUNTER(arangodb_connection_pool_leases_successful_total,
+                "Total number of successful connection leases");
+DECLARE_COUNTER(arangodb_connection_pool_leases_failed_total,
+                "Total number of failed connection leases");
+DECLARE_COUNTER(arangodb_connection_pool_connections_created_total,
+                "Total number of connections created");
+
+struct LeaseTimeScale {
+  static log_scale_t<float> scale() { return {2.f, 0.f, 1000.f, 10}; }
+};
+DECLARE_HISTOGRAM(
+  arangodb_connection_pool_lease_time_hist, LeaseTimeScale,
+  "Time to lease a connection from pool [ms]");
+
 namespace arangodb {
 namespace network {
 
 using namespace arangodb::fuerte::v1;
 
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
-    : _config(config), 
-      _loop(config.numIOThreads, config.name),
-      _totalConnectionsInPool(
-        _config.metricsFeature.gauge(
-          std::string("arangodb_connection_connections_current_") + _config.name, uint64_t(0), "Current number of connections in pool")),
-      _successSelect(
-        _config.metricsFeature.counter(
-        std::string("arangodb_connection_leases_successful_") + _config.name, 0, "Total number of successful connection leases")),
-      _noSuccessSelect(
-        _config.metricsFeature.counter(
-          std::string("arangodb_connection_pool_leases_failed_") + _config.name, 0, "Total number of failed connection leases")),
-      _connectionsCreated(
-        _config.metricsFeature.counter(
-          std::string("arangodb_connection_pool_connections_created_") + _config.name, 0, "Total number of connections created")),
-      _leaseHistMSec(
-        _config.metricsFeature.histogram(
-          std::string("arangodb_connection_pool_lease_time_hist_")+ _config.name, log_scale_t(2.f, 0.f, 1000.f, 10),
-          std::string("Time to lease a connection from pool ") + _config.name + " [us]")) {
+  : _config(config), 
+    _loop(config.numIOThreads, config.name),
+    _totalConnectionsInPool(
+      _config.metricsFeature.add(
+        arangodb_connection_pool_connections_current{}.withLabel("pool", _config.name))),
+    _successSelect(
+      _config.metricsFeature.add(
+        arangodb_connection_pool_leases_successful_total{}.withLabel("pool", config.name))),
+    _noSuccessSelect(
+      _config.metricsFeature.add(
+        arangodb_connection_pool_leases_failed_total{}.withLabel("pool", config.name))),
+    _connectionsCreated(
+      _config.metricsFeature.add(
+        arangodb_connection_pool_connections_created_total{}.withLabel("pool", config.name))),
+    _leaseHistMSec(
+      _config.metricsFeature.add(
+        arangodb_connection_pool_lease_time_hist{}.withLabel("pool", config.name))) {
   TRI_ASSERT(config.numIOThreads > 0);
 }
 
@@ -64,7 +79,7 @@ ConnectionPool::~ConnectionPool() { shutdownConnections(); }
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint
 /// is always the same, we do not do any post-processing
-network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoint) {
+network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoint, bool& isFromPool) {
   READ_LOCKER(guard, _lock);
   auto it = _connections.find(endpoint);
   if (it == _connections.end()) {
@@ -73,9 +88,9 @@ network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoi
     auto tmp = std::make_unique<Bucket>(); //get memory outside lock
     WRITE_LOCKER(wguard, _lock);
     auto [it2, emplaced] = _connections.try_emplace(endpoint, std::move(tmp));
-    return selectConnection(endpoint,*it2->second);
+    return selectConnection(endpoint,*it2->second, isFromPool);
   }
-  return selectConnection(endpoint, *it->second);
+  return selectConnection(endpoint, *it->second, isFromPool);
 }
 
 /// @brief drain all connections
@@ -157,11 +172,14 @@ size_t ConnectionPool::cancelConnections(std::string const& endpoint) {
   WRITE_LOCKER(guard, _lock);
   auto const& it = _connections.find(endpoint);
   if (it != _connections.end()) {
-    Bucket& buck = *(it->second);
-    std::lock_guard<std::mutex> lock(buck.mutex);
-    size_t n = buck.list.size();
-    for (std::shared_ptr<Context>& c : buck.list) {
-      c->fuerte->cancel();
+    size_t n;
+    {
+      Bucket& buck = *(it->second);
+      std::lock_guard<std::mutex> lock(buck.mutex);
+      n = buck.list.size();
+      for (std::shared_ptr<Context>& c : buck.list) {
+        c->fuerte->cancel();
+      }
     }
     _connections.erase(it);
     return n;
@@ -207,7 +225,8 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::Con
 }
 
 ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
-                                               ConnectionPool::Bucket& bucket) {
+                                               ConnectionPool::Bucket& bucket,
+                                               bool& isFromPool) {
   using namespace std::chrono;
   const milliseconds ttl(_config.idleConnectionMilli);
   
@@ -215,6 +234,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
 
   auto start = steady_clock::now();
   
+  isFromPool = true;  // Will revert for new collections
   for (std::shared_ptr<Context>& c : bucket.list) {
     if (c->fuerte->state() == fuerte::Connection::State::Closed ||
         (start - c->lastLeased) > ttl) {
@@ -242,20 +262,21 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
         if (c->fuerte->requestsLeft() <= limit &&
             c->fuerte->state() != fuerte::Connection::State::Closed) {
           c->lastLeased = std::chrono::steady_clock::now();
-          _successSelect++;
+          ++_successSelect;
           _leaseHistMSec.count(
               duration<float, std::micro>(c->lastLeased - start).count());
           return {c};
         } else {  // too many requests,
           c->leases.fetch_sub(1, std::memory_order_relaxed);
-          _noSuccessSelect++;
+          ++_noSuccessSelect;
           break;
         }
       }
     }
   }
   
-  _connectionsCreated++;
+  ++_connectionsCreated;
+  isFromPool = false;
   
   // no free connection found, so we add one
   LOG_TOPIC("2d6ab", DEBUG, Logger::COMMUNICATION) << "creating connection to "

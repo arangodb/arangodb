@@ -498,9 +498,9 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const queryString(TRI_ObjectToString(isolate, args[0]));
   // If we execute an AQL query from V8 we need to unset the nolock headers
-  arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
-                             nullptr);
-  auto parseResult = query.parse();
+  auto query = arangodb::aql::Query::create(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
+                                            nullptr);
+  auto parseResult = query->parse();
 
   if (parseResult.result.fail()) {
     TRI_V8_THROW_EXCEPTION_FULL(parseResult.result.errorNumber(), parseResult.result.errorMessage());
@@ -567,11 +567,12 @@ static void JS_WarningAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // only register the error if we have a query...
     // note: we may not have a query if the AQL functions are called without
     // a query, e.g. during tests
-    int code = static_cast<int>(TRI_ObjectToInt64(isolate, args[0]));
+    auto code = ErrorCode{static_cast<int>(TRI_ObjectToInt64(isolate, args[0]))};
     std::string const message = TRI_ObjectToString(isolate, args[1]);
 
-    auto expressionContext = static_cast<arangodb::aql::ExpressionContext*>(v8g->_expressionContext);
-    expressionContext->registerWarning( code, message.c_str());
+    auto expressionContext =
+        static_cast<arangodb::aql::ExpressionContext*>(v8g->_expressionContext);
+    expressionContext->registerWarning(code, message.c_str());
   } else {
     TRI_V8_THROW_TYPE_ERROR("must only be invoked from AQL user defined functions");
   }
@@ -625,9 +626,10 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // bind parameters will be freed by the query later
-  arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true),
-                             aql::QueryString(queryString), bindVars, options.slice());
-  auto queryResult = query.explain();
+  auto query = arangodb::aql::Query::create(transaction::V8Context::Create(vocbase, true),
+                                            aql::QueryString(queryString), std::move(bindVars), 
+                                            aql::QueryOptions(options.slice()));
+  auto queryResult = query->explain();
 
   if (queryResult.result.fail()) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
@@ -636,7 +638,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   if (queryResult.data != nullptr) {
-    if (query.queryOptions().allPlans) {
+    if (query->queryOptions().allPlans) {
       result->Set(context,
                   TRI_V8_ASCII_STRING(isolate, "plans"),
                   TRI_VPackToV8(isolate, queryResult.data->slice())).FromMaybe(false);
@@ -706,8 +708,18 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8ToVPack(isolate, options, args[1], false);
   }
 
-  arangodb::aql::ClusterQuery query(transaction::V8Context::Create(vocbase, true),
-                                    aql::QueryOptions(options.slice()));
+  arangodb::aql::QueryId queryId;
+  if (ServerState::instance()->isCoordinator()) {
+    queryId = vocbase.server().getFeature<ClusterFeature>().clusterInfo().uniqid();
+  } else {
+    queryId = TRI_NewServerSpecificTick(); 
+  }
+
+  auto query = arangodb::aql::ClusterQuery::create(
+      queryId, 
+      transaction::V8Context::Create(vocbase, true),
+      aql::QueryOptions(options.slice())
+  );
   
   VPackSlice collections = queryBuilder.slice().get("collections");
   VPackSlice variables = queryBuilder.slice().get("variables");
@@ -728,12 +740,12 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
  
   TRI_ASSERT(!ServerState::instance()->isDBServer());
   VPackBuilder ignoreResponse;
-  query.prepareClusterQuery(VPackSlice::emptyObjectSlice(),
-                            collections, variables,
-                            snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse,
-                            analyzersRevision);
+  query->prepareClusterQuery(VPackSlice::emptyObjectSlice(),
+                             collections, variables,
+                             snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse,
+                             analyzersRevision);
   
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
@@ -824,11 +836,10 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8ToVPack(isolate, options, args[2], false);
   }
 
-  // bind parameters will be freed by the query later
-  arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
-                             bindVars, options.slice());
+  auto query = arangodb::aql::Query::create(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
+                                            std::move(bindVars), aql::QueryOptions(options.slice()));
 
-  arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate);
+  arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED)) {
@@ -1397,7 +1408,7 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
-  engine.getStatistics(builder);
+  engine.getStatistics(builder, true);
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);
@@ -1909,6 +1920,31 @@ static void JS_CurrentWalFiles(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_SystemStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  auto& vocbase = GetContextVocBase(isolate);
+
+  if (args.Length() != 1 || !args[0]->IsNumber()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("SYSTEM_STATISTICS(start)");
+  }
+                                           
+  double start = TRI_ObjectToDouble(isolate, args[0]);
+
+  VPackBuilder builder;
+  Result res = vocbase.server().getFeature<StatisticsFeature>().getClusterSystemStatistics(vocbase, start, builder);
+
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+  
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this is for single server mode to dump an agency
 ////////////////////////////////////////////////////////////////////////////////
@@ -1916,6 +1952,7 @@ static void JS_CurrentWalFiles(v8::FunctionCallbackInfo<v8::Value> const& args) 
 static void JS_AgencyDump(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
   auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
 
@@ -2160,6 +2197,10 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "AGENCY_DUMP"),
                                JS_AgencyDump, true);
   
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYSTEM_STATISTICS"),
+                               JS_SystemStatistics, true);
+  
 #ifdef USE_ENTERPRISE
   if (v8g->_server.hasFeature<V8DealerFeature>() &&
       v8g->_server.getFeature<V8DealerFeature>().allowAdminExecute()) {
@@ -2234,20 +2275,19 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                           vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
   
-  // max number of shards
+  // force one shard collections?
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "FORCE_ONE_SHARD"),
                           v8::Boolean::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().forceOneShard()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
-
-  // use old system collections
+  
+  // session timeout (used by web UI)
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "USE_OLD_SYSTEM_COLLECTIONS"),
-                          v8::Boolean::New(isolate,
-                                          vocbase.server().getFeature<DatabaseFeature>().useOldSystemCollections()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
+                          TRI_V8_ASCII_STRING(isolate, "SESSION_TIMEOUT"),
+                          v8::Number::New(isolate, static_cast<double>(AuthenticationFeature::instance()->sessionTimeout())), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   // a thread-global variable that will contain the AQL module.

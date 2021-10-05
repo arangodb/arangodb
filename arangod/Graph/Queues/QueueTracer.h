@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_QUEUE_TRACER_H
-#define ARANGOD_GRAPH_QUEUE_TRACER_H 1
+#pragma once
 
 #include "Graph/Helpers/TraceEntry.h"
 #include "Basics/ResourceUsage.h"
@@ -38,7 +37,7 @@ class QueueTracer {
   using Step = typename QueueImpl::Step;
 
  public:
-  QueueTracer(arangodb::ResourceMonitor& resourceMonitor);
+  explicit QueueTracer(arangodb::ResourceMonitor& resourceMonitor);
   ~QueueTracer();
 
   void clear();
@@ -61,4 +60,3 @@ class QueueTracer {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

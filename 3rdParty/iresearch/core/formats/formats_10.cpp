@@ -20,59 +20,50 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
-#include <array>
-#include <cassert>
-#include <cmath>
-#include <deque>
-#include <list>
-#include <numeric>
+#include "formats_10.hpp"
+
+extern "C" {
+#include <simdbitpacking.h>
+#include <avxbitpacking.h>
+}
 
 #include "shared.hpp"
-
 #include "skip_list.hpp"
 
-#include "formats_10.hpp"
 #include "formats_10_attributes.hpp"
 #include "formats_burst_trie.hpp"
+#include "columnstore.hpp"
+#include "columnstore2.hpp"
 #include "format_utils.hpp"
 
 #include "analysis/token_attributes.hpp"
 
 #include "index/field_meta.hpp"
 #include "index/file_names.hpp"
-#include "index/index_reader.hpp"
 #include "index/index_meta.hpp"
-
-#include "store/memory_directory.hpp"
-#include "store/store_utils.hpp"
+#include "index/index_features.hpp"
+#include "index/index_reader.hpp"
 
 #include "search/cost.hpp"
 #include "search/score.hpp"
 
-#include "utils/bit_packing.hpp"
-#include "utils/bit_utils.hpp"
-#include "utils/bitset.hpp"
-#include "utils/lz4compression.hpp"
+#include "store/memory_directory.hpp"
+#include "store/store_utils.hpp"
+
+#include "utils/bitpack.hpp"
 #include "utils/encryption.hpp"
 #include "utils/frozen_attributes.hpp"
-#include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/memory.hpp"
 #include "utils/memory_pool.hpp"
 #include "utils/noncopyable.hpp"
-#include "utils/object_pool.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/std.hpp"
 
-#ifdef IRESEARCH_SSE2
-#include "store/store_utils_simd.hpp"
-#endif
-
 #if defined(_MSC_VER)
-  #pragma warning(disable : 4351)
+#pragma warning(disable : 4351)
 #endif
 
 namespace {
@@ -83,98 +74,66 @@ using namespace irs;
 constexpr string_ref MODULE_NAME = "10";
 
 struct format_traits {
+  using align_type = uint32_t;
+
   static constexpr uint32_t BLOCK_SIZE = 128;
+
+  FORCE_INLINE static void pack_block32(
+      const uint32_t* RESTRICT decoded,
+      uint32_t* RESTRICT encoded,
+      const uint32_t bits) noexcept {
+    packed::pack_block(decoded, encoded, bits);
+    packed::pack_block(decoded + packed::BLOCK_SIZE_32, encoded + bits, bits);
+    packed::pack_block(decoded + 2*packed::BLOCK_SIZE_32, encoded + 2*bits, bits);
+    packed::pack_block(decoded + 3*packed::BLOCK_SIZE_32, encoded + 3*bits, bits);
+  }
+
+  FORCE_INLINE static void unpack_block32(
+      uint32_t* RESTRICT decoded,
+      const uint32_t* RESTRICT encoded,
+      const uint32_t bits) noexcept {
+    packed::unpack_block(encoded, decoded, bits);
+    packed::unpack_block(encoded + bits, decoded + packed::BLOCK_SIZE_32, bits);
+    packed::unpack_block(encoded + 2*bits, decoded + 2*packed::BLOCK_SIZE_32, bits);
+    packed::unpack_block(encoded + 3*bits, decoded + 3*packed::BLOCK_SIZE_32, bits);
+  }
+
+  FORCE_INLINE static void pack32(
+      const uint32_t* RESTRICT decoded,
+      uint32_t* RESTRICT encoded,
+      size_t size,
+      const uint32_t bits) noexcept {
+    assert(encoded);
+    assert(decoded);
+    assert(size);
+    packed::pack(decoded, decoded + size, encoded, bits);
+  }
+
+  FORCE_INLINE static void pack64(
+      const uint64_t* RESTRICT decoded,
+      uint64_t* RESTRICT encoded,
+      size_t size,
+      const uint32_t bits) noexcept {
+    assert(encoded);
+    assert(decoded);
+    assert(size);
+    packed::pack(decoded, decoded + size, encoded, bits);
+  }
 
   FORCE_INLINE static void write_block(
       index_output& out, const uint32_t* in, uint32_t* buf) {
-    encode::bitpack::write_block(out, in, buf);
+    bitpack::write_block32<BLOCK_SIZE>(&pack_block32, out, in, buf);
   }
 
   FORCE_INLINE static void read_block(
       index_input& in, uint32_t* buf,  uint32_t* out) {
-    encode::bitpack::read_block(in, buf, out);
+    bitpack::read_block32<BLOCK_SIZE>(&unpack_block32, in, buf, out);
   }
 
   FORCE_INLINE static void skip_block(index_input& in) {
-    encode::bitpack::skip_block32(in, BLOCK_SIZE);
+    bitpack::skip_block32(in, BLOCK_SIZE);
   }
 }; // format_traits
-
-bytes_ref DUMMY; // placeholder for visiting logic in columnstore
-
-class noop_compressor final : compression::compressor {
- public:
-  static compression::compressor::ptr make() {
-    typedef compression::compressor::ptr ptr;
-    static noop_compressor INSTANCE;
-    return ptr(ptr(), &INSTANCE);
-  }
-
-  virtual bytes_ref compress(byte_type* in, size_t size, bstring& /*buf*/) override {
-    return bytes_ref(in, size);
-  }
-
-  virtual void flush(data_output& /*out*/) override { }
-
- private:
-  noop_compressor() = default;
-}; // noop_compressor
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                         features
-// ----------------------------------------------------------------------------
-
-// compiled features supported by current format
-class features {
- public:
-  enum Mask : uint32_t {
-    DOCS = 0,
-    FREQ = 1,
-    POS = 2,
-    OFFS = 4,
-    PAY = 8,
-  };
-
-  features() = default;
-
-  explicit features(const irs::flags& in) noexcept {
-    irs::set_bit<0>(in.check<irs::frequency>(), mask_);
-    irs::set_bit<1>(in.check<irs::position>(), mask_);
-    irs::set_bit<2>(in.check<irs::offset>(), mask_);
-    irs::set_bit<3>(in.check<irs::payload>(), mask_);
-  }
-
-  features operator&(const irs::flags& in) const noexcept {
-    return features(*this) &= in;
-  }
-
-  features& operator&=(const irs::flags& in) noexcept {
-    irs::unset_bit<0>(!in.check<irs::frequency>(), mask_);
-    irs::unset_bit<1>(!in.check<irs::position>(), mask_);
-    irs::unset_bit<2>(!in.check<irs::offset>(), mask_);
-    irs::unset_bit<3>(!in.check<irs::payload>(), mask_);
-    return *this;
-  }
-
-  bool freq() const noexcept { return irs::check_bit<0>(mask_); }
-  bool position() const noexcept { return irs::check_bit<1>(mask_); }
-  bool offset() const noexcept { return irs::check_bit<2>(mask_); }
-  bool payload() const noexcept { return irs::check_bit<3>(mask_); }
-  operator Mask() const noexcept { return static_cast<Mask>(mask_); }
-
-  bool any(Mask mask) const noexcept {
-    return Mask(0) != (mask_ & mask);
-  }
-
-  bool all(Mask mask) const noexcept {
-    return mask != (mask_ & mask);
-  }
-
- private:
-  irs::byte_type mask_{};
-}; // features
-
-ENABLE_BITMASK_ENUM(features::Mask);
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             forward declarations
@@ -194,15 +153,14 @@ inline void prepare_output(
     const string_ref& ext,
     const string_ref& format,
     const int32_t version) {
-  assert( !out );
+  assert(!out);
   file_name(str, state.name, ext);
   out = state.dir->create(str);
 
   if (!out) {
     throw io_error(string_utils::to_string(
       "failed to create file, path: %s",
-      str.c_str()
-    ));
+      str.c_str()));
   }
 
   format_utils::write_header(*out, format, version);
@@ -217,15 +175,14 @@ inline void prepare_input(
     const string_ref& format,
     const int32_t min_ver,
     const int32_t max_ver ) {
-  assert( !in );
+  assert(!in);
   file_name(str, state.meta->name, ext);
   in = state.dir->open(str, advice);
 
   if (!in) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      str.c_str()
-    ));
+      str.c_str()));
   }
 
   format_utils::check_header(*in, format, min_ver, max_ver);
@@ -247,6 +204,31 @@ inline void prepare_input(
 /// @class postings_writer_base
 //////////////////////////////////////////////////////////////////////////////
 class postings_writer_base : public irs::postings_writer {
+ private:
+  // FIXME consider using a set of bools
+  class index_features {
+   public:
+    explicit index_features(IndexFeatures mask = IndexFeatures::NONE) noexcept
+      : mask_{static_cast<decltype(mask_)>(mask)} {
+    }
+
+    bool freq() const noexcept { return check_bit<0>(mask_); }
+    bool position() const noexcept { return check_bit<1>(mask_); }
+    bool offset() const noexcept { return check_bit<2>(mask_); }
+    bool payload() const noexcept { return check_bit<3>(mask_); }
+
+    explicit operator IndexFeatures() const noexcept {
+      return static_cast<IndexFeatures>(mask_);
+    }
+
+    bool any(IndexFeatures mask) const noexcept {
+      return IndexFeatures::NONE != (IndexFeatures{mask_} & mask);
+    }
+
+   private:
+    std::underlying_type_t<IndexFeatures> mask_{};
+  }; // index_features
+
  public:
   static constexpr int32_t TERMS_FORMAT_MIN = 0;
   static constexpr int32_t TERMS_FORMAT_MAX = TERMS_FORMAT_MIN;
@@ -298,8 +280,8 @@ class postings_writer_base : public irs::postings_writer {
     return irs::type<version10::documents>::id() == type ? &docs_ : nullptr;
   }
 
-  virtual void begin_field(const irs::flags& field) final {
-    features_ = ::features(field);
+  virtual void begin_field(IndexFeatures features) final {
+    features_ = index_features{features};
     docs_.value.clear();
     last_state_.clear();
   }
@@ -317,18 +299,14 @@ class postings_writer_base : public irs::postings_writer {
 
  protected:
   virtual void release(irs::term_meta *meta) noexcept final {
-  #ifdef IRESEARCH_DEBUG
-    auto* state = dynamic_cast<version10::term_meta*>(meta);
-  #else
     auto* state = static_cast<version10::term_meta*>(meta);
-  #endif // IRESEARCH_DEBUG
     assert(state);
 
     alloc_.destroy(state);
     alloc_.deallocate(state);
   }
 
-  struct stream {
+  struct skip_buffer {
     void reset() noexcept {
       start = end = 0;
     }
@@ -338,62 +316,64 @@ class postings_writer_base : public irs::postings_writer {
     uint64_t end{};                       // end position of block
   }; // stream
 
-  struct doc_stream : stream {
+  struct doc_buffer : skip_buffer {
     bool full() const noexcept {
-      return delta == std::end(deltas);
+      return doc == std::end(docs);
     }
 
     bool empty() const noexcept {
-      return delta == deltas;
+      return doc == std::begin(docs);
     }
 
     void push(doc_id_t doc, uint32_t freq) noexcept {
-      *this->delta++ = doc - last;
+      *this->doc++ = doc;
       *this->freq++ = freq;
       last = doc;
     }
 
     void reset() noexcept {
-      stream::reset();
-      delta = deltas;
+      skip_buffer::reset();
+      doc = docs;
       freq = freqs;
       last = doc_limits::invalid();
-      block_last = doc_limits::invalid();
+      block_last = doc_limits::min();
     }
 
-    doc_id_t skip_doc[MAX_SKIP_LEVELS]{};
-    doc_id_t deltas[BLOCK_SIZE]{}; // document deltas
+    //FIXME alignment
+    doc_id_t docs[BLOCK_SIZE]{}; // document deltas
     uint32_t freqs[BLOCK_SIZE]{};
-    doc_id_t* delta{ deltas };
+    doc_id_t skip_doc[MAX_SKIP_LEVELS]{};
+    doc_id_t* doc{ docs };
     uint32_t* freq{ freqs };
     doc_id_t last{ doc_limits::invalid() }; // last buffered document id
-    doc_id_t block_last{ doc_limits::invalid() }; // last document id in a block
-  }; // doc_stream
+    doc_id_t block_last{ doc_limits::min() }; // last document id in a block
+  }; // doc_buffer
 
-  struct pos_stream : stream {
-    using ptr = std::unique_ptr<pos_stream>;
+  struct pos_buffer : skip_buffer {
+    using ptr = std::unique_ptr<pos_buffer>;
 
     bool full() const { return BLOCK_SIZE == size; }
     void next(uint32_t pos) { last = pos, ++size; }
     void pos(uint32_t pos) {
-        buf[size] = pos;
+      buf[size] = pos;
     }
 
     void reset() noexcept {
-      stream::reset();
+      skip_buffer::reset();
       last = 0;
       block_last = 0;
       size = 0;
     }
 
+    //FIXME alignment
     uint32_t buf[BLOCK_SIZE]{}; // buffer to store position deltas
     uint32_t last{};            // last buffered position
     uint32_t block_last{};      // last position in a block
     uint32_t size{};            // number of buffered elements
   }; // pos_stream
 
-  struct pay_stream : stream {
-    using ptr = std::unique_ptr<pay_stream>;
+  struct pay_buffer : skip_buffer {
+    using ptr = std::unique_ptr<pay_buffer>;
 
     void push_payload(uint32_t i, const bytes_ref& pay) {
       if (!pay.empty()) {
@@ -411,16 +391,17 @@ class postings_writer_base : public irs::postings_writer {
     }
 
     void reset() noexcept {
-      stream::reset();
+      skip_buffer::reset();
       pay_buf_.clear();
       block_last = 0;
       last = 0;
     }
 
-    bstring pay_buf_;                       // buffer for payload
+    //FIXME alignment
     uint32_t pay_sizes[BLOCK_SIZE]{};       // buffer to store payloads sizes
     uint32_t offs_start_buf[BLOCK_SIZE]{};  // buffer to store start offsets
     uint32_t offs_len_buf[BLOCK_SIZE]{};    // buffer to store offset lengths
+    bstring pay_buf_;                       // buffer for payload
     size_t block_last{};                    // last payload buffer length in a block
     uint32_t last{};                        // last start offset
   }; // pay_stream
@@ -441,14 +422,14 @@ class postings_writer_base : public irs::postings_writer {
   skip_writer skip_;
   version10::term_meta last_state_; // last final term state
   version10::documents docs_;       // bit set of all processed documents
-  features features_;               // features supported by current field
+  index_features features_;         // features supported by current field
   index_output::ptr doc_out_;       // postings (doc + freq)
   index_output::ptr pos_out_;       // positions
   index_output::ptr pay_out_;       // payload (payl + offs)
   uint32_t buf_[BLOCK_SIZE];        // buffer for encoding (worst case)
-  doc_stream doc_;                  // document stream
-  pos_stream::ptr pos_;             // proximity stream
-  pay_stream::ptr pay_;             // payloads and offsets stream
+  doc_buffer doc_;                  // document stream
+  pos_buffer::ptr pos_;             // proximity stream
+  pay_buffer::ptr pay_;             // payloads and offsets stream
   size_t docs_count_{};             // number of processed documents
   const int32_t postings_format_version_;
   const int32_t terms_format_version_;
@@ -467,21 +448,19 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
   // prepare document stream
   prepare_output(name, doc_out_, state, DOC_EXT, DOC_FORMAT_NAME, postings_format_version_);
 
-  auto& features = *state.features;
-
-  if (features.check<position>()) {
+  if (IndexFeatures::NONE != (state.index_features & IndexFeatures::POS)) {
     // prepare proximity stream
     if (!pos_) {
-      pos_ = memory::make_unique<pos_stream>();
+      pos_ = memory::make_unique<pos_buffer>();
     }
 
     pos_->reset();
     prepare_output(name, pos_out_, state, POS_EXT, POS_FORMAT_NAME, postings_format_version_);
 
-    if (features.check<payload>() || features.check<offset>()) {
+    if (IndexFeatures::NONE != (state.index_features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       // prepare payload stream
       if (!pay_) {
-        pay_ = memory::make_unique<pay_stream>();
+        pay_ = memory::make_unique<pay_buffer>();
       }
 
       pay_->reset();
@@ -493,8 +472,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
     MAX_SKIP_LEVELS,
     state.doc_count,
     [this] (size_t i, index_output& out) { write_skip(i, out); },
-    directory_utils::get_allocator(*state.dir)
-  );
+    state.dir->attributes().allocator());
 
   format_utils::write_header(out, TERMS_FORMAT_NAME, terms_format_version_); // write postings format name
   out.write_vint(BLOCK_SIZE); // write postings block size
@@ -506,14 +484,10 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
 void postings_writer_base::encode(
     data_output& out,
     const irs::term_meta& state) {
-#ifdef IRESEARCH_DEBUG
-  const auto& meta = dynamic_cast<const version10::term_meta&>(state);
-#else
   const auto& meta = static_cast<const version10::term_meta&>(state);
-#endif // IRESEARCH_DEBUG
 
   out.write_vint(meta.docs_count);
-  if (meta.freq != integer_traits<uint32_t>::const_max) {
+  if (meta.freq != std::numeric_limits<uint32_t>::max()) {
     assert(meta.freq >= meta.docs_count);
     out.write_vint(meta.freq - meta.docs_count);
   }
@@ -524,7 +498,7 @@ void postings_writer_base::encode(
     if (type_limits<type_t::address_t>::valid(meta.pos_end)) {
       out.write_vlong(meta.pos_end);
     }
-    if (features_.any(features::OFFS | features::PAY)) {
+    if (features_.any(IndexFeatures::OFFS | IndexFeatures::PAY)) {
       out.write_vlong(meta.pay_start - last_state_.pay_start);
     }
   }
@@ -571,7 +545,7 @@ void postings_writer_base::write_skip(size_t level, index_output& out) {
 
     pos_->skip_ptr[level] = pos_ptr;
 
-    if (features_.any(features::OFFS | features::PAY)) {
+    if (features_.any(IndexFeatures::OFFS | IndexFeatures::PAY)) {
       assert(pay_ && pay_out_);
 
       if (features_.payload()) {
@@ -593,15 +567,15 @@ void postings_writer_base::begin_term() {
     assert(pos_ && pos_out_);
     pos_->start = pos_out_->file_pointer();
     std::fill_n(pos_->skip_ptr, MAX_SKIP_LEVELS, pos_->start);
-    if (features_.any(features::OFFS | features::PAY)) {
+    if (features_.any(IndexFeatures::OFFS | IndexFeatures::PAY)) {
       assert(pay_ && pay_out_);
       pay_->start = pay_out_->file_pointer();
       std::fill_n(pay_->skip_ptr, MAX_SKIP_LEVELS, pay_->start);
     }
   }
 
-  doc_.last = doc_limits::min(); // for proper delta of 1st id
-  doc_.block_last = doc_limits::invalid();
+  doc_.last = doc_limits::invalid();
+  doc_.block_last = doc_limits::min();
   skip_.reset();
 }
 
@@ -615,14 +589,14 @@ void postings_writer_base::end_doc() {
       // documents stream is full, but positions stream is not
       // save number of positions to skip before the next block
       pos_->block_last = pos_->size;
-      if (features_.any(features::OFFS | features::PAY)) {
+      if (features_.any(IndexFeatures::OFFS | IndexFeatures::PAY)) {
         assert(pay_ && pay_out_);
         pay_->end = pay_out_->file_pointer();
         pay_->block_last = pay_->pay_buf_.size();
       }
     }
 
-    doc_.delta = doc_.deltas;
+    doc_.doc = doc_.docs;
     doc_.freq = doc_.freqs;
   }
 }
@@ -633,30 +607,34 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
   }
 
   if (1 == meta.docs_count) {
-    meta.e_single_doc = doc_.deltas[0];
+    meta.e_single_doc = doc_.docs[0] - doc_limits::min();
   } else {
     // write remaining documents using
     // variable length encoding
     auto& out = *doc_out_;
-    auto* doc_delta = doc_.deltas;
+    auto* doc = doc_.docs;
+    auto prev = doc_.block_last;
 
     if (features_.freq()) {
       auto* doc_freq = doc_.freqs;
-      for (; doc_delta < doc_.delta; ++doc_delta) {
+      for (; doc < doc_.doc; ++doc) {
         const uint32_t freq = *doc_freq;
+        const doc_id_t delta = *doc - prev;
 
         if (1 == freq) {
-          out.write_vint(shift_pack_32(*doc_delta, true));
+          out.write_vint(shift_pack_32(delta, true));
         } else {
-          out.write_vint(shift_pack_32(*doc_delta, false));
+          out.write_vint(shift_pack_32(delta, false));
           out.write_vint(freq);
         }
 
         ++doc_freq;
+        prev = *doc;
       }
     } else {
-      for (; doc_delta < doc_.delta; ++doc_delta) {
-        out.write_vint(*doc_delta);
+      for (; doc < doc_.doc; ++doc) {
+        out.write_vint(*doc - prev);
+        prev = *doc;
       }
     }
   }
@@ -674,8 +652,8 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
 
     if (pos_->size > 0) {
       data_output& out = *pos_out_;
-      uint32_t last_pay_size = integer_traits<uint32_t>::const_max;
-      uint32_t last_offs_len = integer_traits<uint32_t>::const_max;
+      uint32_t last_pay_size = std::numeric_limits<uint32_t>::max();
+      uint32_t last_offs_len = std::numeric_limits<uint32_t>::max();
       uint32_t pay_buf_start = 0;
       for (uint32_t i = 0; i < pos_->size; ++i) {
         const uint32_t pos_delta = pos_->buf[i];
@@ -722,7 +700,7 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
   }
 
   if (!tfreq) {
-    meta.freq = integer_traits<uint32_t>::const_max;
+    meta.freq = std::numeric_limits<uint32_t>::max();
   }
 
   // if we have flushed at least
@@ -735,9 +713,9 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
   }
 
   docs_count_ = 0;
-  doc_.delta = doc_.deltas;
+  doc_.doc = doc_.docs;
   doc_.freq = doc_.freqs;
-  doc_.last = 0;
+  doc_.last = doc_limits::invalid();
   meta.doc_start = doc_.start;
 
   if (pos_) {
@@ -755,21 +733,22 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
 
 template<typename FormatTraits>
 void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
-  if (doc_limits::valid(doc_.block_last) && doc_.empty()) {
+  if (doc_limits::valid(doc_.last) && doc_.empty()) {
     skip_.skip(docs_count_);
   }
 
   if (id < doc_.last) {
     throw index_error(string_utils::to_string(
       "while beginning doc_ in postings_writer, error: docs out of order '%d' < '%d'",
-      id, doc_.last
-    ));
+      id, doc_.last));
   }
 
   doc_.push(id, freq ? freq->value : 0);
 
   if (doc_.full()) {
-    FormatTraits::write_block(*doc_out_, doc_.deltas, buf_);
+    // FIXME do aligned
+    simd::delta_encode<BLOCK_SIZE, false>(doc_.docs, doc_.block_last);
+    FormatTraits::write_block(*doc_out_, doc_.docs, buf_);
 
     if (freq) {
       FormatTraits::write_block(*doc_out_, doc_.freqs, buf_);
@@ -863,8 +842,8 @@ class postings_writer final: public postings_writer_base {
 }; // postings_writer
 
 #if defined(_MSC_VER)
-  #pragma warning( disable : 4706 )
-#elif defined (__GNUC__)
+  #pragma warning(disable : 4706)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
@@ -915,8 +894,8 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
 }
 
 #if defined(_MSC_VER)
-  #pragma warning( default : 4706 )
-#elif defined (__GNUC__)
+  #pragma warning(default : 4706)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic pop
 #endif
 
@@ -941,13 +920,13 @@ struct doc_state {
   uint32_t* enc_buf;
   uint64_t tail_start;
   size_t tail_length;
-  ::features features;
 }; // doc_state
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits,
+         typename FieldTraits,
          bool Offset = IteratorTraits::offset(),
          bool Payload = IteratorTraits::payload()>
 struct position_impl;
@@ -955,10 +934,10 @@ struct position_impl;
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base (position + payload + offset)
 ///////////////////////////////////////////////////////////////////////////////
-template<typename IteratorTraits>
-struct position_impl<IteratorTraits, true, true>
-    : public position_impl<IteratorTraits, false, false> {
-  typedef position_impl<IteratorTraits, false, false> base;
+template<typename IteratorTraits, typename FieldTraits>
+struct position_impl<IteratorTraits, FieldTraits, true, true>
+    : public position_impl<IteratorTraits, FieldTraits, false, false> {
+  typedef position_impl<IteratorTraits, FieldTraits, false, false> base;
 
   irs::attribute* attribute(irs::type_info::type_id type) noexcept {
     if (irs::type<payload>::id() == type) {
@@ -1084,12 +1063,12 @@ struct position_impl<IteratorTraits, true, true>
     base::skip(count);
   }
 
-  index_input::ptr pay_in_;
-  offset offs_;
-  payload pay_;
   uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset starts
   uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset lengths
   uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
+  index_input::ptr pay_in_;
+  offset offs_;
+  payload pay_;
   size_t pay_data_pos_{}; // current position in a payload buffer
   bstring pay_data_; // buffer to store payload data
 }; // position_impl
@@ -1097,10 +1076,10 @@ struct position_impl<IteratorTraits, true, true>
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base (position + payload)
 ///////////////////////////////////////////////////////////////////////////////
-template<typename IteratorTraits>
-struct position_impl<IteratorTraits, false, true>
-    : public position_impl<IteratorTraits, false, false> {
-  typedef position_impl<IteratorTraits, false, false> base;
+template<typename IteratorTraits, typename FieldTraits>
+struct position_impl<IteratorTraits, FieldTraits, false, true>
+    : public position_impl<IteratorTraits, FieldTraits, false, false> {
+  typedef position_impl<IteratorTraits, FieldTraits, false, false> base;
 
   irs::attribute* attribute(irs::type_info::type_id type) noexcept {
     return irs::type<payload>::id() == type ? &pay_ : nullptr;
@@ -1157,7 +1136,7 @@ struct position_impl<IteratorTraits, false, true>
       #endif // IRESEARCH_DEBUG
     }
 
-    if (this->features_.offset()) {
+    if constexpr (FieldTraits::offset()) {
       base::skip_offsets(*pay_in_);
     }
 
@@ -1193,7 +1172,7 @@ struct position_impl<IteratorTraits, false, true>
       }
 
       // skip offsets
-      if (this->features_.offset()) {
+      if constexpr (FieldTraits::offset()) {
         uint32_t code;
         if (shift_unpack_32(this->pos_in_->read_vint(), code)) {
           this->pos_in_->read_vint();
@@ -1207,7 +1186,7 @@ struct position_impl<IteratorTraits, false, true>
   void skip_block() {
     base::skip_block();
     base::skip_payload(*pay_in_);
-    if (this->features_.offset()) {
+    if constexpr (FieldTraits::offset()) {
       base::skip_offsets(*pay_in_);
     }
   }
@@ -1221,9 +1200,9 @@ struct position_impl<IteratorTraits, false, true>
     base::skip(count);
   }
 
+  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
   index_input::ptr pay_in_;
   payload pay_;
-  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
   size_t pay_data_pos_{}; // current position in a payload buffer
   bstring pay_data_; // buffer to store payload data
 }; // position_impl
@@ -1231,10 +1210,10 @@ struct position_impl<IteratorTraits, false, true>
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base (position + offset)
 ///////////////////////////////////////////////////////////////////////////////
-template<typename IteratorTraits>
-struct position_impl<IteratorTraits, true, false>
-    : public position_impl<IteratorTraits, false, false> {
-  typedef position_impl<IteratorTraits, false, false> base;
+template<typename IteratorTraits, typename FieldTraits>
+struct position_impl<IteratorTraits, FieldTraits, true, false>
+    : public position_impl<IteratorTraits, FieldTraits, false, false> {
+  typedef position_impl<IteratorTraits, FieldTraits, false, false> base;
 
   irs::attribute* attribute(irs::type_info::type_id type) noexcept {
     return irs::type<offset>::id() == type ? &offs_ : nullptr;
@@ -1273,7 +1252,7 @@ struct position_impl<IteratorTraits, true, false>
   void read_block() {
     base::read_block();
 
-    if (this->features_.payload()) {
+    if constexpr (FieldTraits::payload()) {
       base::skip_payload(*pay_in_);
     }
 
@@ -1286,7 +1265,7 @@ struct position_impl<IteratorTraits, true, false>
     uint32_t pay_size = 0;
     for (size_t i = 0; i < this->tail_length_; ++i) {
       // skip payloads
-      if (this->features_.payload()) {
+      if constexpr (FieldTraits::payload()) {
         if (shift_unpack_32(this->pos_in_->read_vint(), this->pos_deltas_[i])) {
           pay_size = this->pos_in_->read_vint();
         }
@@ -1309,23 +1288,23 @@ struct position_impl<IteratorTraits, true, false>
 
   void skip_block() {
     base::skip_block();
-    if (this->features_.payload()) {
+    if constexpr (FieldTraits::payload()) {
       base::skip_payload(*pay_in_);
     }
     base::skip_offsets(*pay_in_);
   }
 
-  index_input::ptr pay_in_;
-  offset offs_;
   uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset starts
   uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset lengths
+  index_input::ptr pay_in_;
+  offset offs_;
 }; // position_impl
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base (position)
 ///////////////////////////////////////////////////////////////////////////////
-template<typename IteratorTraits>
-struct position_impl<IteratorTraits, false, false> {
+template<typename IteratorTraits, typename FieldTraits>
+struct position_impl<IteratorTraits, FieldTraits, false, false> {
   static void skip_payload(index_input& in) {
     const size_t size = in.read_vint();
     if (size) {
@@ -1357,8 +1336,7 @@ struct position_impl<IteratorTraits, false, false> {
     cookie_.file_pointer_ = state.term_state->pos_start;
     pos_in_->seek(state.term_state->pos_start);
     freq_ = state.freq;
-    features_ = state.features;
-    enc_buf_ = reinterpret_cast<uint32_t*>(state.enc_buf);
+    enc_buf_ = state.enc_buf;
     tail_start_ = state.tail_start;
     tail_length_ = state.tail_length;
   }
@@ -1386,7 +1364,7 @@ struct position_impl<IteratorTraits, false, false> {
   void read_tail_block() {
     uint32_t pay_size = 0;
     for (size_t i = 0; i < tail_length_; ++i) {
-      if (features_.payload()) {
+      if constexpr (FieldTraits::payload()) {
         if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
           pay_size = pos_in_->read_vint();
         }
@@ -1397,7 +1375,7 @@ struct position_impl<IteratorTraits, false, false> {
         pos_deltas_[i] = pos_in_->read_vint();
       }
 
-      if (features_.offset()) {
+      if constexpr (FieldTraits::offset()) {
         uint32_t delta;
         if (shift_unpack_32(pos_in_->read_vint(), delta)) {
           pos_in_->read_vint();
@@ -1433,17 +1411,43 @@ struct position_impl<IteratorTraits, false, false> {
   uint32_t buf_pos_{ postings_writer_base::BLOCK_SIZE }; // current position in pos_deltas_ buffer
   cookie cookie_;
   index_input::ptr pos_in_;
-  features features_;
 }; // position_impl
 
-template<typename IteratorTraits, bool Position = IteratorTraits::position()>
+template<typename IteratorTraits, typename FieldTraits, bool Position = IteratorTraits::position()>
 class position final : public irs::position,
-                       protected position_impl<IteratorTraits> {
+                       protected position_impl<IteratorTraits, FieldTraits> {
  public:
-  typedef position_impl<IteratorTraits> impl;
+  using impl = position_impl<IteratorTraits, FieldTraits> ;
 
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) override {
     return impl::attribute(type);
+  }
+
+  virtual value_t seek(value_t target) override {
+    const uint32_t freq = *this->freq_;
+    if (this->pend_pos_ > freq) {
+        skip(this->pend_pos_ - freq);
+        this->pend_pos_ = freq;
+    }
+    while (value_ < target && this->pend_pos_) {
+      if (this->buf_pos_ == postings_writer_base::BLOCK_SIZE) {
+        refill();
+        this->buf_pos_ = 0;
+      }
+      if constexpr (IteratorTraits::one_based_position_storage()) {
+        value_ += (uint32_t)(!pos_limits::valid(value_));
+      }
+      value_ += this->pos_deltas_[this->buf_pos_];
+      assert(irs::pos_limits::valid(value_));
+      this->read_attributes();
+
+      ++this->buf_pos_;
+      --this->pend_pos_;
+    }
+    if (0 == this->pend_pos_ && value_ < target) {
+      value_ = pos_limits::eof();
+    }
+    return value_;
   }
 
   virtual bool next() override {
@@ -1497,7 +1501,6 @@ class position final : public irs::position,
   }
 
  private:
-
   void refill() {
     if (this->pos_in_->file_pointer() == this->tail_start_) {
       this->read_tail_block();
@@ -1529,8 +1532,8 @@ class position final : public irs::position,
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator (empty)
 ///////////////////////////////////////////////////////////////////////////////
-template<typename IteratorTraits>
-struct position<IteratorTraits, false> : attribute {
+template<typename IteratorTraits, typename FieldTraits>
+struct position<IteratorTraits, FieldTraits, false> : attribute {
   static constexpr string_ref type_name() noexcept {
     return irs::position::type_name();
   }
@@ -1544,51 +1547,43 @@ struct position<IteratorTraits, false> : attribute {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
-template<typename IteratorTraits>
-class doc_iterator final
-    : public frozen_attributes<5, irs::doc_iterator> {
+template<typename IteratorTraits, typename FieldTraits>
+class doc_iterator final : public irs::doc_iterator {
+ private:
+  using attributes = std::conditional_t<
+    IteratorTraits::frequency() && IteratorTraits::position(),
+      std::tuple<document, frequency, cost, score, position<IteratorTraits, FieldTraits>>,
+      std::conditional_t<IteratorTraits::frequency(),
+        std::tuple<document, frequency, cost, score>,
+        std::tuple<document, cost, score>
+      >>;
+
  public:
+  // hide 'ptr' defined in irs::doc_iterator
+  using ptr = memory::managed_ptr<doc_iterator>;
+
   doc_iterator() noexcept
-    : attributes{{
-        { type<document>::id(), &doc_ },
-        { type<cost>::id(), &cost_    },
-        { type<score>::id(), &scr_    },
-        { type<frequency>::id(),     IteratorTraits::frequency() ? &freq_ : nullptr  },
-        { type<irs::position>::id(), IteratorTraits::position()  ? &pos_  : nullptr  },
-      }},
-      skip_levels_(1),
+    : skip_levels_(1),
       skip_(postings_writer_base::BLOCK_SIZE, postings_writer_base::SKIP_N) {
     assert(
       std::all_of(docs_, docs_ + postings_writer_base::BLOCK_SIZE,
-                  [](doc_id_t doc) { return doc == doc_limits::invalid(); })
-    );
+                  [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
   }
 
   void prepare(
-      const features& field,
-      const attribute_provider& attrs,
+      const term_meta& meta,
       const index_input* doc_in,
       [[maybe_unused]] const index_input* pos_in,
       [[maybe_unused]] const index_input* pay_in) {
-    features_ = field; // set field features
-
-    assert(!IteratorTraits::frequency() || IteratorTraits::frequency() == features_.freq());
-    assert(!IteratorTraits::position() || IteratorTraits::position() == features_.position());
-    assert(!IteratorTraits::offset() || IteratorTraits::offset() == features_.offset());
-    assert(!IteratorTraits::payload() || IteratorTraits::payload() == features_.payload());
+    assert(!IteratorTraits::frequency() || IteratorTraits::frequency() == FieldTraits::frequency());
+    assert(!IteratorTraits::position() || IteratorTraits::position() == FieldTraits::position());
+    assert(!IteratorTraits::offset() || IteratorTraits::offset() == FieldTraits::offset());
+    assert(!IteratorTraits::payload() || IteratorTraits::payload() == FieldTraits::payload());
 
     // add mandatory attributes
     begin_ = end_ = docs_;
 
-    // get state attribute
-    auto* meta = irs::get<irs::term_meta>(attrs);
-    assert(meta);
-
-#ifdef IRESEARCH_DEBUG
-    term_state_ = dynamic_cast<const version10::term_meta&>(*meta);
-#else
-    term_state_ = static_cast<const version10::term_meta&>(*meta);
-#endif
+    term_state_ = static_cast<const version10::term_meta&>(meta);
 
     // init document stream
     if (term_state_.docs_count > 1) {
@@ -1607,19 +1602,18 @@ class doc_iterator final
       assert(!doc_in_->eof());
     }
 
-    cost_.value(term_state_.docs_count); // estimate iterator
+    std::get<cost>(attrs_).reset(term_state_.docs_count); // estimate iterator
 
     if constexpr (IteratorTraits::frequency()) {
-      assert(irs::get<frequency>(attrs));
-      term_freq_ = irs::get<frequency>(attrs)->value;
+      assert(meta.freq);
+      term_freq_ = meta.freq;
 
       if constexpr (IteratorTraits::position()) {
         doc_state state;
         state.pos_in = pos_in;
         state.pay_in = pay_in;
         state.term_state = &term_state_;
-        state.freq = &freq_.value;
-        state.features = features_;
+        state.freq = &std::get<frequency>(attrs_).value;
         state.enc_buf = enc_buf_;
 
         if (term_freq_ < postings_writer_base::BLOCK_SIZE) {
@@ -1631,7 +1625,7 @@ class doc_iterator final
         }
 
         state.tail_length = term_freq_ % postings_writer_base::BLOCK_SIZE;
-        pos_.prepare(state);
+        std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(state);
       }
     }
 
@@ -1643,9 +1637,15 @@ class doc_iterator final
     }
   }
 
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::get_mutable(attrs_, type);
+  }
+
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= doc_.value) {
-      return doc_.value;
+    auto& doc = std::get<document>(attrs_);
+
+    if (target <= doc.value) {
+      return doc.value;
     }
 
     seek_to_block(target);
@@ -1654,7 +1654,7 @@ class doc_iterator final
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_.value = doc_limits::eof();
+        doc.value = doc_limits::eof();
         begin_ = end_ = docs_; // seal the iterator
         return doc_limits::eof();
       }
@@ -1662,55 +1662,63 @@ class doc_iterator final
       refill();
     }
 
+    [[maybe_unused]] uint32_t notify{0};
     while (begin_ < end_) {
-      doc_.value += *begin_++;
+      doc.value += *begin_++;
 
       if constexpr (!IteratorTraits::position()) {
-        if (doc_.value >= target) {
+        if (doc.value >= target) {
           if constexpr (IteratorTraits::frequency()) {
             doc_freq_ = doc_freqs_ + relative_pos();
             assert((doc_freq_ - 1) >= doc_freqs_ && (doc_freq_ - 1) < std::end(doc_freqs_));
-            freq_.value = doc_freq_[-1];
+            std::get<frequency>(attrs_).value = doc_freq_[-1];
           }
-          return doc_.value;
+          return doc.value;
         }
       } else {
         assert(IteratorTraits::frequency());
-        freq_.value = *doc_freq_++;
+        auto& freq = std::get<frequency>(attrs_);
+        auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
+        freq.value = *doc_freq_++;
+        notify += freq.value;
 
-        pos_.notify(freq_.value);
-
-        if (doc_.value >= target) {
-          pos_.clear();
-          return doc_.value;
+        if (doc.value >= target) {
+          pos.notify(notify);
+          pos.clear();
+          return doc.value;
         }
       }
     }
 
-    while (doc_.value < target) {
+    if constexpr (IteratorTraits::position()) {
+      std::get<position<IteratorTraits, FieldTraits>>(attrs_).notify(notify);
+    }
+    while (doc.value < target) {
       next();
     }
 
-    return doc_.value;
+    return doc.value;
   }
 
   virtual doc_id_t value() const noexcept final {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
 #if defined(_MSC_VER)
-  #pragma warning( disable : 4706 )
-#elif defined (__GNUC__)
+  #pragma warning(disable : 4706)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
   virtual bool next() override {
+    auto& doc = std::get<document>(attrs_);
+
     if (begin_ == end_) {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_.value = doc_limits::eof();
+        doc.value = doc_limits::eof();
         begin_ = end_ = docs_; // seal the iterator
         return false;
       }
@@ -1718,14 +1726,16 @@ class doc_iterator final
       refill();
     }
 
-    doc_.value += *begin_++; // update document attribute
+    doc.value += *begin_++; // update document attribute
 
     if constexpr (IteratorTraits::frequency()) {
-      freq_.value = *doc_freq_++; // update frequency attribute
+      auto& freq = std::get<frequency>(attrs_);
+      freq.value = *doc_freq_++; // update frequency attribute
 
       if constexpr (IteratorTraits::position()) {
-        pos_.notify(freq_.value);
-        pos_.clear();
+        auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
+        pos.notify(freq.value);
+        pos.clear();
       }
     }
 
@@ -1733,8 +1743,8 @@ class doc_iterator final
   }
 
 #if defined(_MSC_VER)
-  #pragma warning( default : 4706 )
-#elif defined (__GNUC__)
+  #pragma warning(default : 4706)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic pop
 #endif
 
@@ -1747,18 +1757,16 @@ class doc_iterator final
     return begin_ - docs_;
   }
 
-  doc_id_t read_skip(skip_state& state, index_input& in) {
+  doc_id_t read_skip(skip_state& state, data_input& in) {
     state.doc = in.read_vint();
     state.doc_ptr += in.read_vlong();
 
-    if (features_.position()) {
+    if constexpr (FieldTraits::position()) {
       state.pend_pos = in.read_vint();
       state.pos_ptr += in.read_vlong();
 
-      const bool has_pay = features_.payload();
-
-      if (has_pay || features_.offset()) {
-        if (has_pay) {
+      if constexpr (FieldTraits::payload() || FieldTraits::offset()) {
+        if constexpr (FieldTraits::payload()) {
           state.pay_pos = in.read_vint();
         }
 
@@ -1770,7 +1778,7 @@ class doc_iterator final
   }
 
   void read_end_block(size_t size) {
-    if (features_.freq()) {
+    if constexpr (FieldTraits::frequency()) {
       for (size_t i = 0; i < size; ++i) {
         if (shift_unpack_32(doc_in_->read_vint(), docs_[i])) {
           doc_freqs_[i] = 1;
@@ -1802,7 +1810,7 @@ class doc_iterator final
           *doc_in_,
           enc_buf_,
           doc_freqs_);
-      } else if (features_.freq()) {
+      } else if constexpr (FieldTraits::frequency()) {
         IteratorTraits::skip_block(*doc_in_);
       }
 
@@ -1813,39 +1821,36 @@ class doc_iterator final
     }
 
     // if this is the initial doc_id then set it to min() for proper delta value
-    if (!doc_limits::valid(doc_.value)) {
-      doc_.value = (doc_limits::min)();
+    if (auto& doc = std::get<document>(attrs_);
+        !doc_limits::valid(doc.value)) {
+      doc.value = (doc_limits::min)();
     }
 
     begin_ = docs_;
     doc_freq_ = doc_freqs_;
   }
 
-  irs::cost cost_;
-  irs::score scr_;
-  std::vector<skip_state> skip_levels_;
-  skip_reader skip_;
-  skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
   uint32_t enc_buf_[postings_writer_base::BLOCK_SIZE]; // buffer for encoding
   doc_id_t docs_[postings_writer_base::BLOCK_SIZE]{ }; // doc values
   uint32_t doc_freqs_[postings_writer_base::BLOCK_SIZE]; // document frequencies
+  std::vector<skip_state> skip_levels_;
+  skip_reader skip_;
+  skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
   uint32_t cur_pos_{};
   const doc_id_t* begin_{docs_};
   doc_id_t* end_{docs_};
   uint32_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   uint32_t term_freq_{}; // total term frequency
-  document doc_;
-  frequency freq_;
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
-  features features_; // field features
-  position<IteratorTraits> pos_;
+  attributes attrs_;
 }; // doc_iterator
 
-template<typename IteratorTraits>
-void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
+template<typename IteratorTraits, typename FieldTraits>
+void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
   // check whether it make sense to use skip-list
-  if (skip_levels_.front().doc < target && term_state_.docs_count > postings_writer_base::BLOCK_SIZE) {
+  if (skip_levels_.front().doc < target &&
+      term_state_.docs_count > postings_writer_base::BLOCK_SIZE) {
     skip_context last; // where block starts
     skip_ctx_ = &last;
 
@@ -1861,9 +1866,9 @@ void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
 
       skip_in->seek(term_state_.doc_start + term_state_.e_skip_start);
 
-      skip_.prepare(
-        std::move(skip_in),
-        [this](size_t level, index_input& in) {
+
+      skip_.prepare(std::move(skip_in),
+        [this](size_t level, data_input& in) {
           skip_state& last = *skip_ctx_;
           auto& last_level = skip_ctx_->level;
           auto& next = skip_levels_[level];
@@ -1902,11 +1907,11 @@ void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
     const size_t skipped = skip_.seek(target);
     if (skipped > (cur_pos_ + relative_pos())) {
       doc_in_->seek(last.doc_ptr);
-      doc_.value = last.doc;
+      std::get<document>(attrs_).value = last.doc;
       cur_pos_ = skipped;
       begin_ = end_ = docs_; // will trigger refill in "next"
       if constexpr (IteratorTraits::position()) {
-        pos_.prepare(last); // notify positions
+        std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(last); // notify positions
       }
     }
   }
@@ -1950,14 +1955,12 @@ std::string file_name<irs::index_meta_writer, index_meta>(const index_meta& meta
 
 struct index_meta_reader final: public irs::index_meta_reader {
   virtual bool last_segments_file(
-    const directory& dir, std::string& name
-  ) const override;
+    const directory& dir, std::string& name) const override;
 
   virtual void read(
     const directory& dir,
     index_meta& meta,
-    const string_ref& filename = string_ref::NIL // null == use meta
-  ) override;
+    const string_ref& filename = string_ref::NIL) override; // null == use meta
 }; // index_meta_reader
 
 template<>
@@ -1984,18 +1987,17 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
   if (!out) {
     throw io_error(string_utils::to_string(
       "Failed to create file, path: %s",
-      seg_file.c_str()
-    ));
+      seg_file.c_str()));
   }
 
   {
     format_utils::write_header(*out, FORMAT_NAME, version_);
     out->write_vlong(meta.generation());
     out->write_long(meta.counter());
-    assert(meta.size() <= integer_traits<uint32_t>::const_max);
+    assert(meta.size() <= std::numeric_limits<uint32_t>::max());
     out->write_vint(uint32_t(meta.size()));
 
-    for (auto& segment: meta) {
+    for (auto& segment : meta) {
       write_string(*out, segment.filename);
       write_string(*out, segment.meta.codec->type().name());
     }
@@ -2016,8 +2018,7 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
   if (!dir.sync(seg_file)) {
     throw io_error(string_utils::to_string(
       "failed to sync file, path: %s",
-      seg_file.c_str()
-    ));
+      seg_file.c_str()));
   }
 
   // only noexcept operations below
@@ -2041,8 +2042,7 @@ bool index_meta_writer::commit() {
     throw io_error(string_utils::to_string(
       "failed to rename file, src path: '%s' dst path: '%s'",
       src.c_str(),
-      dst.c_str()
-    ));
+      dst.c_str()));
   }
 
   // only noexcept operations below
@@ -2123,14 +2123,12 @@ void index_meta_reader::read(
     : static_cast<std::string>(filename);
 
   auto in = dir.open(
-    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
-  );
+    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      meta_file.c_str()
-    ));
+      meta_file.c_str()));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2140,8 +2138,7 @@ void index_meta_reader::read(
     *in,
     index_meta_writer::FORMAT_NAME,
     index_meta_writer::FORMAT_MIN,
-    index_meta_writer::FORMAT_MAX
-  );
+    index_meta_writer::FORMAT_MAX);
 
   // read data from segments file
   auto gen = in->read_vlong();
@@ -2175,8 +2172,7 @@ void index_meta_reader::read(
   complete(
     meta, gen, cnt,
     std::move(segments),
-    has_payload ? &payload : nullptr
-  );
+    has_payload ? &payload : nullptr);
 }
 
 // ----------------------------------------------------------------------------
@@ -2203,8 +2199,7 @@ struct segment_meta_writer final : public irs::segment_meta_writer{
   virtual void write(
     directory& dir,
     std::string& filename,
-    const segment_meta& meta
-  ) override;
+    const segment_meta& meta) override;
 
  private:
   int32_t version_;
@@ -2219,8 +2214,7 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
   if (meta.docs_count < meta.live_docs_count) {
     throw index_error(string_utils::to_string(
       "invalid segment meta '%s' detected : docs_count=" IR_SIZE_T_SPECIFIER ", live_docs_count=" IR_SIZE_T_SPECIFIER "",
-      meta.name.c_str(), meta.docs_count, meta.live_docs_count
-    ));
+      meta.name.c_str(), meta.docs_count, meta.live_docs_count));
   }
 
   meta_file = file_name<irs::segment_meta_writer>(meta);
@@ -2229,8 +2223,7 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
   if (!out) {
     throw io_error(string_utils::to_string(
       "failed to create file, path: %s",
-      meta_file.c_str()
-    ));
+      meta_file.c_str()));
   }
 
   byte_type flags = meta.column_store ? HAS_COLUMN_STORE : 0;
@@ -2264,8 +2257,7 @@ struct segment_meta_reader final : public irs::segment_meta_reader {
   virtual void read(
     const directory& dir,
     segment_meta& meta,
-    const string_ref& filename = string_ref::NIL // null == use meta
-  ) override;
+    const string_ref& filename = string_ref::NIL) override; // null == use meta
 }; // segment_meta_reader
 
 void segment_meta_reader::read(
@@ -2278,14 +2270,12 @@ void segment_meta_reader::read(
     : static_cast<std::string>(filename);
 
   auto in = dir.open(
-    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
-  );
+    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      meta_file.c_str()
-    ));
+      meta_file.c_str()));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2294,8 +2284,7 @@ void segment_meta_reader::read(
     *in,
     segment_meta_writer::FORMAT_NAME,
     segment_meta_writer::FORMAT_MIN,
-    segment_meta_writer::FORMAT_MAX
-  );
+    segment_meta_writer::FORMAT_MAX);
 
   auto name = read_string<std::string>(*in);
   const auto segment_version = in->read_vlong();
@@ -2305,8 +2294,7 @@ void segment_meta_reader::read(
   if (docs_count < live_docs_count) {
     throw index_error(std::string("while reader segment meta '") + name
       + "', error: docs_count(" + std::to_string(docs_count)
-      + ") < live_docs_count(" + std::to_string(live_docs_count) + ")"
-    );
+      + ") < live_docs_count(" + std::to_string(live_docs_count) + ")");
   }
 
   const auto size = in->read_vlong();
@@ -2320,8 +2308,7 @@ void segment_meta_reader::read(
   if (flags & ~(segment_meta_writer::HAS_COLUMN_STORE | segment_meta_writer::SORTED)) {
     throw index_error(string_utils::to_string(
       "while reading segment meta '%s', error: use of unsupported flags '%u'",
-      name.c_str(), flags
-    ));
+      name.c_str(), flags));
   }
 
   const auto sorted = bool(flags & segment_meta_writer::SORTED);
@@ -2329,15 +2316,13 @@ void segment_meta_reader::read(
   if ((!field_limits::valid(sort)) && sorted) {
     throw index_error(string_utils::to_string(
       "while reading segment meta '%s', error: incorrectly marked as sorted",
-      name.c_str()
-    ));
+      name.c_str()));
   }
 
   if ((field_limits::valid(sort)) && !sorted) {
     throw index_error(string_utils::to_string(
       "while reading segment meta '%s', error: incorrectly marked as unsorted",
-      name.c_str()
-    ));
+      name.c_str()));
   }
 
   format_utils::check_footer(*in, checksum);
@@ -2396,12 +2381,11 @@ void document_mask_writer::write(
   if (!out) {
     throw io_error(string_utils::to_string(
       "Failed to create file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
-  // segment can't have more than integer_traits<uint32_t>::const_max documents
-  assert(docs_mask.size() <= integer_traits<uint32_t>::const_max);
+  // segment can't have more than std::numeric_limits<uint32_t>::max() documents
+  assert(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
   const auto count = static_cast<uint32_t>(docs_mask.size());
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
@@ -2425,8 +2409,7 @@ class document_mask_reader final: public irs::document_mask_reader {
   virtual bool read(
     const directory& dir,
     const segment_meta& meta,
-    document_mask& docs_mask
-  ) override;
+    document_mask& docs_mask) override;
 }; // document_mask_reader
 
 bool document_mask_reader::read(
@@ -2441,8 +2424,7 @@ bool document_mask_reader::read(
   if (!dir.exists(exists, in_name)) {
     throw io_error(string_utils::to_string(
       "failed to check existence of file, path: %s",
-      in_name.c_str()
-    ));
+      in_name.c_str()));
   }
 
   if (!exists) {
@@ -2451,14 +2433,12 @@ bool document_mask_reader::read(
   }
 
   auto in = dir.open(
-    in_name, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
-  );
+    in_name, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      in_name.c_str()
-    ));
+      in_name.c_str()));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2467,16 +2447,15 @@ bool document_mask_reader::read(
     *in,
     document_mask_writer::FORMAT_NAME,
     document_mask_writer::FORMAT_MIN,
-    document_mask_writer::FORMAT_MAX
-  );
+    document_mask_writer::FORMAT_MAX);
 
-  auto count = in->read_vint();
+  size_t count = in->read_vint();
+  docs_mask.reserve(count);
 
   while (count--) {
     static_assert(
       sizeof(doc_id_t) == sizeof(decltype(in->read_vint())),
-      "sizeof(doc_id) != sizeof(decltype(id))"
-    );
+      "sizeof(doc_id) != sizeof(decltype(id))");
 
     docs_mask.insert(in->read_vint());
   }
@@ -2536,15 +2515,14 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
 
   if (!out_) {
     throw io_error(string_utils::to_string(
-      "Failed to create file, path: %s", filename.c_str()
-    ));
+      "Failed to create file, path: %s", filename.c_str()));
   }
 
   format_utils::write_header(*out_, FORMAT_NAME, version_);
 
   if (version_ > FORMAT_MIN) {
     bstring enc_header;
-    auto* enc = get_encryption(dir.attributes());
+    auto* enc = dir.attributes().encryption();
 
     if (irs::encrypt(filename, *out_, enc, enc_header, out_cipher_)) {
       assert(out_cipher_ && out_cipher_->block_size());
@@ -2556,8 +2534,7 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
       out_ = index_output::make<encrypted_output>(
         std::move(out_),
         *out_cipher_,
-        blocks_in_buffer
-      );
+        blocks_in_buffer);
     }
   }
 }
@@ -2614,8 +2591,7 @@ bool meta_reader::prepare(
   if (!dir.exists(exists, filename)) {
     throw io_error(string_utils::to_string(
       "failed to check existence of file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
   if (!exists) {
@@ -2624,14 +2600,12 @@ bool meta_reader::prepare(
   }
 
   in_ = dir.open(
-    filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
-  );
+    filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in_) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
   const auto checksum = format_utils::checksum(*in_);
@@ -2646,11 +2620,10 @@ bool meta_reader::prepare(
   count = in_->read_long(); // read number of objects to read
   max_id = in_->read_long(); // read highest column id written
 
-  if (max_id >= irs::integer_traits<size_t>::const_max) {
+  if (max_id >= std::numeric_limits<size_t>::max()) {
     throw index_error(string_utils::to_string(
       "invalid max column id: " IR_UINT64_T_SPECIFIER ", path: %s",
-      max_id, filename.c_str()
-    ));
+      max_id, filename.c_str()));
   }
 
   format_utils::check_footer(*in_, checksum);
@@ -2661,11 +2634,10 @@ bool meta_reader::prepare(
     *in_,
     meta_writer::FORMAT_NAME,
     meta_writer::FORMAT_MIN,
-    meta_writer::FORMAT_MAX
-  );
+    meta_writer::FORMAT_MAX);
 
   if (version > meta_writer::FORMAT_MIN) {
-    encryption* enc = get_encryption(dir.attributes());
+    encryption* enc = dir.attributes().encryption();
 
     if (irs::decrypt(filename, *in_, enc, in_cipher_)) {
       assert(in_cipher_ && in_cipher_->block_size());
@@ -2702,2426 +2674,6 @@ bool meta_reader::read(column_meta& column) {
   return true;
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                 Format constants
-// ----------------------------------------------------------------------------
-
-// |Header|
-// |Compressed block #0|
-// |Compressed block #1|
-// |Compressed block #2|
-// |Compressed block #1| <-- Columnstore data blocks
-// |Compressed block #1|
-// |Compressed block #1|
-// |Compressed block #2|
-// ...
-// |Last block #0 key|Block #0 offset|
-// |Last block #1 key|Block #1 offset| <-- Columnstore blocks index
-// |Last block #2 key|Block #2 offset|
-// ...
-// |Footer|
-
-constexpr uint32_t INDEX_BLOCK_SIZE = 1024;
-constexpr size_t MAX_DATA_BLOCK_SIZE = 8192;
-
-/// @brief Column flags
-/// @note by default we treat columns as a variable length sparse columns
-enum ColumnProperty : uint32_t {
-  CP_SPARSE = 0,
-  CP_DENSE = 1,                // keys can be presented as an array indices
-  CP_FIXED = 1 << 1,           // fixed length colums
-  CP_MASK = 1 << 2,            // column contains no data
-  CP_COLUMN_DENSE = 1 << 3,    // column index is dense
-  CP_COLUMN_ENCRYPT = 1 << 4   // column contains encrypted data
-}; // ColumnProperty
-
-ENABLE_BITMASK_ENUM(ColumnProperty);
-
-bool is_good_compression_ratio(size_t raw_size, size_t compressed_size) noexcept {
-  // check if compressed is less than 12.5%
-  return compressed_size < raw_size - (raw_size / 8U);
-}
-
-ColumnProperty write_compact(
-    index_output& out,
-    bstring& encode_buf,
-    encryption::stream* cipher,
-    compression::compressor& compressor,
-    bstring& data) {
-  if (data.empty()) {
-    out.write_byte(0); // zig_zag_encode32(0) == 0
-    return CP_MASK;
-  }
-
-  // compressor can only handle size of int32_t, so can use the negative flag as a compression flag
-  const bytes_ref compressed = compressor.compress(&data[0], data.size(), encode_buf);
-
-  if (is_good_compression_ratio(data.size(), compressed.size())) {
-    assert(compressed.size() <= irs::integer_traits<int32_t>::const_max);
-    irs::write_zvint(out, int32_t(compressed.size())); // compressed size
-    if (cipher) {
-      cipher->encrypt(out.file_pointer(), const_cast<irs::byte_type*>(compressed.c_str()), compressed.size());
-    }
-    out.write_bytes(compressed.c_str(), compressed.size());
-    irs::write_zvlong(out, data.size() - MAX_DATA_BLOCK_SIZE); // original size
-  } else {
-    assert(data.size() <= irs::integer_traits<int32_t>::const_max);
-    irs::write_zvint(out, int32_t(0) - int32_t(data.size())); // -ve to mark uncompressed
-    if (cipher) {
-      cipher->encrypt(out.file_pointer(), const_cast<irs::byte_type*>(data.c_str()), data.size());
-    }
-    out.write_bytes(data.c_str(), data.size());
-  }
-
-  return CP_SPARSE;
-}
-
-void read_compact(
-    irs::index_input& in,
-    irs::encryption::stream* cipher,
-    irs::compression::decompressor* decompressor,
-    irs::bstring& encode_buf,
-    irs::bstring& decode_buf) {
-  const auto size = irs::read_zvint(in);
-
-  if (!size) {
-    return;
-  }
-
-  const size_t buf_size = std::abs(size);
-
-  // -ve to mark uncompressed
-  if (size < 0) {
-    decode_buf.resize(buf_size); // ensure that we have enough space to store decompressed data
-
-#ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(const_cast<byte_type*>(decode_buf.c_str()), buf_size);
-    assert(read == buf_size);
-    UNUSED(read);
-#else
-    in.read_bytes(const_cast<byte_type*>(decode_buf.c_str()), buf_size);
-#endif // IRESEARCH_DEBUG
-
-    if (cipher) {
-      cipher->decrypt(in.file_pointer() - buf_size,
-                      const_cast<byte_type*>(decode_buf.c_str()), buf_size);
-    }
-
-    return;
-  }
-
-  if (IRS_UNLIKELY(!decompressor)) {
-    throw irs::index_error(string_utils::to_string(
-      "while reading compact, error: can't decompress block of size %d for whithout decompressor",
-      size));
-  }
-
-  // try direct buffer access
-  const byte_type* buf = cipher ? nullptr : in.read_buffer(buf_size, BufferHint::NORMAL);
-
-  if (!buf) {
-    irs::string_utils::oversize(encode_buf, buf_size);
-
-#ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(const_cast<byte_type*>(encode_buf.c_str()), buf_size);
-    assert(read == buf_size);
-    UNUSED(read);
-#else
-    in.read_bytes(const_cast<byte_type*>(encode_buf.c_str()), buf_size);
-#endif // IRESEARCH_DEBUG
-
-    if (cipher) {
-      cipher->decrypt(in.file_pointer() - buf_size,
-                      const_cast<byte_type*>(encode_buf.c_str()), buf_size);
-    }
-
-    buf = encode_buf.c_str();
-  }
-
-  // ensure that we have enough space to store decompressed data
-  decode_buf.resize(irs::read_zvlong(in) + MAX_DATA_BLOCK_SIZE);
-
-  const auto decoded = decompressor->decompress(
-    buf, buf_size,
-    &decode_buf[0], decode_buf.size());
-
-  if (decoded.null()) {
-    throw irs::index_error("error while reading compact");
-  }
-}
-
-template<size_t Size>
-class index_block {
- public:
-  static const size_t SIZE = Size;
-
-  void push_back(doc_id_t key, uint64_t offset) noexcept {
-    assert(key_ >= keys_);
-    assert(key_ < keys_ + Size);
-    *key_++ = key;
-    assert(key >= key_[-1]);
-    assert(offset_ >= offsets_);
-    assert(offset_ < offsets_ + Size);
-    *offset_++ = offset;
-    assert(offset >= offset_[-1]);
-  }
-
-  void pop_back() noexcept {
-    assert(key_ > keys_);
-    *key_-- = 0;
-    assert(offset_ > offsets_);
-    *offset_-- = 0;
-  }
-
-  // returns total number of items
-  uint32_t total() const noexcept {
-    return flushed()+ size();
-  }
-
-  // returns total number of flushed items
-  uint32_t flushed() const noexcept {
-    return flushed_;
-  }
-
-  // returns number of items to be flushed
-  uint32_t size() const noexcept {
-    assert(key_ >= keys_);
-    return uint32_t(key_ - keys_);
-  }
-
-  bool empty() const noexcept {
-    return keys_ == key_;
-  }
-
-  bool full() const noexcept {
-    return key_ == std::end(keys_);
-  }
-
-  doc_id_t min_key() const noexcept {
-    return *keys_;
-  }
-
-  doc_id_t max_key() const noexcept {
-    // if this->empty(), will point to last offset
-    // value which is 0 in this case
-    return *(key_-1);
-  }
-
-  uint64_t max_offset() const noexcept {
-    assert(offset_ > offsets_);
-    return *(offset_-1);
-  }
-
-  ColumnProperty flush(data_output& out, uint64_t* buf) {
-    if (empty()) {
-      return CP_DENSE | CP_FIXED;
-    }
-
-    const auto size = this->size();
-
-    ColumnProperty props = CP_SPARSE;
-
-    // write keys
-    {
-      // adjust number of elements to pack to the nearest value
-      // that is multiple of the block size
-      const auto block_size = math::ceil32(size, packed::BLOCK_SIZE_32);
-      assert(block_size >= size);
-
-      assert(std::is_sorted(keys_, key_));
-      const auto stats = encode::avg::encode(keys_, key_);
-      const auto bits = encode::avg::write_block(
-        out, stats.first, stats.second,
-        keys_, block_size, reinterpret_cast<uint32_t*>(buf)
-      );
-
-      if (1 == stats.second && 0 == keys_[0] && encode::bitpack::rl(bits)) {
-        props |= CP_DENSE;
-      }
-    }
-
-    // write offsets
-    {
-      // adjust number of elements to pack to the nearest value
-      // that is multiple of the block size
-      const auto block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
-      assert(block_size >= size);
-
-      assert(std::is_sorted(offsets_, offset_));
-      const auto stats = encode::avg::encode(offsets_, offset_);
-      const auto bits = encode::avg::write_block(
-        out, stats.first, stats.second,
-        offsets_, block_size, buf
-      );
-
-      if (0 == offsets_[0] && encode::bitpack::rl(bits)) {
-        props |= CP_FIXED;
-      }
-    }
-
-    flushed_ += size;
-
-    // reset pointers and clear data
-    key_ = keys_;
-    std::memset(keys_, 0, sizeof keys_);
-    offset_ = offsets_;
-    std::memset(offsets_, 0, sizeof offsets_);
-
-    return props;
-  }
-
- private:
-  // order is important (see max_key())
-  uint64_t offsets_[Size]{};
-  doc_id_t keys_[Size]{};
-  uint64_t* offset_{ offsets_ };
-  doc_id_t* key_{ keys_ };
-  uint32_t flushed_{}; // number of flushed items
-}; // index_block
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class writer
-//////////////////////////////////////////////////////////////////////////////
-class writer final : public irs::columnstore_writer {
- public:
-  static constexpr int32_t FORMAT_MIN = 0;
-  static constexpr int32_t FORMAT_MAX = 1;
-
-  static constexpr string_ref FORMAT_NAME = "iresearch_10_columnstore";
-  static constexpr string_ref FORMAT_EXT = "cs";
-
-  explicit writer(int32_t version) noexcept
-    : buf_(2*MAX_DATA_BLOCK_SIZE, 0),
-      version_(version) {
-    static_assert(
-      2*MAX_DATA_BLOCK_SIZE >= INDEX_BLOCK_SIZE*sizeof(uint64_t),
-      "buffer is not big enough"
-    );
-
-    assert(version >= FORMAT_MIN && version <= FORMAT_MAX);
-  }
-
-  virtual void prepare(directory& dir, const segment_meta& meta) override;
-  virtual column_t push_column(const column_info& info) override;
-  virtual bool commit() override;
-  virtual void rollback() noexcept override;
-
- private:
-  class column final : public irs::columnstore_writer::column_output {
-   public:
-    explicit column(writer& ctx, const irs::type_info& type,
-                    const compression::compressor::ptr& compressor,
-                    encryption::stream* cipher)
-      : ctx_(&ctx),
-        comp_type_(type),
-        comp_(compressor),
-        cipher_(cipher),
-        blocks_index_(*ctx.alloc_),
-        block_buf_(2*MAX_DATA_BLOCK_SIZE, 0) {
-      assert(comp_); // ensured by `push_column'
-      block_buf_.clear(); // reset size to '0'
-    }
-
-    void prepare(doc_id_t key) {
-      assert(key >= block_index_.max_key());
-
-      if (key <= block_index_.max_key()) {
-        // less or equal to previous key
-        return;
-      }
-
-      // flush block if we've overcome MAX_DATA_BLOCK_SIZE size
-      // or reached the end of the index block
-      if (block_buf_.size() >= MAX_DATA_BLOCK_SIZE || block_index_.full()) {
-        flush_block();
-      }
-
-      block_index_.push_back(key, block_buf_.size());
-    }
-
-    bool empty() const noexcept {
-      return !block_index_.total();
-    }
-
-    void finish() {
-      auto& out = *ctx_->data_out_;
-
-       // evaluate overall column properties
-      auto column_props = blocks_props_;
-      if (0 != (column_props_ & CP_DENSE)) { column_props |= CP_COLUMN_DENSE; }
-      if (cipher_) 						   { column_props |= CP_COLUMN_ENCRYPT; }
-
-      write_enum(out, column_props);
-      if (ctx_->version_ > FORMAT_MIN) {
-        write_string(out, comp_type_.name());
-        comp_->flush(out); // flush compression dependent data
-      }
-      out.write_vint(block_index_.total()); // total number of items
-      out.write_vint(max_); // max column key
-      out.write_vint(avg_block_size_); // avg data block size
-      out.write_vint(avg_block_count_); // avg number of elements per block
-      out.write_vint(column_index_.total()); // total number of index blocks
-      blocks_index_.file >> out; // column blocks index
-    }
-
-    void flush() {
-      // do not take into account last block
-      const auto blocks_count = std::max(1U, column_index_.total());
-      avg_block_count_ = block_index_.flushed() / blocks_count;
-      avg_block_size_ = length_ / blocks_count;
-
-      // commit and flush remain blocks
-      flush_block();
-
-      // finish column blocks index
-      assert(ctx_->buf_.size() >= INDEX_BLOCK_SIZE*sizeof(uint64_t));
-      auto* buf = reinterpret_cast<uint64_t*>(&ctx_->buf_[0]);
-      column_index_.flush(blocks_index_.stream, buf);
-      blocks_index_.stream.flush();
-    }
-
-    virtual void close() override {
-      // NOOP
-    }
-
-    virtual void write_byte(byte_type b) override {
-      block_buf_ += b;
-    }
-
-    virtual void write_bytes(const byte_type* b, size_t size) override {
-      block_buf_.append(b, size);
-    }
-
-    virtual void reset() override {
-      if (block_index_.empty()) {
-        // nothing to reset
-        return;
-      }
-
-      // reset to previous offset
-      block_buf_.resize(block_index_.max_offset());
-      block_index_.pop_back();
-    }
-
-   private:
-    void flush_block() {
-      if (block_index_.empty()) {
-        // nothing to flush
-        return;
-      }
-
-      // refresh column properties
-      // column is dense IFF
-      // - all blocks are dense
-      // - there are no gaps between blocks
-      column_props_ &= ColumnProperty(column_index_.empty() || 1 == block_index_.min_key() - max_);
-
-      // update max element
-      max_ = block_index_.max_key();
-
-      auto& out = *ctx_->data_out_;
-
-      // write first block key & where block starts
-      column_index_.push_back(block_index_.min_key(), out.file_pointer());
-
-      assert(ctx_->buf_.size() >= INDEX_BLOCK_SIZE*sizeof(uint64_t));
-      auto* buf = reinterpret_cast<uint64_t*>(&ctx_->buf_[0]);
-
-      if (column_index_.full()) {
-        column_index_.flush(blocks_index_.stream, buf);
-      }
-
-      // flush current block
-
-      // write total number of elements in the block
-      out.write_vint(block_index_.size());
-
-      // write block index, compressed data and aggregate block properties
-      // note that order of calls is important here, since it is not defined
-      // which expression should be evaluated first in the following example:
-      //   const auto res = expr0() | expr1();
-      // otherwise it would violate format layout
-      auto block_props = block_index_.flush(out, buf);
-      block_props |= write_compact(out, ctx_->buf_, cipher_, *comp_, block_buf_);
-
-      length_ += block_buf_.size();
-
-      // refresh blocks properties
-      blocks_props_ &= block_props;
-      // reset buffer stream after flush
-      block_buf_.clear();
-
-      // refresh column properties
-      // column is dense IFF
-      // - all blocks are dense
-      // - there are no gaps between blocks
-      column_props_ &= ColumnProperty(0 != (block_props & CP_DENSE));
-    }
-
-    writer* ctx_; // writer context
-    irs::type_info comp_type_;
-    compression::compressor::ptr comp_; // compressor used for column
-    encryption::stream* cipher_;
-    uint64_t length_{}; // size of all data blocks in the column
-    index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
-    index_block<INDEX_BLOCK_SIZE> column_index_; // column block index (per block key/offset)
-    memory_output blocks_index_; // blocks index
-    bstring block_buf_; // data buffer
-    doc_id_t max_{ doc_limits::invalid() }; // max key (among flushed blocks)
-    ColumnProperty blocks_props_{ CP_DENSE | CP_FIXED | CP_MASK }; // aggregated column blocks properties
-    ColumnProperty column_props_{ CP_DENSE }; // aggregated column block index properties
-    uint32_t avg_block_count_{}; // average number of items per block (tail block is not taken into account since it may skew distribution)
-    uint32_t avg_block_size_{}; // average size of the block (tail block is not taken into account since it may skew distribution)
-  }; // column
-
-  memory_allocator* alloc_{ &memory_allocator::global() };
-  std::deque<column> columns_; // pointers remain valid
-  bstring buf_; // reusable temporary buffer for packing/compression
-  index_output::ptr data_out_;
-  std::string filename_;
-  directory* dir_;
-  encryption::stream::ptr data_out_cipher_;
-  int32_t version_;
-}; // writer
-
-template<>
-std::string file_name<columnstore_writer, segment_meta>(const segment_meta& meta) {
-  return file_name(meta.name, columns::writer::FORMAT_EXT);
-}
-
-void writer::prepare(directory& dir, const segment_meta& meta) {
-  columns_.clear();
-
-  auto filename = file_name<columnstore_writer>(meta);
-  auto data_out = dir.create(filename);
-
-  if (!data_out) {
-    throw io_error(string_utils::to_string(
-      "Failed to create file, path: %s",
-      filename.c_str()
-    ));
-  }
-
-  format_utils::write_header(*data_out, FORMAT_NAME, version_);
-
-  encryption::stream::ptr data_out_cipher;
-
-  if (version_ > FORMAT_MIN) {
-    bstring enc_header;
-    auto* enc = get_encryption(dir.attributes());
-
-    const auto encrypt = irs::encrypt(filename, *data_out, enc, enc_header, data_out_cipher);
-    assert(!encrypt || (data_out_cipher && data_out_cipher->block_size()));
-    UNUSED(encrypt);
-  }
-
-  alloc_ = &directory_utils::get_allocator(dir);
-
-  // noexcept block
-  dir_ = &dir;
-  data_out_ = std::move(data_out);
-  data_out_cipher_ = std::move(data_out_cipher);
-  filename_ = std::move(filename);
-}
-
-columnstore_writer::column_t writer::push_column(const column_info& info) {
-  encryption::stream* cipher;
-  irs::type_info compression;
-
-  if (version_ > FORMAT_MIN) {
-    compression = info.compression();
-    cipher = info.encryption() ? data_out_cipher_.get() : nullptr;
-  } else {
-    // we don't support encryption and custom
-    // compression for 'FORMAT_MIN' version
-    compression = type<compression::lz4>::get();
-    cipher = nullptr;
-  }
-
-  auto compressor = compression::get_compressor(compression, info.options());
-
-  if (!compressor) {
-    compressor = noop_compressor::make();
-  }
-
-  const auto id = columns_.size();
-  columns_.emplace_back(*this, info.compression(), compressor, cipher);
-  auto& column = columns_.back();
-
-  return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
-    // to avoid extra (and useless in our case) check for block index
-    // emptiness in 'writer::column::prepare', we disallow passing
-    // doc <= doc_limits::invalid() || doc >= doc_limits::eof()
-    assert(doc > doc_limits::invalid() && doc < doc_limits::eof());
-
-    column.prepare(doc);
-    return column;
-  });
-}
-
-bool writer::commit() {
-  assert(dir_);
-
-  // remove all empty columns from tail
-  while (!columns_.empty() && columns_.back().empty()) {
-    columns_.pop_back();
-  }
-
-  // remove file if there is no data to write
-  if (columns_.empty()) {
-    data_out_.reset();
-
-    if (!dir_->remove(filename_)) { // ignore error
-      IR_FRMT_ERROR("Failed to remove file, path: %s", filename_.c_str());
-    }
-
-    return false; // nothing to flush
-  }
-
-  // flush all remain data including possible empty columns among filled columns
-  for (auto& column : columns_) {
-    // commit and flush remain blocks
-    column.flush();
-  }
-
-  const auto block_index_ptr = data_out_->file_pointer(); // where blocks index start
-
-  data_out_->write_vlong(columns_.size()); // number of columns
-
-  for (auto& column : columns_) {
-    column.finish(); // column blocks index
-  }
-
-  data_out_->write_long(block_index_ptr);
-  format_utils::write_footer(*data_out_);
-
-  rollback();
-
-  return true;
-}
-
-void writer::rollback() noexcept {
-  filename_.clear();
-  dir_ = nullptr;
-  data_out_.reset(); // close output
-  columns_.clear(); // ensure next flush (without prepare(...)) will use the section without 'data_out_'
-}
-
-template<typename Block, typename Allocator>
-class block_cache : irs::util::noncopyable {
- public:
-  block_cache(const Allocator& alloc = Allocator())
-    : cache_(alloc) {
-  }
-  block_cache(block_cache&&) = default;
-
-  template<typename... Args>
-  Block& emplace_back(Args&&... args) {
-    cache_.emplace_back(std::forward<Args>(args)...);
-    return cache_.back();
-  }
-
-  void pop_back() noexcept {
-    cache_.pop_back();
-  }
-
- private:
-  std::deque<Block, Allocator> cache_; // pointers remain valid
-}; // block_cache
-
-template<typename Block, typename Allocator>
-struct block_cache_traits {
-  typedef Block block_t;
-  typedef typename std::allocator_traits<Allocator>::template rebind_alloc<block_t> allocator_t;
-  typedef block_cache<Block, allocator_t> cache_t;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            Blocks
-// -----------------------------------------------------------------------------
-
-class sparse_block : util::noncopyable {
- private:
-  struct ref {
-    doc_id_t key{ doc_limits::eof() };
-    uint64_t offset;
-  };
-
- public:
-  class iterator {
-   public:
-    bool seek(doc_id_t doc) noexcept {
-      next_ = std::lower_bound(
-        begin_, end_, doc,
-        [](const ref& lhs, doc_id_t rhs) {
-          return lhs.key < rhs;
-      });
-
-      return next();
-    }
-
-    const irs::doc_id_t& value() const noexcept { return value_; }
-
-    bool next() noexcept {
-      if (next_ == end_) {
-        return false;
-      }
-
-      value_ = next_->key;
-      const auto vbegin = next_->offset;
-
-      begin_ = next_;
-      const auto vend = (++next_ == end_ ? data_->size() : next_->offset);
-
-      assert(vend >= vbegin);
-      assert(payload_ != &DUMMY);
-      *payload_ = bytes_ref(
-        data_->c_str() + vbegin, // start
-        vend - vbegin // length
-      );
-
-      return true;
-    }
-
-    void seal() noexcept {
-      value_ = doc_limits::eof();
-      payload_ = &DUMMY;
-      next_ = begin_ = end_;
-    }
-
-    void reset(const sparse_block& block, irs::payload& payload) noexcept {
-      value_ = doc_limits::invalid();
-      payload.value = bytes_ref::NIL;
-      payload_ = &payload.value;
-      next_ = begin_ = std::begin(block.index_);
-      end_ = block.end_;
-      data_ = &block.data_;
-
-      assert(std::is_sorted(
-        begin_, end_,
-        [](const sparse_block::ref& lhs, const sparse_block::ref& rhs) {
-          return lhs.key < rhs.key;
-      }));
-    }
-
-    bool operator==(const sparse_block& rhs) const noexcept {
-      return data_ == &rhs.data_;
-    }
-
-    bool operator!=(const sparse_block& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
-   private:
-    irs::bytes_ref* payload_{ &DUMMY };
-    irs::doc_id_t value_ { doc_limits::invalid() };
-    const sparse_block::ref* next_{}; // next position
-    const sparse_block::ref* begin_{};
-    const sparse_block::ref* end_{};
-    const bstring* data_{};
-  }; // iterator
-
-  void load(index_input& in,
-            compression::decompressor* decomp,
-            encryption::stream* cipher,
-            bstring& buf) {
-    const uint32_t size = in.read_vint(); // total number of entries in a block
-
-    if (!size) {
-      throw index_error("Empty 'sparse_block' found in columnstore");
-    }
-
-    auto begin = std::begin(index_);
-
-    // read keys
-    encode::avg::visit_block_packed_tail(
-      in, size, reinterpret_cast<uint32_t*>(&buf[0]),
-      [begin](uint32_t key) mutable {
-        begin->key = key;
-        ++begin;
-    });
-
-    // read offsets
-    encode::avg::visit_block_packed_tail(
-      in, size, reinterpret_cast<uint64_t*>(&buf[0]),
-      [begin](uint64_t offset) mutable {
-        begin->offset = offset;
-        ++begin;
-    });
-
-    // read data
-    read_compact(in, cipher, decomp, buf, data_);
-    end_ = index_ + size;
-  }
-
-  bool value(doc_id_t key, bytes_ref& out) const {
-    // find the right ref
-    auto it = std::lower_bound(
-      index_, end_, key,
-        [] (const ref& lhs, doc_id_t rhs) {
-        return lhs.key < rhs;
-    });
-
-    if (end_ == it || key < it->key) {
-      // no document with such id in the block
-      return false;
-    }
-
-    if (data_.empty()) {
-      // block without data_, but we've found a key
-      return true;
-    }
-
-    const auto vbegin = it->offset;
-    const auto vend = (++it == end_ ? data_.size() : it->offset);
-
-    assert(vend >= vbegin);
-    out = bytes_ref(
-      data_.c_str() + vbegin, // start
-      vend - vbegin // length
-    );
-
-    return true;
-  }
-
-  bool visit(const columnstore_reader::values_reader_f& visitor) const {
-    bytes_ref value;
-
-    // visit first [begin;end-1) blocks
-    doc_id_t key;
-    size_t vbegin;
-    auto begin = std::begin(index_);
-    for (const auto end = end_-1; begin != end;) { // -1 for tail item
-      key = begin->key;
-      vbegin = begin->offset;
-
-      ++begin;
-
-      assert(begin->offset >= vbegin);
-      value = bytes_ref(
-        data_.c_str() + vbegin, // start
-        begin->offset - vbegin // length
-      );
-
-      if (!visitor(key, value)) {
-        return false;
-      }
-    }
-
-    // visit tail block
-    assert(data_.size() >= begin->offset);
-    value = bytes_ref(
-      data_.c_str() + begin->offset, // start
-      data_.size() - begin->offset // length
-    );
-
-    return visitor(begin->key, value);
-  }
-
- private:
-  // TODO: use single memory block for both index & data
-
-  // all blocks except the tail are going to be fully filled,
-  // so we don't track size of each block here since we could
-  // waste just INDEX_BLOCK_SIZE*sizeof(ref)-1 per column
-  // in the worst case
-  ref index_[INDEX_BLOCK_SIZE];
-  bstring data_;
-  const ref* end_{ std::end(index_) };
-}; // sparse_block
-
-class dense_block : util::noncopyable {
- public:
-  class iterator {
-   public:
-    bool seek(doc_id_t doc) noexcept {
-      // before the current element
-      if (doc <= value_) {
-        doc = value_;
-      }
-
-      // FIXME refactor
-      it_ = begin_ + doc - base_;
-
-      return next();
-    }
-
-    const irs::doc_id_t& value() const noexcept { return value_; }
-
-    bool next() noexcept {
-      if (it_ >= end_) {
-        // after the last element
-        return false;
-      }
-
-      value_ = base_ + std::distance(begin_, it_);
-      next_value();
-
-      return true;
-    }
-
-    void seal() noexcept {
-      value_ = doc_limits::eof();
-      payload_ = &DUMMY;
-      it_ = begin_ = end_;
-    }
-
-    void reset(const dense_block& block, irs::payload& payload) noexcept {
-      value_ = block.base_;
-      payload.value = bytes_ref::NIL;
-      payload_ = &payload.value;
-      it_ = begin_ = std::begin(block.index_);
-      end_ = block.end_;
-      data_ = &block.data_;
-      base_ = block.base_;
-    }
-
-    bool operator==(const dense_block& rhs) const noexcept {
-      return data_ == &rhs.data_;
-    }
-
-    bool operator!=(const dense_block& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
-   private:
-    // note that function increments 'it_'
-    void next_value() noexcept {
-      const auto vbegin = *it_;
-      const auto vend = (++it_ == end_ ? data_->size() : *it_);
-
-      assert(vend >= vbegin);
-      assert(payload_ != &DUMMY);
-      *payload_ = bytes_ref(
-        data_->c_str() + vbegin, // start
-        vend - vbegin // length
-      );
-    }
-
-    irs::bytes_ref* payload_{ &DUMMY };
-    irs::doc_id_t value_ { doc_limits::invalid() };
-    const uint32_t* begin_{};
-    const uint32_t* it_{};
-    const uint32_t* end_{};
-    const bstring* data_{};
-    doc_id_t base_{};
-  }; // iterator
-
-  void load(index_input& in,
-            compression::decompressor* decomp,
-            encryption::stream* cipher,
-            bstring& buf) {
-    const uint32_t size = in.read_vint(); // total number of entries in a block
-
-    if (!size) {
-      throw index_error("Empty 'dense_block' found in columnstore");
-    }
-
-    // dense block must be encoded with RL encoding, avg must be equal to 1
-    uint32_t avg;
-    if (!encode::avg::read_block_rl32(in, base_, avg) || 1 != avg) {
-      throw index_error(string_utils::to_string(
-        "Invalid RL encoding in 'dense_block', base_key=%du, avg_delta=%du",
-        base_, avg
-      ));
-    }
-
-    // read data offsets
-    auto begin = std::begin(index_);
-
-    encode::avg::visit_block_packed_tail(
-      in, size, reinterpret_cast<uint64_t*>(&buf[0]),
-      [begin](uint64_t offset) mutable {
-        *begin = offset;
-        ++begin;
-    });
-
-    // read data
-    read_compact(in, cipher, decomp, buf, data_);
-    end_ = index_ + size;
-  }
-
-  bool value(doc_id_t key, bytes_ref& out) const {
-    const auto* begin = index_ + key - base_;
-    if (begin < index_ || begin >= end_) {
-      // there is no item with the speicified key
-      return false;
-    }
-
-    if (data_.empty()) {
-      // block without data, but we've found a key
-      return true;
-    }
-
-    const auto vbegin = *begin;
-    const auto vend = (++begin == end_ ? data_.size() : *begin);
-    assert(vend >= vbegin);
-
-    out = bytes_ref(data_.c_str() + vbegin, vend - vbegin);
-
-    return true;
-  }
-
-  bool visit(const columnstore_reader::values_reader_f& visitor) const {
-    bytes_ref value;
-
-    // visit first [begin;end-1) blocks
-    doc_id_t key = base_;
-    size_t vbegin;
-    auto begin = std::begin(index_);
-    for (const auto end = end_ - 1; begin != end; ++key) { // -1 for tail item
-      vbegin = *begin;
-
-      ++begin;
-
-      assert(*begin >= vbegin);
-      value = bytes_ref(
-        data_.c_str() + vbegin, // start
-        *begin - vbegin // length
-      );
-
-      if (!visitor(key, value)) {
-        return false;
-      }
-    }
-
-    // visit tail block
-    assert(data_.size() >= *begin);
-    value = bytes_ref(
-      data_.c_str() + *begin, // start
-      data_.size() - *begin // length
-    );
-
-    return visitor(key, value);
-  }
-
- private:
-  // TODO: use single memory block for both index & data
-
-  // all blocks except the tail are going to be fully filled,
-  // so we don't track size of each block here since we could
-  // waste just INDEX_BLOCK_SIZE*sizeof(ref)-1 per column
-  // in the worst case
-  uint32_t index_[INDEX_BLOCK_SIZE];
-  bstring data_;
-  uint32_t* end_{ index_ };
-  doc_id_t base_{ };
-}; // dense_block
-
-class dense_fixed_offset_block : util::noncopyable {
- public:
-  class iterator {
-   public:
-    bool seek(doc_id_t doc) noexcept {
-      if (doc < value_next_) {
-        if (!doc_limits::valid(value_)) {
-          return next();
-        }
-
-        // don't seek backwards
-        return true;
-      }
-
-      value_next_ = doc;
-      return next();
-    }
-
-    const doc_id_t& value() const noexcept {
-      return value_;
-    }
-
-    bool next() noexcept {
-      if (value_next_ >= value_end_) {
-        seal();
-        return false;
-      }
-
-      value_ = value_next_++;
-      const auto offset = (value_ - value_min_)*avg_length_;
-
-      assert(payload_ != &DUMMY);
-      *payload_ = bytes_ref(
-        data_.c_str() + offset,
-        value_ == value_back_ ? data_.size() - offset : avg_length_
-      );
-
-      return true;
-    }
-
-    void seal() noexcept {
-      value_ = doc_limits::eof();
-      value_next_ = doc_limits::eof();
-      value_min_ = doc_limits::eof();
-      value_end_ = doc_limits::eof();
-      payload_ = &DUMMY;
-    }
-
-    void reset(const dense_fixed_offset_block& block, irs::payload& payload) noexcept {
-      avg_length_ = block.avg_length_;
-      data_ = block.data_;
-      payload.value = bytes_ref::NIL;
-      payload_ = &payload.value;
-      value_ = doc_limits::invalid();
-      value_next_ = block.base_key_;
-      value_min_ = block.base_key_;
-      value_end_ = value_min_ + block.size_;
-      value_back_ = value_end_ - 1;
-    }
-
-    bool operator==(const dense_fixed_offset_block& rhs) const noexcept {
-      return data_.c_str() == rhs.data_.c_str();
-    }
-
-    bool operator!=(const dense_fixed_offset_block& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
-   private:
-    uint64_t avg_length_{}; // average value length
-    bytes_ref data_;
-    irs::bytes_ref* payload_{ &DUMMY };
-    doc_id_t value_ { doc_limits::invalid() }; // current value
-    doc_id_t value_next_{ doc_limits::invalid() }; // next value
-    doc_id_t value_min_{}; // min doc_id
-    doc_id_t value_end_{}; // after the last valid doc id
-    doc_id_t value_back_{}; // last valid doc id
-  }; // iterator
-
-  void load(index_input& in,
-            compression::decompressor* decomp,
-            encryption::stream* cipher,
-            bstring& buf) {
-    size_ = in.read_vint(); // total number of entries in a block
-
-    if (!size_) {
-      throw index_error("Empty 'dense_fixed_offset_block' found in columnstore");
-    }
-
-    // dense block must be encoded with RL encoding, avg must be equal to 1
-    uint32_t avg;
-    if (!encode::avg::read_block_rl32(in, base_key_, avg) || 1 != avg) {
-      throw index_error(string_utils::to_string(
-        "Invalid RL encoding in 'dense_fixed_offset_block', base_key=%du, avg_delta=%du",
-        base_key_, avg
-      ));
-    }
-
-    // fixed length block must be encoded with RL encoding
-    if (!encode::avg::read_block_rl32(in, base_offset_, avg_length_)) {
-      throw index_error(string_utils::to_string(
-        "Invalid RL encoding in 'dense_fixed_offset_block', base_offset=%du, avg_length=%du",
-        base_key_, avg_length_
-      ));
-    }
-
-    // read data
-    read_compact(in, cipher, decomp, buf, data_);
-  }
-
-  bool value(doc_id_t key, bytes_ref& out) const {
-    key -= base_key_;
-
-    if (key >= size_) {
-      return false;
-    }
-
-    // expect 0-based key
-
-    if (data_.empty()) {
-      // block without data, but we've found a key
-      return true;
-    }
-
-    const auto vbegin = base_offset_ + key*avg_length_;
-    const auto vlength = (size_ == ++key ? data_.size() - vbegin : avg_length_);
-
-    out = bytes_ref(data_.c_str() + vbegin, vlength);
-    return true;
-  }
-
-  bool visit(const columnstore_reader::values_reader_f& visitor) const {
-    assert(size_);
-
-    bytes_ref value;
-
-    // visit first 'size_-1' blocks
-    doc_id_t key = base_key_;
-    size_t offset = base_offset_;
-    for (const doc_id_t end = key + size_ - 1;  key < end; ++key, offset += avg_length_) {
-      value = bytes_ref(data_.c_str() + offset, avg_length_);
-      if (!visitor(key, value)) {
-        return false;
-      }
-    }
-
-    // visit tail block
-    assert(data_.size() >= offset);
-    value = bytes_ref(
-      data_.c_str() + offset, // start
-      data_.size() - offset // length
-    );
-
-    return visitor(key, value);
-  }
-
- private:
-  doc_id_t base_key_{}; // base key
-  uint32_t base_offset_{}; // base offset
-  uint32_t avg_length_{}; // entry length
-  doc_id_t size_{}; // total number of entries
-  bstring data_;
-}; // dense_fixed_offset_block
-
-class sparse_mask_block : util::noncopyable {
- public:
-  class iterator {
-   public:
-    bool seek(doc_id_t doc) noexcept {
-      it_ = std::lower_bound(begin_, end_, doc);
-
-      return next();
-    }
-
-    const irs::doc_id_t& value() const noexcept { return value_; }
-
-    bool next() noexcept {
-      if (it_ == end_) {
-        return false;
-      }
-
-      begin_ = it_;
-      value_ = *it_++;
-      return true;
-    }
-
-    void seal() noexcept {
-      value_ = doc_limits::eof();
-      it_ = begin_ = end_;
-    }
-
-    void reset(const sparse_mask_block& block, irs::payload& payload) noexcept {
-      value_ = doc_limits::invalid();
-      payload.value = bytes_ref::NIL; // mask block doesn't have payload
-      it_ = begin_ = std::begin(block.keys_);
-      end_ = begin_ + block.size_;
-
-      assert(std::is_sorted(begin_, end_));
-    }
-
-    bool operator==(const sparse_mask_block& rhs) const noexcept {
-      return end_ == (rhs.keys_ + rhs.size_);
-    }
-
-    bool operator!=(const sparse_mask_block& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
-   private:
-    irs::doc_id_t value_ { doc_limits::invalid() };
-    const doc_id_t* it_{};
-    const doc_id_t* begin_{};
-    const doc_id_t* end_{};
-  }; // iterator
-
-  sparse_mask_block() noexcept {
-    std::fill(
-      std::begin(keys_), std::end(keys_),
-      doc_limits::eof()
-    );
-  }
-
-  void load(index_input& in,
-            compression::decompressor* /*decomp*/,
-            encryption::stream* /*cipher*/,
-            bstring& buf) {
-    size_ = in.read_vint(); // total number of entries in a block
-
-    if (!size_) {
-      throw index_error("Empty 'sparse_mask_block' found in columnstore");
-    }
-
-    auto begin = std::begin(keys_);
-
-    encode::avg::visit_block_packed_tail(
-      in, size_, reinterpret_cast<uint32_t*>(&buf[0]),
-      [begin](uint32_t key) mutable {
-        *begin++ = key;
-    });
-
-    // mask block has no data, so all offsets should be equal to 0
-    if (!encode::avg::check_block_rl64(in, 0)) {
-      throw index_error("'sparse_mask_block' expected to contain no data");
-    }
-  }
-
-  bool value(doc_id_t key, bytes_ref& /*reader*/) const {
-    // we don't evaluate 'end' here as 'keys_ + size_'
-    // since it all blocks except the tail one are
-    // going to be fully filled, that allows compiler
-    // to generate better optimized code
-
-    const auto it = std::lower_bound(
-      std::begin(keys_), std::end(keys_), key
-    );
-
-    return !(std::end(keys_) == it || *it > key);
-  }
-
-  bool visit(const columnstore_reader::values_reader_f& reader) const {
-    for (auto begin = std::begin(keys_), end = begin + size_; begin != end; ++begin) {
-      if (!reader(*begin, DUMMY)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
- private:
-  // all blocks except the tail one are going to be fully filled,
-  // so we store keys in a fixed length array since we could
-  // waste just INDEX_BLOCK_SIZE*sizeof(ref)-1 per column
-  // in the worst case
-  doc_id_t keys_[INDEX_BLOCK_SIZE];
-  doc_id_t size_{}; // number of documents in a block
-}; // sparse_mask_block
-
-class dense_mask_block {
- public:
-  class iterator {
-   public:
-    bool seek(doc_id_t doc) noexcept {
-      if (doc < doc_) {
-        if (!doc_limits::valid(value_)) {
-          return next();
-        }
-
-        // don't seek backwards
-        return true;
-      }
-
-      doc_ = doc;
-      return next();
-    }
-
-    const irs::doc_id_t& value() const noexcept {
-      return value_;
-    }
-
-    bool next() noexcept {
-      if (doc_ >= max_) {
-        seal();
-        return false;
-      }
-
-      value_ = doc_++;
-
-      return true;
-    }
-
-    void seal() noexcept {
-      value_ = doc_limits::eof();
-      doc_ = max_;
-    }
-
-    void reset(const dense_mask_block& block, irs::payload& payload) noexcept {
-      block_ = &block;
-      payload.value = bytes_ref::NIL; // mask block doesn't have payload
-      doc_ = block.min_;
-      max_ = block.max_;
-    }
-
-    bool operator==(const dense_mask_block& rhs) const noexcept {
-      return block_ == &rhs;
-    }
-
-    bool operator!=(const dense_mask_block& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
-   private:
-    const dense_mask_block* block_{};
-    doc_id_t value_{ doc_limits::invalid() };
-    doc_id_t doc_{ doc_limits::invalid() };
-    doc_id_t max_{ doc_limits::invalid() };
-  }; // iterator
-
-  dense_mask_block() noexcept
-    : min_(doc_limits::invalid()),
-      max_(doc_limits::invalid()) {
-  }
-
-  void load(index_input& in,
-            compression::decompressor* /*decomp*/,
-            encryption::stream* /*cipher*/,
-            bstring& /*buf*/) {
-    const auto size = in.read_vint(); // total number of entries in a block
-
-    if (!size) {
-      throw index_error("Empty 'dense_mask_block' found in columnstore");
-    }
-
-    // dense block must be encoded with RL encoding, avg must be equal to 1
-    uint32_t avg;
-    if (!encode::avg::read_block_rl32(in, min_, avg) || 1 != avg) {
-      throw index_error(string_utils::to_string(
-        "Invalid RL encoding in 'dense_mask_block', base_key=%du, avg_delta=%du",
-        min_, avg
-      ));
-    }
-
-    // mask block has no data, so all offsets should be equal to 0
-    if (!encode::avg::check_block_rl64(in, 0)) {
-      throw index_error("'dense_mask_block' expected to contain no data");
-    }
-
-    max_ = min_ + size;
-  }
-
-  bool value(doc_id_t key, bytes_ref& /*reader*/) const noexcept {
-    return min_ <= key && key < max_;
-  }
-
-  bool visit(const columnstore_reader::values_reader_f& visitor) const {
-    for (auto doc = min_; doc < max_; ++doc) {
-      if (!visitor(doc, DUMMY)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
- private:
-  doc_id_t min_;
-  doc_id_t max_;
-}; // dense_mask_block
-
-template<typename Allocator = std::allocator<sparse_block>>
-class read_context
-  : public block_cache_traits<sparse_block, Allocator>::cache_t,
-    public block_cache_traits<dense_block, Allocator>::cache_t,
-    public block_cache_traits<dense_fixed_offset_block, Allocator>::cache_t,
-    public block_cache_traits<sparse_mask_block, Allocator>::cache_t,
-    public block_cache_traits<dense_mask_block, Allocator>::cache_t {
- public:
-  using ptr = std::shared_ptr<read_context>;
-
-  static ptr make(const index_input& stream, encryption::stream* cipher) {
-    auto clone = stream.reopen(); // reopen thead-safe stream
-
-    if (!clone) {
-      // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen columpstore input in: %s", __FUNCTION__);
-
-      throw io_error("Failed to reopen columnstore input in");
-    }
-
-    return memory::make_shared<read_context>(std::move(clone), cipher);
-  }
-
-  read_context(
-      index_input::ptr&& in,
-      encryption::stream* cipher,
-      const Allocator& alloc = Allocator())
-    : block_cache_traits<sparse_block, Allocator>::cache_t(typename block_cache_traits<sparse_block, Allocator>::allocator_t(alloc)),
-      block_cache_traits<dense_block, Allocator>::cache_t(typename block_cache_traits<dense_block, Allocator>::allocator_t(alloc)),
-      block_cache_traits<dense_fixed_offset_block, Allocator>::cache_t(typename block_cache_traits<dense_fixed_offset_block, Allocator>::allocator_t(alloc)),
-      block_cache_traits<sparse_mask_block, Allocator>::cache_t(typename block_cache_traits<sparse_mask_block, Allocator>::allocator_t(alloc)),
-      block_cache_traits<dense_mask_block, Allocator>::cache_t(typename block_cache_traits<dense_mask_block, Allocator>::allocator_t(alloc)),
-      buf_(INDEX_BLOCK_SIZE*sizeof(uint32_t), 0),
-      stream_(std::move(in)),
-      cipher_(cipher) {
-  }
-
-  template<typename Block, typename... Args>
-  Block& emplace_back(uint64_t offset, compression::decompressor* decomp, bool decrypt, Args&&... args) {
-    typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
-
-    // add cache entry
-    auto& block = cache.emplace_back(std::forward<Args>(args)...);
-
-    try {
-      load(block, decomp, decrypt, offset);
-    } catch (...) {
-      // failed to load block
-      pop_back<Block>();
-
-      throw;
-    }
-
-    return block;
-  }
-
-  template<typename Block>
-  void load(Block& block, compression::decompressor* decomp, bool decrypt, uint64_t offset) {
-    stream_->seek(offset); // seek to the offset
-    block.load(*stream_, decomp, decrypt ? cipher_ : nullptr, buf_);
-  }
-
-  template<typename Block>
-  void pop_back() noexcept {
-    typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
-    cache.pop_back();
-  }
-
- private:
-  bstring buf_; // temporary buffer for decoding/unpacking
-  index_input::ptr stream_;
-  encryption::stream* cipher_; // options cipher stream
-}; // read_context
-
-typedef read_context<> read_context_t;
-
-class context_provider: private util::noncopyable {
- public:
-  context_provider(size_t max_pool_size)
-    : pool_(std::max(size_t(1), max_pool_size)) {
-  }
-
-  void prepare(index_input::ptr&& stream, encryption::stream::ptr&& cipher) noexcept {
-    assert(stream);
-
-    stream_ = std::move(stream);
-    cipher_ = std::move(cipher);
-  }
-
-  bounded_object_pool<read_context_t>::ptr get_context() const {
-    return pool_.emplace(*stream_, cipher_.get());
-  }
-
- private:
-  mutable bounded_object_pool<read_context_t> pool_;
-  encryption::stream::ptr cipher_;
-  index_input::ptr stream_;
-}; // context_provider
-
-// in case of success caches block pointed
-// instance, nullptr otherwise
-template<typename BlockRef>
-const typename BlockRef::block_t& load_block(
-    const context_provider& ctxs,
-    compression::decompressor* decomp,
-    bool decrypt,
-    BlockRef& ref) {
-  typedef typename BlockRef::block_t block_t;
-
-  const auto* cached = ref.pblock.load();
-
-  if (!cached) {
-    auto ctx = ctxs.get_context();
-    assert(ctx);
-
-    // load block
-    const auto& block = ctx->template emplace_back<block_t>(ref.offset, decomp, decrypt);
-
-    // mark block as loaded
-    if (ref.pblock.compare_exchange_strong(cached, &block)) {
-      cached = &block;
-    } else {
-      // already cached by another thread
-      ctx->template pop_back<block_t>();
-    }
-  }
-
-  return *cached;
-}
-
-// in case of success caches block pointed
-// by 'ref' in the specified 'block' and
-// retuns a pointer to cached instance,
-// nullptr otherwise
-template<typename BlockRef>
-const typename BlockRef::block_t& load_block(
-    const context_provider& ctxs,
-    compression::decompressor* decomp,
-    bool decrypt,
-    const BlockRef& ref,
-    typename BlockRef::block_t& block) {
-  const auto* cached = ref.pblock.load();
-
-  if (!cached) {
-    auto ctx = ctxs.get_context();
-    assert(ctx);
-
-    ctx->load(block, decomp, decrypt, ref.offset);
-
-    cached = &block;
-  }
-
-  return *cached;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class column
-////////////////////////////////////////////////////////////////////////////////
-class column
-    : public irs::columnstore_reader::column_reader,
-      private util::noncopyable {
- public:
-  using ptr = std::unique_ptr<column>;
-
-  explicit column(ColumnProperty props) noexcept
-    : props_(props),
-      encrypted_(0 != (props & CP_COLUMN_ENCRYPT)) {
-  }
-
-  virtual ~column() = default;
-
-  virtual void read(data_input& in, uint64_t* /*buf*/, compression::decompressor::ptr decomp) {
-    count_ = in.read_vint();
-    max_ = in.read_vint();
-    avg_block_size_ = in.read_vint();
-    avg_block_count_ = in.read_vint();
-    if (!avg_block_count_) {
-      avg_block_count_ = count_;
-    }
-    decomp_ = decomp;
-  }
-
-  bool encrypted() const noexcept { return encrypted_; }
-  doc_id_t max() const noexcept { return max_; }
-  virtual size_t size() const noexcept override { return count_; }
-  bool empty() const noexcept { return 0 == size(); }
-  uint32_t avg_block_size() const noexcept { return avg_block_size_; }
-  uint32_t avg_block_count() const noexcept { return avg_block_count_; }
-  ColumnProperty props() const noexcept { return props_; }
-  compression::decompressor* decompressor() const noexcept { return decomp_.get(); }
-
- protected:
-  // same as size() but returns uint32_t to avoid type convertions
-  uint32_t count() const noexcept { return count_; }
-
- private:
-  compression::decompressor::ptr decomp_;
-  doc_id_t max_{ doc_limits::eof() };
-  uint32_t count_{};
-  uint32_t avg_block_size_{};
-  uint32_t avg_block_count_{};
-  ColumnProperty props_{ CP_SPARSE };
-  bool encrypted_{ false }; // cached encryption mark
-}; // column
-
-template<typename Column>
-class column_iterator final
-    : public irs::frozen_attributes<4, irs::doc_iterator> {
- public:
-  typedef Column column_t;
-  typedef typename Column::block_t block_t;
-  typedef typename block_t::iterator block_iterator_t;
-
-  explicit column_iterator(
-      const column_t& column,
-      const typename column_t::block_ref* begin,
-      const typename column_t::block_ref* end)
-    : attributes{{
-        { irs::type<irs::document>::id(), &doc_    },
-        { irs::type<irs::cost>::id(),     &cost_   },
-        { irs::type<irs::score>::id(),    &score_  },
-        { irs::type<irs::payload>::id(),  &payload_ },
-      }},
-      cost_(column.size()),
-      begin_(begin),
-      seek_origin_(begin),
-      end_(end),
-      column_(&column) {
-  }
-
-  virtual doc_id_t value() const noexcept override {
-    return doc_.value;
-  }
-
-  virtual doc_id_t seek(irs::doc_id_t doc) override {
-    begin_ = column_->find_block(seek_origin_, end_, doc);
-
-    if (!next_block()) {
-      return value();
-    }
-
-    if (!block_.seek(doc)) {
-      // reached the end of block,
-      // advance to the next one
-      while (next_block() && !block_.next()) { }
-    }
-
-    doc_.value = block_.value();
-    return value();
-  }
-
-  virtual bool next() override {
-    while (!block_.next()) {
-      if (!next_block()) {
-        return false;
-      }
-    }
-
-    doc_.value = block_.value();
-    return true;
-  }
-
- private:
-  typedef typename column_t::refs_t refs_t;
-
-  bool next_block() {
-    if (begin_ == end_) {
-      // reached the end of the column
-      block_.seal();
-      seek_origin_ = end_;
-      payload_.value = bytes_ref::NIL;
-      doc_.value = irs::doc_limits::eof();
-
-      return false;
-    }
-
-    try {
-      const auto& cached = load_block(*column_->ctxs_, column_->decompressor(), column_->encrypted(), *begin_);
-
-      if (block_ != cached) {
-        block_.reset(cached, payload_);
-      }
-    } catch (...) {
-      // unable to load block, seal the iterator
-      block_.seal();
-      begin_ = end_;
-      payload_.value = bytes_ref::NIL;
-      doc_.value = irs::doc_limits::eof();
-
-      throw;
-    }
-
-    seek_origin_ = begin_++;
-
-    return true;
-  }
-
-  block_iterator_t block_;
-  irs::payload payload_;
-  irs::document doc_;
-  irs::cost cost_;
-  irs::score score_;
-  const typename column_t::block_ref* begin_;
-  const typename column_t::block_ref* seek_origin_;
-  const typename column_t::block_ref* end_;
-  const column_t* column_;
-}; // column_iterator
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           Columns
-// -----------------------------------------------------------------------------
-
-template<typename Column>
-columnstore_reader::values_reader_f column_values(const Column& column) {
-if (column.empty()) {
-    return columnstore_reader::empty_reader();
-  }
-
-  return [&column](doc_id_t key, bytes_ref& value) {
-    return column.value(key, value);
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class sparse_column
-////////////////////////////////////////////////////////////////////////////////
-template<typename Block>
-class sparse_column final : public column {
- public:
-  typedef sparse_column column_t;
-  typedef Block block_t;
-
-  static column::ptr make(const context_provider& ctxs, ColumnProperty props) {
-    return memory::make_unique<column_t>(ctxs, props);
-  }
-
-  sparse_column(const context_provider& ctxs, ColumnProperty props)
-    : column(props), ctxs_(&ctxs) {
-  }
-
-  virtual void read(data_input& in, uint64_t* buf, compression::decompressor::ptr decomp) override {
-    column::read(in, buf, decomp); // read common header
-
-    uint32_t blocks_count = in.read_vint(); // total number of column index blocks
-
-    std::vector<block_ref> refs(blocks_count + 1); // +1 for upper bound
-
-    auto begin = refs.begin();
-    while (blocks_count >= INDEX_BLOCK_SIZE) {
-      encode::avg::visit_block_packed(
-        in, INDEX_BLOCK_SIZE, reinterpret_cast<uint32_t*>(buf),
-        [begin](uint32_t key) mutable {
-          begin->key = key;
-          ++begin;
-      });
-
-      encode::avg::visit_block_packed(
-        in, INDEX_BLOCK_SIZE, buf,
-        [begin](uint64_t offset) mutable {
-          begin->offset = offset;
-          ++begin;
-      });
-
-      begin += INDEX_BLOCK_SIZE;
-      blocks_count -= INDEX_BLOCK_SIZE;
-    }
-
-    // tail block
-    if (blocks_count) {
-      encode::avg::visit_block_packed_tail(
-        in, blocks_count, reinterpret_cast<uint32_t*>(buf),
-        [begin](uint32_t key) mutable {
-          begin->key = key;
-          ++begin;
-      });
-
-      encode::avg::visit_block_packed_tail(
-        in, blocks_count, buf,
-        [begin](uint64_t offset) mutable {
-          begin->offset = offset;
-          ++begin;
-      });
-
-      begin += blocks_count;
-    }
-
-    // upper bound
-    if (this->max() < doc_limits::eof()) {
-      begin->key = this->max() + 1;
-    } else {
-      begin->key = doc_limits::eof();
-    }
-    begin->offset = type_limits<type_t::address_t>::invalid();
-
-    refs_ = std::move(refs);
-  }
-
-  bool value(doc_id_t key, bytes_ref& value) const {
-    // find the right block
-    const auto rbegin = refs_.rbegin(); // upper bound
-    const auto rend = refs_.rend();
-    const auto it = std::lower_bound(
-      rbegin, rend, key,
-      [] (const block_ref& lhs, doc_id_t rhs) {
-        return lhs.key > rhs;
-    });
-
-    if (it == rend || it == rbegin) {
-      return false;
-    }
-
-    const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), *it);
-
-    return cached.value(key, value);
-  }
-
-  virtual bool visit(
-      const columnstore_reader::values_visitor_f& visitor
-  ) const override {
-    block_t block; // don't cache new blocks
-    for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
-      const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), *begin, block);
-
-      if (!cached.visit(visitor)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  virtual irs::doc_iterator::ptr iterator() const override {
-    typedef column_iterator<column_t> iterator_t;
-
-    if (empty()) {
-      return irs::doc_iterator::empty();
-    }
-
-    return memory::make_managed<iterator_t>(
-      *this,
-      refs_.data(),
-      refs_.data() + refs_.size() - 1); // -1 for upper bound
-  }
-
-  virtual columnstore_reader::values_reader_f values() const override {
-    return column_values<column_t>(*this);
-  }
-
- private:
-  friend class column_iterator<column_t>;
-
-  struct block_ref : util::noncopyable {
-    typedef typename column_t::block_t block_t;
-
-    block_ref() = default;
-
-    block_ref(block_ref&& other) noexcept
-      : key(std::move(other.key)), offset(std::move(other.offset)) {
-      pblock = other.pblock.exchange(nullptr); // no std::move(...) for std::atomic<...>
-    }
-
-    doc_id_t key; // min key in a block
-    uint64_t offset; // block offset
-    mutable std::atomic<const block_t*> pblock; // pointer to cached block
-  }; // block_ref
-
-  typedef std::vector<block_ref> refs_t;
-
-  const block_ref* find_block(
-      const block_ref* begin,
-      const block_ref* end,
-      doc_id_t key) const noexcept {
-    UNUSED(end);
-
-    if (key <= begin->key) {
-      return begin;
-    }
-
-    const auto rbegin = irstd::make_reverse_iterator(refs_.data() + refs_.size()); // upper bound
-    const auto rend = irstd::make_reverse_iterator(begin);
-    const auto it = std::lower_bound(
-      rbegin, rend, key,
-      [] (const block_ref& lhs, doc_id_t rhs) {
-        return lhs.key > rhs;
-    });
-
-    if (it == rend) {
-      return &*rbegin;
-    }
-
-    return it.base()-1;
-  }
-
-  typename refs_t::const_iterator find_block(doc_id_t key) const noexcept {
-    if (key <= refs_.front().key) {
-      return refs_.begin();
-    }
-
-    const auto rbegin = refs_.rbegin(); // upper bound
-    const auto rend = refs_.rend();
-    const auto it = std::lower_bound(
-      rbegin, rend, key,
-      [] (const block_ref& lhs, doc_id_t rhs) {
-        return lhs.key > rhs;
-    });
-
-    if (it == rend) {
-      return refs_.end() - 1; // -1 for upper bound
-    }
-
-    return irstd::to_forward(it);
-  }
-
-  const context_provider* ctxs_;
-  refs_t refs_; // blocks index
-}; // sparse_column
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class dense_fixed_offset_column
-////////////////////////////////////////////////////////////////////////////////
-template<typename Block>
-class dense_fixed_offset_column final : public column {
- public:
-  typedef dense_fixed_offset_column column_t;
-  typedef Block block_t;
-
-  static column::ptr make(const context_provider& ctxs, ColumnProperty props) {
-    return memory::make_unique<column_t>(ctxs, props);
-  }
-
-  dense_fixed_offset_column(const context_provider& ctxs, ColumnProperty prop)
-    : column(prop), ctxs_(&ctxs) {
-  }
-
-  virtual void read(data_input& in, uint64_t* buf, compression::decompressor::ptr decomp) override {
-    column::read(in, buf, decomp); // read common header
-
-    size_t blocks_count = in.read_vint(); // total number of column index blocks
-
-    std::vector<block_ref> refs(blocks_count);
-
-    auto begin = refs.begin();
-    while (blocks_count >= INDEX_BLOCK_SIZE) {
-      if (!encode::avg::check_block_rl32(in, this->avg_block_count())) {
-        throw index_error("Invalid RL encoding in 'dense_fixed_offset_column' (keys)");
-      }
-
-      encode::avg::visit_block_packed(
-        in, INDEX_BLOCK_SIZE, buf,
-        [begin](uint64_t offset) mutable {
-          begin->offset = offset;
-          ++begin;
-      });
-
-      begin += INDEX_BLOCK_SIZE;
-      blocks_count -= INDEX_BLOCK_SIZE;
-    }
-
-    // tail block
-    if (blocks_count) {
-      const auto avg_block_count = blocks_count > 1
-        ? this->avg_block_count()
-        : 0U; // in this case avg == 0
-
-      if (!encode::avg::check_block_rl32(in, avg_block_count)) {
-        throw index_error("Invalid RL encoding in 'dense_fixed_offset_column' (keys)");
-      }
-
-      encode::avg::visit_block_packed_tail(
-        in, blocks_count, buf,
-        [begin](uint64_t offset) mutable {
-          begin->offset = offset;
-          ++begin;
-      });
-
-      begin += blocks_count;
-    }
-
-    refs_ = std::move(refs);
-    min_ = this->max() - this->count() + 1;
-  }
-
-  bool value(doc_id_t key, bytes_ref& value) const {
-    const auto base_key = key - min_;
-
-    if (base_key >= this->count()) {
-      return false;
-    }
-
-    const auto block_idx = base_key / this->avg_block_count();
-    assert(block_idx < refs_.size());
-
-    auto& ref = const_cast<block_ref&>(refs_[block_idx]);
-
-    const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), ref);
-
-    return cached.value(key, value);
-  }
-
-  virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const override {
-    block_t block; // don't cache new blocks
-    for (auto& ref : refs_) {
-      const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), ref, block);
-
-      if (!cached.visit(visitor)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  virtual irs::doc_iterator::ptr iterator() const override {
-    typedef column_iterator<column_t> iterator_t;
-
-    if (empty()) {
-      return irs::doc_iterator::empty();
-    }
-
-    return memory::make_managed<iterator_t>(
-      *this,
-      refs_.data(),
-      refs_.data() + refs_.size());
-  }
-
-  virtual columnstore_reader::values_reader_f values() const override {
-    return column_values<column_t>(*this);
-  }
-
- private:
-  friend class column_iterator<column_t>;
-
-  struct block_ref {
-    typedef typename column_t::block_t block_t;
-
-    block_ref() = default;
-
-    block_ref(block_ref&& other) noexcept
-      : offset(std::move(other.offset)) {
-      pblock = other.pblock.exchange(nullptr); // no std::move(...) for std::atomic<...>
-    }
-
-    uint64_t offset; // need to store base offset since blocks may not be located sequentially
-    mutable std::atomic<const block_t*> pblock;
-  }; // block_ref
-
-  typedef std::vector<block_ref> refs_t;
-
-  const block_ref* find_block(
-      const block_ref* begin,
-      const block_ref* end,
-      doc_id_t key) const noexcept {
-    const auto min  = min_ + this->avg_block_count() * std::distance(refs_.data(), begin);
-
-    if (key < min) {
-      return begin;
-    }
-
-    if ((key -= min_) >= this->count()) {
-      return end;
-    }
-
-    const auto block_idx = key / this->avg_block_count();
-    assert(block_idx < refs_.size());
-
-    return refs_.data() + block_idx;
-  }
-
-  typename refs_t::const_iterator find_block(doc_id_t key) const noexcept {
-    if (key < min_) {
-      return refs_.begin();
-    }
-
-    if ((key -= min_) >= this->count()) {
-      return refs_.end();
-    }
-
-    const auto block_idx = key / this->avg_block_count();
-    assert(block_idx < refs_.size());
-
-    return std::begin(refs_) + block_idx;
-  }
-
-  const context_provider* ctxs_;
-  refs_t refs_;
-  doc_id_t min_{}; // min key
-}; // dense_fixed_offset_column
-
-template<>
-class dense_fixed_offset_column<dense_mask_block> final : public column {
- public:
-  typedef dense_fixed_offset_column column_t;
-
-  static column::ptr make(const context_provider&, ColumnProperty props) {
-    return memory::make_unique<column_t>(props);
-  }
-
-  explicit dense_fixed_offset_column(ColumnProperty prop) noexcept
-    : column(prop) {
-  }
-
-  virtual void read(data_input& in, uint64_t* buf, compression::decompressor::ptr decomp) override {
-    // we treat data in blocks as "garbage" which could be
-    // potentially removed on merge, so we don't validate
-    // column properties using such blocks
-
-    column::read(in, buf, decomp); // read common header
-
-    uint32_t blocks_count = in.read_vint(); // total number of column index blocks
-
-    while (blocks_count >= INDEX_BLOCK_SIZE) {
-      if (!encode::avg::check_block_rl32(in, this->avg_block_count())) {
-        throw index_error("Invalid RL encoding in 'dense_fixed_offset_column<dense_mask_block>' (keys)");
-      }
-
-      // skip offsets, they point to "garbage" data
-      encode::avg::visit_block_packed(
-        in, INDEX_BLOCK_SIZE, buf,
-        [](uint64_t) {}
-      );
-
-      blocks_count -= INDEX_BLOCK_SIZE;
-    }
-
-    // tail block
-    if (blocks_count) {
-      const auto avg_block_count = blocks_count > 1
-        ? this->avg_block_count()
-        : 0; // in this case avg == 0
-
-      if (!encode::avg::check_block_rl32(in, avg_block_count)) {
-        throw index_error("Invalid RL encoding in 'dense_fixed_offset_column<dense_mask_block>' (keys)");
-      }
-
-      // skip offsets, they point to "garbage" data
-      encode::avg::visit_block_packed_tail(
-        in, blocks_count, buf,
-        [](uint64_t) { }
-      );
-    }
-
-
-    min_ = this->max() - this->count();
-  }
-
-  bool value(doc_id_t key, bytes_ref& value) const noexcept {
-    value = bytes_ref::NIL;
-    return key > min_ && key <= this->max();
-  }
-
-  virtual bool visit(
-      const columnstore_reader::values_visitor_f& visitor
-  ) const override {
-    auto doc = min_;
-
-    for (auto left = this->size(); left; --left) {
-      if (!visitor(++doc, bytes_ref::NIL)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  virtual irs::doc_iterator::ptr iterator() const override;
-
-  virtual columnstore_reader::values_reader_f values() const override {
-    return column_values<column_t>(*this);
-  }
-
- private:
-  class column_iterator final :
-      public irs::frozen_attributes<3, irs::doc_iterator> {
-   public:
-    explicit column_iterator(const column_t& column) noexcept
-      : attributes{{
-          { irs::type<irs::document>::id(), &value_  },
-          { irs::type<irs::cost>::id(),     &cost_   },
-          { irs::type<irs::score>::id(),    &score_  },
-        }},
-        cost_(column.size()),
-        min_(1 + column.min_),
-        max_(column.max()) {
-    }
-
-    virtual irs::doc_id_t value() const noexcept override {
-      return value_.value;
-    }
-
-    virtual irs::doc_id_t seek(irs::doc_id_t doc) noexcept override {
-      if (doc < min_) {
-        if (!doc_limits::valid(value_.value)) {
-          next();
-        }
-
-        return value();
-      }
-
-      min_ = doc;
-      next();
-
-      return value_.value;
-    }
-
-    virtual bool next() noexcept override {
-      if (min_ > max_) {
-        value_.value = doc_limits::eof();
-
-        return false;
-      }
-
-
-      value_.value = min_++;
-
-      return true;
-    }
-
-   private:
-    document value_;
-    irs::cost cost_;
-    irs::score score_;
-    doc_id_t min_{ doc_limits::invalid() };
-    doc_id_t max_{ doc_limits::invalid() };
-  }; // column_iterator
-
-  doc_id_t min_{}; // min key (less than any key in column)
-}; // dense_fixed_offset_column
-
-irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator() const {
-  return empty()
-    ? irs::doc_iterator::empty()
-    : memory::make_managed<column_iterator>(*this);
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                 column factories
-// ----------------------------------------------------------------------------
-
-typedef std::function<
-  column::ptr(const context_provider& ctxs, ColumnProperty prop)
-> column_factory_f;
-                                                               //     Column      |          Blocks
-const column_factory_f COLUMN_FACTORIES[] {                    // CP_COLUMN_DENSE | CP_MASK CP_FIXED CP_DENSE
-  &sparse_column<sparse_block>::make,                          //       0         |    0        0        0
-  &sparse_column<dense_block>::make,                           //       0         |    0        0        1
-  &sparse_column<sparse_block>::make,                          //       0         |    0        1        0
-  &sparse_column<dense_fixed_offset_block>::make,              //       0         |    0        1        1
-  nullptr, /* invalid properties, should never happen */       //       0         |    1        0        0
-  nullptr, /* invalid properties, should never happen */       //       0         |    1        0        1
-  &sparse_column<sparse_mask_block>::make,                     //       0         |    1        1        0
-  &sparse_column<dense_mask_block>::make,                      //       0         |    1        1        1
-
-  &sparse_column<sparse_block>::make,                          //       1         |    0        0        0
-  &sparse_column<dense_block>::make,                           //       1         |    0        0        1
-  &sparse_column<sparse_block>::make,                          //       1         |    0        1        0
-  &dense_fixed_offset_column<dense_fixed_offset_block>::make,  //       1         |    0        1        1
-  nullptr, /* invalid properties, should never happen */       //       1         |    1        0        0
-  nullptr, /* invalid properties, should never happen */       //       1         |    1        0        1
-  &sparse_column<sparse_mask_block>::make,                     //       1         |    1        1        0
-  &dense_fixed_offset_column<dense_mask_block>::make           //       1         |    1        1        1
-};
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class reader
-//////////////////////////////////////////////////////////////////////////////
-class reader final: public columnstore_reader, public context_provider {
- public:
-  explicit reader(size_t pool_size = 16)
-    : context_provider(pool_size) {
-  }
-
-  virtual bool prepare(
-    const directory& dir,
-    const segment_meta& meta
-  ) override;
-
-  virtual const column_reader* column(field_id field) const override;
-
-  virtual size_t size() const noexcept override {
-    return columns_.size();
-  }
-
- private:
-  std::vector<column::ptr> columns_;
-}; // reader
-
-bool reader::prepare(const directory& dir, const segment_meta& meta) {
-  const auto filename = file_name<columnstore_writer>(meta);
-  bool exists;
-
-  if (!dir.exists(exists, filename)) {
-    throw io_error(string_utils::to_string(
-      "failed to check existence of file, path: %s",
-      filename.c_str()
-    ));
-  }
-
-  if (!exists) {
-    // possible that the file does not exist since columnstore is optional
-    return false;
-  }
-
-  // open columstore stream
-  auto stream = dir.open(filename, irs::IOAdvice::RANDOM);
-
-  if (!stream) {
-    throw io_error(string_utils::to_string(
-      "Failed to open file, path: %s",
-      filename.c_str()
-    ));
-  }
-
-  // check header
-  const auto version = format_utils::check_header(
-    *stream,
-    writer::FORMAT_NAME,
-    writer::FORMAT_MIN,
-    writer::FORMAT_MAX);
-
-  encryption::stream::ptr cipher;
-
-  if (version > writer::FORMAT_MIN) {
-    auto* enc = get_encryption(dir.attributes());
-
-    if (irs::decrypt(filename, *stream, enc, cipher)) {
-      assert(cipher && cipher->block_size());
-    }
-  }
-
-  // since columns data are too large
-  // it is too costly to verify checksum of
-  // the entire file. here we perform cheap
-  // error detection which could recognize
-  // some forms of corruption
-  format_utils::read_checksum(*stream);
-
-  // seek to data start
-  stream->seek(stream->length() - format_utils::FOOTER_LEN - sizeof(uint64_t));
-  stream->seek(stream->read_long()); // seek to blocks index
-
-  uint64_t buf[INDEX_BLOCK_SIZE]; // temporary buffer for bit packing
-  std::vector<column::ptr> columns;
-  columns.reserve(stream->read_vlong());
-  for (size_t i = 0, size = columns.capacity(); i < size; ++i) {
-    // read column properties
-    const auto props = read_enum<ColumnProperty>(*stream);
-    const auto factory_id = (props & (~CP_COLUMN_ENCRYPT));
-
-    if (factory_id >= IRESEARCH_COUNTOF(COLUMN_FACTORIES)) {
-      throw index_error(string_utils::to_string(
-        "Failed to load column id=" IR_SIZE_T_SPECIFIER ", got invalid properties=%d",
-        i, static_cast<uint32_t>(props)
-      ));
-    }
-
-    // create column
-    const auto& factory = COLUMN_FACTORIES[factory_id];
-
-    if (!factory) {
-      static_assert(
-        std::is_same<std::underlying_type<ColumnProperty>::type, uint32_t>::value,
-        "Enum 'ColumnProperty' has different underlying type"
-      );
-
-      throw index_error(string_utils::to_string(
-        "Failed to open column id=" IR_SIZE_T_SPECIFIER ", properties=%d",
-        i, static_cast<uint32_t>(props)
-      ));
-    }
-
-    auto column = factory(*this, props);
-
-    if (!column) {
-      throw index_error(string_utils::to_string(
-        "Factory failed to create column id=" IR_SIZE_T_SPECIFIER, i
-      ));
-    }
-
-    compression::decompressor::ptr decomp;
-
-    if (version > writer::FORMAT_MIN) {
-      const auto compression_id = read_string<std::string>(*stream);
-      decomp = compression::get_decompressor(compression_id);
-
-      if (!decomp && !compression::exists(compression_id)) {
-        throw index_error(string_utils::to_string(
-          "Failed to load compression '%s' for column id=" IR_SIZE_T_SPECIFIER,
-          compression_id.c_str(), i));
-      }
-
-      if (decomp && !decomp->prepare(*stream)) {
-        throw index_error(string_utils::to_string(
-          "Failed to prepare compression '%s' for column id=" IR_SIZE_T_SPECIFIER,
-          compression_id.c_str(), i));
-      }
-    } else {
-      // we don't support encryption and custom
-      // compression for 'FORMAT_MIN' version
-      decomp = compression::get_decompressor(type<compression::lz4>::get());
-      assert(decomp);
-    }
-
-    try {
-      column->read(*stream, buf, decomp);
-    } catch (...) {
-      IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER, i);
-
-      throw;
-    }
-
-    // noexcept since space has been already reserved
-    columns.emplace_back(std::move(column));
-  }
-
-  // noexcept
-  context_provider::prepare(std::move(stream), std::move(cipher));
-  columns_ = std::move(columns);
-
-  return true;
-}
-
-const reader::column_reader* reader::column(field_id field) const {
-  return field >= columns_.size()
-    ? nullptr // can't find column with the specified identifier
-    : columns_[field].get();
-}
-
 } // columns
 
 // ----------------------------------------------------------------------------
@@ -5133,12 +2685,11 @@ class postings_reader_base : public irs::postings_reader {
   virtual void prepare(
     index_input& in,
     const reader_state& state,
-    const flags& features) final;
+    IndexFeatures features) final;
 
   virtual size_t decode(
     const byte_type* in,
-    const flags& field,
-    attribute_provider& attrs,
+    IndexFeatures field_features,
     irs::term_meta& state) final;
 
  protected:
@@ -5150,7 +2701,7 @@ class postings_reader_base : public irs::postings_reader {
 void postings_reader_base::prepare(
     index_input& in,
     const reader_state& state,
-    const flags& features) {
+    IndexFeatures features) {
   std::string buf;
 
   // prepare document input
@@ -5159,8 +2710,7 @@ void postings_reader_base::prepare(
     postings_writer_base::DOC_EXT,
     postings_writer_base::DOC_FORMAT_NAME,
     postings_writer_base::FORMAT_MIN,
-    postings_writer_base::FORMAT_MAX
-  );
+    postings_writer_base::FORMAT_MAX);
 
   // Since terms doc postings too large
   //  it is too costly to verify checksum of
@@ -5169,15 +2719,14 @@ void postings_reader_base::prepare(
   //  some forms of corruption.
   format_utils::read_checksum(*doc_in_);
 
-  if (features.check<irs::position>()) {
+  if (IndexFeatures::NONE != (features & IndexFeatures::POS)) {
     /* prepare positions input */
     prepare_input(
       buf, pos_in_, irs::IOAdvice::RANDOM, state,
       postings_writer_base::POS_EXT,
       postings_writer_base::POS_FORMAT_NAME,
       postings_writer_base::FORMAT_MIN,
-      postings_writer_base::FORMAT_MAX
-    );
+      postings_writer_base::FORMAT_MAX);
 
     // Since terms pos postings too large
     // it is too costly to verify checksum of
@@ -5186,15 +2735,14 @@ void postings_reader_base::prepare(
     // some forms of corruption.
     format_utils::read_checksum(*pos_in_);
 
-    if (features.check<payload>() || features.check<offset>()) {
+    if (IndexFeatures::NONE != (features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       // prepare positions input
       prepare_input(
         buf, pay_in_, irs::IOAdvice::RANDOM, state,
         postings_writer_base::PAY_EXT,
         postings_writer_base::PAY_FORMAT_NAME,
         postings_writer_base::FORMAT_MIN,
-        postings_writer_base::FORMAT_MAX
-      );
+        postings_writer_base::FORMAT_MAX);
 
       // Since terms pos postings too large
       // it is too costly to verify checksum of
@@ -5209,47 +2757,40 @@ void postings_reader_base::prepare(
   format_utils::check_header(in,
     postings_writer_base::TERMS_FORMAT_NAME,
     postings_writer_base::TERMS_FORMAT_MIN,
-    postings_writer_base::TERMS_FORMAT_MAX
-  );
+    postings_writer_base::TERMS_FORMAT_MAX);
 
   const uint64_t block_size = in.read_vint();
 
   if (block_size != postings_writer_base::BLOCK_SIZE) {
     throw index_error(string_utils::to_string(
       "while preparing postings_reader, error: invalid block size '" IR_UINT64_T_SPECIFIER "'",
-      block_size
-    ));
+      block_size));
   }
 }
 
 size_t postings_reader_base::decode(
     const byte_type* in,
-    const flags& meta,
-    attribute_provider& attrs,
+    IndexFeatures features,
     irs::term_meta& state) {
-#ifdef IRESEARCH_DEBUG
-  auto& term_meta = dynamic_cast<version10::term_meta&>(state);
-#else
   auto& term_meta = static_cast<version10::term_meta&>(state);
-#endif // IRESEARCH_DEBUG
 
-  auto* term_freq = irs::get_mutable<frequency>(&attrs);
+  const bool has_freq = IndexFeatures::NONE != (features & IndexFeatures::FREQ);
   const auto* p = in;
 
   term_meta.docs_count = vread<uint32_t>(p);
-  if (term_freq) {
-    term_freq->value = term_meta.docs_count + vread<uint32_t>(p);
+  if (has_freq) {
+    term_meta.freq = term_meta.docs_count + vread<uint32_t>(p);
   }
 
   term_meta.doc_start += vread<uint64_t>(p);
-  if (term_freq && term_freq->value && meta.check<irs::position>()) {
+  if (has_freq && term_meta.freq && IndexFeatures::NONE != (features & IndexFeatures::POS)) {
     term_meta.pos_start += vread<uint64_t>(p);
 
-    term_meta.pos_end = term_freq->value > postings_writer_base::BLOCK_SIZE
+    term_meta.pos_end = term_meta.freq > postings_writer_base::BLOCK_SIZE
         ? vread<uint64_t>(p)
         : type_limits<type_t::address_t>::invalid();
 
-    if (meta.check<payload>() || meta.check<offset>()) {
+    if (IndexFeatures::NONE != (features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       term_meta.pay_start += vread<uint64_t>(p);
     }
   }
@@ -5267,66 +2808,85 @@ class postings_reader final: public postings_reader_base {
  public:
   template<bool Freq, bool Pos, bool Offset, bool Payload>
   struct iterator_traits : FormatTraits {
-    static constexpr bool frequency() { return Freq; }
-    static constexpr bool position() { return Freq && Pos; }
-    static constexpr bool offset() { return position() && Offset; }
-    static constexpr bool payload() { return position() && Payload; }
-    static constexpr bool one_based_position_storage() { return OneBasedPositionStorage; }
+    static constexpr bool frequency() noexcept { return Freq; }
+    static constexpr bool position() noexcept { return Freq && Pos; }
+    static constexpr bool offset() noexcept { return position() && Offset; }
+    static constexpr bool payload() noexcept { return position() && Payload; }
+    static constexpr bool one_based_position_storage() noexcept {
+      return OneBasedPositionStorage;
+    }
   };
 
   virtual irs::doc_iterator::ptr iterator(
-    const flags& field,
-    const attribute_provider& attrs,
-    const flags& features) override;
+    IndexFeatures field_features,
+    IndexFeatures required_features,
+    const term_meta& meta) override;
+
+  virtual size_t bit_union(
+    IndexFeatures field,
+    const term_provider_f& provider,
+    size_t* set) override;
 
  private:
-  template<typename IteratorTraits>
-  irs::doc_iterator::ptr iterator(
-      const attribute_provider& attrs,
-      const ::features& features) {
-    auto it = memory::make_managed<doc_iterator<IteratorTraits>>();
-    it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+  template<typename IteratorTraits, typename FieldTraits>
+  static irs::doc_iterator::ptr iterator_impl(
+      const postings_reader& ctx,
+      const term_meta& meta) {
+    auto it = memory::make_managed<doc_iterator<IteratorTraits, FieldTraits>>();
+
+    it->prepare(
+      meta,
+      ctx.doc_in_.get(),
+      ctx.pos_in_.get(),
+      ctx.pay_in_.get());
 
     return it;
   }
+
+  template<typename FieldTraits, typename... Args>
+  irs::doc_iterator::ptr iterator_impl(IndexFeatures enabled, Args&&... args);
 }; // postings_reader
 
 #if defined(_MSC_VER)
-#elif defined (__GNUC__)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wswitch"
 #endif
 
 template<typename FormatTraits, bool OneBasedPositionStorage>
-irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator(
-    const flags& field,
-    const attribute_provider& attrs,
-    const flags& req) {
-
-  // compile field features
-  const auto features = ::features(field);
-  // get enabled features:
-  // find intersection between requested and available features
-  const auto enabled = features & req;
-
+template<typename FieldTraits, typename... Args>
+irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator_impl(
+    IndexFeatures enabled, Args&&... args) {
   switch (enabled) {
-    case features::FREQ | features::POS | features::OFFS | features::PAY: {
-      return iterator<iterator_traits<true, true, true, true>>(attrs, features);
+    case IndexFeatures::ALL : {
+      using iterator_traits_t = iterator_traits<true, true, true, true>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
+        *this, std::forward<Args>(args)...);
     }
-    case features::FREQ | features::POS | features::OFFS: {
-      return iterator<iterator_traits<true, true, true, false>>(attrs, features);
+    case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS: {
+      using iterator_traits_t = iterator_traits<true, true, true, false>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
+        *this, std::forward<Args>(args)...);
     }
-    case features::FREQ | features::POS | features::PAY: {
-      return iterator<iterator_traits<true, true, false, true>>(attrs, features);
+    case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::PAY: {
+      using iterator_traits_t = iterator_traits<true, true, false, true>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
+        *this, std::forward<Args>(args)...);
     }
-    case features::FREQ | features::POS: {
-      return iterator<iterator_traits<true, true, false, false>>(attrs, features);
+    case IndexFeatures::FREQ | IndexFeatures::POS: {
+      using iterator_traits_t = iterator_traits<true, true, false, false>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
+        *this, std::forward<Args>(args)...);
     }
-    case features::FREQ: {
-      return iterator<iterator_traits<true, false, false, false>>(attrs, features);
+    case IndexFeatures::FREQ: {
+      using iterator_traits_t = iterator_traits<true, false, false, false>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
+        *this, std::forward<Args>(args)...);
     }
     default: {
-      return iterator<iterator_traits<false, false, false, false>>(attrs, features);
+      using iterator_traits_t = iterator_traits<false, false, false, false>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
+        *this, std::forward<Args>(args)...);
     }
   }
 
@@ -5334,10 +2894,134 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
   return irs::doc_iterator::empty();
 }
 
+template<typename FormatTraits, bool OneBasedPositionStorage>
+irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator(
+    IndexFeatures field_features,
+    IndexFeatures required_features,
+    const term_meta& meta) {
+  // get enabled features as the intersection
+  // between requested and available features
+  const auto enabled = field_features & required_features;
+
+  switch (field_features) {
+    case IndexFeatures::ALL : {
+      using field_traits_t = iterator_traits<true, true, true, true>;
+      return iterator_impl<field_traits_t>(enabled, meta);
+    }
+    case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS: {
+      using field_traits_t = iterator_traits<true, true, true, false>;
+      return iterator_impl<field_traits_t>(enabled, meta);
+    }
+    case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::PAY: {
+      using field_traits_t = iterator_traits<true, true, false, true>;
+      return iterator_impl<field_traits_t>(enabled, meta);
+    }
+    case IndexFeatures::FREQ | IndexFeatures::POS: {
+      using field_traits_t = iterator_traits<true, true, false, false>;
+      return iterator_impl<field_traits_t>(enabled, meta);
+    }
+    case IndexFeatures::FREQ: {
+      using field_traits_t = iterator_traits<true, false, false, false>;
+      return iterator_impl<field_traits_t>(enabled, meta);
+    }
+    default: {
+      using field_traits_t = iterator_traits<false, false, false, false>;
+      return iterator_impl<field_traits_t>(enabled, meta);
+    }
+  }
+}
+
 #if defined(_MSC_VER)
-#elif defined (__GNUC__)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic pop
 #endif
+
+template<typename IteratorTraits, size_t N>
+void bit_union(
+    index_input& doc_in, doc_id_t docs_count,
+    uint32_t (&docs)[N], uint32_t (&enc_buf)[N],
+    size_t* set) {
+  constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
+  size_t num_blocks = docs_count / postings_writer_base::BLOCK_SIZE;
+
+  doc_id_t doc = doc_limits::min();
+  while (num_blocks--) {
+    IteratorTraits::read_block(doc_in, enc_buf, docs);
+    if constexpr (IteratorTraits::frequency()) {
+      IteratorTraits::skip_block(doc_in);
+    }
+
+    // FIXME optimize
+    for (const auto delta : docs) {
+      doc += delta;
+      irs::set_bit(set[doc / BITS], doc % BITS);
+    }
+  }
+
+  doc_id_t docs_left = docs_count % postings_writer_base::BLOCK_SIZE;
+
+  while (docs_left--) {
+    doc_id_t delta;
+    if constexpr (IteratorTraits::frequency()) {
+      if (!shift_unpack_32(doc_in.read_vint(), delta)) {
+        doc_in.read_vint();
+      }
+    } else {
+      delta = doc_in.read_vint();
+    }
+
+    doc += delta;
+    irs::set_bit(set[doc / BITS], doc % BITS);
+  }
+}
+
+template<typename FormatTraits, bool OneBasedPositionStorage>
+size_t postings_reader<FormatTraits, OneBasedPositionStorage>::bit_union(
+    const IndexFeatures field_features,
+    const term_provider_f& provider,
+    size_t* set) {
+  constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
+  uint32_t enc_buf[postings_writer_base::BLOCK_SIZE];
+  uint32_t docs[postings_writer_base::BLOCK_SIZE];
+  const bool has_freq = IndexFeatures::NONE != (field_features & IndexFeatures::FREQ);
+
+  assert(doc_in_);
+  auto doc_in = doc_in_->reopen(); // reopen thread-safe stream
+
+  if (!doc_in) {
+    // implementation returned wrong pointer
+    IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
+
+    throw io_error("failed to reopen document input");
+  }
+
+  size_t count = 0;
+  while (const irs::term_meta* meta = provider()) {
+    auto& term_state = static_cast<const version10::term_meta&>(*meta);
+
+    if (term_state.docs_count > 1) {
+      doc_in->seek(term_state.doc_start);
+      assert(!doc_in->eof());
+
+      if (has_freq) {
+        using iterator_traits_t = iterator_traits<true, false, false, false>;
+        ::bit_union<iterator_traits_t>(*doc_in, term_state.docs_count, docs, enc_buf, set);
+      } else {
+        using iterator_traits_t = iterator_traits<false, false, false, false>;
+        ::bit_union<iterator_traits_t>(*doc_in, term_state.docs_count, docs, enc_buf, set);
+      }
+
+      count += term_state.docs_count;
+    } else {
+      const doc_id_t doc = doc_limits::min() + term_state.e_single_doc;
+      irs::set_bit(set[doc / BITS], doc % BITS);
+
+      ++count;
+    }
+  }
+
+  return count;
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                         format10
@@ -5349,7 +3033,7 @@ class format10 : public irs::version10::format {
     return "1_0";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format10() noexcept : format10(irs::type<format10>::get()) { }
 
@@ -5362,16 +3046,16 @@ class format10 : public irs::version10::format {
   virtual document_mask_writer::ptr get_document_mask_writer() const override final;
   virtual document_mask_reader::ptr get_document_mask_reader() const override final;
 
-  virtual field_writer::ptr get_field_writer(bool volatile_state) const override;
+  virtual field_writer::ptr get_field_writer(bool consolidation) const override;
   virtual field_reader::ptr get_field_reader() const override final;
 
   virtual column_meta_writer::ptr get_column_meta_writer() const override;
   virtual column_meta_reader::ptr get_column_meta_reader() const override final;
 
-  virtual columnstore_writer::ptr get_columnstore_writer() const override;
-  virtual columnstore_reader::ptr get_columnstore_reader() const override final;
+  virtual columnstore_writer::ptr get_columnstore_writer(bool consolidation) const override;
+  virtual columnstore_reader::ptr get_columnstore_reader() const override;
 
-  virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
+  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
@@ -5422,11 +3106,11 @@ document_mask_reader::ptr format10::get_document_mask_reader() const {
   return memory::to_managed<irs::document_mask_reader, false>(&INSTANCE);
 }
 
-field_writer::ptr format10::get_field_writer(bool volatile_state) const {
+field_writer::ptr format10::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
     burst_trie::Version::MIN,
-    get_postings_writer(volatile_state),
-    volatile_state);
+    get_postings_writer(consolidation),
+    consolidation);
 }
 
 field_reader::ptr format10::get_field_reader() const  {
@@ -5442,19 +3126,18 @@ column_meta_reader::ptr format10::get_column_meta_reader() const {
   return memory::make_unique<columns::meta_reader>();
 }
 
-columnstore_writer::ptr format10::get_columnstore_writer() const {
-  return memory::make_unique<columns::writer>(
-    int32_t(columns::writer::FORMAT_MIN));
+columnstore_writer::ptr format10::get_columnstore_writer(bool /*consolidation*/) const {
+  return columnstore::make_writer(columnstore::Version::MIN);
 }
 
 columnstore_reader::ptr format10::get_columnstore_reader() const {
-  return memory::make_unique<columns::reader>();
+  return columnstore::make_reader();
 }
 
-irs::postings_writer::ptr format10::get_postings_writer(bool volatile_state) const {
+irs::postings_writer::ptr format10::get_postings_writer(bool consolidation) const {
   constexpr const auto VERSION = postings_writer_base::FORMAT_MIN;
 
-  if (volatile_state) {
+  if (consolidation) {
     return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
   }
 
@@ -5466,7 +3149,6 @@ irs::postings_reader::ptr format10::get_postings_reader() const {
 }
 
 /*static*/ irs::format::ptr format10::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT10_INSTANCE);
 }
 
@@ -5482,13 +3164,13 @@ class format11 : public format10 {
     return "1_1";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format11() noexcept : format10(irs::type<format11>::get()) { }
 
   virtual index_meta_writer::ptr get_index_meta_writer() const override final;
 
-  virtual field_writer::ptr get_field_writer(bool volatile_state) const override;
+  virtual field_writer::ptr get_field_writer(bool consolidation) const override;
 
   virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
 
@@ -5507,11 +3189,11 @@ index_meta_writer::ptr format11::get_index_meta_writer() const {
     int32_t(::index_meta_writer::FORMAT_MAX));
 }
 
-field_writer::ptr format11::get_field_writer(bool volatile_state) const {
+field_writer::ptr format11::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
     burst_trie::Version::ENCRYPTION_MIN,
-    get_postings_writer(volatile_state),
-    volatile_state);
+    get_postings_writer(consolidation),
+    consolidation);
 }
 
 segment_meta_writer::ptr format11::get_segment_meta_writer() const {
@@ -5523,12 +3205,10 @@ segment_meta_writer::ptr format11::get_segment_meta_writer() const {
 
 column_meta_writer::ptr format11::get_column_meta_writer() const {
   return memory::make_unique<columns::meta_writer>(
-    int32_t(columns::meta_writer::FORMAT_MAX)
-  );
+    int32_t(columns::meta_writer::FORMAT_MAX));
 }
 
 /*static*/ irs::format::ptr format11::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT11_INSTANCE);
 }
 
@@ -5544,11 +3224,12 @@ class format12 : public format11 {
     return "1_2";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format12() noexcept : format11(irs::type<format12>::get()) { }
 
-  virtual columnstore_writer::ptr get_columnstore_writer() const override final;
+  virtual columnstore_writer::ptr get_columnstore_writer(
+    bool /*consolidation*/) const override;
 
  protected:
   explicit format12(const irs::type_info& type) noexcept
@@ -5558,14 +3239,12 @@ class format12 : public format11 {
 
 const ::format12 FORMAT12_INSTANCE;
 
-columnstore_writer::ptr format12::get_columnstore_writer() const {
-  return memory::make_unique<columns::writer>(
-    int32_t(columns::writer::FORMAT_MAX)
-  );
+columnstore_writer::ptr format12::get_columnstore_writer(
+    bool /*consolidation*/) const {
+  return columnstore::make_writer(columnstore::Version::MAX);
 }
 
 /*static*/ irs::format::ptr format12::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT12_INSTANCE);
 }
 
@@ -5581,11 +3260,11 @@ class format13 : public format12 {
     return "1_3";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format13() noexcept : format12(irs::type<format13>::get()) { }
 
-  virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
+  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
@@ -5596,10 +3275,10 @@ class format13 : public format12 {
 
 const ::format13 FORMAT13_INSTANCE;
 
-irs::postings_writer::ptr format13::get_postings_writer(bool volatile_state) const {
+irs::postings_writer::ptr format13::get_postings_writer(bool consolidation) const {
   constexpr const auto VERSION = postings_writer_base::FORMAT_POSITIONS_ZEROBASED;
 
-  if (volatile_state) {
+  if (consolidation) {
     return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
   }
 
@@ -5613,7 +3292,6 @@ irs::postings_reader::ptr format13::get_postings_reader() const {
 /*static*/ irs::format::ptr format13::make() {
   static const ::format13 INSTANCE;
 
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT13_INSTANCE);
 }
 
@@ -5629,11 +3307,14 @@ class format14 : public format13 {
     return "1_4";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format14() noexcept : format13(irs::type<format14>::get()) { }
 
-  virtual irs::field_writer::ptr get_field_writer(bool volatile_state) const override;
+  virtual irs::field_writer::ptr get_field_writer(bool consolidation) const override;
+
+  virtual irs::columnstore_writer::ptr get_columnstore_writer(bool consolidation) const override;
+  virtual irs::columnstore_reader::ptr get_columnstore_reader() const override;
 
  protected:
   explicit format14(const irs::type_info& type) noexcept
@@ -5643,15 +3324,23 @@ class format14 : public format13 {
 
 const ::format14 FORMAT14_INSTANCE;
 
-irs::field_writer::ptr format14::get_field_writer(bool volatile_state) const {
+irs::field_writer::ptr format14::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
     burst_trie::Version::MAX,
-    get_postings_writer(volatile_state),
-    volatile_state);
+    get_postings_writer(consolidation),
+    consolidation);
+}
+
+columnstore_writer::ptr format14::get_columnstore_writer(
+    bool consolidation) const {
+  return columnstore2::make_writer(columnstore2::Version::MIN, consolidation);
+}
+
+columnstore_reader::ptr format14::get_columnstore_reader() const {
+  return columnstore2::make_reader();
 }
 
 /*static*/ irs::format::ptr format14::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT14_INSTANCE);
 }
 
@@ -5663,23 +3352,37 @@ REGISTER_FORMAT_MODULE(::format14, MODULE_NAME);
 
 #ifdef IRESEARCH_SSE2
 
-struct format_traits_simd {
-  static constexpr uint32_t BLOCK_SIZE = 128;
+struct format_traits_sse4 {
+  using align_type = __m128i;
+
+  static constexpr uint32_t BLOCK_SIZE = SIMDBlockSize;
+
+  FORCE_INLINE static void pack_block(
+      const uint32_t* RESTRICT decoded,
+      uint32_t* RESTRICT encoded,
+      const uint32_t bits) noexcept {
+    ::simdpackwithoutmask(decoded, reinterpret_cast<align_type*>(encoded), bits);
+  }
+
+  FORCE_INLINE static void unpack_block(
+      uint32_t* decoded, const uint32_t* encoded, const uint32_t bits) noexcept {
+    ::simdunpack(reinterpret_cast<const align_type*>(encoded), decoded, bits);
+  }
 
   FORCE_INLINE static void write_block(
       index_output& out, const uint32_t* in, uint32_t* buf) {
-    encode::bitpack::write_block_simd(out, in, buf);
+    bitpack::write_block32<BLOCK_SIZE>(&pack_block, out, in, buf);
   }
 
   FORCE_INLINE static void read_block(
       index_input& in, uint32_t* buf, uint32_t* out) {
-    encode::bitpack::read_block_simd(in, buf, out);
+    bitpack::read_block32<BLOCK_SIZE>(&unpack_block, in, buf, out);
   }
 
   FORCE_INLINE static void skip_block(index_input& in) {
-    encode::bitpack::skip_block32(in, BLOCK_SIZE);
+    bitpack::skip_block32(in, BLOCK_SIZE);
   }
-}; // format_traits_simd
+}; // format_traits_sse
 
 class format12simd final : public format12 {
  public:
@@ -5687,32 +3390,31 @@ class format12simd final : public format12 {
     return "1_2simd";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format12simd() noexcept : format12(irs::type<format12simd>::get()) { }
 
-  virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
+  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 }; // format12simd
 
 const ::format12simd FORMAT12SIMD_INSTANCE;
 
-irs::postings_writer::ptr format12simd::get_postings_writer(bool volatile_state) const {
+irs::postings_writer::ptr format12simd::get_postings_writer(bool consolidation) const {
   constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_POSITIONS_ONEBASED;
 
-  if (volatile_state) {
-    return memory::make_unique<::postings_writer<format_traits_simd, true>>(VERSION);
+  if (consolidation) {
+    return memory::make_unique<::postings_writer<format_traits_sse4, true>>(VERSION);
   }
 
-  return memory::make_unique<::postings_writer<format_traits_simd, false>>(VERSION);
+  return memory::make_unique<::postings_writer<format_traits_sse4, false>>(VERSION);
 }
 
 irs::postings_reader::ptr format12simd::get_postings_reader() const {
-  return memory::make_unique<::postings_reader<format_traits_simd, true>>();
+  return memory::make_unique<::postings_reader<format_traits_sse4, true>>();
 }
 
 /*static*/ irs::format::ptr format12simd::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT12SIMD_INSTANCE);
 }
 
@@ -5729,11 +3431,11 @@ class format13simd : public format13 {
     return "1_3simd";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format13simd() noexcept : format13(irs::type<format13simd>::get()) { }
 
-  virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
+  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
@@ -5744,22 +3446,21 @@ class format13simd : public format13 {
 
 const ::format13simd FORMAT13SIMD_INSTANCE;
 
-irs::postings_writer::ptr format13simd::get_postings_writer(bool volatile_state) const {
+irs::postings_writer::ptr format13simd::get_postings_writer(bool consolidation) const {
   constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_POSITIONS_ZEROBASED;
 
-  if (volatile_state) {
-    return memory::make_unique<::postings_writer<format_traits_simd, true>>(VERSION);
+  if (consolidation) {
+    return memory::make_unique<::postings_writer<format_traits_sse4, true>>(VERSION);
   }
 
-  return memory::make_unique<::postings_writer<format_traits_simd, false>>(VERSION);
+  return memory::make_unique<::postings_writer<format_traits_sse4, false>>(VERSION);
 }
 
 irs::postings_reader::ptr format13simd::get_postings_reader() const {
-  return memory::make_unique<::postings_reader<format_traits_simd, false>>();
+  return memory::make_unique<::postings_reader<format_traits_sse4, false>>();
 }
 
 /*static*/ irs::format::ptr format13simd::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT13SIMD_INSTANCE);
 }
 
@@ -5775,11 +3476,14 @@ class format14simd : public format13simd {
     return "1_4simd";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format14simd() noexcept : format13simd(irs::type<format14simd>::get()) { }
 
-  virtual irs::field_writer::ptr get_field_writer(bool volatile_state) const override;
+  virtual columnstore_writer::ptr get_columnstore_writer(bool consolidation) const override;
+  virtual columnstore_reader::ptr get_columnstore_reader() const override;
+
+  virtual irs::field_writer::ptr get_field_writer(bool consolidation) const override;
 
  protected:
   explicit format14simd(const irs::type_info& type) noexcept
@@ -5787,17 +3491,25 @@ class format14simd : public format13simd {
   }
 };
 
-const ::format14 FORMAT14SIMD_INSTANCE;
+const ::format14simd FORMAT14SIMD_INSTANCE;
 
-irs::field_writer::ptr format14simd::get_field_writer(bool volatile_state) const {
+irs::field_writer::ptr format14simd::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
     burst_trie::Version::MAX,
-    get_postings_writer(volatile_state),
-    volatile_state);
+    get_postings_writer(consolidation),
+    consolidation);
+}
+
+columnstore_writer::ptr format14simd::get_columnstore_writer(
+    bool consolidation) const {
+  return columnstore2::make_writer(columnstore2::Version::MIN, consolidation);
+}
+
+columnstore_reader::ptr format14simd::get_columnstore_reader() const {
+  return columnstore2::make_reader();
 }
 
 /*static*/ irs::format::ptr format14simd::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT14SIMD_INSTANCE);
 }
 
@@ -5836,7 +3548,7 @@ format::format(const irs::type_info& type) noexcept
 } // version10
 
 // use base irs::position type for ancestors
-template<typename IteratorTraits, bool Position>
-struct type<::position<IteratorTraits, Position>> : type<irs::position> { };
+template<typename IteratorTraits, typename FieldTraits, bool Position>
+struct type<::position<IteratorTraits, FieldTraits, Position>> : type<irs::position> { };
 
 } // root

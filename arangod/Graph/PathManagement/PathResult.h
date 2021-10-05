@@ -22,8 +22,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_PATHMANAGEMENT_PATH_RESULT_H
-#define ARANGODB_GRAPH_PATHMANAGEMENT_PATH_RESULT_H 1
+#pragma once
 
 #include <velocypack/HashedStringRef.h>
 #include "Containers/HashSet.h"
@@ -71,4 +70,3 @@ class PathResult {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif  // ARANGODB_GRAPH_PATHMANAGEMENT_PATH_RESULT_H

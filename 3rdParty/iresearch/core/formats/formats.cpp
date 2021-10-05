@@ -20,17 +20,17 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
-#include "utils/register.hpp"
+#include "formats.hpp"
 
 // list of statically loaded formats via init()
 #ifndef IRESEARCH_DLL
   #include "formats_10.hpp"
 #endif
 
-#include "formats.hpp"
-#include "utils/type_limits.hpp"
+#include "analysis/token_attributes.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/type_limits.hpp"
+#include "utils/register.hpp"
 
 namespace {
 
@@ -178,31 +178,23 @@ format_registrar::format_registrar(
         "type name collision detected while registering format, ignoring: type '%s' from %s, previously from %s",
         type.name().c_str(),
         source,
-        registered_source->c_str()
-      );
+        registered_source->c_str());
     } else if (source) {
       IR_FRMT_WARN(
         "type name collision detected while registering format, ignoring: type '%s' from %s",
         type.name().c_str(),
-        source
-      );
+        source);
     } else if (registered_source) {
       IR_FRMT_WARN(
         "type name collision detected while registering format, ignoring: type '%s', previously from %s",
         type.name().c_str(),
-        registered_source->c_str()
-      );
+        registered_source->c_str());
     } else {
       IR_FRMT_WARN(
         "type name collision detected while registering format, ignoring: type '%s'",
-        type.name().c_str()
-      );
+        type.name().c_str());
     }
   }
-}
-
-format_registrar::operator bool() const noexcept {
-  return registered_;
 }
 
 }

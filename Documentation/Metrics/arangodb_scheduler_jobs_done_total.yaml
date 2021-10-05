@@ -1,0 +1,18 @@
+name: arangodb_scheduler_jobs_done_total
+introducedIn: "3.8.0"
+help: |
+  Total number of queue jobs done.
+unit: number
+type: gauge
+category: Scheduler
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  The total number of queue jobs done.
+  Calculating the difference between arangodb_scheduler_jobs_dequeued_total
+  and arangodb_scheduler_jobs_done_total gives the total number of jobs
+  currently being processed.

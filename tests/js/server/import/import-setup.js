@@ -29,7 +29,7 @@
 
 (function () {
   'use strict';
-  var db = require("@arangodb").db;
+  let db = require("@arangodb").db;
 
   db._drop("UnitTestsImportCsvSkip");
   db._drop("UnitTestsImportJson1");
@@ -46,7 +46,14 @@
   db._drop("UnitTestsImportCsv4");
   db._drop("UnitTestsImportCsv5");
   db._drop("UnitTestsImportCsv6");
+  db._drop("UnitTestsImportCsvHeaders");
+  db._drop("UnitTestsImportCsvBrokenHeaders");
+  db._drop("UnitTestsImportCsvConvert");
   db._drop("UnitTestsImportCsvNoConvert");
+  db._drop("UnitTestsImportCsvTypesBoolean");
+  db._drop("UnitTestsImportCsvTypesNumber");
+  db._drop("UnitTestsImportCsvTypesString");
+  db._drop("UnitTestsImportCsvTypesPrecedence");
   db._drop("UnitTestsImportCsvNoEol");
   db._drop("UnitTestsImportTsv1");
   db._drop("UnitTestsImportTsv1Gz");
@@ -58,9 +65,22 @@
   db._drop("UnitTestsImportUniqueConstraints");
   db._drop("UnitTestsImportRemoveAttribute");
   db._drop("UnitTestsImportRemoveAttribute");
-  try {
-    db._dropDatabase("UnitTestImportCreateDatabase");
-  } catch(err) {}
+  
+  let dbs = {
+    "maçã": true, 
+    "😀": true,
+    "ﻚﻠﺑ ﻞﻄﻴﻓ": false, 
+    "abc mötor !\" ' & <>": false, 
+    "UnitTestImportCreateDatabase": false
+  };
+  Object.keys(dbs).forEach((name) => {
+    try {
+      db._dropDatabase(name);
+    } catch(err) {}
+    if (dbs[name]) {
+      db._createDatabase(name);
+    }
+  });
 
   db._create("UnitTestsImportJson1");
   db._create("UnitTestsImportJson1Gz");

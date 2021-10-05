@@ -27,6 +27,7 @@
 #include "FeaturePhases/AgencyFeaturePhase.h"
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/ScriptFeature.h"
+#include "RestServer/SoftShutdownFeature.h"
 
 namespace arangodb {
 namespace application_features {
@@ -39,6 +40,7 @@ FinalFeaturePhase::FinalFeaturePhase(ApplicationServer& server)
   startsAfter<ConsoleFeature>();
   startsAfter<ScriptFeature>();
   startsAfter<ShutdownFeature>();
+  startsAfter<SoftShutdownFeature>();
 }
 
 }  // namespace application_features

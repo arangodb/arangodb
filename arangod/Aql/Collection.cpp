@@ -64,7 +64,6 @@ Collection::Collection(std::string const& name,
       _collection = clusterInfo.getCollection(_vocbase->name(), _name);
     } else {
       _collection = _vocbase->lookupCollection(_name);
-      //ensureCollection(); // will throw if collection does not exist
     }
   } else if (hint == Hint::Shard) {
     if (ServerState::instance()->isCoordinator()) {
@@ -72,7 +71,6 @@ Collection::Collection(std::string const& name,
       _collection = clusterInfo.getCollection(_vocbase->name(), _name);
     } else {
       _collection = _vocbase->lookupCollection(_name);
-      //ensureCollection(); // will throw if collection does not exist
     }
   } else if (hint == Hint::None) {
     // nothing special to do here
@@ -130,7 +128,7 @@ size_t Collection::responsibleServers(std::unordered_set<std::string>& result) c
   return n;
 }
 
-std::string Collection::distributeShardsLike() const {
+std::string const& Collection::distributeShardsLike() const {
   return getCollection()->distributeShardsLike();
 }
 
@@ -188,7 +186,7 @@ std::vector<std::string> Collection::shardKeys(bool normalize) const {
   if (normalize && coll->isSmart() && coll->type() == TRI_COL_TYPE_DOCUMENT) {
     // smart vertex collection always has ["_key:"] as shard keys
     TRI_ASSERT(originalKeys.size() == 1);
-    TRI_ASSERT(originalKeys[0] == "_key:");
+    TRI_ASSERT(originalKeys[0] == StaticStrings::PrefixOfKeyString);
     // now normalize it this to _key
     return std::vector<std::string>{StaticStrings::KeyString};
   }
@@ -241,14 +239,14 @@ std::string const& Collection::name() const {
 
 // moved here from transaction::Methods::getIndexByIdentifier(..)
 std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(std::string const& idxId) const {
-   if (idxId.empty()) {
-     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                    "The index id cannot be empty.");
-   }
+  if (idxId.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The index id cannot be empty.");
+  }
 
-   if (!arangodb::Index::validateId(idxId.c_str())) {
-     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-   }
+  if (!idxId.empty() && !Index::validateId(idxId)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+  }
   
   auto iid = arangodb::IndexId{arangodb::basics::StringUtils::uint64(idxId)};
   auto idx = this->getCollection()->lookupIndex(iid);
@@ -282,8 +280,7 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
 
 /// @brief use the already set collection 
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
-  TRI_ASSERT(_collection != nullptr);
-  ensureCollection();
+  checkCollection();
   return _collection;
 }
   
@@ -294,7 +291,7 @@ bool Collection::hasCollectionObject() const noexcept {
 }
 
 /// @brief throw if the underlying collection has not been set
-void Collection::ensureCollection() const {
+void Collection::checkCollection() const {
   if (_collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                    std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) + ": " + _name);

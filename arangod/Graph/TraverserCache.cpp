@@ -28,19 +28,22 @@
 #include "Basics/StringHeap.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
-#include "Graph/EdgeDocumentToken.h"
 #include "Graph/BaseOptions.h"
+#include "Graph/EdgeDocumentToken.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "Transaction/Options.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 #include <velocypack/HashedStringRef.h>
+#include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -48,27 +51,46 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 namespace {
-constexpr size_t costPerPersistedString = sizeof(void*) + sizeof(arangodb::velocypack::HashedStringRef);
-};
+constexpr size_t costPerPersistedString =
+    sizeof(void*) + sizeof(arangodb::velocypack::HashedStringRef);
+
+bool isWithClauseMissing(arangodb::basics::Exception const& ex) {
+  if (ServerState::instance()->isDBServer() && ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+    // on a DB server, we could have got here only in the OneShard case.
+    // in this case turn the rather misleading "collection or view not found"
+    // error into a nicer "collection not known to traversal, please add WITH"
+    // message, so users know what to do
+    return true;
+  }
+  if (ServerState::instance()->isSingleServer() &&
+      ex.code() == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+    return true;
+  }
+
+  return false;
+}
+
+}  // namespace
 
 TraverserCache::TraverserCache(aql::QueryContext& query, BaseOptions* opts)
     : _query(query),
       _trx(opts->trx()),
       _insertedDocuments(0),
       _filteredDocuments(0),
-      _stringHeap(query.resourceMonitor(), 4096), /* arbitrary block-size may be adjusted for performance */
-      _baseOptions(opts) {}
+      _stringHeap(query.resourceMonitor(), 4096), /* arbitrary block-size, may be adjusted for performance */
+      _baseOptions(opts),
+      _allowImplicitCollections(
+          ServerState::instance()->isSingleServer() &&
+          !_query.vocbase().server().getFeature<QueryRegistryFeature>().requireWith()) {}
 
-TraverserCache::~TraverserCache() {
-  clear();
-}
+TraverserCache::~TraverserCache() { clear(); }
 
 void TraverserCache::clear() {
   _query.resourceMonitor().decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
 
-  _stringHeap.clear();
   _persistedStrings.clear();
   _mmdr.clear();
+  _stringHeap.clear();
 }
 
 VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
@@ -83,7 +105,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
     return arangodb::velocypack::Slice::nullSlice();
   }
 
-  if (!col->getPhysical()->readDocument(_trx, idToken.localDocumentId(), _mmdr)) {
+  if (!col->getPhysical()->readDocument(_trx, idToken.localDocumentId(), _mmdr, ReadOwnWrites::no)) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("3acb3", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document, return 'null' instead. "
@@ -96,7 +118,8 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   return VPackSlice(_mmdr.vpack());
 }
 
-bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id, arangodb::velocypack::Builder& result) {
+bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
+                                  arangodb::velocypack::Builder& result) {
   if (!_baseOptions->produceVertices()) {
     // this traversal does not produce any vertices
     result.add(arangodb::velocypack::Slice::nullSlice());
@@ -118,17 +141,24 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id, arangodb::
   if (!map.empty()) {
     auto found = map.find(collectionName);
     if (found != map.end()) {
-      collectionName = found->second;
+      // Old API, could only convey exactly one Shard.
+      TRI_ASSERT(found->second.size() == 1);
+      collectionName = found->second.front();
     }
   }
 
   try {
-    Result res = _trx->documentFastPathLocal(collectionName, id.substr(pos + 1), [&](LocalDocumentId const&, VPackSlice doc) {
-      ++_insertedDocuments;
-      // copying...
-      result.add(doc);
-      return true;
-    });
+    transaction::AllowImplicitCollectionsSwitcher disallower(_trx->state()->options(),
+                                                             _allowImplicitCollections);
+
+    Result res = _trx->documentFastPathLocal(collectionName, id.substr(pos + 1),
+                                             [&](LocalDocumentId const&, VPackSlice doc) {
+                                               ++_insertedDocuments;
+                                               // copying...
+                                               result.add(doc);
+                                               return true;
+                                             });
+
     if (res.ok()) {
       return true;
     }
@@ -138,19 +168,14 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id, arangodb::
       THROW_ARANGO_EXCEPTION(res);
     }
   } catch (basics::Exception const& ex) {
-    if (ServerState::instance()->isDBServer()) {
-      // on a DB server, we could have got here only in the OneShard case.
-      // in this case turn the rather misleading "collection or view not found"
-      // error into a nicer "collection not known to traversal, please add WITH"
-      // message, so users know what to do
-      if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                         "collection not known to traversal: '" +
-                                             collectionName + "'. please add 'WITH " + collectionName +
-                                             "' as the first line in your AQL");
-      }
+    if (isWithClauseMissing(ex)) {
+      // turn the error into a different error
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     "collection not known to traversal: '" + collectionName +
+                                         "'. please add 'WITH " + collectionName +
+                                         "' as the first line in your AQL");
     }
-
+    // rethrow original error
     throw;
   }
 
@@ -158,13 +183,14 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id, arangodb::
 
   // Register a warning. It is okay though but helps the user
   std::string msg = "vertex '" + id.toString() + "' not found";
-  _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
+  _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg);
   // This is expected, we may have dangling edges. Interpret as NULL
   result.add(arangodb::velocypack::Slice::nullSlice());
   return false;
 }
 
-bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id, arangodb::aql::AqlValue& result) {
+bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
+                                  arangodb::aql::AqlValue& result) {
   result = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
 
   if (!_baseOptions->produceVertices()) {
@@ -186,17 +212,25 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id, arangodb::
   if (!map.empty()) {
     auto found = map.find(collectionName);
     if (found != map.end()) {
-      collectionName = found->second;
+      // Old API, could only convey exactly one Shard.
+      TRI_ASSERT(found->second.size() == 1);
+      collectionName = found->second.front();
     }
   }
 
   try {
-    Result res = _trx->documentFastPathLocal(collectionName, id.substr(pos + 1), [&](LocalDocumentId const&, VPackSlice doc) {
-      ++_insertedDocuments;
-      // copying...
-      result = arangodb::aql::AqlValue(doc);
-      return true;
-    });
+    transaction::AllowImplicitCollectionsSwitcher disallower(_trx->state()->options(),
+                                                             _allowImplicitCollections);
+
+    Result res =
+        _trx->documentFastPathLocal(collectionName, id.substr(pos + 1),
+                                    [&](LocalDocumentId const&, VPackSlice doc) {
+                                      ++_insertedDocuments;
+                                      // copying...
+                                      result = arangodb::aql::AqlValue(doc);
+                                      return true;
+                                    });
+
     if (res.ok()) {
       return true;
     }
@@ -206,19 +240,14 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id, arangodb::
       THROW_ARANGO_EXCEPTION(res);
     }
   } catch (basics::Exception const& ex) {
-    if (ServerState::instance()->isDBServer()) {
-      // on a DB server, we could have got here only in the OneShard case.
-      // in this case turn the rather misleading "collection or view not found"
-      // error into a nicer "collection not known to traversal, please add WITH"
-      // message, so users know what to do
-      if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                         "collection not known to traversal: '" +
-                                             collectionName + "'. please add 'WITH " + collectionName +
-                                             "' as the first line in your AQL");
-      }
+    if (isWithClauseMissing(ex)) {
+      // turn the error into a different error
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     "collection not known to traversal: '" + collectionName +
+                                         "'. please add 'WITH " + collectionName +
+                                         "' as the first line in your AQL");
     }
-
+    // rethrow original error
     throw;
   }
 
@@ -243,7 +272,9 @@ aql::AqlValue TraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToke
 }
 
 arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypack::StringRef idString) {
-  return persistString(arangodb::velocypack::HashedStringRef(idString.data(), static_cast<uint32_t>(idString.size()))).stringRef();
+  return persistString(arangodb::velocypack::HashedStringRef(
+                           idString.data(), static_cast<uint32_t>(idString.size())))
+      .stringRef();
 }
 
 arangodb::velocypack::HashedStringRef TraverserCache::persistString(arangodb::velocypack::HashedStringRef idString) {
@@ -254,9 +285,9 @@ arangodb::velocypack::HashedStringRef TraverserCache::persistString(arangodb::ve
   auto res = _stringHeap.registerString(idString);
   {
     ResourceUsageScope guard(_query.resourceMonitor(), ::costPerPersistedString);
-   
+
     _persistedStrings.emplace(res);
-    
+
     // now make the TraverserCache responsible for memory tracking
     guard.steal();
   }

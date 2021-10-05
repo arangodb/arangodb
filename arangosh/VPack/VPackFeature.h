@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VPACK_VPACK_FEATURE_H
-#define ARANGODB_VPACK_VPACK_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -41,12 +40,10 @@ class VPackFeature final : public application_features::ApplicationFeature {
   int* _result;
   std::string _inputFile;
   std::string _outputFile;
-  bool _prettyPrint;
-  bool _jsonInput;
-  bool _hexInput;
-  bool _printNonJson;
+  std::string _inputType;
+  std::string _outputType;
+  bool _failOnNonJson;
 };
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_SHA_CALCULATOR_H
-#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_SHA_CALCULATOR_H 1
+#pragma once
 
 #include <atomic>
 #include <queue>
@@ -89,7 +88,9 @@ class RocksDBShaCalculator : public rocksdb::EventListener {
 
   void OnCompactionCompleted(rocksdb::DB* db, const rocksdb::CompactionJobInfo& ci) override;
 
-  void beginShutdown() { _shaThread.beginShutdown(); };
+  void beginShutdown() { _shaThread.beginShutdown(); }
+
+  void waitForShutdown();
 
  protected:
   /// thread to perform sha256 and file deletes in background
@@ -99,4 +100,3 @@ class RocksDBShaCalculator : public rocksdb::EventListener {
 
 }  // namespace arangodb
 
-#endif

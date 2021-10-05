@@ -21,15 +21,14 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_INSERT_MODIFIER_H
-#define ARANGOD_AQL_INSERT_MODIFIER_H
+#pragma once
 
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
+#include "Futures/Future.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 struct ModificationExecutorInfos;
 
@@ -41,12 +40,10 @@ class InsertModifierCompletion {
 
   ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
                                    InputAqlItemRow& row);
-  OperationResult transact(transaction::Methods& trx, VPackSlice const& data);
+  futures::Future<OperationResult> transact(transaction::Methods& trx, VPackSlice const& data);
 
  private:
   ModificationExecutorInfos& _infos;
 };
 
-}  // namespace aql
-}  // namespace arangodb
-#endif
+}  // namespace arangodb::aql

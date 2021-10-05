@@ -36,6 +36,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/ServerIdFeature.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -119,7 +120,7 @@ bool readIsSystem(arangodb::velocypack::Slice definition) {
   auto name = arangodb::basics::VelocyPackHelper::getStringValue(
       definition, arangodb::StaticStrings::DataSourceName, empty);
 
-  if (!TRI_vocbase_t::IsSystemName(name)) {
+  if (!arangodb::NameValidator::isSystemName(name)) {
     return false;
   }
 

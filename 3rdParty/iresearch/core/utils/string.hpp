@@ -29,6 +29,8 @@
 #include <cassert>
 #include <vector>
 
+#include <absl/hash/internal/city.h>
+
 #include "shared.hpp"
 
 // ----------------------------------------------------------------------------
@@ -52,16 +54,20 @@ struct char_traits<::iresearch::byte_type> {
   }
 
   static char_type* assign(char_type* ptr, size_t count, char_type ch) noexcept {
-    assert(ptr);
+    assert(nullptr != ptr);
     return reinterpret_cast<char_type*>(std::memset(ptr, ch, count));
   }
 
-  static int compare(const char_type* lhs, const char_type* rhs, size_t count) noexcept {
+  static int compare(
+      const char_type* lhs,
+      const char_type* rhs,
+      size_t count) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
     if (0 == count) {
       return 0;
     }
 
-    assert(lhs && rhs);
+    assert(nullptr != lhs);
+    assert(nullptr != rhs);
     return std::memcmp(lhs, rhs, count);
   }
 
@@ -70,23 +76,24 @@ struct char_traits<::iresearch::byte_type> {
       return dst;
     }
 
-    assert(dst && src);
+    assert(nullptr != dst);
+    assert(nullptr != src);
     return reinterpret_cast<char_type*>(std::memcpy(dst, src, count));
   }
 
-  static int_type eof() noexcept { return -1; }
+  static constexpr int_type eof() noexcept { return -1; }
 
-  static bool eq(char_type lhs, char_type rhs) noexcept { return lhs == rhs; }
+  static constexpr bool eq(char_type lhs, char_type rhs) noexcept { return lhs == rhs; }
 
-  static bool eq_int_type(int_type lhs, int_type rhs) noexcept { return lhs == rhs; }
+  static constexpr bool eq_int_type(int_type lhs, int_type rhs) noexcept { return lhs == rhs; }
 
   static const char_type* find(const char_type* ptr, size_t count, const char_type& ch) noexcept {
     if (0 == count) {
       return nullptr;
     }
 
-    assert(ptr);
-    return reinterpret_cast<char_type const*>(std::memchr(ptr, ch, count));
+    assert(nullptr != ptr);
+    return reinterpret_cast<const char_type*>(std::memchr(ptr, ch, count));
   }
 
   static size_t length(const char_type* /*ptr*/) noexcept {
@@ -95,27 +102,31 @@ struct char_traits<::iresearch::byte_type> {
     return (std::numeric_limits<size_t>::max)();
   }
 
-  static bool lt(char_type lhs, char_type rhs) noexcept { return lhs < rhs; }
+  static constexpr bool lt(char_type lhs, char_type rhs) noexcept { return lhs < rhs; }
 
-  static char_type* move(char_type* dst, const char_type* src, size_t count) noexcept {
+  static char_type* move(
+      char_type* dst,
+      const char_type* src,
+      size_t count) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
     if (0 == count) {
       return dst;
     }
 
-    assert(dst && src);
     return reinterpret_cast<char_type*>(std::memmove(dst, src, count));
   }
 
-  static int_type not_eof(int_type i) noexcept { return i != eof(); }
+  static constexpr int_type not_eof(int_type i) noexcept { return i != eof(); }
 
-  static char_type to_char_type(int_type i) noexcept {
+  static constexpr char_type to_char_type(int_type i) noexcept {
     assert(int_type(char_type(i)) == i);
     return char_type(i);
   }
 
-  static int_type to_int_type(char_type ch) noexcept { return ch; }
+  static constexpr int_type to_int_type(char_type ch) noexcept { return ch; }
 
-  MSVC_ONLY(static void _Copy_s(char_type* /*dst*/, size_t /*dst_size*/, const char_type* /*src*/, size_t /*src_size*/) { assert(false); });
+  MSVC_ONLY(static void _Copy_s(
+    char_type* /*dst*/, size_t /*dst_size*/,
+    const char_type* /*src*/, size_t /*src_size*/) { assert(false); });
 }; // char_traits
 #endif
 
@@ -208,8 +219,12 @@ class basic_string_ref {
     return IRS_ASSERT(!empty()), data_[0];
   }
 
-  constexpr operator std::basic_string<char_type>() const {
+  constexpr explicit operator std::basic_string<char_type>() const {
     return std::basic_string<char_type>(data_, size_);
+  }
+
+  constexpr operator std::basic_string_view<char_type>() const {
+    return std::basic_string_view<char_type>(data_, size_);
   }
 
   // friends

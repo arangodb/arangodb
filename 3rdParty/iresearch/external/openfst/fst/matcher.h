@@ -231,7 +231,7 @@ class SortedMatcher : public MatcherBase<typename F::Arc> {
     }
   }
 
-  void SetState(StateId s) override final {
+  void SetState(StateId s) final {
     if (state_ == s) return;
     state_ = s;
     if (match_type_ == MATCH_NONE) {
@@ -245,7 +245,7 @@ class SortedMatcher : public MatcherBase<typename F::Arc> {
     loop_.nextstate = s;
   }
 
-  bool Find(Label match_label) override final {
+  bool Find(Label match_label) final {
     exact_match_ = true;
     if (error_) {
       current_loop_ = false;
@@ -276,7 +276,7 @@ class SortedMatcher : public MatcherBase<typename F::Arc> {
 
   // After Find(), returns false if no more exact matches.
   // After LowerBound(), returns false if no more arcs.
-  bool Done() const override final {
+  bool Done() const final {
     if (current_loop_) return false;
     if (aiter_->Done()) return true;
     if (!exact_match_) return false;
@@ -286,13 +286,13 @@ class SortedMatcher : public MatcherBase<typename F::Arc> {
     return GetLabel() != match_label_;
   }
 
-  const Arc &Value() const override final {
+  const Arc &Value() const final {
     if (current_loop_) return loop_;
     aiter_->SetFlags(kArcValueFlags, kArcValueFlags);
     return aiter_->Value();
   }
 
-  void Next() override final {
+  void Next() final {
     if (current_loop_) {
       current_loop_ = false;
     } else {
@@ -300,11 +300,11 @@ class SortedMatcher : public MatcherBase<typename F::Arc> {
     }
   }
 
-  Weight Final(StateId s) const override final {
+  Weight Final(StateId s) const final {
     return MatcherBase<Arc>::Final(s);
   }
 
-  ssize_t Priority(StateId s) override final {
+  ssize_t Priority(StateId s) final {
     return MatcherBase<Arc>::Priority(s);
   }
 
@@ -912,14 +912,14 @@ class RhoMatcher : public MatcherBase<typename M::Arc> {
 
   MatchType Type(bool test) const override { return matcher_->Type(test); }
 
-  void SetState(StateId s) override final {
+  void SetState(StateId s) final {
     if (state_ == s) return;
     state_ = s;
     matcher_->SetState(s);
     has_rho_ = rho_label_ != kNoLabel;
   }
 
-  bool Find(Label label) override final {
+  bool Find(Label label) final {
     if (label == rho_label_ && rho_label_ != kNoLabel) {
       FSTERROR() << "RhoMatcher::Find: bad label (rho)";
       error_ = true;
@@ -937,9 +937,9 @@ class RhoMatcher : public MatcherBase<typename M::Arc> {
     }
   }
 
-  bool Done() const override final { return matcher_->Done(); }
+  bool Done() const final { return matcher_->Done(); }
 
-  const Arc &Value() const override final {
+  const Arc &Value() const final {
     if (rho_match_ == kNoLabel) {
       return matcher_->Value();
     } else {
@@ -956,11 +956,11 @@ class RhoMatcher : public MatcherBase<typename M::Arc> {
     }
   }
 
-  void Next() override final { matcher_->Next(); }
+  void Next() final { matcher_->Next(); }
 
-  Weight Final(StateId s) const override final { return matcher_->Final(s); }
+  Weight Final(StateId s) const final { return matcher_->Final(s); }
 
-  ssize_t Priority(StateId s) override final {
+  ssize_t Priority(StateId s) final {
     state_ = s;
     matcher_->SetState(s);
     has_rho_ = matcher_->Find(rho_label_);

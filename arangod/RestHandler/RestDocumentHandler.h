@@ -21,12 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_DOCUMENT_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_DOCUMENT_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "Utils/SingleCollectionTransaction.h"
 
 namespace arangodb {
 namespace transaction {
@@ -57,9 +55,6 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   }
 
   void shutdownExecute(bool isFinalized) noexcept override final;
-
- protected:
-  ResultT<std::pair<std::string, bool>> forwardingTarget() override final;
 
  private:
   // inserts a document
@@ -94,4 +89,3 @@ private:
 };
 }  // namespace arangodb
 
-#endif

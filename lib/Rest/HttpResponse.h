@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HTTP_RESPONSE_H
-#define ARANGODB_REST_HTTP_RESPONSE_H 1
+#pragma once
 
 #include "Rest/GeneralResponse.h"
 
@@ -87,7 +86,7 @@ class HttpResponse : public GeneralResponse {
     return _body->empty();
   }
 
-  int reservePayload(std::size_t size) override final { return _body->reserve(size); }
+  ErrorCode reservePayload(std::size_t size) override final { return _body->reserve(size); }
 
   arangodb::Endpoint::TransportType transportType() override final {
     return arangodb::Endpoint::TransportType::HTTP;
@@ -100,7 +99,7 @@ class HttpResponse : public GeneralResponse {
   
  private:
   // the body must already be set. deflate is then run on the existing body
-  int deflate(size_t size = 16384) override {
+  ErrorCode deflate(size_t size = 16384) override {
     return _body->deflate(size);
   }
 
@@ -114,4 +113,3 @@ class HttpResponse : public GeneralResponse {
 };
 }  // namespace arangodb
 
-#endif

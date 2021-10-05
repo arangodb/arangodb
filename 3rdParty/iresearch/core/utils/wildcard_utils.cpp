@@ -123,9 +123,7 @@ automaton from_wildcard(const bytes_ref& expr) {
   parts.reserve(expr.size() / 2); // reserve some space
 
   auto append_char = [&](const bytes_ref& label) {
-    auto* begin = label.begin();
-
-    parts.emplace_back(make_char(utf8_utils::next(begin)));
+    parts.emplace_back(make_char(label));
     escaped = false;
   };
 
@@ -169,7 +167,7 @@ automaton from_wildcard(const bytes_ref& expr) {
       default: {
         if (escaped) {
           // a backslash followed by no special character
-          parts.emplace_back(make_char({&c, 1}));
+          parts.emplace_back(make_char(c));
         }
         append_char({label_begin, label_length});
         break;
@@ -181,7 +179,7 @@ automaton from_wildcard(const bytes_ref& expr) {
 
   if (escaped) {
     // a non-terminated escape sequence
-    parts.emplace_back(make_char({&c, 1}));
+    parts.emplace_back(make_char(c));
   }
 
   automaton nfa;
@@ -204,7 +202,7 @@ automaton from_wildcard(const bytes_ref& expr) {
   UNUSED(EXPECTED_NFA_PROPERTIES);
 #endif
 
-  // nfa has only 1 arc per state
+  // nfa is sorted
   nfa.SetProperties(fst::kILabelSorted, fst::kILabelSorted);
 
   automaton dfa;
@@ -212,11 +210,6 @@ automaton from_wildcard(const bytes_ref& expr) {
     // nfa isn't fully determinized
     return {};
   }
-
-//FIXME???
-//  fst::Minimize(&dfa);
-
-  utf8_expand_labels(dfa);
 
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic

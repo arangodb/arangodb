@@ -28,19 +28,16 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Graph/BreadthFirstEnumerator.h"
-#include "Graph/ClusterTraverserCache.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/PathEnumerator.h"
-#include "Graph/TraverserCache.h"
+#include "Graph/ClusterTraverserCache.h"
 #include "Graph/WeightedEnumerator.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "Transaction/Helpers.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -86,10 +83,14 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
 }
 
 void ClusterTraverser::clear() {
-  traverserCache()->clear();
-
+  _vertexGetter->clear();
   _vertices.clear();
   _verticesToFetch.clear();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(!_vertexGetter->pointsIntoTraverserCache());
+#endif
+  traverserCache()->clear();
 }
 
 bool ClusterTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
@@ -201,7 +202,7 @@ void ClusterTraverser::destroyEngines() {
 
   // TODO: use collectAll to parallelize shutdown ?
   for (auto const& it : *_engines) {
-    auto res = network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
+    auto res = network::sendRequestRetry(pool, "server:" + it.first, fuerte::RestVerb::Delete,
                                     "/_internal/traverser/" +
                                         arangodb::basics::StringUtils::itoa(it.second),
                                     body, options);

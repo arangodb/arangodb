@@ -43,8 +43,6 @@ const path = require('path');
 const internal = require('internal');
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'execute-task');
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 function testSuite() {
   return {
     testJavaScriptTask : function() {

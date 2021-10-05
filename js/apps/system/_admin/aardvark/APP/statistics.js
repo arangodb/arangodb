@@ -406,46 +406,9 @@ router.use((req, res, next) => {
 router.get('/coordshort', function (req, res) {
   let merged = { };
 
-  const coordinators = global.ArangoClusterInfo.getCoordinators();
   try {
-    const stats15Query = `
-      FOR s IN _statistics15
-        FILTER s.time > @start
-        FILTER s.clusterId IN @clusterIds
-        SORT s.time
-        COLLECT clusterId = s.clusterId INTO clientConnections = s.client.httpConnections
-        LET clientConnectionsCurrent = LAST(clientConnections)
-        COLLECT AGGREGATE clientConnections15M = SUM(clientConnectionsCurrent)
-        RETURN {clientConnections15M: clientConnections15M || 0}`;
-
-    const statsSampleQuery = `
-      FOR s IN _statistics
-        FILTER s.time > @start
-        FILTER s.clusterId IN @clusterIds
-        RETURN {
-          time: s.time,
-          clusterId: s.clusterId,
-          physicalMemory: s.server.physicalMemory,
-          residentSizeCurrent: s.system.residentSize,
-          clientConnectionsCurrent: s.client.httpConnections,
-          avgRequestTime: s.client.avgRequestTime,
-          bytesSentPerSecond: s.client.bytesSentPerSecond,
-          bytesReceivedPerSecond: s.client.bytesReceivedPerSecond,
-          http: {
-            optionsPerSecond: s.http.requestsOptionsPerSecond,
-            putsPerSecond: s.http.requestsPutPerSecond,
-            headsPerSecond: s.http.requestsHeadPerSecond,
-            postsPerSecond: s.http.requestsPostPerSecond,
-            getsPerSecond: s.http.requestsGetPerSecond,
-            deletesPerSecond: s.http.requestsDeletePerSecond,
-            othersPerSecond: s.http.requestsOptionsPerSecond,
-            patchesPerSecond: s.http.requestsPatchPerSecond
-          }
-      }`;
-    
-    const params = { start: startOffsetSchema - 2 * STATISTICS_INTERVAL, clusterIds: coordinators };
-    const stats15 = db._query(stats15Query, params).toArray();
-    const statsSamples = db._query(statsSampleQuery, params).toArray();
+    let start = internal.time() - 12 * STATISTICS_INTERVAL;
+    let { stats15, statsSamples } = SYSTEM_STATISTICS(start || 0);
     if (statsSamples.length !== 0) {
       // we have no samples -> either statistics are disabled, or the server has just been started
       merged = MergeStatisticSamples(statsSamples);

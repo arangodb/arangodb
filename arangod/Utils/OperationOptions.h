@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_OPERATION_OPTIONS_H
-#define ARANGOD_UTILS_OPERATION_OPTIONS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Utils/ExecContext.h"
@@ -35,10 +34,36 @@ class StringRef;
 }
 class ExecContext;
 
+/// @brief Indicates whether we want to observe writes performed within the
+/// current (sub) transaction. This is only relevant for AQL queries.
+/// AQL queries are performed transcationally, i.e., either all changes are
+/// visible or none (ignoring intermediate commits). A query should observe
+/// (only) the state of the db/transaction at the time the query was started,
+/// e.g., documents that are inserted as part of the current query should not
+/// be visible, otherwise we could easily produce endless loops:
+///   FOR doc IN col INSERT doc INTO col
+/// However, some operations still need to observe these writes. For example,
+/// the internal subquery for an UPSERT must see documents that a previous
+/// UPSERT has inserted. Likewise, modification operations also need to observe
+/// all changes in order to perform unique constraint checks. Therefore, every
+/// read operation must specify whether writes performed within the same (sub)
+/// transaction should be visible or not.
+/// A standalone AQL query represents a single transaction; an AQL query which
+/// is executed inside a streaming transaction is a kind of _sub-transaction_,
+/// i.e., it should observe the changes performed within the transaction so far,
+/// but not the changes performed by the query itself. For more details see
+/// RocksDBTrxMethods.
+enum class ReadOwnWrites : bool { no, yes, };
+
 /// @brief: mode to signal how operation should behave
 enum class IndexOperationMode : uint8_t { normal, internal, rollback };
 
 // a struct for keeping document modification operations in transactions
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 struct OperationOptions {
 
   /// @brief behavior when inserting a document by _key using INSERT with overwrite
@@ -118,21 +143,39 @@ struct OperationOptions {
   // restored by replicated and arangorestore
   bool isRestore;
 
-  // for replication; only set true if you an guarantee that any conflicts have
-  // already been removed, and are simply not reflected in the transaction read
-  bool ignoreUniqueConstraints;
+  // for replication; only set true if case insert/replace should have a read-only
+  // preflight phase, in which it checks whether a document can actually be inserted
+  // before carrying out the actual insert/replace.
+  // separating the check phase from the actual insert/replace allows running the
+  // preflight check without modifying the transaction's underlying WriteBatch object,
+  // so in case a unique constraint violation is detected, it does not need to be
+  // rebuilt (this would be _very_ expensive).
+  bool checkUniqueConstraintsInPreflight;
 
   // when truncating - should we also run the compaction?
   // defaults to true.
   bool truncateCompact;
 
+  // whether or not this request is a DOCUMENT() call from inside AQL. only set
+  // for exactly this case on a coordinator, in order to make it set a special
+  // header when putting together the requests for DB servers
+  bool documentCallFromAql;
+
+  // whether or not indexing can be disabed. We must not disable indexing if we have to ensure
+  // that writes become visible to the current query.
+  // This is necessary for UPSERTS where the subquery relies on a non-unique secondary index.
+  bool canDisableIndexing = true;
+
   // get associated execution context
   ExecContext const& context() const;
 
-private:
+ private:
   ExecContext const* _context;
 };
 
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic pop
+#endif
+
 }  // namespace arangodb
 
-#endif

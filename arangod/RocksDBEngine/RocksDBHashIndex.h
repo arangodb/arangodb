@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_HASH_INDEX_H
-#define ARANGOD_ROCKSDB_ROCKSDB_HASH_INDEX_H 1
+#pragma once
 
 #include "Basics/VelocyPackHelper.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
@@ -47,4 +46,3 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
 
 }  // namespace arangodb
 
-#endif

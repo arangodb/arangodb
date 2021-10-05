@@ -22,8 +22,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR_INFOS_H
-#define ARANGOD_AQL_MODIFICATION_EXECUTOR_INFOS_H
+#pragma once
 
 #include "Aql/Collection.h"
 #include "Aql/RegisterInfos.h"
@@ -37,6 +36,7 @@
 namespace arangodb {
 namespace aql {
 
+class ExecutionEngine;
 class QueryContext;
 
 struct BoolWrapper {
@@ -65,7 +65,8 @@ struct IgnoreDocumentNotFound : BoolWrapper {
 };
 
 struct ModificationExecutorInfos {
-  ModificationExecutorInfos(RegisterId input1RegisterId, RegisterId input2RegisterId,
+  ModificationExecutorInfos(ExecutionEngine* engine, 
+                            RegisterId input1RegisterId, RegisterId input2RegisterId,
                             RegisterId input3RegisterId, RegisterId outputNewRegisterId,
                             RegisterId outputOldRegisterId, RegisterId outputRegisterId,
                             arangodb::aql::QueryContext& query, OperationOptions options,
@@ -79,7 +80,10 @@ struct ModificationExecutorInfos {
   ModificationExecutorInfos(ModificationExecutorInfos const&) = delete;
   ~ModificationExecutorInfos() = default;
 
+  ExecutionEngine* engine() const { return _engine; }
+
   /// @brief the variable produced by Return
+  arangodb::aql::ExecutionEngine* _engine;
   arangodb::aql::QueryContext& _query;
   OperationOptions _options;
   aql::Collection const* _aqlCollection;
@@ -106,4 +110,3 @@ struct ModificationExecutorInfos {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

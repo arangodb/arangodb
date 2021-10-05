@@ -105,6 +105,9 @@
       }
     });
   };
+
+  // On server side the API with failurePointName is called removeFailAt
+  exports.debugRemoveFailAt = exports.debugClearFailAt;
   
   exports.debugSetFailAt = function(failAt) {
     const request = require('@arangodb/request');
@@ -352,6 +355,9 @@
 
       // append body
       if (response.body !== undefined) {
+        if (Buffer.isBuffer(response.body)) {
+          response.body = response.body.toString();
+        }
         let splitted = response.body.split(/\r\n|\r|\n/);
         if (splitted.length > 0) {
           splitted.forEach(function (line) {
@@ -399,6 +405,10 @@
 
       appendHeaders(appender, response.headers);
       appender('\n');
+
+      if (Buffer.isBuffer(response.body)) {
+        response.body = response.body.toString();
+      }
 
       var splitted = response.body.split("\n");
       splitted.forEach(function(line) {

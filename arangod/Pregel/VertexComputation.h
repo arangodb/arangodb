@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_COMPUTATION_H
-#define ARANGODB_PREGEL_COMPUTATION_H 1
+#pragma once
 
 #include <algorithm>
 #include <cstddef>
@@ -173,4 +172,3 @@ class VertexCompensation : public VertexContext<V, E, M> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STATISTICS_FIGURES_H
-#define ARANGOD_STATISTICS_FIGURES_H 1
+#pragma once
 
 #include <atomic>
 #include <vector>
@@ -124,4 +123,3 @@ struct Distribution {
 }  // namespace statistics
 }  // namespace arangodb
 
-#endif

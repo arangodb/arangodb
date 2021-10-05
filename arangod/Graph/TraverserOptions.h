@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_TRAVERSER_OPTIONS_H
-#define ARANGOD_VOC_BASE_TRAVERSER_OPTIONS_H 1
+#pragma once
 
 #include "Aql/FixedVarExpressionContext.h"
 #include "Basics/Common.h"
@@ -78,7 +77,14 @@ struct TraverserOptions : public graph::BaseOptions {
   ///        The Node keeps responsibility
   std::unique_ptr<aql::PruneExpressionEvaluator> _pruneExpression;
 
-  bool _producePaths{true};
+  /// @brief The condition given for PostFilters (might be empty)
+  ///        The Node keeps responsibility
+  ///        This is used to avoid producing paths if the last vertex or edge do not match.
+  std::unique_ptr<aql::PruneExpressionEvaluator> _postFilterExpression;
+
+  bool _producePathsVertices{true};
+  bool _producePathsEdges{true};
+  bool _producePathsWeights{true};  // only used by WeightedEnumerator
 
  public:
   uint64_t minDepth;
@@ -101,10 +107,11 @@ struct TraverserOptions : public graph::BaseOptions {
 
   std::vector<std::string> edgeCollections;
 
+  bool _isDisjoint = false;
+
   explicit TraverserOptions(arangodb::aql::QueryContext& query);
 
-  TraverserOptions(arangodb::aql::QueryContext& query,
-                   arangodb::velocypack::Slice definition);
+  TraverserOptions(arangodb::aql::QueryContext& query, arangodb::velocypack::Slice definition);
 
   TraverserOptions(arangodb::aql::QueryContext& query, arangodb::velocypack::Slice info,
                    arangodb::velocypack::Slice collections);
@@ -152,7 +159,9 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t);
 
-  bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex);
+  bool checkSmartDestination(VPackSlice edge, velocypack::StringRef sourceVertex) const;
+
+  bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex) const;
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
@@ -164,11 +173,18 @@ struct TraverserOptions : public graph::BaseOptions {
                      std::vector<aql::RegisterId> regs, size_t vertexVarIdx,
                      size_t edgeVarIdx, size_t pathVarIdx, aql::Expression* expr);
 
+  void activatePostFilter(std::vector<aql::Variable const*> vars,
+                          std::vector<aql::RegisterId> regs, size_t vertexVarIdx,
+                          size_t edgeVarIdx, aql::Expression* expr);
+
   bool usesPrune() const { return _pruneExpression != nullptr; }
+  bool usesPostFilter() const { return _postFilterExpression != nullptr; }
 
   bool isUseBreadthFirst() const { return mode == Order::BFS; }
 
-  bool isUniqueGlobalVerticesAllowed() const { return mode == Order::BFS || mode == Order::WEIGHTED; }
+  bool isUniqueGlobalVerticesAllowed() const {
+    return mode == Order::BFS || mode == Order::WEIGHTED;
+  }
 
   double weightEdge(VPackSlice edge) const;
 
@@ -177,14 +193,40 @@ struct TraverserOptions : public graph::BaseOptions {
     return _pruneExpression.get();
   }
 
+  aql::PruneExpressionEvaluator* getPostFilterEvaluator() {
+    TRI_ASSERT(usesPostFilter());
+    return _postFilterExpression.get();
+  }
+
   auto estimateDepth() const noexcept -> uint64_t override;
 
-  auto setProducePaths(bool value) -> void { _producePaths = value; }
+  auto setProducePaths(bool vertices, bool edges, bool weights) noexcept -> void {
+    _producePathsVertices = vertices;
+    _producePathsEdges = edges;
+    _producePathsWeights = weights;
+  }
 
-  auto producePaths() -> bool { return _producePaths; }
+  auto producePathsVertices() const noexcept -> bool {
+    return _producePathsVertices;
+  }
+  auto producePathsEdges() const noexcept -> bool { return _producePathsEdges; }
+  auto producePathsWeights() const noexcept -> bool {
+    return _producePathsWeights && mode == Order::WEIGHTED;
+  }
 
   auto explicitDepthLookupAt() const -> std::unordered_set<std::size_t>;
+
+  auto setDisjoint() -> void;
+  auto isDisjoint() const -> bool;
+
+  auto isSatelliteLeader() const -> bool;
+
+  auto getEdgeDestination(arangodb::velocypack::Slice edge,
+                          arangodb::velocypack::StringRef origin) const
+      -> arangodb::velocypack::StringRef;
+
+ private:
+  void readProduceInfo(VPackSlice obj);
 };
 }  // namespace traverser
 }  // namespace arangodb
-#endif

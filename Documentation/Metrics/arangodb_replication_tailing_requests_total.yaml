@@ -1,0 +1,13 @@
+name: arangodb_replication_tailing_requests_total
+renamedFrom: arangodb_replication_tailing_requests
+introducedIn: "3.8.0"
+help: |
+  Number of replication tailing requests.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  The total amount of network replication tailing requests.

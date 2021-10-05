@@ -40,8 +40,7 @@ bool encrypt(
     index_output& out,
     encryption* enc,
     bstring& header,
-    encryption::stream::ptr& cipher
-) {
+    encryption::stream::ptr& cipher) {
   header.resize(enc ? enc->header_length() : 0);
 
   if (header.empty()) {
@@ -90,8 +89,7 @@ bool decrypt(
     const std::string& filename,
     index_input& in,
     encryption* enc,
-    encryption::stream::ptr& cipher
-) {
+    encryption::stream::ptr& cipher) {
   auto header = irs::read_string<bstring>(in);
 
   if (header.empty()) {
@@ -324,8 +322,11 @@ int64_t encrypted_input::checksum(size_t offset) const {
   const auto end = (std::min)(begin + offset, this->length());
 
   auto restore_position = make_finally([begin, this](){
+    // FIXME make me noexcept as I'm begin called from within ~finally()
     const_cast<encrypted_input*>(this)->seek_internal(begin);
   });
+
+  const_cast<encrypted_input*>(this)->seek_internal(begin);
 
   crc32c crc;
   byte_type buf[DEFAULT_ENCRYPTION_BUFFER_SIZE];
@@ -364,8 +365,10 @@ index_input::ptr encrypted_input::reopen() const {
 }
 
 void encrypted_input::seek_internal(size_t pos) {
-  if (pos != file_pointer()) {
-    in_->seek(start_ + pos);
+  pos += start_;
+
+  if (pos != in_->file_pointer()) {
+    in_->seek(pos);
   }
 }
 

@@ -23,8 +23,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_UTILS_H
-#define ARANGO_ROCKSDB_UTILS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -51,4 +50,3 @@ std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
 }  // namespace rocksutils
 }  // namespace arangodb
 
-#endif

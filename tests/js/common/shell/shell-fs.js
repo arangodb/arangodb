@@ -336,7 +336,7 @@ function FileSystemSuite () {
       // the subdirectory should now be there
       assertTrue(fs.exists(tempName));
 
-      // create a file in the subdirecory
+      // create a file in the subdirectory
       tempName = fs.join(tempDir, 'baz', 'foo', 'test');
       // write something to the file
       fs.write(tempName, "this is a test");

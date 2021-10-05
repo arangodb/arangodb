@@ -39,7 +39,7 @@ constexpr uint32_t MIN_2BYTES_CODE_POINT = 0x80;
 constexpr uint32_t MIN_3BYTES_CODE_POINT = 0x800;
 constexpr uint32_t MIN_4BYTES_CODE_POINT = 0x10000;
 constexpr uint32_t MAX_CODE_POINT = 0x10FFFF;
-constexpr uint32_t INVALID_CODE_POINT = integer_traits<uint32_t>::const_max;
+constexpr uint32_t INVALID_CODE_POINT = std::numeric_limits<uint32_t>::max();
 
 FORCE_INLINE const byte_type* next(const byte_type* begin, const byte_type* end) noexcept {
   IRS_ASSERT(begin);

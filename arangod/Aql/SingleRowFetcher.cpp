@@ -66,10 +66,10 @@ SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
     TRI_ASSERT(block != nullptr);
     return {state, skipped,
             AqlItemBlockInputRange{ExecutorState::HASMORE,
-                                   skipped.getSkipCount(), block, start}};
+                                   skipped.getSkipCount(), std::move(block), start}};
   }
   return {state, skipped,
-          AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount(), block, start}};
+          AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount(), std::move(block), start}};
 }
 
 

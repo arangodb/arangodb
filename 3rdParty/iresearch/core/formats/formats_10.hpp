@@ -35,7 +35,7 @@ void init();
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_PLUGIN format : public irs::format {
  public:
-  virtual postings_writer::ptr get_postings_writer(bool volatile_state) const = 0;
+  virtual postings_writer::ptr get_postings_writer(bool consolidation) const = 0;
   virtual postings_reader::ptr get_postings_reader() const = 0;
 
  protected:

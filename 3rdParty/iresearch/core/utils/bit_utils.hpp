@@ -34,6 +34,11 @@ inline constexpr uint32_t bits_required() noexcept {
 }
 
 template<typename T>
+inline constexpr size_t bits_required(size_t n) noexcept {
+  return bits_required<T>()*n;
+}
+
+template<typename T>
 inline constexpr void set_bit(T& value, size_t bit) noexcept {
   value |= (T(1) << bit);
 }

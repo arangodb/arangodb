@@ -21,8 +21,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_STATUS_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_STATUS_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestBaseHandler.h"
 
@@ -46,4 +45,3 @@ class RestStatusHandler : public arangodb::RestBaseHandler {
 };
 }  // namespace arangodb
 
-#endif
