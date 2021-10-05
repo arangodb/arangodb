@@ -4,6 +4,9 @@ devel
 * Fix race in RocksDB throttle listener, when it was getting started lazily
   during server shutdown.
 
+* Extended the Views web UI by letting it capture View properties that are
+  immutable once created.
+
 * Fixed BTS-602 by not starting license feature is upgrade mode.
 
 * APM-173: Now, arangobench, arangodump and arangorestore support multiple 
