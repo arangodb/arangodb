@@ -125,12 +125,10 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIteratorRange
     explicit Iterator(ContainerType log, LogIndex start, LogIndex stop)
         : _log(std::move(log)),
           _current(std::lower_bound(std::begin(_log), std::end(_log), start,
-                                   [](StreamEntry<Type> const& left, LogIndex index) {
-                                     return left.first < index;
-                                   })),
-          // cppcheck-suppress 	selfInitialization
+                                    [](StreamEntry<Type> const& left, LogIndex index) {
+                                      return left.first < index;
+                                    })),
           _start(start),
-          // cppcheck-suppress 	selfInitialization
           _stop(stop) {}
   };
   return std::make_unique<Iterator>(std::move(log), start, stop);
