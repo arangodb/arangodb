@@ -15,8 +15,13 @@ must be equal to *"zkd"*.
 @RESTBODYPARAM{fields,array,required,string}
 an array of attribute names used for each dimension. Array expansions are not allowed.
 
-@RESTBODYPARAM{unique,boolean,required,}
+@RESTBODYPARAM{unique,boolean,optional,}
 if *true*, then create a unique index.
+
+@RESTBODYPARAM{inBackground,boolean,optional,}
+The optional attribute **inBackground** can be set to *true* to create the index
+in the background, which will not write-lock the underlying collection for
+as long as if the index is built in the foreground. The default value is *false*.
 
 @RESTBODYPARAM{fieldValueTypes,string,required,string}
 must be equal to *"double"*. Currently only doubles are supported as values.
