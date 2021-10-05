@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAY_CONTRIB_IMAGE_IMAGE_H_
-#define HIGHWAY_CONTRIB_IMAGE_IMAGE_H_
+#ifndef HIGHWAY_HWY_CONTRIB_IMAGE_IMAGE_H_
+#define HIGHWAY_HWY_CONTRIB_IMAGE_IMAGE_H_
 
 // SIMD/multicore-friendly planar image representation with row accessors.
 
@@ -465,4 +465,4 @@ struct WrapRowUnchanged {
 
 }  // namespace hwy
 
-#endif  // HIGHWAY_CONTRIB_IMAGE_IMAGE_H_
+#endif  // HIGHWAY_HWY_CONTRIB_IMAGE_IMAGE_H_

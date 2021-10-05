@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "contrib/image/image.h"
+#include "hwy/contrib/image/image.h"
 
 #include <cstddef>
 
 #include "hwy/base.h"
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "contrib/image/image_test.cc"
+#define HWY_TARGET_INCLUDE "hwy/contrib/image/image_test.cc"
 #include "hwy/foreach_target.h"
 
 #include <stdint.h>
@@ -96,7 +96,7 @@ struct TestUnalignedT {
         for (size_t y = 0; y < ysize; ++y) {
           T* HWY_RESTRICT row = img.MutableRow(y);
           for (size_t x = 0; x < xsize; ++x) {
-            accum |= LoadU(d, row + x);
+            accum = Or(accum, LoadU(d, row + x));
           }
         }
 
@@ -143,8 +143,17 @@ void TestUnaligned() { ForUnsignedTypes(TestUnalignedT()); }
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
+
+namespace hwy {
 HWY_BEFORE_TEST(ImageTest);
 HWY_EXPORT_AND_TEST_P(ImageTest, TestAligned);
 HWY_EXPORT_AND_TEST_P(ImageTest, TestUnaligned);
-HWY_AFTER_TEST();
+}  // namespace hwy
+
+// Ought not to be necessary, but without this, no tests run on RVV.
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
+
 #endif

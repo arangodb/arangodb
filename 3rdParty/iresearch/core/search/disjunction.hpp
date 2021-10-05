@@ -1145,15 +1145,14 @@ class block_disjunction final : public doc_iterator, private score_ctx {
           // exhausted
           return false;
         }
-        // this is to circumvent bug in GCC 10.1 on ARM64
-        constexpr bool is_min_match = traits_type::min_match();
-        if (doc < doc_.value) {
-          doc_.value = doc;
-          if constexpr (is_min_match) {
+
+        if (value < doc.value) {
+          doc.value = value;
+          if constexpr (traits_type::min_match()) {
             match_count_ = 1;
           }
-        } else if constexpr (is_min_match) {
-          if (target == doc) {
+        } else if constexpr (traits_type::min_match()) {
+          if (target == value) {
             ++match_count_;
           }
         }
@@ -1347,9 +1346,8 @@ class block_disjunction final : public doc_iterator, private score_ctx {
         //    return true;
         //  }
         //}
-        // circumventing GCC 10.1 bug on ARM64 
-        constexpr bool is_score = traits_type::score(); 
-        if constexpr (is_score) {
+
+        if constexpr (traits_type::score()) {
           if (!it.score->is_default()) {
             return this->refill<true>(it, empty);
           }
