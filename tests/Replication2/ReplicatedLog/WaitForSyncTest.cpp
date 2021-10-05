@@ -51,7 +51,6 @@ TEST_F(WaitForSyncTest, no_wait_for_sync) {
   // Note that the leader inserts an empty log entry in becomeLeader already
   ASSERT_EQ(firstIdx, LogIndex{2});
 
-  leader->triggerAsyncReplication();
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();
@@ -80,7 +79,6 @@ TEST_F(WaitForSyncTest, global_wait_for_sync) {
   // Note that the leader inserts an empty log entry in becomeLeader already
   ASSERT_EQ(firstIdx, LogIndex{2});
 
-  leader->triggerAsyncReplication();
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();
@@ -109,7 +107,6 @@ TEST_F(WaitForSyncTest, per_entry_wait_for_sync) {
   // Note that the leader inserts an empty log entry in becomeLeader already
   ASSERT_EQ(firstIdx, LogIndex{2});
 
-  leader->triggerAsyncReplication();
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();
