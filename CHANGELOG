@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed BTS-602 by not starting license feature is upgrade mode.
+
 * APM-173: Now, arangobench, arangodump and arangorestore support multiple 
   coordinators, so the flag `--server.endpoint` can be used multiple times, 
   as in the example below:

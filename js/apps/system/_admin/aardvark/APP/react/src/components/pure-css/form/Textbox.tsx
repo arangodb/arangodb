@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { uniqueId } from 'lodash';
 import PlainLabel from "./PlainLabel";
@@ -25,15 +25,18 @@ type TextboxProps = {
 } & StyledTextboxProps;
 
 const Textbox = ({ id, label, disabled, ...rest }: TextboxProps) => {
-  const { type } = rest;
+  const [thisId, setThisId] = useState(id || uniqueId('textbox-'));
 
-  if (!id) {
-    id = uniqueId(`textbox-${type}-`);
-  }
+  useEffect(() => {
+    if (id) {
+      setThisId(id);
+    }
+  }, [id]);
+
 
   return <>
-    <PlainLabel htmlFor={id}>{label}</PlainLabel>
-    <StyledTextbox id={id} disabled={disabled} {...rest}/>
+    <PlainLabel htmlFor={thisId}>{label}</PlainLabel>
+    <StyledTextbox id={thisId} disabled={disabled} {...rest}/>
   </>;
 };
 
