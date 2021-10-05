@@ -1139,7 +1139,7 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
 
   if (_revisionTreeApplied >= seq) {
-    LOG_TOPIC("1fe4d", TRACE, Logger::ENGINES)
+    LOG_TOPIC("1fe4d", WARN, Logger::ENGINES)
         << "rejecting change with too low sequence number " << seq << " for collection " << _logicalCollection.name();
 
     TRI_ASSERT(_logicalCollection.vocbase()
