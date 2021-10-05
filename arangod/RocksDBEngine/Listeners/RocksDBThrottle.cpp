@@ -153,7 +153,6 @@ void RocksDBThrottle::stopThread() {
     }
 
     // wait until startup has finished
-    TRI_ASSERT(state == ThrottleState::Starting);
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
 }
