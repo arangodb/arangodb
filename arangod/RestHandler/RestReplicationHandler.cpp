@@ -2947,52 +2947,6 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
   return true;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the revision tree for a given collection, if available
-/// @response serialized revision tree, binary
-//////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandRevisionTree() {
-  RevisionOperationContext ctx;
-  if (!prepareRevisionOperation(ctx)) {
-    return;
-  }
-
-  // shall we do a verification?
-  bool withVerification = _request->parsedValue("verification", false);
-
-  auto tree = ctx.collection->getPhysical()->revisionTree(ctx.batchId);
-  if (!tree) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "could not generate revision tree");
-    return;
-  }
-  
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder result(buffer);
-
-  if (withVerification) {
-    auto tree2 = ctx.collection->getPhysical()->computeRevisionTree(ctx.batchId);
-    if (!tree2) {
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "could not generate revision tree from collection");
-      return;
-    }
-
-    VPackObjectBuilder guard(&result);
-    result.add(VPackValue("computed"));
-    tree2->serialize(result);
-    result.add(VPackValue("stored"));
-    tree->serialize(result);
-    auto diff = tree->diff(*tree2);
-    result.add("equal", VPackValue(diff.empty()));
-  } else {
-    tree->serialize(result);
-  }
-
-  generateResult(rest::ResponseCode::OK, std::move(buffer));
-}
-
 void RestReplicationHandler::handleCommandRebuildRevisionTree() {
   RevisionOperationContext ctx;
   if (!prepareRevisionOperation(ctx)) {
