@@ -641,7 +641,7 @@ Result GraphManager::ensureCollections(
   Result finalResult =
       methods::Collections::create(ctx()->vocbase(), opOptions,
                                    collectionsToCreate.get(), waitForSync, true,
-                                   false, nullptr, created, sssg);
+                                   false, nullptr, created, false, sssg);
 #ifdef USE_ENTERPRISE
   if (finalResult.ok()) {
     guard.cancel();
