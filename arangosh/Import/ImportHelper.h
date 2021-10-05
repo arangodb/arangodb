@@ -175,6 +175,12 @@ class ImportHelper {
     }
   }
 
+  std::pair<std::string, std::string> splitString(std::string const& originalString, std::string const& delimiter) const;
+
+  std::vector<std::pair<std::string, bool>> splitAttributes(std::string const& originalString) const;
+
+  void parseMergeAttributes(std::vector<std::string> const& args);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not to overwrite existing data in the collection
   //////////////////////////////////////////////////////////////////////////////
@@ -348,6 +354,8 @@ class ImportHelper {
 
   std::unordered_map<std::string, std::string> _translations;
   std::unordered_map<std::string, std::string> _datatypes;
+  std::unordered_map<std::string, std::vector<std::pair<std::string, bool>>> _attrsToValues;
+  std::unordered_map<std::string, std::string> _fieldsLookUpTable;
   std::unordered_set<std::string> _removeAttributes;
 
   bool _hasError;
