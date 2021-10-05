@@ -801,7 +801,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       _lineBuffer.appendJsonEncoded(field, fieldLength);
     }
     if (!_attrsToValues.empty()) {
-        _fieldsLookUpTable.try_emplace(_columnNames[column], lookUpTablevalue);
+      _fieldsLookUpTable.try_emplace(_columnNames[column], std::move(lookUpTablevalue));
     }
     return;
   }
