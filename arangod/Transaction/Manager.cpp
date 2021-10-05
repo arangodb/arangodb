@@ -626,6 +626,11 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
 
   options.isFollowerTransaction = tid.isFollowerTransactionId();
 
+  bool const isReplication2 = vocbase.replicationVersion() == replication::Version::TWO;
+  // Follower transactions are handled differently in Replication 2.0.
+  // replication::Version::TWO => !isFollowerTransaction
+  TRI_ASSERT(!isReplication2 || !options.isFollowerTransaction);
+
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
       << "managed trx creating: " << tid.id();
 

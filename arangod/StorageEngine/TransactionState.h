@@ -38,6 +38,7 @@
 #include "VocBase/voc-types.h"
 
 #include <map>
+#include <variant>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
@@ -60,6 +61,10 @@ namespace transaction {
 class Methods;
 struct Options;
 }  // namespace transaction
+
+namespace replication2::replicated_log {
+class LogLeader;
+}
 
 class TransactionCollection;
 struct TransactionStatistics;
@@ -269,7 +274,19 @@ class TransactionState {
 
  protected:
   /// @brief find a collection in the transaction's list of collections
-  TransactionCollection* findCollection(DataSourceId cid, size_t& position) const;
+  struct CollectionNotFound {
+    std::size_t lowerBound;
+  };
+  struct CollectionWithLog {
+    TransactionCollection* collection;
+    std::optional<std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>> replicatedLog;
+  };
+  [[nodiscard]] auto findCollectionOrPos(DataSourceId cid) const
+      -> std::variant<CollectionNotFound, CollectionWithLog>;
+
+  void insertCollectionAndLogAt(
+      size_t position, std::unique_ptr<TransactionCollection> trxColl,
+      std::optional<std::shared_ptr<replication2::replicated_log::LogLeader>> replicatedLog);
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
@@ -298,9 +315,16 @@ class TransactionState {
   /// @brief current status
   transaction::Status _status;
 
+  // TODO shouldn't we rather use a flat_set for _collections?
   using ListType = arangodb::containers::SmallVector<TransactionCollection*>;
-  ListType::allocator_type::arena_type _arena;  // memory for collections
-  ListType _collections;  // list of participating collections
+  // memory for collections
+  ListType::allocator_type::arena_type _arena;
+  // list of participating collections
+  ListType _collections;
+  // replicated logs; if existent, must be the same size as _collections, and
+  // for each i, _replicatedLogs[i] must be the replicated log used by the
+  // collection _collections[i].
+  std::optional<std::vector<std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>>> _replicatedLogs;
 
   transaction::Hints _hints;  // hints; set on _nestingLevel == 0
 
