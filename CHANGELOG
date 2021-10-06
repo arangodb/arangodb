@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix windows installer PATH manipulation issue by replaceng the NSIS plugin
+
 * Fixed potential issues with revision trees and document counters getting out
   of sync with the underlying collection data.
 
