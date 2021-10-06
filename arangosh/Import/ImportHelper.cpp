@@ -613,7 +613,7 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
 void ImportHelper::verifyMergeAttributesLiteralsSyntax(std::string const& attrLiteral) const {
   if (attrLiteral.find_first_of("[]=") != std::string::npos) {
     LOG_TOPIC("0b9e2", FATAL, arangodb::Logger::FIXME)
-        << "Wrong syntax in --merge-attributes: string literals cannot contain any of '[, ], ='";
+        << "Wrong syntax in --merge-attributes: string literals cannot contain any of '[', ']' or '='";
     FATAL_ERROR_EXIT();
   }
 }
@@ -684,8 +684,7 @@ void ImportHelper::parseMergeAttributes(std::vector<std::string> const& args) {
           << "Wrong syntax in --merge-attributes: Unexpected number of '=' characters found";
       FATAL_ERROR_EXIT();
     }
-    std::pair<std::string, std::string> keyAndAttrs(std::move(splitAttrs[0]), std::move(splitAttrs[1]));
-    _mergeAttributesInstructions.emplace_back(keyAndAttrs.first, splitAttributes(keyAndAttrs.second, keyAndAttrs.first));
+    _mergeAttributesInstructions.emplace_back(keyAndAttrs.first, splitAttributes(splitAttrs[1], splitAttrs[0]));
   }
 }
 
