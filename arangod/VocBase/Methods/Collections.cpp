@@ -111,7 +111,7 @@ Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
 }
 
 // Returns a builder that combines the information from \p infos and cluster related information.
-VPackBuilder getBuilder(TRI_vocbase_t const& vocbase,
+VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
                         std::vector<CollectionCreationInfo> const& infos,
                         bool isSingleServerSmartGraph) {
   StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
@@ -132,6 +132,7 @@ VPackBuilder getBuilder(TRI_vocbase_t const& vocbase,
 
     // generate a rocksdb collection object id in case it does not exist
     if (isSingleServerSmartGraph) {
+      // TODO: check if needed
       engine.addParametersForNewCollection(helper, info.properties);
     }
 
@@ -426,7 +427,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
 
   // construct a builder that contains information from all elements of infos and cluster related information
   VPackBuilder builder =
-      getBuilder(vocbase, infos, isSingleServerSmartGraph);
+      createCollectionProperties(vocbase, infos, isSingleServerSmartGraph);
 
   VPackSlice const infoSlice = builder.slice();
 
