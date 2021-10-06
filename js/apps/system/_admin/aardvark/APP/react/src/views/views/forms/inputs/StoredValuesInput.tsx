@@ -107,18 +107,18 @@ const StoredValuesInput = ({ formState, dispatch, disabled }: FormProps<StoredVa
     <ArangoTable>
       <thead>
       <tr>
-        <ArangoTH seq={0}>#</ArangoTH>
-        <ArangoTH seq={1}>Fields</ArangoTH>
-        <ArangoTH seq={2}>Compression</ArangoTH>
-        {
-          disabled
-            ? null
-            : <ArangoTH seq={3}>
-              <button className={'button-warning'} onClick={addStoredValue}>
+        <ArangoTH seq={0} style={{ width: '10%' }}>#</ArangoTH>
+        <ArangoTH seq={1} style={{ width: '40%' }}>Fields</ArangoTH>
+        <ArangoTH seq={2} style={{ width: '20%' }}>Compression</ArangoTH>
+        <ArangoTH seq={3} style={{ width: '30%' }}>
+          {
+            disabled
+              ? null
+              : <button className={'button-warning'} onClick={addStoredValue}>
                 <i className={'fa fa-plus'}/>&nbsp;Add Stored Value
               </button>
-            </ArangoTH>
-        }
+          }
+        </ArangoTH>
       </tr>
       </thead>
       <tbody>
@@ -176,27 +176,29 @@ const StoredValuesInput = ({ formState, dispatch, disabled }: FormProps<StoredVa
                   <option key={'none'} value={'none'}>None</option>
                 </Select>
               </ArangoTD>
-              {
-                disabled
-                  ? null
-                  : <ArangoTD seq={3}>
-                    <StyledButton className={'button-danger'} onClick={getRemover(idx)}>
-                      <StyledIcon className={'fa fa-trash-o'}/>
-                    </StyledButton>&nbsp;
-                    <StyledButton className={'button-warning'} onClick={getShifter('up', idx)}
-                                  disabled={idx === 0}>
-                      <StyledIcon className={'fa fa-arrow-up'}/>
-                    </StyledButton>&nbsp;
-                    <StyledButton className={'button-warning'} onClick={getShifter('down', idx)}
-                                  disabled={isLast}>
-                      <StyledIcon className={'fa fa-arrow-down'}/>
-                    </StyledButton>
-                  </ArangoTD>
-              }
+              <ArangoTD seq={3}>
+                {
+                  disabled
+                    ? null
+                    : <>
+                      <StyledButton className={'button-danger'} onClick={getRemover(idx)}>
+                        <StyledIcon className={'fa fa-trash-o'}/>
+                      </StyledButton> & nbsp;
+                      <StyledButton className={'button-warning'} onClick={getShifter('up', idx)}
+                                    disabled={idx === 0}>
+                        <StyledIcon className={'fa fa-arrow-up'}/>
+                      </StyledButton>&nbsp;
+                      <StyledButton className={'button-warning'} onClick={getShifter('down', idx)}
+                                    disabled={isLast}>
+                        <StyledIcon className={'fa fa-arrow-down'}/>
+                      </StyledButton>
+                    </>
+                }
+              </ArangoTD>
             </tr>;
           })
           : <tr>
-            <ArangoTD seq={0} colspan={disabled ? 3 : 4}>No stored values found.</ArangoTD>
+            <ArangoTD seq={0} colspan={4}>No stored values found.</ArangoTD>
           </tr>
       }
       </tbody>
