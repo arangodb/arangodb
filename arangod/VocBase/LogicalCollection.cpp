@@ -270,7 +270,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info, bo
   }
 
   TRI_ASSERT(_physical != nullptr);
-  // This has to be called AFTER _phyiscal and _logical are properly linked
+  // This has to be called AFTER _physical and _logical are properly linked
   // together.
 
   prepareIndexes(info.get("indexes"));
