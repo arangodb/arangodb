@@ -34,18 +34,17 @@ INSTANTIATE_TEST_SUITE_P(
   format_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::memory_directory, 7>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 7>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 7>
-    ),
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>,
+      &tests::rot13_directory<&tests::memory_directory, 7>,
+      &tests::rot13_directory<&tests::fs_directory, 7>,
+      &tests::rot13_directory<&tests::mmap_directory, 7>),
     ::testing::Values(tests::format_info{"1_4", "1_4simd"})
   ),
-  tests::to_string
+  format_test_case::to_string
 );
 
 

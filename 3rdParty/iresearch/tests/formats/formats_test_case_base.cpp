@@ -29,9 +29,9 @@
 namespace tests {
 
 TEST_P(format_test_case, directory_artifact_cleaner) {
-  tests::json_doc_generator gen(
+  tests::json_doc_generator gen{
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory);
+    &tests::generic_json_field_factory};
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
   tests::document const* doc3 = gen.next();
@@ -51,9 +51,6 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
   files.clear();
   ASSERT_TRUE(dir->visit(list_files));
   ASSERT_TRUE(files.empty());
-
-  // register ref counter
-  irs::directory_cleaner::init(*dir);
 
   // cleanup on refcount decrement (old files not in use)
   {
@@ -969,7 +966,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
 
       using directory::attributes;
 
-      virtual irs::attribute_store& attributes() noexcept override {
+      virtual irs::directory_attributes& attributes() noexcept override {
         return dir_.attributes();
       }
 
@@ -1070,7 +1067,7 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
     auto column = writer->push_column({
       irs::type<irs::compression::lz4>::get(),
       irs::compression::options(),
-      bool(irs::get_encryption(dir().attributes()))
+      bool(dir().attributes().encryption())
     });
     column_id = column.first;
     auto& column_handler = column.second;
@@ -1139,7 +1136,7 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
     auto column = writer->push_column({
       irs::type<irs::compression::lz4>::get(),
       irs::compression::options(),
-      bool(irs::get_encryption(dir().attributes()))
+      bool(dir().attributes().encryption())
     });
     column_id = column.first;
     auto& column_handler = column.second;
@@ -1191,7 +1188,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     auto column = writer->push_column({
       irs::type<irs::compression::lz4>::get(),
       irs::compression::options(),
-      bool(irs::get_encryption(dir().attributes()))
+      bool(dir().attributes().encryption())
     });
 
     id = column.first;
@@ -1465,9 +1462,9 @@ TEST_P(format_test_case, columns_rw_empty) {
     auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), meta0);
 
-    column0_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) }).first;
+    column0_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) }).first;
     ASSERT_EQ(0, column0_id);
-    column1_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) }).first;
+    column1_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) }).first;
     ASSERT_EQ(1, column1_id);
 
     irs::flush_state state;
@@ -1512,7 +1509,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
     virtual void reset() {}
   } doc_template; // two_columns_doc_template
 
-  tests::csv_doc_generator gen(resource("simple_two_column.csv"), doc_template);
+  tests::csv_doc_generator gen{resource("simple_two_column.csv"), doc_template};
   irs::segment_meta seg("_1", nullptr);
 
   seg.codec = codec();
@@ -1539,7 +1536,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
           res.first->second = writer->push_column({
             irs::type<irs::compression::lz4>::get(),
             irs::compression::options(),
-            bool(irs::get_encryption(dir().attributes()))
+            bool(dir().attributes().encryption())
           });
         }
 
@@ -1607,7 +1604,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
     char buf[65536];
   } field;
 
-  std::fstream stream(resource("simple_two_column.csv"));
+  std::fstream stream(resource("simple_two_column.csv").c_str());
   ASSERT_FALSE(!stream);
 
   irs::field_id id;
@@ -1624,7 +1621,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
     auto column = writer->push_column({
       irs::type<irs::compression::lz4>::get(),
       irs::compression::options(),
-      bool(irs::get_encryption(dir().attributes()))
+      bool(dir().attributes().encryption())
     });
     id = column.first;
 
@@ -1794,7 +1791,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
         }
 
         auto& column = res.first->second.second;
@@ -1830,7 +1827,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
         }
 
         auto& column = res.first->second.second;
@@ -1864,7 +1861,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
         }
 
         auto& column = res.first->second.second;
@@ -2060,7 +2057,7 @@ TEST_P(format_test_case, columns_rw_typed) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
         }
 
         auto& column = res.first->second.second;
@@ -2363,8 +2360,8 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), meta0);
 
-    dense_fixed_offset_column = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
-    sparse_fixed_offset_column = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    dense_fixed_offset_column = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+    sparse_fixed_offset_column = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
 
     irs::doc_id_t doc = irs::doc_limits::min();
 
@@ -2565,26 +2562,26 @@ TEST_P(format_test_case, columns_rw) {
   {
     writer->prepare(dir(), meta0);
 
-    auto field0 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field0 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment0_field0_id = field0.first;
     auto& field0_writer = field0.second;
     ASSERT_EQ(0, segment0_field0_id);
-    auto field1 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field1 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment0_field1_id = field1.first;
     auto& field1_writer = field1.second;
     ASSERT_EQ(1, segment0_field1_id);
-    auto empty_field = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) }); // gap between filled columns
+    auto empty_field = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) }); // gap between filled columns
     segment0_empty_column_id = empty_field.first;
     ASSERT_EQ(2, segment0_empty_column_id);
-    auto field2 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field2 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment0_field2_id = field2.first;
     auto& field2_writer = field2.second;
     ASSERT_EQ(3, segment0_field2_id);
-    auto field3 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field3 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment0_field3_id = field3.first;
     [[maybe_unused]] auto& field3_writer = field3.second;
     ASSERT_EQ(4, segment0_field3_id);
-    auto field4 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field4 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment0_field4_id = field4.first;
     auto& field4_writer = field4.second;
     ASSERT_EQ(5, segment0_field4_id);
@@ -2669,15 +2666,15 @@ TEST_P(format_test_case, columns_rw) {
   {
     writer->prepare(dir(), meta1);
 
-    auto field0 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field0 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment1_field0_id = field0.first;
     auto& field0_writer = field0.second;
     ASSERT_EQ(0, segment1_field0_id);
-    auto field1 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field1 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment1_field1_id = field1.first;
     auto& field1_writer = field1.second;
     ASSERT_EQ(1, segment1_field1_id);
-    auto field2 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field2 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment1_field2_id = field2.first;
     auto& field2_writer = field2.second;
     ASSERT_EQ(2, segment1_field2_id);

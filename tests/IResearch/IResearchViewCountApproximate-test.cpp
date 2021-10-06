@@ -272,7 +272,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     ASSERT_TRUE(viewFound);
     ASSERT_EQ(expectedApproximation, actualApproximate);
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                arangodb::aql::QueryString(queryString), nullptr);
 
     auto queryResult = arangodb::tests::executeQuery(vocbase(), queryString, nullptr, expectedFullCount >= 0 ? "{\"fullCount\":true}" : "{}");
@@ -474,11 +474,11 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       " SEARCH d.value >= 2 OPTIONS {countApproximate:'exact', "
       "\"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
-  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+  auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase()),
                              arangodb::aql::QueryString(queryString), nullptr);
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  ASSERT_TRUE(query.ast());
-  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast(), false);
+  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  ASSERT_TRUE(query->ast());
+  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
   plan->planRegisters();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
@@ -505,7 +505,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   std::vector<arangodb::iresearch::Scorer> emptyScorers;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader, arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
-      {}, query, emptyScorers, {&sort, 1U}, _view->storedValues(), *plan,
+      {}, *query, emptyScorers, {&sort, 1U}, _view->storedValues(), *plan,
       viewNode.outVariable(), viewNode.filterCondition(), {false, false},
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
@@ -522,7 +522,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   arangodb::aql::AqlCall call{};
   arangodb::aql::IResearchViewStats stats;
   arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
-  arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(
+  arangodb::aql::IResearchViewMergeExecutor<false, false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(
       fetcher, executorInfos);
   arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
   inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
@@ -538,11 +538,11 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value >= 1000000 OPTIONS {countApproximate:'exact', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
-  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+  auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase()),
                              arangodb::aql::QueryString(queryString), nullptr);
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  ASSERT_TRUE(query.ast());
-  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast(), false);
+  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  ASSERT_TRUE(query->ast());
+  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
   plan->planRegisters();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
@@ -569,7 +569,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
   arangodb::aql::IResearchViewExecutorInfos executorInfos(reader,
                                                 arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
                                                 {},
-                                                query,
+                                                *query,
                                                 emptyScorers,
                                                 {&sort, 1U},
                                                 _view->storedValues(),
@@ -590,7 +590,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
   arangodb::ResourceMonitor monitor{global};
   arangodb::aql::AqlItemBlockManager itemBlockManager{monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
-  arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
+  arangodb::aql::IResearchViewMergeExecutor<false, false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall call{};
   arangodb::aql::IResearchViewStats stats;
@@ -610,11 +610,11 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value >= 2 OPTIONS {countApproximate:'cost', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
-  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+  auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase()),
                              arangodb::aql::QueryString(queryString), nullptr);
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  ASSERT_TRUE(query.ast());
-  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast(), false);
+  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  ASSERT_TRUE(query->ast());
+  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
   plan->planRegisters();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
@@ -641,7 +641,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   arangodb::aql::IResearchViewExecutorInfos executorInfos(reader,
                                                 arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
                                                 {},
-                                                query,
+                                                *query,
                                                 emptyScorers,
                                                 {&sort, 1U},
                                                 _view->storedValues(),
@@ -662,7 +662,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   arangodb::ResourceMonitor monitor{global};
   arangodb::aql::AqlItemBlockManager itemBlockManager{monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
-  arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
+  arangodb::aql::IResearchViewMergeExecutor<false, false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
   arangodb::aql::AqlCall call{};

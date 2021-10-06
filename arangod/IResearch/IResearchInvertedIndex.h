@@ -87,7 +87,7 @@ class lazy_filter_bitset_iterator final : public irs::doc_iterator,
   lazy_bitset& bitset_;
   irs::cost cost_;
   irs::document doc_;
-  size_t word_idx_{0};
+  irs::doc_id_t word_idx_{0};
   lazy_bitset::word_t word_{0};
   irs::doc_id_t base_{irs::doc_limits::invalid()};
 };
@@ -134,7 +134,7 @@ class proxy_query final : public irs::filter::prepared {
 class proxy_filter final : public irs::filter {
  public:
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   proxy_filter() noexcept
     : filter(irs::type<proxy_filter>::get()) {}

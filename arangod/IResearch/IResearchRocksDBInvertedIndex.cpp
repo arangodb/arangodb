@@ -84,16 +84,26 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(Logical
   auto objectId = basics::VelocyPackHelper::stringUInt64(definition, arangodb::StaticStrings::ObjectId);
   auto index = std::make_shared<IResearchRocksDBInvertedIndex>(id, collection, objectId, indexName, std::move(fieldsMeta));
 
-  auto initRes  = index->init([this](irs::directory& dir) {
+  auto initRes  = index->init([this]() -> irs::directory_attributes {
     auto& selector = _server.getFeature<EngineSelectorFeature>();
     TRI_ASSERT(selector.isRocksDB());
     auto& engine = selector.engine<RocksDBEngine>();
     auto* encryption = engine.encryptionProvider();
     if (encryption) {
-      dir.attributes().emplace<RocksDBEncryptionProvider>(*encryption,
-                                                          engine.rocksDBOptions());
+      return irs::directory_attributes{0, std::make_unique<RocksDBEncryptionProvider>(*encryption,
+                                                          engine.rocksDBOptions())};
     }
+    return irs::directory_attributes{};
   });
+
+  if (initRes.fail()) {
+    LOG_TOPIC("9c9ac", ERR, iresearch::TOPIC)
+        << std::string(
+               "failed to do an init for index from definition, error setting "
+               "index properties ")
+        << initRes.errorMessage();
+    return nullptr;
+  }
 
   // separate call as here object should be fully constructed and could be safely used by async tasks
   initRes = index->properties(indexMeta);
@@ -215,6 +225,11 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(VPackBuilder & builder,
   builder.add(arangodb::StaticStrings::IndexName, arangodb::velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
+}
+
+std::vector<std::vector<arangodb::basics::AttributeName>> const&
+IResearchRocksDBInvertedIndex::coveredFields() const {
+  return {}; // FIXME: looks like we don't need this here actually
 }
 
 Result IResearchRocksDBInvertedIndex::drop() {

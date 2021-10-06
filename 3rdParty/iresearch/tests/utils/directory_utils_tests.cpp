@@ -42,67 +42,63 @@ class directory_utils_tests: public ::testing::Test {
 
     using directory::attributes;
 
-    virtual irs::attribute_store& attributes() noexcept override {
+    virtual irs::directory_attributes& attributes() noexcept override {
       return attrs_;
     }
 
     virtual irs::index_output::ptr create(
-      const std::string& name
-    ) noexcept override {
+        const std::string&) noexcept override {
       return nullptr;
     }
 
     virtual bool exists(
-      bool& result, const std::string& name
-    ) const noexcept override {
+        bool&,
+        const std::string&) const noexcept override {
       return false;
     }
 
     virtual bool length(
-      uint64_t& result, const std::string& name
-    ) const noexcept override {
+        uint64_t&,
+        const std::string&) const noexcept override {
       return false;
     }
 
     virtual irs::index_lock::ptr make_lock(
-      const std::string& name
-    ) noexcept override {
+        const std::string&) noexcept override {
       return nullptr;
     }
 
     virtual bool mtime(
-      std::time_t& result, const std::string& name
-    ) const noexcept override {
+        std::time_t&,
+        const std::string&) const noexcept override {
       return false;
     }
 
     virtual irs::index_input::ptr open(
-      const std::string& name,
-      irs::IOAdvice advice
-    ) const noexcept override {
+        const std::string&,
+        irs::IOAdvice) const noexcept override {
       return nullptr;
     }
 
-    virtual bool remove(const std::string& name) noexcept override {
+    virtual bool remove(const std::string&) noexcept override {
       return false;
     }
 
     virtual bool rename(
-      const std::string& src, const std::string& dst
-    ) noexcept override {
+        const std::string&, const std::string&) noexcept override {
       return false;
     }
 
-    virtual bool sync(const std::string& name) noexcept override {
+    virtual bool sync(const std::string&) noexcept override {
       return false;
     }
 
-    virtual bool visit(const irs::directory::visitor_f& visitor) const override {
+    virtual bool visit(const irs::directory::visitor_f&) const override {
       return false;
     }
 
    private:
-    irs::attribute_store attrs_;
+    irs::directory_attributes attrs_{};
   }; // directory_mock
 };
 
@@ -112,25 +108,6 @@ class directory_utils_tests: public ::testing::Test {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(directory_utils_tests, ensure_get_allocator) {
-  directory_mock dir;
-  ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-  ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
-
-  // size == 0 -> use global allocator
-  ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::ensure_allocator(dir, 0));
-  ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-  ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
-
-  // size != 0 -> create allocator
-  auto& alloc = irs::directory_utils::ensure_allocator(dir, 42);
-  auto* alloc_attr = dir.attributes().get<irs::memory_allocator>();
-  ASSERT_NE(nullptr, alloc_attr);
-  ASSERT_NE(nullptr, *alloc_attr);
-  ASSERT_EQ(&alloc, alloc_attr->get());
-  ASSERT_EQ(&alloc, &irs::directory_utils::get_allocator(dir));
-}
-
 TEST_F(directory_utils_tests, test_reference) {
   // test clear refs (all free)
   {
@@ -138,14 +115,13 @@ TEST_F(directory_utils_tests, test_reference) {
 
     ASSERT_TRUE(irs::directory_utils::reference(dir, "abc", true).operator bool());
 
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+    auto& attribute = dir.attributes().refs();
 
-    ASSERT_TRUE(attribute.operator bool());
-    ASSERT_FALSE(attribute->refs().empty());
-    ASSERT_TRUE(attribute->refs().contains("abc"));
+    ASSERT_FALSE(attribute.refs().empty());
+    ASSERT_TRUE(attribute.refs().contains("abc"));
 
-    attribute->clear();
-    ASSERT_TRUE(attribute->refs().empty());
+    attribute.clear();
+    ASSERT_TRUE(attribute.refs().empty());
   }
 
   // test clear refs (in-use)
@@ -155,23 +131,11 @@ TEST_F(directory_utils_tests, test_reference) {
 
     ASSERT_TRUE(ref.operator bool());
 
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+    auto& attribute = dir.attributes().refs();
 
-    ASSERT_TRUE(attribute.operator bool());
-    ASSERT_FALSE(attribute->refs().empty());
-    ASSERT_TRUE(attribute->refs().contains("abc"));
-    ASSERT_THROW(attribute->clear(), irs::illegal_state);
-  }
-
-  // test add file (no missing)
-  {
-    irs::memory_directory dir;
-
-    ASSERT_FALSE(irs::directory_utils::reference(dir, "abc").operator bool());
-
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
-
-    ASSERT_FALSE(attribute.operator bool());
+    ASSERT_FALSE(attribute.refs().empty());
+    ASSERT_TRUE(attribute.refs().contains("abc"));
+    ASSERT_THROW(attribute.clear(), irs::illegal_state);
   }
 
   // test add file (with missing)
@@ -180,12 +144,11 @@ TEST_F(directory_utils_tests, test_reference) {
 
     ASSERT_TRUE(irs::directory_utils::reference(dir, "abc", true).operator bool());
 
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+    auto& attribute = dir.attributes().refs();
 
-    ASSERT_TRUE(attribute.operator bool());
-    ASSERT_FALSE(attribute->refs().empty());
-    ASSERT_TRUE(attribute->refs().contains("abc"));
-    ASSERT_FALSE(attribute->refs().contains("def"));
+    ASSERT_FALSE(attribute.refs().empty());
+    ASSERT_TRUE(attribute.refs().contains("abc"));
+    ASSERT_FALSE(attribute.refs().contains("def"));
   }
 
   // test add file
@@ -196,12 +159,11 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_FALSE(!file);
     ASSERT_TRUE(irs::directory_utils::reference(dir, "abc").operator bool());
 
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+    auto& attribute = dir.attributes().refs();
 
-    ASSERT_TRUE(attribute.operator bool());
-    ASSERT_FALSE(attribute->refs().empty());
-    ASSERT_TRUE(attribute->refs().contains("abc"));
-    ASSERT_FALSE(attribute->refs().contains("def"));
+    ASSERT_FALSE(attribute.refs().empty());
+    ASSERT_TRUE(attribute.refs().contains("abc"));
+    ASSERT_FALSE(attribute.refs().contains("def"));
   }
 
   // test add from source
@@ -211,7 +173,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     files.emplace("abc");
     files.emplace("def");
@@ -228,12 +190,11 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(irs::directory_utils::reference(dir, source, visitor));
     ASSERT_EQ(1, count);
 
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+    auto& attribute = dir.attributes().refs();
 
-    ASSERT_TRUE(attribute.operator bool());
-    ASSERT_FALSE(attribute->refs().empty());
-    ASSERT_TRUE(attribute->refs().contains("abc"));
-    ASSERT_FALSE(attribute->refs().contains("def"));
+    ASSERT_FALSE(attribute.refs().empty());
+    ASSERT_TRUE(attribute.refs().contains("abc"));
+    ASSERT_FALSE(attribute.refs().contains("def"));
   }
 
   // test add from source (with missing)
@@ -243,7 +204,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     files.emplace("abc");
     files.emplace("def");
@@ -261,12 +222,11 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(irs::directory_utils::reference(dir, source, visitor, true));
     ASSERT_EQ(2, count);
 
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+    auto& attribute = dir.attributes().refs();
 
-    ASSERT_TRUE(attribute.operator bool());
-    ASSERT_FALSE(attribute->refs().empty());
-    ASSERT_TRUE(attribute->refs().contains("abc"));
-    ASSERT_TRUE(attribute->refs().contains("def"));
+    ASSERT_FALSE(attribute.refs().empty());
+    ASSERT_TRUE(attribute.refs().contains("abc"));
+    ASSERT_TRUE(attribute.refs().contains("def"));
   }
 
   // test add from source visitor terminate
@@ -276,7 +236,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return false; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return false; };
     std::unordered_set<std::string> expected_one_of = {
       "abc", "def",
     };
@@ -296,13 +256,12 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_FALSE(irs::directory_utils::reference(dir, source, visitor, true));
     ASSERT_EQ(1, count);
 
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+    auto& attribute = dir.attributes().refs();
 
-    ASSERT_TRUE(attribute.operator bool());
-    ASSERT_FALSE(attribute->refs().empty());
+    ASSERT_FALSE(attribute.refs().empty());
 
     for (auto& file: expected_one_of) {
-      if (attribute->refs().contains(file)) {
+      if (attribute.refs().contains(file)) {
         expected_one_of.erase(file);
         break;
       }
@@ -311,7 +270,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_EQ(1, expected_one_of.size());
 
     for (auto& file: expected_one_of) {
-      ASSERT_FALSE(attribute->refs().contains(file));
+      ASSERT_FALSE(attribute.refs().contains(file));
     }
   }
 
@@ -320,14 +279,10 @@ TEST_F(directory_utils_tests, test_reference) {
     irs::memory_directory dir;
     irs::segment_meta meta;
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     ASSERT_TRUE(irs::directory_utils::reference(dir, meta, visitor, true));
     ASSERT_EQ(0, count);
-
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
-
-    ASSERT_FALSE(attribute.operator bool());
   }
 
   // test add segment_meta files
@@ -337,7 +292,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     meta.files.emplace("abc");
     meta.files.emplace("def");
@@ -345,12 +300,11 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(irs::directory_utils::reference(dir, meta, visitor));
     ASSERT_EQ(1, count);
 
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+    auto& attribute = dir.attributes().refs();
 
-    ASSERT_TRUE(attribute.operator bool());
-    ASSERT_FALSE(attribute->refs().empty());
-    ASSERT_TRUE(attribute->refs().contains("abc"));
-    ASSERT_FALSE(attribute->refs().contains("def"));
+    ASSERT_FALSE(attribute.refs().empty());
+    ASSERT_TRUE(attribute.refs().contains("abc"));
+    ASSERT_FALSE(attribute.refs().contains("def"));
   }
 
   // test add segment_meta files (with missing)
@@ -360,7 +314,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     meta.files.emplace("abc");
     meta.files.emplace("def");
@@ -368,12 +322,11 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(irs::directory_utils::reference(dir, meta, visitor, true));
     ASSERT_EQ(2, count);
 
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+    auto& attribute = dir.attributes().refs();
 
-    ASSERT_TRUE(attribute.operator bool());
-    ASSERT_FALSE(attribute->refs().empty());
-    ASSERT_TRUE(attribute->refs().contains("abc"));
-    ASSERT_TRUE(attribute->refs().contains("def"));
+    ASSERT_FALSE(attribute.refs().empty());
+    ASSERT_TRUE(attribute.refs().contains("abc"));
+    ASSERT_TRUE(attribute.refs().contains("def"));
   }
 
   // test add segment_meta files visitor terminate
@@ -383,7 +336,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return false; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return false; };
     std::unordered_set<std::string> expected_one_of = {
       "abc",
       "def",
@@ -395,13 +348,12 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_FALSE(irs::directory_utils::reference(dir, meta, visitor, true));
     ASSERT_EQ(1, count);
 
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+    auto& attribute = dir.attributes().refs();
 
-    ASSERT_TRUE(attribute.operator bool());
-    ASSERT_FALSE(attribute->refs().empty());
+    ASSERT_FALSE(attribute.refs().empty());
 
     for (auto& file: expected_one_of) {
-      if (attribute->refs().contains(file)) {
+      if (attribute.refs().contains(file)) {
         expected_one_of.erase(file);
         break;
       }
@@ -410,7 +362,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_EQ(1, expected_one_of.size());
 
     for (auto& file: expected_one_of) {
-      ASSERT_FALSE(attribute->refs().contains(file));
+      ASSERT_FALSE(attribute.refs().contains(file));
     }
   }
 
@@ -420,14 +372,10 @@ TEST_F(directory_utils_tests, test_reference) {
     irs::index_meta meta;
     irs::index_meta::index_segments_t segments;
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     ASSERT_TRUE(irs::directory_utils::reference(dir, meta, visitor));
     ASSERT_EQ(0, count);
-
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
-
-    ASSERT_FALSE(attribute.operator bool());
   }
 
   // test add index_meta files
@@ -438,7 +386,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     segments[0].meta.files.emplace("abc");
     segments[0].meta.files.emplace("def");
@@ -447,12 +395,11 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(irs::directory_utils::reference(dir, meta, visitor));
     ASSERT_EQ(1, count);
 
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+    auto& attribute = dir.attributes().refs();
 
-    ASSERT_TRUE(attribute.operator bool());
-    ASSERT_FALSE(attribute->refs().empty());
-    ASSERT_TRUE(attribute->refs().contains("abc"));
-    ASSERT_FALSE(attribute->refs().contains("def"));
+    ASSERT_FALSE(attribute.refs().empty());
+    ASSERT_TRUE(attribute.refs().contains("abc"));
+    ASSERT_FALSE(attribute.refs().contains("def"));
   }
 
   // test add index_meta files (with missing)
@@ -463,7 +410,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     segments[0].meta.files.emplace("abc");
     segments[0].meta.files.emplace("def");
@@ -472,12 +419,11 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(irs::directory_utils::reference(dir, meta, visitor, true));
     ASSERT_EQ(3, count); // +1 for segment file
 
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+    auto& attribute = dir.attributes().refs();
 
-    ASSERT_TRUE(attribute.operator bool());
-    ASSERT_FALSE(attribute->refs().empty());
-    ASSERT_TRUE(attribute->refs().contains("abc"));
-    ASSERT_TRUE(attribute->refs().contains("def"));
+    ASSERT_FALSE(attribute.refs().empty());
+    ASSERT_TRUE(attribute.refs().contains("abc"));
+    ASSERT_TRUE(attribute.refs().contains("def"));
   }
 
   // test add index_meta files visitor terminate
@@ -488,7 +434,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return false; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return false; };
     std::unordered_set<std::string> expected_one_of = {
       "abc",
       "def",
@@ -503,13 +449,12 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_FALSE(irs::directory_utils::reference(dir, meta, visitor, true));
     ASSERT_EQ(1, count);
 
-    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+    auto& attribute = dir.attributes().refs();
 
-    ASSERT_TRUE(attribute.operator bool());
-    ASSERT_FALSE(attribute->refs().empty());
+    ASSERT_FALSE(attribute.refs().empty());
 
     for (auto& file: expected_one_of) {
-      if (attribute->refs().contains(file)) {
+      if (attribute.refs().contains(file)) {
         expected_one_of.erase(file);
         break;
       }
@@ -518,7 +463,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_EQ(2, expected_one_of.size());
 
     for (auto& file: expected_one_of) {
-      ASSERT_FALSE(attribute->refs().contains(file));
+      ASSERT_FALSE(attribute.refs().contains(file));
     }
   }
 }
@@ -592,7 +537,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     auto file2 = track_dir.create("def");
     ASSERT_FALSE(!file2);
     size_t count = 0;
-    auto visitor = [&count](const irs::index_file_refs::ref_t& ref)->bool { ++count; return true; };
+    auto visitor = [&count](const irs::index_file_refs::ref_t&)->bool { ++count; return true; };
 
     ASSERT_TRUE(track_dir.visit_refs(visitor));
     ASSERT_EQ(2, count);
@@ -607,7 +552,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
     size_t count = 0;
-    auto visitor = [&count](const irs::index_file_refs::ref_t& ref)->bool { ++count; return true; };
+    auto visitor = [&count](const irs::index_file_refs::ref_t&)->bool { ++count; return true; };
 
     ASSERT_TRUE(track_dir.visit_refs(visitor));
     ASSERT_EQ(0, count);
@@ -622,7 +567,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
     size_t count = 0;
-    auto visitor = [&count](const irs::index_file_refs::ref_t& ref)->bool { ++count; return true; };
+    auto visitor = [&count](const irs::index_file_refs::ref_t&)->bool { ++count; return true; };
 
     ASSERT_TRUE(track_dir.visit_refs(visitor));
     ASSERT_EQ(1, count);
@@ -637,7 +582,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     auto file2 = track_dir.create("def");
     ASSERT_FALSE(!file2);
     size_t count = 0;
-    auto visitor = [&count](const irs::index_file_refs::ref_t& ref)->bool { ++count; return false; };
+    auto visitor = [&count](const irs::index_file_refs::ref_t&)->bool { ++count; return false; };
 
     ASSERT_FALSE(track_dir.visit_refs(visitor));
     ASSERT_EQ(1, count);
@@ -648,24 +593,22 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
   // ...........................................................................
 
   struct error_directory: public irs::directory {
-    irs::attribute_store attrs;
-    virtual irs::attribute_store& attributes() noexcept override { return attrs; }
+    irs::directory_attributes attrs{};
+    virtual irs::directory_attributes& attributes() noexcept override { return attrs; }
     virtual irs::index_output::ptr create(const std::string&) noexcept override { return nullptr; }
-    virtual bool exists(bool& result, const std::string&) const noexcept override { return false; }
-    virtual bool length(uint64_t& result, const std::string&) const noexcept override { return false; }
+    virtual bool exists(bool&, const std::string&) const noexcept override { return false; }
+    virtual bool length(uint64_t&, const std::string&) const noexcept override { return false; }
     virtual bool visit(const visitor_f&) const override { return false; }
     virtual irs::index_lock::ptr make_lock(const std::string&) noexcept override { return nullptr; }
-    virtual bool mtime(std::time_t& result, const std::string& name) const noexcept override { return false; }
+    virtual bool mtime(std::time_t&, const std::string&) const noexcept override { return false; }
     virtual irs::index_input::ptr open(const std::string&, irs::IOAdvice) const noexcept override { return nullptr; }
     virtual bool remove(const std::string&) noexcept override { return false; }
     virtual bool rename(const std::string&, const std::string&) noexcept override { return false; }
-    virtual bool sync(const std::string& name) noexcept override { return false; }
+    virtual bool sync(const std::string&) noexcept override { return false; }
   } error_dir;
 
   // test create failure
   {
-    error_dir.attributes().clear();
-
     irs::ref_tracking_directory track_dir(error_dir);
 
     ASSERT_FALSE(track_dir.create("abc"));
@@ -679,8 +622,6 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
 
   // test open failure
   {
-    error_dir.attributes().clear();
-
     irs::ref_tracking_directory track_dir(error_dir, true);
 
     ASSERT_FALSE(track_dir.open("abc", irs::IOAdvice::NORMAL));

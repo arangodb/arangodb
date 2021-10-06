@@ -176,6 +176,7 @@ class Logger {
   static LogTopic GRAPHS;
   static LogTopic HEARTBEAT;
   static LogTopic HTTPCLIENT;
+  static LogTopic LICENSE;
   static LogTopic MAINTENANCE;
   static LogTopic MEMORY;
   static LogTopic MMAP;
@@ -277,8 +278,10 @@ class Logger {
   static void setShowThreadName(bool);
   static void setUseColor(bool);
   static bool getUseColor() { return _useColor; };
-  static void setUseEscaped(bool);
-  static bool getUseEscaped() { return _useEscaped; };
+  static void setUseControlEscaped(bool);
+  static void setUseUnicodeEscaped(bool);
+  static bool getUseControlEscaped() { return _useControlEscaped; };
+  static bool getUseUnicodeEscaped() { return _useUnicodeEscaped; };
   static bool getUseLocalTime() { return LogTimeFormats::isLocalFormat(_timeFormat); }
   static void setTimeFormat(LogTimeFormats::TimeFormat);
   static void setKeepLogrotate(bool);
@@ -330,7 +333,8 @@ class Logger {
   static bool _showThreadName;
   static bool _showRole;
   static bool _useColor;
-  static bool _useEscaped;
+  static bool _useControlEscaped;
+  static bool _useUnicodeEscaped;
   static bool _keepLogRotate;
   static bool _logRequestParameters;
   static bool _showIds;

@@ -35,7 +35,7 @@ using namespace arangodb::graph;
 
 namespace arangodb {
 namespace tests {
-namespace queue_graph_cache_test {
+namespace lifo_queue_graph_cache_test {
 
 class Step : public arangodb::graph::BaseStep<Step> {
   size_t _id;

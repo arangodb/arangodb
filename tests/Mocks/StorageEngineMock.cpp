@@ -1495,10 +1495,11 @@ std::shared_ptr<arangodb::iresearch::IResearchLinkMock> StorageEngineMock::build
   auto index = std::shared_ptr<arangodb::iresearch::IResearchLinkMock>(
       new arangodb::iresearch::IResearchLinkMock(id, collection));
   auto res = static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get())
-                 ->init(info, [](irs::directory& dir) {
+                 ->init(info, []() -> irs::directory_attributes {
                    if (arangodb::iresearch::IResearchLinkMock::InitCallback != nullptr) {
-                     arangodb::iresearch::IResearchLinkMock::InitCallback(dir);
+                     return arangodb::iresearch::IResearchLinkMock::InitCallback();
                    }
+                   return irs::directory_attributes{};
                  });
 
   if (!res.ok()) {

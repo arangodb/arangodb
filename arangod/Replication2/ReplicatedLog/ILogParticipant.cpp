@@ -22,6 +22,7 @@
 
 #include "ILogParticipant.h"
 
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
@@ -29,6 +30,7 @@
 
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
+#include <Basics/application-exit.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;

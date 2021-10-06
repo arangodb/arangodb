@@ -31,6 +31,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/TransactionState.h"
 
+#include "store/directory_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/directory.hpp"
@@ -125,7 +126,7 @@ struct IResearchTrxState final : public TransactionState::Cookie {
 class IResearchDataStore {
  public:
   using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
-  using InitCallback = std::function<void(irs::directory&)>;
+  using InitCallback = std::function<irs::directory_attributes()>;
 
   class Snapshot {
    public:

@@ -27,6 +27,7 @@
 #include <store/store_utils.hpp>
 #include <utils/encryption.hpp>
 #include <utils/singleton.hpp>
+#include <utils/file_utils.hpp>
 
 #include "IResearchLink.h"
 #include "IResearchDocument.h"

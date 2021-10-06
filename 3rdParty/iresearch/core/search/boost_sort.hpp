@@ -32,7 +32,7 @@ struct IRESEARCH_API boost_sort final : public sort {
     return "boostscore";
   }
 
-  DECLARE_FACTORY(); // for use with irs::order::add<T>() and default args
+  static ptr make(); // for use with irs::order::add<T>() and default args
 
   static void init();
 

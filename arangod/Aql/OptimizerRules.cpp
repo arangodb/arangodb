@@ -1344,8 +1344,11 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
 void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
                                                std::unique_ptr<ExecutionPlan> plan,
                                                OptimizerRule const& rule) {
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  using short_alloc_t = ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type;
+  auto arena = short_alloc_t::arena_type();
+  auto nodes = containers::SmallVector<ExecutionNode*>(arena);
+  // NOLINTNEXTLINE(bugprone-sizeof-expression)
+  nodes.reserve(short_alloc_t::size / sizeof(short_alloc_t::value_type));
   plan->findNodesOfType(nodes, EN::COLLECT, true);
 
   bool modified = false;
@@ -1354,7 +1357,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
     auto collectNode = ExecutionNode::castTo<CollectNode*>(n);
     TRI_ASSERT(collectNode != nullptr);
 
-    auto const& varsUsedLater = n->getVarsUsedLater();
+    auto const& varsUsedLater = collectNode->getVarsUsedLater();
     auto outVariable = collectNode->outVariable();
 
     if (outVariable != nullptr &&
@@ -1368,11 +1371,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
       // e.g. COLLECT something INTO g
       // we will now check how many parts of "g" are used later
 
-      std::unordered_set<std::string> keepAttributes;
-
-      ::arangodb::containers::SmallVector<Variable const*>::allocator_type::arena_type a;
-      ::arangodb::containers::SmallVector<Variable const*> searchVariables{a};
-      searchVariables.push_back(outVariable);
+      auto keepAttributes = containers::HashSet<std::string>();
 
       bool doOptimize = true;
       auto planNode = collectNode->getFirstParent();
@@ -1380,10 +1379,10 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
         if (planNode->getType() == EN::CALCULATION) {
           auto cc = ExecutionNode::castTo<CalculationNode const*>(planNode);
           Expression const* exp = cc->expression();
-          if (exp->node() != nullptr && !searchVariables.empty()) {
+          if (exp->node() != nullptr) {
             bool isSafeForOptimization;
             auto usedThere =
-                ast::getReferencedAttributesForKeep(exp->node(), searchVariables,
+                ast::getReferencedAttributesForKeep(exp->node(), outVariable,
                                                     isSafeForOptimization);
             if (isSafeForOptimization) {
               for (auto const& it : usedThere) {
@@ -1395,25 +1394,14 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
             }
 
           }  // end - expression exists
-        } else if (planNode->getType() == EN::COLLECT) {
-          auto innerCollectNode = ExecutionNode::castTo<CollectNode const*>(planNode);
-          if (innerCollectNode->hasOutVariable()) {
-            // We have the following situation:
-            //
-            // COLLECT v1 = doc._id INTO g1
-            // COLLECT v2 = doc._id INTO g2
-            //
-            searchVariables.push_back(innerCollectNode->outVariable());
-          } else {
-            // when we find another COLLECT, it will invalidate all
-            // previous variables in the scope
-            searchVariables.clear();
-          }
         } else {
           auto here = planNode->getVariableIdsUsedHere();
-          if (here.find(searchVariables.back()->id) != here.end()) {
+          if (here.find(outVariable->id) != here.end()) {
             // the outVariable of the last collect should not be used by any following node directly
             doOptimize = false;
+            break;
+          }
+          if (planNode->getType() == EN::COLLECT) {
             break;
           }
         }
@@ -1423,7 +1411,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
       }  // end - inspection of nodes below the found collect node - while valid planNode
 
       if (doOptimize) {
-        auto keepVariables = std::unordered_set<Variable const*>{};
+        auto keepVariables = containers::HashSet<Variable const*>();
         // we are allowed to do the optimization
         auto current = n->getFirstDependency();
         while (current != nullptr) {

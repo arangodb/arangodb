@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { uniqueId } from 'lodash';
 import PlainLabel from "./PlainLabel";
@@ -19,22 +19,26 @@ type SelectProps = {
 };
 
 const Select = ({ id, label, children, disabled, inline, ...rest }: SelectProps) => {
-  if (!id) {
-    id = uniqueId('textbox-');
-  }
+  const [thisId, setThisId] = useState(id || uniqueId('textbox-'));
+
+  useEffect(() => {
+    if (id) {
+      setThisId(id);
+    }
+  }, [id]);
 
   if (inline) {
-    return <PlainLabel htmlFor={id} style={{
+    return <PlainLabel htmlFor={thisId} style={{
       display: 'inline-block'
     }}>
       {label}:&nbsp;
-      <StyledSelect id={id} disabled={disabled} {...rest}>{children}</StyledSelect>
+      <StyledSelect id={thisId} disabled={disabled} {...rest}>{children}</StyledSelect>
     </PlainLabel>;
   }
 
   return <>
-    <PlainLabel htmlFor={id}>{label}</PlainLabel>
-    <StyledSelect id={id} disabled={disabled} {...rest}>{children}</StyledSelect>
+    <PlainLabel htmlFor={thisId}>{label}</PlainLabel>
+    <StyledSelect id={thisId} disabled={disabled} {...rest}>{children}</StyledSelect>
   </>;
 };
 

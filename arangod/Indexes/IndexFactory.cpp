@@ -32,6 +32,8 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "RestServer/BootstrapFeature.h"
+#include "RestServer/DatabaseFeature.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -254,7 +256,8 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
       }
     }
 
-    if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(name))) {
+    bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNamesForCollections(); 
+    if (!IndexNameValidator::isAllowedName(extendedNames, name)) {
       return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
 

@@ -41,6 +41,7 @@
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VelocyPackHelper.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
@@ -770,9 +771,10 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
           }
         }
 
+        bool extendedNames = server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
         AnalyzerPool::ptr analyzer;
         auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
-          analyzer, name, type, properties, revision, features, LinkVersion{_version});
+          analyzer, name, type, properties, revision, features, LinkVersion{_version}, extendedNames);
 
         if (res.fail() || !analyzer) {
           errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
@@ -1040,9 +1042,11 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
         }
 
         AnalyzerPool::ptr analyzer;
+        bool extendedNames = server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
         auto const res =
             IResearchAnalyzerFeature::createAnalyzerPool(analyzer, name, type, properties,
-                                                         revision, features, LinkVersion{_version});
+                                                         revision, features, LinkVersion{_version},
+                                                         extendedNames);
 
         if (res.fail() || !analyzer) {
           errorField = fieldName + "[" + std::to_string(itr.index()) + "]";

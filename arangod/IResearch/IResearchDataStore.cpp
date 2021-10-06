@@ -42,6 +42,7 @@
 #include <store/store_utils.hpp>
 #include <utils/encryption.hpp>
 #include <utils/singleton.hpp>
+#include <utils/file_utils.hpp>
 #include <chrono>
 
 namespace {
@@ -867,9 +868,10 @@ Result IResearchDataStore::deleteDataStore() {
   bool exists;
 
   // remove persisted data store directory if present
-  if (!_dataStore._path.exists_directory(exists) || (exists && !_dataStore._path.remove())) {
+  if (!irs::file_utils::exists_directory(exists, _dataStore._path.c_str()) ||
+      (exists && !irs::file_utils::remove(_dataStore._path.c_str()))) {
     return {TRI_ERROR_INTERNAL, "failed to remove arangosearch data store'" +
-                                    std::to_string(id().id()) + "'"};
+            std::to_string(id().id()) + "'"};
   }
   return {};
 }
@@ -912,25 +914,25 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback, uint3
 
   // must manually ensure that the data store directory exists (since not using
   // a lockfile)
-  if (_dataStore._path.exists_directory(pathExists) && !pathExists &&
-      !_dataStore._path.mkdir()) {
+  if (irs::file_utils::exists_directory(pathExists, _dataStore._path.c_str()) && !pathExists &&
+      !irs::file_utils::mkdir(_dataStore._path.c_str(), true)) {
     return {TRI_ERROR_CANNOT_CREATE_DIRECTORY,
             "failed to create data store directory with path '" +
-                _dataStore._path.utf8() + "' while initializing link '" +
-                std::to_string(_id.id()) + "'"};
-  }
-
-  _dataStore._directory = std::make_unique<irs::mmap_directory>(_dataStore._path.utf8());
-
-  if (!_dataStore._directory) {
-    return {TRI_ERROR_INTERNAL,
-            "failed to instantiate data store directory with path '" +
-                _dataStore._path.utf8() + "' while initializing link '" +
+                _dataStore._path.u8string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
 
   if (initCallback) {
-    initCallback(*_dataStore._directory);
+    _dataStore._directory = std::make_unique<irs::mmap_directory>(_dataStore._path.u8string(), initCallback());
+  } else {
+    _dataStore._directory = std::make_unique<irs::mmap_directory>(_dataStore._path.u8string());
+  }
+
+  if (!_dataStore._directory) {
+    return {TRI_ERROR_INTERNAL,
+            "failed to instantiate data store directory with path '" +
+                _dataStore._path.u8string() + "' while initializing link '" +
+                std::to_string(_id.id()) + "'"};
   }
 
   switch (_engine->recoveryState()) {
@@ -1004,7 +1006,7 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback, uint3
   }
   // setup columnstore compression/encryption if requested by storage engine
   auto const encrypt =
-      (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
+      (nullptr != _dataStore._directory->attributes().encryption());
   options.column_info = [encrypt, comprMap = std::move(compressionMap),
                          primarySortCompression](const irs::string_ref& name) -> irs::column_info {
     if (name.null()) {
@@ -1030,7 +1032,7 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback, uint3
   if (!_dataStore._writer) {
     return {TRI_ERROR_INTERNAL,
             "failed to instantiate data store writer with path '" +
-                _dataStore._path.utf8() + "' while initializing link '" +
+                _dataStore._path.u8string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
 
@@ -1044,7 +1046,7 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback, uint3
 
     return {TRI_ERROR_INTERNAL,
             "failed to instantiate data store reader with path '" +
-                _dataStore._path.utf8() + "' while initializing link '" +
+                _dataStore._path.u8string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
 

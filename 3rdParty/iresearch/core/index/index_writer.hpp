@@ -112,12 +112,7 @@ ENABLE_BITMASK_ENUM(OpenMode);
 ///        the same directory simultaneously.
 ///        Thread safe.
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API index_writer
-    : private atomic_shared_ptr_helper<
-        std::pair<
-          std::shared_ptr<index_meta>, std::vector<index_file_refs::ref_t>
-      >>,
-      private util::noncopyable {
+class IRESEARCH_API index_writer : private util::noncopyable {
  private:
   struct flush_context; // forward declaration
   struct segment_context; // forward declaration
@@ -137,11 +132,10 @@ class IRESEARCH_API index_writer
    public:
     active_segment_context() = default;
     active_segment_context(
-        segment_context_ptr ctx,
-        std::atomic<size_t>& segments_active,
-        flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
-        size_t pending_segment_context_offset = std::numeric_limits<size_t>::max() // the segment offset in flush_ctx_->pending_segments_
-    ) noexcept;
+      segment_context_ptr ctx,
+      std::atomic<size_t>& segments_active,
+      flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
+      size_t pending_segment_context_offset = std::numeric_limits<size_t>::max()) noexcept; // the segment offset in flush_ctx_->pending_segments_
     active_segment_context(active_segment_context&&)  = default;
     ~active_segment_context();
     active_segment_context& operator=(active_segment_context&& other) noexcept;
@@ -469,12 +463,6 @@ class IRESEARCH_API index_writer
     ///        empty == use default system sorting order
     ////////////////////////////////////////////////////////////////////////////
     const comparer* comparator{nullptr};
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief number of memory blocks to cache by the internal memory pool
-    ///        0 == use default from memory_allocator::global()
-    ////////////////////////////////////////////////////////////////////////////
-    size_t memory_pool_size{0};
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of free segments cached in the segment pool for reuse
@@ -853,14 +841,14 @@ class IRESEARCH_API index_writer
         : index_meta::index_segment_t(std::move(meta)) {}
     };
     using segment_meta_generator_t = std::function<segment_meta()>;
-    using ptr = std::shared_ptr<segment_context>;
+    using ptr = std::unique_ptr<segment_context>;
 
     std::atomic<size_t> active_count_; // number of active in-progress operations (insert/replace) (e.g. document instances or replace(...))
     std::atomic<size_t> buffered_docs_; // for use with index_writer::buffered_docs() asynchronous call
     format::ptr codec_; // the codec to used for flushing a segment writer
     std::atomic<bool> dirty_; // true if flush_all() started processing this segment (this segment should not be used for any new operations), guarded by the flush_context::flush_mutex_
     ref_tracking_directory dir_; // ref tracking for segment_writer to allow for easy ref removal on segment_writer reset
-    std::recursive_mutex flush_mutex_; // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
+    std::mutex flush_mutex_; // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
     std::vector<flushed_t> flushed_; // all of the previously flushed versions of this segment, guarded by the flush_context::flush_mutex_
     std::vector<segment_writer::update_context> flushed_update_contexts_; // update_contexts to use with 'flushed_' sequentially increasing through all offsets (sequential doc_id in 'flushed_' == offset + type_limits<type_t::doc_id_t>::min(), size() == sum of all 'flushed_'.'docs_count')
     segment_meta_generator_t meta_generator_; // function to get new segment_meta from
@@ -960,10 +948,11 @@ class IRESEARCH_API index_writer
       size_t doc_id_end_; // ending segment_context::document_contexts_ for this flush_context range [pending_segment_context::doc_id_begin_, std::min(pending_segment_context::doc_id_end_, segment_context::uncomitted_doc_ids_))
       const size_t modification_offset_begin_; // starting segment_context::modification_queries_ for this flush_context range [pending_segment_context::modification_offset_begin_, std::min(pending_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
       size_t modification_offset_end_; // ending segment_context::modification_queries_ for this flush_context range [pending_segment_context::modification_offset_begin_, std::min(pending_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
-      const segment_context::ptr segment_;
+      const std::shared_ptr<segment_context> segment_;
 
       pending_segment_context(
-          const segment_context::ptr& segment, size_t pending_segment_context_offset)
+          const std::shared_ptr<segment_context>& segment,
+          size_t pending_segment_context_offset)
         : doc_id_begin_(segment->uncomitted_doc_id_begin_),
           doc_id_end_(std::numeric_limits<size_t>::max()),
           modification_offset_begin_(segment->uncomitted_modification_queries_),
@@ -976,7 +965,7 @@ class IRESEARCH_API index_writer
 
     std::atomic<size_t> generation_{ 0 }; // current modification/update generation
     ref_tracking_directory::ptr dir_; // ref tracking directory used by this context (tracks all/only refs for this context)
-    async_utils::read_write_mutex flush_mutex_; // guard for the current context during flush (write) operations vs update (read)
+    std::shared_mutex flush_mutex_; // guard for the current context during flush (write) operations vs update (read)
     std::mutex mutex_; // guard for the current context during struct update operations, e.g. pending_segments_, pending_segment_contexts_
     flush_context* next_context_; // the next context to switch to
     std::vector<import_context> pending_segments_; // complete segments to be added during next commit (import)
@@ -1105,6 +1094,10 @@ class IRESEARCH_API index_writer
     const field_features_t& field_features,
     index_meta&& meta,
     committed_state_t&& committed_state);
+
+  std::pair<std::vector<std::unique_lock<std::mutex>>, uint64_t> flush_pending(
+    flush_context& ctx,
+    std::unique_lock<std::mutex>& ctx_lock);
 
   pending_context_t flush_all();
 

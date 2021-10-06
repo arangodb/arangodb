@@ -46,7 +46,7 @@ If the index definition is invalid, then a *HTTP 400* is returned.
 
 Creating a multi-dimensional index
 
-@EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewFulltext}
+@EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewZkd}
 var cn = "intervals";
 db._drop(cn);
 db._create(cn);
