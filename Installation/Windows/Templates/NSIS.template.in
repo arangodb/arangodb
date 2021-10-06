@@ -1010,7 +1010,7 @@ Function .onInstSuccess
     ${Else}
       EnVar::SetHKCU
     ${EndIf}
-    EnVar::AddValue "PATH" "$INSTDIR/${BIN_DIR}"
+    EnVar::AddValue "PATH" "$INSTDIR\${BIN_DIR}"
   ${EndIf}
 
   IfSilent 0 continueUI
