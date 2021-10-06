@@ -1309,6 +1309,16 @@ Function .onInit
   ${EndIf}
 noInstDir:
 
+  # $AUTOMATIC_BACKUP would be set later in the UI code (if)
+  StrCpy $AUTOMATIC_BACKUP "0"
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/BACKUP_ON_UPGRADE="        $CMDUPGRADE
+  IfErrors noBackupOnUpgrade 0
+  IfSilent 0 noBackupOnUpgrade
+  StrCpy $AUTOMATIC_BACKUP "$CMDUPGRADE"
+noBackupOnUpgrade:
+
   # $AUTOMATIC_UPDATE would be set later in the UI code (if)
   StrCpy $AUTOMATIC_UPDATE "0"
   ${GetParameters} $R0
