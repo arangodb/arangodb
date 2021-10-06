@@ -240,6 +240,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _numIndexCreations(0),
       _statistics(
         collection.vocbase().server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics) {
+  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   if (_cacheEnabled) {
     createCache();
   }
