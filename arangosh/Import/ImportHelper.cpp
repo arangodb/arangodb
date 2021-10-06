@@ -613,7 +613,7 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
 void ImportHelper::verifyMergeAttributesLiteralsSyntax(std::string const& attrLiteral) const {
   if (attrLiteral.find_first_of("[]=") != std::string::npos) {
     LOG_TOPIC("0b9e2", FATAL, arangodb::Logger::FIXME)
-        << "Wrong syntax in --merge-attributes: string literals cannot contain '[, ], ='";
+        << "Wrong syntax in --merge-attributes: string literals cannot contain any of '[', ']' or '='";
     FATAL_ERROR_EXIT();
   }
 }
