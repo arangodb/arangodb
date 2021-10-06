@@ -245,7 +245,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
         -> ResolvedPromiseSet;
 
     [[nodiscard]] auto getInternalLogIterator(LogIndex firstIdx) const
-        -> std::unique_ptr<PersistedLogIterator>;
+        -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>>;
 
     [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
         -> std::unique_ptr<LogRangeIterator>;
