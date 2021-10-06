@@ -684,7 +684,7 @@ void ImportHelper::parseMergeAttributes(std::vector<std::string> const& args) {
           << "Wrong syntax in --merge-attributes: Unexpected number of '=' characters found";
       FATAL_ERROR_EXIT();
     }
-    _mergeAttributesInstructions.emplace_back(keyAndAttrs.first, splitAttributes(splitAttrs[1], splitAttrs[0]));
+    _mergeAttributesInstructions.emplace_back(splitAttrs[0], splitAttributes(splitAttrs[1], splitAttrs[0]));
   }
 }
 
