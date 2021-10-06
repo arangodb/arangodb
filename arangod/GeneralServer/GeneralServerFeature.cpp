@@ -77,6 +77,8 @@
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
+#include "RestHandler/RestLogHandler.h"
+#include "RestHandler/RestLogInternalHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
@@ -98,7 +100,6 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
-#include "RestHandler/RestLogHandler.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -497,6 +498,10 @@ void GeneralServerFeature::defineHandlers() {
   }
 #endif
 
+  if (cluster.isEnabled()) {
+    _handlerFactory->addPrefixHandler("/_api/log-internal", RestHandlerCreator<RestLogInternalHandler>::createNoData);
+  }
+
   // This is the only handler were we need to inject
   // more than one data object. So we created the combinedRegistries
   // for it.
@@ -620,8 +625,8 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler("/_admin/database/target-version",
                                     RestHandlerCreator<arangodb::RestAdminDatabaseHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_admin/log",
-                                    RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
+    _handlerFactory->addPrefixHandler("/_admin/log",
+                                      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
   if (server().isEnabled<V8DealerFeature>()) {
     // the routing feature depends on V8. only enable it if JavaScript is enabled

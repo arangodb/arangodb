@@ -50,7 +50,7 @@ auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
     request.toVelocyPack(builder);
   }
 
-  auto path = "_api/log/" + std::to_string(logId.id()) + "/appendEntries";
+  auto path = "_api/log-internal/" + std::to_string(logId.id()) + "/append-entries";
 
   network::RequestOptions opts;
   opts.database = database;
