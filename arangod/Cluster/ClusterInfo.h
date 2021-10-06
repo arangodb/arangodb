@@ -570,6 +570,9 @@ class ClusterInfo final {
 
   TEST_VIRTUAL std::vector<std::shared_ptr<LogicalCollection>> getCollections(DatabaseID const&);
 
+  auto getLogIdOfShard(DatabaseID const& database, ShardID const& shardId)
+      -> std::optional<replication2::LogId>;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a view
   /// If it is not found in the cache, the cache is reloaded once. The second
