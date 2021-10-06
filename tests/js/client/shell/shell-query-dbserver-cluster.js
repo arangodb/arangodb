@@ -44,7 +44,7 @@ function queriesTestSuite () {
   'use strict';
   
   return {
-    setUp: function() {
+    setUpAll: function() {
       arango.reconnect(originalEndpoint, "_system", arango.connectedUser(), "");
       db._drop(cn);
       
@@ -56,9 +56,17 @@ function queriesTestSuite () {
       c.insert(docs);
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       arango.reconnect(originalEndpoint, "_system", arango.connectedUser(), "");
       db._drop(cn);
+    },
+
+    setUp: function() {
+      arango.reconnect(originalEndpoint, "_system", arango.connectedUser(), "");
+    },
+
+    tearDown: function() {
+      arango.reconnect(originalEndpoint, "_system", arango.connectedUser(), "");
     },
     
     // test executing operations on the coordinator
@@ -96,6 +104,39 @@ function queriesTestSuite () {
       assertEqual(100, totalCount);
       assertEqual(100, totalToArray);
       assertEqual(100, totalQuery);
+    },
+    
+    // test executing operations on the coordinator, without collection
+    testCoordinatorNoCollection: function() {
+      let result = db._query("RETURN [DECODE_REV('_dpq8a-----'), DECODE_REV('_bpq8a-----')]").toArray();
+
+      assertEqual([
+        [ 
+          { "date" : "2022-02-02T16:22:18.368Z", "count" : 0 }, 
+          { "date" : "2021-01-01T00:00:00.000Z", "count" : 0 } 
+        ]
+      ], result);
+    },
+    
+    // test executing operations on the DB-Server, without collection
+    testDBServerNoCollection: function() {
+      const dbservers = getServers("dbserver");
+      assertTrue(dbservers.length > 0, "no dbservers found");
+        
+      dbservers.forEach(function(dbserver, i) {
+        let id = dbserver.id;
+        require("console").warn("connecting to dbserver", dbserver.endpoint, id);
+        arango.reconnect(dbserver.endpoint, "_system", arango.connectedUser(), "");
+
+        let result = db._query("RETURN [DECODE_REV('_dpq8a-----'), DECODE_REV('_bpq8a-----')]").toArray();
+
+        assertEqual([
+          [ 
+            { "date" : "2022-02-02T16:22:18.368Z", "count" : 0 }, 
+            { "date" : "2021-01-01T00:00:00.000Z", "count" : 0 } 
+          ]
+        ], result);
+      });
     },
 
   };

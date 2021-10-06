@@ -159,6 +159,7 @@ add_library(arango STATIC
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
   Futures/Future.cpp
+  Logger/Escaper.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
@@ -203,6 +204,7 @@ add_library(arango STATIC
   Ssl/ssl-helper.cpp
   Utilities/ScriptLoader.cpp
   Utilities/IsArangoExecutable.cpp
+  Utilities/NameValidator.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp

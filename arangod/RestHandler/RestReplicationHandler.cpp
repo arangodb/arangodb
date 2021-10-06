@@ -68,6 +68,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
@@ -1145,7 +1146,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
 
       // force one shard, and force distributeShardsLike to be "_graphs"
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
-      if (!_vocbase.IsSystemName(name) && !isSatellite) {
+      if (!NameValidator::isSystemName(name) && !isSatellite) {
         // system-collections will be sharded normally. only user collections
         // will get the forced sharding. SatelliteCollections must not be
         // sharded like a non-satellite collection.
@@ -1618,9 +1619,9 @@ Result RestReplicationHandler::processRestoreUsersBatch(bool generateNewRevision
   bindVars->add(documentsToInsert.slice());
   bindVars->close();  // bindVars
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), bindVars);
-  aql::QueryResult queryResult = query.executeSync();
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase), 
+                                            arangodb::aql::QueryString(aql), std::move(bindVars));
+  aql::QueryResult queryResult = query->executeSync();
 
   // neither agency nor dbserver should get here
   AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -2957,56 +2958,6 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
   return true;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the revision tree for a given collection, if available
-/// @response serialized revision tree, binary
-//////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandRevisionTree() {
-  RevisionOperationContext ctx;
-  if (!prepareRevisionOperation(ctx)) {
-    return;
-  }
-
-  // shall we do a verification?
-  bool withVerification = _request->parsedValue("verification", false);
-
-  // return only populated nodes in the tree (can make the result a lot
-  // smaller and thus improve efficiency)
-  bool onlyPopulated = _request->parsedValue("onlyPopulated", false);
-
-  auto tree = ctx.collection->getPhysical()->revisionTree(ctx.batchId);
-  if (!tree) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "could not generate revision tree");
-    return;
-  }
-  
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder result(buffer);
-
-  if (withVerification) {
-    auto tree2 = ctx.collection->getPhysical()->computeRevisionTree(ctx.batchId);
-    if (!tree2) {
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "could not generate revision tree from collection");
-      return;
-    }
-
-    VPackObjectBuilder guard(&result);
-    result.add(VPackValue("computed"));
-    tree2->serialize(result, onlyPopulated);
-    result.add(VPackValue("stored"));
-    tree->serialize(result, onlyPopulated);
-    auto diff = tree->diff(*tree2);
-    result.add("equal", VPackValue(diff.empty()));
-  } else {
-    tree->serialize(result, onlyPopulated);
-  }
-
-  generateResult(rest::ResponseCode::OK, std::move(buffer));
-}
-
 void RestReplicationHandler::handleCommandRebuildRevisionTree() {
   RevisionOperationContext ctx;
   if (!prepareRevisionOperation(ctx)) {
@@ -3287,7 +3238,7 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   VPackBuilder patch;
   patch.openObject();
   patch.add(StaticStrings::Version, VPackSlice::nullSlice());
-  patch.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(name)));
+  patch.add(StaticStrings::DataSourceSystem, VPackValue(NameValidator::isSystemName(name)));
   if (!uuid.empty()) {
     bool valid = false;
     NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);

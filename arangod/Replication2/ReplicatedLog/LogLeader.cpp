@@ -98,58 +98,10 @@ replicated_log::LogLeader::LogLeader(LoggerContext logContext,
 
 replicated_log::LogLeader::~LogLeader() {
   _logMetrics->replicatedLogLeaderNumber->fetch_sub(1);
-  tryHardToClearQueue();
-}
-
-auto replicated_log::LogLeader::tryHardToClearQueue() noexcept -> void {
-  bool finished = false;
-  auto consecutiveTriesWithoutProgress = 0;
-  do {
-    ++consecutiveTriesWithoutProgress;
-    try {
-      auto leaderDataGuard = acquireMutex();
-      auto& queue = leaderDataGuard->_waitForQueue;
-      // The queue cannot be empty: resign() clears it while under the mutex,
-      // and waitFor also holds the mutex, but refuses to add entries after
-      // the leader resigned.
-      // This means it should never happen in production code. But this
-      // assertion is really annoying in the tests.
-#ifndef ARANGODB_USE_GOOGLE_TESTS
-      TRI_ASSERT(queue.empty());
-#endif
-      if (!queue.empty()) {
-        LOG_CTX("8b8a2", ERR, _logContext)
-            << "Leader destroyed, but queue isn't empty!";
-        for (auto it = queue.begin(); it != queue.end();) {
-          if (!it->second.isFulfilled()) {
-            it->second.setException(basics::Exception(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-                                                      __FILE__, __LINE__));
-          } else {
-            LOG_CTX("002b2", ERR, _logContext)
-                << "Fulfilled promise in replication queue!";
-          }
-          it = queue.erase(it);
-          consecutiveTriesWithoutProgress = 0;
-        }
-      }
-      finished = true;
-    } catch (basics::Exception const& exception) {
-      LOG_CTX("eadb8", ERR, _logContext)
-          << "Caught exception while destroying a log leader: " << exception.message();
-    } catch (std::exception const& exception) {
-      LOG_CTX("35d0b", ERR, _logContext)
-          << "Caught exception while destroying a log leader: " << exception.what();
-    } catch (...) {
-      LOG_CTX("0c972", ERR, _logContext)
-          << "Caught unknown exception while destroying a log leader!";
-    }
-    if (!finished && consecutiveTriesWithoutProgress > 10) {
-      LOG_CTX("d5d25", FATAL, _logContext)
-          << "We keep failing at destroying a log leader instance. Giving up "
-             "now.";
-      FATAL_ERROR_EXIT();
-    }
-  } while (!finished);
+  if (auto queueEmpty = _guardedLeaderData.getLockedGuard()->_waitForQueue.empty(); !queueEmpty) {
+    TRI_ASSERT(false) << "expected wait-for-queue to be empty";
+    LOG_CTX("ce7f7", ERR, _logContext) << "expected wait-for-queue to be empty";
+  }
 }
 
 auto replicated_log::LogLeader::instantiateFollowers(

@@ -83,9 +83,6 @@ class LogicalCollection : public LogicalDataSource {
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
 
-  /// @brief maximal collection name length
-  static constexpr size_t maxNameLength = 256;
-
   enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
 
   /*
@@ -107,9 +104,7 @@ class LogicalCollection : public LogicalDataSource {
     SatToSmartEdge = 16,
   };
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
-  //////////////////////////////////////////////////////////////////////////////
   static Category const& category() noexcept;
 
   /// @brief hard-coded minimum version number for collections
@@ -166,7 +161,6 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmartChild() const { return false; }
 #endif
   bool usesRevisionsAsDocumentIds() const;
-  void setUsesRevisionsAsDocumentIds(bool);
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
 
@@ -322,8 +316,6 @@ class LogicalCollection : public LogicalDataSource {
   ///        it at that moment.
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback);
 
-  // SECTION: Key Options
-  velocypack::Slice keyOptions() const;
   void schemaToVelocyPack(VPackBuilder&) const;
   Result validate(VPackSlice newDoc, VPackOptions const*) const;  // insert
   Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const*) const;  // update / replace
@@ -338,8 +330,6 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief returns the value of _syncByRevision
   bool syncByRevision() const;
-  /// @brief sets the value of _syncByRevision
-  void setSyncByRevision(bool);
 
   /// @brief returns the value of _syncByRevision, but only for "real" collections with data backing.
   /// returns false for all collections with no data backing.
@@ -352,8 +342,6 @@ class LogicalCollection : public LogicalDataSource {
   void setInternalValidatorTypes(uint64_t type);
 
   uint64_t getInternalValidatorTypes() const;
-
-  bool isShard() const noexcept;
 
   bool isLocalSmartEdgeCollection() const noexcept;
 

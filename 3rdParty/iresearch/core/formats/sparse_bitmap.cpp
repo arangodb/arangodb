@@ -347,7 +347,7 @@ void sparse_bitmap_iterator::reset() {
 }
 
 void sparse_bitmap_iterator::read_block_header() {
-  block_ = (in_->read_short() << 16);
+  block_ = doc_id_t{uint16_t(in_->read_short())} << 16;
   const uint32_t popcnt = 1 + static_cast<uint16_t>(in_->read_short());
   index_ = index_max_;
   index_max_ += popcnt;

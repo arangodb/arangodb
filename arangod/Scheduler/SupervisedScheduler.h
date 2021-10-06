@@ -58,6 +58,11 @@ class SupervisedScheduler final : public Scheduler {
   void trackBeginOngoingLowPriorityTask();
   void trackEndOngoingLowPriorityTask();
 
+  void trackQueueTimeViolation();
+
+  /// @brief returns the last stored dequeue time [ms]
+  uint64_t getLastLowPriorityDequeueTime() const noexcept override;
+
   /// @brief set the time it took for the last low prio item to be dequeued
   /// (time between queuing and dequeing) [ms]
   void setLastLowPriorityDequeueTime(uint64_t time) noexcept;
@@ -156,7 +161,7 @@ class SupervisedScheduler final : public Scheduler {
   void runWorker();
   void runSupervisor();
 
-  [[nodiscard]] bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) override;
+  [[nodiscard]] bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item, bool bounded) override;
 
  private:
   NetworkFeature& _nf;
@@ -168,7 +173,12 @@ class SupervisedScheduler final : public Scheduler {
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
   // in a container class and store pointers. -- Maybe there is a better way?
-  boost::lockfree::queue<WorkItemBase*> _queues[NumberOfQueues];
+  struct {
+    /// @brief the number of items that have been enqueued via tryBoundedQueue
+    /// Items that are added via an unbounded queue operation are not counted!
+    std::atomic<uint64_t> numCountedItems{0};
+    boost::lockfree::queue<WorkItemBase*> queue;
+  } _queues[NumberOfQueues];
 
   // aligning required to prevent false sharing - assumes cache line size is 64
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
@@ -216,6 +226,7 @@ class SupervisedScheduler final : public Scheduler {
   Counter& _metricsThreadsStarted;
   Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
+  Counter& _metricsQueueTimeViolations;
   Gauge<uint64_t>& _ongoingLowPriorityGauge;
   
   /// @brief amount of time it took for the last low prio item to be dequeued

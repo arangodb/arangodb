@@ -167,7 +167,7 @@ class MockAqlServer : public MockServer,
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
   // runBeforePrepare gives an entry point to modify the list of collections one want to use within the Query.
-  std::unique_ptr<arangodb::aql::Query> createFakeQuery(
+  std::shared_ptr<arangodb::aql::Query> createFakeQuery(
       bool activateTracing = false, std::string queryString = "",
       std::function<void(arangodb::aql::Query&)> runBeforePrepare =
           [](arangodb::aql::Query&) {}) const;
@@ -229,7 +229,7 @@ class MockClusterServer : public MockServer,
                                 DataSourceId const& planId,
                                 std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs);
 
-  std::unique_ptr<arangodb::aql::Query> createFakeQuery(
+  std::shared_ptr<arangodb::aql::Query> createFakeQuery(
       bool activateTracing = false, std::string queryString = "",
       std::function<void(arangodb::aql::Query&)> runBeforePrepare =
           [](arangodb::aql::Query&) {}) const;

@@ -25,6 +25,7 @@
 #include "RocksDBReplicationContext.h"
 
 #include "Basics/MutexLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -49,6 +50,7 @@
 #include "Transaction/Helpers.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -83,6 +85,36 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 
 }  // namespace
 
+template <typename T>
+bool RocksDBReplicationContext::findCollection(std::string const& dbName, T const& collection,
+                                               std::function<void(TRI_vocbase_t& vocbase, LogicalCollection& collection)> const& cb) {
+
+  auto& dbfeature = _engine.server().getFeature<arangodb::DatabaseFeature>();
+  TRI_vocbase_t* vocbase = dbfeature.useDatabase(dbName);
+  if (!vocbase) {
+    return false;
+  }
+  auto dbGuard = scopeGuard([&]() noexcept {
+    vocbase->release();
+  });
+      
+  std::shared_ptr<LogicalCollection> coll;
+  try {
+    coll = vocbase->useCollection(collection, /*checkPermissions*/ false);
+  } catch (...) {
+    // will fail if collection does not exist
+  }
+  if (!coll) {
+    return false;
+  }
+  auto collectionGuard = scopeGuard([&]() noexcept {
+    vocbase->releaseCollection(coll.get());
+  });
+
+  cb(*vocbase, *coll);
+  return true;
+}
+
 RocksDBReplicationContext::RocksDBReplicationContext(RocksDBEngine& engine, double ttl,
                                                      SyncerId syncerId, ServerId clientId)
     : _engine(engine),
@@ -103,6 +135,24 @@ RocksDBReplicationContext::RocksDBReplicationContext(RocksDBEngine& engine, doub
 RocksDBReplicationContext::~RocksDBReplicationContext() {
   MUTEX_LOCKER(guard, _contextLock);
   _iterators.clear();
+
+  size_t removed = 0;
+  for (auto& it : _blockers) {
+    for (auto& it2 : it.second) {
+      try {
+        findCollection(it.first, it2.first, [&](TRI_vocbase_t& vocbase, LogicalCollection& collection) {
+          auto* rcoll = static_cast<RocksDBMetaCollection*>(collection.getPhysical());
+          rcoll->removeRevisionTreeBlocker(TransactionId(it2.second));
+          ++removed;
+        });
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("7dca6", WARN, Logger::ENGINES) 
+            << "unable to remove blocker for revision tree in " << it.first << "/" << it2.first.id()
+            << ": " << ex.what();
+      }
+    }
+  }
+
   if (_snapshot != nullptr) {
     _engine.db()->ReleaseSnapshot(_snapshot);
     _snapshot = nullptr;
@@ -241,18 +291,32 @@ std::tuple<Result, DataSourceId, uint64_t> RocksDBReplicationContext::bindCollec
   return std::make_tuple(Result{}, cid, numberDocuments);
 }
 
+void RocksDBReplicationContext::removeBlocker(std::string const& dbName, std::string const& collectionName) {
+  findCollection(dbName, collectionName, [&](TRI_vocbase_t& vocbase, LogicalCollection& collection) {
+    DataSourceId id = collection.id();
+  
+    MUTEX_LOCKER(guard, _contextLock);
+
+    auto it = _blockers.find(dbName);
+    if (it != _blockers.end()) {
+      auto it2 = (*it).second.find(id);
+
+      if (it2 != (*it).second.end()) {
+        auto* rcoll = static_cast<RocksDBMetaCollection*>(collection.getPhysical());
+        rcoll->removeRevisionTreeBlocker(TransactionId((*it2).second));
+        (*it).second.erase(it2);
+      }
+    }
+  });
+}
+
 // returns inventory
 Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
                                                bool includeFoxxQueues,
                                                bool global, VPackBuilder& result) {
-  {
-    MUTEX_LOCKER(locker, _contextLock);
-    lazyCreateSnapshot();
-  }
-
   auto nameFilter = [&](LogicalCollection const* collection) {
     std::string const& cname = collection->name();
-    if (!includeSystem && TRI_vocbase_t::IsSystemName(cname)) {
+    if (!includeSystem && NameValidator::isSystemName(cname)) {
       // exclude all system collections
       return false;
     }
@@ -266,17 +330,69 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
     return true;
   };
 
-  TRI_ASSERT(_snapshot != nullptr);
-  // FIXME is it technically correct to include newly created collections ?
-  // simon: I think no, but this has been the behavior since 3.2
-  TRI_voc_tick_t tick = TRI_NewTickServer();  // = _lastArangoTick
+  TRI_voc_tick_t tick = TRI_NewTickServer();
+  VPackBuilder inventory;
+
   if (global) {
     // global inventory
-    vocbase.server().getFeature<DatabaseFeature>().inventory(result, tick, nameFilter);
+    vocbase.server().getFeature<DatabaseFeature>().inventory(inventory, tick, nameFilter);
   } else {
     // database-specific inventory
-    vocbase.inventory(result, tick, nameFilter);
+    inventory.openObject();
+    vocbase.inventory(inventory, tick, nameFilter);
+    inventory.close();
   }
+
+  size_t created = 0;
+  auto handleCollections = [&](std::string const& dbName, VPackSlice collections) {
+    TRI_ASSERT(collections.isArray());
+    for (auto it2 : VPackArrayIterator(collections)) {
+      DataSourceId collection(basics::StringUtils::uint64(it2.get({"parameters", "id"}).copyString()));
+
+      findCollection(dbName, collection, [&](TRI_vocbase_t& vocbase, LogicalCollection& collection) {
+        auto* rcoll = static_cast<RocksDBMetaCollection*>(collection.getPhysical());
+        TransactionId trxId{0};
+        auto blockerGuard = scopeGuard([&]() noexcept {  // remove blocker afterwards
+          if (trxId.isSet()) {
+            rcoll->removeRevisionTreeBlocker(trxId);
+          }
+        });
+        trxId = TransactionId(transaction::Context::makeTransactionId());
+
+        MUTEX_LOCKER(guard, _contextLock);
+        // will create blocker entry for dbName if it doesn't exist
+        auto& entry = _blockers[vocbase.name()];
+        [[maybe_unused]] rocksdb::SequenceNumber blockerSeq = rcoll->placeRevisionTreeBlocker(trxId);
+        entry[collection.id()] = trxId.id();
+        blockerGuard.cancel();
+        ++created;
+      });
+    }
+  };
+  
+  // order blockers for all collections in the inventory
+  TRI_ASSERT(inventory.slice().isObject());
+  if (global) {
+    for (auto it : VPackObjectIterator(inventory.slice())) {
+      std::string dbName = it.key.copyString();
+      VPackSlice collections = it.value.get("collections");
+      handleCollections(dbName, collections);
+    }
+    result.add(inventory.slice());
+  } else {
+    handleCollections(vocbase.name(), inventory.slice().get("collections"));
+    // add inventory data to result
+    for (auto it : VPackObjectIterator(inventory.slice())) {
+      result.add(it.key.copyString(), it.value);
+    }
+  }
+
+  {
+    MUTEX_LOCKER(locker, _contextLock);
+    lazyCreateSnapshot();
+  }
+
+  TRI_ASSERT(_snapshot != nullptr);
   vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
 
   return Result();
@@ -1138,3 +1254,4 @@ void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
     }
   }
 }
+

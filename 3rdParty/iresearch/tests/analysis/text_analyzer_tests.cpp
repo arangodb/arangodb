@@ -24,15 +24,17 @@
 #include "gtest/gtest.h"
 #include "tests_config.hpp"
 
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+#include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
+
 #include "analysis/text_token_stream.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_stream.hpp"
 #include "utils/locale_utils.hpp"
 #include "utils/runtime_utils.hpp"
+#include "utils/file_utils.hpp"
 #include "utils/utf8_path.hpp"
-#include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
-#include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 
 namespace {
 
@@ -815,12 +817,11 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_no_default_stopwords_fallback_cwd)
   SetStopwordsPath(nullptr);
 
   // no stopwords, but valid CWD
-  auto oldCWD = irs::utf8_path(true);
-  auto newCWD = irs::utf8_path(IResearch_test_resource_dir);
-  newCWD.chdir();
-  auto reset_stopword_path = irs::make_finally([oldCWD]()noexcept{
-    oldCWD.chdir();
+  auto reset_stopword_path = irs::make_finally(
+      [oldCWD = irs::current_path()]()noexcept{
+    EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
   });
+  irs::file_utils::set_cwd(irs::utf8_path(IResearch_test_resource_dir).c_str());
 
   {
     const std::string sDataASCII = "A E I O U";
@@ -896,12 +897,11 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override) {
 
 TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override_emptypath) {
   // no stopwords, but empty stopwords path (we need to shift CWD to our test resources, to be able to load stopwords)
-  auto oldCWD = irs::utf8_path(true);
-  auto newCWD = irs::utf8_path(IResearch_test_resource_dir);
-  newCWD.chdir();
-  auto reset_stopword_path = irs::make_finally([oldCWD]()noexcept{
-    oldCWD.chdir();
+  auto reset_stopword_path = irs::make_finally(
+      [oldCWD = irs::current_path()]()noexcept{
+    EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
   });
+  irs::file_utils::set_cwd(irs::utf8_path(IResearch_test_resource_dir).c_str());
 
   std::string config = "{\"locale\":\"en_US.UTF-8\",\"case\":\"lower\",\"accent\":false,\"stemming\":true,\"stopwordsPath\":\"\"}";
   auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), config);
@@ -1002,12 +1002,11 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
 
   // no stopwords, but empty stopwords path (we need to shift CWD to our test resources, to be able to load stopwords)
   {
-    auto oldCWD = irs::utf8_path(true);
-    auto newCWD = irs::utf8_path(IResearch_test_resource_dir);
-    newCWD.chdir();
-    auto reset_stopword_path = irs::make_finally([oldCWD]()noexcept{
-      oldCWD.chdir();
+    auto reset_stopword_path = irs::make_finally(
+        [oldCWD = irs::current_path()]()noexcept{
+      EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
     });
+    irs::file_utils::set_cwd(irs::utf8_path(IResearch_test_resource_dir).c_str());
 
     std::string config = "{\"locale\":\"en_US.utf-8\",\"case\":\"lower\",\"accent\":false,\"stemming\":true,\"stopwordsPath\":\"\"}";
     std::string actual;

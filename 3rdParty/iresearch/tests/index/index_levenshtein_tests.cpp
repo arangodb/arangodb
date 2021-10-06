@@ -116,9 +116,7 @@ INSTANTIATE_TEST_SUITE_P(
   levenshtein_automaton_index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory
-    ),
-    ::testing::Values(tests::format_info{"1_2", "1_0"})
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>),
+    ::testing::Values(tests::format_info{"1_2", "1_0"})),
+  levenshtein_automaton_index_test_case::to_string
 );

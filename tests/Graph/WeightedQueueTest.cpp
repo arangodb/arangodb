@@ -35,7 +35,7 @@ using namespace arangodb::graph;
 
 namespace arangodb {
 namespace tests {
-namespace queue_graph_cache_test {
+namespace weighted_queue_graph_cache_test {
 
 class Step : public arangodb::graph::BaseStep<Step> {
   size_t _id;
@@ -117,6 +117,7 @@ TEST_F(WeightedQueueTest, it_should_not_contain_processable_elements) {
   queue.append(Step{2, 1.6, true});
   queue.append(Step{3, 1.2, true});
   queue.append(Step{4, 1.5, true});
+
   ASSERT_EQ(queue.size(), 4);
   ASSERT_FALSE(queue.hasProcessableElement());
 }

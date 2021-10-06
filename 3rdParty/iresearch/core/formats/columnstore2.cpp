@@ -1168,15 +1168,15 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 
   encryption::stream::ptr data_cipher;
   bstring enc_header;
-  auto* enc = get_encryption(dir.attributes());
+  auto* enc = dir.attributes().encryption();
   const auto encrypt = irs::encrypt(filename, *data_out, enc, enc_header, data_cipher);
   assert(!encrypt || (data_cipher && data_cipher->block_size()));
   UNUSED(encrypt);
 
-  alloc_ = &directory_utils::get_allocator(dir);
 
   // noexcept block
   dir_ = &dir;
+  alloc_ = &dir.attributes().allocator();
   data_filename_ = std::move(filename);
   data_out_ = std::move(data_out);
   data_cipher_ = std::move(data_cipher);
@@ -1318,7 +1318,7 @@ void reader::prepare_data(const directory& dir, const std::string& filename) {
       writer::FORMAT_MAX);
 
   encryption::stream::ptr cipher;
-  auto* enc = get_encryption(dir.attributes());
+  auto* enc = dir.attributes().encryption();
   if (irs::decrypt(filename, *data_in, enc, cipher)) {
     assert(cipher && cipher->block_size());
   }

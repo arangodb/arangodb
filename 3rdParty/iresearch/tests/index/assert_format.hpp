@@ -367,7 +367,7 @@ class field_writer : public irs::field_writer {
 
 class format : public irs::format {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
   format();
   format(const index_segment& data);
 

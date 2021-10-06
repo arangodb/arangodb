@@ -114,11 +114,6 @@ class RocksDBValue {
   static VPackSlice data(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the numeric value from the key field of a VPackSlice
-  //////////////////////////////////////////////////////////////////////////////
-  static uint64_t keyValue(rocksdb::Slice const&);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Centroid of shape or point on the sphere surface in degrees
   //////////////////////////////////////////////////////////////////////////////
   static S2Point centroid(rocksdb::Slice const&);
@@ -175,7 +170,6 @@ class RocksDBValue {
   static LocalDocumentId documentId(char const* data, uint64_t size);
   static arangodb::velocypack::StringRef vertexId(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
-  static uint64_t keyValue(char const* data, size_t size);
 
  private:
   RocksDBEntryType _type;

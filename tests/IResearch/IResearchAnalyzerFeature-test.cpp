@@ -2037,7 +2037,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
                     VPackParser::fromJson("\"abc\"")->slice(),
                     arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_NE(nullptr, pool);
     ASSERT_EQ(arangodb::iresearch::Features{}, pool->features());
     ASSERT_EQ(irs::IndexFeatures::NONE, pool->indexFeatures());
@@ -2051,7 +2052,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
                     VPackParser::fromJson("\"abc\"")->slice(),
                     arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{irs::IndexFeatures::FREQ},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_NE(nullptr, pool);
     ASSERT_EQ(arangodb::iresearch::Features{irs::IndexFeatures::FREQ}, pool->features());
     ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
@@ -2067,7 +2069,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
                     arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{arangodb::iresearch::FieldFeatures::NORM,
                                                   irs::IndexFeatures::FREQ},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_NE(nullptr, pool);
     ASSERT_EQ((arangodb::iresearch::Features{
                 arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ}),
@@ -2086,7 +2089,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
                     arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{arangodb::iresearch::FieldFeatures::NORM,
                                                   irs::IndexFeatures::FREQ},
-                    arangodb::iresearch::LinkVersion::MAX).ok());
+                    arangodb::iresearch::LinkVersion::MAX,
+                    false).ok());
     ASSERT_NE(nullptr, pool);
     ASSERT_EQ((arangodb::iresearch::Features{
                 arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ}),
@@ -2104,7 +2108,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
                     VPackParser::fromJson("\"abc\"")->slice(),
                     arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{irs::IndexFeatures::POS},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_EQ(nullptr, pool);
   }
 }
@@ -2115,7 +2120,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
                   lhs, "db::test", "TestAnalyzer",
                   VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN,
                   arangodb::iresearch::Features{},
-                  arangodb::iresearch::LinkVersion::MIN).ok());
+                  arangodb::iresearch::LinkVersion::MIN, 
+                  false).ok());
   ASSERT_NE(nullptr, lhs);
   ASSERT_EQ(*lhs, *lhs);
 
@@ -2126,7 +2132,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
                     rhs, "db::test1", "TestAnalyzer",
                     VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN, 
+                    false).ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
   }
@@ -2138,7 +2145,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
                     rhs, "db::test", "ReNormalizingAnalyzer",
                     VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
   }
@@ -2150,7 +2158,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
                     rhs, "db::test", "TestAnalyzer",
                     VPackParser::fromJson("\"abcd\"")->slice(), arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
   }
@@ -2163,7 +2172,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
                     VPackParser::fromJson("\"abcd\"")->slice(),
                     arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features(irs::IndexFeatures::FREQ),
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
   }
@@ -2176,7 +2186,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
       VPackParser::fromJson("\"abc\"")->slice(),
       arangodb::AnalyzersRevision::MIN + 1,
       arangodb::iresearch::Features{},
-      arangodb::iresearch::LinkVersion::MIN)
+      arangodb::iresearch::LinkVersion::MIN,
+      false)
       .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_EQ(*lhs, *rhs);

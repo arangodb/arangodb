@@ -80,7 +80,7 @@ class CursorRepository {
   /// the cursor will create a query internally and retain it until deleted
   //////////////////////////////////////////////////////////////////////////////
 
-  Cursor* createQueryStream(std::unique_ptr<arangodb::aql::Query> q,
+  Cursor* createQueryStream(std::shared_ptr<arangodb::aql::Query> q,
                             size_t batchSize, double ttl);
 
   //////////////////////////////////////////////////////////////////////////////

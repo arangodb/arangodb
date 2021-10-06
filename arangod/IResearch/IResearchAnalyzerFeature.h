@@ -29,6 +29,7 @@
 #include <memory>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -187,7 +188,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   // 'make(...)' method wrapper for irs::analysis::analyzer types
   struct Builder {
     using ptr = irs::analysis::analyzer::ptr;
-    DECLARE_FACTORY(irs::string_ref const& type, VPackSlice properties);
+    static ptr make(irs::string_ref const& type, VPackSlice properties);
     
     static ptr make(NullStreamTag) {
       return std::make_unique<irs::null_token_stream>();
@@ -329,6 +330,7 @@ class IResearchAnalyzerFeature final
   /// @param revision the revision number for analyzer
   /// @param features the expected features the analyzer should produce
   /// @param version the target link version
+  /// @param extendedNames whether or not extended analyzer names are allowed
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
   static Result createAnalyzerPool(AnalyzerPool::ptr& analyzer,
@@ -337,7 +339,8 @@ class IResearchAnalyzerFeature final
                                    VPackSlice const properties,
                                    AnalyzersRevision::Revision revision,
                                    Features features,
-                                   LinkVersion version);
+                                   LinkVersion version,
+                                   bool extendedNames);
 
   static AnalyzerPool::ptr identity() noexcept;  // the identity analyzer
   static std::string const& name() noexcept;
