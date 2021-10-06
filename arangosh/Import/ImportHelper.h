@@ -175,9 +175,13 @@ class ImportHelper {
     }
   }
 
-  std::pair<std::string, std::string> splitString(std::string const& originalString, std::string const& delimiter) const;
+  struct AttrProperties {
+    std::string attr;
+    bool isDelimiter;
+    AttrProperties(std::string const& s, bool b) : attr{s}, isDelimiter{b} {};
+  };
 
-  std::vector<std::pair<std::string, bool>> splitAttributes(std::string const& originalString) const;
+  std::vector<AttrProperties> splitAttributes(std::string const& originalString) const;
 
   void parseMergeAttributes(std::vector<std::string> const& args);
 
@@ -354,7 +358,8 @@ class ImportHelper {
 
   std::unordered_map<std::string, std::string> _translations;
   std::unordered_map<std::string, std::string> _datatypes;
-  std::unordered_map<std::string, std::vector<std::pair<std::string, bool>>> _attrsToValues;
+
+  std::vector<std::pair<std::string, std::vector<AttrProperties>>> _attrsToValues;
   std::unordered_map<std::string, std::string> _fieldsLookUpTable;
   std::unordered_set<std::string> _removeAttributes;
 

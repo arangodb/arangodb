@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ImportHelper.h"
+#include "Basics/application-exit.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -609,19 +610,8 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
   }
 }
 
-std::pair<std::string, std::string> ImportHelper::splitString(std::string const& originalString,
-                                                              std::string const& delimiter) const { //use string utils split instead
-  size_t foundIndex = originalString.find(delimiter);
-  if (foundIndex > 0) {
-    return std::make_pair(originalString.substr(0, foundIndex),
-                           originalString.substr(foundIndex + 1));
-  } else {
-    return std::make_pair(originalString, "");
-  }
-}
-
-std::vector<std::pair<std::string, bool>> ImportHelper::splitAttributes(std::string const& originalString) const {
-  std::vector<std::pair<std::string, bool>> splitSubstrs;
+std::vector<ImportHelper::AttrProperties> ImportHelper::splitAttributes(std::string const& originalString) const {
+  std::vector<ImportHelper::AttrProperties> splitSubstrs;
   size_t previousIndex = 0;
   for (size_t foundIndex = 0;
        (foundIndex = originalString.find("[", foundIndex)) != std::string::npos;
@@ -629,14 +619,15 @@ std::vector<std::pair<std::string, bool>> ImportHelper::splitAttributes(std::str
     if (size_t foundIndex2 = originalString.find("]", foundIndex);
         foundIndex2 != std::string::npos) {
       if (foundIndex2 == foundIndex + 1) {
-        LOG_TOPIC("f1a42", ERR, arangodb::Logger::FIXME)
-            << "Wrong syntax in --merge-attributes";
+        LOG_TOPIC("f1a42", FATAL, arangodb::Logger::FIXME)
+            << "Wrong syntax in --merge-attributes: empty argument '[]' not "
+               "allowed";
+        FATAL_ERROR_EXIT();
       }
-    if (!previousIndex && foundIndex ) {
-      std::string delimiter =
-          originalString.substr(previousIndex, foundIndex - 1);
-      splitSubstrs.emplace_back(delimiter, true);
-    } else if (previousIndex && foundIndex && (foundIndex - previousIndex > 1)) {
+      if (!previousIndex && foundIndex) {
+        std::string delimiter = originalString.substr(previousIndex, foundIndex);
+        splitSubstrs.emplace_back(ImportHelper::AttrProperties(delimiter, true));
+      } else if (previousIndex && foundIndex && (foundIndex - previousIndex > 1)) {
         std::string delimiter =
             originalString.substr(previousIndex + 1, foundIndex - previousIndex - 1);
         splitSubstrs.emplace_back(delimiter, true);
@@ -646,13 +637,13 @@ std::vector<std::pair<std::string, bool>> ImportHelper::splitAttributes(std::str
           originalString.substr(foundIndex + 1, foundIndex2 - foundIndex - 1);
       splitSubstrs.emplace_back(splitSubstr.substr(0, foundIndex2), false);
     } else {
-      LOG_TOPIC("db7aa", ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("db7aa", FATAL, arangodb::Logger::FIXME)
           << "Wrong syntax in --merge-attributes";
+      FATAL_ERROR_EXIT();
     }
   }
   if (previousIndex < originalString.size() - 1) {
-    std::string delimiter =
-        originalString.substr(previousIndex + 1);
+    std::string delimiter = originalString.substr(previousIndex + 1);
     splitSubstrs.emplace_back(delimiter, true);
   }
 
@@ -661,13 +652,14 @@ std::vector<std::pair<std::string, bool>> ImportHelper::splitAttributes(std::str
 
 void ImportHelper::parseMergeAttributes(std::vector<std::string> const& args) {
   for (auto const& arg : args) {
-    std::pair keyAndAttrs = splitString(arg, "=");
-    if (keyAndAttrs.second.empty()) {
-      LOG_TOPIC("fb9404", ERR, arangodb::Logger::FIXME)
-          << "Wrong syntax in --merge-attributes";
-    } else {
-      _attrsToValues.emplace(keyAndAttrs.first, splitAttributes(keyAndAttrs.second));
+    std::vector<std::string> splitAttrs = StringUtils::split(arg, "=");
+    if (splitAttrs.size() != 2) {
+      LOG_TOPIC("ae6dc", FATAL, arangodb::Logger::FIXME)
+          << "Wrong syntax in --merge-attributes: Character '=' is not allowed as a separator";
+      FATAL_ERROR_EXIT();
     }
+    std::pair<std::string, std::string> keyAndAttrs(std::move(splitAttrs[0]), std::move(splitAttrs[1]));
+    _attrsToValues.emplace_back(keyAndAttrs.first, splitAttributes(keyAndAttrs.second));
   }
 }
 
@@ -716,11 +708,11 @@ void ImportHelper::ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field, si
 
 void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
                             size_t column, bool escaped) {
-  std::string lookUpTablevalue(field, fieldLength);
   if (_rowsRead < _rowsToSkip) {
     // still some rows left to skip over
     return;
   }
+
   // we are reading the first line if we get here
   if (row == _rowsToSkip && !_headersSeen) {
     std::string name = std::string(field, fieldLength);
@@ -740,6 +732,14 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     return;
   }
 
+  std::string lookUpTableValue;
+
+  auto guard = scopeGuard([&]() noexcept {
+    if (!_attrsToValues.empty()) {
+      _fieldsLookUpTable.try_emplace(_columnNames[column], std::move(lookUpTableValue));
+    }
+  });
+
   // we will write out this attribute!
 
   if (column > 0) {
@@ -757,6 +757,10 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     itTypes = _datatypes.find(_columnNames[column]);
   }
 
+  if (!_attrsToValues.empty()) {
+    lookUpTableValue = field;
+  }
+
   if ((row == _rowsToSkip && !_headersSeen) || (escaped && itTypes == _datatypes.end()) ||
       _keyColumn == static_cast<decltype(_keyColumn)>(column)) {
     // headline or escaped value
@@ -771,8 +775,8 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       if (::isInteger(field, fieldLength) || ::isDecimal(field, fieldLength)) {
         _lineBuffer.appendText(field, fieldLength);
       } else {
-        if ( !_attrsToValues.empty()) {
-          lookUpTablevalue = "0";
+        if (!_attrsToValues.empty()) {
+          lookUpTableValue = "0";
         }
         _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("0"));
       }
@@ -781,18 +785,18 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
           (fieldLength == 4 && memcmp(field, "null", 4) == 0) ||
           (fieldLength == 1 && *field == '0')) {
         if (!_attrsToValues.empty()) {
-          lookUpTablevalue = "false";
+          lookUpTableValue = "false";
         }
         _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("false"));
       } else {
         if (!_attrsToValues.empty()) {
-          lookUpTablevalue = "true";
+          lookUpTableValue = "true";
         }
         _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("true"));
       }
     } else if (datatype == "null") {
       if (!_attrsToValues.empty()) {
-        lookUpTablevalue = "null";
+        lookUpTableValue = "null";
       }
       _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
     } else {
@@ -800,20 +804,14 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       TRI_ASSERT(datatype == "string");
       _lineBuffer.appendJsonEncoded(field, fieldLength);
     }
-    if (!_attrsToValues.empty()) {
-        _fieldsLookUpTable.try_emplace(_columnNames[column], lookUpTablevalue);
-    }
     return;
   }
 
   if (*field == '\0' || fieldLength == 0) {
-    if (!_attrsToValues.empty()) {
-      lookUpTablevalue = "null";
-    }
     // do nothing
     _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
     if (!_attrsToValues.empty()) {
-      _fieldsLookUpTable.try_emplace(_columnNames[column], lookUpTablevalue);
+      lookUpTableValue = "null";
     }
     return;
   }
@@ -840,7 +838,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
 
         int64_t num = StringUtils::int64(field, fieldLength);
         if (!_attrsToValues.empty()) {
-          lookUpTablevalue = std::to_string(num);
+          lookUpTableValue = std::to_string(num);
         }
         _lineBuffer.appendInteger(num);
       } catch (...) {
@@ -858,12 +856,9 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
           bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL);
           if (!failed) {
             if (!_attrsToValues.empty()) {
-              lookUpTablevalue = std::to_string(num);
+              lookUpTableValue = std::to_string(num);
             }
             _lineBuffer.appendDecimal(num);
-            if (!_attrsToValues.empty()) {
-              _fieldsLookUpTable.try_emplace(_columnNames[column], lookUpTablevalue, lookUpTablevalue.size());
-            }
             return;
           }
         }
@@ -890,9 +885,6 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       // non-numeric value
       _lineBuffer.appendJsonEncoded(field, fieldLength);
     }
-  }
-  if (!_attrsToValues.empty()) {
-      _fieldsLookUpTable.try_emplace(_columnNames[column], field, fieldLength);
   }
 }
 
@@ -929,11 +921,11 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
         addField(key.c_str(), key.size(), row, column, escaped);
       } else {
         std::string attrsToMerge;
-        std::for_each(value.begin(), value.end(), [=, &attrsToMerge](std::pair<std::string, bool> const& attr) {
-          if (!attr.second && _fieldsLookUpTable.find(attr.first) != _fieldsLookUpTable.end()) {
-            attrsToMerge += _fieldsLookUpTable.at(attr.first);
+        std::for_each(value.begin(), value.end(), [=, &attrsToMerge](AttrProperties const& attrProperties) {
+          if (!attrProperties.isDelimiter && _fieldsLookUpTable.find(attrProperties.attr) != _fieldsLookUpTable.end()) {
+            attrsToMerge += _fieldsLookUpTable.at(attrProperties.attr);
           } else {
-            attrsToMerge += attr.first;
+            attrsToMerge += attrProperties.attr;
           }
         });
         addField(attrsToMerge.c_str(), attrsToMerge.size(), row, column, escaped);
