@@ -277,16 +277,14 @@ class TransactionState {
   struct CollectionNotFound {
     std::size_t lowerBound;
   };
-  struct CollectionWithLog {
+  struct CollectionFound {
     TransactionCollection* collection;
-    std::optional<std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>> replicatedLog;
   };
   [[nodiscard]] auto findCollectionOrPos(DataSourceId cid) const
-      -> std::variant<CollectionNotFound, CollectionWithLog>;
+      -> std::variant<CollectionNotFound, CollectionFound>;
 
-  void insertCollectionAndLogAt(
-      size_t position, std::unique_ptr<TransactionCollection> trxColl,
-      std::optional<std::shared_ptr<replication2::replicated_log::LogLeader>> replicatedLog);
+  virtual void insertCollectionAt(CollectionNotFound position,
+                                  std::unique_ptr<TransactionCollection> trxColl);
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
@@ -321,10 +319,6 @@ class TransactionState {
   ListType::allocator_type::arena_type _arena;
   // list of participating collections
   ListType _collections;
-  // replicated logs; if existent, must be the same size as _collections, and
-  // for each i, _replicatedLogs[i] must be the replicated log used by the
-  // collection _collections[i].
-  std::optional<std::vector<std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>>> _replicatedLogs;
 
   transaction::Hints _hints;  // hints; set on _nestingLevel == 0
 

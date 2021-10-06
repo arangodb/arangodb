@@ -96,7 +96,7 @@ TransactionCollection* TransactionState::collection(DataSourceId cid,
   return std::visit(overload{[](CollectionNotFound const&) -> TransactionCollection* {
                                return nullptr;
                              },
-                             [&](CollectionWithLog const& collectionWithLog) -> TransactionCollection* {
+                             [&](CollectionFound const& collectionWithLog) -> TransactionCollection* {
                                auto trxCollection = collectionWithLog.collection;
                                if (trxCollection->canAccess(accessType)) {
                                  return trxCollection;
@@ -208,8 +208,8 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
   // check if we already got this collection in the _collections vector
   auto colOrPos = findCollectionOrPos(cid);
 
-  if (std::holds_alternative<CollectionWithLog>(colOrPos)) {
-    auto* const trxColl = std::get<CollectionWithLog>(colOrPos).collection;
+  if (std::holds_alternative<CollectionFound>(colOrPos)) {
+    auto* const trxColl = std::get<CollectionFound>(colOrPos).collection;
     LOG_TRX("ad6d0", TRACE, this)
         << "updating collection usage " << cid << ": '" << cname << "'";
 
@@ -225,7 +225,7 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
     return res.reset(trxColl->updateUsage(accessType));
   }
   TRI_ASSERT(std::holds_alternative<CollectionNotFound>(colOrPos));
-  auto position = std::get<CollectionNotFound>(colOrPos).lowerBound;
+  auto const position = std::get<CollectionNotFound>(colOrPos);
 
   // collection not found.
 
@@ -260,18 +260,11 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
 
   auto trxColl = engine.createTransactionCollection(*this, cid, accessType);
 
-  bool const isReplication2 = vocbase().replicationVersion() == replication::Version::TWO;
-  auto replicatedLog = std::optional<std::shared_ptr<replication2::replicated_log::LogLeader>>();
-  if (isReplication2) {
-    // TODO Get the matching replicated log for this shard
-    replicatedLog = vocbase().getReplicatedLogLeaderById(replication2::LogId(1));
-  }
-
   TRI_ASSERT(trxColl != nullptr);
 
   try {
     // insert collection at the correct position
-    insertCollectionAndLogAt(position, std::move(trxColl), std::move(replicatedLog));
+    insertCollectionAt(position, std::move(trxColl));
   } catch (...) {
     return res.reset(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -285,21 +278,14 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
   return res;
 }
 
-void TransactionState::insertCollectionAndLogAt(
-    size_t position, std::unique_ptr<TransactionCollection> trxColl,
-    std::optional<std::shared_ptr<replication2::replicated_log::LogLeader>> replicatedLog) {
-  bool const isReplication2 = vocbase().replicationVersion() == replication::Version::TWO;
-  TRI_ASSERT(isReplication2 == replicatedLog.has_value());
-  _collections.insert(std::next(this->_collections.begin(), position), trxColl.get());
-  TRI_ASSERT(position == 0 ||
-             _collections[position - 1]->id() < _collections[position]->id());
-  TRI_ASSERT(position + 1 == _collections.size() ||
-             _collections[position]->id() < _collections[position + 1]->id());
+void TransactionState::insertCollectionAt(CollectionNotFound position,
+                                          std::unique_ptr<TransactionCollection> trxColl) {
+  auto const idx = position.lowerBound;
+  _collections.insert(std::next(this->_collections.begin(), idx), trxColl.get());
   std::ignore = trxColl.release();
-  if (isReplication2) {
-    _replicatedLogs->insert(std::next(this->_replicatedLogs->begin(), position), *replicatedLog);
-    TRI_ASSERT(_collections.size() == _replicatedLogs->size());
-  }
+  TRI_ASSERT(idx == 0 || _collections[idx - 1]->id() < _collections[idx]->id());
+  TRI_ASSERT(idx + 1 == _collections.size() ||
+             _collections[idx]->id() < _collections[idx + 1]->id());
 }
 
 /// @brief use all participating collections of a transaction
@@ -342,21 +328,17 @@ TransactionCollection* TransactionState::findCollection(DataSourceId cid) const 
 ///        so whenever we want to insert the collection we
 ///        have to use this position for insert.
 auto TransactionState::findCollectionOrPos(DataSourceId cid) const
-    -> std::variant<CollectionNotFound, CollectionWithLog> {
+    -> std::variant<CollectionNotFound, CollectionFound> {
   size_t const n = _collections.size();
   size_t i;
 
   // TODO We could do a binary search here.
   for (i = 0; i < n; ++i) {
-    auto trxCollection = _collections[i];
+    auto* trxCollection = _collections[i];
 
     if (cid == trxCollection->id()) {
       // found
-      if (_replicatedLogs.has_value()) {
-        return CollectionWithLog{trxCollection, _replicatedLogs->operator[](i)};
-      } else {
-        return CollectionWithLog{trxCollection, std::nullopt};
-      }
+      return CollectionFound{trxCollection};
     }
 
     if (cid < trxCollection->id()) {
