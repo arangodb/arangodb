@@ -250,6 +250,7 @@ Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLevel
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex),
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex),
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::FulltextIndex),
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ReplicatedLogs),
   };
 
   LOG_TOPIC("d8a5d", INFO, arangodb::Logger::ENGINES)

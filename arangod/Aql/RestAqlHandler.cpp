@@ -109,12 +109,12 @@ void RestAqlHandler::setupClusterQuery() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
     return;
   }
-  
+
   TRI_IF_FAILURE("Query::setupTimeout") {
     // intentionally delay the request
     std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
   }
-  
+
   TRI_IF_FAILURE("Query::setupTimeoutFailSequence") {
     // simulate lock timeout during query setup
     uint32_t r = 100;
@@ -125,7 +125,7 @@ void RestAqlHandler::setupClusterQuery() {
       std::this_thread::sleep_for(std::chrono::milliseconds(3000));
     }
   }
-  
+
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
@@ -287,9 +287,9 @@ void RestAqlHandler::setupClusterQuery() {
 
   double const ttl = options.ttl;
   // creates a StandaloneContext or a leased context
-  auto q = std::make_unique<ClusterQuery>(clusterQueryId, 
-                                          createTransactionContext(access),
-                                          std::move(options));
+  auto q = ClusterQuery::create(clusterQueryId, 
+                                createTransactionContext(access),
+                                std::move(options));
   
   TRI_ASSERT(clusterQueryId == 0 || clusterQueryId == q->id());
 
@@ -302,7 +302,7 @@ void RestAqlHandler::setupClusterQuery() {
   answerBuilder.add(StaticStrings::AqlRemoteResult, VPackValue(VPackValueType::Object));
   if (clusterQueryId == 0) {
     // only return this attribute if we didn't get a query ID as input from
-    // the coordinator. this will be the case for setup requests from 3.7 
+    // the coordinator. this will be the case for setup requests from 3.7
     // coordinators
     answerBuilder.add("queryId", VPackValue(q->id()));
   }
@@ -348,7 +348,7 @@ void RestAqlHandler::setupClusterQuery() {
   }
 
   _queryRegistry->insertQuery(std::move(q), ttl, std::move(rGuard));
-  
+
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
@@ -378,7 +378,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
 
   if (_engine->getQuery().queryOptions().profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
-        << "[query#" << idString << "] remote request received: " << operation
+        << "[query#" << _engine->getQuery().id() << "] remote request received: " << operation
         << " registryId=" << idString;
   }
 
@@ -830,7 +830,7 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
   auto errorCode =
       VelocyPackHelper::getNumericValue<ErrorCode>(querySlice, StaticStrings::Code,
                                                    TRI_ERROR_INTERNAL);
-  std::unique_ptr<ClusterQuery> query = _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
+  std::shared_ptr<ClusterQuery> query = _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
   if (!query) {
     // this may be a race between query garbage collection and the client
     // shutting down the query. it is debatable whether this is an actual error
@@ -856,4 +856,12 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
 
     generateResult(rest::ResponseCode::OK, std::move(buffer));
   }));
+}
+
+RequestLane RestAqlHandler::lane() const {
+  if (ServerState::instance()->isCoordinator()) {
+    return RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR;
+  } else {
+    return RequestLane::CLUSTER_AQL;
+  }
 }

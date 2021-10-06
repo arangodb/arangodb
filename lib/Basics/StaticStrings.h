@@ -48,6 +48,8 @@ class StaticStrings {
   static std::string const AttachmentString;
   static std::string const IdString;
   static std::string const KeyString;
+  static std::string const PrefixOfKeyString;
+  static std::string const PostfixOfKeyString;
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
@@ -200,6 +202,7 @@ class StaticStrings {
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
   static std::string const XArangoFrontend;
+  static std::string const XArangoQueueTimeSeconds;
 
   // mime types
   static std::string const MimeTypeDump;
@@ -240,11 +243,15 @@ class StaticStrings {
   static std::string const Version;
   static std::string const WriteConcern;
   static std::string const ShardingSingle;
+  static std::string const ReplicationVersion;
+  static std::string const ReplicatedLogs;
 
   // graph attribute names
   static std::string const GraphCollection;
   static std::string const IsDisjoint;
+  static std::string const IsHybrid;
   static std::string const GraphIsSatellite;
+  static std::string const GraphSatellites;
   static std::string const GraphIsSmart;
   static std::string const GraphFrom;
   static std::string const GraphTo;
@@ -252,9 +259,9 @@ class StaticStrings {
   static std::string const GraphSmartGraphAttribute;
   static std::string const GraphDropCollections;
   static std::string const GraphDropCollection;
-  static std::string const GraphCreateCollections;
   static std::string const GraphCreateCollection;
   static std::string const GraphEdgeDefinitions;
+  static std::string const GraphEdgeDefinitionType;
   static std::string const GraphOrphans;
   static std::string const GraphInitial;
   static std::string const GraphInitialCid;
@@ -313,6 +320,21 @@ class StaticStrings {
   static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
   static std::string const FollowingTermId;
+
+  // Replication 2.0
+  static std::string const Config;
+  static std::string const CurrentTerm;
+  static std::string const Follower;
+  static std::string const Id;
+  static std::string const Index;
+  static std::string const Leader;
+  static std::string const LocalStatus;
+  static std::string const Participants;
+  static std::string const ServerId;
+  static std::string const Spearhead;
+  static std::string const TargetConfig;
+  static std::string const Term;
+  static std::string const CommitIndex;
 
   // generic attribute names
   static std::string const AttrCoordinator;

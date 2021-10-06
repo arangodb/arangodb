@@ -27,6 +27,7 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
+const _ = require("lodash");
 const arango = require('@arangodb').arango;
 const internal = require('internal');
 const isCluster = internal.isCluster();
@@ -815,7 +816,7 @@ function iResearchFeatureAqlTestSuite () {
       }
 
     },
-    
+
     testTokensFunctionWithNumberAnalyzer : function() {
       let analyzer = analyzers.save("gd","aql",
         { queryString: "RETURN @param",
@@ -1875,7 +1876,54 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
     },
-    
+
+    testCustomCollationAnalyzer : function() {
+      let analyzerName = "collationUnderTest";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      try { 
+        analyzers.save(analyzerName,"collation", {}, []);
+        assertTrue(false);
+      } catch (e) { }
+      {
+        analyzers.save(analyzerName,"collation", {locale:"ru_RU.UTf-8"}, []);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('АрангоДБ', '" + analyzerName + "' )",
+            null,
+            { }).toArray();
+          assertEqual(1, result.length);
+          assertEqual(16, result[0][0].length);
+
+          const expected = [
+            39, 6, 65533, 6, 120, 16, 65533, 26, 12,
+            1, 12, 1, 65533, 65533, 65533, 65533 ];
+
+          assertTrue(
+            _.isEqual(expected, result[0][0].split('').map(c => c.charCodeAt(0))));
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+    },
+
+    testCustomSegmentationAnalyzer : function() {
+      let analyzerName = "segmentationUnderTest";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      {
+        analyzers.save(analyzerName,"segmentation", {}, []);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('Arango DB', '" + analyzerName + "' )",
+            null,
+            { }).toArray();
+          assertEqual(1, result.length);
+          assertTrue(_.isEqual([ "arango", "db" ], result[0]));
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+    },
+
     testCustomAqlAnalyzerInView : function() {
       let dbName = "testDb";
       let colName = "testCollection";
@@ -2522,7 +2570,7 @@ function iResearchFeatureAqlTestSuite () {
         internal.sleep(3); // give consolidation some time
         col.truncate();
         db._view(viewName).properties({commitIntervalMsec: 10});
-  
+
         // force sync
         let res = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " 
                             + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO "

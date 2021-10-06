@@ -55,10 +55,11 @@ rocksdb::ReadOptions RocksDBSingleOperationReadOnlyMethods::iteratorReadOptions(
 rocksdb::SequenceNumber RocksDBSingleOperationReadOnlyMethods::GetSequenceNumber() const noexcept {
   return _db->GetLatestSequenceNumber();
 }
-                
+
 rocksdb::Status RocksDBSingleOperationReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                                            rocksdb::Slice const& key,
-                                                           rocksdb::PinnableSlice* val) {
+                                                           rocksdb::PinnableSlice* val,
+                                                           ReadOwnWrites) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
   ro.prefix_same_as_start = true;  // should always be true

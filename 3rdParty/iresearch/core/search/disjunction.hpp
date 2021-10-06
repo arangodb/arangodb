@@ -911,8 +911,8 @@ class disjunction final
   }
 
   std::pair<heap_iterator, heap_iterator> hitch_all_iterators() {
-    assert(!heap_.empty());
     // hitch all iterators in head to the lead (current doc_)
+    assert(!heap_.empty());
     auto begin = heap_.begin(), end = heap_.end()-1;
 
     auto& doc = std::get<document>(attrs_);
@@ -1138,6 +1138,7 @@ class block_disjunction final : public doc_iterator, private score_ctx {
       }
 
       visit_and_purge([this, target, &doc](auto& it) mutable {
+        UNUSED(this);
         const auto value = it->seek(target);
 
         if (doc_limits::eof(value)) {
@@ -1208,7 +1209,7 @@ class block_disjunction final : public doc_iterator, private score_ctx {
   }
 
   static constexpr doc_id_t num_blocks() noexcept {
-    return std::max(size_t(1), traits_type::num_blocks());
+    return static_cast<doc_id_t>(std::max(size_t(1), traits_type::num_blocks()));
   }
 
   static constexpr doc_id_t window() noexcept {

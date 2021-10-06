@@ -36,20 +36,20 @@ TEST(bit_packing_tests, const_check) {
   ASSERT_EQ(64U, packed::BLOCK_SIZE_64);
 }
 
-TEST(bit_packing_tests, bits_required) {
+TEST(bit_packing_tests, maxbits) {
   // check the number of bits required to store value
   // 32
-  ASSERT_EQ(32U, packed::bits_required_32(std::numeric_limits<uint32_t>::max()));
-  ASSERT_EQ(25U, packed::bits_required_32(18874368U));
-  ASSERT_EQ(20U, packed::bits_required_32(789547U));
-  ASSERT_EQ(0, packed::bits_required_32(0U));
+  ASSERT_EQ(32U, packed::maxbits32(std::numeric_limits<uint32_t>::max()));
+  ASSERT_EQ(25U, packed::maxbits32(18874368U));
+  ASSERT_EQ(20U, packed::maxbits32(789547U));
+  ASSERT_EQ(0, packed::maxbits32(0U));
 
   // 64
-  ASSERT_EQ(64U, packed::bits_required_64(std::numeric_limits<uint64_t>::max()));
-  ASSERT_EQ(58U, packed::bits_required_64(144115188109676544UL));
-  ASSERT_EQ(25U, packed::bits_required_64(18874368UL));
-  ASSERT_EQ(20U, packed::bits_required_64(789547UL));
-  ASSERT_EQ(0, packed::bits_required_64(uint64_t(0)));
+  ASSERT_EQ(64U, packed::maxbits64(std::numeric_limits<uint64_t>::max()));
+  ASSERT_EQ(58U, packed::maxbits64(144115188109676544UL));
+  ASSERT_EQ(25U, packed::maxbits64(18874368UL));
+  ASSERT_EQ(20U, packed::maxbits64(789547UL));
+  ASSERT_EQ(0, packed::maxbits64(uint64_t(0)));
 }
 
 TEST(bit_packing_tests, blocks_required) {
@@ -132,8 +132,8 @@ TEST(bit_packing_tests, pack_unpack_32) {
   // smoke test
   {
     const uint32_t max = *std::max_element(src.begin(), src.end());
-    const uint32_t bits = packed::bits_required_32(max);
-    const auto expected_bits = packed::bits_required_32(*std::max_element(src.begin(), src.end()));
+    const uint32_t bits = packed::maxbits32(max);
+    const auto expected_bits = packed::maxbits32(*std::max_element(src.begin(), src.end()));
     ASSERT_EQ(expected_bits, bits);
 
     std::vector< uint32_t > compress(packed::blocks_required_32(src.size(), bits), 0);
@@ -216,8 +216,8 @@ TEST(bit_packing_tests, pack_unpack_64) {
   // smoke test
   {
     auto max = *std::max_element(src.begin(), src.end());
-    auto bits = packed::bits_required_64(max);
-    const auto expected_bits = packed::bits_required_64(*std::max_element(src.begin(), src.end()));
+    auto bits = packed::maxbits64(max);
+    const auto expected_bits = packed::maxbits64(*std::max_element(src.begin(), src.end()));
     ASSERT_EQ(expected_bits, bits);
 
     std::vector<uint64_t> packed(packed::blocks_required_64(src.size(), bits), 0);
@@ -298,8 +298,8 @@ TEST(bit_packing_tests, iterator32) {
   std::sort(src.begin(), src.end());
 
   const uint32_t max = *std::max_element(src.begin(), src.end());
-  const uint32_t bits = packed::bits_required_32(max);
-  const auto expected_bits = packed::bits_required_32(*std::max_element(src.begin(), src.end()));
+  const uint32_t bits = packed::maxbits32(max);
+  const auto expected_bits = packed::maxbits32(*std::max_element(src.begin(), src.end()));
   ASSERT_EQ(expected_bits, bits);
 
   std::vector<uint32_t> compressed(packed::blocks_required_32(src.size(), bits), 0);

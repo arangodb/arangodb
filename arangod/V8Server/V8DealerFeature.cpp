@@ -905,7 +905,7 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
     ++_dynamicContextCreationBlockers;
   }
 
-  TRI_DEFER(unblockDynamicContextCreation());
+  auto sg = arangodb::scopeGuard([&]() noexcept { unblockDynamicContextCreation(); });
 
   LOG_TOPIC("1364d", TRACE, Logger::V8) << "loading JavaScript file '" << file << "' in all ("
                                << contexts.size() << ") V8 contexts";
@@ -1167,7 +1167,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
 }
 
 void V8DealerFeature::exitContextInternal(V8Context* context) {
-  TRI_DEFER(context->unlockAndExit());
+  auto sg = arangodb::scopeGuard([&]() noexcept { context->unlockAndExit(); });
   cleanupLockedContext(context);
 }
 
@@ -1667,7 +1667,7 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
 
   context->lockAndEnter();
   prepareLockedContext(vocbase, context, securityContext);
-  TRI_DEFER(exitContextInternal(context));
+  auto sg = arangodb::scopeGuard([&]() noexcept { exitContextInternal(context); });
 
   try {
     loadJavaScriptFileInternal(file, context, builder);

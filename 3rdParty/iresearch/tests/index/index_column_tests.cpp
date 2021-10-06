@@ -46,9 +46,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     struct stored {
       const irs::string_ref& name() { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         auto str = std::to_string(value);
@@ -1123,9 +1121,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
         : column_name(name) {
       }
       const irs::string_ref& name() { return column_name; }
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
       bool write(irs::data_output&) { return true; }
       const irs::string_ref column_name;
     } field(column_name), gap("gap");
@@ -1984,9 +1980,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       }
       const irs::string_ref& name() { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         auto str = std::to_string(value);
@@ -3150,9 +3144,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
       const irs::string_ref& name() noexcept { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         if (value == BLOCK_SIZE-1) {
@@ -3411,9 +3403,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     struct stored {
       const irs::string_ref& name() { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         if (value == BLOCK_SIZE-1) {
@@ -3615,9 +3605,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
       const irs::string_ref& name() noexcept { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         irs::write_string(
@@ -4613,10 +4601,8 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
   {
     struct stored {
       const irs::string_ref& name() { return column_name; }
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
-      bool write(irs::data_output& out) { return true; }
+      irs::features_t features() const { return {}; }
+      bool write(irs::data_output& /*out*/) { return true; }
     } field;
 
     irs::doc_id_t docs_count = 0;
@@ -5452,10 +5438,8 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
   {
     struct stored {
       const irs::string_ref& name() { return column_name; }
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
-      bool write(irs::data_output& out) { return true; }
+      irs::features_t features() const { return {}; }
+      bool write(irs::data_output& /*out*/) { return true; }
     } field;
 
     irs::doc_id_t docs_count = 0;
@@ -6096,9 +6080,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     struct stored {
       const irs::string_ref& name() { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         irs::write_string(
@@ -6879,9 +6861,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     struct stored {
       const irs::string_ref& name() { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         auto str = std::to_string(value);
@@ -8795,18 +8775,17 @@ TEST_P(index_column_test_case, read_empty_doc_attributes) {
   ASSERT_EQ(nullptr, column);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_column_test,
   index_column_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory),
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
     ::testing::Values(
       tests::format_info{"1_0"},
       tests::format_info{"1_1", "1_0"},
-      tests::format_info{"1_2", "1_0"})
-  ),
-  tests::to_string
+      tests::format_info{"1_2", "1_0"})),
+  index_column_test_case::to_string
 );

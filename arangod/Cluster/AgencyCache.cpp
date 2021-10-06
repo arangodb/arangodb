@@ -213,32 +213,39 @@ void AgencyCache::handleCallbacksNoLock(
       std::string_view r(k.c_str() + offset, k.size() - offset);
       auto rs = r.size();
       if (rs > strlen(PLAN) && r.compare(0, strlen(PLAN), PLAN) == 0) {
-        if (rs >= strlen(PLAN_VERSION) &&                 // Plan/Version -> ignore
+        if (rs >= strlen(PLAN_VERSION) &&  // Plan/Version -> ignore
             r.compare(0, strlen(PLAN_VERSION), PLAN_VERSION) == 0) {
           continue;
-        } else if (rs > strlen(PLAN_COLLECTIONS) &&       // Plan/Collections
+        } else if (rs > strlen(PLAN_COLLECTIONS) &&  // Plan/Collections
                    r.compare(0, strlen(PLAN_COLLECTIONS), PLAN_COLLECTIONS) == 0) {
           auto tmp = r.substr(strlen(PLAN_COLLECTIONS));
-          planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else if (rs > strlen(PLAN_DATABASES) &&         // Plan/Databases
+          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
+        } else if (rs > strlen(PLAN_REPLICATED_LOGS) &&  // Plan/ReplicatedLogs
+                   r.compare(0, strlen(PLAN_REPLICATED_LOGS), PLAN_REPLICATED_LOGS) == 0) {
+          auto tmp = r.substr(strlen(PLAN_REPLICATED_LOGS));
+          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
+        } else if (rs > strlen(PLAN_COLLECTION_GROUPS) &&  // Plan/CollectionGroups
+                   r.compare(0, strlen(PLAN_COLLECTION_GROUPS), PLAN_COLLECTION_GROUPS) == 0) {
+          auto tmp = r.substr(strlen(PLAN_COLLECTION_GROUPS));
+          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
+        } else if (rs > strlen(PLAN_DATABASES) &&  // Plan/Databases
                    r.compare(0, strlen(PLAN_DATABASES), PLAN_DATABASES) == 0) {
           auto tmp = r.substr(strlen(PLAN_DATABASES));
           planChanges.emplace(tmp);
-        } else if (rs > strlen(PLAN_VIEWS) &&             // Plan/Views
+        } else if (rs > strlen(PLAN_VIEWS) &&  // Plan/Views
                    r.compare(0, strlen(PLAN_VIEWS), (PLAN_VIEWS)) == 0) {
           auto tmp = r.substr(strlen(PLAN_VIEWS));
-          planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else if (rs > strlen(PLAN_ANALYZERS) &&         // Plan/Analyzers
-                   r.compare(0, strlen(PLAN_ANALYZERS), PLAN_ANALYZERS)==0) {
+          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
+        } else if (rs > strlen(PLAN_ANALYZERS) &&  // Plan/Analyzers
+                   r.compare(0, strlen(PLAN_ANALYZERS), PLAN_ANALYZERS) == 0) {
           auto tmp = r.substr(strlen(PLAN_ANALYZERS));
-          planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else if (r == "Plan/Databases" || r == "Plan/Collections" ||
-                   r == "Plan/Views" || r == "Plan/Analyzers" ||
-                   r == "Plan") {
+                   r == "Plan/Views" || r == "Plan/Analyzers" || r == "Plan") {
           // !! Check documentation of the function before making changes here !!
           planChanges = reInitPlan();
         } else {
-          planChanges.emplace();             // "" to indicate non database
+          planChanges.emplace();  // "" to indicate non database
         }
       } else if (rs > strlen(CURRENT) && r.compare(0, strlen(CURRENT), CURRENT) == 0) {
         if (rs >= strlen(CURRENT_VERSION) &&              // Current/Version is ignored
@@ -252,6 +259,10 @@ void AgencyCache::handleCallbacksNoLock(
                    r.compare(0, strlen(CURRENT_DATABASES), CURRENT_DATABASES) == 0) {
           auto tmp = r.substr(strlen(CURRENT_DATABASES));
           currentChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+        } else if (rs > strlen(CURRENT_REPLICATED_LOGS) &&      // Current/ReplicatedLogs
+                   r.compare(0, strlen(CURRENT_REPLICATED_LOGS), CURRENT_REPLICATED_LOGS) == 0) {
+          auto tmp = r.substr(strlen(CURRENT_REPLICATED_LOGS));
+          currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else {
           currentChanges.emplace();          // "" to indicate non database
         }
@@ -479,13 +490,7 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
     }
     auto pp = std::make_shared<futures::Promise<Result>>(std::move(pit->second));
     if (scheduler && !this->isStopping()) {
-      bool queued = scheduler->queue(
-        RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
-      if (!queued) {
-        LOG_TOPIC("c6473", WARN, Logger::AGENCY) <<
-          "Failed to schedule logsForTrigger running in main thread";
-        pp->setValue(Result());
-      }
+      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
     } else {
       pp->setValue(Result(_shutdownCode));
     }
@@ -662,10 +667,13 @@ AgencyCache::change_set_t AgencyCache::changedSince(
       AgencyCommHelper::path(PLAN_ANALYZERS) + "/",
       AgencyCommHelper::path(PLAN_COLLECTIONS) + "/",
       AgencyCommHelper::path(PLAN_DATABASES) + "/",
-      AgencyCommHelper::path(PLAN_VIEWS) + "/"});
-  static std::vector<std::string> const currentGoodies ({
-      AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
-      AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
+      AgencyCommHelper::path(PLAN_VIEWS) + "/",
+      AgencyCommHelper::path(PLAN_COLLECTION_GROUPS) + "/",
+      AgencyCommHelper::path(PLAN_REPLICATED_LOGS) + "/"});
+  static std::vector<std::string> const currentGoodies(
+      {AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
+       AgencyCommHelper::path(CURRENT_REPLICATED_LOGS) + "/",
+       AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
 
   bool get_rest = false;
   std::unordered_map<std::string, query_t> db_res;
@@ -741,7 +749,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
 
   if (get_rest) { // All the rest, i.e. All keys excluding the usual suspects
     static std::vector<std::string> const exc {
-      "Analyzers", "Collections", "Databases", "Views"};
+      "Analyzers", "Collections", "Databases", "Views", "ReplicatedLogs"};
     auto keys = _readDB.nodePtr(AgencyCommHelper::path(what))->keys();
     keys.erase(
       std::remove_if(

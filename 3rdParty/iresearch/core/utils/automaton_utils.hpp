@@ -88,7 +88,7 @@ class automaton_term_iterator final : public seek_term_iterator {
     return *value_;
   }
 
-  virtual doc_iterator::ptr postings(const flags& features) const override {
+  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
     return it_->postings(features);
   }
 

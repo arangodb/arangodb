@@ -133,6 +133,19 @@
       var name;
 
       switch (indexType) {
+        case 'Zkd':
+          fields = $('#newZkdFields').val();
+          const fieldValueTypes = $('#newZkdFieldValueTypes').val();
+          background = self.checkboxToValue('#newZkdBackground');
+          name = $('#newZkdName').val();
+          postParameter = {
+            type: 'zkd',
+            fields: self.stringToArray(fields),
+            fieldValueTypes,
+            inBackground: background,
+            name
+          };
+          break;
         case 'Ttl':
           fields = $('#newTtlFields').val();
           var expireAfter = parseInt($('#newTtlExpireAfter').val(), 10) || 0;
@@ -442,9 +455,9 @@
           );
           var sparse = (v.hasOwnProperty('sparse') ? v.sparse : 'n/a');
           var extras = [];
-          ["deduplicate", "expireAfter", "minLength", "geoJson", "estimates"].forEach(function(k) {
+          ['deduplicate', 'expireAfter', 'minLength', 'geoJson', 'estimates'].forEach(function (k) {
             if (v.hasOwnProperty(k)) {
-              extras.push(k + ": " + v[k]);
+              extras.push(k + ': ' + v[k]);
             }
           });
 
@@ -475,7 +488,10 @@
       }
       $('#newIndexType' + type).show();
       if (type) {
+        // select "maintain index selectivity estimates" by default
         $('#new' + type + 'Estimates').prop('checked', true);
+        // select "create in background" by default
+        $('#new' + type + 'Background').prop('checked', true);
       }
     },
 

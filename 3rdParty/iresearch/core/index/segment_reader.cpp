@@ -59,12 +59,12 @@ class all_iterator final : public doc_iterator {
   }
 
   virtual bool next() noexcept override {
-    if (doc_.value >= max_doc_) {
-      doc_.value = doc_limits::eof();
-      return false;
-    } else {
+    if (doc_.value < max_doc_) {
       doc_.value++;
       return true;
+    } else {
+      doc_.value = doc_limits::eof();
+      return false;
     }
   }
 

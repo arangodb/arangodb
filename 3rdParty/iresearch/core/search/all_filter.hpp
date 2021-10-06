@@ -33,7 +33,7 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API all: public filter {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
 
   all() noexcept;
 

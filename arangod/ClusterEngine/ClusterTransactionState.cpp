@@ -67,7 +67,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   // set hints
   _hints = hints;
 
-  auto cleanup = scopeGuard([&] {
+  auto cleanup = scopeGuard([&]() noexcept {
     updateStatus(transaction::Status::ABORTED);
     ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted;
   });
@@ -102,7 +102,9 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     // if there is only one server we may defer the lazy locking
     // until the first actual operation (should save one request)
     if (leaders.size() > 1) {
-      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders).get();
+      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders,
+                                                         transaction::MethodsApi::Synchronous)
+                .get();
       if (res.fail()) {  // something is wrong
         return res;
       }

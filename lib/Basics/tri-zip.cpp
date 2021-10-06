@@ -409,7 +409,7 @@ ErrorCode TRI_Adler32(char const* filename, uint32_t& checksum) {
   if (fd < 0) {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   TRI_stat_t statbuf;
   int res = TRI_FSTAT(fd, &statbuf);

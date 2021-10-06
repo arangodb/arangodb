@@ -267,7 +267,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
   TRI_ASSERT(_result != nullptr);
 
-  auto resultGuard = scopeGuard([this] {
+  auto resultGuard = scopeGuard([this]() noexcept {
     _result.reset();
   });
 

@@ -29,6 +29,7 @@
 #include "Aql/Timing.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryProfile.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
@@ -42,9 +43,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ClusterQuery::ClusterQuery(QueryId id, std::shared_ptr<transaction::Context> const& ctx,
-                           QueryOptions&& options)
-    : Query(id, ctx, aql::QueryString(), /*bindParams*/ nullptr, std::move(options),
+ClusterQuery::ClusterQuery(QueryId id, std::shared_ptr<transaction::Context> ctx,
+                           QueryOptions options)
+    : Query(id, ctx, aql::QueryString(), 
+            /*bindParams*/ nullptr, std::move(options),
             /*sharedState*/ ServerState::instance()->isDBServer()
                 ? nullptr
                 : std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
@@ -54,6 +56,24 @@ ClusterQuery::~ClusterQuery() {
     _traversers.clear();
   } catch (...) {
   }
+}
+
+/// @brief factory method for creating a cluster query. this must be used to
+/// ensure that ClusterQuery objects are always created using shared_ptrs.
+/*static*/ std::shared_ptr<ClusterQuery> ClusterQuery::create(QueryId id,
+                                                              std::shared_ptr<transaction::Context> ctx,
+                                                              aql::QueryOptions options) {
+  // workaround to enable make_shared on a class with a private/protected constructor
+  struct MakeSharedQuery : public ClusterQuery {
+    MakeSharedQuery(QueryId id,
+                    std::shared_ptr<transaction::Context> ctx,
+                    aql::QueryOptions options)
+      : ClusterQuery(id, std::move(ctx), std::move(options)) {}
+  };
+  
+  TRI_ASSERT(ctx != nullptr);
+
+  return std::make_shared<MakeSharedQuery>(id, std::move(ctx), std::move(options));
 }
 
 void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
@@ -150,6 +170,8 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
       TRI_ASSERT(_trx->state()->isCoordinator());
       QueryRegistryFeature::registry()->registerSnippets(_snippets);
     }
+
+    registerQueryInTransactionState();
   }
 
   if (traverserSlice.isArray()) {
@@ -175,7 +197,7 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
 futures::Future<Result> ClusterQuery::finalizeClusterQuery(ErrorCode errorCode) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(ServerState::instance()->isDBServer());
-  
+
   // technically there is no need for this in DBServers, but it should
   // be good practice to prevent the other cleanup code from running
   ShutdownState exp = ShutdownState::None;
@@ -218,6 +240,8 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(ErrorCode errorCode) 
      _execStats.setExecutionTime(elapsedSince(_startTime));
     _shutdownState.store(ShutdownState::Done);
      
+     unregisterQueryInTransactionState();
+     
      LOG_TOPIC("5fde0", DEBUG, Logger::QUERIES)
          << elapsedSince(_startTime)
          << " ClusterQuery::finalizeClusterQuery: done"
@@ -226,4 +250,5 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(ErrorCode errorCode) 
     return res;
   });
  }
-
+ 
+ 

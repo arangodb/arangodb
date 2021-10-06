@@ -24,10 +24,41 @@
 #ifndef IRESEARCH_TYPE_UTILS_H
 #define IRESEARCH_TYPE_UTILS_H
 
+#include <memory>
+
 #include "shared.hpp"
 #include "std.hpp"
+#include "string.hpp"
 
 namespace iresearch {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compile-time type identifier
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+constexpr string_ref ctti() noexcept {
+  return { IRESEARCH_CURRENT_FUNCTION };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief SFINAE
+////////////////////////////////////////////////////////////////////////////////
+#define DEFINE_HAS_MEMBER(member)                                            \
+  template<typename T>                                                       \
+  class has_member_##member {                                                \
+   private:                                                                  \
+    using yes_type = char;                                                   \
+    using no_type = long;                                                    \
+    using type = std::remove_reference_t<std::remove_cv_t<T>>;               \
+    template<typename U> static yes_type test(decltype(&U::member));         \
+    template<typename U> static no_type  test(...);                          \
+   public:                                                                   \
+    static constexpr bool value = sizeof(test<type>(0)) == sizeof(yes_type); \
+  };                                                                         \
+  template<typename T>                                                       \
+  inline constexpr auto has_member_##member##_v = has_member_##member<T>::value
+
+#define HAS_MEMBER(type, member) has_member_##member##_v<type>
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             template type traits
@@ -159,6 +190,25 @@ struct is_shared_ptr : std::false_type {};
 
 template<typename T>
 struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool is_shared_ptr_v = is_shared_ptr<T>::value;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @returns if 'T' is 'std::unique_ptr<T, D>' provides the member constant value
+///          equal to 'true', or 'false' otherwise
+///////////////////////////////////////////////////////////////////////////////
+template<typename T>
+struct is_unique_ptr : std::false_type {};
+
+template<typename T, typename D>
+struct is_unique_ptr<std::unique_ptr<T, D>> : std::true_type {};
+
+template<typename T, typename D>
+struct is_unique_ptr<std::unique_ptr<T[], D>> : std::true_type {};
+
+template<typename T>
+inline constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
 
 }
 

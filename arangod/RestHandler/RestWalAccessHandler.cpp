@@ -185,7 +185,8 @@ RestStatus RestWalAccessHandler::execute() {
   } else if (suffixes[0] == "lastTick" && _request->requestType() == RequestType::GET) {
     handleCommandLastTick(wal);
   } else if (suffixes[0] == "tail" && (_request->requestType() == RequestType::GET ||
-                                       _request->requestType() == RequestType::PUT)) {
+                                       _request->requestType() == RequestType::PUT ||
+                                       _request->requestType() == RequestType::DELETE_REQ)) {
     handleCommandTail(wal);
   } else if (suffixes[0] == "open-transactions" &&
              _request->requestType() == RequestType::GET) {
@@ -238,12 +239,27 @@ void RestWalAccessHandler::handleCommandLastTick(WalAccess const* wal) {
 }
 
 void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
+  // check for serverId
+  ServerId const clientId{StringUtils::uint64(_request->value("serverId"))};
+  SyncerId const syncerId = SyncerId::fromRequest(*_request);
+  std::string const& clientInfo = _request->value("clientInfo");
+
+  if (_request->requestType() == arangodb::rest::RequestType::DELETE_REQ) {
+    // this is a notification that tailing has come to an end, so we
+    // can unregister the client from the list of tracked clients
+    server().getFeature<DatabaseFeature>().enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
+      vocbase.replicationClients().untrack(syncerId, clientId, clientInfo);
+    });
+    generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+    return;
+  }
+
   // track the number of parallel invocations of the tailing API
   auto& rf = _vocbase.server().getFeature<ReplicationFeature>();
   // this may throw when too many threads are going into tailing
   rf.trackTailingStart();
 
-  auto guard = scopeGuard([&rf]() { rf.trackTailingEnd(); });
+  auto guard = scopeGuard([&rf]() noexcept { rf.trackTailingEnd(); });
 
   bool const useVst = (_request->transportType() == Endpoint::TransportType::VST);
 
@@ -251,11 +267,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   if (!parseFilter(filter)) {
     return;
   }
-
-  // check for serverId
-  ServerId const clientId{StringUtils::uint64(_request->value("serverId"))};
-  SyncerId const syncerId = SyncerId::fromRequest(*_request);
-  std::string const clientInfo = _request->value("clientInfo");
 
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
@@ -358,7 +369,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   server().getFeature<DatabaseFeature>().enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
     vocbase.replicationClients().track(syncerId, clientId, clientInfo, filter.tickStart,
-                                       replutils::BatchInfo::DefaultTimeout);
+                                       replutils::BatchInfo::DefaultTimeoutForTailing);
   });
 }
 

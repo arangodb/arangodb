@@ -20,6 +20,7 @@
       'replication': 'replication',
       'replication/applier/:endpoint/:database': 'applier',
       'collections': 'collections',
+      'analyzers': 'analyzers',
       'new': 'newCollection',
       'login': 'login',
       'collection/:colid/documents/:pageid': 'documents',
@@ -317,6 +318,13 @@
         self.handleResize();
       });
 
+    },
+
+    analyzers: function () {
+      this.checkUser();
+
+      this.init.then(() => ReactDOM.render(React.createElement(window.AnalyzersReactView),
+        document.getElementById('content')));
     },
 
     cluster: function () {
@@ -794,13 +802,8 @@
         this.documentView.defaultMode = mode;
 
         let doc = window.location.hash.split('/')[2];
-        const test = (doc.split('%').length - 1) % 3;
-
-        if (decodeURI(doc) !== doc && test !== 0) {
-          doc = decodeURIComponent(doc);
-        }
+        doc = decodeURIComponent(doc);
         this.documentView.docid = doc;
-
         this.documentView.render();
 
         const callback = function (error, type) {

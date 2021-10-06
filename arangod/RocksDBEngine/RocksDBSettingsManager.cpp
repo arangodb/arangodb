@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -148,8 +149,8 @@ Result RocksDBSettingsManager::sync(bool force) {
   // only one thread can enter here at a time
 
   // make sure we give up our lock when we exit this function
-  auto guard =
-      scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
+  auto guard = scopeGuard(
+      [this]() noexcept { _syncing.store(false, std::memory_order_release); });
 
   // need superuser scope to ensure we can sync all collections and keep seq
   // numbers in sync; background index creation will call this function as user,
@@ -160,6 +161,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto const maxSeqNr = _db->GetLatestSequenceNumber();
   auto minSeqNr = maxSeqNr;
+  TRI_ASSERT(minSeqNr > 0);
 
   rocksdb::TransactionOptions opts;
   opts.lock_timeout = 50;  // do not wait for locking keys
@@ -185,7 +187,7 @@ Result RocksDBSettingsManager::sync(bool force) {
       continue;
     }
     TRI_ASSERT(!vocbase->isDangling());
-    TRI_DEFER(vocbase->release());
+    auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
 
     std::shared_ptr<LogicalCollection> coll;
     try {
@@ -196,7 +198,7 @@ Result RocksDBSettingsManager::sync(bool force) {
     if (!coll) {
       continue;
     }
-    TRI_DEFER(vocbase->releaseCollection(coll.get()));
+    auto sg2 = arangodb::scopeGuard([&]() noexcept { vocbase->releaseCollection(coll.get()); });
 
     LOG_TOPIC("afb17", TRACE, Logger::ENGINES)
         << "syncing metadata for collection '" << coll->name() << "'";
@@ -234,9 +236,16 @@ Result RocksDBSettingsManager::sync(bool force) {
   }
 
   auto const lastSync = _lastSync.load();
+  
+  LOG_TOPIC("53e4c", TRACE, Logger::ENGINES) 
+      << "about to store lastSync. previous value: " << lastSync << ", current value: " << minSeqNr;
+
   if (minSeqNr < lastSync) {
-    LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
-    "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
+    if (minSeqNr != 0) {
+      LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
+        "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
+      TRI_ASSERT(false);
+    }
     return Result(); // do not move backwards in time
   }
   TRI_ASSERT(lastSync <= minSeqNr);
@@ -245,6 +254,10 @@ Result RocksDBSettingsManager::sync(bool force) {
         << "no collection data to serialize, updating lastSync to " << minSeqNr;
     _lastSync.store(minSeqNr);
     return Result();  // nothing was written
+  }
+  
+  TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+    std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
   }
 
   _tmpBuilder.clear();

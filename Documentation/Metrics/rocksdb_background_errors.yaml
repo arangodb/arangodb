@@ -1,7 +1,7 @@
 name: rocksdb_background_errors
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "background-errors"
+  Total number of RocksDB background errors.
 unit: number
 type: gauge
 category: RocksDB

@@ -232,7 +232,13 @@ class RocksDBReplicationContext {
     return _clientInfo;
   }
 
+  void removeBlocker(std::string const& dbName, std::string const& collection);
+
  private:
+  template <typename T>
+  bool findCollection(std::string const& dbName, T const& collection,
+                      std::function<void(TRI_vocbase_t& vocbase, LogicalCollection& collection)> const& cb);
+
   void lazyCreateSnapshot();
 
   CollectionIterator* getCollectionIterator(TRI_vocbase_t& vocbase, DataSourceId cid,
@@ -257,6 +263,9 @@ class RocksDBReplicationContext {
   uint64_t _snapshotTick;  // tick in WAL from _snapshot
   rocksdb::Snapshot const* _snapshot;
   std::map<DataSourceId, std::unique_ptr<CollectionIterator>> _iterators;
+
+  // db name => { collection id => transaction id }
+  std::map<std::string, std::map<DataSourceId, uint64_t>> _blockers;
 
   double const _ttl;
   /// @brief expiration time, updated under lock by ReplicationManager

@@ -57,6 +57,13 @@ class ServerState {
     STATE_SHUTDOWN        // used by all roles
   };
 
+  enum ReadOnlyMode {
+    API_TRUE,             // Set from outside via API
+    API_FALSE,
+    LICENSE_TRUE,         // Set from license feature
+    LICENSE_FALSE
+  };
+
   enum class Mode : uint8_t {
     DEFAULT = 0,
     /// reject all requests
@@ -75,7 +82,7 @@ class ServerState {
 
  public:
   /// @brief create the (sole) instance
-  static ServerState* instance();
+  static ServerState* instance() noexcept;
 
   /// @brief get the string representation of a role
   static std::string roleToString(RoleEnum);
@@ -116,8 +123,14 @@ class ServerState {
   /// @brief should not allow DDL operations / transactions
   static bool readOnly();
 
+  /// @brief should not allow DDL operations / transactions
+  static bool readOnlyByLicense();
+
+  /// @brief should not allow DDL operations / transactions
+  static bool readOnlyByAPI();
+
   /// @brief set server read-only
-  static bool setReadOnly(bool ro);
+  static bool setReadOnly(ReadOnlyMode);
 
  public:
   /// @brief sets the initialized flag
@@ -283,6 +296,9 @@ class ServerState {
 
   /// @brief check equality of engines with other registered servers
   bool checkEngineEquality(AgencyComm&);
+  
+  /// @brief check equality of naming conventions settings with other registered servers
+  bool checkNamingConventionsEquality(AgencyComm&);
 
   /// @brief try to read the rebootID from the Agency
   ResultT<uint64_t> readRebootIdFromAgency(AgencyComm& comm);

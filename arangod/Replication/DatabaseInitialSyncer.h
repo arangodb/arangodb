@@ -92,7 +92,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
                            replutils::Connection&, bool, replutils::LeaderInfo&,
                            replutils::ProgressInfo&, SyncerState& state, TRI_vocbase_t&);
 
-    bool isChild() const;  // TODO worker safety
+    bool isChild() const noexcept;  // TODO worker safety
   };
 
   /// @brief run method, performs a full synchronization
@@ -247,7 +247,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
   Result batchExtend();
 
   /// @brief send a "finish batch" command
-  Result batchFinish();
+  Result batchFinish() noexcept;
 
   Configuration _config;
 

@@ -26,6 +26,7 @@
 
 #include <stdlib.h>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -51,6 +52,10 @@
 #define TRI_IF_FAILURE(what) if (false)
 
 #endif
+
+namespace arangodb::velocypack {
+class Builder;
+}
 
 /// @brief intentionally cause a segmentation violation or other failures
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -82,9 +87,16 @@ inline void TRI_RemoveFailurePointDebugging(char const*) {}
 
 /// @brief clear all failure points
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_ClearFailurePointsDebugging();
+void TRI_ClearFailurePointsDebugging() noexcept;
 #else
-inline void TRI_ClearFailurePointsDebugging() {}
+inline void TRI_ClearFailurePointsDebugging() noexcept {}
+#endif
+
+/// @brief return all currently set failure points
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+void TRI_GetFailurePointsDebugging(arangodb::velocypack::Builder& builder);
+#else
+inline void TRI_GetFailurePointsDebugging(arangodb::velocypack::Builder&) {}
 #endif
 
 /// @brief returns whether failure point debugging can be used
@@ -199,6 +211,40 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T
   return o;
 }
 
+namespace debug {
+struct NoOpStream {
+  template <typename T>
+  auto operator<<(T const&) noexcept -> NoOpStream& {
+    return *this;
+  }
+};
+
+struct AssertionLogger {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void operator&(std::ostringstream const& stream) const {
+    std::string message = stream.str();
+    arangodb::CrashHandler::assertionFailure(file, line, function, expr,
+                                             message.empty() ? nullptr : message.c_str());
+  }
+  // can be removed in C++20 because of LWG 1203
+  void operator&(std::ostream const& stream) const {
+    operator&(static_cast<std::ostringstream const&>(stream));
+  }
+
+  const char* file;
+  int line;
+  const char* function;
+  const char* expr;
+#endif
+  void operator&(NoOpStream const&) const noexcept {}
+  static auto getOutputStream() -> std::ostringstream&& {
+    static thread_local std::ostringstream stream;
+    return std::move(stream);
+  }
+};
+
+}  // namespace debug
+
 }  // namespace arangodb
 
 /// @brief assert
@@ -206,24 +252,19 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                             \
-  do {                                                                                   \
-    if (!(ADB_LIKELY(expr))) {                                                           \
-      arangodb::CrashHandler::assertionFailure(__FILE__, __LINE__, __FUNCTION__, #expr); \
-    } else {                                                                             \
-    }                                                                                    \
-  } while (false)
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                  \
+  (ADB_LIKELY(expr))                                                          \
+      ? (void)nullptr                                                         \
+      : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
+                                           ARANGODB_PRETTY_FUNCTION, #expr} & \
+            ::arangodb::debug::AssertionLogger::getOutputStream()
 
 #else
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/ \
-  do {                                       \
-    if (false) {                             \
-      (void)(expr);                          \
-    }                                        \
-  } while (false)
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/        \
+  (true) ? ((false) ? (void)(expr) : (void)nullptr) \
+         : ::arangodb::debug::AssertionLogger{} & ::arangodb::debug::NoOpStream {}
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #endif  // #ifndef TRI_ASSERT
-

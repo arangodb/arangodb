@@ -86,7 +86,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
   mocks::MockAqlServer server{};
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery{
+  std::shared_ptr<arangodb::aql::Query> fakedQuery{
       server.createFakeQuery(false, "", [&](aql::Query& query) {
         if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
           // Create dummy collection
@@ -260,7 +260,8 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       auto col = collections.get(collectionName);
       TRI_ASSERT(col != nullptr);  // failed to add collection
       OperationOptions opts{};
-      ModificationExecutorInfos execInfos{0,
+      ModificationExecutorInfos execInfos{fakedQuery->rootEngine(), 
+                                          0,
                                           RegisterPlan::MaxRegisterId,
                                           RegisterPlan::MaxRegisterId,
                                           0,

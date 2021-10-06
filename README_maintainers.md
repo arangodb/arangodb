@@ -16,7 +16,12 @@ Main sections:
   - [Linux Core Dumps](#linux-core-dumps)
   - [Windows Core Dumps](#windows-core-dumps)
 - [Unittests](#unittests)
-
+  - [invoking driver tests](#driver-tests) via scripts/unittests
+  - [capturing test HTTP communication](#running-tcpdump--windump-for-the-sut) but
+    [forcing communication to use plain-text JSON](#forcing-downgrade-from-vpack-to-json)
+  - [Evaluating previous testruns](#evaluating-json-test-reports-from-previous-testruns)
+    sorting by setup time etc. 
+- [what to test where and how](tests/README.md)
 ---
 
 ## Source Code
@@ -127,10 +132,31 @@ but do not include `Documentation/Metrics/allMetrics.yaml` in your PR
 
 ## Building
 
+Note: Make sure that your source path does not contain spaces otherwise the build process will likely fail.
+
 ### Building the binaries
 
 ArangoDB uses a build system called [Oskar](https://github.com/arangodb/oskar).
 Please refer to the documentation of Oskar for details.
+
+Optimizations and limit of architecture (list of possible CPU instuctions) are set using this `cmake` option
+in addition to the other options:
+
+```
+-DTARGET_ARCHITECTURE
+```
+
+Oskar uses predefined architecture which is defined in `./VERSIONS` file or `westmere` if it's not defined.
+
+Note: if you use more modern architecture for optimizations or any additional implementation with extended
+set of CPU instructions please notice that result could be different to the default one.
+
+If you would like to disable architecture-specific optimizations or your CPU architecture isn't recognized
+by `cmake` module the following option could be used:
+
+```
+-DUSE_OPTIMIZE_FOR_ARCHITECTURE="OFF"
+```
 
 For building the ArangoDB starter checkout the
 [ArangoDB Starter](https://github.com/arangodb-helper/arangodb).

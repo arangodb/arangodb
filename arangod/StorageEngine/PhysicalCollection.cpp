@@ -37,6 +37,7 @@
 #include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/KeyGenerator.h"
@@ -61,7 +62,8 @@ PhysicalCollection::PhysicalCollection(LogicalCollection& collection,
               ? &collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo()
               : nullptr),
       _isDBServer(ServerState::instance()->isDBServer()),
-      _indexes() {}
+      _extendedNames(collection.vocbase().server().hasFeature<DatabaseFeature>() &&
+              collection.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections()) {}
 
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
@@ -108,7 +110,8 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
   // validate id string
   VPackValueLength len;
   char const* docId = slice.getStringUnchecked(len);
-  return KeyGenerator::validateId(docId, static_cast<size_t>(len));
+  [[maybe_unused]] size_t split = 0; 
+  return KeyGenerator::validateId(docId, static_cast<size_t>(len), _extendedNames, split);
 }
 
 bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
@@ -359,7 +362,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
   VPackSlice s = value.get(StaticStrings::KeyString);
   if (s.isNone()) {
     TRI_ASSERT(!isRestore);  // need key in case of restore
-    auto keyString = _logicalCollection.keyGenerator()->generate();
+    auto keyString = _logicalCollection.createKey(value);
 
     if (keyString.empty()) {
       return Result(TRI_ERROR_ARANGO_OUT_OF_KEYS);
@@ -556,7 +559,7 @@ Result PhysicalCollection::rebuildRevisionTree() {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-void PhysicalCollection::placeRevisionTreeBlocker(TransactionId) {
+uint64_t PhysicalCollection::placeRevisionTreeBlocker(TransactionId) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -578,16 +581,18 @@ std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
 
 void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
                                          std::function<bool(Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const {
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   result.openArray();
-  for (std::shared_ptr<Index> const& idx : _indexes) {
-    std::underlying_type<Index::Serialize>::type flags = Index::makeFlags();
+  {
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    for (std::shared_ptr<Index> const& idx : _indexes) {
+      std::underlying_type<Index::Serialize>::type flags = Index::makeFlags();
 
-    if (!filter(idx.get(), flags)) {
-      continue;
+      if (!filter(idx.get(), flags)) {
+        continue;
+      }
+
+      idx->toVelocyPack(result, flags);
     }
-
-    idx->toVelocyPack(result, flags);
   }
   result.close();
 }

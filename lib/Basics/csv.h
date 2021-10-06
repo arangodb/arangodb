@@ -92,7 +92,7 @@ void TRI_InitCsvParser(TRI_csv_parser_t*, void (*)(TRI_csv_parser_t*, size_t),
 /// @brief destroys a CSV parser
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyCsvParser(TRI_csv_parser_t* parser);
+void TRI_DestroyCsvParser(TRI_csv_parser_t* parser) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the separator

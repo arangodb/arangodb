@@ -98,7 +98,7 @@ struct SimpleHttpClientParams {
   
   double getRequestTimeout() const { return _requestTimeout; }
   
-  void setRequestTimeout(double value) { _requestTimeout = value; }
+  void setRequestTimeout(double value) noexcept { _requestTimeout = value; }
 
   void setMaxPacketSize(size_t ms) { _maxPacketSize = ms; }
 

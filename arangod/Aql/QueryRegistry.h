@@ -61,7 +61,7 @@ class QueryRegistry {
   /// The callback guard needs to be stored with the query to prevent it from
   /// firing. This is used for the RebootTracker to destroy the query when
   /// the coordinator which created it restarts or fails.
-  TEST_VIRTUAL void insertQuery(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
+  TEST_VIRTUAL void insertQuery(std::shared_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
 
   /// @brief open, find a engine in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -96,7 +96,7 @@ class QueryRegistry {
   /// and removed regardless if it is in use by anything else. this is only
   /// safe to call if the current thread is currently using the query itself
   // cppcheck-suppress virtualCallInConstructor
-  std::unique_ptr<ClusterQuery> destroyQuery(std::string const& vocbase, QueryId id, ErrorCode errorCode);
+  std::shared_ptr<ClusterQuery> destroyQuery(std::string const& vocbase, QueryId id, ErrorCode errorCode);
   
   /// used for a legacy shutdown
   bool destroyEngine(EngineId engineId, ErrorCode errorCode);
@@ -133,13 +133,13 @@ class QueryRegistry {
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {
     /// @brief constructor for a regular query entry
-    QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
+    QueryInfo(std::shared_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
     
     /// @brief constructor for a tombstone entry
     explicit QueryInfo(ErrorCode errorCode, double ttl);
     ~QueryInfo();
 
-    std::unique_ptr<ClusterQuery> _query;  // the actual query pointer
+    std::shared_ptr<ClusterQuery> _query;  // the actual query pointer
     
     const double _timeToLive;  // in seconds
     double _expires;     // UNIX UTC timestamp of expiration

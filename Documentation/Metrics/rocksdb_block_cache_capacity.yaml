@@ -1,7 +1,7 @@
 name: rocksdb_block_cache_capacity
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-block-cache-capacity"
+  RocksDB block cache capacity.
 unit: bytes
 type: gauge
 category: RocksDB

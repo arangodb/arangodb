@@ -99,7 +99,7 @@ class GeoFilter final
     return "arangodb::iresearch::GeoFilter";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   using filter::prepare;
 
@@ -143,7 +143,7 @@ class GeoDistanceFilter final
     return "arangodb::iresearch::GeoFilter";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   using filter::prepare;
 

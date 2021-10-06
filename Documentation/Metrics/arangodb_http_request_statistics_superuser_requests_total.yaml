@@ -2,7 +2,7 @@ name: arangodb_http_request_statistics_superuser_requests_total
 renamedFrom: arangodb_http_request_statistics_superuser_requests
 introducedIn: "3.8.0"
 help: |
-  Total number of HTTP requests executed by superuser/JWT
+  Total number of HTTP requests executed by superuser/JWT.
 unit: number
 type: counter
 category: Statistics

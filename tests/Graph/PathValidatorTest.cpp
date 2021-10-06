@@ -22,6 +22,10 @@
 
 #include "gtest/gtest.h"
 
+#include "../Mocks/Servers.h"
+
+#include "Aql/Ast.h"
+#include "Aql/Query.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StringHeap.h"
@@ -31,9 +35,22 @@
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Types/UniquenessLevel.h"
 
+#include "./MockGraph.h"
+#include "./MockGraphProvider.h"
+
 using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::velocypack;
+
+namespace {
+aql::AstNode* InitializeReference(aql::Ast& ast, aql::Variable& var) {
+  ast.scopes()->start(aql::ScopeType::AQL_SCOPE_MAIN);
+  ast.scopes()->addVariable(&var);
+  aql::AstNode* a = ast.createNodeReference("tmp");
+  ast.scopes()->endCurrent();
+  return a;
+}
+}  // namespace
 
 namespace arangodb {
 namespace tests {
@@ -41,52 +58,45 @@ namespace graph_path_validator_test {
 
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
-class Step : public arangodb::graph::BaseStep<Step> {
- public:
-  using Vertex = HashedStringRef;
-  using Edge = HashedStringRef;
+using Step = typename graph::MockGraphProvider::Step;
 
-  HashedStringRef _id;
-
-  Step(HashedStringRef id, size_t previous)
-      : arangodb::graph::BaseStep<Step>{previous}, _id{id} {};
-
-  ~Step() = default;
-
-  bool operator==(Step const& other) { return _id == other._id; }
-
-  std::string toString() const {
-    return "<Step> _id: " + _id.toString() +
-           ", _previous: " + basics::StringUtils::itoa(getPrevious());
-  }
-
-  bool isProcessable() const { return true; }
-  HashedStringRef getVertex() const { return _id; }
-  HashedStringRef getEdge() const { return _id; }
-
-  arangodb::velocypack::HashedStringRef getVertexIdentifier() const {
-    return getVertex();
-  }
-};
-
-using TypesToTest =
-    ::testing::Types<PathValidator<PathStore<Step>, VertexUniquenessLevel::NONE>,
-                     PathValidator<PathStore<Step>, VertexUniquenessLevel::PATH>,
-                     PathValidator<PathStore<Step>, VertexUniquenessLevel::GLOBAL>>;
+using TypesToTest = ::testing::Types<
+    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::NONE>,
+    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH>,
+    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::GLOBAL>>;
 
 template <class ValidatorType>
 class PathValidatorTest : public ::testing::Test {
+ protected:
+  graph::MockGraph mockGraph;
+  mocks::MockAqlServer _server{true};
+
+  std::shared_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
+
+ private:
   arangodb::GlobalResourceMonitor _global{};
   arangodb::ResourceMonitor _resourceMonitor{_global};
+
+  std::unique_ptr<graph::MockGraphProvider> _provider;
 
   PathStore<Step> _pathStore{_resourceMonitor};
   StringHeap _heap{_resourceMonitor, 4096};
 
+  // Expression Parts
+  arangodb::transaction::Methods _trx{_query->newTrxContext()};
+  aql::Ast* _ast{_query->ast()};
+  aql::Variable _tmpVar{"tmp", 0, false};
+  aql::AstNode* _varNode{::InitializeReference(*_ast, _tmpVar)};
+
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  arangodb::aql::FixedVarExpressionContext _expressionContext{_trx, *_query, _functionsCache};
+  PathValidatorOptions _opts{&_tmpVar, _expressionContext};
+
  protected:
   VertexUniquenessLevel getVertexUniquness() {
-    if constexpr (std::is_same_v<ValidatorType, PathValidator<PathStore<Step>, VertexUniquenessLevel::NONE>>) {
+    if constexpr (std::is_same_v<ValidatorType, PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::NONE>>) {
       return VertexUniquenessLevel::NONE;
-    } else if constexpr (std::is_same_v<ValidatorType, PathValidator<PathStore<Step>, VertexUniquenessLevel::PATH>>) {
+    } else if constexpr (std::is_same_v<ValidatorType, PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::PATH>>) {
       return VertexUniquenessLevel::PATH;
     } else {
       return VertexUniquenessLevel::GLOBAL;
@@ -95,61 +105,104 @@ class PathValidatorTest : public ::testing::Test {
 
   PathStore<Step>& store() { return _pathStore; }
 
-  ValidatorType testee() { return ValidatorType{this->store()}; }
-  Step makeStep(size_t id, size_t previous) {
-    std::string idStr = basics::StringUtils::itoa(id);
-    HashedStringRef hStr(idStr.data(), static_cast<uint32_t>(idStr.length()));
-    return Step(_heap.registerString(hStr), previous);
+  aql::Variable const* tmpVar() { return &_tmpVar; }
+
+  aql::Query* query() { return _query.get(); }
+
+  ValidatorType testee() {
+    ensureProvider();
+    return ValidatorType{*_provider.get(), this->store(), _opts};
+  }
+
+  Step startPath(size_t id) {
+    ensureProvider();
+    auto base = mockGraph.vertexToId(id);
+    HashedStringRef ref{base.c_str(), static_cast<uint32_t>(base.length())};
+    auto hStr = _heap.registerString(ref);
+    return _provider->startVertex(hStr);
+  }
+
+  // Get and modify the options used in the Validator testee().
+  // Make sure to Modify them before calling testee() method.
+  PathValidatorOptions& options() { return _opts; }
+
+  std::vector<Step> expandPath(Step previous) {
+    // We at least have called startPath before, this ensured the provider
+    TRI_ASSERT(_provider != nullptr);
+    size_t prev = _pathStore.append(previous);
+    std::vector<Step> result;
+    _provider->expand(previous, prev,
+                      [&result](Step s) { result.emplace_back(s); });
+    return result;
+  }
+
+  // Add a path defined by the given vector. We start a first() and end in last()
+  void addPath(std::vector<size_t> path) {
+    // This function can only add paths of length 1 or more
+    TRI_ASSERT(path.size() >= 2);
+    for (size_t i = 0; i < path.size() - 1; ++i) {
+      mockGraph.addEdge(path.at(i), path.at(i + 1));
+    }
+  }
+
+  /*
+   * generates a condition #TMP._key == '<toMatch>'
+   */
+  std::unique_ptr<aql::Expression> conditionKeyMatches(std::string const& toMatch) {
+    auto expectedKey = _ast->createNodeValueString(toMatch.c_str(), toMatch.length());
+    auto keyAccess =
+        _ast->createNodeAttributeAccess(_varNode, StaticStrings::KeyString.c_str(),
+                                        StaticStrings::KeyString.length());
+    // This condition cannot be fulfilled
+    auto condition = _ast->createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                    keyAccess, expectedKey);
+    return std::make_unique<aql::Expression>(_ast, condition);
+  }
+
+ private:
+  void ensureProvider() {
+    if (_provider == nullptr) {
+      _provider = std::make_unique<graph::MockGraphProvider>(
+          *_query.get(),
+          graph::MockGraphProviderOptions{mockGraph, graph::MockGraphProviderOptions::LooseEndBehaviour::NEVER,
+                                          false},
+          _resourceMonitor);
+    }
   }
 };
 
 TYPED_TEST_CASE(PathValidatorTest, TypesToTest);
 
 TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_first_duplicate) {
-  auto&& ps = this->store();
+  // We add a loop that ends in the start vertex (0) again.
+  this->addPath({0, 1, 2, 3, 0});
   auto validator = this->testee();
 
-  size_t lastIndex = std::numeric_limits<size_t>::max();
+  Step s = this->startPath(0);
   {
-    Step s = this->makeStep(0, lastIndex);
     auto res = validator.validatePath(s);
     // The start vertex is always valid
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 0);
+  }
+  // The next 3 steps are good to take.
+  for (size_t i = 0; i < 3; ++i) {
+    auto neighbors = this->expandPath(s);
+    ASSERT_EQ(neighbors.size(), 1)
+        << "Not enough connections after step " << s.getVertexIdentifier();
+    s = neighbors.at(0);
+    auto res = validator.validatePath(s);
+    EXPECT_FALSE(res.isFiltered());
+    EXPECT_FALSE(res.isPruned());
   }
 
-  // We add a loop that ends in the start vertex (0) again.
+  // Now we move to the duplicate vertex
   {
-    Step s = this->makeStep(1, lastIndex);
+    auto neighbors = this->expandPath(s);
+    ASSERT_EQ(neighbors.size(), 1);
+    s = neighbors.at(0);
     auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 1);
-  }
-  {
-    Step s = this->makeStep(2, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 2);
-  }
-  {
-    Step s = this->makeStep(3, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 3);
-  }
 
-  // Add duplicate vertex on Path
-  {
-    Step s = this->makeStep(0, lastIndex);
-    auto res = validator.validatePath(s);
     if (this->getVertexUniquness() == VertexUniquenessLevel::NONE) {
       // No uniqueness check, take the vertex
       EXPECT_FALSE(res.isFiltered());
@@ -163,49 +216,35 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_first_du
 }
 
 TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_last_duplicate) {
-  auto&& ps = this->store();
+  // We add a loop that loops on the last vertex(3).
+  this->addPath({0, 1, 2, 3, 3});
   auto validator = this->testee();
 
-  size_t lastIndex = std::numeric_limits<size_t>::max();
+  Step s = this->startPath(0);
   {
-    Step s = this->makeStep(0, lastIndex);
     auto res = validator.validatePath(s);
     // The start vertex is always valid
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 0);
   }
-  // We add a loop on the last vertex of the path (3)
-  {
-    Step s = this->makeStep(1, lastIndex);
+  // The next 3 steps are good to take.
+  for (size_t i = 0; i < 3; ++i) {
+    auto neighbors = this->expandPath(s);
+    ASSERT_EQ(neighbors.size(), 1)
+        << "Not enough connections after step " << s.getVertexIdentifier();
+    s = neighbors.at(0);
     auto res = validator.validatePath(s);
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 1);
-  }
-  {
-    Step s = this->makeStep(2, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 2);
-  }
-  {
-    Step s = this->makeStep(3, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 3);
   }
 
-  // Add duplicate vertex on Path
+  // Now we move to the duplicate vertex
   {
-    Step s = this->makeStep(3, lastIndex);
+    auto neighbors = this->expandPath(s);
+    ASSERT_EQ(neighbors.size(), 1);
+    s = neighbors.at(0);
     auto res = validator.validatePath(s);
+
     if (this->getVertexUniquness() == VertexUniquenessLevel::NONE) {
       // No uniqueness check, take the vertex
       EXPECT_FALSE(res.isFiltered());
@@ -219,49 +258,35 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_last_dup
 }
 
 TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_interior_duplicate) {
-  auto&& ps = this->store();
+  // We add a loop that loops on the last vertex(2).
+  this->addPath({0, 1, 2, 3, 2});
   auto validator = this->testee();
 
-  size_t lastIndex = std::numeric_limits<size_t>::max();
+  Step s = this->startPath(0);
   {
-    Step s = this->makeStep(0, lastIndex);
     auto res = validator.validatePath(s);
     // The start vertex is always valid
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 0);
   }
-  // We add a loop that ends in one interior vertex (2) again.
-  {
-    Step s = this->makeStep(1, lastIndex);
+  // The next 3 steps are good to take.
+  for (size_t i = 0; i < 3; ++i) {
+    auto neighbors = this->expandPath(s);
+    ASSERT_EQ(neighbors.size(), 1)
+        << "Not enough connections after step " << s.getVertexIdentifier();
+    s = neighbors.at(0);
     auto res = validator.validatePath(s);
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 1);
-  }
-  {
-    Step s = this->makeStep(2, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 2);
-  }
-  {
-    Step s = this->makeStep(3, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 3);
   }
 
-  // Add duplicate vertex on Path
+  // Now we move to the duplicate vertex
   {
-    Step s = this->makeStep(2, lastIndex);
+    auto neighbors = this->expandPath(s);
+    ASSERT_EQ(neighbors.size(), 1);
+    s = neighbors.at(0);
     auto res = validator.validatePath(s);
+
     if (this->getVertexUniquness() == VertexUniquenessLevel::NONE) {
       // No uniqueness check, take the vertex
       EXPECT_FALSE(res.isFiltered());
@@ -275,159 +300,200 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_interior
 }
 
 TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_last_duplicate) {
-  auto&& ps = this->store();
+  // We add a two paths, that share the same start and end vertex (3)
+  this->addPath({0, 1, 2, 3});
+  this->addPath({0, 4, 5, 3});
+
   auto validator = this->testee();
 
-  size_t lastIndex = std::numeric_limits<size_t>::max();
+  Step s = this->startPath(0);
   {
-    Step s = this->makeStep(0, lastIndex);
     auto res = validator.validatePath(s);
     // The start vertex is always valid
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 0);
-  }
-  // We add two paths, each without a loop.
-  // Both paths share a common vertex besides the start.
-
-  // First path 0 -> 1 -> 2 -> 3
-  {
-    Step s = this->makeStep(1, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 1);
-  }
-  {
-    Step s = this->makeStep(2, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 2);
-  }
-  {
-    Step s = this->makeStep(3, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 3);
   }
 
-  // First path 0 -> 4 -> 5
-  lastIndex = 0;
+  auto branch = this->expandPath(s);
+  // 1 and 4, we do not care on the ordering.
+  ASSERT_EQ(branch.size(), 2);
   {
-    Step s = this->makeStep(4, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 4);
-  }
-  {
-    Step s = this->makeStep(5, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 5);
-  }
-
-  // Add duplicate vertex (3) which is the last on the first path
-  {
-    Step s = this->makeStep(3, lastIndex);
-    auto res = validator.validatePath(s);
-    if (this->getVertexUniquness() != VertexUniquenessLevel::GLOBAL) {
-      // The vertex is visited twice, but not on same path.
-      // As long as we are not GLOBAL this is okay.
+    {
+      // Test the branch vertex itself
+      s = branch.at(0);
+      auto res = validator.validatePath(s);
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
-    } else {
-      // With GLOBAL uniqueness this vertex is illegal
-      EXPECT_TRUE(res.isFiltered());
-      EXPECT_TRUE(res.isPruned());
+    }
+    // The first branch is good until the end
+    for (size_t i = 0; i < 2; ++i) {
+      auto neighbors = this->expandPath(s);
+      ASSERT_EQ(neighbors.size(), 1)
+          << "Not enough connections after step " << s.getVertexIdentifier();
+      s = neighbors.at(0);
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+  }
+  {
+    // The second branch is good but for the last vertex
+    {
+      // Test the branch vertex itself
+      s = branch.at(1);
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+    for (size_t i = 0; i < 1; ++i) {
+      auto neighbors = this->expandPath(s);
+      ASSERT_EQ(neighbors.size(), 1)
+          << "Not enough connections after step " << s.getVertexIdentifier();
+      s = neighbors.at(0);
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+
+    // Now we move to the duplicate vertex
+    {
+      auto neighbors = this->expandPath(s);
+      ASSERT_EQ(neighbors.size(), 1);
+      s = neighbors.at(0);
+      auto res = validator.validatePath(s);
+
+      if (this->getVertexUniquness() != VertexUniquenessLevel::GLOBAL) {
+        // The vertex is visited twice, but not on same path.
+        // As long as we are not GLOBAL this is okay.
+        // No uniqueness check, take the vertex
+        EXPECT_FALSE(res.isFiltered());
+        EXPECT_FALSE(res.isPruned());
+      } else {
+        // With GLOBAL uniqueness this vertex is illegal
+        EXPECT_TRUE(res.isFiltered());
+        EXPECT_TRUE(res.isPruned());
+      }
     }
   }
 }
 
 TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_interior_duplicate) {
-  auto&& ps = this->store();
+  // We add a two paths, that share the same start and end vertex (3)
+  this->addPath({0, 1, 2, 3});
+  this->addPath({0, 4, 5, 1});
+
   auto validator = this->testee();
 
-  size_t lastIndex = std::numeric_limits<size_t>::max();
+  Step s = this->startPath(0);
   {
-    Step s = this->makeStep(0, lastIndex);
     auto res = validator.validatePath(s);
     // The start vertex is always valid
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 0);
-  }
-  // We add two paths, each without a loop.
-  // Both paths share a common vertex besides the start.
-
-  // First path 0 -> 1 -> 2 -> 3
-  {
-    Step s = this->makeStep(1, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 1);
-  }
-  {
-    Step s = this->makeStep(2, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 2);
-  }
-  {
-    Step s = this->makeStep(3, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 3);
   }
 
-  // First path 0 -> 4 -> 5
-  lastIndex = 0;
+  auto branch = this->expandPath(s);
+  // 1 and 4, we do need to care on the ordering, this is right now guaranteed.
+  // If this test fails at any point in time, we can add some code here that
+  // ensures that we first visit Vertex 1, then Vertex 4
+  ASSERT_EQ(branch.size(), 2);
   {
-    Step s = this->makeStep(4, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 4);
-  }
-  {
-    Step s = this->makeStep(5, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_FALSE(res.isFiltered());
-    EXPECT_FALSE(res.isPruned());
-    lastIndex = ps.append(std::move(s));
-    EXPECT_EQ(lastIndex, 5);
-  }
-
-  // Add duplicate vertex (1) which is interior to the first path
-  {
-    Step s = this->makeStep(1, lastIndex);
-    auto res = validator.validatePath(s);
-    if (this->getVertexUniquness() != VertexUniquenessLevel::GLOBAL) {
-      // The vertex is visited twice, but not on same path.
-      // As long as we are not GLOBAL this is okay.
+    // The first branch is good until the end
+    {
+      // Test the branch vertex itself
+      s = branch.at(0);
+      auto res = validator.validatePath(s);
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
-    } else {
-      // With GLOBAL uniqueness this vertex is illegal
+    }
+    for (size_t i = 0; i < 2; ++i) {
+      auto neighbors = this->expandPath(s);
+      ASSERT_EQ(neighbors.size(), 1)
+          << "Not enough connections after step " << s.getVertexIdentifier();
+      s = neighbors.at(0);
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+  }
+  {
+    // The second branch is good but for the last vertex
+    {
+      // Test the branch vertex itself
+      s = branch.at(1);
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+    for (size_t i = 0; i < 1; ++i) {
+      auto neighbors = this->expandPath(s);
+      ASSERT_EQ(neighbors.size(), 1)
+          << "Not enough connections after step " << s.getVertexIdentifier();
+      s = neighbors.at(0);
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+
+    // Now we move to the duplicate vertex
+    {
+      auto neighbors = this->expandPath(s);
+      ASSERT_EQ(neighbors.size(), 1);
+      s = neighbors.at(0);
+      auto res = validator.validatePath(s);
+
+      if (this->getVertexUniquness() != VertexUniquenessLevel::GLOBAL) {
+        // The vertex is visited twice, but not on same path.
+        // As long as we are not GLOBAL this is okay.
+        // No uniqueness check, take the vertex
+        EXPECT_FALSE(res.isFiltered());
+        EXPECT_FALSE(res.isPruned());
+      } else {
+        // With GLOBAL uniqueness this vertex is illegal
+        EXPECT_TRUE(res.isFiltered());
+        EXPECT_TRUE(res.isPruned());
+      }
+    }
+  }
+}
+
+TYPED_TEST(PathValidatorTest, it_should_test_an_all_vertices_condition) {
+  this->addPath({0, 1});
+  std::string keyToMatch = "1";
+
+  auto expression = this->conditionKeyMatches(keyToMatch);
+  auto& opts = this->options();
+  opts.setAllVerticesExpression(std::move(expression));
+  auto validator = this->testee();
+  {
+    // Testing x._key == "1" with `{_key: "1"} => Should succeed
+    Step s = this->startPath(1);
+    auto res = validator.validatePath(s);
+    EXPECT_FALSE(res.isFiltered());
+    EXPECT_FALSE(res.isPruned());
+  }
+
+  // we start a new path, so reset the uniqueness checks
+  validator.reset();
+
+  {
+    // Testing x._key == "1" with `{_key: "0"} => Should fail
+    Step s = this->startPath(0);
+    {
+      auto res = validator.validatePath(s);
       EXPECT_TRUE(res.isFiltered());
       EXPECT_TRUE(res.isPruned());
+    }
+
+    // Testing condition on level 1 (not start)
+    auto neighbors = this->expandPath(s);
+    ASSERT_EQ(neighbors.size(), 1);
+    s = neighbors.at(0);
+    {
+      // Testing x._key == "1" with `{_key: "1"} => Should succeed
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
     }
   }
 }

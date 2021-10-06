@@ -53,8 +53,7 @@ using namespace arangodb::graph;
 
 namespace {
 bool isWithClauseMissing(arangodb::basics::Exception const& ex) {
-  if (ServerState::instance()->isDBServer() &&
-      ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+  if (ServerState::instance()->isDBServer() && ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
     // on a DB server, we could have got here only in the OneShard case.
     // in this case turn the rather misleading "collection or view not found"
     // error into a nicer "collection not known to traversal, please add WITH"
@@ -68,19 +67,20 @@ bool isWithClauseMissing(arangodb::basics::Exception const& ex) {
 
   return false;
 }
-} // namespace
+}  // namespace
 
 RefactoredTraverserCache::RefactoredTraverserCache(
     arangodb::transaction::Methods* trx, aql::QueryContext* query,
     arangodb::ResourceMonitor& resourceMonitor, arangodb::aql::TraversalStats& stats,
-    std::map<std::string, std::string> const& collectionToShardMap)
+    std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap)
     : _query(query),
       _trx(trx),
       _stringHeap(resourceMonitor, 4096), /* arbitrary block-size may be adjusted for performance */
       _collectionToShardMap(collectionToShardMap),
       _resourceMonitor(resourceMonitor),
-      _allowImplicitCollections(ServerState::instance()->isSingleServer() &&
-                                !_query->vocbase().server().getFeature<QueryRegistryFeature>().requireWith()) {
+      _allowImplicitCollections(
+          ServerState::instance()->isSingleServer() &&
+          !_query->vocbase().server().getFeature<QueryRegistryFeature>().requireWith()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
@@ -95,7 +95,7 @@ void RefactoredTraverserCache::clear() {
 
 template <typename ResultType>
 bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
-                                          ResultType& result) {
+                                          bool onlyId, ResultType& result) {
   auto col = _trx->vocbase().lookupCollection(idToken.cid());
 
   if (ADB_UNLIKELY(col == nullptr)) {
@@ -106,17 +106,24 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
     return false;
   }
 
-  auto res = col->getPhysical()->read(
-      _trx, idToken.localDocumentId(), [&](LocalDocumentId const&, VPackSlice edge) -> bool {
-        // NOTE: Do not count this as Primary Index Scan, we counted it in the
-        // edge Index before copying...
-        if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-          result = aql::AqlValue(edge);
-        } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
-          result.add(edge);
-        }
-        return true;
-      }).ok();
+  auto res = col->getPhysical()
+                 ->read(
+                     _trx, idToken.localDocumentId(),
+                     [&](LocalDocumentId const&, VPackSlice edge) -> bool {
+                       if (onlyId) {
+                         edge = edge.get(StaticStrings::IdString);
+                       }
+                       // NOTE: Do not count this as Primary Index Scan, we
+                       // counted it in the edge Index before copying...
+                       if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+                         result = aql::AqlValue(edge);
+                       } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+                         result.add(edge);
+                       }
+                       return true;
+                     },
+                     ReadOwnWrites::no)
+                 .ok();
   if (ADB_UNLIKELY(!res)) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("daac5", ERR, arangodb::Logger::GRAPHS)
@@ -139,20 +146,7 @@ ResultT<std::pair<std::string, size_t>> RefactoredTraverserCache::extractCollect
   }
 
   std::string colName = idHashed.substr(0, pos).toString();
-  if (_collectionToShardMap.empty()) {
-    TRI_ASSERT(!ServerState::instance()->isDBServer());
-    return std::make_pair(colName, pos);
-  }
-  auto it = _collectionToShardMap.find(colName);
-  if (it == _collectionToShardMap.end()) {
-    // Connected to a vertex where we do not know the Shard to.
-    return Result{TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                  "collection not known to traversal: '" + colName +
-                      "'. please add 'WITH " + colName +
-                      "' as the first line in your AQL"};
-  }
-  // We have translated to a Shard
-  return std::make_pair(it->second, pos);
+  return std::make_pair(colName, pos);
 }
 
 template <typename ResultType>
@@ -163,43 +157,68 @@ bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
   if (collectionNameResult.fail()) {
     THROW_ARANGO_EXCEPTION(collectionNameResult.result());
   }
-    
+
+  auto findDocumentInShard = [&](std::string const& collectionName) -> bool {
+    try {
+      transaction::AllowImplicitCollectionsSwitcher disallower(_trx->state()->options(),
+                                                               _allowImplicitCollections);
+
+      Result res = _trx->documentFastPathLocal(
+          collectionName, id.substr(collectionNameResult.get().second + 1).stringRef(),
+          [&](LocalDocumentId const&, VPackSlice doc) -> bool {
+            stats.addScannedIndex(1);
+            // copying...
+            if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+              result = aql::AqlValue(doc);
+            } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+              result.add(doc);
+            }
+            return true;
+          });
+      if (res.ok()) {
+        return true;
+      }
+
+      if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+        // ok we are in a rather bad state. Better throw and abort.
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    } catch (basics::Exception const& ex) {
+      if (isWithClauseMissing(ex)) {
+        // turn the error into a different error
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                       "collection not known to traversal: '" + collectionName +
+                                           "'. please add 'WITH " + collectionName +
+                                           "' as the first line in your AQL");
+      }
+      // rethrow original error
+      throw;
+    }
+    return false;
+  };
+
   std::string const& collectionName = collectionNameResult.get().first;
-
-  try {
-    transaction::AllowImplicitCollectionsSwitcher disallower(_trx->state()->options(), _allowImplicitCollections);
-
-    Result res = _trx->documentFastPathLocal(
-        collectionName,
-        id.substr(collectionNameResult.get().second + 1).stringRef(),
-        [&](LocalDocumentId const&, VPackSlice doc) -> bool {
-          stats.addScannedIndex(1);
-          // copying...
-          if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-            result = aql::AqlValue(doc);
-          } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
-            result.add(doc);
-          }
-          return true;
-        });
-    if (res.ok()) {
+  if (_collectionToShardMap.empty()) {
+    TRI_ASSERT(!ServerState::instance()->isDBServer());
+    if (findDocumentInShard(collectionName)) {
       return true;
     }
-
-    if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-      // ok we are in a rather bad state. Better throw and abort.
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  } catch (basics::Exception const& ex) {
-    if (isWithClauseMissing(ex)) {
-      // turn the error into a different error 
+  } else {
+    auto it = _collectionToShardMap.find(collectionName);
+    if (it == _collectionToShardMap.end()) {
+      // Connected to a vertex where we do not know the Shard to.
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                     "collection not known to traversal: '" +
-                                     collectionName + "'. please add 'WITH " + collectionName +
-                                     "' as the first line in your AQL");
+                                     "collection not known to traversal: '" + collectionName +
+                                         "'. please add 'WITH " + collectionName +
+                                         "' as the first line in your AQL");
     }
-    // rethrow original error
-    throw;
+    for (auto const& shard : it->second) {
+      if (findDocumentInShard(shard)) {
+        // Short circuit, as soon as one shard contains this document
+        // we can return it.
+        return true;
+      }
+    }
   }
 
   // Register a warning. It is okay though but helps the user
@@ -211,16 +230,27 @@ bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
 
 void RefactoredTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
                                                     VPackBuilder& builder) {
-  if (!appendEdge(idToken, builder)) {
+  if (!appendEdge(idToken, false, builder)) {
     builder.add(VPackSlice::nullSlice());
   }
 }
 
-void RefactoredTraverserCache::insertVertexIntoResult(aql::TraversalStats& stats,
-                                                      arangodb::velocypack::HashedStringRef const& idString,
+void RefactoredTraverserCache::insertEdgeIdIntoResult(EdgeDocumentToken const& idToken,
                                                       VPackBuilder& builder) {
-  if (!appendVertex(stats, idString, builder)) {
+  if (!appendEdge(idToken, true, builder)) {
     builder.add(VPackSlice::nullSlice());
+  }
+}
+
+void RefactoredTraverserCache::insertVertexIntoResult(
+    aql::TraversalStats& stats, arangodb::velocypack::HashedStringRef const& idString,
+    VPackBuilder& builder, bool writeIdIfNotFound) {
+  if (!appendVertex(stats, idString, builder)) {
+    if (writeIdIfNotFound) {
+      builder.add(VPackValue(idString.toString()));
+    } else {
+      builder.add(VPackSlice::nullSlice());
+    }
   }
 }
 

@@ -83,7 +83,7 @@ static ErrorCode HexHashFromData(std::string const& hashMethod,
     return TRI_ERROR_FAILED;
   }
 
-  TRI_DEFER(delete[] crypted);
+  auto sg = arangodb::scopeGuard([&]() noexcept { delete[] crypted; });
 
   if (crypted == nullptr || cryptedLength == 0) {
     return TRI_ERROR_OUT_OF_MEMORY;

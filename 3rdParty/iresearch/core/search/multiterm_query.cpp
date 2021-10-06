@@ -78,7 +78,7 @@ bool lazy_bitset_iterator::refill(
   std::memset(set_.get(), 0, sizeof(word_t)*words);
 
   auto provider = [begin = states_.begin(), end = states_.end()]() mutable noexcept
-      -> const seek_term_iterator::seek_cookie* {
+      -> const seek_cookie* {
     if (begin != end) {
       auto* cookie = begin->get();
       ++begin;
@@ -122,15 +122,11 @@ doc_iterator::ptr multiterm_query::execute(
     return doc_iterator::empty();
   }
 
-  // get terms iterator
-  auto terms = state->reader->iterator();
-
-  if (IRS_UNLIKELY(!terms)) {
-    return doc_iterator::empty();
-  }
+  auto* reader = state->reader;
+  assert(reader);
 
   // get required features for order
-  auto& features = ord.features();
+  const IndexFeatures features = ord.features();
   auto& stats = this->stats();
 
   const bool has_unscored_terms = !state->unscored_terms.empty();
@@ -143,11 +139,7 @@ doc_iterator::ptr multiterm_query::execute(
   const bool no_score = ord.empty();
   for (auto& entry : state->scored_states) {
     assert(entry.cookie);
-    if (!terms->seek(bytes_ref::NIL, *entry.cookie)) {
-      return doc_iterator::empty(); // internal error
-    }
-
-    auto docs = terms->postings(features);
+    auto docs = reader->postings(*entry.cookie, features);
 
     if (IRS_UNLIKELY(!docs)) {
       continue;

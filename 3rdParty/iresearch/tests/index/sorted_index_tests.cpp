@@ -85,13 +85,12 @@ struct long_comparer : irs::comparer {
 class sorted_index_test_case : public tests::index_test_base {
  protected:
   void assert_index(size_t skip = 0, irs::automaton_table_matcher* matcher = nullptr) const {
-    index_test_base::assert_index(irs::flags(), skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::NONE, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY, skip, matcher);
   }
 };
 
@@ -829,9 +828,9 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("CD", irs::ref_cast<char>(actual_value));
@@ -923,9 +922,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -943,9 +942,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -979,9 +978,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1079,9 +1078,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1099,9 +1098,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1134,9 +1133,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1151,9 +1150,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1187,9 +1186,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1281,9 +1280,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1301,9 +1300,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1337,9 +1336,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1357,19 +1356,18 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   sorted_index_test,
   sorted_index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values(tests::format_info{"1_1", "1_0"},
-                      tests::format_info{"1_2", "1_0"})
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      tests::format_info{"1_1", "1_0"},
+      tests::format_info{"1_2", "1_0"})),
+  sorted_index_test_case::to_string
 );
 
 }

@@ -64,7 +64,7 @@ std::unique_ptr<arangodb::IndexIterator> EdgeCollectionInfo::getEdges(std::strin
   _searchBuilder.setVertexId(vertexId);
   IndexIteratorOptions opts;
   opts.enableCache = false;
-  return _trx->indexScanForCondition(_index, _searchBuilder.getOutboundCondition(), _searchBuilder.getVariable(), opts);
+  return _trx->indexScanForCondition(_index, _searchBuilder.getOutboundCondition(), _searchBuilder.getVariable(), opts, ReadOwnWrites::no);
 }
 
 /// @brief Return name of the wrapped collection

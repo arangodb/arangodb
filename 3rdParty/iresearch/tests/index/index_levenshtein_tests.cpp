@@ -33,8 +33,9 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
  protected:
   void assert_index(const irs::index_reader& reader,
                     const irs::parametric_description& description,
+                    const irs::bytes_ref& prefix,
                     const irs::bytes_ref& target) {
-    auto acceptor = irs::make_levenshtein_automaton(description, target);
+    auto acceptor = irs::make_levenshtein_automaton(description, prefix, target);
     irs::automaton_table_matcher matcher(acceptor, true);
 
     for (auto& segment : reader) {
@@ -42,7 +43,7 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
       ASSERT_NE(nullptr, fields);
 
       while (fields->next()) {
-        auto expected_terms = fields->value().iterator();
+        auto expected_terms = fields->value().iterator(irs::SeekMode::NORMAL);
         ASSERT_NE(nullptr, expected_terms);
         auto actual_terms = fields->value().iterator(matcher);
         ASSERT_NE(nullptr, actual_terms);
@@ -105,19 +106,17 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
     for (auto& target : TARGETS) {
       SCOPED_TRACE(testing::Message("Target: '") << target <<
                    testing::Message("', Edit distance: ") << size_t(description.max_distance()));
-      assert_index(reader, description, irs::ref_cast<irs::byte_type>(target));
+      assert_index(reader, description, irs::bytes_ref::EMPTY, irs::ref_cast<irs::byte_type>(target));
     }
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   levenshtein_automaton_index_test,
   levenshtein_automaton_index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory
-    ),
-    ::testing::Values(tests::format_info{"1_2", "1_0"})
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>),
+    ::testing::Values(tests::format_info{"1_2", "1_0"})),
+  levenshtein_automaton_index_test_case::to_string
 );

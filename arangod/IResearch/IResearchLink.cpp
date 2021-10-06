@@ -27,6 +27,7 @@
 #include <store/store_utils.hpp>
 #include <utils/encryption.hpp>
 #include <utils/singleton.hpp>
+#include <utils/file_utils.hpp>
 
 #include "IResearchLink.h"
 #include "IResearchDocument.h"
@@ -373,8 +374,13 @@ void CommitTask::operator()() {
 
   IResearchLink::CommitResult code = IResearchLink::CommitResult::UNDEFINED;
 
-  auto reschedule = scopeGuard([&code, link, this](){
-    finalize(link, code);
+  auto reschedule = scopeGuard([&code, link, this]() noexcept {
+    try {
+      finalize(link, code);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("ad67d", ERR, iresearch::TOPIC)
+          << "failed to call finalize: " << ex.what();
+    }
   });
 
   // reload RuntimeState
@@ -508,12 +514,16 @@ void ConsolidationTask::operator()() {
     return;
   }
 
-  auto reschedule = scopeGuard([this](){
-    for (auto count = state->pendingConsolidations.load(); count < 1; ) {
-      if (state->pendingConsolidations.compare_exchange_weak(count, count + 1)) {
-        schedule(consolidationIntervalMsec);
-        break;
+  auto reschedule = scopeGuard([this]() noexcept {
+    try {
+      for (auto count = state->pendingConsolidations.load(); count < 1;) {
+        if (state->pendingConsolidations.compare_exchange_weak(count, count + 1)) {
+          schedule(consolidationIntervalMsec);
+          break;
+        }
       }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("2642a", ERR, iresearch::TOPIC) << "failed to reschedule: " << ex.what();
     }
   });
 
@@ -977,8 +987,8 @@ Result IResearchLink::drop() {
     bool exists;
 
     // remove persisted data store directory if present
-    if (!_dataStore._path.exists_directory(exists)
-        || (exists && !_dataStore._path.remove())) {
+    if (!irs::file_utils::exists_directory(exists, _dataStore._path.c_str())
+        || (exists && !irs::file_utils::remove(_dataStore._path.c_str()))) {
       return {TRI_ERROR_INTERNAL, "failed to remove arangosearch link '" +
                                       std::to_string(id().id()) + "'"};
     }
@@ -1118,7 +1128,8 @@ Result IResearchLink::init(
       if (!clusterWideLink) {
         // prepare data-store which can then update options
         // via the IResearchView::link(...) call
-        auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
+        auto const res = initDataStore(initCallback, meta._version,
+                                       sorted, storedValuesColumns, primarySortCompression);
 
         if (!res.ok()) {
           return res;
@@ -1190,7 +1201,8 @@ Result IResearchLink::init(
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
     // via the IResearchView::link(...) call
-    auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
+    auto const res = initDataStore(initCallback, meta._version,
+                                   sorted, storedValuesColumns, primarySortCompression);
 
     if (!res.ok()) {
       return res;
@@ -1238,7 +1250,9 @@ Result IResearchLink::init(
 }
 
 Result IResearchLink::initDataStore(
-    InitCallback const& initCallback, bool sorted,
+    InitCallback const& initCallback,
+    uint32_t version,
+    bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
     irs::type_info::type_id primarySortCompression) {
   std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
@@ -1259,12 +1273,13 @@ Result IResearchLink::initDataStore(
   auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
   auto& flushFeature = server.getFeature<FlushFeature>();
 
-  auto format = irs::formats::get(LATEST_FORMAT);
+  auto const formatId = getFormat(LinkVersion{version});
+  auto format = irs::formats::get(formatId);
 
   if (!format) {
     return {TRI_ERROR_INTERNAL,
-            "failed to get data store codec '"s + LATEST_FORMAT.data() +
-                "' while initializing link '" + std::to_string(_id.id()) + "'"};
+            "failed to get data store codec '"s + formatId.data() +
+             "' while initializing link '" + std::to_string(_id.id()) + "'"};
   }
 
   _engine = &server.getFeature<EngineSelectorFeature>().engine();
@@ -1275,27 +1290,28 @@ Result IResearchLink::initDataStore(
 
   // must manually ensure that the data store directory exists (since not using
   // a lockfile)
-  if (_dataStore._path.exists_directory(pathExists)
+  if (irs::file_utils::exists_directory(pathExists, _dataStore._path.c_str())
       && !pathExists
-      && !_dataStore._path.mkdir()) {
+      && !irs::file_utils::mkdir(_dataStore._path.c_str(), true)) {
     return {TRI_ERROR_CANNOT_CREATE_DIRECTORY,
             "failed to create data store directory with path '" +
-                _dataStore._path.utf8() + "' while initializing link '" +
+                _dataStore._path.u8string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
-
-  _dataStore._directory = std::make_unique<irs::mmap_directory>(_dataStore._path.utf8());
+  if (initCallback) {
+    _dataStore._directory = std::make_unique<irs::mmap_directory>(_dataStore._path.u8string(), initCallback());
+  } else {
+    _dataStore._directory = std::make_unique<irs::mmap_directory>(_dataStore._path.u8string());
+  }
 
   if (!_dataStore._directory) {
     return {TRI_ERROR_INTERNAL,
             "failed to instantiate data store directory with path '" +
-                _dataStore._path.utf8() + "' while initializing link '" +
+                _dataStore._path.u8string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
 
-  if (initCallback) {
-    initCallback(*_dataStore._directory);
-  }
+  
 
   switch (_engine->recoveryState()) {
     case RecoveryState::BEFORE: // link is being opened before recovery
@@ -1343,6 +1359,12 @@ Result IResearchLink::initDataStore(
   irs::index_writer::init_options options;
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
+  options.features[irs::type<irs::granularity_prefix>::id()] = nullptr;
+  if (LinkVersion(version) < LinkVersion::MAX) {
+    options.features[irs::type<irs::norm>::id()] = &irs::norm::compute;
+  } else {
+    options.features[irs::type<irs::norm2>::id()] = &irs::norm2::compute;
+  }
   // initialize commit callback
   options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
     _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick)); // update last tick
@@ -1366,7 +1388,7 @@ Result IResearchLink::initDataStore(
     }
   }
   // setup columnstore compression/encryption if requested by storage engine
-  auto const encrypt = (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
+  auto const encrypt = (nullptr != _dataStore._directory->attributes().encryption());
   options.column_info =
     [encrypt, comprMap = std::move(compressionMap), primarySortCompression](
         const irs::string_ref& name) -> irs::column_info {
@@ -1392,7 +1414,7 @@ Result IResearchLink::initDataStore(
   if (!_dataStore._writer) {
     return {TRI_ERROR_INTERNAL,
             "failed to instantiate data store writer with path '" +
-                _dataStore._path.utf8() + "' while initializing link '" +
+                _dataStore._path.u8string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
 
@@ -1406,7 +1428,7 @@ Result IResearchLink::initDataStore(
 
     return {TRI_ERROR_INTERNAL,
             "failed to instantiate data store reader with path '" +
-                _dataStore._path.utf8() + "' while initializing link '" +
+                _dataStore._path.u8string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
 
@@ -1957,6 +1979,10 @@ void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {
   builder.add("numSegments", VPackValue(stats.numSegments));
   builder.add("numFiles", VPackValue(stats.numFiles));
   builder.add("indexSize", VPackValue(stats.indexSize));
+}
+
+std::string_view IResearchLink::format() const noexcept {
+  return getFormat(LinkVersion{_meta._version});
 }
 
 IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {

@@ -584,7 +584,7 @@ void CrashHandler::crash(char const* context) {
 }
 
 /// @brief logs an assertion failure and crashes the program
-void CrashHandler::assertionFailure(char const* file, int line, char const* func, char const* context) {
+void CrashHandler::assertionFailure(char const* file, int line, char const* func, char const* context, const char *message) {
   // assemble an "assertion failured in file:line: message" string
   char buffer[4096];
   memset(&buffer[0], 0, sizeof(buffer));
@@ -601,6 +601,10 @@ void CrashHandler::assertionFailure(char const* file, int line, char const* func
   }
   appendNullTerminatedString(": ", p);
   appendNullTerminatedString(context, 256, p);
+  if (message != nullptr) {
+    appendNullTerminatedString(" ; ", p);
+    appendNullTerminatedString(message, p);
+  }
 
   crash(&buffer[0]);
 }

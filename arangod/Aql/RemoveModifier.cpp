@@ -34,8 +34,6 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
-class CollectionNameResolver;
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
@@ -73,6 +71,6 @@ ModifierOperationType RemoveModifierCompletion::accumulate(ModificationExecutorA
   }
 }
 
-OperationResult RemoveModifierCompletion::transact(transaction::Methods& trx, VPackSlice const& data) {
-  return trx.remove(_infos._aqlCollection->name(), data, _infos._options);
+futures::Future<OperationResult> RemoveModifierCompletion::transact(transaction::Methods& trx, VPackSlice const& data) {
+  return trx.removeAsync(_infos._aqlCollection->name(), data, _infos._options);
 }
