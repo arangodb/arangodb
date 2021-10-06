@@ -1,6 +1,16 @@
 devel
 -----
 
+* Now, arangoimport supports merging of attributes. When importing data from
+  a file into a collection, a document attribute can be comprised of merging
+  attributes from the file into it, with separators and other literal strings.
+  The new document attribute will result in the concatenation of the literal 
+  strings, the values of the attributes and the separators, as in the example:
+
+  ```js
+  arangoimport --merge-attributes name=[firstName]:[lastName] 
+  ```
+
 * Fixed BTS-602 by not starting license feature is upgrade mode.
 
 * APM-173: Now, arangobench, arangodump and arangorestore support multiple 
