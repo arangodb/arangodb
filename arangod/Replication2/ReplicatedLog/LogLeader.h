@@ -294,8 +294,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
       std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
   static void handleResolvedPromiseSet(ResolvedPromiseSet set,
                                        std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
-
-  auto tryHardToClearQueue() noexcept -> void;
 };
 
 }  // namespace arangodb::replication2::replicated_log

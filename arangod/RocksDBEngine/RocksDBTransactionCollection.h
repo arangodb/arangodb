@@ -31,6 +31,8 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
+#include <rocksdb/types.h>
+
 namespace arangodb {
 struct RocksDBDocumentOperation;
 namespace transaction {
@@ -66,9 +68,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /**
    * @brief Prepare collection for commit by placing collection blockers
    * @param trxId    Active transaction ID
-   * @param beginSeq Current seq/tick on transaction begin
    */
-  void prepareTransaction(TransactionId trxId, uint64_t beginSeq);
+  rocksdb::SequenceNumber prepareTransaction(TransactionId trxId);
 
   /**
    * @brief Signal upstream abort/rollback to clean up index blockers
