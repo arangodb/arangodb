@@ -175,13 +175,13 @@ class ImportHelper {
     }
   }
 
-  struct AttrProperties {
+  struct MergeAttributesInstructionsProperties {
     std::string attr;
     bool isLiteral;
-    AttrProperties(std::string const& s, bool b) : attr{s}, isLiteral{b} {};
+    MergeAttributesInstructionsProperties(std::string const& s, bool b) : attr{s}, isLiteral{b} {}
   };
 
-  std::vector<AttrProperties> splitAttributes(std::string const& originalString, std::string const& key) const;
+  std::vector<MergeAttributesInstructionsProperties> splitAttributes(std::string const& originalString, std::string const& key) const;
 
   void verifyMergeAttributesLiteralsSyntax(std::string const& attrLiteral) const;
 
@@ -361,7 +361,7 @@ class ImportHelper {
   std::unordered_map<std::string, std::string> _translations;
   std::unordered_map<std::string, std::string> _datatypes;
 
-  std::vector<std::pair<std::string, std::vector<AttrProperties>>> _attrsToValues;
+  std::vector<std::pair<std::string, std::vector<MergeAttributesInstructionsProperties>>> _mergeAttributesInstructions;
   std::unordered_map<std::string, std::string> _fieldsLookUpTable;
   std::unordered_set<std::string> _removeAttributes;
 

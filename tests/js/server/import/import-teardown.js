@@ -55,9 +55,6 @@
   db._drop("UnitTestsImportCsvTypesString");
   db._drop("UnitTestsImportCsvTypesPrecedence");
   db._drop("UnitTestsImportCsvMergeAttributes");
-  db._drop("UnitTestsImportCsvMergeAttributesInvalid");
-  db._drop("UnitTestsImportCsvMergeAttributesInvalid2");
-  db._drop("UnitTestsImportCsvMergeAttributesInvalid3");
   db._drop("UnitTestsImportCsvNoEol");
   db._drop("UnitTestsImportTsv1");
   db._drop("UnitTestsImportTsv1Gz");

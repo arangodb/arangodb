@@ -202,7 +202,7 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new DiscreteValuesParameter<StringParameter>(&_onDuplicateAction, actions));
 
   options->addOption("--merge-attributes",
-                     "action to merge attributes into one document attribute " +
+                     "action to merge attributes into one document attribute (e.g. mergedAttribute=[someAttribute]-[otherAttribute]) " +
                          actionsJoined,
                      new VectorParameter<StringParameter>(&_mergeAttributes)).setIntroducedIn(30901);
 

@@ -613,13 +613,13 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
 void ImportHelper::verifyMergeAttributesLiteralsSyntax(std::string const& attrLiteral) const {
   if (attrLiteral.find_first_of("[]=") != std::string::npos) {
     LOG_TOPIC("0b9e2", FATAL, arangodb::Logger::FIXME)
-        << "Wrong syntax in --merge-attributes: string literals cannot contain '[, ], ='";
+        << "Wrong syntax in --merge-attributes: string literals cannot contain any of '[, ], ='";
     FATAL_ERROR_EXIT();
   }
 }
 
-std::vector<ImportHelper::AttrProperties> ImportHelper::splitAttributes(std::string const& originalString, std::string const& key) const {
-  std::vector<ImportHelper::AttrProperties> splitSubstrs;
+std::vector<ImportHelper::MergeAttributesInstructionsProperties> ImportHelper::splitAttributes(std::string const& originalString, std::string const& key) const {
+  std::vector<ImportHelper::MergeAttributesInstructionsProperties> splitSubstrs;
   size_t previousIndex = 0;
   for (size_t openingBracketIndex = 0;
        (openingBracketIndex = originalString.find("[", openingBracketIndex)) != std::string::npos;
@@ -649,7 +649,7 @@ std::vector<ImportHelper::AttrProperties> ImportHelper::splitAttributes(std::str
       if (!previousIndex && openingBracketIndex) {
         std::string literal = originalString.substr(previousIndex, openingBracketIndex);
         verifyMergeAttributesLiteralsSyntax(literal);
-        splitSubstrs.emplace_back(ImportHelper::AttrProperties(literal, true));
+        splitSubstrs.emplace_back(ImportHelper::MergeAttributesInstructionsProperties(literal, true));
       } else if (previousIndex && openingBracketIndex && (openingBracketIndex - previousIndex > 1)) {
         std::string literal =
             originalString.substr(previousIndex + 1,
@@ -681,11 +681,11 @@ void ImportHelper::parseMergeAttributes(std::vector<std::string> const& args) {
     std::vector<std::string> splitAttrs = StringUtils::split(arg, "=");
     if (splitAttrs.size() != 2) {
       LOG_TOPIC("ae6dc", FATAL, arangodb::Logger::FIXME)
-          << "Wrong syntax in --merge-attributes: Character '=' is not allowed as a separator";
+          << "Wrong syntax in --merge-attributes: Unexpected number of '=' characters found";
       FATAL_ERROR_EXIT();
     }
     std::pair<std::string, std::string> keyAndAttrs(std::move(splitAttrs[0]), std::move(splitAttrs[1]));
-    _attrsToValues.emplace_back(keyAndAttrs.first, splitAttributes(keyAndAttrs.second, keyAndAttrs.first));
+    _mergeAttributesInstructions.emplace_back(keyAndAttrs.first, splitAttributes(keyAndAttrs.second, keyAndAttrs.first));
   }
 }
 
@@ -761,7 +761,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
   std::string lookUpTableValue;
 
   auto guard = scopeGuard([&]() noexcept {
-    if (!_attrsToValues.empty()) {
+    if (!_mergeAttributesInstructions.empty()) {
       _fieldsLookUpTable.try_emplace(_columnNames[column], std::move(lookUpTableValue));
     }
   });
@@ -783,7 +783,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     itTypes = _datatypes.find(_columnNames[column]);
   }
 
-  if (!_attrsToValues.empty()) {
+  if (!_mergeAttributesInstructions.empty()) {
     lookUpTableValue = field;
   }
 
@@ -801,7 +801,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       if (::isInteger(field, fieldLength) || ::isDecimal(field, fieldLength)) {
         _lineBuffer.appendText(field, fieldLength);
       } else {
-        if (!_attrsToValues.empty()) {
+        if (!_mergeAttributesInstructions.empty()) {
           lookUpTableValue = "0";
         }
         _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("0"));
@@ -810,18 +810,18 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       if ((fieldLength == 5 && memcmp(field, "false", 5) == 0) ||
           (fieldLength == 4 && memcmp(field, "null", 4) == 0) ||
           (fieldLength == 1 && *field == '0')) {
-        if (!_attrsToValues.empty()) {
+        if (!_mergeAttributesInstructions.empty()) {
           lookUpTableValue = "false";
         }
         _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("false"));
       } else {
-        if (!_attrsToValues.empty()) {
+        if (!_mergeAttributesInstructions.empty()) {
           lookUpTableValue = "true";
         }
         _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("true"));
       }
     } else if (datatype == "null") {
-      if (!_attrsToValues.empty()) {
+      if (!_mergeAttributesInstructions.empty()) {
         lookUpTableValue = "null";
       }
       _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
@@ -836,7 +836,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
   if (*field == '\0' || fieldLength == 0) {
     // do nothing
     _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
-    if (!_attrsToValues.empty()) {
+    if (!_mergeAttributesInstructions.empty()) {
       lookUpTableValue = "null";
     }
     return;
@@ -863,7 +863,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
         }
 
         int64_t num = StringUtils::int64(field, fieldLength);
-        if (!_attrsToValues.empty()) {
+        if (!_mergeAttributesInstructions.empty()) {
           lookUpTableValue = std::to_string(num);
         }
         _lineBuffer.appendInteger(num);
@@ -881,7 +881,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
         if (pos == fieldLength) {
           bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL);
           if (!failed) {
-            if (!_attrsToValues.empty()) {
+            if (!_mergeAttributesInstructions.empty()) {
               lookUpTableValue = std::to_string(num);
             }
             _lineBuffer.appendDecimal(num);
@@ -942,15 +942,17 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
   addField(field, fieldLength, row, column++, escaped);
 
   // add --merge-attributes arguments
-  if (!_attrsToValues.empty()) {
-    for (auto& [key, value] : _attrsToValues) {
+  if (!_mergeAttributesInstructions.empty()) {
+    for (auto& [key, value] : _mergeAttributesInstructions) {
       if (row == 0) {
         addField(key.c_str(), key.size(), row, column, escaped);
       } else {
         std::string attrsToMerge;
-        std::for_each(value.begin(), value.end(), [=, &attrsToMerge](AttrProperties const& attrProperties) {
-          if (!attrProperties.isLiteral && _fieldsLookUpTable.find(attrProperties.attr) != _fieldsLookUpTable.end()) {
-            attrsToMerge += _fieldsLookUpTable.at(attrProperties.attr);
+        std::for_each(value.begin(), value.end(), [=, &attrsToMerge](MergeAttributesInstructionsProperties const& attrProperties) {
+          if (!attrProperties.isLiteral) {
+            if (auto it = _fieldsLookUpTable.find(attrProperties.attr); it != _fieldsLookUpTable.end()) {
+              attrsToMerge += it->second;
+            }
           } else {
             attrsToMerge += attrProperties.attr;
           }
