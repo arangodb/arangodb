@@ -94,17 +94,18 @@ Result ReplicatedTransactionState::commitTransaction(transaction::Methods* trx) 
     futures.emplace_back(log->waitFor(logIdx));
   }
 
+  FATAL_ERROR_EXIT();
   // TODO Take care of ownership here. While transaction::Methods has (shared)
   //      ownership of this TransactionState, that part's fine, but I'm not sure
   //      whether responsibility for the Methods is or must be taken care of.
-  auto future = futures::collectAll(futures).thenFinal(
-      [this,trx](auto&&) noexcept {
-        return RocksDBTransactionState::commitTransaction(trx);
-      });
+  // auto future = futures::collectAll(futures).thenFinal(
+  //     [this,trx](auto&&) noexcept {
+  //       return RocksDBTransactionState::commitTransaction(trx);
+  //     });
 
   // TODO return a Future instead of waiting
 
-  return future.get();
+  // return future.get();
 }
 
 // Write an "abort" entry in each involved replicated log and abort the local
@@ -149,7 +150,9 @@ auto ReplicatedTransactionState::getUniqueLogs() const
     -> std::vector<replicated_log::LogLeader*> {
   auto logs = std::vector<replicated_log::LogLeader*>();
   logs.reserve(_replicatedLogs.size());
-  std::copy(_replicatedLogs.cbegin(), _replicatedLogs.cend(), std::back_inserter(logs));
+  std::transform(_replicatedLogs.cbegin(), _replicatedLogs.cend(),
+                 std::back_inserter(logs),
+                 [&](auto const& logPtr) { return logPtr.get(); });
   std::sort(logs.begin(), logs.end());
   auto last = std::unique(logs.begin(), logs.end());
   logs.erase(last, logs.end());

@@ -27,6 +27,8 @@
 
 namespace arangodb::replication2 {
 
+// TODO We need one RocksDBTransactionState per shard, rather than one for all
+//      shards.
 class ReplicatedTransactionState final : public ::arangodb::RocksDBTransactionState {
  public:
   ReplicatedTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
