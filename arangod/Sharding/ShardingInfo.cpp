@@ -52,8 +52,9 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
   bool const isSmart =
       basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IsSmart, false);
 
-  if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE) {
-    // smart edge collection
+  if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE && ServerState::instance()->isRunningInCluster()) {
+    // A smart edge collection in a single server environment does get proper numberOfShards value.
+    // A smart edge collection in a cluster needs to set numberOfShards to zero by definition.
     _numberOfShards = 0;
   }
 
