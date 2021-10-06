@@ -28,6 +28,8 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
+#include "Replication2/Mocks/FakeFollower.h"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -35,47 +37,6 @@ using namespace arangodb::replication2::test;
 
 struct LeaderAppendEntriesTest : ReplicatedLogTest {};
 
-struct FakeFollower : AbstractFollower {
-  FakeFollower(ParticipantId id) : participantId(std::move(id)) {}
-
-  [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override {
-    return participantId;
-  };
-
-  virtual auto appendEntries(AppendEntriesRequest request)
-      -> futures::Future<AppendEntriesResult> override {
-    return requests.emplace_back(std::move(request)).promise.getFuture();
-  }
-
-  void resolveRequest(AppendEntriesResult result) {
-    requests.front().promise.setValue(std::move(result));
-    requests.pop_front();
-  }
-
-  template<typename E>
-  void resolveRequestWithException(E&& e) {
-    requests.front().promise.setException(std::forward<E>(e));
-    requests.pop_front();
-  }
-
-  auto currentRequest() const -> AppendEntriesRequest const& {
-    return requests.front().request;
-  }
-
-  auto hasPendingRequests() const -> bool {
-    return !requests.empty();
-  }
-
-  struct AsyncRequest {
-    explicit AsyncRequest(AppendEntriesRequest request)
-        : request(std::move(request)) {}
-    AppendEntriesRequest request;
-    futures::Promise<AppendEntriesResult> promise;
-  };
-
-  std::deque<AsyncRequest> requests;
-  ParticipantId participantId;
-};
 
 TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
   auto leaderLog = makeReplicatedLog(LogId{1});

@@ -780,7 +780,7 @@ std::vector<Variable const*> const& CollectNode::keepVariables() const {
   return _keepVariables;
 }
 
-void CollectNode::restrictKeepVariables(std::unordered_set<const Variable*> const& variables) {
+void CollectNode::restrictKeepVariables(containers::HashSet<Variable const*> const& variables) {
   auto remainingKeepVariables = decltype(this->_keepVariables){};
   remainingKeepVariables.reserve(std::min(_keepVariables.size(), variables.size()));
 

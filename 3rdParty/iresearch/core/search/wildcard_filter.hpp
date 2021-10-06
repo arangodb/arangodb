@@ -76,7 +76,7 @@ struct IRESEARCH_API by_wildcard_options : by_wildcard_filter_options {
 class IRESEARCH_API by_wildcard final
     : public filter_base<by_wildcard_options> {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
 
   static prepared::ptr prepare(
     const index_reader& index,

@@ -27,6 +27,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
@@ -497,9 +498,9 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   }
   TRI_ASSERT(!s->_state.databaseName.empty());
   if (location[0] == '/') {
-    return "/_db/" + s->_state.databaseName + location;
+    return "/_db/" + basics::StringUtils::urlEncode(s->_state.databaseName) + location;
   }
-  return "/_db/" + s->_state.databaseName + "/" + location;
+  return "/_db/" + basics::StringUtils::urlEncode(s->_state.databaseName) + "/" + location;
 }
 
 void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }

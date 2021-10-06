@@ -74,7 +74,6 @@ class IRESEARCH_API scorers {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find a scorer by name, or nullptr if not found
   ///        indirect call to <class>::make(...)
-  ///        requires use of DECLARE_FACTORY() in class definition
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   ////////////////////////////////////////////////////////////////////////////////
   static sort::ptr get(

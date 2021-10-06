@@ -239,14 +239,14 @@ std::string const& Collection::name() const {
 
 // moved here from transaction::Methods::getIndexByIdentifier(..)
 std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(std::string const& idxId) const {
-   if (idxId.empty()) {
-     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                    "The index id cannot be empty.");
-   }
+  if (idxId.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The index id cannot be empty.");
+  }
 
-   if (!arangodb::Index::validateId(idxId.c_str())) {
-     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-   }
+  if (!idxId.empty() && !Index::validateId(idxId)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+  }
   
   auto iid = arangodb::IndexId{arangodb::basics::StringUtils::uint64(idxId)};
   auto idx = this->getCollection()->lookupIndex(iid);

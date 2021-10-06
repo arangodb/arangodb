@@ -60,7 +60,7 @@ const fetchRevisionTree = (serverUrl, shardId) => {
   result = request({ method: "GET",
     url: serverUrl + `/_api/replication/revisions/tree?collection=${encodeURIComponent(shardId)}&verification=true&batchId=${batch.id}`});
   assertEqual(200, result.statusCode);
-  request({ method: "DELETE", url: serverUrl + `/_api/replication/batch${batch.id}`});
+  request({ method: "DELETE", url: serverUrl + `/_api/replication/batch/${batch.id}`});
   return JSON.parse(result.body);
 };
 

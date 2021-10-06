@@ -100,7 +100,7 @@ IRESEARCH_API void set_granular_term(
 class IRESEARCH_API by_granular_range
     : public filter_base<by_granular_range_options> {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
 
   static filter::prepared::ptr prepare(
     const index_reader& index,
