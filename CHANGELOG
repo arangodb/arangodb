@@ -1,6 +1,9 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
+* Fix assertion failure in AQL query profiling for queries with more than a
+  single shard per DB server and that join multiple collections.
+
 * Fix race in RocksDB throttle listener, when it was getting started lazily
   during server shutdown.
 
