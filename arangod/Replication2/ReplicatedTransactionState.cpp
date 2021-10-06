@@ -24,6 +24,8 @@
 
 #include "Basics/IndexIter.h"
 #include "Basics/application-exit.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
@@ -54,7 +56,9 @@ Result ReplicatedTransactionState::beginTransaction(transaction::Hints hints) {
     //      Possibly this must either be tagged for the LogMultiplexer so it
     //      touches all streams (i.e. for all participating collections/shards),
     //      and/or a list of participating collections (in this particular log).
-    std::ignore = log->insert(LogPayload::createFromString("begin transaction "s + std::to_string(id().id())), waitForSync());
+    std::ignore = log->insert(LogPayload::createFromString(
+                                  "begin transaction "s + std::to_string(id().id())),
+                              waitForSync());
   }
 }
 
@@ -74,7 +78,8 @@ Result ReplicatedTransactionState::commitTransaction(transaction::Methods* trx) 
   auto const logs = getUniqueLogs();
   auto indexes = std::vector<LogIndex>();
   indexes.reserve(logs.size());
-  auto futures = std::vector<std::remove_pointer_t<decltype(logs)::value_type>::WaitForFuture>();
+  auto futures =
+      std::vector<std::remove_pointer_t<decltype(logs)::value_type>::WaitForFuture>();
   futures.reserve(indexes.size());
 
   std::transform(logs.cbegin(), logs.cend(), std::back_inserter(indexes), [&](auto const& log) {
@@ -121,7 +126,9 @@ Result ReplicatedTransactionState::abortTransaction(transaction::Methods* trx) {
     // TODO this is a stub
     //      log shouldn't even be a LogLeader, plus we need some proper
     //      "CommitTransaction" type for a log entry to insert.
-    std::ignore = log->insert(LogPayload::createFromString("commit transaction "s + std::to_string(id().id())), waitForSync());
+    std::ignore = log->insert(LogPayload::createFromString("commit transaction "s +
+                                                           std::to_string(id().id())),
+                              waitForSync());
   }
 
   return RocksDBTransactionState::abortTransaction(trx);
@@ -134,12 +141,18 @@ ReplicatedTransactionState::ReplicatedTransactionState(TRI_vocbase_t& vocbase,
 
 void ReplicatedTransactionState::insertCollectionAt(CollectionNotFound position,
                                                     std::unique_ptr<TransactionCollection> trxColl) {
-  bool const isReplication2 = vocbase().replicationVersion() == replication::Version::TWO;
   auto replicatedLog = std::optional<std::shared_ptr<replicated_log::LogLeader>>();
-  if (isReplication2) {
-    // TODO Get the matching replicated log for this shard
-    replicatedLog = vocbase().getReplicatedLogLeaderById(LogId(1));
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  TRI_ASSERT(isShardName(trxColl->collectionName()));
+  auto const logId = ci.getLogIdOfShard(vocbase().name(), trxColl->collectionName());
+  if (!logId.has_value()) {
+    basics::abortOrThrow(
+        TRI_ERROR_INTERNAL,
+        basics::StringUtils::concatT("No replicated log for shard ",
+                                     trxColl->collectionName(), " found"),
+        ADB_HERE);
   }
+  replicatedLog = vocbase().getReplicatedLogLeaderById(*logId);
   TransactionState::insertCollectionAt(position, std::move(trxColl));
   _replicatedLogs.insert(std::next(this->_replicatedLogs.begin(), position.lowerBound),
                          *replicatedLog);

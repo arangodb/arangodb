@@ -23,10 +23,11 @@
 
 #pragma once
 
-#include <limits>
-#include <string>
 #include <iosfwd>
+#include <limits>
 #include <memory>
+#include <string>
+#include <string_view>
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
 
@@ -184,6 +185,8 @@ struct velocypack::Extractor<arangodb::RebootId> {
     return RebootId{slice.getNumericValue<std::size_t>()};
   }
 };
+
+auto isShardName(std::string_view name) -> bool;
 
 }  // namespace arangodb
 
