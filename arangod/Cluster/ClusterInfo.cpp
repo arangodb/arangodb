@@ -791,6 +791,10 @@ struct ClusterInfo::NewStuffByDatabase {
       std::unordered_map<replication2::agency::CollectionGroupId,
                          std::shared_ptr<replication2::agency::CollectionGroup const>>;
   CollectionGroupMap collectionGroups;
+
+  using CollectionToGroupMap =
+      std::unordered_map<CollectionID, std::shared_ptr<replication2::agency::CollectionGroup const>>;
+  CollectionToGroupMap collectionToGroup;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1441,6 +1445,18 @@ void ClusterInfo::loadPlan() {
       }
     }
 
+    {
+      auto collectionToGroup = NewStuffByDatabase::CollectionToGroupMap();
+      for (auto const& groupIt : stuff->collectionGroups) {
+        auto const& groupPtr = groupIt.second;
+        for (auto const& colIt : groupPtr->collections) {
+          auto const& collectionId = colIt.first;
+          collectionToGroup.emplace(collectionId, groupPtr);
+        }
+      }
+      stuff->collectionToGroup = std::move(collectionToGroup);
+    }
+
     newStuffByDatabase[databaseName] = std::move(stuff);
   }
 
@@ -1897,6 +1913,47 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterInfo::getCollections(Data
   }
 
   return result;
+}
+
+auto ClusterInfo::getLogIdOfShard(DatabaseID const& database, ShardID const& shardId)
+    -> std::optional<replication2::LogId> {
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  auto const& collectionName = getCollectionNameForShard(shardId);
+  if (collectionName.empty()) {
+    return std::nullopt;
+  }
+
+  auto const& collection = getCollection(database, collectionName);
+
+  auto const shardListPtr = getShardList(std::to_string(collection->id().id()));
+  if (shardListPtr == nullptr) {
+    return std::nullopt;
+  }
+  auto const& shardList = *shardListPtr;
+
+  auto const dbIt = _newStuffByDatabase.find(database);
+  if (dbIt == _newStuffByDatabase.cend()) {
+    return std::nullopt;
+  }
+  auto const& collectionToGroup = dbIt->second->collectionToGroup;
+  auto const colIt = collectionToGroup.find(collectionName);
+  if (colIt == collectionToGroup.cend()) {
+    return std::nullopt;
+  }
+
+  // TODO Adding some option to look this up would be asymptotically more efficient,
+  //      and thus preferable for installations with a high numberOfShards.
+  auto const shardIt = std::find(shardList.cbegin(), shardList.cend(), shardId);
+  if (shardIt == shardList.cend()) {
+    return std::nullopt;
+  }
+
+  auto const shardIdx = std::distance(shardList.cbegin(), shardIt);
+
+  auto const& sheaves = colIt->second->shardSheaves;
+  TRI_ASSERT(sheaves.size() == shardList.size());
+  return sheaves[shardIdx].replicatedLog;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
