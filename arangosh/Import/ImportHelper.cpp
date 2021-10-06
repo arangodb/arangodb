@@ -610,43 +610,69 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
   }
 }
 
-std::vector<ImportHelper::AttrProperties> ImportHelper::splitAttributes(std::string const& originalString) const {
+void ImportHelper::verifyMergeAttributesLiteralsSyntax(std::string const& attrLiteral) const {
+  if (attrLiteral.find_first_of("[]=") != std::string::npos) {
+    LOG_TOPIC("0b9e2", FATAL, arangodb::Logger::FIXME)
+        << "Wrong syntax in --merge-attributes: string literals cannot contain '[, ], ='";
+    FATAL_ERROR_EXIT();
+  }
+}
+
+std::vector<ImportHelper::AttrProperties> ImportHelper::splitAttributes(std::string const& originalString, std::string const& key) const {
   std::vector<ImportHelper::AttrProperties> splitSubstrs;
   size_t previousIndex = 0;
-  for (size_t foundIndex = 0;
-       (foundIndex = originalString.find("[", foundIndex)) != std::string::npos;
-       ++foundIndex) {
-    if (size_t foundIndex2 = originalString.find("]", foundIndex);
-        foundIndex2 != std::string::npos) {
-      if (foundIndex2 == foundIndex + 1) {
+  for (size_t openingBracketIndex = 0;
+       (openingBracketIndex = originalString.find("[", openingBracketIndex)) != std::string::npos;
+       ++openingBracketIndex) {
+    if (size_t closingBracketIndex = originalString.find("]", openingBracketIndex);
+        closingBracketIndex != std::string::npos) {
+      // match brackets
+      if (closingBracketIndex == openingBracketIndex + 1) {
         LOG_TOPIC("f1a42", FATAL, arangodb::Logger::FIXME)
             << "Wrong syntax in --merge-attributes: empty argument '[]' not "
                "allowed";
         FATAL_ERROR_EXIT();
+      } else if (closingBracketIndex <= previousIndex) {
+        LOG_TOPIC("89a3b", FATAL, arangodb::Logger::FIXME)
+            << "Wrong syntax in --merge-attributes: unbalanced brackets";
+        FATAL_ERROR_EXIT();
       }
-      if (!previousIndex && foundIndex) {
-        std::string delimiter = originalString.substr(previousIndex, foundIndex);
-        splitSubstrs.emplace_back(ImportHelper::AttrProperties(delimiter, true));
-      } else if (previousIndex && foundIndex && (foundIndex - previousIndex > 1)) {
-        std::string delimiter =
-            originalString.substr(previousIndex + 1, foundIndex - previousIndex - 1);
-        splitSubstrs.emplace_back(delimiter, true);
+      // cannot nest attributes, as in --merge-attributes _key=[_key][id], but literals can have the same name
+      // as the attribute, as in --merge-attributes _key=_key[id]_key[value]
+      if (originalString.substr(openingBracketIndex + 1,
+                                closingBracketIndex - openingBracketIndex -1) == key) {
+        LOG_TOPIC("4f701", FATAL, arangodb::Logger::FIXME)
+            << "Wrong syntax in --merge-attributes: cannot nest attributes";
+        FATAL_ERROR_EXIT();
       }
-      previousIndex = foundIndex2;
+      // parse delimiters and literal strings
+      if (!previousIndex && openingBracketIndex) {
+        std::string literal = originalString.substr(previousIndex, openingBracketIndex);
+        verifyMergeAttributesLiteralsSyntax(literal);
+        splitSubstrs.emplace_back(ImportHelper::AttrProperties(literal, true));
+      } else if (previousIndex && openingBracketIndex && (openingBracketIndex - previousIndex > 1)) {
+        std::string literal =
+            originalString.substr(previousIndex + 1,
+                                  openingBracketIndex - previousIndex - 1);
+        verifyMergeAttributesLiteralsSyntax(literal);
+        splitSubstrs.emplace_back(literal, true);
+      }
+      previousIndex = closingBracketIndex;
       std::string splitSubstr =
-          originalString.substr(foundIndex + 1, foundIndex2 - foundIndex - 1);
-      splitSubstrs.emplace_back(splitSubstr.substr(0, foundIndex2), false);
+          originalString.substr(openingBracketIndex + 1,
+                                closingBracketIndex - openingBracketIndex - 1);
+      splitSubstrs.emplace_back(splitSubstr.substr(0, closingBracketIndex), false);
     } else {
       LOG_TOPIC("db7aa", FATAL, arangodb::Logger::FIXME)
           << "Wrong syntax in --merge-attributes";
       FATAL_ERROR_EXIT();
     }
   }
+  // parse literal that can be after all the attributes
   if (previousIndex < originalString.size() - 1) {
     std::string delimiter = originalString.substr(previousIndex + 1);
     splitSubstrs.emplace_back(delimiter, true);
   }
-
   return splitSubstrs;
 }
 
@@ -659,7 +685,7 @@ void ImportHelper::parseMergeAttributes(std::vector<std::string> const& args) {
       FATAL_ERROR_EXIT();
     }
     std::pair<std::string, std::string> keyAndAttrs(std::move(splitAttrs[0]), std::move(splitAttrs[1]));
-    _attrsToValues.emplace_back(keyAndAttrs.first, splitAttributes(keyAndAttrs.second));
+    _attrsToValues.emplace_back(keyAndAttrs.first, splitAttributes(keyAndAttrs.second, keyAndAttrs.first));
   }
 }
 
@@ -915,6 +941,7 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
 
   addField(field, fieldLength, row, column++, escaped);
 
+  // add --merge-attributes arguments
   if (!_attrsToValues.empty()) {
     for (auto& [key, value] : _attrsToValues) {
       if (row == 0) {
@@ -922,13 +949,16 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
       } else {
         std::string attrsToMerge;
         std::for_each(value.begin(), value.end(), [=, &attrsToMerge](AttrProperties const& attrProperties) {
-          if (!attrProperties.isDelimiter && _fieldsLookUpTable.find(attrProperties.attr) != _fieldsLookUpTable.end()) {
+          if (!attrProperties.isLiteral && _fieldsLookUpTable.find(attrProperties.attr) != _fieldsLookUpTable.end()) {
             attrsToMerge += _fieldsLookUpTable.at(attrProperties.attr);
           } else {
             attrsToMerge += attrProperties.attr;
           }
         });
+        bool tmp = _convert;
+        _convert = false; // force only --merge-attribute arguments to be treated as string then switch back to normal conversion
         addField(attrsToMerge.c_str(), attrsToMerge.size(), row, column, escaped);
+        _convert = tmp;
       }
       column++;
     }

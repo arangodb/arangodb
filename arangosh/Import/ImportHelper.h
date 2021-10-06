@@ -177,11 +177,13 @@ class ImportHelper {
 
   struct AttrProperties {
     std::string attr;
-    bool isDelimiter;
-    AttrProperties(std::string const& s, bool b) : attr{s}, isDelimiter{b} {};
+    bool isLiteral;
+    AttrProperties(std::string const& s, bool b) : attr{s}, isLiteral{b} {};
   };
 
-  std::vector<AttrProperties> splitAttributes(std::string const& originalString) const;
+  std::vector<AttrProperties> splitAttributes(std::string const& originalString, std::string const& key) const;
+
+  void verifyMergeAttributesLiteralsSyntax(std::string const& attrLiteral) const;
 
   void parseMergeAttributes(std::vector<std::string> const& args);
 
