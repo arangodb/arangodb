@@ -745,58 +745,65 @@ void InvertedIndexFieldIterator::next() {
       }
       _valueSlice = get(_slice, _begin->first, arangodb::velocypack::Slice::noneSlice());
     }
-    if (!_valueSlice.isNone()) {
-      if (_nameBuffer.empty()) {
-        bool isFirst = true;
-        for (auto& a : _begin->first) {
-          if (!isFirst) {
-            _nameBuffer += NESTING_LEVEL_DELIMITER;
-          }
-          _nameBuffer.append(a.name);
-          isFirst = false;
+    if (_nameBuffer.empty()) {
+      bool isFirst = true;
+      for (auto& a : _begin->first) {
+        if (!isFirst) {
+          _nameBuffer += NESTING_LEVEL_DELIMITER;
         }
+        _nameBuffer.append(a.name);
+        isFirst = false;
       }
-      TRI_ASSERT(_begin->second._pool);
-      switch (_valueSlice.type()) {
-        case VPackValueType::Null:
-          setNullValue(_valueSlice);
-          return;
-        case VPackValueType::Bool:
-          setBoolValue(_valueSlice);
-          return;
-        case VPackValueType::Object:
-          if (setValue(_valueSlice, _begin->second)){
-            return;
-          }
-          THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_NOT_IMPLEMENTED,
-            "Inverted index does not support indexing objects and configured analyzer does "
-            " not accept objects. Please use another analyzer to process an object or exclude field '%s'"
-            " from index definition", _nameBuffer.c_str());
-          break;
-        case VPackValueType::Array: {
-          if (setValue(_valueSlice, _begin->second)){
-            return;
-          } else {
-            if (_begin->first.back().shouldExpand) {
-              _arrayStack.push_back(VPackArrayIterator(_valueSlice));
-            } else {
-              THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_NOT_IMPLEMENTED,
-                "Configured analyzer does not accept arrays and field has no expansion set. "
-                "Please use another analyzer to process an array or exclude field '%s'"
-                " from index definition or enable expansion", _nameBuffer.c_str());
-            }
-          }
-        } break;
-        case VPackValueType::Double:
-        case VPackValueType::Int:
-        case VPackValueType::UInt:
-        case VPackValueType::SmallInt:
-          setNumericValue(_valueSlice);
-          return;
-        case VPackValueType::String: {
-          setValue(_valueSlice, _begin->second);
+    }
+    TRI_ASSERT(_begin->second._pool);
+    switch (_valueSlice.type()) {
+      case VPackValueType::Null:
+      case VPackValueType::None:
+        setNullValue();
+        return;
+      case VPackValueType::Bool:
+        setBoolValue(_valueSlice);
+        return;
+      case VPackValueType::Object:
+        if (setValue(_valueSlice, _begin->second)) {
           return;
         }
+        THROW_ARANGO_EXCEPTION_FORMAT(
+            TRI_ERROR_NOT_IMPLEMENTED,
+            "Inverted index does not support indexing objects and configured "
+            "analyzer does "
+            " not accept objects. Please use another analyzer to process an "
+            "object or exclude field '%s'"
+            " from index definition",
+            _nameBuffer.c_str());
+        break;
+      case VPackValueType::Array: {
+        if (setValue(_valueSlice, _begin->second)) {
+          return;
+        } else {
+          if (_begin->first.back().shouldExpand) {
+            _arrayStack.push_back(VPackArrayIterator(_valueSlice));
+          } else {
+            THROW_ARANGO_EXCEPTION_FORMAT(
+                TRI_ERROR_NOT_IMPLEMENTED,
+                "Configured analyzer does not accept arrays and field has no "
+                "expansion set. "
+                "Please use another analyzer to process an array or exclude "
+                "field '%s'"
+                " from index definition or enable expansion",
+                _nameBuffer.c_str());
+          }
+        }
+      } break;
+      case VPackValueType::Double:
+      case VPackValueType::Int:
+      case VPackValueType::UInt:
+      case VPackValueType::SmallInt:
+        setNumericValue(_valueSlice);
+        return;
+      case VPackValueType::String: {
+        setValue(_valueSlice, _begin->second);
+        return;
       }
     }
   }
@@ -835,9 +842,7 @@ void InvertedIndexFieldIterator::setNumericValue(VPackSlice const value) {
                             NumericStreamFeatures.size() };
 }
 
-void InvertedIndexFieldIterator::setNullValue(VPackSlice const value) {
-  TRI_ASSERT(value.isNull());
-
+void InvertedIndexFieldIterator::setNullValue() {
   arangodb::iresearch::kludge::mangleNull(_nameBuffer);
 
   // init stream

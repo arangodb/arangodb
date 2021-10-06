@@ -251,7 +251,7 @@ class InvertedIndexFieldIterator {
   void next();
   bool setValue(VPackSlice const value,
                 FieldMeta::Analyzer const& valueAnalyzer);
-  void setNullValue(VPackSlice const value);
+  void setNullValue();
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);
   InvertedIndexFieldMeta::Fields::const_iterator _begin;
