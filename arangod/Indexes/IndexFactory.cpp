@@ -371,7 +371,7 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
                       "index field names must be non-empty strings");
       }
       
-      velocypack::StringRef f(it);
+      velocypack::StringRef f(fieldName);
 
       if (f.empty()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
