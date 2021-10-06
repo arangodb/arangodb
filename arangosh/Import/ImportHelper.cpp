@@ -684,8 +684,7 @@ void ImportHelper::parseMergeAttributes(std::vector<std::string> const& args) {
           << "Wrong syntax in --merge-attributes: Character '=' is not allowed as a separator";
       FATAL_ERROR_EXIT();
     }
-    std::pair<std::string, std::string> keyAndAttrs(std::move(splitAttrs[0]), std::move(splitAttrs[1]));
-    _attrsToValues.emplace_back(keyAndAttrs.first, splitAttributes(keyAndAttrs.second, keyAndAttrs.first));
+    _attrsToValues.emplace_back(keyAndAttrs.first, splitAttributes(splitAttrs[1], splitAttrs[0]));
   }
 }
 
