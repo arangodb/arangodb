@@ -5,14 +5,10 @@ import Checkbox from "../../../components/pure-css/form/Checkbox";
 import Textbox from "../../../components/pure-css/form/Textbox";
 import Textarea from "../../../components/pure-css/form/Textarea";
 import { Cell, Grid } from "../../../components/pure-css/grid";
-import { setIntegerField } from "../helpers";
 import Select from "../../../components/pure-css/form/Select";
+import { getNumericFieldSetter } from "../../../utils/helpers";
 
 const AqlForm = ({ formState, dispatch, disabled }: FormProps<AqlState>) => {
-  const getNumericFieldSetter = (field: string) => (event: ChangeEvent<HTMLInputElement>) => {
-    setIntegerField(field, event.target.value, dispatch);
-  };
-
   const updateQueryString = (event: ChangeEvent<HTMLTextAreaElement>) => {
     dispatch({
       type: 'setField',
@@ -64,12 +60,12 @@ const AqlForm = ({ formState, dispatch, disabled }: FormProps<AqlState>) => {
         <Cell size={'1'}>
           <Textbox label={'Batch Size'} type={'number'} min={1} required={true}
                    value={formState.properties.batchSize || ''} disabled={disabled}
-                   onChange={getNumericFieldSetter('properties.batchSize')}/>
+                   onChange={getNumericFieldSetter('properties.batchSize', dispatch)}/>
         </Cell>
         <Cell size={'1'}>
           <Textbox label={'Memory Limit'} type={'number'} min={1} max={33554432} required={true}
                    value={formState.properties.memoryLimit || ''}
-                   disabled={disabled} onChange={getNumericFieldSetter('properties.memoryLimit')}/>
+                   disabled={disabled} onChange={getNumericFieldSetter('properties.memoryLimit', dispatch)}/>
         </Cell>
       </Grid>
     </Cell>

@@ -18,22 +18,26 @@ export type PrimarySort = {
   }[]
 };
 
-type BytesAccumConsolidationPolicy = {
-  type: 'bytes_accum';
-  threshold?: number;
+export type BytesAccumConsolidationPolicy = {
+  consolidationPolicy?: {
+    type: 'bytes_accum';
+    threshold?: number;
+  }
 };
 
-type TierConsolidationPolicy = {
-  type: 'tier';
-  segmentsMin?: number;
-  segmentsMax?: number;
-  segmentsBytesMax?: number;
-  segmentsBytesFloor?: number;
+export type TierConsolidationPolicy = {
+  consolidationPolicy?: {
+    type: 'tier';
+    segmentsMin?: number;
+    segmentsMax?: number;
+    segmentsBytesMax?: number;
+    segmentsBytesFloor?: number;
+  }
 };
 
-type ConsolidationPolicy = BytesAccumConsolidationPolicy | TierConsolidationPolicy;
+export type ConsolidationPolicy = BytesAccumConsolidationPolicy | TierConsolidationPolicy;
 
-export type ViewProperties = PrimarySort & StoredValues & {
+export type ViewProperties = PrimarySort & StoredValues & ConsolidationPolicy & {
   primarySortCompression?: Compression;
   cleanupIntervalStep?: number;
   commitIntervalMsec?: number;
@@ -41,7 +45,6 @@ export type ViewProperties = PrimarySort & StoredValues & {
   writebufferIdle?: number;
   writebufferActive?: number;
   writebufferSizeMax?: number;
-  consolidationPolicy?: ConsolidationPolicy;
 };
 
 type LinkProperties = {

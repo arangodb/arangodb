@@ -27,7 +27,6 @@ import GeoJsonForm from "./forms/GeoJsonForm";
 import GeoPointForm from "./forms/GeoPointForm";
 import React, { Dispatch } from "react";
 import PipelineForm from "./forms/PipelineForm";
-import { parseInt } from "lodash";
 import StopwordsForm from "./forms/StopwordsForm";
 import CollationForm from "./forms/CollationForm";
 import SegmentationForm from "./forms/SegmentationForm";
@@ -121,29 +120,6 @@ export function getForm (formProps: FormProps<AnalyzerTypeState>) {
 
       return <GeoPointForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
     }
-  }
-}
-
-export function setIntegerField<FormState> (field: string, value: string, dispatch: Dispatch<DispatchArgs<FormState>>, basePath?: string) {
-  const numValue = parseInt(value);
-
-  if (!Number.isNaN(numValue)) {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: field,
-        value: numValue
-      },
-      basePath
-    });
-  } else {
-    dispatch({
-      type: 'unsetField',
-      field: {
-        path: field
-      },
-      basePath
-    });
   }
 }
 

@@ -1,8 +1,8 @@
-import { ChangeEvent, useEffect, useRef } from "react";
+import { ChangeEvent, Dispatch, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "./arangoClient";
 import minimatch from "minimatch";
-import { cloneDeep, compact, merge, set, uniqueId, unset } from "lodash";
+import { cloneDeep, compact, merge, parseInt, set, uniqueId, unset } from "lodash";
 import { DispatchArgs, State } from "./constants";
 import { validateAndFix } from "../views/analyzers/helpers";
 
@@ -153,3 +153,28 @@ export const getReducer = <FormState extends object> (initialState: State<FormSt
 
     return newState;
   };
+
+export function getNumericFieldSetter<FormState> (field: string, dispatch: Dispatch<DispatchArgs<FormState>>, basePath?: string) {
+  return (event: ChangeEvent<HTMLInputElement>) => {
+    const numValue = parseInt(event.target.value);
+
+    if (!Number.isNaN(numValue)) {
+      dispatch({
+        type: 'setField',
+        field: {
+          path: field,
+          value: numValue
+        },
+        basePath
+      });
+    } else {
+      dispatch({
+        type: 'unsetField',
+        field: {
+          path: field
+        },
+        basePath
+      });
+    }
+  };
+}
