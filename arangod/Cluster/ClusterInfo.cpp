@@ -1245,7 +1245,6 @@ void ClusterInfo::loadPlan() {
         for (auto const& collection : *(it->second)) {
           auto& collectionId = collection.first;
           newShards.erase(collectionId); // delete from maps with shardID as key
-          newShardToName.erase(collectionId);
         }
         it = newCollections.erase(it);
       }
@@ -1303,7 +1302,6 @@ void ClusterInfo::loadPlan() {
             for (auto const& sh :
                    VPackObjectIterator(_plan.find(databaseName)->second->slice()[0].get(collectionsPath))) {
               auto const& shardId = sh.key.copyString();
-              newShards.erase(shardId);
               newShardServers.erase(shardId);
               newShardToName.erase(shardId);
             }
@@ -1874,7 +1872,7 @@ std::string ClusterInfo::getCollectionNotFoundMsg(DatabaseID const& databaseID,
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::shared_ptr<LogicalCollection>> const ClusterInfo::getCollections(DatabaseID const& databaseID) {
+std::vector<std::shared_ptr<LogicalCollection>> ClusterInfo::getCollections(DatabaseID const& databaseID) {
   std::vector<std::shared_ptr<LogicalCollection>> result;
 
   READ_LOCKER(readLocker, _planProt.lock);
@@ -5687,7 +5685,7 @@ arangodb::Result ClusterInfo::getShardServers(ShardID const& shardId,
   return arangodb::Result(TRI_ERROR_FAILED);
 }
 
-CollectionID ClusterInfo::getCollectionNameForShard(ShardID const& shardId) {
+CollectionID ClusterInfo::getCollectionNameForShard(ShardID const& shardId) const {
   READ_LOCKER(readLocker, _planProt.lock);
 
   auto it = _shardToName.find(shardId);

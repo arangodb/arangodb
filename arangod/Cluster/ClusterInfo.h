@@ -568,7 +568,7 @@ class ClusterInfo final {
   /// @brief ask about all collections of a database
   //////////////////////////////////////////////////////////////////////////////
 
-  TEST_VIRTUAL std::vector<std::shared_ptr<LogicalCollection>> const getCollections(DatabaseID const&);
+  TEST_VIRTUAL std::vector<std::shared_ptr<LogicalCollection>> getCollections(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a view
@@ -957,7 +957,7 @@ class ClusterInfo final {
   arangodb::Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
 
   /// @brief map shardId to collection name (not ID)
-  CollectionID getCollectionNameForShard(ShardID const& shardId);
+  CollectionID getCollectionNameForShard(ShardID const& shardId) const;
 
   auto getReplicatedLogLeader(DatabaseID const& database, replication2::LogId) const
       -> std::optional<ServerID>;
