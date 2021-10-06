@@ -103,8 +103,6 @@ class LogFollower final : public ILogParticipant,
   [[nodiscard]] auto appendEntriesPreFlightChecks(GuardedFollowerData const&,
                                                   AppendEntriesRequest const&) const noexcept
       -> std::optional<AppendEntriesResult>;
-
-  auto tryHardToClearQueue() noexcept -> void;
 };
 
 }  // namespace arangodb::replication2::replicated_log

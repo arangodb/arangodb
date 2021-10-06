@@ -165,18 +165,19 @@ void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e ope
   }
 }
 
-void RocksDBTransactionCollection::prepareTransaction(TransactionId trxId, uint64_t beginSeq) {
+rocksdb::SequenceNumber RocksDBTransactionCollection::prepareTransaction(TransactionId trxId) {
   TRI_ASSERT(_collection != nullptr);
   if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
   
     TRI_IF_FAILURE("TransactionChaos::randomSleep") {
       std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
     }
-
-    TRI_ASSERT(beginSeq > 0);
     auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
-    coll->meta().placeBlocker(trxId, beginSeq);
+    rocksdb::SequenceNumber seq = coll->placeRevisionTreeBlocker(trxId);
+    return seq;
   }
+
+  return 0;
 }
 
 void RocksDBTransactionCollection::abortCommit(TransactionId trxId) {
@@ -197,6 +198,7 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId, uint64_t co
   // Update the collection count
   int64_t adj = _numInserts - _numRemoves;
   if (hasOperations()) {
+    TRI_ASSERT(_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
     TRI_ASSERT(_revision.isSet() && commitSeq != 0);
       
     TRI_IF_FAILURE("RocksDBCommitCounts") {
@@ -234,7 +236,7 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId, uint64_t co
   }
 
   if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
-    rcoll->meta().removeBlocker(trxId);
+    rcoll->removeRevisionTreeBlocker(trxId);
   }
 
   _initialNumberDocuments += adj; // needed for intermediate commits
