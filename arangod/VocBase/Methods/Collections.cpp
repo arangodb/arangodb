@@ -654,7 +654,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
       "allowUserKeys", "cid",    "count",  "deleted", "id",   "indexes", "name",
       "path",          "planId", "shards", "status",  "type", "version"};
 
-  if (!ServerState::instance()->isRunningInCluster()) {
+  if (!ServerState::instance()->isRunningInCluster() || !coll->isSmart()) {
     // These are only relevant for cluster
     ignoreKeys.insert({StaticStrings::DistributeShardsLike, StaticStrings::IsSmart,
                        StaticStrings::NumberOfShards, StaticStrings::ReplicationFactor,
