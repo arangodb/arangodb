@@ -133,8 +133,8 @@ PersistingLogEntry::PersistingLogEntry(LogIndex index, velocypack::Slice persist
   }
 }
 
-InMemoryLogEntry::InMemoryLogEntry(PersistingLogEntry entry)
-    : _logEntry(std::move(entry)) {}
+InMemoryLogEntry::InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync)
+    : _waitForSync(waitForSync), _logEntry(std::move(entry)) {}
 
 void InMemoryLogEntry::setInsertTp(clock::time_point tp) noexcept {
   _insertTp = tp;

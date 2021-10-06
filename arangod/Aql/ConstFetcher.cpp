@@ -82,9 +82,10 @@ auto ConstFetcher::execute(AqlCallStack& stack)
         }
       }
       TRI_ASSERT(fromShadowRow < toShadowRow);
+      TRI_ASSERT(sliceIndexes.size() == 1);
       // We cannot go past the first shadowRow
-      sliceIndexes.emplace_back(fromShadowRow, toShadowRow);
       sliceIndexes[0].second = fromShadowRow;
+      sliceIndexes.emplace_back(fromShadowRow, toShadowRow);
     }
   }
   // Number of data rows we have left
@@ -109,7 +110,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     }
     {
       // Produce the next rows
-      // Adjost from and rowsLeft
+      // Adjust to and rowsLeft
       // Note: canProduce can be 0
       size_t canProduce = (std::min)(call.getLimit(), rowsLeft);
       to = from + canProduce;
@@ -198,7 +199,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
 }
 
 void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped) {
-  // If this assert triggers, we have injected a block adn skip pair
+  // If this assert triggers, we have injected a block and skip pair
   // that has not yet been fetched.
   TRI_ASSERT(_skipped.nothingSkipped());
   _currentBlock = block;

@@ -134,8 +134,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   bool hasDocuments() override;
 
-  void adjustNumberDocuments(transaction::Methods&, int64_t) override;
-
  private:
   [[nodiscard]] Result remove(transaction::Methods& trx, LocalDocumentId documentId,
                               RevisionId expectedRev, ManagedDocumentResult& previous,

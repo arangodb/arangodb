@@ -170,7 +170,7 @@ class RocksDBTransactionState final : public TransactionState {
 #endif
 
  private:
-  void prepareCollections();
+  rocksdb::SequenceNumber prepareCollections();
   void commitCollections(rocksdb::SequenceNumber lastWritten);
   void cleanupCollections();
   

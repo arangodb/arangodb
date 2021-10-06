@@ -147,7 +147,8 @@ struct LeaderInfo {
 };
 
 struct BatchInfo {
-  static constexpr double DefaultTimeout = 7200.0;
+  static constexpr double DefaultTimeout = 3600.0;
+  static constexpr double DefaultTimeoutForTailing = 1800.0;
 
   /// @brief dump batch id
   uint64_t id{0};
