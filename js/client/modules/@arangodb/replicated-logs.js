@@ -23,7 +23,6 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-//let internal = require('internal');
 let arangosh = require('@arangodb/arangosh');
 
 function ReplicatedLog(database, id) {
@@ -114,7 +113,7 @@ ReplicatedLog.prototype.insert = function (payload, waitForSync = false) {
 };
 
 ReplicatedLog.prototype.toString = function () {
-  return '[object ReplicatedLog "' + this.id() + '"]';
+  return `[object ReplicatedLog ${this.id()}]`;
 };
 
 /*
