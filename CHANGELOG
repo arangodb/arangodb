@@ -4,6 +4,9 @@ v3.8.2 (XXXX-XX-XX)
 * Fix race in RocksDB throttle listener, when it was getting started lazily
   during server shutdown.
 
+* Fixed counting of all read transaction as aborted. Added a new
+  metric to count read transactions.
+
 * Fixed potential issues with revision trees and document counters getting out
   of sync with the underlying collection data.
 

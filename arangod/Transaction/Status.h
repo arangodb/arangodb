@@ -39,7 +39,8 @@ enum class Status : uint32_t {
   CREATED = 1,
   RUNNING = 2,
   COMMITTED = 3,
-  ABORTED = 4
+  ABORTED = 4,
+  FINISHED_RO = 5
 };
 
 /// @brief return the status of the transaction as a string
@@ -55,6 +56,8 @@ static inline char const* statusString(Status status) {
       return "committed";
     case transaction::Status::ABORTED:
       return "aborted";
+    case transaction::Status::FINISHED_RO:
+      return "finished-read-only";
   }
 
   TRI_ASSERT(false);
