@@ -99,7 +99,7 @@ function CommonStatisticsSuite() {
       });
       let stats2 = internal.serverStatistics();
 
-      assertTrue(stats1.transactions.read_only < stats2.transactions.read_only);
+      assertTrue(stats1.transactions.readOnly < stats2.transactions.readOnly);
     },
 
     testIntermediateCommitsCommit: function () {
