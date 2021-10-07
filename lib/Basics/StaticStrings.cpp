@@ -120,6 +120,7 @@ std::string const StaticStrings::Properties("properties");
 std::string const StaticStrings::DataSourceDeleted("deleted");
 std::string const StaticStrings::DataSourceGuid("globallyUniqueId");
 std::string const StaticStrings::DataSourceId("id");
+std::string const StaticStrings::DataSourceCid("cid");
 std::string const StaticStrings::DataSourceName("name");
 std::string const StaticStrings::DataSourcePlanId("planId");
 std::string const StaticStrings::DataSourceSystem("isSystem");

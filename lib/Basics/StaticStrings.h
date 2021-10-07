@@ -116,6 +116,7 @@ class StaticStrings {
   static std::string const DataSourceDeleted;  // data-source deletion marker
   static std::string const DataSourceGuid;     // data-source globaly-unique id
   static std::string const DataSourceId;       // data-source id
+  static std::string const DataSourceCid;      // data-source collection id
   static std::string const DataSourceName;     // data-source name
   static std::string const DataSourcePlanId;   // data-source plan id
   static std::string const DataSourceSystem;   // data-source system marker
