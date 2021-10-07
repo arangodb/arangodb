@@ -1,15 +1,8 @@
 devel
 -----
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-* New metric for read transactions. Fixed the behaviour, where read
-  transactions were automatically counted as failed.
-
 * Added enterprise license feature visibility for arangosh.
-=======
-=======
->>>>>>> 76fb241cc9820c2c84c22ff9081ff312a31fc62f
+
 * Fixed potential issues with revision trees and document counters getting out
   of sync with the underlying collection data.
 
