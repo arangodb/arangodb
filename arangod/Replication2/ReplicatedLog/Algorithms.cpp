@@ -30,6 +30,7 @@
 #include "Random/RandomGenerator.h"
 
 #include <type_traits>
+#include <random>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -165,6 +166,41 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
         }
       }
     }
+  } else {
+    // There is no term. Randomly select a set of participants and copy the
+    // targetConfig to create the first term.
+
+    std::vector<std::string_view> participants;
+    participants.reserve(info.size());
+    // where is std::transform_if ?
+    for (auto const& [name, record] : info) {
+      if (record.isHealthy) {
+        participants.emplace_back(name);
+      }
+    }
+
+    if (participants.size() < spec.targetConfig.replicationFactor) {
+      // not enough participants to form a term
+      return {};
+    }
+
+    {
+      std::random_device rd;
+      std::mt19937 g(rd());
+      std::shuffle(participants.begin(), participants.end(), g);
+    }
+
+    LogPlanTermSpecification newTermSpec;
+    newTermSpec.term = LogTerm{1};
+    newTermSpec.config = spec.targetConfig;
+    for (std::size_t i = 0; i < spec.targetConfig.writeConcern; i++) {
+      newTermSpec.participants.emplace(ParticipantId{participants[i]},
+                                       LogPlanTermSpecification::Participant{});
+    }
+    LOG_TOPIC("bb6e4", INFO, Logger::REPLICATION2)
+        << "creating first term for replicated log " << database << "/"
+        << spec.id << " with participants " << participants;
+    return newTermSpec;
   }
 
   return std::monostate{};
