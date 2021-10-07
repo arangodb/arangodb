@@ -190,7 +190,8 @@ ImportHelper::ImportHelper(ClientFeature const& client, std::string const& endpo
       _firstLine(""),
       _columnNames(),
       _hasError(false),
-      _headersSeen(false) {
+      _headersSeen(false),
+      _emittedField(false) {
   for (uint32_t i = 0; i < threadCount; i++) {
     auto http = client.createHttpClient(endpoint, params);
     _senderThreads.emplace_back(
@@ -305,6 +306,7 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
   // reset our state properly
   _lineBuffer.clear();
   _headersSeen = true;
+  _emittedField = false;
   _rowOffset = 0;
   _rowsRead = 0;
   _numberLines = 0;
@@ -336,6 +338,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   _errorMessages.clear();
   _hasError = false;
   _headersSeen = false;
+  _emittedField = false;
   _rowOffset = 0;
   _rowsRead = 0;
   _numberLines = 0;
@@ -714,6 +717,7 @@ void ImportHelper::beginLine(size_t row) {
   }
 
   ++_numberLines;
+  _emittedField = false;
 
   if (row > 0 + _rowsToSkip) {
     _lineBuffer.appendChar('\n');
@@ -767,9 +771,11 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
 
   // we will write out this attribute!
 
-  if (column > 0) {
+  if (column > 0 && _emittedField) {
     _lineBuffer.appendChar(',');
   }
+
+  _emittedField = true;
 
   if (_keyColumn == -1 && row == _rowsToSkip && !_headersSeen &&
       fieldLength == 4 && memcmp(field, "_key", 4) == 0) {

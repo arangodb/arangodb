@@ -367,6 +367,7 @@ class ImportHelper {
 
   bool _hasError;
   bool _headersSeen;
+  bool _emittedField;
   std::vector<std::string> _errorMessages;
 
   static double const ProgressStep;
