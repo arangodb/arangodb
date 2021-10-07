@@ -327,11 +327,9 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
     return tmpRes.ok();
   }
 
-  uint64_t numInserted = 0;
-  uint64_t numRemoved = 0;
-  Result tmpRes;
-
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
+    TRI_ASSERT(_currentSequence < startSequence);
+
     // starting new write batch
     _startSequence = startSequence;
     _currentSequence = startSequence;
@@ -423,6 +421,31 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
     }
     return rocksdb::Status();  // make WAL iterator happy
   }
+  
+  rocksdb::Status MarkBeginPrepare(bool = false) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument("MarkBeginPrepare() handler not defined.");
+  }
+  
+  rocksdb::Status MarkEndPrepare(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument("MarkEndPrepare() handler not defined.");
+  }
+    
+  rocksdb::Status MarkNoop(bool /*empty_batch*/) override {
+    return rocksdb::Status::OK();
+  }
+    
+  rocksdb::Status MarkRollback(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument(
+        "MarkRollbackPrepare() handler not defined.");
+  }
+    
+  rocksdb::Status MarkCommit(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument("MarkCommit() handler not defined.");
+  }
 
  private:
   // tick function that is called before each new WAL entry
@@ -435,6 +458,11 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       ++_currentSequence;
     }
   }
+ 
+ public:
+  uint64_t numInserted = 0;
+  uint64_t numRemoved = 0;
+  Result tmpRes;
 
  private:
   const uint64_t _objectId;  /// collection objectID
@@ -442,9 +470,9 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   transaction::Methods& _trx;
   RocksDBMethods* _methods;  /// methods to fill
   OperationOptions const _options;
-
-  rocksdb::SequenceNumber _startSequence;
-  rocksdb::SequenceNumber _currentSequence;
+ 
+  rocksdb::SequenceNumber _startSequence = 0;
+  rocksdb::SequenceNumber _currentSequence = 0;
   bool _startOfBatch = false;
   uint64_t _lastObjectID = 0;
 };

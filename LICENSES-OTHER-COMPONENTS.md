@@ -474,10 +474,10 @@ _Enterprise Edition only_
 ### RocksDB
 
 * Name: RocksDB
-* Version: 6.8.0
-* Date: 2020-03-11 23:20:13Z
+* Version: 6.25.0 (d497cdfbb27b036d43a280d44ed806b2c6d6bcc2)
+* Date: 2021-09-20 10:38:03-0700
 * GitHub: https://github.com/facebook/rocksdb
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.8/README.md
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.25/README.md
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 

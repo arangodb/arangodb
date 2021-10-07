@@ -155,6 +155,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         _engine(_server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>()) {}
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
+    TRI_ASSERT(_currentSequence < startSequence);
+
     // starting new write batch
     _startSequence = startSequence;
     _currentSequence = startSequence;
@@ -514,6 +516,31 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       helper->LogData(blob, _currentSequence);
     }
   }
+  
+  rocksdb::Status MarkBeginPrepare(bool = false) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument("MarkBeginPrepare() handler not defined.");
+  }
+  
+  rocksdb::Status MarkEndPrepare(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument("MarkEndPrepare() handler not defined.");
+  }
+    
+  rocksdb::Status MarkNoop(bool /*empty_batch*/) override {
+    return rocksdb::Status::OK();
+  }
+    
+  rocksdb::Status MarkRollback(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument(
+        "MarkRollbackPrepare() handler not defined.");
+  }
+    
+  rocksdb::Status MarkCommit(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument("MarkCommit() handler not defined.");
+  }
 
   // MergeCF is not used
 };
@@ -530,6 +557,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
       helper->prepare();
     }
 
+    TRI_ASSERT(_tick == 0);
     // Tell the WriteBatch reader the transaction markers to look for
     WBReader handler(server, _tick);
     rocksdb::SequenceNumber earliest = engine.settingsManager()->earliestSeqNeeded();
