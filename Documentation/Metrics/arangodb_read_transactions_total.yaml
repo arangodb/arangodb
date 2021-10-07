@@ -1,0 +1,19 @@
+name: arangodb_read_transactions_total
+introducedIn: "3.8.2"
+help: |
+  Number of read transactions.
+unit: number
+type: counter
+category: Transactions
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of read-only transactions. In the cluster, this metric will
+  be collected separately for transactions on Coordinators and the
+  transaction counterparts on leaders and followers.
+  This metric was named `arangodb_transactions_started` in previous
+  versions of ArangoDB.
