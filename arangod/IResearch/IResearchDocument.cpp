@@ -778,11 +778,10 @@ void InvertedIndexFieldIterator::next() {
               _nameBuffer.c_str());
           break;
         case VPackValueType::Array: {
-          if (setValue(_valueSlice, _begin->second)) {
-            return;
-          } else {
             if (_begin->first.back().shouldExpand) {
               _arrayStack.push_back(VPackArrayIterator(_valueSlice));
+            } else if (setValue(_valueSlice, _begin->second)) {
+              return;
             } else {
               THROW_ARANGO_EXCEPTION_FORMAT(
                   TRI_ERROR_NOT_IMPLEMENTED,
