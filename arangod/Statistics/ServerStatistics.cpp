@@ -40,6 +40,9 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
       _intermediateCommits(
         _metrics.counter("arangodb_intermediate_commits", 0,
                          "Number of intermediate commits performed in transactions")),
+      _readTransactions(
+        _metrics.counter("arangodb_read_ransactions", 0,
+                         "Number of read transactions")),
       _exclusiveLockTimeouts(
         _metrics.counter("arangodb_collection_lock_timeouts_exclusive", 0,
                          "Number of timeouts when trying to acquire "
