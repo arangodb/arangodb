@@ -232,13 +232,15 @@ class InMemoryLogEntry {
  public:
   using clock = std::chrono::steady_clock;
 
-  explicit InMemoryLogEntry(PersistingLogEntry entry);
+  explicit InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync = false);
 
   [[nodiscard]] auto insertTp() const noexcept -> clock::time_point;
   void setInsertTp(clock::time_point) noexcept;
   [[nodiscard]] auto entry() const noexcept -> PersistingLogEntry const&;
+  [[nodiscard]] bool getWaitForSync() const noexcept { return _waitForSync; }
 
  private:
+  bool _waitForSync;
   // Immutable box that allows sharing, i.e. cheap copying.
   ::immer::box<PersistingLogEntry, ::arangodb::immer::arango_memory_policy> _logEntry;
   // Timepoint at which the insert was started (not the point in time where it

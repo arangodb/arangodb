@@ -78,3 +78,7 @@ void ClusterRestReplicationHandler::handleCommandRemoveKeys() {
 void ClusterRestReplicationHandler::handleCommandDump() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
+
+void ClusterRestReplicationHandler::handleCommandRevisionTree() {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
