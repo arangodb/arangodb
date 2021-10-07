@@ -453,7 +453,7 @@ void TransactionState::updateStatus(transaction::Status status) noexcept {
   } else if (_status == transaction::Status::RUNNING) {
     TRI_ASSERT(status == transaction::Status::COMMITTED ||
                status == transaction::Status::ABORTED ||
-               status == transaction::Status::FINISHED);
+               status == transaction::Status::FINISHED_RO);
   }
 
   _status = status;

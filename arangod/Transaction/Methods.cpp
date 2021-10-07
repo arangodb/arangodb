@@ -376,8 +376,12 @@ transaction::Methods::~Methods() {
 
     // auto abort a non-read-only and still running transaction
     if (_state->status() == transaction::Status::RUNNING) {
+
       if (_state->isReadOnlyTransaction()) {
-        _state->updateStatus(transaction::Status::FINISHED);
+        // read-only transactions are never comitted or aborted during their
+        // regular life cycle. we want now to properly clean up and count them
+        // and clean up.
+        _state->updateStatus(transaction::Status::FINISHED_RO);
       } else {
         try {
           this->abort();
