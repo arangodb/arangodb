@@ -374,7 +374,7 @@ transaction::Methods::~Methods() {
     // unregister transaction from context
     _transactionContext->unregisterTransaction();
 
-    // auto abort a not read only and still running transaction
+    // auto abort a non-read-only and still running transaction
     if (_state->status() == transaction::Status::RUNNING) {
       if (_state->isReadOnlyTransaction()) {
         _state->updateStatus(transaction::Status::FINISHED);
