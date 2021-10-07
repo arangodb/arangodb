@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed counting of all read transaction as aborted. Added a new
+  metric to count read transactions.
+
 * Fixed potential issues with revision trees and document counters getting out
   of sync with the underlying collection data.
 
