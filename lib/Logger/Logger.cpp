@@ -556,7 +556,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
   
     // meta data from log context
     LogContext::OverloadVisitor visitor([&out](std::string_view const& key, auto&& value) {
-      out.append(",\"", 2).append(key).append("\":\"", 3).append(toString(value));
+      out.append(",\"", 2).append(key).append("\":\"", 3).append(toString(value)); // TODO - escaping
       out.push_back('"');
     });
     logContext.visit(visitor);

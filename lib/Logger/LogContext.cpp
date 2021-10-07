@@ -44,13 +44,14 @@ LogContext::ScopedValue::~ScopedValue() {
 
 LogContext::ScopedContext::ScopedContext(LogContext ctx) {
   if (ctx._tail != LogContext::current()._tail) {
-    _oldTail = ctx._tail;
+    _oldTail = std::move(LogContext::current()._tail);
+    _mustRestore = true;
     LogContext::setCurrent(std::move(ctx));
   }
 }
 
 LogContext::ScopedContext::~ScopedContext() {
-  if (_oldTail) {
+  if (_mustRestore) {
     LogContext::setCurrent(LogContext(std::move(_oldTail)));
   }
 }
@@ -60,7 +61,7 @@ void LogContext::pushEntry(std::shared_ptr<Entry> entry) {
   _tail = std::move(entry);
 }
 
-void LogContext::popTail() {
+void LogContext::popTail() noexcept {
   TRI_ASSERT(_tail != nullptr);
   _tail = _tail->_prev;
 }
@@ -79,5 +80,5 @@ void LogContext::doVisit(Visitor const& visitor, std::shared_ptr<Entry> const& e
 LogContext& LogContext::current() { return localLogContext; }
 
 void LogContext::setCurrent(LogContext ctx) {
-  localLogContext = ctx;
+  localLogContext = std::move(ctx);
 }

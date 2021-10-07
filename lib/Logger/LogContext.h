@@ -25,16 +25,18 @@
 
 #include <cstdint>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 
 namespace arangodb {
 
 class LogContext {
  private:
   struct Entry;
-  
+
   template <class Vals>
   struct EntryImpl;
 
@@ -94,7 +96,7 @@ class LogContext {
   /// The `ValueBuilder` can be passed directly to `ScopedValue`, or you
   /// can call `share()` to create a reusable `std::shared_ptr<Values>`
   /// which can be stored in a member and used for different `ScopedValues`.
-  template <class Values = std::tuple<>, const char... Keys[]>
+  template <class Vals = std::tuple<>, const char... Keys[]>
   struct ValueBuilder {
     template <const char Key[], class Value>
     auto with(Value v) && {
@@ -102,12 +104,12 @@ class LogContext {
       return ValueBuilder<decltype(vals), Keys..., Key>(std::move(vals));
     }
     std::shared_ptr<Values> share() && {
-      return std::make_shared<ValuesImpl<Values, Keys...>>(std::move(_vals));
+      return std::make_shared<ValuesImpl<Vals, Keys...>>(std::move(_vals));
     }
    private:
     friend class LogContext;
-    ValueBuilder(Values vals) : _vals(std::move(vals)) {}
-    Values _vals;
+    ValueBuilder(Vals vals) : _vals(std::move(vals)) {}
+    Vals _vals;
   };
 
   static ValueBuilder<> makeValue() { return ValueBuilder<std::tuple<>>({}); }
@@ -115,33 +117,39 @@ class LogContext {
   /// @brief adds the provided value(s) to the LogContext for the current scope,
   /// i.e., upon destruction the value(s) are removed from the current LogContext.
   struct ScopedValue {
-    template <class Values, const char... Keys[]>
-    ScopedValue(ValueBuilder<Values, Keys...>&& v) {
-      appendEntry(std::make_shared<EntryImpl<ValuesImpl<Values, Keys...>>>(std::move(v._vals)));
+    template <class Vals, const char... Keys[]>
+    explicit ScopedValue(ValueBuilder<Vals, Keys...>&& v) {
+      using V = ValuesImpl<Vals, Keys...>;
+      auto entry = std::make_shared<EntryImpl<V>>(V(std::move(v._vals)));
+      appendEntry(entry);
     }
 
-    ScopedValue(std::shared_ptr<Values>&& v) {
+    explicit ScopedValue(std::shared_ptr<Values> v) {
       appendEntry(std::make_shared<EntryImpl<std::shared_ptr<Values>>>(std::move(v)));
     }
 
     ~ScopedValue();
   private:
     void appendEntry(std::shared_ptr<Entry> e) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _oldTail = e.get();
+#endif
       LogContext::current().pushEntry(std::move(e));
     }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    Entry* _oldTail;
+    Entry* _oldTail = nullptr;
 #endif
   };
 
   /// @brief sets the given LogContext as the thread's current context for the
   /// current scope; restores the previous LogContext upon destruction.
   struct ScopedContext {
-    ScopedContext(LogContext ctx);
+    explicit ScopedContext(LogContext ctx);
     ~ScopedContext();
    private:
     std::shared_ptr<Entry> _oldTail;
+    bool _mustRestore = false;
   };
 
   LogContext() = default;
@@ -159,17 +167,37 @@ class LogContext {
  private:
   template <class Vals, const char... Keys[]>
   struct ValuesImpl : Values {
-    ValuesImpl(Vals vals) : _values(std::move(vals)) {}
+    explicit ValuesImpl(Vals vals) : _values(std::move(vals)) {}
     void visit(Visitor const& visitor) override {
-     doVisit<0, Keys...>(visitor);
+      doVisit<0, Keys...>(visitor);
     }
     ValuesImpl* operator->() { return this; }
    private:
     template <std::size_t Idx, const char K[], const char... Ks[]>
     void doVisit(Visitor const& visitor) {
-      visitor.visit(K, std::get<Idx>(_values));
+      visitor.visit(K, toVisitorType(std::get<Idx>(_values)));
       if constexpr (Idx + 1 < std::tuple_size<Vals>()) {
         doVisit<Idx + 1, Ks...>(visitor);
+      }
+    }
+
+    template <class T>
+    auto toVisitorType(T&& v) {
+      using TT = std::remove_reference_t<T>;
+      if constexpr (std::is_floating_point_v<TT>) {
+        return static_cast<double>(v);
+      } else if constexpr (std::is_unsigned_v<TT>) {
+        return static_cast<std::uint64_t>(v);
+      } else if constexpr (std::is_signed_v<TT>) {
+        return static_cast<std::int64_t>(v);
+      } else if constexpr (std::is_constructible_v<std::string_view, T>) {
+        return std::string_view(std::forward<T>(v));
+      } else if constexpr (std::is_constructible_v<std::string, T>) {
+        return std::string(std::forward<T>(v));
+      } else {
+        std::ostringstream ss;
+        ss << v;
+        return std::move(ss).str();
       }
     }
 
@@ -197,7 +225,7 @@ class LogContext {
   void doVisit(Visitor const&, std::shared_ptr<Entry> const&) const;
 
   void pushEntry(std::shared_ptr<Entry>);
-  void popTail();
+  void popTail() noexcept ;
 
   std::shared_ptr<Entry> _tail{};
 };
