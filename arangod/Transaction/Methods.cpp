@@ -381,7 +381,7 @@ transaction::Methods::~Methods() {
         // read-only transactions are never comitted or aborted during their
         // regular life cycle. we want now to properly clean up and count them
         // and clean up.
-        _state->updateStatus(transaction::Status::FINISHED_RO);
+        _state->updateStatus(transaction::Status::COMMITTED);
       } else {
         try {
           this->abort();
