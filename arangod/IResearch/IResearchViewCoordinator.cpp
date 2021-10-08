@@ -66,8 +66,6 @@ void ensureImmutableProperties(
 namespace arangodb {
 namespace iresearch {
 
-using irs::async_utils::read_write_mutex;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchView-specific implementation of a ViewFactory
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,9 +218,8 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
 
     VPackBuilder tmp;
 
-    read_write_mutex::read_mutex mutex(_mutex);
     // '_collections' can be asynchronously modified
-    auto lock = irs::make_lock_guard(mutex);
+    auto lock = irs::make_shared_lock(_mutex);
 
     builder.add(StaticStrings::LinksField, VPackValue(VPackValueType::Object));
     for (auto& entry : _collections) {
@@ -313,8 +310,8 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
 
   sanitizedBuilder.close();
 
-  read_write_mutex::write_mutex mutex(_mutex); // '_collections' can be asynchronously read
-  auto lock = irs::make_lock_guard(mutex);
+  // '_collections' can be asynchronously read
+  auto lock = irs::make_lock_guard(_mutex);
   auto [it, emplaced] = _collections.try_emplace(
     cid,
     link.collection().name(), std::move(sanitizedBuilder));
@@ -346,9 +343,8 @@ IResearchViewCoordinator::IResearchViewCoordinator(TRI_vocbase_t& vocbase,
 }
 
 bool IResearchViewCoordinator::visitCollections(CollectionVisitor const& visitor) const {
-  read_write_mutex::read_mutex mutex(_mutex);
   // '_collections' can be asynchronously modified
-  auto lock = irs::make_lock_guard(mutex);
+  auto lock = irs::make_shared_lock(_mutex);
 
   for (auto& entry : _collections) {
     if (!visitor(entry.first)) {
@@ -449,9 +445,8 @@ Result IResearchViewCoordinator::properties(
     std::unordered_set<DataSourceId> currentCids;
 
     {
-      read_write_mutex::read_mutex mutex(_mutex);
       // '_collections' can be asynchronously modified
-      auto lock = irs::make_lock_guard(mutex);
+      auto lock = irs::make_shared_lock(_mutex);
 
       currentLinks.openObject();
 

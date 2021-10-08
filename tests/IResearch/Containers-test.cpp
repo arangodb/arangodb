@@ -54,11 +54,11 @@ TEST(ContainersTest, testResourceMutex) {
     std::condition_variable cond;
     std::mutex cond_mutex;
     auto cond_lock = irs::make_unique_lock(cond_mutex);
-    auto lock = irs::make_lock_guard(value.mutex());  // read lock
+    auto lock = value.read_lock();  // read lock
 
     std::thread thread([&value, &cond, &cond_mutex]() -> void {
       auto condLock = irs::make_lock_guard(cond_mutex);
-      auto mutexLlock = irs::make_lock_guard(value.mutex());
+      auto mutexLlock = value.read_lock();
       cond.notify_all();
     });
     auto result = cond.wait_for(cond_lock, std::chrono::milliseconds(1000));  // assume thread finishes in 1000ms
@@ -73,7 +73,7 @@ TEST(ContainersTest, testResourceMutex) {
     Value value(&i);
     std::condition_variable cond;
     std::mutex cond_mutex;
-    auto lock = irs::make_unique_lock(value.mutex());
+    auto lock = value.read_lock();
     auto cond_lock = irs::make_unique_lock(cond_mutex);
     std::atomic<bool> reset(false);
     std::thread thread([&cond, &cond_mutex, &value, &reset]() -> void {

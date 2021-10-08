@@ -305,9 +305,8 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice const& in
     auto view = _asyncSelf; // create copy for lambda
 
     databaseFeature.registerPostRecoveryCallback([view]() -> Result {
-      auto& viewMutex = view->mutex();
       // ensure view does not get deallocated before call back finishes
-      auto lock = irs::make_lock_guard(viewMutex);
+      auto lock = view->read_lock();
       auto* viewPtr = view->get();
 
       if (viewPtr) {
@@ -328,7 +327,7 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice const& in
       return; // NOOP
     }
 
-    auto lock = irs::make_lock_guard(self->mutex());
+    auto lock = self->read_lock();
     auto* view = self->get();
 
     // populate snapshot when view is registred with a transaction on single-server

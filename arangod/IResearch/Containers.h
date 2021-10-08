@@ -123,20 +123,22 @@ class ResourceMutex {
  public:
   typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
   explicit ResourceMutex(void* resource) noexcept
-      : _readMutex(_mutex), _resource(resource) {}
+      : _resource(resource) {}
   ~ResourceMutex() { reset(); }
-  operator bool() { return get() != nullptr; }
-  ReadMutex& mutex() const noexcept {
-    return _readMutex;
-  }              // prevent '_resource' reset()
+  operator bool() noexcept { return get() != nullptr; }
+  auto read_lock() const {
+    // prevent '_resource' reset()
+    return irs::make_shared_lock(_mutex);
+  }
   void reset();  // will block until a write lock can be acquired on the _mutex
 
  protected:
-  void* get() const noexcept { return _resource.load(); }
+  void* get() const noexcept {
+    return _resource.load(std::memory_order_relaxed);
+  }
 
  private:
-  irs::async_utils::read_write_mutex _mutex;  // read-lock to prevent '_resource' reset()
-  mutable ReadMutex _readMutex;  // object that can be referenced by std::unique_lock
+  mutable std::shared_mutex _mutex; // read-lock to prevent '_resource' reset()
   std::atomic<void*> _resource;  // atomic because of 'operator bool()'
 };
 
