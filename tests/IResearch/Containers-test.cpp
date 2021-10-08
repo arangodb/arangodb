@@ -91,7 +91,7 @@ TEST(ContainersTest, testResourceMutex) {
     EXPECT_FALSE(reset);
     lock.unlock();
     auto result1 = cond.wait_for(cond_lock, std::chrono::milliseconds(50));
-    int nTryCount = 3;
+    int nTryCount = 100;
     while (std::cv_status::timeout == result1 && nTryCount--) {
       result1 = cond.wait_for(cond_lock, std::chrono::milliseconds(50));
     }
