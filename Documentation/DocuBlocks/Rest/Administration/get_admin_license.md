@@ -41,7 +41,7 @@ glance. The possible values are as follows:
     var url = "/_admin/license";
     var response = logCurlRequest('GET', url);
 
-    assert(response.code === 200);
+    assert(response.code === 201);
 
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
