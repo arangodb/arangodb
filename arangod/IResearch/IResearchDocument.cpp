@@ -745,7 +745,7 @@ void InvertedIndexFieldIterator::next() {
       }
       _valueSlice = get(_slice, _begin->first, arangodb::velocypack::Slice::noneSlice());
     }
-    if (_valueSlice.isNone()) {
+    if (!_valueSlice.isNone() && (!_begin->first.back().shouldExpand || _valueSlice.isArray())) {
       if (_nameBuffer.empty()) {
         bool isFirst = true;
         for (auto& a : _begin->first) {
@@ -778,20 +778,19 @@ void InvertedIndexFieldIterator::next() {
               _nameBuffer.c_str());
           break;
         case VPackValueType::Array: {
-            if (_begin->first.back().shouldExpand) {
-              _arrayStack.push_back(VPackArrayIterator(_valueSlice));
-            } else if (setValue(_valueSlice, _begin->second)) {
-              return;
-            } else {
-              THROW_ARANGO_EXCEPTION_FORMAT(
-                  TRI_ERROR_NOT_IMPLEMENTED,
-                  "Configured analyzer does not accept arrays and field has no "
-                  "expansion set. "
-                  "Please use another analyzer to process an array or exclude "
-                  "field '%s'"
-                  " from index definition or enable expansion",
-                  _nameBuffer.c_str());
-            }
+          if (_begin->first.back().shouldExpand) {
+            _arrayStack.push_back(VPackArrayIterator(_valueSlice));
+          } else if (setValue(_valueSlice, _begin->second)) {
+            return;
+          } else {
+            THROW_ARANGO_EXCEPTION_FORMAT(
+                TRI_ERROR_NOT_IMPLEMENTED,
+                "Configured analyzer does not accept arrays and field has no "
+                "expansion set. "
+                "Please use another analyzer to process an array or exclude "
+                "field '%s'"
+                " from index definition or enable expansion",
+                _nameBuffer.c_str());
           }
         } break;
         case VPackValueType::Double:

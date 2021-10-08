@@ -229,7 +229,13 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(VPackBuilder & builder,
 
 std::vector<std::vector<arangodb::basics::AttributeName>> const&
 IResearchRocksDBInvertedIndex::coveredFields() const {
-  return {}; // FIXME: looks like we don't need this here actually
+   std::vector<std::vector<arangodb::basics::AttributeName>> fields;
+   if (!_meta._storedValues.columns().empty()) {
+     for (auto const& f : _meta._storedValues.columns().front().fields) {
+       fields.push_back(f.second);
+     }
+   }
+   return fields;
 }
 
 Result IResearchRocksDBInvertedIndex::drop() {
