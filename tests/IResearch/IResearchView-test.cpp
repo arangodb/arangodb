@@ -27,7 +27,6 @@
 #include "analysis/token_attributes.hpp"
 #include "analysis/analyzers.hpp"
 #include "search/scorers.hpp"
-#include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/utf8_path.hpp"
 #include "utils/lz4compression.hpp"

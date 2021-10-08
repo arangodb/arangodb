@@ -26,7 +26,6 @@
 
 #include "../Mocks/StorageEngineMock.h"
 
-#include "utils/locale_utils.hpp"
 #include "utils/lz4compression.hpp"
 
 #include "ApplicationFeatures/ApplicationServer.h"

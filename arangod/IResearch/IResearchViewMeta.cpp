@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "utils/index_utils.hpp"
-#include "utils/locale_utils.hpp"
 
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"

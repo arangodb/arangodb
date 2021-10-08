@@ -28,8 +28,6 @@
 #include "common.h"
 #include "gtest/gtest.h"
 
-#include "utils/locale_utils.hpp"
-
 #include "Agency/AgencyFeature.h"
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
