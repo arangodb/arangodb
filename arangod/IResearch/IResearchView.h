@@ -221,7 +221,7 @@ class IResearchView final: public arangodb::LogicalView {
   AsyncViewPtr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
   std::unordered_map<DataSourceId, AsyncLinkPtr> _links;  // registered links (value may be nullptr on single-server if link did not come up yet) FIXME TODO maybe this should be asyncSelf?
   IResearchViewMeta _meta; // the view configuration
-  mutable irs::async_utils::read_write_mutex _mutex; // for use with member '_meta', '_links'
+  mutable std::shared_mutex _mutex; // for use with member '_meta', '_links'
   std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback; // for snapshot(...)
   std::atomic<bool> _inRecovery;
