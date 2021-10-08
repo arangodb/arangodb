@@ -1171,7 +1171,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     res.reset(); // With babies reporting is handled in the result body
   } else {
     bool excludeFromReplication = false;
-    res = workForOneDocument(value, false, excludeFromfReplication);
+    res = workForOneDocument(value, false, excludeFromReplication);
     if (res.ok() && excludeFromReplication) {
       excludePositions.insert(0);
     }
