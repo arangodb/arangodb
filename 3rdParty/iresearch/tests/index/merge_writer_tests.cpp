@@ -182,7 +182,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
 
   // populate directory
   {
-    auto query_doc4 = irs::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
+    auto query_doc4 = irs::iql::query_builder().build("doc_string==string4_data", "C");
     auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
     ASSERT_TRUE(insert(*writer, doc1.indexed.end(), doc1.indexed.end(), doc1.stored.begin(), doc1.stored.end()));
     ASSERT_TRUE(insert(*writer, doc3.indexed.end(), doc3.indexed.end(), doc3.stored.begin(), doc3.stored.end()));
@@ -1101,7 +1101,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
 
   // populate directory
   {
-    auto query_doc4 = irs::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
+    auto query_doc4 = irs::iql::query_builder().build("doc_string==string4_data", "C");
     auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE, opts);
 
     ASSERT_TRUE(insert(*writer,
@@ -2669,7 +2669,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
     // this missing doc will trigger sorting error in merge writer as it will be mapped to eof
     // and block all documents from same segment to be written in correct order.
     // to trigger error documents from second segment need docuemnt from first segment to maintain merged order
-    auto query_doc1 = irs::iql::query_builder().build(field + "==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build(field + "==A", "C");
     writer->documents().remove(std::move(query_doc1.filter));
     writer->commit();
   }
@@ -2926,7 +2926,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
 
   // populate directory
   {
-    auto query_doc4 = irs::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
+    auto query_doc4 = irs::iql::query_builder().build("doc_string==string4_data", "C");
     auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE, opts);
 
     ASSERT_TRUE(insert(*writer,
