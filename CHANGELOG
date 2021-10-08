@@ -1,6 +1,10 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
+* Fixed issue BTS-536 "Upgrading without rest-server is aborted by error".
+  Now stating `--server.rest-server false` does not require the additional
+  `--console` argument for upgrading a server.
+
 * Fixed counting of all read transaction as aborted. Added a new metric to count
   read transactions.
 
