@@ -202,7 +202,6 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
       _commitIntervalMsec(mask),
       _consolidationIntervalMsec(mask),
       _consolidationPolicy(mask),
-      _locale(mask),
       _version(mask),
       _writebufferActive(mask),
       _writebufferIdle(mask),
@@ -215,7 +214,6 @@ IResearchViewMeta::IResearchViewMeta()
     : _cleanupIntervalStep(2),
       _commitIntervalMsec(1000),
       _consolidationIntervalMsec(1000),
-      _locale(std::locale::classic()),
       _version(static_cast<uint32_t>(ViewVersion::MAX)),
       _writebufferActive(0),
       _writebufferIdle(64),
@@ -249,8 +247,6 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _commitIntervalMsec = std::move(other._commitIntervalMsec);
     _consolidationIntervalMsec = std::move(other._consolidationIntervalMsec);
     _consolidationPolicy = std::move(other._consolidationPolicy);
-    _locale = std::move(other._locale);
-    _version = std::move(other._version);
     _writebufferActive = std::move(other._writebufferActive);
     _writebufferIdle = std::move(other._writebufferIdle);
     _writebufferSizeMax = std::move(other._writebufferSizeMax);
@@ -268,7 +264,6 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _commitIntervalMsec = other._commitIntervalMsec;
     _consolidationIntervalMsec = other._consolidationIntervalMsec;
     _consolidationPolicy = other._consolidationPolicy;
-    _locale = other._locale;
     _version = other._version;
     _writebufferActive = other._writebufferActive;
     _writebufferIdle = other._writebufferIdle;
@@ -300,12 +295,6 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
     }
   } catch (...) {
     return false; // exception during match
-  }
-
-  if (irs::locale_utils::language(_locale) != irs::locale_utils::language(other._locale) ||
-      irs::locale_utils::country(_locale) != irs::locale_utils::country(other._locale) ||
-      irs::locale_utils::encoding(_locale) != irs::locale_utils::encoding(other._locale)) {
-    return false;
   }
 
   if (_version != other._version ||
@@ -480,39 +469,6 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
       }
     }
   }
-  /* FIXME TODO temporarily disable, eventually used for ordering internal data
-    structures
-    {
-      // optional locale name
-      static const std::string fieldName("locale");
-
-      mask->_locale = slice.hasKey(fieldName);
-
-      if (!mask->_locale) {
-        _locale = defaults._locale;
-      } else {
-        auto field = slice.get(fieldName);
-
-        if (!field.isString()) {
-          errorField = fieldName;
-
-          return false;
-        }
-
-        auto locale = field.copyString();
-
-        try {
-          // use UTF-8 encoding since that is what JSON objects use
-          _locale = std::locale::classic().name() == locale
-            ? std::locale::classic() : irs::locale_utils::locale(locale);
-        } catch(...) {
-          errorField = fieldName;
-
-          return false;
-        }
-      }
-    }
-  */
 
   {
     // optional size_t

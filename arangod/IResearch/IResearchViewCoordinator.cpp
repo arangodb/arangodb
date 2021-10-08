@@ -52,7 +52,6 @@ namespace {
 void ensureImmutableProperties(
     arangodb::iresearch::IResearchViewMeta& dst,
     arangodb::iresearch::IResearchViewMeta const& src) {
-  dst._locale = src._locale;
   dst._version = src._version;
   dst._writebufferActive = src._writebufferActive;
   dst._writebufferIdle = src._writebufferIdle;
