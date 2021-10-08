@@ -62,17 +62,17 @@ function CommonStatisticsSuite() {
       let stats2 = internal.serverStatistics();
 
       assertTrue(stats1.transactions.started < stats2.transactions.started
-                , "1 started: " + stats1.transactions.started 
+                , "1 started: " + stats1.transactions.started
                 + " -- 2 started: " + stats2.transactions.started);
       assertTrue(stats1.transactions.committed < stats2.transactions.committed);
     },
 
-    testServerStatsAbort: function () {
+    testServerStatsAbortWrite: function () {
       let stats1 = internal.serverStatistics();
       let stats2;
       try {
         db._executeTransaction({
-          collections: {},
+          collections: {write: ["_graphs"]},
           action: function () {
             var err = new Error('abort on purpose');
             throw err;
@@ -86,6 +86,20 @@ function CommonStatisticsSuite() {
 
       assertTrue(stats1.transactions.started < stats2.transactions.started);
       assertTrue(stats1.transactions.aborted < stats2.transactions.aborted);
+    },
+
+    testServerStatsRead: function () {
+      let stats1 = internal.serverStatistics();
+      db._executeTransaction({
+        collections: {read: ["_graphs"]},
+        action: function () {
+          var db = require("@arangodb").db;
+          return db._graphs.toArray();
+        }
+      });
+      let stats2 = internal.serverStatistics();
+
+      assertTrue(stats1.transactions.readOnly < stats2.transactions.readOnly);
     },
 
     testIntermediateCommitsCommit: function () {
@@ -129,5 +143,3 @@ function CommonStatisticsSuite() {
 jsunity.run(CommonStatisticsSuite);
 
 return jsunity.done();
-
-

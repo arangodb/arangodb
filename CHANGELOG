@@ -3,6 +3,12 @@ devel
 
 * Added enterprise license feature visibility for arangosh.
 
+* Fix windows installer PATH manipulation issue by replaceng the NSIS plugin
+  (BTS-176).
+
+* Fixed counting of all read transaction as aborted. Added a new
+  metric to count read transactions.
+
 * Fixed potential issues with revision trees and document counters getting out
   of sync with the underlying collection data.
 
@@ -58,10 +64,6 @@ devel
 
 * Fixed BTS-575: Windows EXE installer doesn't replace service during upgrade in
   silent (non-UI) mode.
-<<<<<<< HEAD
->>>>>>> 76fb241cc9820c2c84c22ff9081ff312a31fc62f
-=======
->>>>>>> 76fb241cc9820c2c84c22ff9081ff312a31fc62f
 
 * APM-121: allow the UPSERT query to have indexHint as an extra parameter for 
   OPTIONS. It will be used as a hint by the inner FOR loop that is performed
