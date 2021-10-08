@@ -493,7 +493,7 @@ void AsyncAgencyCommManager::reportError(std::string const& endpoint) {
     _endpoints.pop_front();
     LOG_TOPIC("aac43", DEBUG, Logger::AGENCYCOMM)
         << "Error using endpoint " << endpoint << ", switching to "
-        << _endpoints.front();
+        << (_endpoints.empty() ? std::string() : _endpoints.front());
     _endpoints.push_back(endpoint);
   }
 }
