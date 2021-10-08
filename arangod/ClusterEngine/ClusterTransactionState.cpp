@@ -66,10 +66,11 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   // set hints
   _hints = hints;
+  auto& stats = _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics;
 
   auto cleanup = scopeGuard([&] {
     updateStatus(transaction::Status::ABORTED);
-    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
+    ++stats._transactionsAborted;
   });
 
   Result res = useCollections();
@@ -79,7 +80,11 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   // all valid
   updateStatus(transaction::Status::RUNNING);
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
+  if (isReadOnlyTransaction()) {
+    ++stats._readTransactions;
+  } else {
+    ++stats._transactionsStarted;
+  }
 
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
   setRegistered();
