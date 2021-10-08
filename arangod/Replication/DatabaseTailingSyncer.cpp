@@ -169,17 +169,44 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(arangodb::replutils:
     
   auto headers = replutils::createHeaders();
 
+  // when we leave this method, we must unregister ourselves from the leader,
+  // otherwise the leader may keep WAL logs around for us for too long
+  auto unregister = scopeGuard([&]() noexcept {
+    if (ServerState::instance()->isRunningInCluster()) {
+      try {
+        _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+          std::unique_ptr<httpclient::SimpleHttpResult> response;
+          std::string const url = tailingBaseUrl("tail") +
+                                  "serverId=" + _state.localServerIdString +
+                                  "&syncerId=" + syncerId().toString();
+          // simply send the request, but don't care about the response. if it
+          // fails, there is not much we can do from here.
+          response.reset(client->request(rest::RequestType::DELETE_REQ, url, nullptr, 0, headers));
+        });
+      } catch (...) {
+        // this must be exception-safe, but if an exception occurs, there is not
+        // much we can do
+      }
+    }
+  });
+
   while (true) {
     if (vocbase()->server().isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    std::string const url = tailingBaseUrl("tail") +
+    std::string url = tailingBaseUrl("tail") +
                             "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
                             "&from=" + StringUtils::itoa(fromTick) +
                             "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
                             "&serverId=" + _state.localServerIdString +
                             "&collection=" + StringUtils::urlEncode(collectionName);
+
+    if (syncerId().value > 0) {
+      // we must only send the syncerId along if it is != 0, otherwise we will
+      // trigger an error on the leader
+      url += "&syncerId=" + syncerId().toString();
+    }
 
     // send request
     double start = TRI_microtime();

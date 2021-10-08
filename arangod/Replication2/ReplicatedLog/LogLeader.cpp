@@ -281,9 +281,12 @@ auto replicated_log::LogLeader::construct(
     // Immediately append an empty log entry in the new term. This is necessary
     // because we must not commit entries of older terms, but do not want to
     // wait with committing until the next insert.
+
+    // Also make sure that this entry is written with waitForSync = true to ensure
+    // that entries of the previous term are synced as well.
     log.appendInPlace(logContext,
                       InMemoryLogEntry(PersistingLogEntry(term, lastIndex.index + 1,
-                                                          std::nullopt)));
+                                                          std::nullopt), true));
     // Note that we do still want to use the unchanged lastIndex to initialize
     // our followers with, as none of them can possibly have this entry.
     // This is particularly important for the LocalFollower, which blindly
@@ -426,7 +429,7 @@ auto replicated_log::LogLeader::insert(LogPayload payload, [[maybe_unused]] bool
     auto const index = leaderData._inMemoryLog.getNextIndex();
     auto const payloadSize = payload.byteSize();
     auto logEntry =
-        InMemoryLogEntry(PersistingLogEntry(_currentTerm, index, std::move(payload)));
+        InMemoryLogEntry(PersistingLogEntry(_currentTerm, index, std::move(payload)), waitForSync);
     logEntry.setInsertTp(insertTp);
     leaderData._inMemoryLog.appendInPlace(_logContext, std::move(logEntry));
     _logMetrics->replicatedLogInsertsBytes->count(payloadSize);
@@ -593,7 +596,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
     auto it = getInternalLogIterator(follower.lastAckedEntry.index + 1);
     auto transientEntries = decltype(req.entries)::transient_type{};
     while (auto entry = it->next()) {
-      transientEntries.push_back(InMemoryLogEntry(*std::move(entry)));
+      req.waitForSync |= entry->getWaitForSync();
+      transientEntries.push_back(InMemoryLogEntry(*entry));
       if (transientEntries.size() >= 1000) {
         break;
       }
@@ -704,10 +708,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::getInternalLogIterator(LogIndex firstIdx) const
-    -> std::unique_ptr<PersistedLogIterator> {
+    -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> {
   auto const endIdx = _inMemoryLog.getLastTermIndexPair().index + 1;
   TRI_ASSERT(firstIdx <= endIdx);
-  return _inMemoryLog.getInternalIteratorFrom(firstIdx);
+  return _inMemoryLog.getMemtryIteratorFrom(firstIdx);
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::getCommittedLogIterator(LogIndex firstIndex) const
