@@ -122,7 +122,11 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   // register with manager
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
   updateStatus(transaction::Status::RUNNING);
-  ++stats._transactionsStarted;
+  if (isReadOnlyTransaction()) {
+    ++stats._readTransactions;
+  } else {
+    ++stats._transactionsStarted;
+  }
 
   setRegistered();
 

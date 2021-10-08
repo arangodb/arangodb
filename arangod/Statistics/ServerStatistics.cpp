@@ -42,6 +42,7 @@ DECLARE_COUNTER(arangodb_transactions_aborted_total, "Number of transactions abo
 DECLARE_COUNTER(arangodb_transactions_committed_total, "Number of transactions committed");
 DECLARE_COUNTER(arangodb_transactions_started_total, "Number of transactions started");
 DECLARE_COUNTER(arangodb_intermediate_commits_total, "Number of intermediate commits performed in transactions");
+DECLARE_COUNTER(arangodb_read_transactions_total, "Number of read transactions");
 
 DECLARE_COUNTER(arangodb_collection_truncates_total, "Total number of collection truncate operations (excl. synchronous replication)");
 DECLARE_COUNTER(arangodb_collection_truncates_replication_total, "Total number of collection truncate operations by synchronous replication");
@@ -60,6 +61,7 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
       _transactionsAborted(_metrics.add(arangodb_transactions_aborted_total{})),
       _transactionsCommitted(_metrics.add(arangodb_transactions_committed_total{})),
       _intermediateCommits(_metrics.add(arangodb_intermediate_commits_total{})),
+      _readTransactions(_metrics.add(arangodb_read_transactions_total{})),
       _exclusiveLockTimeouts(_metrics.add(arangodb_collection_lock_timeouts_exclusive_total{})),
       _writeLockTimeouts(_metrics.add(arangodb_collection_lock_timeouts_write_total{})),
       _lockTimeMicros(_metrics.add(arangodb_collection_lock_acquisition_micros_total{})),

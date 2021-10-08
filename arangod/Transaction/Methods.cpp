@@ -374,13 +374,20 @@ transaction::Methods::~Methods() {
     // unregister transaction from context
     _transactionContext->unregisterTransaction();
 
+    // auto abort a non-read-only and still running transaction
     if (_state->status() == transaction::Status::RUNNING) {
-      // auto abort a running transaction
-      try {
-        this->abort();
-        TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
-      } catch (...) {
-        // must never throw because we are in a dtor
+
+      if (_state->isReadOnlyTransaction()) {
+        // read-only transactions are never comitted or aborted during their
+        // regular life cycle. we want now to properly clean up and count them.
+        _state->updateStatus(transaction::Status::COMMITTED);
+      } else {
+        try {
+          this->abort();
+          TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
+        } catch (...) {
+          // must never throw because we are in a dtor
+        }
       }
     }
 
@@ -1010,7 +1017,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       }
     }
   }  // isDBServer - early block
-    
+
   TRI_ASSERT((replicationType == ReplicationType::LEADER) == (followers != nullptr));
   TRI_ASSERT(!options.silent || replicationType != ReplicationType::LEADER || followers->empty());
 
@@ -1062,7 +1069,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       // RepSert Case - unique_constraint violated ->  try update, replace or ignore!
       TRI_ASSERT(options.isOverwriteModeSet());
       TRI_ASSERT(options.overwriteMode != OperationOptions::OverwriteMode::Conflict);
-        
+
       TRI_ASSERT(res.ok());
 
       if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
@@ -1073,7 +1080,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         excludeFromReplication = true;
         return res;
       }
-    
+
       if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
         // in case of unique constraint violation: (partially) update existing document
         res = collection->update(this, value, docResult, options, prevDocResult);
@@ -1103,9 +1110,9 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       }
       return res;
     }
-        
+
     TRI_ASSERT(res.ok());
-      
+
     if (!options.silent) {
       bool const showReplaced = (options.returnOld && didReplace);
       TRI_ASSERT(!options.returnNew || !docResult.empty());
@@ -1154,8 +1161,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       excludePositions.insert(0);
     }
   }
-  
-  TRI_ASSERT(!value.isArray() || options.silent || resultBuilder.slice().length() == value.length()); 
+
+  TRI_ASSERT(!value.isArray() || options.silent || resultBuilder.slice().length() == value.length());
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -1301,7 +1308,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       }
     }
   }  // isDBServer - early block
-  
+
   TRI_ASSERT((replicationType == ReplicationType::LEADER) == (followers != nullptr));
   TRI_ASSERT(!options.silent || replicationType != ReplicationType::LEADER || followers->empty());
 
@@ -1385,7 +1392,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     res = workForOneDocument(newValue, false);
   }
 
-  TRI_ASSERT(!newValue.isArray() || options.silent || resultBuilder.slice().length() == newValue.length()); 
+  TRI_ASSERT(!newValue.isArray() || options.silent || resultBuilder.slice().length() == newValue.length());
 
   auto resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -1511,7 +1518,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       }
     }
   }  // isDBServer - early block
-  
+
   TRI_ASSERT((replicationType == ReplicationType::LEADER) == (followers != nullptr));
   TRI_ASSERT(!options.silent || replicationType != ReplicationType::LEADER || followers->empty());
 
@@ -1583,8 +1590,8 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   } else {
     res = workForOneDocument(value, false);
   }
-  
-  TRI_ASSERT(!value.isArray() || options.silent || resultBuilder.slice().length() == value.length()); 
+
+  TRI_ASSERT(!value.isArray() || options.silent || resultBuilder.slice().length() == value.length());
 
   auto resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -1809,10 +1816,10 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
             // intentionally do NOT remove the follower from the list of
             // known servers here. if we do, we will not be able to
             // send the commit/abort to the follower later. However, we
-            // still need to send the commit/abort to the follower at 
+            // still need to send the commit/abort to the follower at
             // transaction end, because the follower may be responsbile
-            // for _other_ shards as well. 
-            // it does not matter if we later commit the writes of the shard 
+            // for _other_ shards as well.
+            // it does not matter if we later commit the writes of the shard
             // from which we just removed the follower, because the follower
             // is now dropped and will try to get back in sync anyway, so
             // it will run the full shard synchronization process.
@@ -2228,7 +2235,7 @@ Future<Result> Methods::replicateOperations(
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       requestType = arangodb::fuerte::RestVerb::Post;
-      
+
       opName = "insert";
       // handle overwrite modes
       if (options.isOverwriteModeSet()) {
@@ -2240,7 +2247,7 @@ Future<Result> Methods::replicateOperations(
             opName = "insert w/ overwriteMode replace";
           } else if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
             opName = "insert w/ overwriteMode ingore";
-          } 
+          }
         }
         if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
           // extra parameters only required for update
@@ -2307,7 +2314,7 @@ Future<Result> Methods::replicateOperations(
       count++;
     }
   }
-  
+
   if (count == 0) {
     // nothing to do
     return Result();
@@ -2317,7 +2324,7 @@ Future<Result> Methods::replicateOperations(
   TRI_IF_FAILURE("replicateOperations_randomize_timeout") {
     reqOpts.timeout = network::Timeout((double) RandomGenerator::interval(uint32_t(60)));
   }
-    
+
   TRI_IF_FAILURE("replicateOperationsDropFollowerBeforeSending") {
     // drop all our followers, intentionally
     for (auto const& f : *followerList) {
@@ -2386,12 +2393,12 @@ Future<Result> Methods::replicateOperations(
           if (found) {
             replicationFailureReason = "got error header from follower: " + errors;
           }
-  
+
         } else {
           auto r = resp.combinedResult();
           bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
           didRefuse = didRefuse || followerRefused;
-          
+
           replicationFailureReason = "got error from follower: " + std::string(r.errorMessage());
 
           if (followerRefused) {
@@ -2420,17 +2427,17 @@ Future<Result> Methods::replicateOperations(
             << "dropping follower " << follower << " for shard "
             << collection->vocbase().name() << "/" << collection->name()
             << ": failure reason: " << replicationFailureReason
-            << ", http response code: " << (int) resp.statusCode() 
+            << ", http response code: " << (int) resp.statusCode()
             << ", error message: " << resp.combinedResult().errorMessage();
 
           Result res = collection->followers()->remove(follower);
           // intentionally do NOT remove the follower from the list of
           // known servers here. if we do, we will not be able to
           // send the commit/abort to the follower later. However, we
-          // still need to send the commit/abort to the follower at 
+          // still need to send the commit/abort to the follower at
           // transaction end, because the follower may be responsbile
-          // for _other_ shards as well. 
-          // it does not matter if we later commit the writes of the shard 
+          // for _other_ shards as well.
+          // it does not matter if we later commit the writes of the shard
           // from which we just removed the follower, because the follower
           // is now dropped and will try to get back in sync anyway, so
           // it will run the full shard synchronization process.
@@ -2467,7 +2474,7 @@ Future<Result> Methods::replicateOperations(
         }
       }
     }
-    
+
     if (didRefuse) {  // case (1), caller may abort this transaction
       return Result(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
     }
