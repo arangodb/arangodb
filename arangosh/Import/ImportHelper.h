@@ -175,15 +175,18 @@ class ImportHelper {
     }
   }
 
-  struct MergeAttributesInstructionsProperties {
-    std::string attr;
+  struct Step {
+    Step(std::string value, bool isLiteral)
+        : value(std::move(value)), isLiteral(isLiteral) {}
+    std::string value;
     bool isLiteral;
-    MergeAttributesInstructionsProperties(std::string const& s, bool b) : attr{s}, isLiteral{b} {}
   };
 
-  std::vector<MergeAttributesInstructionsProperties> splitAttributes(std::string const& originalString, std::string const& key) const;
+  std::vector<Step> tokenizeInput(std::string const& input, std::string const& key) const;
 
-  void verifyMergeAttributesLiteralsSyntax(std::string const& attrLiteral) const;
+  void verifyNestedAttributes(std::string const& input, std::string const& key) const;
+
+  void verifyMergeAttributesSyntax(std::string const& input) const;
 
   void parseMergeAttributes(std::vector<std::string> const& args);
 
@@ -361,7 +364,7 @@ class ImportHelper {
   std::unordered_map<std::string, std::string> _translations;
   std::unordered_map<std::string, std::string> _datatypes;
 
-  std::vector<std::pair<std::string, std::vector<MergeAttributesInstructionsProperties>>> _mergeAttributesInstructions;
+  std::vector<std::pair<std::string, std::vector<Step>>> _mergeAttributesInstructions;
   std::unordered_map<std::string, std::string> _fieldsLookUpTable;
   std::unordered_set<std::string> _removeAttributes;
 
