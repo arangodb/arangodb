@@ -1,6 +1,9 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
+* Fixed counting of all read transaction as aborted. Added a new metric to count
+  read transactions.
+
 * Fix assertion failure in AQL query profiling for queries with more than a
   single shard per DB server and which join multiple collections.
 
