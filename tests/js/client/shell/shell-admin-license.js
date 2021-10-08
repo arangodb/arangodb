@@ -69,7 +69,7 @@ function adminLicenseSuite () {
       if (!skip) {
         var result;
         try {
-          result = arango.PUT('/_admin/license', '"Hello World"');
+          result = arango.PUT('/_admin/license', "Hello World");
         } catch (e) {
           console.warn(e);
         }
