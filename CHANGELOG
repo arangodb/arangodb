@@ -1,6 +1,13 @@
 devel
 -----
 
+* Do not use an edge index for range queries, i.e. with the comparison 
+  operators `>`, `>=`, `<` or `<=`, but only for equality lookups using the
+  `==` and `IN` comparison operators.
+  The edge index is not fully ordered, so while using it for range queries
+  may produce _some_ documents, it is possible that other documents from the
+  range would be skipped.
+
 * Fixed potential issues with revision trees and document counters getting out
   of sync with the underlying collection data.
 
