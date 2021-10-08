@@ -4584,7 +4584,6 @@ TEST_F(IResearchViewTest, test_overwrite_immutable_properties) {
     EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
     builder.close();
     EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
-    EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
     EXPECT_TRUE(1 == meta._version);
     EXPECT_TRUE(25 == meta._writebufferActive);
     EXPECT_TRUE(12 == meta._writebufferIdle);
