@@ -2,6 +2,7 @@ v3.8.2 (XXXX-XX-XX)
 -------------------
 
 * Fix windows installer PATH manipulation issue by replaceng the NSIS plugin
+  (BTS-176).
 
 * Fix race in RocksDB throttle listener, when it was getting started lazily
   during server shutdown.
