@@ -1,6 +1,10 @@
 devel
 -----
 
+* Do not rename the arangod process to "arangod [shutting down]" during the
+  server shutdown. The renaming can cause issues with tools that look for
+  the exact process name "arangod".
+
 * Fixed potential issues with revision trees and document counters getting out
   of sync with the underlying collection data.
 
