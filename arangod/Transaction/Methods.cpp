@@ -359,13 +359,20 @@ transaction::Methods::~Methods() {
     // unregister transaction from context
     _transactionContext->unregisterTransaction();
 
+    // auto abort a non-read-only and still running transaction
     if (_state->status() == transaction::Status::RUNNING) {
-      // auto abort a running transaction
-      try {
-        this->abort();
-        TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
-      } catch (...) {
-        // must never throw because we are in a dtor
+
+      if (_state->isReadOnlyTransaction()) {
+        // read-only transactions are never comitted or aborted during their
+        // regular life cycle. we want now to properly clean up and count them.
+        _state->updateStatus(transaction::Status::COMMITTED);
+      } else {
+        try {
+          this->abort();
+          TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
+        } catch (...) {
+          // must never throw because we are in a dtor
+        }
       }
     }
 

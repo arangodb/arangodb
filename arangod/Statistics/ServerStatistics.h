@@ -46,6 +46,7 @@ struct TransactionStatistics {
   Counter& _transactionsAborted;
   Counter& _transactionsCommitted;
   Counter& _intermediateCommits;
+  Counter& _readTransactions;
 
   // total number of lock timeouts for exclusive locks
   Counter& _exclusiveLockTimeouts;
