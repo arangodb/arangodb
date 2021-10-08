@@ -77,8 +77,8 @@ server, the following additional steps need to be carried out:
   replication events that were logged after the client's call to */inventory*.
 
   The call to */_api/wal/tail* should use a *from* parameter with the value of the
-  *lastLogTick* as reported by */inventory*. The call to */_api/wal/tail will 
-  return the *x-arango-replication-lastincluded* header which will contain the 
+  *lastLogTick* as reported by */inventory*. The call to */_api/wal/tail* will
+  return the *x-arango-replication-lastincluded* header which will contain the
   last tick value included in the response.
 
 - the client can then continuously call */_api/wal/tail* to incrementally fetch new
