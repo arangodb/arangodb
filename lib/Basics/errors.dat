@@ -524,3 +524,15 @@ ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,7021,"analyzers in plan could n
 ## AIR errors
 ################################################################################
 ERROR_AIR_EXECUTION_ERROR,8001,"error during AIR execution","During the execution of an AIR program an error occurred"
+
+################################################################################
+## Licensing
+################################################################################
+ERROR_LICENSE_EXPIRED_OR_INVALID,9001,"license has expired or is invalid","The license has expired or is invalid."
+ERROR_LICENSE_SIGNATURE_VERIFICATION,9002,"license verification failed","Verification of license failed."
+ERROR_LICENSE_NON_MATCHING_ID,9003,"non-matching license id","The ID of the license does not match the ID of this instance."
+ERROR_LICENSE_FEATURE_NOT_ENABLED,9004,"feature is not enabled by the license","The installed license does not cover this feature."
+ERROR_LICENSE_RESOURCE_EXHAUSTED,9005,"the resource is exhausted","The installed license does not cover a higher number of this resource."
+ERROR_LICENSE_INVALID,9006,"invalid license","The license does not hold features of an ArangoDB license."
+ERROR_LICENSE_CONFLICT,9007,"conflicting license","The license has one or more inferior features."
+ERROR_LICENSE_VALIDATION_FAILED,9008,"failed to validate license signature","Could not verify the license's signature."

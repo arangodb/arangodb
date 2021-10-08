@@ -79,7 +79,7 @@ struct bytes_io<T, sizeof(uint16_t)> {
     return out;
   }
 
-  static T read(byte_type*& in) {
+  static T read(const byte_type*& in) {
     const T out = ((in[0] << 8) | in[1]);
     in += sizeof(T);
 
@@ -179,7 +179,7 @@ struct bytes_io<T, sizeof(uint32_t)> {
     return out;
   }
 
-  static T read(byte_type*& in) {
+  static T read(const byte_type*& in) {
     T value;
     std::memcpy(&value, in, sizeof(T));
 
@@ -300,7 +300,7 @@ struct bytes_io<T, sizeof(uint64_t)> {
     return out | static_cast<T>(bytes_io_t::read(in, std::input_iterator_tag{}));
   }
 
-  static T read(byte_type*& in) {
+  static T read(const byte_type*& in) {
     T value;
     std::memcpy(&value, in, sizeof(T));
 

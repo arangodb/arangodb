@@ -192,6 +192,12 @@ IRESEARCH_API const irs::string_ref& language(std::locale const& locale);
 IRESEARCH_API const std::string& name(std::locale const& locale);
 
 /**
+ * @brief extract the locale variant from a locale
+ * @param locale the locale from which to extract the variant
+ **/
+IRESEARCH_API const irs::string_ref& variant(std::locale const& locale);
+
+/**
 * @brief extract if locale is UTF8 locale
 * @param locale the locale from which to extract info
 **/

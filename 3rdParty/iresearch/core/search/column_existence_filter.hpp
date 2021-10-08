@@ -58,7 +58,7 @@ struct IRESEARCH_API by_column_existence_options {
 class IRESEARCH_API by_column_existence final
     : public filter_base<by_column_existence_options> {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
 
   using filter::prepare;
 

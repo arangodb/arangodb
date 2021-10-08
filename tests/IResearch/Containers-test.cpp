@@ -88,8 +88,13 @@ TEST(ContainersTest, testResourceMutex) {
     while (!reset && result0 == std::cv_status::no_timeout) result0 =
                       cond.wait_for(cond_lock, std::chrono::milliseconds(50));
 
+    EXPECT_FALSE(reset);
     lock.unlock();
     auto result1 = cond.wait_for(cond_lock, std::chrono::milliseconds(50));
+    int nTryCount = 100;
+    while (std::cv_status::timeout == result1 && nTryCount--) {
+      result1 = cond.wait_for(cond_lock, std::chrono::milliseconds(50));
+    }
     cond_lock.unlock();
     thread.join();
     EXPECT_EQ(std::cv_status::timeout, result0);  // check only after joining with thread to avoid early exit

@@ -94,6 +94,11 @@ TEST(by_wildcard_test, boost) {
 
 #ifndef IRESEARCH_DLL
 
+#ifdef __clang__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpotentially-evaluated-expression"
+#endif // __clang__
+
 TEST(by_wildcard_test, test_type_of_prepared_query) {
   // term query
   {
@@ -159,7 +164,11 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
   }
 }
 
-#endif
+#ifdef __clang__
+#pragma GCC diagnostic pop
+#endif // __clang__
+
+#endif // IRESEARCH_DLL
 
 class wildcard_filter_test_case : public tests::filter_test_case_base { };
 
@@ -503,14 +512,13 @@ INSTANTIATE_TEST_SUITE_P(
   wildcard_filter_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_1", "1_0"},
-                      tests::format_info{"1_2", "1_0"},
-                      tests::format_info{"1_3", "1_0"})
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      tests::format_info{"1_0"},
+      tests::format_info{"1_1", "1_0"},
+      tests::format_info{"1_2", "1_0"},
+      tests::format_info{"1_3", "1_0"})),
+  wildcard_filter_test_case::to_string
 );

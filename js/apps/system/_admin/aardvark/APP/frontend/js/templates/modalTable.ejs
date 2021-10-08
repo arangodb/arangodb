@@ -1,75 +1,164 @@
-  <%
-  var createTR = function(row) {
+<%
+let advancedCounter = 2;
+
+function createInput(row) {
+    switch(row.type) {
+        case 'text':
+%>
+            <input type="text" id="<%= row.id  %>" value="<%= _.escape(row.value || '')  %>"
+                placeholder="<%= row.placeholder || ''  %>" <%= row.style ? 'style="' + row.style + '"' : '' %>/>
+<%
+        break;
+    case 'blob':
+%>
+        <textarea id="<%= row.id  %>" placeholder="<%= row.placeholder||''  %>"
+                <%= row.style ? 'style="' + row.style + '"' : '' %>><%= row.value||''  %></textarea>
+<%
+    break;
+    case 'password':
+%>
+    <input type="password" id="<%= row.id  %>" value="<%= row.value || ''  %>" placeholder="<%= row.placeholder || ''  %>"
+            <%= row.style ? 'style="' + row.style + '"' : '' %>/>
+<%
+    break;
+    case 'readonly':
+%>
+    <div class="modal-text" id="<%= row.id  %>" <%= row.style ? 'style="' + row.style + '"' : '' %>>
+        <%= row.value||''  %>
+    </div>
+<%
+    break;
+    case 'checkbox':
+        var checked = '',
+                disabled = '';
+        if (row.checked) {
+            checked = 'checked';
+        }
+        if (row.disabled) {
+            disabled = 'disabled';
+        }
+%>
+    <input type="checkbox" id="<%= row.id  %>" value="<%= row.value  %>" <%= checked  %> <%= disabled  %>
+            <%= row.style ? 'style="' + row.style + '"' : '' %>/>
+<%
+    break;
+    case 'select':
+%>
+        <select id="<%= row.id  %>" class="modalSelect" <%= row.style ? 'style="' + row.style + '"' : '' %>>
+        <% _.each(row.options, function(opt) { %>
+            <option value="<%= opt.value  %>" <%= row.selected === opt.value?'selected':''  %>
+                    <%= opt.style ? 'style="' + opt.style + '"' : '' %>>
+                <%= opt.label  %>
+            </option>
+        <% })  %>
+        </select>
+<%
+    break;
+    case 'select2':
+%>
+    <input type="hidden" id="<%= row.id  %>" value="<%= row.value || ''  %>" placeholder="<%= row.placeholder || ''  %>"/>
+    <% if (row.addDelete) { %>
+        <button class="graphViewer-icon-button gv-icon-small add"></button>
+    <% } %>
+    <% if (row.addDelete) { %>
+        <button class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
+    <% } %>
+<%
+    break;
+    case 'jsoneditor':
+%>
+    <div id="jsoneditor" <%= row.style ? 'style="' + row.style + '"' : '' %>></div>
+<%
+    break
+    case 'table':
+%>
+    <table class="pure-table pure-table-bordered" id="<%= row.id  %>" <%= row.style ? 'style="' + row.style + '"' : '' %>>
+        <% if (Array.isArray(row.head) && row.head.length) { %>
+            <thead>
+            <tr>
+                <% row.head.forEach(header => { %>
+
+                    <th style="height: unset;"><%= header %></th>
+                <% }); %>
+                <th style="height: unset; min-width: 30px;">
+                    <span style="display: inline-flex">
+                                <button class="graphViewer-icon-button gv-icon-small add addAfter"></button>
+                    </span>
+                </th>
+            </tr>
+            </thead>
+        <% } %>
+        <tbody>
+        <% row.rows.forEach((contentRow, idx) => {
+            const contentRowId = `${row.id}-row-${idx}`;
+        %>
+            <tr id="<%= contentRowId %>">
+            <% contentRow.forEach(cell => {
+                cell.style = [(cell.style || ''), "width: unset;", "margin: 0;"].join(' ');
+            %>
+                <td>
+                    <% createInput(cell) %>
+                </td>
+                <% }); %>
+                <td>
+                            <span style="display: inline-flex">
+                                <% if (idx) {%>
+                                <button style="margin-left: 5px;"
+                                        class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete addDelete">
+                                </button>
+                                <% } %>
+                            </span>
+                </td>
+            </tr>
+        <% }); %>
+        </tbody>
+    </table>
+<%
+    break;
+    }
+}
+
+function generateAdvancedSection(header, content) { %>
+<div class="accordion" id="accordion<%=advancedCounter%>">
+  <div class="accordion-group">
+    <div class="accordion-heading">
+      <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion<%=advancedCounter%>" href="#collapseOne<%=advancedCounter%>">
+        <span><%= header %></span><span><b class="caret"></b></span>
+      </a>
+      </div>
+      <div id="collapseOne<%=advancedCounter%>" class="accordion-body collapse out">
+        <div class="accordion-inner" style="margin-right: 15px;">
+          <table>
+            <tbody>
+            <%
+            _.each(content, function (row) {
+              createTR(row);
+            });
+            %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<% advancedCounter++;}
+
+var createTR = function(row) {
     var mandatory = '';
     if (row.mandatory) {
-      mandatory = '*';
+        mandatory = '*';
     }
-    %>
-    <tr class="tableRow" id="<%='row_' + row.id%>">
-      <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
-      <th class="collectionTh"<%=row.info?'':' colspan="2"'%>>
-        <%
-        switch(row.type) {
-        case "text":
-          %>
-          <input type="text" id="<%=row.id%>" value="<%=_.escape(row.value||'')%>" placeholder="<%=row.placeholder||''%>"></input>
-          <%
-          break;
-        case "blob":
-          %>
-          <textarea id="<%=row.id%>" placeholder="<%=row.placeholder||''%>"><%=row.value||''%></textarea>
-          <%
-          break;
-        case "password":
-          %>
-          <input type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
-          <%
-          break;
-        case "readonly":
-          %>
-          <div class="modal-text" id="<%=row.id%>"><%=row.value||''%></div>
-          <%
-          break;
-        case "checkbox":
-          var checked = '',
-            disabled = '';
-          if (row.checked) {
-            checked = 'checked';
-          }
-          if (row.disabled) {
-            disabled = 'disabled';
-          }
-          %>
-          <input type="checkbox" id="<%=row.id%>" value="<%=row.value%>" <%=checked%> <%=disabled%>></input>
-          <%
-          break;
-        case "select":
-          %>
-          <select id="<%=row.id%>" class="modalSelect">
-          <% _.each(row.options, function(opt) { %>
-            <option value="<%=opt.value%>" <%=row.selected === opt.value?"selected":""%>><%=opt.label%></option>
-          <% }); %>
-          </select>
-          <%
-          break;
-        case "select2":
-          %>
-          <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
-          <% if (row.addDelete) {%>
-            <button class="graphViewer-icon-button gv-icon-small add"></button>
-          <% } %>
-          <% if (row.addDelete) {%>
-            <button class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
-          <% } %>
-          <%
-          break;
-        case "jsoneditor":
-          %>
-          <div id="jsoneditor"/>
-          <%
-          break;
-        }
-        %>
+%>
+
+<tr class="tableRow" id="<%= 'row_' + row.id %>">
+  <% if (typeof row.label === 'string') { %>
+    <th class="collectionTh">
+      <%= row.label%><%= mandatory %>:
+    </th>
+  <% } %>
+
+    <th class="collectionTh"<%= row.info ? '' : ' colspan="2"' %>>
+        <% createInput(row) %>
         <% if (row.info) { %>
         </th>
         <th>
@@ -95,27 +184,10 @@
   <% if (info) { %>
     <%= info %>
   <% } %>
-  <% if (advancedContent) { %>
-    <div class="accordion" id="accordion2">
-      <div class="accordion-group">
-        <div class="accordion-heading">
-          <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion2" href="#collapseOne">
-            <span><%=advancedContent.header%></span><span><b class="caret"></b></span>
-          </a>
-        </div>
-        <div id="collapseOne" class="accordion-body collapse out">
-          <div class="accordion-inner">
-            <table>
-              <tbody>
-                <%
-                _.each(advancedContent.content, function(row) {
-                  createTR(row);
-                });
-                %>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  <% } %>
+  <% if (advancedContent && Array.isArray(advancedContent)) {
+    _.forEach(advancedContent, function (aC) {
+      generateAdvancedSection(aC.header, aC.content);
+    });
+  } else if (advancedContent) {
+    generateAdvancedSection(advancedContent.header, advancedContent.content);
+  } %>

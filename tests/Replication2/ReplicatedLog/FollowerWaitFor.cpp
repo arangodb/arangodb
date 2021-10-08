@@ -33,15 +33,17 @@ using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::test;
 
 struct FollowerWaitForTest : ReplicatedLogTest {
-  auto makeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId) -> std::shared_ptr<LogFollower> {
+  auto makeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId) -> std::shared_ptr<ReplicatedLog> {
     auto core = makeLogCore(LogId{3});
     auto log = std::make_shared<ReplicatedLog>(std::move(core), _logMetricsMock, defaultLogger());
-    return log->becomeFollower(std::move(id), term, std::move(leaderId));
+    log->becomeFollower(std::move(id), term, std::move(leaderId));
+    return log;
   }
 };
 
 TEST_F(FollowerWaitForTest, update_send_append_entries){
-  auto follower = makeFollower("follower", LogTerm{5}, "leader");
+  auto log = makeFollower("follower", LogTerm{5}, "leader");
+  auto follower = log->getFollower();
 
   auto future = follower->waitFor(LogIndex{1});
   EXPECT_FALSE(future.isReady());
