@@ -1214,6 +1214,8 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
     if (includePlan) {
       TRI_ASSERT(_plans.size() == 1);
       auto& plan = _plans[0];
+                  
+      plan->findVarUsage();
       
       if (ServerState::instance()->isCoordinator()) {
         std::vector<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
