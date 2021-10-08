@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix windows installer PATH manipulation issue by replaceng the NSIS plugin
+  (BTS-176).
+
 * Fixed counting of all read transaction as aborted. Added a new
   metric to count read transactions.
 
