@@ -1423,9 +1423,9 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
 futures::Future<OperationResult> createDocumentOnCoordinator(
     transaction::Methods const& trx, LogicalCollection& coll, VPackSlice const slice,
     OperationOptions const& options, transaction::MethodsApi api) {
-  const std::string collid = std::to_string(coll.id().id());
 
   // create vars used in this function
+  std::shared_ptr<ShardMap> shardIds = coll.shardIds();
   bool const useMultiple = slice.isArray();  // insert more than one document
   CreateOperationCtx opCtx;
   opCtx.options = options;
@@ -1475,7 +1475,7 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
       reqOpts.parameters.insert_or_assign(StaticStrings::OverwriteMode,
                                           OperationOptions::stringifyOverwriteMode(options.overwriteMode));
     }
-
+      
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
     std::vector<Future<network::Response>> futures;
@@ -1510,7 +1510,6 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
         reqBuilder.close();
       }
 
-      std::shared_ptr<ShardMap> shardIds = coll.shardIds();
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
       auto future =
@@ -1779,8 +1778,6 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
                                                  OperationOptions const& options,
                                                  transaction::MethodsApi api) {
   // Set a few variables needed for our work:
-
-  const std::string collid = std::to_string(coll.id().id());
   std::shared_ptr<ShardMap> shardIds = coll.shardIds();
 
   // If _key is the one and only sharding attribute, we can do this quickly,
