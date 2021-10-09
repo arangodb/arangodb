@@ -916,6 +916,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("aborted", VPackValue(serverInfo._transactionsStatistics._transactionsAborted.load()));
   builder.add("committed", VPackValue(serverInfo._transactionsStatistics._transactionsCommitted.load()));
   builder.add("intermediateCommits", VPackValue(serverInfo._transactionsStatistics._intermediateCommits.load()));
+  builder.add("readOnly", VPackValue(serverInfo._transactionsStatistics._readTransactions.load()));
   builder.close();
 
   // export v8 statistics
