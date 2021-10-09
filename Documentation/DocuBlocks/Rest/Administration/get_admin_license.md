@@ -37,11 +37,14 @@ glance. The possible values are as follows:
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestAdminLicenseGet}
+@EXAMPLE_ARANGOSH_RUN{RestAdminLicenseGet_cluster}
+    var assertTypeOf = require("jsunity").jsUnity.assertions.assertTypeOf;
     var url = "/_admin/license";
     var response = logCurlRequest('GET', url);
 
-    assert(response.code === 201);
+    assert(response.code === 200);
+    var body = JSON.parse(response.body);
+    assertTypeOf("string", body.license);
 
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
