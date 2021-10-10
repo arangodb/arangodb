@@ -115,7 +115,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info);
 
   std::unordered_map<DataSourceId, std::pair<std::string, VPackBuilder>> _collections;  // transient member, not persisted
-  mutable irs::async_utils::read_write_mutex _mutex;  // for use with '_collections'
+  mutable std::shared_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
 };  // IResearchViewCoordinator
 

@@ -25,7 +25,6 @@
 #ifdef __APPLE__
 
 #include "file_utils.hpp"
-#include "locale_utils.hpp"
 #include "log.hpp"
 #include "error/error.hpp"
 
