@@ -246,6 +246,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _commitIntervalMsec = std::move(other._commitIntervalMsec);
     _consolidationIntervalMsec = std::move(other._consolidationIntervalMsec);
     _consolidationPolicy = std::move(other._consolidationPolicy);
+    _version = std::move(other._version);
     _writebufferActive = std::move(other._writebufferActive);
     _writebufferIdle = std::move(other._writebufferIdle);
     _writebufferSizeMax = std::move(other._writebufferSizeMax);
