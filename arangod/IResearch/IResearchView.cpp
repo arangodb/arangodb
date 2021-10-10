@@ -55,6 +55,8 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::aql::AstNode ALL(arangodb::aql::AstNodeValue(true));
 
+using irs::async_utils::read_write_mutex;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index reader implementation over multiple irs::index_reader
 ///        the container storing the view state for a given TransactionState
@@ -379,8 +381,8 @@ Result IResearchView::appendVelocyPackImpl(
   std::vector<std::string> collections;
 
   {
-    // '_meta'/'_links' can be asynchronously modified
-    auto lock = irs::make_shared_lock(_mutex);
+    read_write_mutex::read_mutex mutex( _mutex);  // '_meta'/'_links' can be asynchronously modified
+    auto lock = irs::make_lock_guard(mutex);
     velocypack::Builder sanitizedBuilder;
 
     sanitizedBuilder.openObject();
@@ -550,8 +552,8 @@ Result IResearchView::dropImpl() {
 
   // drop all known links
   {
-    // '_metaState' can be asynchronously updated
-    auto lock = irs::make_shared_lock(_mutex);
+    read_write_mutex::read_mutex mutex(_mutex);  // '_metaState' can be asynchronously updated
+    auto lock = irs::make_lock_guard(mutex);
 
     for (auto& entry : _links) {
       stale.emplace(entry.first);
@@ -602,8 +604,8 @@ Result IResearchView::dropImpl() {
 
   _asyncSelf->reset(); // the view data-stores are being deallocated, view use is no longer valid (wait for all the view users to finish)
 
-  // members can be asynchronously updated
-  auto lock = irs::make_lock_guard(_mutex);
+  read_write_mutex::write_mutex mutex(_mutex); // members can be asynchronously updated
+  auto lock = irs::make_lock_guard(mutex);
 
   for (auto& entry : _links) {
     collections.emplace(entry.first);
@@ -661,8 +663,8 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
   auto* linkPtr = link->get();
 
   auto const cid = linkPtr->collection().id();
-  // '_meta'/'_links' can be asynchronously read
-  auto lock = irs::make_lock_guard(_mutex);
+  read_write_mutex::write_mutex mutex(_mutex); // '_meta'/'_links' can be asynchronously read
+  auto lock = irs::make_lock_guard(mutex);
   auto itr = _links.find(cid);
 
   if (itr == _links.end()) {
@@ -700,8 +702,8 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
 }
 
 Result IResearchView::commit() {
-  // '_links' can be asynchronously updated
-  auto lock = irs::make_shared_lock(_mutex);
+  read_write_mutex::read_mutex mutex(_mutex); // '_links' can be asynchronously updated
+  auto lock = irs::make_lock_guard(mutex);
 
   for (auto& entry: _links) {
     auto cid = entry.first;
@@ -856,8 +858,8 @@ IResearchView::Snapshot const* IResearchView::snapshot(
     }
   }
 
-  // '_metaState' can be asynchronously modified
-  auto lock = irs::make_shared_lock(_mutex);
+  read_write_mutex::read_mutex mutex(_mutex);  // '_metaState' can be asynchronously modified
+  auto lock = irs::make_lock_guard(mutex);
 
   try {
     // collect snapshots from all requested links
@@ -921,8 +923,8 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 
 Result IResearchView::unlink(DataSourceId cid) noexcept {
   try {
-    // '_links' can be asynchronously read
-    auto lock = irs::make_lock_guard(_mutex);
+    read_write_mutex::write_mutex mutex(_mutex);  // '_links' can be asynchronously read
+    auto lock = irs::make_lock_guard(mutex);
     auto itr = _links.find(cid);
 
     if (itr == _links.end()) {
@@ -982,8 +984,8 @@ Result IResearchView::updateProperties(
       return res;
     }
 
-    // '_meta'/'_metaState' can be asynchronously read
-    auto mtx = irs::make_unique_lock(_mutex);
+    read_write_mutex::write_mutex mutex(_mutex);  // '_meta'/'_metaState' can be asynchronously read
+    auto mtx = irs::make_unique_lock(mutex);
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     if (!ExecContext::current().isSuperuser()) {
@@ -1021,6 +1023,8 @@ Result IResearchView::updateProperties(
     ensureImmutableProperties(meta, _meta);
 
     _meta = std::move(meta);
+
+    mutex.unlock(true); // downgrade to a read-lock
 
     // update properties of links
     for (auto& entry: _links) {
@@ -1099,8 +1103,8 @@ Result IResearchView::updateProperties(
 
 bool IResearchView::visitCollections(
     LogicalView::CollectionVisitor const& visitor) const {
-  // '_links' can be asynchronously modified
-  auto lock = irs::make_shared_lock(_mutex);
+  read_write_mutex::read_mutex mutex(_mutex); // '_links' can be asynchronously modified
+  auto lock = irs::make_lock_guard(mutex);
 
   for (auto& entry: _links) {
     if (!visitor(entry.first)) {
@@ -1113,8 +1117,8 @@ bool IResearchView::visitCollections(
 
 void IResearchView::verifyKnownCollections() {
   bool modified = false;
-  // '_links' can be asynchronously read
-  auto lock = irs::make_lock_guard(_mutex);
+  read_write_mutex::write_mutex mutex(_mutex);  // '_links' can be asynchronously read
+  auto lock = irs::make_lock_guard(mutex);
 
   // verify existence of all known links
   for (auto itr = _links.begin(); itr != _links.end();) {
