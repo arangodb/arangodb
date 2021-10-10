@@ -33,7 +33,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
 
-#include "utils/async_utils.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
@@ -121,7 +120,6 @@ class ResourceMutexT {
 ////////////////////////////////////////////////////////////////////////////////
 class ResourceMutex {
  public:
-  typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
   explicit ResourceMutex(void* resource) noexcept
       : _resource(resource) {}
   ~ResourceMutex() { reset(); }
