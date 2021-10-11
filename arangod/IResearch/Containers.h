@@ -53,29 +53,63 @@ namespace iresearch {
 /// @brief a read-mutex for a resource
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T>
-class ResourceMutexT {
+class AsyncValue {
  public:
-  explicit ResourceMutexT(T* resource) noexcept
+  class Value {
+   public:
+    Value() = default;
+    Value(Value&&) = default;
+    Value& operator=(Value&&) = default;
+
+    T* get() noexcept { return _resource; }
+    const T* get() const noexcept { return _resource; }
+    T* operator->() noexcept { return get(); }
+    const T* operator->() const noexcept { return get(); }
+
+    explicit operator bool() const noexcept {
+      return nullptr != get();
+    }
+
+    bool ownsLock() const noexcept {
+      return _lock.owns_lock();
+    }
+
+   private:
+    friend class AsyncValue<T>;
+
+    Value(std::shared_lock<std::shared_mutex>&& lock, T* resource)
+      : _lock{std::move(lock)}, _resource{resource} {
+    }
+
+    std::shared_lock<std::shared_mutex> _lock;
+    T* _resource{};
+  };
+
+  explicit AsyncValue(T* resource) noexcept
     : _resource{resource} {
   }
-  ~ResourceMutexT() { reset(); }
+
+  ~AsyncValue() { reset(); }
 
   auto lock() const {
-    return irs::make_shared_lock(_mutex);
+    auto lock = irs::make_shared_lock(_mutex);
+    return Value{ std::move(lock), _resource };
   }
 
   auto try_lock() const {
-    return irs::make_shared_lock(_mutex, std::try_to_lock);
+    auto lock = irs::make_shared_lock(_mutex, std::try_to_lock);
+
+    if (lock.owns_lock()) {
+      return Value{ std::move(lock), _resource };
+    }
+
+    return Value{};
   }
 
   // will block until a write lock can be acquired on the _mutex
   void reset() {
     auto lock = irs::make_unique_lock(_mutex);
     _resource = nullptr;
-  }
-
-  T* get() const noexcept {
-    return _resource;
   }
 
   bool empty() const {
