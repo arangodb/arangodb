@@ -201,7 +201,7 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes
-  virtual std::string createKey(velocypack::Slice input);
+  virtual std::string createKey(velocypack::Slice input) const;
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
@@ -365,7 +365,7 @@ class LogicalCollection : public LogicalDataSource {
    * Enterprise only method. See enterprise code for implementation
    * Community has a dummy stub.
    */
-  std::string createSmartToSatKey(arangodb::velocypack::Slice input);
+  std::string createSmartToSatKey(arangodb::velocypack::Slice input) const;
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
