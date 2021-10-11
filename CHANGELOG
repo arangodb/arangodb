@@ -7,9 +7,7 @@ devel
   The new document attribute will result in the concatenation of the literal
   strings, the values of the attributes and the separators, as in the example:
 
-    ```
-    arangoimport --merge-attributes name=[firstName]:[lastName] 
-    ```
+      arangoimport --merge-attributes fullName=[firstName]:[lastName] 
 * Remove internal AQL query option `readCompleteInput` that controled if
   all input for a modification operation (UPDATE / REPLACE / REMOVE) are
   read into memory first. This was a necessity with the MMFiles storage
