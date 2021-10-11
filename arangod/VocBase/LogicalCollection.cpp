@@ -401,7 +401,7 @@ ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice sli
 }
 
 /// @briefs creates a new document key, the input slice is ignored here
-std::string LogicalCollection::createKey(VPackSlice input) {
+std::string LogicalCollection::createKey(VPackSlice input) const {
   if (isSatToSmartEdgeCollection() || isSmartToSatEdgeCollection()) {
     return createSmartToSatKey(input);
   }
