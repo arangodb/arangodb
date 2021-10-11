@@ -505,10 +505,8 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
 
   std::map<std::string, Node> localNodes;
 
-  arangodb::RocksDBEngine engine;  // arbitrary implementation that has index types registered
+  std::unique_ptr<arangodb::RocksDBEngine> engine;  // arbitrary implementation that has index types registered
   arangodb::StorageEngine* origStorageEngine;
-
-
 
 
   MaintenanceTestActionPhaseOne()
@@ -521,12 +519,12 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}},
-        engine(as),
         origStorageEngine(arangodb::EngineSelectorFeature::ENGINE) {
     as.addFeature<arangodb::MetricsFeature>();
     as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
 
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
+    engine = std::make_unique<arangodb::RocksDBEngine>(as);
+    arangodb::EngineSelectorFeature::ENGINE = engine.get();
   }
 
   ~MaintenanceTestActionPhaseOne() {
