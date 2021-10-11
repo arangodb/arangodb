@@ -9,7 +9,7 @@ import { Cell, Grid } from "../../components/pure-css/grid";
 import CopyFromInput from "./forms/inputs/CopyFromInput";
 import JsonForm from "./forms/JsonForm";
 import BaseForm from "./forms/BaseForm";
-import LinkPropertiesForm from "./forms/LinkPropertiesForm";
+// import LinkPropertiesForm from "./forms/LinkPropertiesForm";
 import ViewPropertiesForm from "./forms/ViewPropertiesForm";
 import { getReducer } from "../../utils/helpers";
 
@@ -99,13 +99,12 @@ const AddView = ({ views }: AddViewProps) => {
                     <BaseForm formState={formState} dispatch={dispatch}/>
                   </fieldset>
                 </Cell>
-                <Cell size={'1'}>
-                  <fieldset>
-                    <legend style={{ fontSize: '12pt' }}>Link Properties</legend>
-                    {/* <LinkPropertiesForm formState={formState} dispatch={dispatch}/>*/}
-                    <LinkPropertiesForm/>
-                  </fieldset>
-                </Cell>
+                {/* <Cell size={'1'}>*/}
+                {/*  <fieldset>*/}
+                {/*    <legend style={{ fontSize: '12pt' }}>Link Properties</legend>*/}
+                {/*     <LinkPropertiesForm formState={formState.links} dispatch={dispatch} basePath={'links'}/>*/}
+                {/*  </fieldset>*/}
+                {/* </Cell>*/}
                 <Cell size={'1'}>
                   <fieldset>
                     <legend style={{ fontSize: '12pt' }}>View Properties</legend>

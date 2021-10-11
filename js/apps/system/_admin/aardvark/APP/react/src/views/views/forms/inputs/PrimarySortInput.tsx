@@ -8,16 +8,16 @@ import Select from "../../../../components/pure-css/form/Select";
 import styled from "styled-components";
 import { PrimarySort } from "../../constants";
 
-const StyledButton = styled.button`
-  &&& {
-    margin-top: 10px;
-  }
-`;
 const StyledIcon = styled.i`
   &&& {
     margin-left: auto;
   }
 `;
+
+const columnWidths: { [key: string]: number[] } = {
+  'false': [5, 60, 10, 25],
+  'true': [5, 85, 10, 0]
+};
 
 const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySort>) => {
   const items = formState.primarySort || [];
@@ -102,22 +102,28 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
     (dispatch as unknown as Dispatch<DispatchArgs<PrimarySort>>)(action);
   };
 
+  const getColumnWidth = (index: number) => {
+    const key = `${!!disabled}`;
+
+    return `${columnWidths[key][index]}%`;
+  };
+
   return <Fieldset legend={'Primary Sort'}>
     <ArangoTable>
       <thead>
       <tr>
-        <ArangoTH seq={0} style={{ width: '10%' }}>#</ArangoTH>
-        <ArangoTH seq={1} style={{ width: '40%' }}>Field</ArangoTH>
-        <ArangoTH seq={2} style={{ width: '20%' }}>Direction</ArangoTH>
-        <ArangoTH seq={3} style={{ width: '30%' }}>
-          {
-            disabled
-              ? null
-              : <button className={'button-warning'} onClick={addPrimarySort}>
+        <ArangoTH seq={0} style={{ width: getColumnWidth(0) }}>#</ArangoTH>
+        <ArangoTH seq={1} style={{ width: getColumnWidth(1) }}>Field</ArangoTH>
+        <ArangoTH seq={2} style={{ width: getColumnWidth(2) }}>Direction</ArangoTH>
+        {
+          disabled
+            ? null
+            : <ArangoTH seq={3} style={{ width: getColumnWidth(3) }}>
+              <button className={'button-warning'} onClick={addPrimarySort}>
                 <i className={'fa fa-plus'}/>&nbsp;Add Primary Sort
               </button>
-          }
-        </ArangoTH>
+            </ArangoTH>
+        }
       </tr>
       </thead>
       <tbody>
@@ -163,29 +169,29 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
                   <option key={'desc'} value={'desc'}>DESC</option>
                 </Select>
               </ArangoTD>
-              <ArangoTD seq={3}>
-                {
-                  disabled
-                    ? null
-                    : <>
-                      <StyledButton className={'button-danger'} onClick={getRemover(idx)}>
-                        <StyledIcon className={'fa fa-trash-o'}/>
-                      </StyledButton>&nbsp;
-                      <StyledButton className={'button-warning'} onClick={getShifter('up', idx)}
-                                    disabled={idx === 0}>
-                        <StyledIcon className={'fa fa-arrow-up'}/>
-                      </StyledButton>&nbsp;
-                      <StyledButton className={'button-warning'} onClick={getShifter('down', idx)}
-                                    disabled={isLast}>
-                        <StyledIcon className={'fa fa-arrow-down'}/>
-                      </StyledButton>
-                    </>
-                }
-              </ArangoTD>
+              {
+                disabled
+                  ? null
+                  : <ArangoTD seq={3}>
+                    <button className={'button-danger'} onClick={getRemover(idx)}>
+                      <StyledIcon className={'fa fa-trash-o'}/>
+                    </button>
+                    &nbsp;
+                    <button className={'button-warning'} onClick={getShifter('up', idx)}
+                            disabled={idx === 0}>
+                      <StyledIcon className={'fa fa-arrow-up'}/>
+                    </button>
+                    &nbsp;
+                    <button className={'button-warning'} onClick={getShifter('down', idx)}
+                            disabled={isLast}>
+                      <StyledIcon className={'fa fa-arrow-down'}/>
+                    </button>
+                  </ArangoTD>
+              }
             </tr>;
           })
           : <tr>
-            <ArangoTD seq={0} colspan={4}>No primary sort definitions found.</ArangoTD>
+            <ArangoTD seq={0} colSpan={disabled ? 3 : 4}>No primary sort definitions found.</ArangoTD>
           </tr>
       }
       </tbody>

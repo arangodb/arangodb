@@ -14,10 +14,6 @@ type NGramInputProps = NGramFormProps & {
 };
 
 const NGramInput = ({ formState, dispatch, disabled, basePath, required = true }: NGramInputProps) => {
-  // const getNumericFieldSetter = (field: string) => (event: ChangeEvent<HTMLInputElement>) => {
-  //   setNumericField(field, event.target.value, dispatch, basePath);
-  // };
-
   const updatePreserve = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',

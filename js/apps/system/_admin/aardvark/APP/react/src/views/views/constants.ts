@@ -4,11 +4,13 @@ type Compression = 'lz4' | 'none';
 
 type Direction = 'asc' | 'desc';
 
+export type StoredValue = {
+  fields: string[];
+  compression: Compression;
+};
+
 export type StoredValues = {
-  storedValues?: {
-    fields: string[];
-    compression: Compression;
-  }[]
+  storedValues?: StoredValue[]
 };
 
 export type PrimarySort = {
@@ -47,7 +49,7 @@ export type ViewProperties = PrimarySort & StoredValues & ConsolidationPolicy & 
   writebufferSizeMax?: number;
 };
 
-type LinkProperties = {
+export type LinkProperties = {
   analyzers?: string[];
   fields?: {
     [attributeName: string]: LinkProperties;
