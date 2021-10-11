@@ -25,6 +25,8 @@
 #include <chrono>
 #include <cstring>
 #include <iosfwd>
+#include <string>
+#include <string_view>
 #include <thread>
 #include <type_traits>
 
@@ -420,10 +422,6 @@ std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
   return UNKNOWN;
 }
 
-std::string_view const& toString(std::string_view const& s) { return s; }
-template <class T>
-std::string toString(T const& v) { return std::to_string(v); }
-
 void Logger::log(char const* logid, char const* function, char const* file, int line,
                  LogLevel level, size_t topicId, std::string const& message) try {
   TRI_ASSERT(logid != nullptr);
@@ -555,9 +553,15 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     }
   
     // meta data from log context
-    LogContext::OverloadVisitor visitor([&out](std::string_view const& key, auto&& value) {
-      out.append(",\"", 2).append(key).append("\":\"", 3).append(toString(value)); // TODO - escaping
-      out.push_back('"');
+    LogContext::OverloadVisitor visitor([&out, &dumper](std::string_view const& key, auto&& value) {
+      out.push_back(',');
+      dumper.appendString(key.data(), key.size());
+      out.push_back(':');
+      if constexpr (std::is_same_v<std::string_view, std::remove_cv_t<std::remove_reference_t<decltype(value)>>>) {
+        dumper.appendString(value.data(), key.size());
+      } else {
+        out.append(std::to_string(value));
+      }
     });
     logContext.visit(visitor);
     
@@ -689,7 +693,13 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     // meta data from log 
     LogContext::OverloadVisitor visitor([&out](std::string_view const& key, auto&& value) {
       out.push_back('[');
-      out.append(key).append(": ", 2).append(toString(value)).append("] ", 2);
+      out.append(key).append(": ", 2);
+      if constexpr (std::is_same_v<std::string_view, std::remove_cv_t<std::remove_reference_t<decltype(value)>>>) {
+        out.append(value);
+      } else {
+        out.append(std::to_string(value));
+      }
+      out.append("] ", 2);
     });
     logContext.visit(visitor);
     
