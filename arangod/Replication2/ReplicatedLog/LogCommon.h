@@ -306,12 +306,13 @@ using LogRangeIterator = TypedLogRangeIterator<LogEntryView>;
 
 struct LogConfig {
   std::size_t writeConcern = 1;
+  std::size_t replicationFactor = 1;
   bool waitForSync = false;
 
   auto toVelocyPack(velocypack::Builder&) const -> void;
   explicit LogConfig(velocypack::Slice);
   LogConfig() noexcept = default;
-  LogConfig(std::size_t writeConcern, bool waitForSync) noexcept;
+  LogConfig(std::size_t writeConcern, std::size_t replicationFactor, bool waitForSync) noexcept;
 
   friend auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
   friend auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;

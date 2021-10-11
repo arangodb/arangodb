@@ -10,6 +10,12 @@ devel
     ```
     arangoimport --merge-attributes name=[firstName]:[lastName] 
     ```
+* Remove internal AQL query option `readCompleteInput` that controled if
+  all input for a modification operation (UPDATE / REPLACE / REMOVE) are
+  read into memory first. This was a necessity with the MMFiles storage
+  engine in cases when a query read from a collection and wrote into it
+  in the same query afterwards. With the RocksDB engine and its snapshots, 
+  we never need to read the entire input into memory first.
 
 * Fix windows installer PATH manipulation issue by replaceng the NSIS plugin
   (BTS-176).
