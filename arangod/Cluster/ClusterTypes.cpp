@@ -185,7 +185,7 @@ AnalyzersRevision::Ptr AnalyzersRevision::fromVelocyPack(VPackSlice const& slice
 
 auto isShardName(std::string_view name) -> bool {
   return name.size() > 1 && name[0] == 's' &&
-         std::all_of(name.cbegin() + 1, name.cend(), std::isdigit);
+         std::all_of(name.cbegin() + 1, name.cend(), static_cast<int(&)(int)>(std::isdigit));
 }
 
 }  // namespace arangodb

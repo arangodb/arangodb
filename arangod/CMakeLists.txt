@@ -492,6 +492,7 @@ set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
   StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
+  StorageEngine/ITransactionable.h
   StorageEngine/StorageEngine.cpp
 )
 
