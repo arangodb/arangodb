@@ -36,10 +36,10 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
   tests::document const* doc2 = gen.next();
   tests::document const* doc3 = gen.next();
   tests::document const* doc4 = gen.next();
-  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
-  auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
-  auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+  auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
+  auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
 
   std::vector<std::string> files;
   auto list_files = [&files] (std::string& name) {

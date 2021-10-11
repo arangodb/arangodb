@@ -63,6 +63,7 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
@@ -79,32 +80,28 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(1, offset->end);
-    ASSERT_EQ("a", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("a", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(1, offset->start);
     ASSERT_EQ(2, offset->end);
-    ASSERT_EQ("b", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("b", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(2, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("c", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("c", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(3, offset->start);
     ASSERT_EQ(4, offset->end);
-    ASSERT_EQ(",", irs::ref_cast<char>(payload->value));
     ASSERT_EQ(",", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ("\"def\"", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -118,17 +115,16 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(10, offset->end);
-    ASSERT_EQ("\"def,\"", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("def,", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -142,17 +138,16 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
-    ASSERT_EQ("abc,", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("abc,", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(5, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("\"def\t\"", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("def\t", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -166,27 +161,24 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
-    ASSERT_EQ("abc,", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("abc,", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(5, offset->start);
     ASSERT_EQ(5, offset->end);
-    ASSERT_EQ("", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(6, offset->start);
     ASSERT_EQ(10, offset->end);
-    ASSERT_EQ("def\t", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("def\t", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(11, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -200,17 +192,16 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
-    ASSERT_EQ("abc,", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("abc,", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(7, offset->start);
     ASSERT_EQ(15, offset->end);
-    ASSERT_EQ("\"def123\"", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("def123", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -227,22 +218,20 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
       auto* offset = irs::get<irs::offset>(*pStream);
       auto* payload = irs::get<irs::payload>(*pStream);
+    ASSERT_EQ(nullptr, payload);
       auto* term = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(3, offset->end);
-      ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
       ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(4, offset->start);
       ASSERT_EQ(9, offset->end);
-      ASSERT_EQ("\"def\"", irs::ref_cast<char>(payload->value));
       ASSERT_EQ("def", irs::ref_cast<char>(term->value));
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(10, offset->start);
       ASSERT_EQ(15, offset->end);
-      ASSERT_EQ("\"\"ghi", irs::ref_cast<char>(payload->value));
       ASSERT_EQ("\"\"ghi", irs::ref_cast<char>(term->value));
       ASSERT_FALSE(pStream->next());
     };
@@ -266,22 +255,20 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ("\"def\"", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(10, offset->start);
     ASSERT_EQ(14, offset->end);
-    ASSERT_EQ("\"ghi", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("\"ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -295,22 +282,20 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ("\"def\"", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(10, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("\"", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("\"", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -324,22 +309,20 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("\"\"\"def\"", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("\"def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(12, offset->start);
     ASSERT_EQ(17, offset->end);
-    ASSERT_EQ("\"\"ghi", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("\"\"ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -353,22 +336,20 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ("\"def\"", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(10, offset->start);
     ASSERT_EQ(14, offset->end);
-    ASSERT_EQ("ghi\"", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("ghi\"", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -387,22 +368,20 @@ TEST_F(delimited_token_stream_tests, test_load) {
 
     auto* offset = irs::get<irs::offset>(*stream);
     auto* payload = irs::get<irs::payload>(*stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(*stream);
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("def", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(8, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
@@ -417,22 +396,20 @@ TEST_F(delimited_token_stream_tests, test_load) {
 
     auto* offset = irs::get<irs::offset>(*stream);
     auto* payload = irs::get<irs::payload>(*stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(*stream);
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("def", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(8, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
@@ -456,22 +433,20 @@ TEST_F(delimited_token_stream_tests, test_load) {
 
     auto* offset = irs::get<irs::offset>(*stream);
     auto* payload = irs::get<irs::payload>(*stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(*stream);
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("def", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(8, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }

@@ -760,8 +760,6 @@ bool analyzerInUse(application_features::ApplicationServer& server,
   return false;
 }
 
-using irs::async_utils::read_write_mutex;
-
 AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
   application_features::ApplicationServer& server,
   irs::string_ref const& vocbase) {
