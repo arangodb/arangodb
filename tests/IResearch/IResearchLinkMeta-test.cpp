@@ -27,7 +27,6 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
-#include "utils/locale_utils.hpp"
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"

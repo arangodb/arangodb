@@ -704,6 +704,8 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
     }
     ptr& operator=(ptr&& rhs) noexcept {
       if (this != &rhs) {
+        reset();
+
         value_ = rhs.value_;
         rhs.value_ = nullptr;
         gen_ = std::move(rhs.gen_);
@@ -810,14 +812,18 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
   ~unbounded_object_pool_volatile() noexcept {
     // prevent existing elements from returning into the pool
     // if pool doesn't own generation anymore
-    const auto gen = atomic_utils::atomic_load(&gen_);
-    auto lock = gen->lock_write();
+    {
+      const auto gen = atomic_utils::atomic_load(&gen_);
+      auto lock = gen->lock_write();
 
-    auto& value = gen->value();
+      auto& value = gen->value();
 
-    if (value.owner == this) {
-      value.owner = nullptr;
+      if (value.owner == this) {
+        value.owner = nullptr;
+      }
     }
+
+    clear(false);
   }
 
   /////////////////////////////////////////////////////////////////////////////

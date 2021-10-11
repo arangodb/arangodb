@@ -25,15 +25,14 @@
 
 #include "iql/parser.hh"
 #include "iql/parser_context.hpp"
-#include "utils/locale_utils.hpp"
 
 namespace tests {
-  class test_context: public iresearch::iql::parser_context {
+  class test_context: public irs::iql::parser_context {
   public:
     test_context(std::string& sData): parser_context(sData) {}
-    test_context(std::string& sData, iresearch::iql::functions const& functions): parser_context(sData, functions) {}
+    test_context(std::string& sData, irs::iql::functions const& functions): parser_context(sData, functions) {}
     template<typename T>
-    typename T::contextual_function_t const& function(T const& fn) const { return iresearch::iql::parser_context::function(fn); }
+    typename T::contextual_function_t const& function(T const& fn) const { return irs::iql::parser_context::function(fn); }
     query_node const& node(size_t const& id) const { return find_node(id); }
     query_state state() { return current_state(); }
   };
@@ -42,7 +41,7 @@ namespace tests {
     virtual void SetUp() {
       // Code here will be called immediately after the constructor (right before each test).
       // use the following code to enble parser debug outut
-      //::iresearch::iql::debug(parser, [true|false]);
+      //::irs::iql::debug(parser, [true|false]);
     }
 
     virtual void TearDown() {
@@ -52,7 +51,7 @@ namespace tests {
 }
 
 using namespace tests;
-using namespace iresearch::iql;
+using namespace irs::iql;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -375,9 +374,7 @@ TEST_F(IqlParserTestSuite, test_sequence) {
   }
 
   {
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string sData;
-    ASSERT_TRUE(irs::locale_utils::append_external(sData, irs::basic_string_ref<wchar_t>(L"\u041F\u043E==a"), locale));
+    std::string sData = u8"\u041F\u043E==a";
     test_context ctx(sData);
     parser parser(ctx);
 
@@ -398,8 +395,7 @@ TEST_F(IqlParserTestSuite, test_sequence) {
 
     ASSERT_EQ(pNode->SEQUENCE, pNode->type);
     std::basic_string<wchar_t> actual;
-    ASSERT_TRUE(irs::locale_utils::append_internal<wchar_t>(actual, pNode->sValue, locale));
-    ASSERT_EQ(L"\u041F\u043E", actual);
+    ASSERT_EQ(u8"\u041F\u043E", pNode->sValue);
   }
 
   // ...........................................................................
@@ -475,34 +471,34 @@ TEST_F(IqlParserTestSuite, test_sequence) {
 
 TEST_F(IqlParserTestSuite, test_bool_function) {
   std::string sFnResult;
-  iresearch::iql::boolean_function::deterministic_function_t fnFail = [](
-    iresearch::iql::boolean_function::deterministic_buffer_t&,
-    const iresearch::iql::boolean_function::deterministic_function_args_t&
+  irs::iql::boolean_function::deterministic_function_t fnFail = [](
+    irs::iql::boolean_function::deterministic_buffer_t&,
+    const irs::iql::boolean_function::deterministic_function_args_t&
   )->bool {
     std::cerr << "File: " << __FILE__ << " Line: " << __LINE__ << " Failed" << std::endl;
     throw "Fail";
   };
-  iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-    iresearch::iql::boolean_function::contextual_buffer_t&,
-    const std::locale&,
+  irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+    irs::iql::boolean_function::contextual_buffer_t&,
+    const irs::string_ref&,
     void*,
-    const iresearch::iql::boolean_function::contextual_function_args_t&
+    const irs::iql::boolean_function::contextual_function_args_t&
   )->bool {
     std::cerr << "File: " << __FILE__ << " Line: " << __LINE__ << " Failed" << std::endl;
     throw "Fail";
   };
-  iresearch::iql::sequence_function::contextual_function_t fnArgFailDyn = [](
-    iresearch::iql::sequence_function::contextual_buffer_t&,
-    const std::locale&,
+  irs::iql::sequence_function::contextual_function_t fnArgFailDyn = [](
+    irs::iql::sequence_function::contextual_buffer_t&,
+    const irs::string_ref&,
     void*,
-    const iresearch::iql::sequence_function::contextual_function_args_t&
+    const irs::iql::sequence_function::contextual_function_args_t&
   )->bool {
     std::cerr << "File: " << __FILE__ << " Line: " << __LINE__ << " Failed" << std::endl;
     throw "Fail";
   };
-  iresearch::iql::sequence_function::deterministic_function_t fnTestArg = [](
-    iresearch::iql::sequence_function::deterministic_buffer_t& buf,
-    const iresearch::iql::sequence_function::deterministic_function_args_t& args
+  irs::iql::sequence_function::deterministic_function_t fnTestArg = [](
+    irs::iql::sequence_function::deterministic_buffer_t& buf,
+    const irs::iql::sequence_function::deterministic_function_args_t& args
   )->bool {
     std::string sDelim = "";
 
@@ -517,9 +513,9 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
     return true;
   };
-  iresearch::iql::boolean_function::deterministic_function_t fnTestFalse = [&sFnResult](
-    iresearch::iql::boolean_function::deterministic_buffer_t& buf,
-    const iresearch::iql::boolean_function::deterministic_function_args_t& args
+  irs::iql::boolean_function::deterministic_function_t fnTestFalse = [&sFnResult](
+    irs::iql::boolean_function::deterministic_buffer_t& buf,
+    const irs::iql::boolean_function::deterministic_function_args_t& args
   )->bool {
     std::string sDelim = "";
 
@@ -535,17 +531,17 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
     return true;
   };
-  iresearch::iql::boolean_function::contextual_function_t fnTestTrueDyn = [](
-    iresearch::iql::boolean_function::contextual_buffer_t&,
-    const std::locale&,
+  irs::iql::boolean_function::contextual_function_t fnTestTrueDyn = [](
+    irs::iql::boolean_function::contextual_buffer_t&,
+    const irs::string_ref&,
     void*,
-    const iresearch::iql::boolean_function::contextual_function_args_t&
+    const irs::iql::boolean_function::contextual_function_args_t&
   )->bool {
     return true;
   };
-  iresearch::iql::boolean_function::deterministic_function_t fnTestTrue = [&sFnResult](
-    iresearch::iql::boolean_function::deterministic_buffer_t& buf,
-    const iresearch::iql::boolean_function::deterministic_function_args_t& args
+  irs::iql::boolean_function::deterministic_function_t fnTestTrue = [&sFnResult](
+    irs::iql::boolean_function::deterministic_buffer_t& buf,
+    const irs::iql::boolean_function::deterministic_function_args_t& args
   )->bool {
       std::string sDelim = "";
 
@@ -564,12 +560,12 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "fun()";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("fun", iresearch::iql::boolean_function(fnTestTrue));
+    boolFns.emplace("fun", irs::iql::boolean_function(fnTestTrue));
     sFnResult.clear();
     ASSERT_EQ(0, parser.parse());
 
@@ -587,12 +583,12 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "fun()";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("fun", iresearch::iql::boolean_function(fnTestFalse));
+    boolFns.emplace("fun", irs::iql::boolean_function(fnTestFalse));
     sFnResult.clear();
     ASSERT_EQ(0, parser.parse());
 
@@ -610,12 +606,12 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "'fun cti.on'()";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("fun cti.on", iresearch::iql::boolean_function(fnTestTrue));
+    boolFns.emplace("fun cti.on", irs::iql::boolean_function(fnTestTrue));
     sFnResult.clear();
     ASSERT_EQ(0, parser.parse());
 
@@ -633,12 +629,12 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "f(1)";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f", iresearch::iql::boolean_function(fnTestTrue, 1));
+    boolFns.emplace("f", irs::iql::boolean_function(fnTestTrue, 1));
     sFnResult.clear();
     ASSERT_EQ(0, parser.parse());
 
@@ -656,12 +652,12 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "f(a, b, c)";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f", iresearch::iql::boolean_function(fnTestTrue));
+    boolFns.emplace("f", irs::iql::boolean_function(fnTestTrue));
     sFnResult.clear();
     ASSERT_EQ(0, parser.parse());
 
@@ -679,15 +675,15 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "f(g(b), h(c))";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(boolFns, seqFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(boolFns, seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f", iresearch::iql::boolean_function(fnTestTrue));
-    seqFns.emplace("g", iresearch::iql::sequence_function(fnTestArg));
-    seqFns.emplace("h", iresearch::iql::sequence_function(fnTestArg));
+    boolFns.emplace("f", irs::iql::boolean_function(fnTestTrue));
+    seqFns.emplace("g", irs::iql::sequence_function(fnTestArg));
+    seqFns.emplace("h", irs::iql::sequence_function(fnTestArg));
     sFnResult.clear();
     ASSERT_EQ(0, parser.parse());
 
@@ -705,12 +701,12 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "f(1)";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f", iresearch::iql::boolean_function(fnTestTrue, 0, true)); // #arg < nFixedArg
+    boolFns.emplace("f", irs::iql::boolean_function(fnTestTrue, 0, true)); // #arg < nFixedArg
     sFnResult.clear();
     ASSERT_EQ(0, parser.parse());
 
@@ -728,12 +724,12 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "f(1)";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f", iresearch::iql::boolean_function(fnTestTrue, 1, true)); // #arg == nFixedArg
+    boolFns.emplace("f", irs::iql::boolean_function(fnTestTrue, 1, true)); // #arg == nFixedArg
     sFnResult.clear();
     ASSERT_EQ(0, parser.parse());
 
@@ -751,15 +747,15 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "f(1, 2)";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f", iresearch::iql::boolean_function(fnFail, 0, true));
-    boolFns.emplace("f", iresearch::iql::boolean_function(fnFail, 1, true));
-    boolFns.emplace("f", iresearch::iql::boolean_function(fnTestTrue, 2, true)); // best match
-    boolFns.emplace("f", iresearch::iql::boolean_function(fnFail, 3, true));
+    boolFns.emplace("f", irs::iql::boolean_function(fnFail, 0, true));
+    boolFns.emplace("f", irs::iql::boolean_function(fnFail, 1, true));
+    boolFns.emplace("f", irs::iql::boolean_function(fnTestTrue, 2, true)); // best match
+    boolFns.emplace("f", irs::iql::boolean_function(fnFail, 3, true));
     sFnResult.clear();
     ASSERT_EQ(0, parser.parse());
 
@@ -777,12 +773,12 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "f_dyn(a==b)";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnTestTrueDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnTestTrueDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -817,12 +813,12 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "f_dyn(1)";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn, 1));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn, 1));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -845,14 +841,14 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "f_st(f_dyn(b))";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(boolFns, seqFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(boolFns, seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_st", iresearch::iql::boolean_function(fnTestTrue, fnTestTrueDyn, 1));
-    seqFns.emplace("f_dyn", iresearch::iql::sequence_function(fnArgFailDyn, 1));
+    boolFns.emplace("f_st", irs::iql::boolean_function(fnTestTrue, fnTestTrueDyn, 1));
+    seqFns.emplace("f_dyn", irs::iql::sequence_function(fnArgFailDyn, 1));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -883,7 +879,7 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "f()";
-    iresearch::iql::functions fns;
+    irs::iql::functions fns;
     test_context ctx(sData, fns);
     parser parser(ctx);
 
@@ -897,13 +893,13 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "f(1)";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f", iresearch::iql::boolean_function(fnFail, 1)); // signature collision
-    boolFns.emplace("f", iresearch::iql::boolean_function(fnFail, 1, true)); // signature collision
+    boolFns.emplace("f", irs::iql::boolean_function(fnFail, 1)); // signature collision
+    boolFns.emplace("f", irs::iql::boolean_function(fnFail, 1, true)); // signature collision
     ASSERT_NE(0, parser.parse());
 
     auto state = ctx.state();
@@ -913,22 +909,22 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
   }
 
   {
-    iresearch::iql::order_function::deterministic_function_t fnFailOrder = [](
-      iresearch::iql::order_function::deterministic_buffer_t&,
-      const iresearch::iql::order_function::deterministic_function_args_t&
+    irs::iql::order_function::deterministic_function_t fnFailOrder = [](
+      irs::iql::order_function::deterministic_buffer_t&,
+      const irs::iql::order_function::deterministic_function_args_t&
     )->bool {
       std::cerr << "File: " << __FILE__ << " Line: " << __LINE__ << " Failed" << std::endl;
       throw "Fail";
     };
     std::string sData = "f(g())";
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(boolFns, orderFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(boolFns, orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f", iresearch::iql::boolean_function(fnFail, 1));
-    orderFns.emplace("g", iresearch::iql::order_function(fnFailOrder)); // will not match function<std::string>
+    boolFns.emplace("f", irs::iql::boolean_function(fnFail, 1));
+    orderFns.emplace("g", irs::iql::order_function(fnFailOrder)); // will not match function<std::string>
     ASSERT_NE(0, parser.parse());
 
     auto state = ctx.state();
@@ -939,7 +935,7 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 
   {
     std::string sData = "f(,)";
-    iresearch::iql::functions fns;
+    irs::iql::functions fns;
     test_context ctx(sData, fns);
     parser parser(ctx);
 
@@ -953,33 +949,33 @@ TEST_F(IqlParserTestSuite, test_bool_function) {
 }
 
 TEST_F(IqlParserTestSuite, test_seq_function) {
-  iresearch::iql::sequence_function::contextual_function_t fnFailDyn = [](
-    iresearch::iql::sequence_function::contextual_buffer_t&,
-    const std::locale&,
+  irs::iql::sequence_function::contextual_function_t fnFailDyn = [](
+    irs::iql::sequence_function::contextual_buffer_t&,
+    const irs::string_ref&,
     void*,
-    const iresearch::iql::sequence_function::contextual_function_args_t&
+    const irs::iql::sequence_function::contextual_function_args_t&
   )->bool {
     std::cerr << "File: " << __FILE__ << " Line: " << __LINE__ << " Failed" << std::endl;
     throw "Fail";
   };
-  iresearch::iql::sequence_function::deterministic_function_t fnFail = [](
-    iresearch::iql::sequence_function::deterministic_buffer_t&,
-    const iresearch::iql::sequence_function::deterministic_function_args_t&
+  irs::iql::sequence_function::deterministic_function_t fnFail = [](
+    irs::iql::sequence_function::deterministic_buffer_t&,
+    const irs::iql::sequence_function::deterministic_function_args_t&
   )->bool {
     std::cerr << "File: " << __FILE__ << " Line: " << __LINE__ << " Failed" << std::endl;
     throw "Fail";
   };
-  iresearch::iql::sequence_function::contextual_function_t fnTestDyn = [](
-    iresearch::iql::sequence_function::contextual_buffer_t&,
-    const std::locale&,
+  irs::iql::sequence_function::contextual_function_t fnTestDyn = [](
+    irs::iql::sequence_function::contextual_buffer_t&,
+    const irs::string_ref&,
     void*,
-    const iresearch::iql::sequence_function::contextual_function_args_t&
+    const irs::iql::sequence_function::contextual_function_args_t&
   )->bool {
     return true;
   };
-  iresearch::iql::sequence_function::deterministic_function_t fnTest = [](
-    iresearch::iql::sequence_function::deterministic_buffer_t& buf,
-    const iresearch::iql::sequence_function::deterministic_function_args_t& args
+  irs::iql::sequence_function::deterministic_function_t fnTest = [](
+    irs::iql::sequence_function::deterministic_buffer_t& buf,
+    const irs::iql::sequence_function::deterministic_function_args_t& args
   )->bool {
     std::string sDelim = "";
 
@@ -997,12 +993,12 @@ TEST_F(IqlParserTestSuite, test_seq_function) {
 
   {
     std::string sData = "fun()==a";
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(seqFns);
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    seqFns.emplace("fun", iresearch::iql::sequence_function(fnTest));
+    seqFns.emplace("fun", irs::iql::sequence_function(fnTest));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -1024,12 +1020,12 @@ TEST_F(IqlParserTestSuite, test_seq_function) {
 
   {
     std::string sData = "'fun cti.on'()==a";
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(seqFns);
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    seqFns.emplace("fun cti.on", iresearch::iql::sequence_function(fnTest));
+    seqFns.emplace("fun cti.on", irs::iql::sequence_function(fnTest));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -1051,12 +1047,12 @@ TEST_F(IqlParserTestSuite, test_seq_function) {
 
   {
     std::string sData = "f(1)==a";
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(seqFns);
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    seqFns.emplace("f", iresearch::iql::sequence_function(fnTest, 1));
+    seqFns.emplace("f", irs::iql::sequence_function(fnTest, 1));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -1078,12 +1074,12 @@ TEST_F(IqlParserTestSuite, test_seq_function) {
 
   {
     std::string sData = "f(a, b, c)==a";
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(seqFns);
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    seqFns.emplace("f", iresearch::iql::sequence_function(fnTest));
+    seqFns.emplace("f", irs::iql::sequence_function(fnTest));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -1105,14 +1101,14 @@ TEST_F(IqlParserTestSuite, test_seq_function) {
 
   {
     std::string sData = "f(g(b), h(c))==a";
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(seqFns);
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    seqFns.emplace("f", iresearch::iql::sequence_function(fnTest));
-    seqFns.emplace("g", iresearch::iql::sequence_function(fnTest));
-    seqFns.emplace("h", iresearch::iql::sequence_function(fnTest));
+    seqFns.emplace("f", irs::iql::sequence_function(fnTest));
+    seqFns.emplace("g", irs::iql::sequence_function(fnTest));
+    seqFns.emplace("h", irs::iql::sequence_function(fnTest));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -1134,12 +1130,12 @@ TEST_F(IqlParserTestSuite, test_seq_function) {
 
   {
     std::string sData = "f(1)==a";
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(seqFns);
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    seqFns.emplace("f", iresearch::iql::sequence_function(fnTest, 0, true)); // #arg < nFixedArg
+    seqFns.emplace("f", irs::iql::sequence_function(fnTest, 0, true)); // #arg < nFixedArg
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -1161,12 +1157,12 @@ TEST_F(IqlParserTestSuite, test_seq_function) {
 
   {
     std::string sData = "f(1)==a";
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(seqFns);
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    seqFns.emplace("f", iresearch::iql::sequence_function(fnTest, 1, true)); // #arg == nFixedArg
+    seqFns.emplace("f", irs::iql::sequence_function(fnTest, 1, true)); // #arg == nFixedArg
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -1188,15 +1184,15 @@ TEST_F(IqlParserTestSuite, test_seq_function) {
 
   {
     std::string sData = "f(1, 2)==a";
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(seqFns);
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    seqFns.emplace("f", iresearch::iql::sequence_function(fnFail, 0, true));
-    seqFns.emplace("f", iresearch::iql::sequence_function(fnFail, 1, true));
-    seqFns.emplace("f", iresearch::iql::sequence_function(fnTest, 2, true)); // best match
-    seqFns.emplace("f", iresearch::iql::sequence_function(fnFail, 3, true));
+    seqFns.emplace("f", irs::iql::sequence_function(fnFail, 0, true));
+    seqFns.emplace("f", irs::iql::sequence_function(fnFail, 1, true));
+    seqFns.emplace("f", irs::iql::sequence_function(fnTest, 2, true)); // best match
+    seqFns.emplace("f", irs::iql::sequence_function(fnFail, 3, true));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -1218,12 +1214,12 @@ TEST_F(IqlParserTestSuite, test_seq_function) {
 
   {
     std::string sData = "f_dyn(1)==a";
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(seqFns);
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    seqFns.emplace("f_dyn", iresearch::iql::sequence_function(fnFailDyn, 1));
+    seqFns.emplace("f_dyn", irs::iql::sequence_function(fnFailDyn, 1));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -1249,13 +1245,13 @@ TEST_F(IqlParserTestSuite, test_seq_function) {
 
   {
     std::string sData = "f_st(f_dyn(b))==a";
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(seqFns);
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    seqFns.emplace("f_dyn", iresearch::iql::sequence_function(fnFailDyn, 1));
-    seqFns.emplace("f_st", iresearch::iql::sequence_function(fnTest, fnTestDyn, 1));
+    seqFns.emplace("f_dyn", irs::iql::sequence_function(fnFailDyn, 1));
+    seqFns.emplace("f_st", irs::iql::sequence_function(fnTest, fnTestDyn, 1));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -1289,7 +1285,7 @@ TEST_F(IqlParserTestSuite, test_seq_function) {
 
   {
     std::string sData = "a==f()";
-    iresearch::iql::functions fns;
+    irs::iql::functions fns;
     test_context ctx(sData, fns);
     parser parser(ctx);
 
@@ -1303,13 +1299,13 @@ TEST_F(IqlParserTestSuite, test_seq_function) {
 
   {
     std::string sData = "a==f(1)";
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(seqFns);
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    seqFns.emplace("f", iresearch::iql::sequence_function(fnFail, 1)); // signature collision
-    seqFns.emplace("f", iresearch::iql::sequence_function(fnFail, 1, true)); // signature collision
+    seqFns.emplace("f", irs::iql::sequence_function(fnFail, 1)); // signature collision
+    seqFns.emplace("f", irs::iql::sequence_function(fnFail, 1, true)); // signature collision
     ASSERT_NE(0, parser.parse());
 
     auto state = ctx.state();
@@ -1320,7 +1316,7 @@ TEST_F(IqlParserTestSuite, test_seq_function) {
 
   {
     std::string sData = "a==f(,)";
-    iresearch::iql::functions fns;
+    irs::iql::functions fns;
     test_context ctx(sData, fns);
     parser parser(ctx);
 
@@ -1360,19 +1356,19 @@ TEST_F(IqlParserTestSuite, test_term) {
 
   {
     std::string sData = "fun()==a";
-    iresearch::iql::sequence_function::deterministic_function_t fnTest = [](
-      iresearch::iql::sequence_function::deterministic_buffer_t& buf,
-      const iresearch::iql::sequence_function::deterministic_function_args_t&
+    irs::iql::sequence_function::deterministic_function_t fnTest = [](
+      irs::iql::sequence_function::deterministic_buffer_t& buf,
+      const irs::iql::sequence_function::deterministic_function_args_t&
     )->bool {
       buf.append("abc");
       return true;
     };
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(seqFns);
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    seqFns.emplace("fun", iresearch::iql::sequence_function(fnTest));
+    seqFns.emplace("fun", irs::iql::sequence_function(fnTest));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -1926,20 +1922,20 @@ TEST_F(IqlParserTestSuite, test_subexpression) {
 
   {
     std::string sData = "f_dyn()";
-    iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-      iresearch::iql::boolean_function::contextual_buffer_t&,
-      const std::locale&,
+    irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+      irs::iql::boolean_function::contextual_buffer_t&,
+      const irs::string_ref&,
       void*,
-      const iresearch::iql::boolean_function::contextual_function_args_t&
+      const irs::iql::boolean_function::contextual_function_args_t&
     )->bool {
       throw "Fail";
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -2661,20 +2657,20 @@ TEST_F(IqlParserTestSuite, test_negation) {
 
   {
     std::string sData = "!f_dyn()";
-    iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-      iresearch::iql::boolean_function::contextual_buffer_t&,
-      const std::locale&,
+    irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+      irs::iql::boolean_function::contextual_buffer_t&,
+      const irs::string_ref&,
       void*,
-      const iresearch::iql::boolean_function::contextual_function_args_t&
+      const irs::iql::boolean_function::contextual_function_args_t&
     )->bool {
       throw "Fail";
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -2692,20 +2688,20 @@ TEST_F(IqlParserTestSuite, test_negation) {
 
   {
     std::string sData = "! f_dyn()";
-    iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-      iresearch::iql::boolean_function::contextual_buffer_t&,
-      const std::locale&,
+    irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+      irs::iql::boolean_function::contextual_buffer_t&,
+      const irs::string_ref&,
       void*,
-      const iresearch::iql::boolean_function::contextual_function_args_t&
+      const irs::iql::boolean_function::contextual_function_args_t&
     )->bool {
       throw "Fail";
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -2723,20 +2719,20 @@ TEST_F(IqlParserTestSuite, test_negation) {
 
   {
     std::string sData = "NOT f_dyn()";
-    iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-      iresearch::iql::boolean_function::contextual_buffer_t&,
-      const std::locale&,
+    irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+      irs::iql::boolean_function::contextual_buffer_t&,
+      const irs::string_ref&,
       void*,
-      const iresearch::iql::boolean_function::contextual_function_args_t&
+      const irs::iql::boolean_function::contextual_function_args_t&
     )->bool {
       throw "Fail";
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -3203,20 +3199,20 @@ TEST_F(IqlParserTestSuite, test_boost) {
 
   {
     std::string sData = "42*f_dyn()";
-    iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-      iresearch::iql::boolean_function::contextual_buffer_t&,
-      const std::locale&,
+    irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+      irs::iql::boolean_function::contextual_buffer_t&,
+      const irs::string_ref&,
       void*,
-      const iresearch::iql::boolean_function::contextual_function_args_t&
+      const irs::iql::boolean_function::contextual_function_args_t&
     )->bool {
       throw "Fail";
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -3234,20 +3230,20 @@ TEST_F(IqlParserTestSuite, test_boost) {
 
   {
     std::string sData = "3.14 * f_dyn()";
-    iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-      iresearch::iql::boolean_function::contextual_buffer_t&,
-      const std::locale&,
+    irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+      irs::iql::boolean_function::contextual_buffer_t&,
+      const irs::string_ref&,
       void*,
-      const iresearch::iql::boolean_function::contextual_function_args_t&
+      const irs::iql::boolean_function::contextual_function_args_t&
     )->bool {
       throw "Fail";
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -3265,20 +3261,20 @@ TEST_F(IqlParserTestSuite, test_boost) {
 
   {
     std::string sData = "f_dyn()*2.71828";
-    iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-      iresearch::iql::boolean_function::contextual_buffer_t&,
-      const std::locale&,
+    irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+      irs::iql::boolean_function::contextual_buffer_t&,
+      const irs::string_ref&,
       void*,
-      const iresearch::iql::boolean_function::contextual_function_args_t&
+      const irs::iql::boolean_function::contextual_function_args_t&
     )->bool {
       throw "Fail";
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -3296,20 +3292,20 @@ TEST_F(IqlParserTestSuite, test_boost) {
 
   {
     std::string sData = "f_dyn() * 123";
-    iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-      iresearch::iql::boolean_function::contextual_buffer_t&,
-      const std::locale&,
+    irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+      irs::iql::boolean_function::contextual_buffer_t&,
+      const irs::string_ref&,
       void*,
-      const iresearch::iql::boolean_function::contextual_function_args_t&
+      const irs::iql::boolean_function::contextual_function_args_t&
     )->bool {
       throw "Fail";
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -3657,19 +3653,19 @@ TEST_F(IqlParserTestSuite, test_intersection) {
 
   {
     std::string sData = "a==b&&false()";
-    iresearch::iql::boolean_function::deterministic_function_t fnFalse = [](
-      iresearch::iql::boolean_function::deterministic_buffer_t& buf,
-      const iresearch::iql::boolean_function::deterministic_function_args_t&
+    irs::iql::boolean_function::deterministic_function_t fnFalse = [](
+      irs::iql::boolean_function::deterministic_buffer_t& buf,
+      const irs::iql::boolean_function::deterministic_function_args_t&
     )->bool {
       buf = false;
       return true;
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("false", iresearch::iql::boolean_function(fnFalse));
+    boolFns.emplace("false", irs::iql::boolean_function(fnFalse));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -3684,19 +3680,19 @@ TEST_F(IqlParserTestSuite, test_intersection) {
 
   {
     std::string sData = "false()&&a==b";
-    iresearch::iql::boolean_function::deterministic_function_t fnFalse = [](
-      iresearch::iql::boolean_function::deterministic_buffer_t& buf,
-      const iresearch::iql::boolean_function::deterministic_function_args_t&
+    irs::iql::boolean_function::deterministic_function_t fnFalse = [](
+      irs::iql::boolean_function::deterministic_buffer_t& buf,
+      const irs::iql::boolean_function::deterministic_function_args_t&
     )->bool {
       buf = false;
       return true;
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("false", iresearch::iql::boolean_function(fnFalse));
+    boolFns.emplace("false", irs::iql::boolean_function(fnFalse));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -3711,19 +3707,19 @@ TEST_F(IqlParserTestSuite, test_intersection) {
 
   {
     std::string sData = "a==b&&true()";
-    iresearch::iql::boolean_function::deterministic_function_t fnTrue = [](
-      iresearch::iql::boolean_function::deterministic_buffer_t& buf,
-      const iresearch::iql::boolean_function::deterministic_function_args_t&
+    irs::iql::boolean_function::deterministic_function_t fnTrue = [](
+      irs::iql::boolean_function::deterministic_buffer_t& buf,
+      const irs::iql::boolean_function::deterministic_function_args_t&
     )->bool {
       buf = true;
       return true;
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("true", iresearch::iql::boolean_function(fnTrue));
+    boolFns.emplace("true", irs::iql::boolean_function(fnTrue));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -3750,19 +3746,19 @@ TEST_F(IqlParserTestSuite, test_intersection) {
 
   {
     std::string sData = "true()&&a==b";
-    iresearch::iql::boolean_function::deterministic_function_t fnTrue = [](
-      iresearch::iql::boolean_function::deterministic_buffer_t& buf,
-      const iresearch::iql::boolean_function::deterministic_function_args_t&
+    irs::iql::boolean_function::deterministic_function_t fnTrue = [](
+      irs::iql::boolean_function::deterministic_buffer_t& buf,
+      const irs::iql::boolean_function::deterministic_function_args_t&
     )->bool {
       buf = true;
       return true;
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("true", iresearch::iql::boolean_function(fnTrue));
+    boolFns.emplace("true", irs::iql::boolean_function(fnTrue));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -3789,20 +3785,20 @@ TEST_F(IqlParserTestSuite, test_intersection) {
 
   {
     std::string sData = "a==b&&f_dyn()";
-    iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-      iresearch::iql::boolean_function::contextual_buffer_t&,
-      const std::locale&,
+    irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+      irs::iql::boolean_function::contextual_buffer_t&,
+      const irs::string_ref&,
       void*,
-      const iresearch::iql::boolean_function::contextual_function_args_t&
+      const irs::iql::boolean_function::contextual_function_args_t&
     )->bool {
       throw "Fail";
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -3839,20 +3835,20 @@ TEST_F(IqlParserTestSuite, test_intersection) {
 
   {
     std::string sData = "f_dyn() AND c==d";
-    iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-      iresearch::iql::boolean_function::contextual_buffer_t&,
-      const std::locale&,
+    irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+      irs::iql::boolean_function::contextual_buffer_t&,
+      const irs::string_ref&,
       void*,
-      const iresearch::iql::boolean_function::contextual_function_args_t&
+      const irs::iql::boolean_function::contextual_function_args_t&
     )->bool {
       throw "Fail";
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -4237,19 +4233,19 @@ TEST_F(IqlParserTestSuite, test_union) {
 
   {
     std::string sData = "a==b||false()";
-    iresearch::iql::boolean_function::deterministic_function_t fnFalse = [](
-      iresearch::iql::boolean_function::deterministic_buffer_t& buf,
-      const iresearch::iql::boolean_function::deterministic_function_args_t&
+    irs::iql::boolean_function::deterministic_function_t fnFalse = [](
+      irs::iql::boolean_function::deterministic_buffer_t& buf,
+      const irs::iql::boolean_function::deterministic_function_args_t&
     )->bool {
       buf = false;
       return true;
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("false", iresearch::iql::boolean_function(fnFalse));
+    boolFns.emplace("false", irs::iql::boolean_function(fnFalse));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -4276,19 +4272,19 @@ TEST_F(IqlParserTestSuite, test_union) {
 
   {
     std::string sData = "false()||a==b";
-    iresearch::iql::boolean_function::deterministic_function_t fnFalse = [](
-      iresearch::iql::boolean_function::deterministic_buffer_t& buf,
-      const iresearch::iql::boolean_function::deterministic_function_args_t&
+    irs::iql::boolean_function::deterministic_function_t fnFalse = [](
+      irs::iql::boolean_function::deterministic_buffer_t& buf,
+      const irs::iql::boolean_function::deterministic_function_args_t&
     )->bool {
       buf = false;
       return true;
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("false", iresearch::iql::boolean_function(fnFalse));
+    boolFns.emplace("false", irs::iql::boolean_function(fnFalse));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -4315,19 +4311,19 @@ TEST_F(IqlParserTestSuite, test_union) {
 
   {
     std::string sData = "a==b||true()";
-    iresearch::iql::boolean_function::deterministic_function_t fnTrue = [](
-      iresearch::iql::boolean_function::deterministic_buffer_t& buf,
-      const iresearch::iql::boolean_function::deterministic_function_args_t&
+    irs::iql::boolean_function::deterministic_function_t fnTrue = [](
+      irs::iql::boolean_function::deterministic_buffer_t& buf,
+      const irs::iql::boolean_function::deterministic_function_args_t&
     )->bool {
       buf = true;
       return true;
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("true", iresearch::iql::boolean_function(fnTrue));
+    boolFns.emplace("true", irs::iql::boolean_function(fnTrue));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -4342,19 +4338,19 @@ TEST_F(IqlParserTestSuite, test_union) {
 
   {
     std::string sData = "true()||a==b";
-    iresearch::iql::boolean_function::deterministic_function_t fnTrue = [](
-      iresearch::iql::boolean_function::deterministic_buffer_t& buf,
-      const iresearch::iql::boolean_function::deterministic_function_args_t&
+    irs::iql::boolean_function::deterministic_function_t fnTrue = [](
+      irs::iql::boolean_function::deterministic_buffer_t& buf,
+      const irs::iql::boolean_function::deterministic_function_args_t&
     )->bool {
       buf = true;
       return true;
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("true", iresearch::iql::boolean_function(fnTrue));
+    boolFns.emplace("true", irs::iql::boolean_function(fnTrue));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -4369,20 +4365,20 @@ TEST_F(IqlParserTestSuite, test_union) {
 
   {
     std::string sData = "a==b||f_dyn()";
-    iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-      iresearch::iql::boolean_function::contextual_buffer_t&,
-      const std::locale&,
+    irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+      irs::iql::boolean_function::contextual_buffer_t&,
+      const irs::string_ref&,
       void*,
-      const iresearch::iql::boolean_function::contextual_function_args_t&
+      const irs::iql::boolean_function::contextual_function_args_t&
     )->bool {
       throw "Fail";
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -4419,20 +4415,20 @@ TEST_F(IqlParserTestSuite, test_union) {
 
   {
     std::string sData = "f_dyn() OR c==d";
-    iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-      iresearch::iql::boolean_function::contextual_buffer_t&,
-      const std::locale&,
+    irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+      irs::iql::boolean_function::contextual_buffer_t&,
+      const irs::string_ref&,
       void*,
-      const iresearch::iql::boolean_function::contextual_function_args_t&
+      const irs::iql::boolean_function::contextual_function_args_t&
     )->bool {
       throw "Fail";
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -4725,12 +4721,12 @@ TEST_F(IqlParserTestSuite, test_union) {
 }
 
 TEST_F(IqlParserTestSuite, test_input) {
-  iresearch::iql::order_function::contextual_function_t fnTestDyn = [](
-    iresearch::iql::order_function::contextual_buffer_t&,
-    const std::locale&,
+  irs::iql::order_function::contextual_function_t fnTestDyn = [](
+    irs::iql::order_function::contextual_buffer_t&,
+    const irs::string_ref&,
     void*,
     const bool&,
-    const iresearch::iql::order_function::contextual_function_args_t&
+    const irs::iql::order_function::contextual_function_args_t&
   )->bool {
     return true;
   };
@@ -4764,20 +4760,20 @@ TEST_F(IqlParserTestSuite, test_input) {
 
   {
     std::string sData = "f_dyn()";
-    iresearch::iql::boolean_function::contextual_function_t fnFailDyn = [](
-      iresearch::iql::boolean_function::contextual_buffer_t&,
-      const std::locale&,
+    irs::iql::boolean_function::contextual_function_t fnFailDyn = [](
+      irs::iql::boolean_function::contextual_buffer_t&,
+      const irs::string_ref&,
       void*,
-      const iresearch::iql::boolean_function::contextual_function_args_t&
+      const irs::iql::boolean_function::contextual_function_args_t&
     )->bool {
       throw "Fail";
     };
-    iresearch::iql::boolean_functions boolFns;
-    iresearch::iql::functions fns(boolFns);
+    irs::iql::boolean_functions boolFns;
+    irs::iql::functions fns(boolFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    boolFns.emplace("f_dyn", iresearch::iql::boolean_function(fnFailDyn));
+    boolFns.emplace("f_dyn", irs::iql::boolean_function(fnFailDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -4795,12 +4791,12 @@ TEST_F(IqlParserTestSuite, test_input) {
 
   {
     std::string sData = "a==b order c()";
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(orderFns);
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    orderFns.emplace("c", iresearch::iql::order_function(fnTestDyn));
+    orderFns.emplace("c", irs::iql::order_function(fnTestDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -4857,12 +4853,12 @@ TEST_F(IqlParserTestSuite, test_input) {
 
   {
     std::string sData = "a==b order c() limit 42";
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(orderFns);
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    orderFns.emplace("c", iresearch::iql::order_function(fnTestDyn));
+    orderFns.emplace("c", irs::iql::order_function(fnTestDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -4909,12 +4905,12 @@ TEST_F(IqlParserTestSuite, test_input) {
 
   {
     std::string sData = "order c()";
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(orderFns);
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    orderFns.emplace("c", iresearch::iql::order_function(fnTestDyn));
+    orderFns.emplace("c", irs::iql::order_function(fnTestDyn));
     ASSERT_NE(0, parser.parse());
 
     auto state = ctx.state();
@@ -4925,12 +4921,12 @@ TEST_F(IqlParserTestSuite, test_input) {
 
   {
     std::string sData = "order c() order c()";
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(orderFns);
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    orderFns.emplace("c", iresearch::iql::order_function(fnTestDyn));
+    orderFns.emplace("c", irs::iql::order_function(fnTestDyn));
     ASSERT_NE(0, parser.parse());
 
     auto state = ctx.state();
@@ -4967,12 +4963,12 @@ TEST_F(IqlParserTestSuite, test_input) {
 
   {
     std::string sData = "order c() limit 42";
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(orderFns);
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    orderFns.emplace("c", iresearch::iql::order_function(fnTestDyn));
+    orderFns.emplace("c", irs::iql::order_function(fnTestDyn));
     ASSERT_NE(0, parser.parse());
 
     auto state = ctx.state();
@@ -4998,19 +4994,19 @@ TEST_F(IqlParserTestSuite, test_limit) {
 
   {
     std::string sData = "a==b limit c()";
-    iresearch::iql::sequence_function::deterministic_function_t fnTest = [](
-      iresearch::iql::sequence_function::deterministic_buffer_t& buf,
-      const iresearch::iql::sequence_function::deterministic_function_args_t&
+    irs::iql::sequence_function::deterministic_function_t fnTest = [](
+      irs::iql::sequence_function::deterministic_buffer_t& buf,
+      const irs::iql::sequence_function::deterministic_function_args_t&
     )->bool {
       buf.append("123");
       return true;
     };
-    iresearch::iql::sequence_functions seqFns;
-    iresearch::iql::functions fns(seqFns);
+    irs::iql::sequence_functions seqFns;
+    irs::iql::functions fns(seqFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    seqFns.emplace("c", iresearch::iql::sequence_function(fnTest));
+    seqFns.emplace("c", irs::iql::sequence_function(fnTest));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -5064,18 +5060,18 @@ TEST_F(IqlParserTestSuite, test_limit) {
 }
 
 TEST_F(IqlParserTestSuite, test_order) {
-  iresearch::iql::order_function::contextual_function_t fnTestDyn = [](
-    iresearch::iql::order_function::contextual_buffer_t&,
-    const std::locale&,
+  irs::iql::order_function::contextual_function_t fnTestDyn = [](
+    irs::iql::order_function::contextual_buffer_t&,
+    const irs::string_ref&,
     void*,
     const bool&,
-    const iresearch::iql::order_function::contextual_function_args_t&
+    const irs::iql::order_function::contextual_function_args_t&
   )->bool {
     return true;
   };
-  iresearch::iql::order_function::deterministic_function_t fnTest = [](
-    iresearch::iql::order_function::deterministic_buffer_t& buf,
-    const iresearch::iql::order_function::deterministic_function_args_t&
+  irs::iql::order_function::deterministic_function_t fnTest = [](
+    irs::iql::order_function::deterministic_buffer_t& buf,
+    const irs::iql::order_function::deterministic_function_args_t&
   )->bool {
     buf.append("abcdef");
     return true;
@@ -5101,12 +5097,12 @@ TEST_F(IqlParserTestSuite, test_order) {
 
   {
     std::string sData = "a==b order c()";
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(orderFns);
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    orderFns.emplace("c", iresearch::iql::order_function(fnTest));
+    orderFns.emplace("c", irs::iql::order_function(fnTest));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -5122,12 +5118,12 @@ TEST_F(IqlParserTestSuite, test_order) {
 
   {
     std::string sData = "a==b order c()";
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(orderFns);
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    orderFns.emplace("c", iresearch::iql::order_function(fnTestDyn));
+    orderFns.emplace("c", irs::iql::order_function(fnTestDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -5143,12 +5139,12 @@ TEST_F(IqlParserTestSuite, test_order) {
 
   {
     std::string sData = "a==b order c() asc";
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(orderFns);
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    orderFns.emplace("c", iresearch::iql::order_function(fnTestDyn));
+    orderFns.emplace("c", irs::iql::order_function(fnTestDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -5164,12 +5160,12 @@ TEST_F(IqlParserTestSuite, test_order) {
 
   {
     std::string sData = "a==b order c() desc";
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(orderFns);
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    orderFns.emplace("c", iresearch::iql::order_function(fnTestDyn));
+    orderFns.emplace("c", irs::iql::order_function(fnTestDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -5185,14 +5181,14 @@ TEST_F(IqlParserTestSuite, test_order) {
 
   {
     std::string sData = "a==b order c(), d(), e()";
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(orderFns);
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    orderFns.emplace("c", iresearch::iql::order_function(fnTestDyn));
-    orderFns.emplace("d", iresearch::iql::order_function(fnTestDyn));
-    orderFns.emplace("e", iresearch::iql::order_function(fnTestDyn));
+    orderFns.emplace("c", irs::iql::order_function(fnTestDyn));
+    orderFns.emplace("d", irs::iql::order_function(fnTestDyn));
+    orderFns.emplace("e", irs::iql::order_function(fnTestDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -5216,13 +5212,13 @@ TEST_F(IqlParserTestSuite, test_order) {
 
   {
     std::string sData = "a==b order c(), d(), e";
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(orderFns);
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    orderFns.emplace("c", iresearch::iql::order_function(fnTestDyn));
-    orderFns.emplace("d", iresearch::iql::order_function(fnTestDyn));
+    orderFns.emplace("c", irs::iql::order_function(fnTestDyn));
+    orderFns.emplace("d", irs::iql::order_function(fnTestDyn));
     ASSERT_EQ(0, parser.parse());
 
     auto state = ctx.state();
@@ -5250,12 +5246,12 @@ TEST_F(IqlParserTestSuite, test_order) {
 
   {
     std::string sData = "order c() abc";
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(orderFns);
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    orderFns.emplace("c", iresearch::iql::order_function(fnTestDyn));
+    orderFns.emplace("c", irs::iql::order_function(fnTestDyn));
     ASSERT_NE(0, parser.parse());
 
     auto state = ctx.state();
@@ -5266,12 +5262,12 @@ TEST_F(IqlParserTestSuite, test_order) {
 
   {
     std::string sData = "order c(),";
-    iresearch::iql::order_functions orderFns;
-    iresearch::iql::functions fns(orderFns);
+    irs::iql::order_functions orderFns;
+    irs::iql::functions fns(orderFns);
     test_context ctx(sData, fns);
     parser parser(ctx);
 
-    orderFns.emplace("c", iresearch::iql::order_function(fnTestDyn));
+    orderFns.emplace("c", irs::iql::order_function(fnTestDyn));
     ASSERT_NE(0, parser.parse());
 
     auto state = ctx.state();
