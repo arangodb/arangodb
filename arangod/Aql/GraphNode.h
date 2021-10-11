@@ -195,7 +195,7 @@ class GraphNode : public ExecutionNode {
   void addCollectionToShard(std::string const& coll, std::string const& shard) {
     // NOTE: Do not replace this by emplace or insert.
     // This is also used to overwrite the existing entry.
-    _collectionToShard[coll] = std::vector<std::string>{shard};
+    _collectionToShard[coll] = shard;
   }
 
   graph::Graph const* graph() const noexcept;

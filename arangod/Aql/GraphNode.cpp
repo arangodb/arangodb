@@ -398,8 +398,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
         "graph needs a translation from collection to shard names");
   }
   for (auto const& item : VPackObjectIterator(collectionToShard)) {
-    _collectionToShard.insert({item.key.copyString(),
-                               std::vector<std::string>{item.value.copyString()}});
+    _collectionToShard.insert({item.key.copyString(), item.value.copyString()});
   }
 
   // Out variables
@@ -518,7 +517,7 @@ std::string const& GraphNode::collectionToShardName(std::string const& collName)
                                    "unable to find shard '" + collName +
                                        "' in query shard map");
   }
-  return found->second.front();
+  return found->second;
 }
 
 void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
@@ -585,8 +584,7 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   {
     VPackObjectBuilder guard(&nodes);
     for (auto const& item : _collectionToShard) {
-      TRI_ASSERT(item.second.size() == 1);
-      nodes.add(item.first, VPackValue(item.second.front()));
+      nodes.add(item.first, VPackValue(item.second));
     }
   }
 

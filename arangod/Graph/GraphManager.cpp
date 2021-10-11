@@ -493,9 +493,7 @@ Result GraphManager::ensureAllCollections(Graph* graph, bool waitForSync) const 
   std::unordered_set<std::string> satellites = graph->satelliteCollections();
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
-  std::unordered_set<std::string> satelliteDocumentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};
-  std::unordered_set<std::string> satelliteEdgeCollectionsToCreate{};
   std::unordered_set<std::shared_ptr<LogicalCollection>> existentDocumentCollections{};
   std::unordered_set<std::shared_ptr<LogicalCollection>> existentEdgeCollections{};
 
@@ -542,13 +540,7 @@ Result GraphManager::ensureAllCollections(Graph* graph, bool waitForSync) const 
       return res;
     } else {
       if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
-        if (!graph->satelliteCollections().empty() &&
-            graph->satelliteCollections().find(vertexColl) !=
-                graph->satelliteCollections().end()) {
-          satelliteDocumentCollectionsToCreate.emplace(vertexColl);
-        } else {
-          documentCollectionsToCreate.emplace(vertexColl);
-        }
+        documentCollectionsToCreate.emplace(vertexColl);
       }
     }
   }
