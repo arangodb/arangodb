@@ -48,7 +48,6 @@ struct MaintenanceState;
 class IResearchFeature;
 class IResearchView;
 class IResearchLink;
-template<typename T> class TypedResourceMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResarchLink handle to use with asynchronous tasks
@@ -59,8 +58,8 @@ class AsyncLinkHandle {
   ~AsyncLinkHandle();
   IResearchLink* get() noexcept { return _link.get(); }
   bool empty() const { return _link.empty(); }
-  std::unique_lock<ReadMutex> lock() { return _link.lock(); }
-  std::unique_lock<ReadMutex> try_lock() noexcept { return _link.try_lock(); }
+  auto lock() { return _link.lock(); }
+  auto try_lock() noexcept { return _link.try_lock(); }
   bool terminationRequested() const noexcept { return _asyncTerminate.load(); }
 
  private:
@@ -92,7 +91,7 @@ class IResearchLink {
   class Snapshot {
    public:
     Snapshot() = default;
-    Snapshot(std::unique_lock<ReadMutex>&& lock,
+    Snapshot(std::shared_lock<std::shared_mutex>&& lock,
              irs::directory_reader&& reader) noexcept
         : _lock(std::move(lock)), _reader(std::move(reader)) {
       TRI_ASSERT(_lock.owns_lock());
@@ -115,7 +114,7 @@ class IResearchLink {
     }
 
    private:
-    std::unique_lock<ReadMutex> _lock; // lock preventing data store dealocation
+    std::shared_lock<std::shared_mutex> _lock; // lock preventing data store dealocation
     irs::directory_reader _reader;
   };
 

@@ -52,8 +52,7 @@ namespace iresearch {
 
 class IResearchFeature;
 class AsyncLinkHandle;
-template <typename T>
-class TypedResourceMutex;
+template <typename T> class ResourceMutexT;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                                   IResearchView
@@ -215,7 +214,7 @@ class IResearchView final: public arangodb::LogicalView {
   Result renameImpl(std::string const& oldName) override;
 
  private:
-  typedef std::shared_ptr<TypedResourceMutex<IResearchView>> AsyncViewPtr;
+  typedef std::shared_ptr<ResourceMutexT<IResearchView>> AsyncViewPtr;
   struct ViewFactory; // forward declaration
 
   AsyncViewPtr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)

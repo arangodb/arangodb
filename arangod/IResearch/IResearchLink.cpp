@@ -70,12 +70,13 @@ using namespace arangodb::iresearch;
 ////////////////////////////////////////////////////////////////////////////////
 struct LinkTrxState final : public TransactionState::Cookie {
   irs::index_writer::documents_context _ctx;
-  std::unique_lock<ReadMutex> _linkLock; // prevent data-store deallocation (lock @ AsyncSelf)
+  std::shared_lock<std::shared_mutex> _linkLock; // prevent data-store deallocation (lock @ AsyncSelf)
   PrimaryKeyFilterContainer _removals;  // list of document removals
 
-  LinkTrxState(std::unique_lock<ReadMutex>&& linkLock,
+  LinkTrxState(std::shared_lock<std::shared_mutex>&& linkLock,
                irs::index_writer& writer) noexcept
-      : _ctx(writer.documents()), _linkLock(std::move(linkLock)) {
+      : _ctx(writer.documents()),
+        _linkLock(std::move(linkLock)) {
     TRI_ASSERT(_linkLock.owns_lock());
   }
 

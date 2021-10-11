@@ -296,17 +296,16 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
 IResearchView::IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice const& info,
                              IResearchViewMeta&& meta)
     : LogicalView(vocbase, info),
-      _asyncSelf(irs::memory::make_unique<AsyncViewPtr::element_type>(this)),
+      _asyncSelf(std::make_shared<AsyncViewPtr::element_type>(this)),
       _meta(std::move(meta)),
       _inRecovery(false) {
   // set up in-recovery insertion hooks
   if (vocbase.server().hasFeature<DatabaseFeature>()) {
     auto& databaseFeature = vocbase.server().getFeature<DatabaseFeature>();
-    auto view = _asyncSelf; // create copy for lambda
 
-    databaseFeature.registerPostRecoveryCallback([view]() -> Result {
+    databaseFeature.registerPostRecoveryCallback([view = _asyncSelf]() -> Result {
       // ensure view does not get deallocated before call back finishes
-      auto lock = view->read_lock();
+      auto lock = view->lock();
       auto* viewPtr = view->get();
 
       if (viewPtr) {
@@ -327,7 +326,7 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice const& in
       return; // NOOP
     }
 
-    auto lock = self->read_lock();
+    auto lock = self->lock();
     auto* view = self->get();
 
     // populate snapshot when view is registred with a transaction on single-server

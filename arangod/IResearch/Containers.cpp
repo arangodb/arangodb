@@ -29,13 +29,6 @@
 namespace arangodb {
 namespace iresearch {
 
-void ResourceMutex::reset() {
-  if (get()) {
-    auto lock = irs::make_unique_lock(_mutex);
-    _resource.store(nullptr, std::memory_order_relaxed);
-  }
-}
-
 }  // namespace iresearch
 }  // namespace arangodb
 
