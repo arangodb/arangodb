@@ -167,8 +167,6 @@ set(IResearch_core_sources
   ./utils/timer_utils.cpp
   ./utils/version_utils.cpp
   ./utils/utf8_path.cpp
-  ./utils/locale_utils.cpp
-  ./utils/icu_locale_utils.cpp
   ./utils/log.cpp
   ./utils/result.cpp
   ./utils/so_utils.cpp
@@ -453,7 +451,6 @@ endif()
 target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
   ${BFD_SHARED_LIBS}
-  ${Boost_SHARED_sharedRT_LIBRARIES}
   ${Lz4_SHARED_LIB}
   ${ICU_SHARED_LIBS}
   ${Unwind_SHARED_LIBS}
@@ -538,8 +535,6 @@ endif()
 
 if (MSVC)
   foreach(ELEMENT
-      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
-      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
       ${IRESEARCH_STATIC_DEPENDENCIES})
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} \"${ELEMENT}\"")
   endforeach()
@@ -582,9 +577,6 @@ if (MSVC)
 
 elseif (APPLE)
   foreach(ELEMENT
-      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
-      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
-      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_THREAD_LIBRARY_RELEASE}>"
       ${IRESEARCH_STATIC_DEPENDENCIES})
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} '${ELEMENT}'")
   endforeach ()
@@ -625,9 +617,6 @@ elseif (APPLE)
   )
 else()
   foreach(ELEMENT
-      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
-      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
-      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_THREAD_LIBRARY_RELEASE}>"
       ${IRESEARCH_STATIC_DEPENDENCIES})
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} addlib '${ELEMENT}'\\n")
   endforeach ()

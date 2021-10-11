@@ -82,7 +82,6 @@ struct IResearchViewMeta {
     bool _commitIntervalMsec;
     bool _consolidationIntervalMsec;
     bool _consolidationPolicy;
-    bool _locale;
     bool _version;
     bool _writebufferActive;
     bool _writebufferIdle;
@@ -97,7 +96,6 @@ struct IResearchViewMeta {
   size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
   size_t _consolidationIntervalMsec; // issue consolidation after <interval> milliseconds (0 == disable)
   ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
-  std::locale _locale; // locale used for ordering processed attribute names
   uint32_t _version; // the version of the iresearch interface e.g. which how data is stored in iresearch (default == latest)
   size_t _writebufferActive; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
   size_t _writebufferIdle; // maximum number of segments cached in the pool
