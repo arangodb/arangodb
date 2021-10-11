@@ -688,7 +688,7 @@ void ImportHelper::parseMergeAttributes(std::vector<std::string> const& args) {
       FATAL_ERROR_EXIT();
     }
     std::vector<ImportHelper::Step> tokenizedArg = tokenizeInput(tokenizedArgByAssignment[1], tokenizedArgByAssignment[0]);
-    _mergeAttributesInstructions.emplace_back(tokenizedArgByAssignment[0], tokenizedArg);
+    _mergeAttributesInstructions.emplace_back(tokenizedArgByAssignment[0], std::move(tokenizedArg));
   }
 }
 
