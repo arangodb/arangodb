@@ -657,12 +657,11 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
       "path",          "planId", "shards", "status",  "type", "version"};
 
   if (ServerState::instance()->isSingleServer() &&
-      (coll->isSmart() || coll->isSatellite())) {
+      (!coll->isSatellite() && !coll->isSmart())) {
     // 1. These are either relevant for cluster
     // 2. Or for collections which have additional cluster properties set for
     // future dump and restore use case. Currently those are supported during graph
     // creation. Therefore, we need those properties for satellite and graph collections.
-
     ignoreKeys.insert({StaticStrings::DistributeShardsLike, StaticStrings::IsSmart,
                        StaticStrings::NumberOfShards, StaticStrings::ReplicationFactor,
                        StaticStrings::MinReplicationFactor, StaticStrings::ShardKeys,
