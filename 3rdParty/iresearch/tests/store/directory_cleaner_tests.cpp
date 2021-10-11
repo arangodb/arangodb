@@ -262,7 +262,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     &tests::generic_json_field_factory);
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
-  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
   irs::memory_directory dir;
   auto codec_ptr = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec_ptr);

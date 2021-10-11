@@ -25,18 +25,17 @@
 
 namespace {
 
-static const iresearch::iql::function_arg::fn_value_t NOT_IMPLEMENTED_VALUE = [](
-  iresearch::bstring&,
-  const std::locale&,
-  void* const&,
-  const std::vector<iresearch::iql::function_arg>&
-)->bool {
+const irs::iql::function_arg::fn_value_t NOT_IMPLEMENTED_VALUE = [](
+    irs::bstring&,
+    const irs::string_ref&,
+    void* const&,
+    const std::vector<irs::iql::function_arg>&)->bool {
   return false;
 };
 
 }
 
-using namespace iresearch::iql;
+using namespace irs::iql;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private members
@@ -49,7 +48,7 @@ namespace {
 }
 
 /*static*/ decltype(function_arg::NOT_IMPLEMENTED_BRANCH) function_arg::NOT_IMPLEMENTED_BRANCH =
-  [](proxy_filter&, const std::locale&, void* const&, const std::vector<function_arg>&)->bool { return false; };
+  [](proxy_filter&, const string_ref&, void* const&, const std::vector<function_arg>&)->bool { return false; };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      constructors
@@ -121,7 +120,7 @@ function_arg::function_arg(fn_args_t&& fnArgs, fn_branch_t&& fnBranch):
 
 function_arg::function_arg(
   fn_args_t&& fnArgs,
-  const iresearch::bytes_ref& value,
+  const irs::bytes_ref& value,
   const fn_branch_t& fnBranch
 ):
   m_fnArgs(std::move(fnArgs)),
@@ -130,11 +129,10 @@ function_arg::function_arg(
   m_bValueNil(value.null()),
   m_pFnBranch(&fnBranch) {
   m_fnValue = [value](
-    bstring& buf,
-    const std::locale&,
-    const void*,
-    const std::vector<function_arg>& args
-  )->bool {
+      bstring& buf,
+      const string_ref&,
+      const void*,
+      const std::vector<function_arg>& args)->bool {
     if (!args.empty()) {
       return false;
     };
@@ -147,7 +145,7 @@ function_arg::function_arg(
 }
 
 function_arg::function_arg(
-  fn_args_t&& fnArgs, const iresearch::bytes_ref& value, fn_branch_t&& fnBranch
+  fn_args_t&& fnArgs, const irs::bytes_ref& value, fn_branch_t&& fnBranch
 ):
   m_fnArgs(std::move(fnArgs)),
   m_bFnBranchRef(false),
@@ -156,11 +154,10 @@ function_arg::function_arg(
   m_fnBranch(std::move(fnBranch)) {
   m_pFnBranch = &m_fnBranch;
   m_fnValue = [value](
-    bstring& buf,
-    const std::locale&,
-    const void*,
-    const std::vector<function_arg>& args
-  )->bool {
+      bstring& buf,
+      const string_ref&,
+      const void*,
+      const std::vector<function_arg>& args)->bool {
     if (!args.empty()) {
       return false;
     };
@@ -172,7 +169,7 @@ function_arg::function_arg(
   m_pFnValue = &m_fnValue;
 }
 
-function_arg::function_arg(const iresearch::bytes_ref& value):
+function_arg::function_arg(const irs::bytes_ref& value):
   function_arg(fn_args_t(), value, NOT_IMPLEMENTED_BRANCH) {
 }
 
@@ -215,17 +212,15 @@ function_arg& function_arg::operator=(function_arg&& other) noexcept {
 // -----------------------------------------------------------------------------
 
 bool function_arg::branch(
-  proxy_filter& buf, const std::locale& locale, void* const& cookie
-) const {
+    proxy_filter& buf, const string_ref& locale, void* const& cookie) const {
   return (*m_pFnBranch)(buf, locale, cookie, m_fnArgs);
 }
 
 bool function_arg::value(
-  iresearch::bstring& buf,
-  bool& bNil,
-  const std::locale& locale,
-  void* const& cookie
-) const {
+    bstring& buf,
+    bool& bNil,
+    const string_ref& locale,
+    void* const& cookie) const {
   bNil = m_bValueNil;
   return bNil || (*m_pFnValue)(buf, locale, cookie, m_fnArgs);
 }
@@ -233,33 +228,30 @@ bool function_arg::value(
 /*static*/ function_arg function_arg::wrap(const function_arg& wrapped) {
   return wrapped.m_bValueNil
     ? function_arg(fn_args_t(),
-        iresearch::bytes_ref::NIL,
+        irs::bytes_ref::NIL,
         [&wrapped](
-          iresearch::iql::proxy_filter& buf,
-          const std::locale& locale,
+          irs::iql::proxy_filter& buf,
+          const string_ref& locale,
           void* const& cookie,
-          const iresearch::iql::function_arg::fn_args_t&
-        )->bool {
+          const irs::iql::function_arg::fn_args_t&)->bool {
             return wrapped.branch(buf, locale, cookie);
         }
       )
     : function_arg(
         fn_args_t(),
         [&wrapped](
-          bstring& buf,
-          std::locale const& locale,
-          void* const& cookie,
-          const iresearch::iql::function_arg::fn_args_t&
-        )->bool {
-          bool bNil; // will always be false for function calls
+            bstring& buf,
+            const string_ref& locale,
+            void* const& cookie,
+            const irs::iql::function_arg::fn_args_t&)->bool {
+            bool bNil; // will always be false for function calls
           return wrapped.value(buf, bNil, locale, cookie);
         },
         [&wrapped](
-          iresearch::iql::proxy_filter& buf,
-          const std::locale& locale,
-          void* const& cookie,
-          const iresearch::iql::function_arg::fn_args_t&
-        )->bool {
+            irs::iql::proxy_filter& buf,
+            const string_ref& locale,
+            void* const& cookie,
+            const irs::iql::function_arg::fn_args_t&)->bool {
           return wrapped.branch(buf, locale, cookie);
         }
       )
