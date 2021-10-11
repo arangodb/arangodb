@@ -246,7 +246,8 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     }
     case TRI_IDX_TYPE_EDGE_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
+        SimpleAttributeEqualityMatcher matcher(this->_fields);
+        return matcher.matchOne(this, node, reference, itemsInIndex);
       }
       // other...
       SimpleAttributeEqualityMatcher matcher(this->_fields);

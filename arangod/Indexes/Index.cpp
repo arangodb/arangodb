@@ -1091,6 +1091,36 @@ AttributeAccessParts::AttributeAccessParts(arangodb::aql::AstNode const* compari
   TRI_ASSERT(attribute->isAttributeAccessForVariable(variable, true));
 }
 
+void Index::normalizeFilterCosts(arangodb::Index::FilterCosts& costs, 
+                                 arangodb::Index const* idx, size_t itemsInIndex,
+                                 size_t invocations) {
+  // costs.estimatedItems is always set here, make it at least 1
+  costs.estimatedItems = std::max(size_t(1), costs.estimatedItems);
+
+  // seek cost is O(log(n)) for RocksDB
+  costs.estimatedCosts = std::max(double(1.0),
+                                std::log2(double(itemsInIndex)) * invocations);
+  // add per-document processing cost
+  costs.estimatedCosts += costs.estimatedItems * 0.05;
+  // slightly prefer indexes that cover more attributes
+  costs.estimatedCosts -= (idx->fields().size() - 1) * 0.02;
+    
+  // cost is already low... now slightly prioritize unique indexes
+  if (idx->unique() || idx->implicitlyUnique()) {
+    costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
+  }
+      
+  if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+      idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+    // primary and edge index have faster lookups due to very fast
+    // comparators
+    costs.estimatedCosts *= 0.9;
+  }
+
+  // box the estimated costs to [0 - inf)
+  costs.estimatedCosts = std::max(double(0.0), costs.estimatedCosts);
+}
+
 }  // namespace arangodb
 
 /// @brief append the index description to an output stream
