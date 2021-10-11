@@ -28,34 +28,32 @@
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
-#include "utils/icu_locale_utils.hpp"
 
 namespace iresearch {
 namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class collation_token_stream
+/// @brief an analyser capable of converting UTF-8 encoded input into a sortable
+///        token as per specified locale
+/// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
 class collation_token_stream final
   : public analyzer,
     private util::noncopyable {
  public:
   struct options_t {
-    // NOTE: use of the default constructor for Locale() or
-    //       use of Locale::createFromName(nullptr)
-    //       causes a memory leak with Boost 1.58, as detected by valgrind
-    options_t() : locale("C"), unicode(icu_locale_utils::Unicode::UTF8) {
+    icu::Locale locale;
+
+    options_t() : locale{"C"} {
       locale.setToBogus();
     }
-    icu::Locale locale;
-    icu_locale_utils::Unicode unicode;
   };
 
   static constexpr string_ref type_name() noexcept { 
     return "collation";
   }
   static void init(); // for trigering registration in a static build
-  static ptr make(const string_ref& locale);
 
   explicit collation_token_stream(const options_t& options);
 
@@ -79,7 +77,6 @@ class collation_token_stream final
   using attributes = std::tuple<
     increment,
     offset,
-    payload,         // raw token value
     term_attribute>; // token value with evaluated quotes
 
   attributes attrs_;

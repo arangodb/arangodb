@@ -8,6 +8,12 @@ devel
   in the same query afterwards. With the RocksDB engine and its snapshots, 
   we never need to read the entire input into memory first.
 
+* Fix windows installer PATH manipulation issue by replaceng the NSIS plugin
+  (BTS-176).
+
+* Fixed counting of all read transaction as aborted. Added a new
+  metric to count read transactions.
+
 * Fixed potential issues with revision trees and document counters getting out
   of sync with the underlying collection data.
 

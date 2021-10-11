@@ -100,32 +100,7 @@ versions/revisions of data in the said directory.
 v3.2 or later
 
 ### [Boost](http://www.boost.org/doc/libs/1_57_0/more/getting_started/index.html)
-v1.57.0 or later (locale system thread)
-
-#### install (*nix)
-> It looks like it is important to pass arguments to the bootstrap script in one 
-> line
-
-```bash
-./bootstrap.sh --with-libraries=locale,system,regex,thread
-./b2
-```
-
-#### install (MacOS)
-> Do not link Boost against 'iconv' because on MacOS it causes problems when
-> linking against Boost locale. Unfortunately this requires linking against ICU.
-
-```bash
-./bootstrap.sh --with-libraries=locale,system,regex,thread
-./b2 -sICU_PATH="${ICU_ROOT}" boost.locale.iconv=off boost.locale.icu=on
-```
-
-#### install (win32)
-```bash
-bootstrap.bat --with-libraries=test
-bootstrap.bat --with-libraries=thread
-b2 --build-type=complete stage address-model=64
-```
+v1.57.0 or later (headers only)
 
 #### set environment
 ```bash
@@ -430,11 +405,10 @@ v2.4 or later
 used for compilation of the IQL (index query language) grammar
 
 ### [ICU](http://site.icu-project.org/download)
-used by locale_utils as a back-end for locale facets
-used by analysis::text_analyzer for parsing, transforming and tokenising string data
+used by analyzers for parsing, transforming and tokenising string data
 
 ### [Snowball](http://snowball.tartarus.org)
-used by analysis::text_analyzer for computing word stems (i.e. roots) for more flexible matching
+used by analyzers for computing word stems (i.e. roots) for more flexible matching
 matching of words from languages not supported by 'snowball' are done verbatim
 
 ### [Google Test](https://code.google.com/p/googletest)
