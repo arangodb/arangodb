@@ -27,11 +27,16 @@ the attribute *latitude* and of the attribute *longitude* must a
 double. All documents, which do not have the attribute paths or which
 values are not suitable, are ignored.
 
-@RESTBODYPARAM{geoJson,string,required,string}
+@RESTBODYPARAM{geoJson,string,optional,string}
 If a geo-spatial index on a *location* is constructed
 and *geoJson* is *true*, then the order within the array is longitude
 followed by latitude. This corresponds to the format described in
 http://geojson.org/geojson-spec.html#positions
+
+@RESTBODYPARAM{inBackground,boolean,optional,}
+The optional attribute **inBackground** can be set to *true* to create the index
+in the background, which will not write-lock the underlying collection for
+as long as if the index is built in the foreground. The default value is *false*.
 
 @RESTDESCRIPTION
 Creates a geo-spatial index in the collection *collection-name*, if

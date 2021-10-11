@@ -559,7 +559,7 @@ Result PhysicalCollection::rebuildRevisionTree() {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-void PhysicalCollection::placeRevisionTreeBlocker(TransactionId) {
+uint64_t PhysicalCollection::placeRevisionTreeBlocker(TransactionId) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

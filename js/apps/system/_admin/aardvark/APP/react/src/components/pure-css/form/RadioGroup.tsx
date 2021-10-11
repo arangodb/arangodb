@@ -1,4 +1,4 @@
-import React, { ChangeEvent, ReactNode } from 'react';
+import React, { ChangeEvent, ReactNode, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import Fieldset from "./Fieldset";
 import { uniqueId } from 'lodash';
@@ -24,13 +24,17 @@ type RadioButtonProps = {
 };
 
 const RadioButton = ({ id, checked, onChange, value, label, size, disabled }: RadioButtonProps) => {
-  if (!id) {
-    id = uniqueId(`radio-${value}-`);
-  }
+  const [thisId, setThisId] = useState(id || uniqueId(`radio-${value}-`));
+
+  useEffect(() => {
+    if (id) {
+      setThisId(id);
+    }
+  }, [id]);
 
   return <Cell size={size}>
-    <label htmlFor={id} className="pure-radio">
-      <StyledRadioButton id={id} value={value} onChange={onChange} checked={checked}
+    <label htmlFor={thisId} className="pure-radio">
+      <StyledRadioButton id={thisId} value={value} onChange={onChange} checked={checked}
                          disabled={disabled}/>
       &nbsp;{label}
     </label>

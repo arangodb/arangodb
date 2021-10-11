@@ -1,0 +1,18 @@
+name: rocksdb_wal_sequence_lower_bound
+introducedIn: "3.8.2"
+help: |
+  RocksDB sequence number until which the background sync thread
+  has caught up.
+unit: number
+type: gauge
+category: RocksDB
+complexity: high
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exposes the RocksDB WAL sequence number until which the
+  ArangoDB background sync thread has fully caught up to. The value exposed
+  here should be monotically increasing and always progress if there are
+  write operations executing.

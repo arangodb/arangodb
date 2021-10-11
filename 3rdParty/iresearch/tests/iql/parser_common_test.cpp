@@ -48,12 +48,12 @@ namespace tests {
   TEST_F(iql_parser_common_tests, test_function_arg_wrap) {
     // empty function arg
     {
-      iresearch::iql::proxy_filter branch_buf;
-      std::locale locale;
-      iresearch::bstring value_buf;
+      irs::iql::proxy_filter branch_buf;
+      irs::string_ref locale = "C";
+      irs::bstring value_buf;
       bool value_nil;
-      iresearch::iql::function_arg arg;
-      auto wrapped = iresearch::iql::function_arg::wrap(arg);
+      irs::iql::function_arg arg;
+      auto wrapped = irs::iql::function_arg::wrap(arg);
 
       ASSERT_FALSE(wrapped.branch(branch_buf, locale, nullptr));
       ASSERT_FALSE(wrapped.value(value_buf, value_nil, locale, nullptr));
@@ -63,12 +63,12 @@ namespace tests {
 
     // null value
     {
-      iresearch::iql::proxy_filter branch_buf;
-      std::locale locale;
-      iresearch::bstring value_buf;
+      irs::iql::proxy_filter branch_buf;
+      irs::string_ref locale = "C";
+      irs::bstring value_buf;
       bool value_nil;
-      iresearch::iql::function_arg arg(iresearch::bytes_ref::NIL);
-      auto wrapped = iresearch::iql::function_arg::wrap(arg);
+      irs::iql::function_arg arg(irs::bytes_ref::NIL);
+      auto wrapped = irs::iql::function_arg::wrap(arg);
 
       ASSERT_FALSE(wrapped.branch(branch_buf, locale, nullptr));
       ASSERT_TRUE(wrapped.value(value_buf, value_nil, locale, nullptr));
@@ -78,13 +78,13 @@ namespace tests {
 
     // non-null value
     {
-      iresearch::iql::proxy_filter branch_buf;
-      std::locale locale;
-      iresearch::bstring value_buf;
-      auto value = iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("abc"));
+      irs::iql::proxy_filter branch_buf;
+      irs::string_ref locale = "C";
+      irs::bstring value_buf;
+      auto value = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
       bool value_nil;
-      iresearch::iql::function_arg arg(value);
-      auto wrapped = iresearch::iql::function_arg::wrap(arg);
+      irs::iql::function_arg arg(value);
+      auto wrapped = irs::iql::function_arg::wrap(arg);
 
       ASSERT_FALSE(wrapped.branch(branch_buf, locale, nullptr));
       ASSERT_TRUE(wrapped.value(value_buf, value_nil, locale, nullptr));
@@ -94,24 +94,23 @@ namespace tests {
 
     // fnctr value
     {
-      iresearch::iql::proxy_filter branch_buf;
-      std::locale locale;
-      iresearch::bstring value_buf;
-      auto value = iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("abc"));
+      irs::iql::proxy_filter branch_buf;
+      irs::string_ref locale = "C";
+      irs::bstring value_buf;
+      auto value = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
       bool value_nil;
       size_t value_call = 0;
-      iresearch::iql::function_arg::fn_value_t value_fn = [&value, &value_call](
-        iresearch::bstring& buf,
-        std::locale const& locale,
-        void* const& cookie,
-        const iresearch::iql::function_arg::fn_args_t&
-      )->bool {
+      irs::iql::function_arg::fn_value_t value_fn = [&value, &value_call](
+          irs::bstring& buf,
+          const irs::string_ref& locale,
+          void* const& cookie,
+          const irs::iql::function_arg::fn_args_t&)->bool {
         buf.append(value);
         ++value_call;
         return true;
       };
-      iresearch::iql::function_arg arg(iresearch::iql::function_arg::fn_args_t(), value_fn);
-      auto wrapped = iresearch::iql::function_arg::wrap(arg);
+      irs::iql::function_arg arg(irs::iql::function_arg::fn_args_t(), value_fn);
+      auto wrapped = irs::iql::function_arg::wrap(arg);
 
       ASSERT_FALSE(wrapped.branch(branch_buf, locale, nullptr));
       ASSERT_TRUE(wrapped.value(value_buf, value_nil, locale, nullptr));
@@ -121,22 +120,21 @@ namespace tests {
 
     // fnctr branch
     {
-      iresearch::iql::proxy_filter branch_buf;
-      std::locale locale;
-      iresearch::bstring value_buf;
+      irs::iql::proxy_filter branch_buf;
+      irs::string_ref locale = "C";
+      irs::bstring value_buf;
       bool value_nil;
       size_t branch_call = 0;
-      iresearch::iql::function_arg::fn_branch_t branch_fn = [&branch_call](
-        iresearch::iql::proxy_filter& buf,
-        const std::locale& locale,
-        void* const& cookie,
-        const iresearch::iql::function_arg::fn_args_t&
-      )->bool {
+      irs::iql::function_arg::fn_branch_t branch_fn = [&branch_call](
+          irs::iql::proxy_filter& buf,
+          const irs::string_ref& locale,
+          void* const& cookie,
+          const irs::iql::function_arg::fn_args_t&)->bool {
         ++branch_call;
         return true;
       };
-      iresearch::iql::function_arg arg(iresearch::iql::function_arg::fn_args_t(), branch_fn);
-      auto wrapped = iresearch::iql::function_arg::wrap(arg);
+      irs::iql::function_arg arg(irs::iql::function_arg::fn_args_t(), branch_fn);
+      auto wrapped = irs::iql::function_arg::wrap(arg);
 
       ASSERT_TRUE(wrapped.branch(branch_buf, locale, nullptr));
       ASSERT_EQ(1, branch_call);
@@ -147,23 +145,23 @@ namespace tests {
 
     // byte value + fnctr branch
     {
-      iresearch::iql::proxy_filter branch_buf;
-      std::locale locale;
-      iresearch::bstring value_buf;
+      irs::iql::proxy_filter branch_buf;
+      irs::string_ref locale = "C";
+      irs::bstring value_buf;
       bool value_nil;
-      auto value = iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("abc"));
+      auto value = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
       size_t branch_call = 0;
       auto branch_fn = [&branch_call](
-        iresearch::iql::proxy_filter& buf,
-        const std::locale& locale,
+        irs::iql::proxy_filter& buf,
+        const irs::string_ref& locale,
         void* const& cookie,
-        const iresearch::iql::function_arg::fn_args_t&
+        const irs::iql::function_arg::fn_args_t&
       )->bool {
         ++branch_call;
         return true;
       };
-      iresearch::iql::function_arg arg(iresearch::iql::function_arg::fn_args_t(), value, branch_fn);
-      auto wrapped = iresearch::iql::function_arg::wrap(arg);
+      irs::iql::function_arg arg(irs::iql::function_arg::fn_args_t(), value, branch_fn);
+      auto wrapped = irs::iql::function_arg::wrap(arg);
 
       ASSERT_TRUE(wrapped.branch(branch_buf, locale, nullptr));
       ASSERT_EQ(1, branch_call);
@@ -174,34 +172,32 @@ namespace tests {
 
     // fnctr value + fnctr branch
     {
-      iresearch::iql::proxy_filter branch_buf;
-      std::locale locale;
-      iresearch::bstring value_buf;
-      auto value = iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("abc"));
+      irs::iql::proxy_filter branch_buf;
+      irs::string_ref locale = "C";
+      irs::bstring value_buf;
+      auto value = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
       bool value_nil;
       size_t value_call = 0;
       auto value_fn = [&value, &value_call](
-        iresearch::bstring& buf,
-        std::locale const& locale,
-        void* const& cookie,
-        const iresearch::iql::function_arg::fn_args_t&
-      )->bool {
+          irs::bstring& buf,
+          irs::string_ref const& locale,
+          void* const& cookie,
+          const irs::iql::function_arg::fn_args_t&)->bool {
         buf.append(value);
         ++value_call;
         return true;
       };
       size_t branch_call = 0;
       auto branch_fn = [&branch_call](
-        iresearch::iql::proxy_filter& buf,
-        const std::locale& locale,
-        void* const& cookie,
-        const iresearch::iql::function_arg::fn_args_t&
-      )->bool {
+          irs::iql::proxy_filter& buf,
+          const irs::string_ref& locale,
+          void* const& cookie,
+          const irs::iql::function_arg::fn_args_t&)->bool {
         ++branch_call;
         return true;
       };
-      iresearch::iql::function_arg arg(iresearch::iql::function_arg::fn_args_t(), value_fn, branch_fn);
-      auto wrapped = iresearch::iql::function_arg::wrap(arg);
+      irs::iql::function_arg arg(irs::iql::function_arg::fn_args_t(), value_fn, branch_fn);
+      auto wrapped = irs::iql::function_arg::wrap(arg);
 
       ASSERT_TRUE(wrapped.branch(branch_buf, locale, nullptr));
       ASSERT_EQ(1, branch_call);

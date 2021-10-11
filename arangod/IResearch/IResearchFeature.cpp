@@ -98,9 +98,6 @@ namespace {
 
 using namespace arangodb;
 
-typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                         ArangoSearc AQL functions
 // -----------------------------------------------------------------------------

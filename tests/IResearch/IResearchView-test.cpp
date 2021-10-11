@@ -27,7 +27,6 @@
 #include "analysis/token_attributes.hpp"
 #include "analysis/analyzers.hpp"
 #include "search/scorers.hpp"
-#include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/utf8_path.hpp"
 #include "utils/lz4compression.hpp"
@@ -4251,8 +4250,9 @@ TEST_F(IResearchViewTest, test_unregister_link) {
       for (auto& index: logicalCollection->getIndexes()) {
         auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
         ASSERT_NE(nullptr, link);
-        auto lock = link->self()->lock();
-        ASSERT_TRUE((!link->self()->get())); // check that link is unregistred from view
+        auto resource = link->self()->lock();
+        ASSERT_TRUE(resource.ownsLock());
+        ASSERT_TRUE((!resource)); // check that link is unregistred from view
       }
     }
   }
@@ -4534,7 +4534,6 @@ TEST_F(IResearchViewTest, test_overwrite_immutable_properties) {
     EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
     builder.close();
     EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
-    EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
     EXPECT_TRUE(1 == meta._version);
     EXPECT_TRUE(25 == meta._writebufferActive);
     EXPECT_TRUE(12 == meta._writebufferIdle);
@@ -4585,7 +4584,6 @@ TEST_F(IResearchViewTest, test_overwrite_immutable_properties) {
     EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
     builder.close();
     EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
-    EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
     EXPECT_TRUE(1 == meta._version);
     EXPECT_TRUE(25 == meta._writebufferActive);
     EXPECT_TRUE(12 == meta._writebufferIdle);

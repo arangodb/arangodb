@@ -28,6 +28,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
@@ -262,7 +263,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
 
   Mutex _buffersLock;
   std::vector<std::unique_ptr<basics::StringBuffer>> _buffers;
-  
+
 };
 
 }  // namespace arangodb
