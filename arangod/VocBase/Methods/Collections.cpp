@@ -112,8 +112,8 @@ Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
 
 // Returns a builder that combines the information from \p infos and cluster related information.
 VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
-                        std::vector<CollectionCreationInfo> const& infos,
-                        bool isSingleServerSmartGraph) {
+                                        std::vector<CollectionCreationInfo> const& infos,
+                                        bool isSingleServerSmartGraph) {
   StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
   VPackBuilder helper;
@@ -615,7 +615,8 @@ void Collections::createSystemCollectionProperties(std::string const& collection
                               bb.slice(),  // collection definition to create
                               true,        // waitsForSyncReplication
                               true,        // enforceReplicationFactor
-                              isNewDatabase, createdCollection, true /* allow system collection creation */);
+                              isNewDatabase, createdCollection,
+                              true /* allow system collection creation */);
 
     if (res.ok()) {
       TRI_ASSERT(createdCollection);
@@ -655,8 +656,13 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
       "allowUserKeys", "cid",    "count",  "deleted", "id",   "indexes", "name",
       "path",          "planId", "shards", "status",  "type", "version"};
 
-  if (!ServerState::instance()->isRunningInCluster() || !coll->isSmart()) {
-    // These are only relevant for cluster
+  if (ServerState::instance()->isSingleServer() &&
+      (coll->isSmart() || coll->isSatellite())) {
+    // 1. These are either relevant for cluster
+    // 2. Or for collections which have additional cluster properties set for
+    // future dump and restore use case. Currently those are supported during graph
+    // creation. Therefore, we need those properties for satellite and graph collections.
+
     ignoreKeys.insert({StaticStrings::DistributeShardsLike, StaticStrings::IsSmart,
                        StaticStrings::NumberOfShards, StaticStrings::ReplicationFactor,
                        StaticStrings::MinReplicationFactor, StaticStrings::ShardKeys,
