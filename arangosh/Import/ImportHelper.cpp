@@ -951,20 +951,20 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
   if (!_mergeAttributesInstructions.empty()) {
     for (auto& [key, value] : _mergeAttributesInstructions) {
       if (row == _rowsToSkip) {
-        std::for_each(value.begin(), value.end(), [this](Step const& attrProperties) {
+        std::for_each(value.begin(), value.end(), [this, key=&key](Step const& attrProperties) {
           if (!attrProperties.isLiteral) {
             if (std::find(_columnNames.begin(), _columnNames.end(),
                           attrProperties.value) == _columnNames.end()) {
               LOG_TOPIC("ab353", WARN, arangodb::Logger::FIXME)
                   << "In --merge-attributes: No matching value for attribute name "
-                  << attrProperties.value;
+                  << attrProperties.value << " to populate attribute " << key;
             }
           }
         });
         addField(key.c_str(), key.size(), row, column, escaped);
       } else {
         std::string attrsToMerge;
-        std::for_each(value.begin(), value.end(), [=, &attrsToMerge](Step const& attrProperties) {
+        std::for_each(value.begin(), value.end(), [this, &attrsToMerge](Step const& attrProperties) {
           if (!attrProperties.isLiteral) {
             if (auto it = _fieldsLookUpTable.find(attrProperties.value); it != _fieldsLookUpTable.end()) {
               attrsToMerge += it->second;
