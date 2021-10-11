@@ -82,16 +82,14 @@ namespace iresearch {
       typedef std::vector<function_arg> fn_args_t;
       typedef std::function<bool(
         proxy_filter& node,
-        const std::locale& locale,
+        const string_ref& locale,
         void* const& cookie,
-        const fn_args_t& args
-      )> fn_branch_t;
+        const fn_args_t& args)> fn_branch_t;
       typedef std::function<bool(
         bstring& buf,
-        const std::locale& locale,
+        const string_ref& locale,
         void* const& cookie,
-        const fn_args_t& args
-      )> fn_value_t;
+        const fn_args_t& args)> fn_value_t;
 
       function_arg(fn_args_t&& fnArgs, const fn_value_t& fnValue, const fn_branch_t& fnBranch = NOT_IMPLEMENTED_BRANCH);
       function_arg(fn_args_t&& fnArgs, const fn_branch_t& fnBranch);
@@ -107,8 +105,8 @@ namespace iresearch {
       function_arg();
       function_arg& operator=(function_arg&& other) noexcept;
       function_arg& operator=(const function_arg& other) = delete; // to avoid having multipe copies of args
-      bool branch(proxy_filter& buf, const std::locale& locale, void* const& cookie) const;
-      bool value(bstring& buf, bool& bNil, const std::locale& locale, void* const& cookie) const;
+      bool branch(proxy_filter& buf, const string_ref& locale, void* const& cookie) const;
+      bool value(bstring& buf, bool& bNil, const string_ref& locale, void* const& cookie) const;
       static function_arg wrap(const function_arg& wrapped);
 
     private:
@@ -135,14 +133,14 @@ namespace iresearch {
     function<deterministic_buffer_type, contextual_buffer_type, contextual_ctx_args_type...>::NOT_IMPLEMENTED_D =
       [](deterministic_buffer_t&, const deterministic_function_args_t&)->bool { return false; };
 
-    // deterministic(bool&, vector<string_ref>) v.s. contextual(proxy_filter&, std::locale, void* cookie, vector<bytes_ref>)
-    typedef function<bool, iresearch::iql::proxy_filter, std::locale, void*> boolean_function;
+    // deterministic(bool&, vector<string_ref>) v.s. contextual(proxy_filter&, string_ref, void* cookie, vector<bytes_ref>)
+    typedef function<bool, iresearch::iql::proxy_filter, string_ref, void*> boolean_function;
 
-    // deterministic(std::string&, vector<string_ref>) v.s. contextual(order&, std::locale, void* cookie, bool, vector<bytes_ref>)
-    typedef function<std::string, iresearch::order, std::locale, void*, bool> order_function;
+    // deterministic(std::string&, vector<string_ref>) v.s. contextual(order&, string_ref, void* cookie, bool, vector<bytes_ref>)
+    typedef function<std::string, iresearch::order, string_ref, void*, bool> order_function;
 
-    // deterministic(std::string&, vector<string_ref>) v.s. contextual(bstring&, std::locale, void* cookie, vector<bytes_ref>)
-    typedef function<std::string, iresearch::bstring, std::locale, void*> sequence_function;
+    // deterministic(std::string&, vector<string_ref>) v.s. contextual(bstring&, string_ref, void* cookie, vector<bytes_ref>)
+    typedef function<std::string, iresearch::bstring, string_ref, void*> sequence_function;
 
     typedef std::unordered_multimap<std::string, boolean_function> boolean_functions;
     typedef std::unordered_multimap<std::string, order_function> order_functions;

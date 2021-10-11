@@ -151,10 +151,11 @@ auto methods::createReplicatedLog(DatabaseID const& database, LogPlanSpecificati
 }
 
 auto methods::updateElectionResult(arangodb::agency::envelope envelope,
-                                   const DatabaseID& database, LogId id,
-                                   const LogCurrentSupervisionElection& result)
+                                   DatabaseID const& database, LogId id,
+                                   LogCurrentSupervisionElection const& result)
     -> arangodb::agency::envelope {
   auto path = paths::current()->replicatedLogs()->database(database)->log(to_string(id))->str();
+
   return envelope.write()
       .emplace_object(path + "/supervision/election",
                       [&](VPackBuilder& builder) {

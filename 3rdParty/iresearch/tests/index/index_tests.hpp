@@ -33,7 +33,6 @@
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "doc_generator.hpp"
-#include "utils/locale_utils.hpp"
 #include "utils/timer_utils.hpp"
 
 using namespace std::chrono_literals;
