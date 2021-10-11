@@ -1451,7 +1451,7 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
   }
 
-  return std::move(f).thenValue([=, &trx, &coll, opCtx(std::move(opCtx))]
+  return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))]
                                 (Result&& r) mutable -> Future<OperationResult> {
     if (r.fail()) {
       return OperationResult(std::move(r), options);
