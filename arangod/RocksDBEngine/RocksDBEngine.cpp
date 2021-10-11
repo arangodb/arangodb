@@ -50,6 +50,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
+#include "Replication2/ReplicatedTransactionState.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -998,7 +999,13 @@ std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
 
 std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid, transaction::Options const& options) {
-  return std::make_shared<RocksDBTransactionState>(vocbase, tid, options);
+  if (vocbase.replicationVersion() == arangodb::replication::Version::ONE) {
+    return std::make_shared<RocksDBTransactionState>(vocbase, tid, options);
+  } else {
+    TRI_ASSERT(vocbase.replicationVersion() == arangodb::replication::Version::TWO);
+
+    return std::make_shared<replication2::ReplicatedTransactionState>(vocbase, tid, options);
+  }
 }
 
 std::unique_ptr<TransactionCollection> RocksDBEngine::createTransactionCollection(
