@@ -1,47 +1,38 @@
 import { FormProps } from "../../../utils/constants";
-import { LinkProperties } from "../constants";
-import React, { ChangeEvent } from "react";
-import { filter, isEmpty, negate } from "lodash";
-import { Cell, Grid } from "../../../components/pure-css/grid";
-import Textarea from "../../../components/pure-css/form/Textarea";
+import { FormState } from "../constants";
+import React from "react";
+import { ArangoTable } from "../../../components/arango/table";
 
-type LinkPropertiesFormProps = FormProps<LinkProperties> & {
-  basePath: string;
-};
+const LinkPropertiesForm = ({ formState, dispatch, disabled }: FormProps<FormState>) => {
+  const links = formState.links || {};
 
-const LinkPropertiesForm = ({ formState, dispatch, disabled, basePath }: LinkPropertiesFormProps) => {
-  const updateAnalyzers = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    const analyzers = event.target.value.split('\n');
-
-    if (filter(analyzers, negate(isEmpty)).length) {
-      dispatch({
-        type: 'setField',
-        field: {
-          path: 'analyzers',
-          value: analyzers
-        },
-        basePath
-      });
-    } else {
-      dispatch({
-        type: 'unsetField',
-        field: {
-          path: 'analyzers'
-        },
-        basePath
-      });
-    }
+  const removeLink = (collection: string) => {
+    dispatch({
+      type: 'setField',
+      field: {
+        path: `links${collection}`,
+        value: null
+      }
+    });
   };
 
-  const getAnalyzers = () => {
-    return (formState.analyzers || []).join('\n');
+  const getRemover = (collection: string) => () => {
+    removeLink(collection);
   };
 
-  return <Grid>
-    <Cell size={'1-4'}>
-      <Textarea value={getAnalyzers()} onChange={updateAnalyzers} disabled={disabled}/>
-    </Cell>
-  </Grid>;
+  const addLink = (collection: string) => {
+    dispatch({
+      type: 'setField',
+      field: {
+        path: `links[${collection}]`,
+        value: {}
+      }
+    });
+  };
+
+  return <ArangoTable>
+
+  </ArangoTable>;
 };
 
 export default LinkPropertiesForm;

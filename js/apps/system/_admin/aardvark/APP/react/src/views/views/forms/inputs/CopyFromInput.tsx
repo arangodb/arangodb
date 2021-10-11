@@ -3,16 +3,10 @@ import { FormProps } from "../../../../utils/constants";
 import React, { ChangeEvent, useEffect, useState } from "react";
 import { find, sortBy } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
-import styled from "styled-components";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { validateAndFix } from "../../helpers";
-
-const StyledIcon = styled.i`
-  &&& {
-    margin-left: auto;
-  }
-`;
+import { IconButton } from "../../../../components/pure-css/buttons";
 
 type CopyFromInputProps = {
   views: FormState[];
@@ -69,9 +63,7 @@ const CopyFromInput = ({ views, dispatch }: CopyFromInputProps) => {
       </select>
     </Cell>
     <Cell size={'1-3'}>
-      <button className={'button-warning'} onClick={copyFormState}>
-        <StyledIcon className={'fa fa-hand-o-left'}/>&nbsp;Copy from
-      </button>
+      <IconButton icon={'hand-o-left'} type={'warning'} onClick={copyFormState}>Copy from</IconButton>
     </Cell>
   </Grid>;
 };

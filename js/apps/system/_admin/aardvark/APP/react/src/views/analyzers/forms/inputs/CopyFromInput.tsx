@@ -4,13 +4,7 @@ import React, { ChangeEvent, useEffect, useState } from "react";
 import { cloneDeep, find, sortBy } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import { validateAndFix } from "../../helpers";
-import styled from "styled-components";
-
-const StyledIcon = styled.i`
-  &&& {
-    margin-left: auto;
-  }
-`;
+import { IconButton } from "../../../../components/pure-css/buttons";
 
 type CopyFromInputProps = {
   analyzers: FormState[];
@@ -65,9 +59,7 @@ const CopyFromInput = ({ analyzers, dispatch }: CopyFromInputProps) => {
       </select>
     </Cell>
     <Cell size={'1-3'}>
-      <button className={'button-warning'} onClick={copyFormState}>
-        <StyledIcon className={'fa fa-hand-o-left'}/>&nbsp;Copy from
-      </button>
+      <IconButton icon={'hand-o-left'} type={'warning'} onClick={copyFormState}>Copy from</IconButton>
     </Cell>
   </Grid>;
 };

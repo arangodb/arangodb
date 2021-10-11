@@ -5,20 +5,10 @@ import { Cell, Grid } from "../../../components/pure-css/grid";
 import { getForm } from "../helpers";
 import { omit } from "lodash";
 import TypeInput from "./inputs/TypeInput";
-import styled from 'styled-components';
 import { getPath } from "../../../utils/helpers";
 import { ArangoTable, ArangoTD } from "../../../components/arango/table";
+import { IconButton } from "../../../components/pure-css/buttons";
 
-const StyledButton = styled.button`
-  &&& {
-    margin-top: 10px;
-  }
-`;
-const StyledIcon = styled.i`
-  &&& {
-    margin-left: auto;
-  }
-`;
 const restrictedTypeNameMap = omit(typeNameMap, 'geojson', 'geopoint', 'pipeline', 'identity');
 
 const PipelineForm = ({ formState, dispatch, disabled }: FormProps<PipelineStates>) => {
@@ -124,6 +114,7 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps<PipelineState
         <tbody>
         {
           items.map((item, idx) => {
+            const isFirst = idx === 0;
             const isLast = idx === items.length - 1;
             const itemDispatch = getWrappedDispatch(idx);
 
@@ -141,17 +132,12 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps<PipelineState
                     disabled
                       ? null
                       : <Cell size={'1-4'}>
-                        <StyledButton className={'button-danger'} onClick={getRemover(idx)}>
-                          <StyledIcon className={'fa fa-trash-o'}/>
-                        </StyledButton>&nbsp;
-                        <StyledButton className={'button-warning'} onClick={getShifter('up', idx)}
-                                      disabled={idx === 0}>
-                          <StyledIcon className={'fa fa-arrow-up'}/>
-                        </StyledButton>&nbsp;
-                        <StyledButton className={'button-warning'} onClick={getShifter('down', idx)}
-                                      disabled={isLast}>
-                          <StyledIcon className={'fa fa-arrow-down'}/>
-                        </StyledButton>
+                        <IconButton icon={'trash-o'} type={'error'} style={{ marginTop: 10 }}
+                                    onClick={getRemover(idx)}/>&nbsp;
+                        <IconButton icon={'arrow-up'} type={'warning'} style={{ marginTop: 10 }}
+                                    onClick={getShifter('up', idx)} disabled={isFirst}/>&nbsp;
+                        <IconButton icon={'arrow-down'} type={'warning'} style={{ marginTop: 10 }}
+                                    onClick={getShifter('down', idx)} disabled={isLast}/>
                       </Cell>
                   }
                   <Cell size={'1'}>

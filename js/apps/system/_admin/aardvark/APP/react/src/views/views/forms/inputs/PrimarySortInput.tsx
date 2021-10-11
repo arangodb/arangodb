@@ -5,14 +5,8 @@ import { ArangoTable, ArangoTD, ArangoTH } from "../../../../components/arango/t
 import Textbox from "../../../../components/pure-css/form/Textbox";
 import { getPath } from "../../../../utils/helpers";
 import Select from "../../../../components/pure-css/form/Select";
-import styled from "styled-components";
 import { PrimarySort } from "../../constants";
-
-const StyledIcon = styled.i`
-  &&& {
-    margin-left: auto;
-  }
-`;
+import { IconButton } from "../../../../components/pure-css/buttons";
 
 const columnWidths: { [key: string]: number[] } = {
   'false': [5, 60, 10, 25],
@@ -130,6 +124,7 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
       {
         items.length
           ? items.map((item, idx) => {
+            const isFirst = idx === 0;
             const isLast = idx === items.length - 1;
             const itemDispatch = getWrappedDispatch(idx);
 
@@ -173,19 +168,11 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
                 disabled
                   ? null
                   : <ArangoTD seq={3}>
-                    <button className={'button-danger'} onClick={getRemover(idx)}>
-                      <StyledIcon className={'fa fa-trash-o'}/>
-                    </button>
-                    &nbsp;
-                    <button className={'button-warning'} onClick={getShifter('up', idx)}
-                            disabled={idx === 0}>
-                      <StyledIcon className={'fa fa-arrow-up'}/>
-                    </button>
-                    &nbsp;
-                    <button className={'button-warning'} onClick={getShifter('down', idx)}
-                            disabled={isLast}>
-                      <StyledIcon className={'fa fa-arrow-down'}/>
-                    </button>
+                    <IconButton icon={'trash-o'} type={'error'} onClick={getRemover(idx)}/>&nbsp;
+                    <IconButton icon={'arrow-up'} type={'warning'} onClick={getShifter('up', idx)}
+                                disabled={isFirst}/>&nbsp;
+                    <IconButton icon={'arrow-down'} type={'warning'} onClick={getShifter('down', idx)}
+                                disabled={isLast}/>
                   </ArangoTD>
               }
             </tr>;
