@@ -489,11 +489,12 @@ set(LIB_ARANGO_HEALTH_SOURCES
 set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/HotBackup.cpp
+  StorageEngine/ITransactionable.cpp
+  StorageEngine/ITransactionable.h
   StorageEngine/PhysicalCollection.cpp
+  StorageEngine/StorageEngine.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
-  StorageEngine/ITransactionable.h
-  StorageEngine/StorageEngine.cpp
 )
 
 set(LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES

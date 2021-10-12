@@ -51,12 +51,9 @@ ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase, Transac
 
 /// @brief start a transaction
 Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
-  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
-             !AccessMode::isWriteOrExclusive(_type));
-  TRI_ASSERT(_status == transaction::Status::CREATED);
-
-  // set hints
-  _hints = hints;
+  TRI_ASSERT(!hints.has(transaction::Hints::Hint::NO_USAGE_LOCK) ||
+             !isWriteOrExclusiveTransaction());
+  TRI_ASSERT(status() == transaction::Status::CREATED);
 
   auto cleanup = scopeGuard([&]() noexcept {
     updateStatus(transaction::Status::ABORTED);

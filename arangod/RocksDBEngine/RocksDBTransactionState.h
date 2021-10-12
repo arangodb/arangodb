@@ -60,7 +60,7 @@ class LogicalCollection;
 class RocksDBTransactionMethods;
 
 /// @brief transaction type
-class RocksDBTransactionState : public ITransactionable {
+class RocksDBTransactionState : public Transactionable {
   friend class RocksDBTrxBaseMethods;
 
  public:

@@ -23,6 +23,8 @@
 #pragma once
 
 #include "Transaction/Hints.h"
+#include "Transaction/Status.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -55,8 +57,44 @@ class ITransactionable {
 
   [[nodiscard]] virtual TRI_voc_tick_t lastOperationTick() const noexcept = 0;
 
+  [[nodiscard]] virtual transaction::Status status() const noexcept = 0;
+  [[nodiscard]] virtual bool isReadOnlyTransaction() const noexcept = 0;
+  [[nodiscard]] virtual bool isWriteOrExclusiveTransaction() const noexcept = 0;
+  virtual void setType(AccessMode::Type type) noexcept = 0;
+  virtual void upgradeTypeIfNecessary(AccessMode::Type type) noexcept = 0;
+
   virtual void beginQuery(bool isModificationQuery) = 0;
   virtual void endQuery(bool isModificationQuery) noexcept = 0;
+};
+
+class Transactionable : public ITransactionable {
+ public:
+  virtual ~Transactionable();
+
+  [[nodiscard]] transaction::Status status() const noexcept final {
+    return _status;
+  }
+
+  [[nodiscard]] bool isReadOnlyTransaction() const noexcept final {
+    return _type == AccessMode::Type::READ;
+  }
+  [[nodiscard]] bool isWriteOrExclusiveTransaction() const noexcept final {
+    return _type > AccessMode::Type::READ;
+  }
+  void setType(AccessMode::Type type) noexcept final {
+    _type = type;
+  }
+  virtual void upgradeTypeIfNecessary(AccessMode::Type type) noexcept final {
+    setType(std::max(_type, type));
+  }
+
+ protected:
+  void updateStatus(transaction::Status status) noexcept;
+
+ private:
+  transaction::Status _status = transaction::Status::CREATED;
+  /// @brief access type (read|write)
+  AccessMode::Type _type = AccessMode::Type::READ;
 };
 
 }  // namespace arangodb

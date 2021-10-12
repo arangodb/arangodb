@@ -36,7 +36,7 @@ struct Options;
 }
 
 /// @brief transaction type
-class ClusterTransactionState final : public ITransactionable {
+class ClusterTransactionState final : public Transactionable {
  public:
   ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options);

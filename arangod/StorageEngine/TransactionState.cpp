@@ -28,6 +28,7 @@
 #include "Basics/DebugRaceController.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/overload.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -55,8 +56,6 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options,
                                    std::unique_ptr<ITransactionable> transactionable)
     : _vocbase(vocbase),
-      _type(AccessMode::Type::READ),
-      _status(transaction::Status::CREATED),
       _arena(),
       _collections{_arena},  // assign arena to vector
       _hints(),
@@ -113,8 +112,6 @@ auto TransactionState::createClusterTransactionState(TRI_vocbase_t& vocbase, Tra
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
-  TRI_ASSERT(_status != transaction::Status::RUNNING);
-
   // process collections in reverse order, free all collections
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
     (*it)->releaseUsage();
@@ -125,25 +122,28 @@ TransactionState::~TransactionState() {
 /// @brief return the collection from a transaction
 TransactionCollection* TransactionState::collection(DataSourceId cid,
                                                     AccessMode::Type accessType) const {
-  TRI_ASSERT(_status == transaction::Status::CREATED ||
-             _status == transaction::Status::RUNNING);
+  TRI_ASSERT(status() == transaction::Status::CREATED ||
+             status() == transaction::Status::RUNNING);
 
-  size_t unused;
-  TransactionCollection* trxCollection = findCollection(cid, unused);
+  auto collectionOrPos = findCollectionOrPos(cid);
 
-  if (trxCollection == nullptr || !trxCollection->canAccess(accessType)) {
-    // not found or not accessible in the requested mode
-    return nullptr;
-  }
-
-  return trxCollection;
+  return std::visit(overload{
+                        [](CollectionNotFound const&) -> TransactionCollection* {
+                          return nullptr;
+                        },
+                        [&](CollectionFound const& colFound) -> TransactionCollection* {
+                          auto* const col = colFound.collection;
+                          return col->canAccess(accessType) ? col : nullptr;
+                        },
+                    },
+                    collectionOrPos);
 }
 
 /// @brief return the collection from a transaction
 TransactionCollection* TransactionState::collection(std::string const& name,
                                                     AccessMode::Type accessType) const {
-  TRI_ASSERT(_status == transaction::Status::CREATED ||
-             _status == transaction::Status::RUNNING);
+  TRI_ASSERT(status() == transaction::Status::CREATED ||
+             status() == transaction::Status::RUNNING);
 
   auto it = std::find_if(_collections.begin(), _collections.end(),
                          [&name](TransactionCollection const* trxColl) {
@@ -210,22 +210,22 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
   if (res.ok()) {
     // upgrade transaction type if required
     if (AccessMode::isWriteOrExclusive(accessType) &&
-        !AccessMode::isWriteOrExclusive(_type)) {
-        // if one collection is written to, the whole transaction becomes a
-        // write-y transaction
-      if (_status == transaction::Status::CREATED) {
+        !_transactionable->isWriteOrExclusiveTransaction()) {
+      // if one collection is written to, the whole transaction becomes a
+      // write-y transaction
+      if (status() == transaction::Status::CREATED) {
         // this is safe to do before the transaction has started
-        _type = std::max(_type, accessType);
-      } else if (_status == transaction::Status::RUNNING &&
-                 _options.allowImplicitCollectionsForWrite &&
-                 !isReadOnlyTransaction()) {
+        _transactionable->upgradeTypeIfNecessary(accessType);
+      } else if (status() == transaction::Status::RUNNING &&
+                 _options.allowImplicitCollectionsForWrite && !isReadOnlyTransaction()) {
         // it is also safe to add another write collection to a write
-        _type = std::max(_type, accessType);
+        _transactionable->upgradeTypeIfNecessary(accessType);
       } else {
         // everything else is not safe and must be rejected
         res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
                   std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-                  ": " + cname + " [" + AccessMode::typeString(accessType) + "]");
+                      ": " + cname + " [" + AccessMode::typeString(accessType) +
+                      "]");
       }
     }
   }
@@ -238,10 +238,9 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
   Result res;
 
   // check if we already got this collection in the _collections vector
-  size_t position = 0;
-  TransactionCollection* trxColl = findCollection(cid, position);
-
-  if (trxColl != nullptr) {
+  auto colOrPos = findCollectionOrPos(cid);
+  if (std::holds_alternative<CollectionFound>(colOrPos)) {
+    auto* const trxColl = std::get<CollectionFound>(colOrPos).collection;
     LOG_TRX("ad6d0", TRACE, this)
         << "updating collection usage " << cid << ": '" << cname << "'";
 
@@ -256,11 +255,14 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
     // collection is already contained in vector
     return res.reset(trxColl->updateUsage(accessType));
   }
+  TRI_ASSERT(std::holds_alternative<CollectionNotFound>(colOrPos));
+  auto const position = std::get<CollectionNotFound>(colOrPos).lowerBound;
+
 
   // collection not found.
 
   LOG_TRX("ad6e1", TRACE, this) << "adding new collection " << cid << ": '" << cname << "'";
-  if (_status != transaction::Status::CREATED && AccessMode::isWriteOrExclusive(accessType) &&
+  if (status() != transaction::Status::CREATED && AccessMode::isWriteOrExclusive(accessType) &&
       !_options.allowImplicitCollectionsForWrite) {
     // trying to write access a collection that was not declared at start.
     // this is only supported internally for replication transactions.
@@ -286,11 +288,10 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
   }
 
   // collection was not contained. now create and insert it
-  TRI_ASSERT(trxColl == nullptr);
 
   StorageEngine& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
-  trxColl = engine.createTransactionCollection(*this, cid, accessType).release();
+  auto* const trxColl = engine.createTransactionCollection(*this, cid, accessType).release();
 
   TRI_ASSERT(trxColl != nullptr);
 
@@ -346,21 +347,22 @@ TransactionCollection* TransactionState::findCollection(DataSourceId cid) const 
 ///        The idea is if a collection is found it will be returned.
 ///        In this case the position is not used.
 ///        In case the collection is not found. It will return a
-///        nullptr and the position will be set. The position
+///        lower bound of its position. The position
 ///        defines where the collection should be inserted,
 ///        so whenever we want to insert the collection we
 ///        have to use this position for insert.
-TransactionCollection* TransactionState::findCollection(DataSourceId cid,
-                                                        size_t& position) const {
+auto TransactionState::findCollectionOrPos(DataSourceId cid) const
+    -> std::variant<CollectionNotFound, CollectionFound> {
   size_t const n = _collections.size();
   size_t i;
 
+  // TODO We could do a binary search here.
   for (i = 0; i < n; ++i) {
-    auto trxCollection = _collections[i];
+    auto* trxCollection = _collections[i];
 
     if (cid == trxCollection->id()) {
       // found
-      return trxCollection;
+      return CollectionFound{trxCollection};
     }
 
     if (cid < trxCollection->id()) {
@@ -370,18 +372,16 @@ TransactionCollection* TransactionState::findCollection(DataSourceId cid,
     // next
   }
 
-  // update the insert position if required
-  position = i;
-
-  return nullptr;
+  // return the insert position if required
+  return CollectionNotFound{i};
 }
 
 void TransactionState::setExclusiveAccessType() {
-  if (_status != transaction::Status::CREATED) {
+  if (status() != transaction::Status::CREATED) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "cannot change the type of a running transaction");
   }
-  _type = AccessMode::Type::EXCLUSIVE;
+  _transactionable->setType(AccessMode::Type::EXCLUSIVE);
 }
 
 void TransactionState::acceptAnalyzersRevision(QueryAnalyzerRevisions const& analyzersRevision) noexcept {
@@ -476,31 +476,6 @@ void TransactionState::resetTransactionId() {
   _id = arangodb::TransactionId::none();
 }
 #endif
-
-/// @brief update the status of a transaction
-void TransactionState::updateStatus(transaction::Status status) noexcept {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_status != transaction::Status::CREATED && _status != transaction::Status::RUNNING) {
-    LOG_TOPIC("257ea", ERR, Logger::FIXME)
-        << "trying to update transaction status with "
-           "an invalid state. current: "
-        << _status << ", future: " << status;
-  }
-#endif
-
-  TRI_ASSERT(_status == transaction::Status::CREATED ||
-             _status == transaction::Status::RUNNING);
-
-  if (_status == transaction::Status::CREATED) {
-    TRI_ASSERT(status == transaction::Status::RUNNING ||
-               status == transaction::Status::ABORTED);
-  } else if (_status == transaction::Status::RUNNING) {
-    TRI_ASSERT(status == transaction::Status::COMMITTED ||
-               status == transaction::Status::ABORTED);
-  }
-
-  _status = status;
-}
 
 /// @brief returns the name of the actor the transaction runs on:
 /// - leader

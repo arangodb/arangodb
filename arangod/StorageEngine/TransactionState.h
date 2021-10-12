@@ -40,6 +40,7 @@
 #include "VocBase/voc-types.h"
 
 #include <map>
+#include <variant>
 
 struct TRI_vocbase_t;
 
@@ -106,15 +107,15 @@ class TransactionState {
   }
   [[nodiscard]] ServerState::RoleEnum serverRole() const { return _serverRole; }
 
-  [[nodiscard]] inline transaction::Options& options() { return _options; }
-  [[nodiscard]] inline transaction::Options const& options() const {
+  [[nodiscard]] transaction::Options& options() { return _options; }
+  [[nodiscard]] transaction::Options const& options() const {
     return _options;
   }
-  [[nodiscard]] inline TRI_vocbase_t& vocbase() const { return _vocbase; }
-  [[nodiscard]] inline TransactionId id() const { return _id; }
-  [[nodiscard]] inline transaction::Status status() const { return _status; }
-  [[nodiscard]] inline bool isRunning() const {
-    return _status == transaction::Status::RUNNING;
+  [[nodiscard]] TRI_vocbase_t& vocbase() const { return _vocbase; }
+  [[nodiscard]] TransactionId id() const { return _id; }
+  [[nodiscard]] transaction::Status status() const noexcept { return _transactionable->status(); }
+  [[nodiscard]] bool isRunning() const {
+    return status() == transaction::Status::RUNNING;
   }
   void setRegistered() noexcept { _registeredTransaction = true; }
   [[nodiscard]] bool wasRegistered() const noexcept {
@@ -182,9 +183,6 @@ class TransactionState {
     return hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  /// @brief update the status of a transaction
-  void updateStatus(transaction::Status status) noexcept;
-
   /// @brief whether or not a specific hint is set for the transaction
   [[nodiscard]] bool hasHint(transaction::Hints::Hint hint) const {
     return _hints.has(hint);
@@ -194,6 +192,7 @@ class TransactionState {
   [[nodiscard]] arangodb::Result beginTransaction(transaction::Hints hints) {
     LOG_TRX("e6a2b", TRACE, this)
         << "beginning " << AccessMode::typeString(_type) << " transaction";
+    _hints = hints;
     return _transactionable->beginTransaction(hints);
   }
 
@@ -232,8 +231,8 @@ class TransactionState {
   void setExclusiveAccessType();
 
   /// @brief whether or not a transaction is read-only
-  [[nodiscard]] bool isReadOnlyTransaction() const {
-    return (_type == AccessMode::Type::READ);
+  [[nodiscard]] bool isReadOnlyTransaction() const noexcept {
+    return _transactionable->isReadOnlyTransaction();
   }
 
   /// @brief whether or not a transaction is a follower transaction
@@ -294,9 +293,6 @@ class TransactionState {
   [[nodiscard]] auto findCollectionOrPos(DataSourceId cid) const
       -> std::variant<CollectionNotFound, CollectionFound>;
 
-  void insertCollectionAt(CollectionNotFound position,
-                          std::unique_ptr<TransactionCollection> trxColl);
-
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache();
@@ -321,8 +317,6 @@ class TransactionState {
 
   /// @brief access type (read|write)
   AccessMode::Type _type;
-  /// @brief current status
-  transaction::Status _status;
 
   using ListType = arangodb::containers::SmallVector<TransactionCollection*>;
   ListType::allocator_type::arena_type _arena;  // memory for collections
