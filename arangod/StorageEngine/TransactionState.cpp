@@ -28,10 +28,12 @@
 #include "Basics/DebugRaceController.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "ClusterEngine/ClusterTransactionState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/MetricsFeature.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -43,13 +45,15 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+#include <Cluster/ClusterFeature.h>
 #include <any>
 
 using namespace arangodb;
 
 /// @brief transaction type
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                                   transaction::Options const& options)
+                                   transaction::Options const& options,
+                                   std::unique_ptr<ITransactionable> transactionable)
     : _vocbase(vocbase),
       _type(AccessMode::Type::READ),
       _status(transaction::Status::CREATED),
@@ -59,12 +63,52 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
       _id(tid),
-      _registeredTransaction(false) {
-
+      _registeredTransaction(false),
+      _transactionable(std::move(transactionable)) {
   // patch intermediateCommitCount for testing
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   transaction::Options::adjustIntermediateCommitCount(_options);
 #endif
+}
+
+auto TransactionState::createRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+                                                     transaction::Options const& options)
+    -> std::shared_ptr<TransactionState> {
+  auto transactionable = std::make_unique<RocksDBTransactionState>(vocbase, tid, options);
+  struct MakeSharedTransactionState : TransactionState {
+    MakeSharedTransactionState(TRI_vocbase_t& vocbase, TransactionId const& tid,
+                               transaction::Options const& options,
+                               std::unique_ptr<ITransactionable> transactionable)
+        : TransactionState(vocbase, tid, options, std::move(transactionable)) {}
+  };
+
+  return std::make_shared<MakeSharedTransactionState>(vocbase, tid, options,
+                                                      std::move(transactionable));
+}
+
+auto TransactionState::createClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+                                                     transaction::Options const& options)
+    -> std::shared_ptr<TransactionState> {
+  auto transactionable = std::make_unique<ClusterTransactionState>(vocbase, tid, options);
+  struct MakeSharedTransactionState : TransactionState {
+    MakeSharedTransactionState(TRI_vocbase_t& vocbase, TransactionId const& tid,
+                               transaction::Options const& options,
+                               std::unique_ptr<ITransactionable> transactionable)
+        : TransactionState(vocbase, tid, options, std::move(transactionable)) {}
+  };
+
+  auto transactionState =
+      std::make_shared<MakeSharedTransactionState>(vocbase, tid, options,
+                                                   std::move(transactionable));
+
+  // we have to read revisions here as validateAndOptimize is executed before
+  // transaction is started and during validateAndOptimize some simple
+  // function calls could be executed and calls requires valid analyzers revisions.
+  transactionState->acceptAnalyzersRevision(
+      vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo().getQueryAnalyzersRevision(
+          vocbase.name()));
+
+  return transactionState;
 }
 
 /// @brief free a transaction container

@@ -29,7 +29,9 @@
 #include "Cluster/ServerState.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
+#include "StorageEngine/ITransactionable.h"
 #include "Transaction/Hints.h"
+#include "Transaction/LogMacros.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
@@ -38,19 +40,6 @@
 #include "VocBase/voc-types.h"
 
 #include <map>
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-#define LOG_TRX(logid, llevel, trx)                        \
-  LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS) \
-      << "#" << trx->id().id() << " ("                     \
-      << transaction::statusString(trx->status()) << "): "
-
-#else
-
-#define LOG_TRX(logid, llevel, ...) \
-  while (0) LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS)
-#endif
 
 struct TRI_vocbase_t;
 
@@ -83,10 +72,22 @@ class TransactionState {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                   transaction::Options const& options);
   virtual ~TransactionState();
 
+  // named constructors:
+  static auto createRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+                                            transaction::Options const& options)
+      -> std::shared_ptr<TransactionState>;
+  static auto createClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+                                            transaction::Options const& options)
+      -> std::shared_ptr<TransactionState>;
+
+ protected:
+  TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+                   transaction::Options const& options,
+                   std::unique_ptr<ITransactionable> transactionable);
+
+ public:
   /// @return a cookie associated with the specified key, nullptr if none
   [[nodiscard]] Cookie* cookie(void const* key) const noexcept;
 
@@ -190,24 +191,40 @@ class TransactionState {
   }
 
   /// @brief begin a transaction
-  [[nodiscard]] virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
+  [[nodiscard]] arangodb::Result beginTransaction(transaction::Hints hints) {
+    LOG_TRX("e6a2b", TRACE, this)
+        << "beginning " << AccessMode::typeString(_type) << " transaction";
+    return _transactionable->beginTransaction(hints);
+  }
 
   /// @brief commit a transaction
-  [[nodiscard]] virtual arangodb::Result commitTransaction(transaction::Methods* trx) = 0;
+  [[nodiscard]] arangodb::Result commitTransaction(transaction::Methods* trx) {
+    return _transactionable->commitTransaction(trx);
+  }
 
   /// @brief abort a transaction
-  [[nodiscard]] virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
+  [[nodiscard]] arangodb::Result abortTransaction(transaction::Methods* trx) {
+    return _transactionable->abortTransaction(trx);
+  }
 
   /// @brief return number of commits.
   /// for cluster transactions on coordinator, this either returns 0 or 1.
   /// for leader, follower or single-server transactions, this can include any
   /// number, because it will also include intermediate commits.
-  [[nodiscard]] virtual uint64_t numCommits() const = 0;
+  [[nodiscard]] uint64_t numCommits() const {
+    return _transactionable->numCommits();
+  }
 
-  [[nodiscard]] virtual bool hasFailedOperations() const = 0;
+  [[nodiscard]] bool hasFailedOperations() const {
+    return _transactionable->hasFailedOperations();
+  }
 
-  virtual void beginQuery(bool /*isModificationQuery*/) {}
-  virtual void endQuery(bool /*isModificationQuery*/) noexcept {}
+  void beginQuery(bool isModificationQuery) {
+    return _transactionable->beginQuery(isModificationQuery);
+  }
+  void endQuery(bool isModificationQuery) noexcept {
+    return _transactionable->endQuery(isModificationQuery);
+  }
 
   [[nodiscard]] TransactionCollection* findCollection(DataSourceId cid) const;
 
@@ -223,9 +240,6 @@ class TransactionState {
   [[nodiscard]] bool isFollowerTransaction() const {
     return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
-
-  /// @brief whether or not a transaction only has exculsive or read accesses
-  [[nodiscard]] bool isOnlyExclusiveTransaction() const;
 
   /// @brief servers already contacted
   [[nodiscard]] ::arangodb::containers::HashSet<std::string> const& knownServers() const {
@@ -247,7 +261,9 @@ class TransactionState {
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
   ///       transaction is committed
-  [[nodiscard]] virtual TRI_voc_tick_t lastOperationTick() const noexcept = 0;
+  [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept {
+      return _transactionable->lastOperationTick();
+  };
 
   void acceptAnalyzersRevision(QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
@@ -269,7 +285,17 @@ class TransactionState {
 
  protected:
   /// @brief find a collection in the transaction's list of collections
-  TransactionCollection* findCollection(DataSourceId cid, size_t& position) const;
+  struct CollectionNotFound {
+    std::size_t lowerBound;
+  };
+  struct CollectionFound {
+    TransactionCollection* collection;
+  };
+  [[nodiscard]] auto findCollectionOrPos(DataSourceId cid) const
+      -> std::variant<CollectionNotFound, CollectionFound>;
+
+  void insertCollectionAt(CollectionNotFound position,
+                          std::unique_ptr<TransactionCollection> trxColl);
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
@@ -319,6 +345,8 @@ class TransactionState {
 
   QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction;
+
+  std::unique_ptr<arangodb::ITransactionable> _transactionable;
 };
 
 }  // namespace arangodb

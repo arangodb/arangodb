@@ -22,10 +22,20 @@
 
 #pragma once
 
+#include "Transaction/Hints.h"
+#include "VocBase/voc-types.h"
+
 namespace arangodb {
+class Result;
+
+namespace transaction {
+class Methods;
+}
 
 class ITransactionable {
  public:
+  virtual ~ITransactionable() = default;
+
   /// @brief begin a transaction
   [[nodiscard]] virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
 
@@ -42,6 +52,11 @@ class ITransactionable {
   [[nodiscard]] virtual uint64_t numCommits() const = 0;
 
   [[nodiscard]] virtual bool hasFailedOperations() const = 0;
+
+  [[nodiscard]] virtual TRI_voc_tick_t lastOperationTick() const noexcept = 0;
+
+  virtual void beginQuery(bool isModificationQuery) = 0;
+  virtual void endQuery(bool isModificationQuery) noexcept = 0;
 };
 
 }  // namespace arangodb

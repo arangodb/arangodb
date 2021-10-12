@@ -35,6 +35,7 @@
 #include "RestServer/MetricsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
+#include "Transaction/LogMacros.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
@@ -44,22 +45,12 @@ using namespace arangodb;
 
 /// @brief transaction type
 ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                                                 transaction::Options const& options)
-    : TransactionState(vocbase, tid, options) {
-  TRI_ASSERT(isCoordinator());
-  // we have to read revisions here as validateAndOptimize is executed before
-  // transaction is started and during validateAndOptimize some simple
-  // function calls could be executed and calls requires valid analyzers revisions.
-  acceptAnalyzersRevision(
-      _vocbase.server().getFeature<arangodb::ClusterFeature>()
-        .clusterInfo().getQueryAnalyzersRevision(vocbase.name()));
+                                                 transaction::Options const& options) : _tid(tid) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 
 /// @brief start a transaction
 Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX("03dec", TRACE, this)
-      << "beginning " << AccessMode::typeString(_type) << " transaction";
-
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
              !AccessMode::isWriteOrExclusive(_type));
   TRI_ASSERT(_status == transaction::Status::CREATED);
@@ -152,3 +143,7 @@ uint64_t ClusterTransactionState::numCommits() const {
 TRI_voc_tick_t ClusterTransactionState::lastOperationTick() const noexcept {
   return 0;
 }
+
+void ClusterTransactionState::beginQuery(bool) {}
+
+void ClusterTransactionState::endQuery(bool) noexcept {}

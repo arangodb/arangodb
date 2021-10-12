@@ -32,7 +32,7 @@
 #include "Containers/SmallVector.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
-#include "StorageEngine/TransactionState.h"
+#include "StorageEngine/ITransactionable.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
@@ -60,7 +60,7 @@ class LogicalCollection;
 class RocksDBTransactionMethods;
 
 /// @brief transaction type
-class RocksDBTransactionState : public TransactionState {
+class RocksDBTransactionState : public ITransactionable {
   friend class RocksDBTrxBaseMethods;
 
  public:
@@ -89,9 +89,7 @@ class RocksDBTransactionState : public TransactionState {
 
   [[nodiscard]] uint64_t numOperations() const noexcept;
 
-  [[nodiscard]] bool hasFailedOperations() const override {
-    return (_status == transaction::Status::ABORTED) && hasOperations();
-  }
+  [[nodiscard]] bool hasFailedOperations() const override;
 
   void beginQuery(bool isModificationQuery) override;
   void endQuery(bool isModificationQuery) noexcept override;
@@ -112,34 +110,21 @@ class RocksDBTransactionState : public TransactionState {
                       bool& hasPerformedIntermediateCommit);
 
   /// @brief return wrapper around rocksdb transaction
-  [[nodiscard]] RocksDBTransactionMethods* rocksdbMethods() {
-    TRI_ASSERT(_rocksMethods);
-    return _rocksMethods.get();
-  }
+  [[nodiscard]] RocksDBTransactionMethods* rocksdbMethods();
   
   /// @brief acquire a database snapshot if we do not yet have one.
   /// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
   [[nodiscard]] bool ensureSnapshot();
   
-  [[nodiscard]] static RocksDBTransactionState* toState(transaction::Methods* trx) {
-    TRI_ASSERT(trx != nullptr);
-    TransactionState* state = trx->state();
-    TRI_ASSERT(state != nullptr);
-    return static_cast<RocksDBTransactionState*>(state);
-  }
+  [[nodiscard]] static RocksDBTransactionState* toState(transaction::Methods* trx);
 
-  [[nodiscard]] static RocksDBTransactionMethods* toMethods(transaction::Methods* trx) {
-    TRI_ASSERT(trx != nullptr);
-    TransactionState* state = trx->state();
-    TRI_ASSERT(state != nullptr);
-    return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
-  }
+  [[nodiscard]] static RocksDBTransactionMethods* toMethods(transaction::Methods* trx);
 
   /// @brief make some internal preparations for accessing this state in
   /// parallel from multiple threads. READ-ONLY transactions
-  void prepareForParallelReads() { _parallel = true; }
+  void prepareForParallelReads();
   /// @brief in parallel mode. READ-ONLY transactions
-  [[nodiscard]] bool inParallelMode() const { return _parallel; }
+  [[nodiscard]] bool inParallelMode() const;
 
   [[nodiscard]] RocksDBTransactionCollection::TrackedOperations& trackedOperations(DataSourceId cid);
 

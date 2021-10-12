@@ -75,8 +75,7 @@ using namespace arangodb;
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                                  transaction::Options const& options)
-    : TransactionState(vocbase, tid, options),
-      _cacheTx(nullptr),
+    : _cacheTx(nullptr),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _users(0),
 #endif
@@ -100,9 +99,6 @@ void RocksDBTransactionState::unuse() noexcept {
 
 /// @brief start a transaction
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX("0c057", TRACE, this)
-      << "beginning " << AccessMode::typeString(_type) << " transaction";
-
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
              !AccessMode::isWriteOrExclusive(_type));
 
@@ -441,6 +437,28 @@ bool RocksDBTransactionState::isOnlyExclusiveTransaction() const {
 
 rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
   return _rocksMethods->GetSequenceNumber();
+}
+
+bool RocksDBTransactionState::hasFailedOperations() const {
+  return (_status == transaction::Status::ABORTED) && hasOperations();
+}
+RocksDBTransactionState* RocksDBTransactionState::toState(transaction::Methods* trx) {
+  TRI_ASSERT(trx != nullptr);
+  TransactionState* state = trx->state();
+  TRI_ASSERT(state != nullptr);
+  return static_cast<RocksDBTransactionState*>(state);
+}
+RocksDBTransactionMethods* RocksDBTransactionState::toMethods(transaction::Methods* trx) {
+  TRI_ASSERT(trx != nullptr);
+  TransactionState* state = trx->state();
+  TRI_ASSERT(state != nullptr);
+  return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
+}
+void RocksDBTransactionState::prepareForParallelReads() { _parallel = true; }
+bool RocksDBTransactionState::inParallelMode() const { return _parallel; }
+RocksDBTransactionMethods* RocksDBTransactionState::rocksdbMethods() {
+  TRI_ASSERT(_rocksMethods);
+  return _rocksMethods.get();
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

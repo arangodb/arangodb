@@ -23,12 +23,20 @@
 
 #pragma once
 
-#include "StorageEngine/TransactionState.h"
+#include "StorageEngine/ITransactionable.h"
+#include "VocBase/Identifiers/TransactionId.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
+class Result;
+
+namespace transaction {
+struct Options;
+}
 
 /// @brief transaction type
-class ClusterTransactionState final : public TransactionState {
+class ClusterTransactionState final : public ITransactionable {
  public:
   ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options);
@@ -49,6 +57,15 @@ class ClusterTransactionState final : public TransactionState {
   [[nodiscard]] bool hasFailedOperations() const override { return false; }
 
   [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept override;
+
+  void beginQuery(bool) override;
+
+  void endQuery(bool) noexcept override;
+
+ private:
+  // TODO
+  [[nodiscard]] auto id() const noexcept { return _tid; }
+  TransactionId const _tid;
 };
 
 }  // namespace arangodb

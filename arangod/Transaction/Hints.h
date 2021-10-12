@@ -23,14 +23,14 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+// #include "Basics/Common.h"
+#include <cstdint>
 
-namespace arangodb {
-namespace transaction {
+namespace arangodb::transaction {
 
 class Hints {
  public:
-  typedef uint32_t ValueType;
+  typedef std::uint32_t ValueType;
 
   /// @brief individual hint flags that can be used for transactions
   enum class Hint : ValueType {
@@ -76,6 +76,5 @@ class Hints {
   ValueType _value;
 };
 
-}  // namespace transaction
 }  // namespace arangodb
 
