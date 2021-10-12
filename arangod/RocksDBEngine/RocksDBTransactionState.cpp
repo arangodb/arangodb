@@ -84,6 +84,7 @@ RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, Transac
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
   cleanupTransaction();
+  setStatus(transaction::Status::ABORTED);
   _status = transaction::Status::ABORTED;
 }
 

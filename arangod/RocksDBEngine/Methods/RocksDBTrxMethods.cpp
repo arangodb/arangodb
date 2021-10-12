@@ -23,21 +23,24 @@
 
 #include "RocksDBTrxMethods.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
-#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Statistics/ServerStatistics.h"
+#include "VocBase/vocbase.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 using namespace arangodb;
 
-RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db)
-    : RocksDBTrxBaseMethods(state, db) {
-  TRI_ASSERT(!_state->isSingleOperation());
+RocksDBTrxMethods::RocksDBTrxMethods(TRI_vocbase_t& vocbase, transaction::Options options,
+                                     TransactionId tid, transaction::Hints hints,
+                                     rocksdb::TransactionDB* db)
+    : RocksDBTrxBaseMethods(vocbase, options, tid, hints, db) {
+  TRI_ASSERT(!_hints.has(transaction::Hints::Hint::SINGLE_OPERATION));
 }
 
 RocksDBTrxMethods::~RocksDBTrxMethods() {
@@ -52,13 +55,13 @@ Result RocksDBTrxMethods::beginTransaction() {
 
   TRI_ASSERT(_iteratorReadSnapshot == nullptr);
   if (result.ok() && hasIntermediateCommitsEnabled()) {
-    TRI_ASSERT(_state->options().intermediateCommitCount != UINT64_MAX ||
-               _state->options().intermediateCommitSize != UINT64_MAX);
+    TRI_ASSERT(_options.intermediateCommitCount != UINT64_MAX ||
+               _options.intermediateCommitSize != UINT64_MAX);
     _iteratorReadSnapshot = _db->GetSnapshot();  // must call ReleaseSnapshot later
     TRI_ASSERT(_iteratorReadSnapshot != nullptr);
   }
 
-  if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+  if (_hints.has(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     TRI_ASSERT(_readWriteBatch == nullptr && !_ownsReadWriteBatch);
     _readWriteBatch = _rocksTransaction->GetWriteBatch();
   }
@@ -169,8 +172,7 @@ void RocksDBTrxMethods::cleanupTransaction() {
 void RocksDBTrxMethods::createTransaction() {
   RocksDBTrxBaseMethods::createTransaction();
   // add transaction begin marker
-  auto header =
-      RocksDBLogValue::BeginTransaction(_state->vocbase().id(), _state->id());
+  auto header = RocksDBLogValue::BeginTransaction(_vocbase.id(), _tid);
 
   _rocksTransaction->PutLogData(header.slice());
   TRI_ASSERT(_numLogdata == 0);
@@ -187,7 +189,7 @@ Result RocksDBTrxMethods::triggerIntermediateCommit(bool& hasPerformedIntermedia
     TRI_TerminateDebugging("SegfaultBeforeIntermediateCommit");
   }
 
-  TRI_ASSERT(!_state->isSingleOperation());
+  TRI_ASSERT(!_hints.has(transaction::Hints::Hint::SINGLE_OPERATION));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("0fe63", DEBUG, Logger::ENGINES) << "INTERMEDIATE COMMIT!";
 #endif
@@ -199,7 +201,8 @@ Result RocksDBTrxMethods::triggerIntermediateCommit(bool& hasPerformedIntermedia
   }
 
   hasPerformedIntermediateCommit = true;
-  ++_state->statistics()._intermediateCommits;
+  auto& statistics = _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics;
+  ++statistics._intermediateCommits;
 
   // reset counters for DML operations, but intentionally don't reset
   // the commit counter, as we need to track if we had intermediate commits
@@ -234,8 +237,8 @@ Result RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize, bool& hasPer
     // perform an intermediate commit
     // this will be done if either the "number of operations" or the
     // "transaction size" counters have reached their limit
-    if (_state->options().intermediateCommitCount <= numOperations ||
-        _state->options().intermediateCommitSize <= newSize) {
+    if (_options.intermediateCommitCount <= numOperations ||
+        _options.intermediateCommitSize <= newSize) {
       return triggerIntermediateCommit(hasPerformedIntermediateCommit);
     }
   }
@@ -243,7 +246,7 @@ Result RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize, bool& hasPer
 }
 
 bool RocksDBTrxMethods::hasIntermediateCommitsEnabled() const noexcept {
-  return _state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  return _hints.has(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 }
 
 /// @brief whether or not a RocksDB iterator in this transaction must check its
@@ -259,7 +262,7 @@ bool RocksDBTrxMethods::iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) con
 }
 
 void RocksDBTrxMethods::beginQuery(bool isModificationQuery) {
-  if (!_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+  if (!_hints.has(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // don't bother with query tracking in non globally managed trx
     return;
   }
@@ -290,7 +293,7 @@ void RocksDBTrxMethods::beginQuery(bool isModificationQuery) {
 }
 
 void RocksDBTrxMethods::endQuery(bool isModificationQuery) noexcept {
-  if (!_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+  if (!_hints.has(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // don't bother with query tracking in non globally managed trx
     return;
   }

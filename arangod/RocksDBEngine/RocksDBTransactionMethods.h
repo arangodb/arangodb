@@ -25,6 +25,8 @@
 
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "Transaction/Hints.h"
+#include "Transaction/Options.h"
 
 namespace rocksdb {
  class Slice;
@@ -45,7 +47,9 @@ struct ReadOptions : public rocksdb::ReadOptions {
 
 class RocksDBTransactionMethods : public RocksDBMethods {
  public:
-  explicit RocksDBTransactionMethods(RocksDBTransactionState* state) : _state(state) {}
+  RocksDBTransactionMethods(TRI_vocbase_t& vocbase, transaction::Options options,
+                            TransactionId tid, transaction::Hints hints)
+      : _vocbase(vocbase), _options(options), _tid(tid), _hints(hints) {}
   virtual ~RocksDBTransactionMethods() = default;
 
   virtual Result beginTransaction() = 0;
@@ -104,7 +108,10 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 #endif
 
  protected:
-  RocksDBTransactionState* _state;
+  TRI_vocbase_t& _vocbase;
+  transaction::Options const _options;
+  TransactionId const _tid;
+  transaction::Hints const _hints;
 };
 
 }  // namespace arangodb

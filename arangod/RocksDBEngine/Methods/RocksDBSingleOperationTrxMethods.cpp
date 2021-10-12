@@ -34,10 +34,11 @@
 
 using namespace arangodb;
 
-RocksDBSingleOperationTrxMethods::RocksDBSingleOperationTrxMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db)
-    : RocksDBTrxBaseMethods(state, db) {
-  TRI_ASSERT(_state->isSingleOperation());
-  TRI_ASSERT(!_state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
+RocksDBSingleOperationTrxMethods::RocksDBSingleOperationTrxMethods(TRI_vocbase_t& vocbase, transaction::Options options, TransactionId tid,
+    transaction::Hints hints, rocksdb::TransactionDB* db)
+    : RocksDBTrxBaseMethods(vocbase, options, tid, hints, db) {
+  TRI_ASSERT(_hints.has(transaction::Hints::Hint::SINGLE_OPERATION));
+  TRI_ASSERT(!_hints.has(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
 }
 
 rocksdb::ReadOptions RocksDBSingleOperationTrxMethods::iteratorReadOptions() const {
@@ -60,7 +61,7 @@ void RocksDBSingleOperationTrxMethods::prepareOperation(DataSourceId cid, Revisi
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE: {
-      auto logValue = RocksDBLogValue::SinglePut(_state->vocbase().id(), cid);
+      auto logValue = RocksDBLogValue::SinglePut(_vocbase.id(), cid);
 
       _rocksTransaction->PutLogData(logValue.slice());
       TRI_ASSERT(_numLogdata == 0);
@@ -70,7 +71,7 @@ void RocksDBSingleOperationTrxMethods::prepareOperation(DataSourceId cid, Revisi
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
       TRI_ASSERT(rid.isSet());
 
-      auto logValue = RocksDBLogValue::SingleRemoveV2(_state->vocbase().id(), cid, rid);
+      auto logValue = RocksDBLogValue::SingleRemoveV2(_vocbase.id(), cid, rid);
 
       _rocksTransaction->PutLogData(logValue.slice());
       TRI_ASSERT(_numLogdata == 0);

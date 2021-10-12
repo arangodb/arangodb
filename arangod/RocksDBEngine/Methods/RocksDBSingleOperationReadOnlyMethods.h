@@ -34,7 +34,9 @@ namespace arangodb {
 // only implements GET
 class RocksDBSingleOperationReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
  public:
-  explicit RocksDBSingleOperationReadOnlyMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db);
+  RocksDBSingleOperationReadOnlyMethods(TRI_vocbase_t& vocbase, transaction::Options options,
+                                        TransactionId tid, transaction::Hints hints,
+                                        rocksdb::TransactionDB* db);
 
   Result beginTransaction() override;
   

@@ -23,6 +23,7 @@
 
 #include "RocksDBTrxBaseMethods.h"
 
+#include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -34,12 +35,14 @@
 
 using namespace arangodb;
 
-RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db)
-    : RocksDBTransactionMethods(state),
-      _db(db) {
-  TRI_ASSERT(!_state->isReadOnlyTransaction());
+RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(TRI_vocbase_t& vocbase,
+                                             transaction::Options options,
+                                             TransactionId tid, transaction::Hints hints,
+                                             rocksdb::TransactionDB* db)
+    : RocksDBTransactionMethods(vocbase, options, tid, hints), _db(db) {
+  // TRI_ASSERT(!_state->isReadOnlyTransaction());
   _readOptions.prefix_same_as_start = true;  // should always be true
-  _readOptions.fill_cache = _state->options().fillBlockCache;
+  _readOptions.fill_cache = _options.fillBlockCache;
 }
 
 RocksDBTrxBaseMethods::~RocksDBTrxBaseMethods() {
@@ -119,11 +122,11 @@ Result RocksDBTrxBaseMethods::addOperation(DataSourceId cid, RevisionId revision
   }
 
   size_t currentSize = _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
-  if (currentSize > _state->options().maxTransactionSize) {
+  if (currentSize > _options.maxTransactionSize) {
     // we hit the transaction size limit
     std::string message =
     "aborting transaction because maximal transaction size limit of " +
-        std::to_string(_state->options().maxTransactionSize) +
+        std::to_string(_options.maxTransactionSize) +
         " bytes is reached";
     return Result(TRI_ERROR_RESOURCE_LIMIT, message);
   }
@@ -312,14 +315,13 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
 
   ++_numCommits;
   uint64_t numOperations = this->numOperations();
-  
-  if (_state->isSingleOperation()) {
+
+  if (_hints.has(transaction::Hints::Hint::SINGLE_OPERATION)) {
     // integrity-check our on-disk WAL format
     TRI_ASSERT(numOperations <= 1 && _numLogdata == numOperations);
   } else {
     // add custom commit marker to increase WAL tailing reliability
-    auto logValue =
-        RocksDBLogValue::CommitTransaction(_state->vocbase().id(), _state->id());
+    auto logValue = RocksDBLogValue::CommitTransaction(_vocbase.id(), _tid);
 
     _rocksTransaction->PutLogData(logValue.slice());
     _numLogdata++;
@@ -341,7 +343,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
 
   TRI_IF_FAILURE("TransactionChaos::randomSync") {
     if (RandomGenerator::interval(uint32_t(1000)) > 950) {
-      auto& selector = _state->vocbase().server().getFeature<EngineSelectorFeature>();
+      auto& selector = _vocbase.server().getFeature<EngineSelectorFeature>();
       auto& engine = selector.engine<RocksDBEngine>();
       auto* sm = engine.settingsManager();
       if (sm) {
@@ -389,8 +391,8 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   cleanupCollTrx.cancel();
 
   // wait for sync if required
-  if (_state->waitForSync()) {
-    auto& selector = _state->vocbase().server().getFeature<EngineSelectorFeature>();
+  if (_options.waitForSync) {
+    auto& selector = _vocbase.server().getFeature<EngineSelectorFeature>();
     auto& engine = selector.engine<RocksDBEngine>();
     if (engine.syncThread()) {
       // we do have a sync thread

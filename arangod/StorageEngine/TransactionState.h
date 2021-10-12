@@ -86,7 +86,7 @@ class TransactionState {
  protected:
   TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                    transaction::Options const& options,
-                   std::unique_ptr<ITransactionable> transactionable);
+                   std::unique_ptr<Transactionable> transactionable);
 
  public:
   /// @return a cookie associated with the specified key, nullptr if none
@@ -107,10 +107,10 @@ class TransactionState {
   }
   [[nodiscard]] ServerState::RoleEnum serverRole() const { return _serverRole; }
 
-  [[nodiscard]] transaction::Options& options() { return _options; }
-  [[nodiscard]] transaction::Options const& options() const {
-    return _options;
-  }
+  // [[nodiscard]] transaction::Options& options() { return _options; }
+  // [[nodiscard]] transaction::Options const& options() const {
+  //   return _options;
+  // }
   [[nodiscard]] TRI_vocbase_t& vocbase() const { return _vocbase; }
   [[nodiscard]] TransactionId id() const { return _id; }
   [[nodiscard]] transaction::Status status() const noexcept { return _transactionable->status(); }
@@ -340,7 +340,7 @@ class TransactionState {
   QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction;
 
-  std::unique_ptr<arangodb::ITransactionable> _transactionable;
+  std::unique_ptr<arangodb::Transactionable> _transactionable;
 };
 
 }  // namespace arangodb

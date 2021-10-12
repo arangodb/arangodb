@@ -71,8 +71,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
   setRegistered();
-  if (AccessMode::isWriteOrExclusive(this->_type) &&
-      hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+  if (isWriteOrExclusiveTransaction() &&
+      hints.has(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     TRI_ASSERT(isCoordinator());
 
     ClusterTrxMethods::SortedServersSet leaders{};

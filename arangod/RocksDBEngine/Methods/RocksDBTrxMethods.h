@@ -34,8 +34,9 @@ namespace arangodb {
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
  public:
-  explicit RocksDBTrxMethods(RocksDBTransactionState*, rocksdb::TransactionDB* db);
-  
+  RocksDBTrxMethods(TRI_vocbase_t& vocbase, transaction::Options options, TransactionId tid,
+                    transaction::Hints hints, rocksdb::TransactionDB* db);
+
   ~RocksDBTrxMethods();
 
   Result beginTransaction() override;

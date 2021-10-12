@@ -54,7 +54,7 @@ using namespace arangodb;
 /// @brief transaction type
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options,
-                                   std::unique_ptr<ITransactionable> transactionable)
+                                   std::unique_ptr<Transactionable> transactionable)
     : _vocbase(vocbase),
       _arena(),
       _collections{_arena},  // assign arena to vector
@@ -77,7 +77,7 @@ auto TransactionState::createRocksDBTransactionState(TRI_vocbase_t& vocbase, Tra
   struct MakeSharedTransactionState : TransactionState {
     MakeSharedTransactionState(TRI_vocbase_t& vocbase, TransactionId const& tid,
                                transaction::Options const& options,
-                               std::unique_ptr<ITransactionable> transactionable)
+                               std::unique_ptr<Transactionable> transactionable)
         : TransactionState(vocbase, tid, options, std::move(transactionable)) {}
   };
 
@@ -92,7 +92,7 @@ auto TransactionState::createClusterTransactionState(TRI_vocbase_t& vocbase, Tra
   struct MakeSharedTransactionState : TransactionState {
     MakeSharedTransactionState(TRI_vocbase_t& vocbase, TransactionId const& tid,
                                transaction::Options const& options,
-                               std::unique_ptr<ITransactionable> transactionable)
+                               std::unique_ptr<Transactionable> transactionable)
         : TransactionState(vocbase, tid, options, std::move(transactionable)) {}
   };
 

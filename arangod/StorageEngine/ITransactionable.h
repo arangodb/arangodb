@@ -34,9 +34,9 @@ namespace transaction {
 class Methods;
 }
 
-class ITransactionable {
+class Transactionable {
  public:
-  virtual ~ITransactionable() = default;
+  virtual ~Transactionable();
 
   /// @brief begin a transaction
   [[nodiscard]] virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
@@ -57,35 +57,26 @@ class ITransactionable {
 
   [[nodiscard]] virtual TRI_voc_tick_t lastOperationTick() const noexcept = 0;
 
-  [[nodiscard]] virtual transaction::Status status() const noexcept = 0;
-  [[nodiscard]] virtual bool isReadOnlyTransaction() const noexcept = 0;
-  [[nodiscard]] virtual bool isWriteOrExclusiveTransaction() const noexcept = 0;
-  virtual void setType(AccessMode::Type type) noexcept = 0;
-  virtual void upgradeTypeIfNecessary(AccessMode::Type type) noexcept = 0;
-
   virtual void beginQuery(bool isModificationQuery) = 0;
   virtual void endQuery(bool isModificationQuery) noexcept = 0;
-};
 
-class Transactionable : public ITransactionable {
- public:
-  virtual ~Transactionable();
-
-  [[nodiscard]] transaction::Status status() const noexcept final {
+  [[nodiscard]] transaction::Status status() const noexcept {
     return _status;
   }
-
-  [[nodiscard]] bool isReadOnlyTransaction() const noexcept final {
+  [[nodiscard]] bool isReadOnlyTransaction() const noexcept {
     return _type == AccessMode::Type::READ;
   }
-  [[nodiscard]] bool isWriteOrExclusiveTransaction() const noexcept final {
+  [[nodiscard]] bool isWriteOrExclusiveTransaction() const noexcept {
     return _type > AccessMode::Type::READ;
   }
-  void setType(AccessMode::Type type) noexcept final {
+  void setType(AccessMode::Type type) noexcept {
     _type = type;
   }
-  virtual void upgradeTypeIfNecessary(AccessMode::Type type) noexcept final {
+  virtual void upgradeTypeIfNecessary(AccessMode::Type type) noexcept {
     setType(std::max(_type, type));
+  }
+  void setStatus(transaction::Status status) noexcept {
+    _status = status;
   }
 
  protected:

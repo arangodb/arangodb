@@ -29,9 +29,10 @@
 
 using namespace arangodb;
 
-RocksDBSingleOperationReadOnlyMethods::RocksDBSingleOperationReadOnlyMethods(RocksDBTransactionState* state,
-                                                                             rocksdb::TransactionDB* db)
-    : RocksDBReadOnlyBaseMethods(state), _db(db) {
+RocksDBSingleOperationReadOnlyMethods::RocksDBSingleOperationReadOnlyMethods(
+    TRI_vocbase_t& vocbase, transaction::Options options, TransactionId tid,
+    transaction::Hints hints, rocksdb::TransactionDB* db)
+    : RocksDBReadOnlyBaseMethods(vocbase, options, tid, hints), _db(db) {
   TRI_ASSERT(_db != nullptr);
 }
 
@@ -63,7 +64,7 @@ rocksdb::Status RocksDBSingleOperationReadOnlyMethods::Get(rocksdb::ColumnFamily
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
   ro.prefix_same_as_start = true;  // should always be true
-  ro.fill_cache = _state->options().fillBlockCache;
+  ro.fill_cache = _options.fillBlockCache;
   return _db->Get(ro, cf, key, val);
 }
 
