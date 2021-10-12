@@ -7,7 +7,7 @@ import { omit } from "lodash";
 import TypeInput from "./inputs/TypeInput";
 import { getPath } from "../../../utils/helpers";
 import { ArangoTable, ArangoTD } from "../../../components/arango/table";
-import { IconButton } from "../../../components/pure-css/buttons";
+import { IconButton } from "../../../components/arango/buttons";
 
 const restrictedTypeNameMap = omit(typeNameMap, 'geojson', 'geopoint', 'pipeline', 'identity');
 
@@ -130,7 +130,7 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps<PipelineState
                     disabled
                       ? null
                       : <Cell size={'1-4'}>
-                        <IconButton icon={'trash-o'} type={'error'} style={{ marginTop: 10 }}
+                        <IconButton icon={'trash-o'} type={'danger'} style={{ marginTop: 10 }}
                                     onClick={getRemover(idx)}/>&nbsp;
                         <IconButton icon={'arrow-up'} type={'warning'} style={{ marginTop: 10 }}
                                     onClick={getShifter('up', idx)} disabled={isFirst}/>&nbsp;

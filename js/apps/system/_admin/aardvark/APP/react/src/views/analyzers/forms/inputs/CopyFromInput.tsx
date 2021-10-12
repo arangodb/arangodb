@@ -4,7 +4,7 @@ import React, { ChangeEvent, useEffect, useState } from "react";
 import { cloneDeep, find, sortBy } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import { validateAndFix } from "../../helpers";
-import { IconButton } from "../../../../components/pure-css/buttons";
+import { IconButton } from "../../../../components/arango/buttons";
 
 type CopyFromInputProps = {
   analyzers: FormState[];

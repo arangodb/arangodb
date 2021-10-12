@@ -14,7 +14,7 @@ type CheckboxProps = {
   id?: string;
   checked?: boolean;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  label: ReactNode;
+  label?: ReactNode;
   inline?: boolean;
   disabled?: boolean;
 };
@@ -28,7 +28,7 @@ const Checkbox = ({ id, checked, onChange, label, inline, disabled }: CheckboxPr
     }
   }, [id]);
 
-  if (inline) {
+  if (inline && label) {
     return <label htmlFor={thisId} className="pure-checkbox">
       <StyledCheckbox id={thisId} checked={checked} onChange={onChange} disabled={disabled}/>
       &nbsp;{label}
@@ -36,7 +36,7 @@ const Checkbox = ({ id, checked, onChange, label, inline, disabled }: CheckboxPr
   }
 
   return <>
-    <label htmlFor={thisId} className="pure-checkbox">{label}</label>
+    {label ? <label htmlFor={thisId} className="pure-checkbox">{label}</label> : null}
     <StyledCheckbox id={thisId} checked={checked} onChange={onChange} disabled={disabled}/>
   </>;
 };

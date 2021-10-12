@@ -10,7 +10,7 @@ import BaseForm from "./forms/BaseForm";
 import FeatureForm from "./forms/FeatureForm";
 import { getForm } from "./helpers";
 import Textarea from "../../components/pure-css/form/Textarea";
-import { IconButton } from "../../components/pure-css/buttons";
+import { IconButton } from "../../components/arango/buttons";
 
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };

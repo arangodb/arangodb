@@ -6,7 +6,7 @@ import { Cell, Grid } from "../../../../components/pure-css/grid";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { validateAndFix } from "../../helpers";
-import { IconButton } from "../../../../components/pure-css/buttons";
+import { IconButton } from "../../../../components/arango/buttons";
 
 type CopyFromInputProps = {
   views: FormState[];

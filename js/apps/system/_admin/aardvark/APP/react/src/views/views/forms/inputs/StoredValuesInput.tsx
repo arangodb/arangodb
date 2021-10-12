@@ -6,7 +6,7 @@ import { ArangoTable, ArangoTD, ArangoTH } from "../../../../components/arango/t
 import React, { ChangeEvent, Dispatch } from "react";
 import Select from "../../../../components/pure-css/form/Select";
 import StoredValueFieldsInput from "./StoredValueFieldsInput";
-import { IconButton } from "../../../../components/pure-css/buttons";
+import { IconButton } from "../../../../components/arango/buttons";
 
 const columnWidths: { [key: string]: number[] } = {
   'false': [5, 75, 10, 10],
@@ -109,7 +109,7 @@ const StoredValuesInput = ({ formState, dispatch, disabled }: FormProps<StoredVa
                 disabled
                   ? null
                   : <ArangoTD seq={3}>
-                    <IconButton icon={'trash-o'} type={'error'} onClick={getRemover(idx)}/>
+                    <IconButton icon={'trash-o'} type={'danger'} onClick={getRemover(idx)}/>
                   </ArangoTD>
               }
             </tr>;

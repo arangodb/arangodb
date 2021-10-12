@@ -3,7 +3,7 @@ import { StoredValue } from "../../constants";
 import { ArangoTable, ArangoTD, ArangoTH } from "../../../../components/arango/table";
 import React, { ChangeEvent } from "react";
 import Textbox from "../../../../components/pure-css/form/Textbox";
-import { IconButton } from "../../../../components/pure-css/buttons";
+import { IconButton } from "../../../../components/arango/buttons";
 
 const StoredValueFieldsInput = ({ formState, dispatch, disabled }: FormProps<StoredValue>) => {
   const items = formState.fields;
@@ -118,7 +118,7 @@ const StoredValueFieldsInput = ({ formState, dispatch, disabled }: FormProps<Sto
               disabled
                 ? null
                 : <ArangoTD seq={1}>
-                  <IconButton icon={'trash-o'} type={'error'} onClick={getRemover(idx)}/>&nbsp;
+                  <IconButton icon={'trash-o'} type={'danger'} onClick={getRemover(idx)}/>&nbsp;
                   <IconButton icon={'arrow-up'} type={'warning'} onClick={getShifter('up', idx)}
                               disabled={isFirst}/>&nbsp;
                   <IconButton icon={'arrow-down'} type={'warning'} onClick={getShifter('down', idx)}

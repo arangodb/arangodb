@@ -6,7 +6,7 @@ import Textbox from "../../../../components/pure-css/form/Textbox";
 import { getPath } from "../../../../utils/helpers";
 import Select from "../../../../components/pure-css/form/Select";
 import { PrimarySort } from "../../constants";
-import { IconButton } from "../../../../components/pure-css/buttons";
+import { IconButton } from "../../../../components/arango/buttons";
 
 const columnWidths: { [key: string]: number[] } = {
   'false': [5, 60, 10, 25],
@@ -167,7 +167,7 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
                 disabled
                   ? null
                   : <ArangoTD seq={3}>
-                    <IconButton icon={'trash-o'} type={'error'} onClick={getRemover(idx)}/>&nbsp;
+                    <IconButton icon={'trash-o'} type={'danger'} onClick={getRemover(idx)}/>&nbsp;
                     <IconButton icon={'arrow-up'} type={'warning'} onClick={getShifter('up', idx)}
                                 disabled={isFirst}/>&nbsp;
                     <IconButton icon={'arrow-down'} type={'warning'} onClick={getShifter('down', idx)}

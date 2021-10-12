@@ -7,7 +7,7 @@ import { State } from '../../utils/constants';
 import { Cell, Grid } from "../../components/pure-css/grid";
 import Textarea from "../../components/pure-css/form/Textarea";
 import { omit } from 'lodash';
-import { IconButton } from "../../components/pure-css/buttons";
+import { IconButton } from "../../components/arango/buttons";
 
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };

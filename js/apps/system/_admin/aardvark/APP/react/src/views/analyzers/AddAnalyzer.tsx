@@ -12,7 +12,7 @@ import CopyFromInput from "./forms/inputs/CopyFromInput";
 import { Cell, Grid } from "../../components/pure-css/grid";
 import { getForm } from "./helpers";
 import { getReducer } from "../../utils/helpers";
-import { IconButton } from "../../components/pure-css/buttons";
+import { IconButton } from "../../components/arango/buttons";
 
 declare var arangoHelper: { [key: string]: any };
 

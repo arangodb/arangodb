@@ -12,7 +12,7 @@ import BaseForm from "./forms/BaseForm";
 import LinkPropertiesForm from "./forms/LinkPropertiesForm";
 import ViewPropertiesForm from "./forms/ViewPropertiesForm";
 import { getReducer } from "../../utils/helpers";
-import { IconButton } from "../../components/pure-css/buttons";
+import { IconButton } from "../../components/arango/buttons";
 
 declare var arangoHelper: { [key: string]: any };
 
