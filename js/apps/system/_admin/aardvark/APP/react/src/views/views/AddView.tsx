@@ -12,6 +12,7 @@ import BaseForm from "./forms/BaseForm";
 import LinkPropertiesForm from "./forms/LinkPropertiesForm";
 import ViewPropertiesForm from "./forms/ViewPropertiesForm";
 import { getReducer } from "../../utils/helpers";
+import { IconButton } from "../../components/pure-css/buttons";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -60,14 +61,14 @@ const AddView = ({ views }: AddViewProps) => {
   };
 
   return <>
-    <button className={'pure-button'} onClick={() => dispatch({ type: 'show' })} style={{
+    <IconButton icon={'plus-circle'} onClick={() => dispatch({ type: 'show' })} style={{
       background: 'transparent',
       color: 'white',
       paddingLeft: 0,
       paddingTop: 0
     }}>
-      <i className="fa fa-plus-circle"/> Add View
-    </button>
+      Add View
+    </IconButton>
     <Modal show={state.show} setShow={(show) => dispatch({ type: show ? 'show' : 'reset' })}
            key={`${views.length}-${state.show}`} cid={'modal-content-add-view'}>
       <ModalHeader title={'Create View'}>

@@ -63,16 +63,14 @@ const StoredValuesInput = ({ formState, dispatch, disabled }: FormProps<StoredVa
     <ArangoTable>
       <thead>
       <tr>
-        <ArangoTH seq={0} style={{ width: getColumnWidth(0) }}>#</ArangoTH>
+        <ArangoTH seq={0} style={{ width: getColumnWidth(0) }}><i className={'fa fa-trash-o'}/></ArangoTH>
         <ArangoTH seq={1} style={{ width: getColumnWidth(1) }}>Fields</ArangoTH>
         <ArangoTH seq={2} style={{ width: getColumnWidth(2) }}>Compression</ArangoTH>
         {
           disabled
             ? null
             : <ArangoTH seq={3} style={{ width: getColumnWidth(3) }}>
-              <button className={'button-warning'} onClick={addStoredValue}>
-                <i className={'fa fa-plus'}/>&nbsp;Add
-              </button>
+              <IconButton icon={'plus'} type={'warning'} onClick={addStoredValue}>Add</IconButton>
             </ArangoTH>
         }
       </tr>

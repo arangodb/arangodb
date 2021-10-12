@@ -10,6 +10,7 @@ import BaseForm from "./forms/BaseForm";
 import FeatureForm from "./forms/FeatureForm";
 import { getForm } from "./helpers";
 import Textarea from "../../components/pure-css/form/Textarea";
+import { IconButton } from "../../components/pure-css/buttons";
 
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };
@@ -43,10 +44,7 @@ const DeleteButton = ({ analyzer, modalCid }: ButtonProps) => {
   };
 
   return <>
-    <button className={'pure-button'} onClick={() => setShow(true)}
-            style={{ background: 'transparent' }}>
-      <i className={'fa fa-trash-o'}/>
-    </button>
+    <IconButton icon={'trash-o'} style={{ background: 'transparent' }} onClick={() => setShow(true)}/>
     <Modal show={show} setShow={setShow} cid={modalCid}>
       <ModalHeader title={`Delete Analyzer ${analyzer.name}?`}/>
       <ModalBody>
@@ -65,9 +63,7 @@ const DeleteButton = ({ analyzer, modalCid }: ButtonProps) => {
       </ModalBody>
       <ModalFooter>
         <button className="button-close" onClick={() => setShow(false)}>Close</button>
-        <button className="button-danger" style={{ float: 'right' }}
-                onClick={handleDelete}>Delete
-        </button>
+        <button className="button-danger" style={{ float: 'right' }} onClick={handleDelete}>Delete</button>
       </ModalFooter>
     </Modal>
   </>;
@@ -104,9 +100,7 @@ const ViewButton = ({ analyzer, modalCid }: ButtonProps) => {
   }
 
   return <>
-    <button className={'pure-button'} onClick={handleClick} style={{ background: 'transparent' }}>
-      <i className={'fa fa-eye'}/>
-    </button>
+    <IconButton icon={'eye'} onClick={handleClick} style={{ background: 'transparent' }}/>
     <Modal show={show} setShow={setShow} cid={modalCid}>
       <ModalHeader title={formState.name}>
         <button className={'button-info'} onClick={toggleJsonForm} style={{ float: 'right' }}>

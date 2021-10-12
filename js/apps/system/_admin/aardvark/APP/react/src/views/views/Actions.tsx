@@ -7,6 +7,7 @@ import { State } from '../../utils/constants';
 import { Cell, Grid } from "../../components/pure-css/grid";
 import Textarea from "../../components/pure-css/form/Textarea";
 import { omit } from 'lodash';
+import { IconButton } from "../../components/pure-css/buttons";
 
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };
@@ -35,10 +36,7 @@ const DeleteButton = ({ view, modalCid }: ButtonProps) => {
   };
 
   return <>
-    <button className={'pure-button'} onClick={() => setShow(true)}
-            style={{ background: 'transparent' }}>
-      <i className={'fa fa-trash-o'}/>
-    </button>
+    <IconButton icon={'trash-o'} style={{ background: 'transparent' }} onClick={() => setShow(true)}/>
     <Modal show={show} setShow={setShow} cid={modalCid}>
       <ModalHeader title={`Delete View ${view.name}?`}/>
       <ModalBody>
@@ -92,9 +90,7 @@ const ViewButton = ({ view, modalCid }: ButtonProps) => {
   };
 
   return <>
-    <button className={'pure-button'} onClick={handleClick} style={{ background: 'transparent' }}>
-      <i className={'fa fa-eye'}/>
-    </button>
+    <IconButton icon={'eye'} onClick={handleClick} style={{ background: 'transparent' }}/>
     <Modal show={show} setShow={setShow} cid={modalCid}>
       <ModalHeader title={formState.name}>
         <button className={'button-info'} onClick={toggleJsonForm} style={{ float: 'right' }}

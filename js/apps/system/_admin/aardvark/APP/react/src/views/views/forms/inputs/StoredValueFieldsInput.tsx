@@ -86,9 +86,7 @@ const StoredValueFieldsInput = ({ formState, dispatch, disabled }: FormProps<Sto
         <tr>
           <ArangoTH seq={0} style={{ width: '75%' }}/>
           <ArangoTH seq={1} style={{ width: '25%' }}>
-            <button className={'button-warning'} onClick={addField}>
-              <i className={'fa fa-plus'}/>&nbsp;Add Field
-            </button>
+            <IconButton icon={'plus'} type={'warning'} onClick={addField}>Add Field</IconButton>
           </ArangoTH>
         </tr>
         </thead>

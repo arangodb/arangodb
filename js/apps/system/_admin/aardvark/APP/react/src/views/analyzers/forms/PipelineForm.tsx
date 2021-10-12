@@ -101,9 +101,7 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps<PipelineState
       disabled
         ? null
         : <Cell size={'1'}>
-          <button className={'button-warning'} onClick={addAnalyzer}>
-            <i className={'fa fa-plus'}/>&nbsp;Add Analyzer
-          </button>
+          <IconButton icon={'plus'} type={'warning'} onClick={addAnalyzer}>Add Analyzer</IconButton>
         </Cell>
     }
     <Cell size={'1'}>
@@ -161,9 +159,7 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps<PipelineState
       disabled || items.length === 0
         ? null
         : <Cell size={'1'}>
-          <button className={'button-warning'} onClick={addAnalyzer}>
-            <i className={'fa fa-plus'}/>&nbsp;Add Analyzer
-          </button>
+          <IconButton icon={'plus'} type={'warning'} onClick={addAnalyzer}>Add Analyzer</IconButton>
         </Cell>
     }
   </Grid>;

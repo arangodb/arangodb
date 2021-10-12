@@ -12,6 +12,7 @@ import CopyFromInput from "./forms/inputs/CopyFromInput";
 import { Cell, Grid } from "../../components/pure-css/grid";
 import { getForm } from "./helpers";
 import { getReducer } from "../../utils/helpers";
+import { IconButton } from "../../components/pure-css/buttons";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -64,14 +65,14 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
   };
 
   return <>
-    <button className={'pure-button'} onClick={() => dispatch({ type: 'show' })} style={{
+    <IconButton icon={'plus-circle'} onClick={() => dispatch({ type: 'show' })} style={{
       background: 'transparent',
       color: 'white',
       paddingLeft: 0,
       paddingTop: 0
     }}>
-      <i className="fa fa-plus-circle"/> Add Analyzer
-    </button>
+      Add Analyzer
+    </IconButton>
     <Modal show={state.show} setShow={(show) => dispatch({ type: show ? 'show' : 'reset' })}
            key={`${analyzers.length}-${state.show}`} cid={'modal-content-add-analyzer'}>
       <ModalHeader title={'Create Analyzer'}>

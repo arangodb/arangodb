@@ -113,9 +113,8 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
           disabled
             ? null
             : <ArangoTH seq={3} style={{ width: getColumnWidth(3) }}>
-              <button className={'button-warning'} onClick={addPrimarySort}>
-                <i className={'fa fa-plus'}/>&nbsp;Add Primary Sort
-              </button>
+              <IconButton icon={'plus'} type={'warning'} onClick={addPrimarySort}>Add Primary
+                Sort</IconButton>
             </ArangoTH>
         }
       </tr>
