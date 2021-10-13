@@ -166,15 +166,15 @@
           switch (infoJson.status) {
             case 'expiring':
               daysInfo = Math.floor((infoJson.expires - Math.round(new Date().getTime() / 1000)) / (3600*24));
-              infotext = 'Your license is expiring ' + daysInfo + ' days from now. Please contact <a href="#">ArangoDB sales</a> to extend your license urgently';
+              infotext = 'Your license is expiring ' + daysInfo + ' days from now. Please contact ArangoDB sales to extend your license urgently';
               break;
             case 'expired':
               daysInfo = Math.floor((Math.round(new Date().getTime() / 1000) - infoJson.expires) / (3600*24));
-              infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact <a href="#">ArangoDB</a> immediately.';
+              infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact ArangoDB sales immediately.';
               alertClasses += ' alert-danger';
               break;
             case 'read-only':
-              infotext = 'Your license expired over 14 days ago. This installation has been restricted to read-only mode. Please contact <a href="#">ArangoDB sales</a> immediately to extend your license.';
+              infotext = 'Your license expired over 14 days ago. This installation has been restricted to read-only mode. Please contact ArangoDB sales immediately to extend your license.';
               alertClasses += ' alert-danger';
               break;
             default:
