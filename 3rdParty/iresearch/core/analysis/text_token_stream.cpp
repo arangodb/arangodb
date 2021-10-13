@@ -38,7 +38,6 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 #include "velocypack/vpack.h"
-#include "libstemmer.h"
 #include "utils/hash_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/map_utils.hpp"
@@ -49,6 +48,7 @@
 #include "utils/utf8_path.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/vpack_utils.hpp"
+#include "utils/snowball_stemmer.hpp"
 
 #if defined(_MSC_VER)
   #pragma warning(disable: 4512)
@@ -79,16 +79,29 @@ namespace analysis {
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
-struct text_token_stream::state_t {
+struct icu_objects {
+  bool valid() const noexcept {
+    // 'break_iterator' indicates that 'icu_objects' struct initialized
+    return nullptr != break_iterator;
+  }
+
+  void clear() noexcept {
+    transliterator.reset();
+    break_iterator.reset();
+    normalizer = nullptr;
+    stemmer.reset();
+  }
+
+  std::unique_ptr<icu::Transliterator> transliterator;
+  std::unique_ptr<icu::BreakIterator> break_iterator;
+  const icu::Normalizer2* normalizer{}; // reusable object owned by ICU
+  stemmer_ptr stemmer;
+};
+
+struct text_token_stream::state_t : icu_objects {
   struct ngram_state_t {
     const byte_type* it{nullptr}; // iterator
     uint32_t length{0};
-  };
-
-  struct stemmer_deleter {
-    void operator()(sb_stemmer* p) const noexcept {
-      sb_stemmer_delete(p);
-    }
   };
 
   icu::UnicodeString data;
@@ -97,10 +110,6 @@ struct text_token_stream::state_t {
   const stopwords_t& stopwords;
   bstring term_buf;
   std::string tmp_buf; // used by processTerm(...)
-  std::unique_ptr<icu::BreakIterator> break_iterator;
-  const icu::Normalizer2* normalizer; // reusable object owned by ICU
-  std::unique_ptr<sb_stemmer, stemmer_deleter> stemmer;
-  std::unique_ptr<icu::Transliterator> transliterator;
   ngram_state_t ngram;
   bytes_ref term;
   uint32_t start{};
@@ -108,8 +117,7 @@ struct text_token_stream::state_t {
 
   state_t(const options_t& opts, const stopwords_t& stopw)
     : options(opts),
-      stopwords(stopw),
-      normalizer{} {
+      stopwords(stopw) {
   }
 
   bool is_search_ngram() const {
@@ -440,6 +448,79 @@ const frozen::unordered_map<
   { "upper", analysis::text_token_stream::case_convert_t::UPPER },
 };
 
+bool init_from_options(const analysis::text_token_stream::options_t& options,
+                       analysis::icu_objects* objects,
+                       bool print_errors) {
+
+  auto err = UErrorCode::U_ZERO_ERROR; // a value that passes the U_SUCCESS() test
+
+  // reusable object owned by ICU
+  objects->normalizer = icu::Normalizer2::getNFCInstance(err);
+
+  if (!U_SUCCESS(err) || !objects->normalizer) {
+    objects->normalizer = nullptr;
+
+    if (print_errors) {
+      IR_FRMT_WARN(
+        "Warning while instantiation icu::Normalizer2 for text_token_stream from locale '%s' : '%s'",
+        options.locale.getName(), u_errorName(err));
+    }
+
+    return false;
+  }
+
+  if (!options.accent) {
+    // transliteration rule taken verbatim from: http://userguide.icu-project.org/transforms/general
+    const icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); // do not allocate statically since it causes memory leaks in ICU
+
+    // reusable object owned by *this
+    objects->transliterator.reset(icu::Transliterator::createInstance(
+      collationRule, UTransDirection::UTRANS_FORWARD, err));
+
+    if (!U_SUCCESS(err) || !objects->transliterator) {
+      objects->transliterator.reset();
+
+      if (print_errors) {
+        IR_FRMT_WARN(
+          "Warning while instantiation icu::Transliterator for text_token_stream from locale '%s' : '%s'",
+          options.locale.getName(), u_errorName(err));
+      }
+
+      return false;
+    }
+  }
+
+  // reusable object owned by *this
+  objects->break_iterator.reset(
+    icu::BreakIterator::createWordInstance(options.locale, err));
+
+  if (!U_SUCCESS(err) || !objects->break_iterator) {
+    objects->break_iterator.reset();
+
+    if (print_errors) {
+      IR_FRMT_WARN(
+        "Warning while instantiation icu::BreakIterator for text_token_stream from locale '%s' : '%s'",
+        options.locale.getName(), u_errorName(err));
+    }
+
+    return false;
+  }
+
+  // optional since not available for all locales
+  if (options.stemming) {
+    // reusable object owned by *this
+    objects->stemmer = make_stemmer_ptr(options.locale.getLanguage(), nullptr); // defaults to utf-8
+
+    if (!objects->stemmer && print_errors) {
+      IR_FRMT_WARN(
+        "Failed to create stemmer for text_token_stream from locale '%s'",
+        options.locale.getName());
+    }
+  }
+
+  return true;
+}
+
 bool locale_from_string(std::string locale_name, icu::Locale& locale) {
   locale = icu::Locale::createFromName(locale_name.c_str());
 
@@ -622,6 +703,9 @@ bool parse_vpack_options(const VPackSlice slice,
         return options.min_gram <= options.max_gram;
       }
     }
+
+    analysis::icu_objects obj;
+    init_from_options(options, &obj, true);
 
     return true;
   } catch(const VPackException& ex) {
@@ -933,52 +1017,9 @@ bool text_token_stream::reset(const string_ref& data) {
   offset.start = std::numeric_limits<uint32_t>::max();
   offset.end = std::numeric_limits<uint32_t>::max();
 
-  auto err = UErrorCode::U_ZERO_ERROR; // a value that passes the U_SUCCESS() test
-
-  if (!state_->normalizer) {
-    // reusable object owned by ICU
-    state_->normalizer = icu::Normalizer2::getNFCInstance(err);
-
-    if (!U_SUCCESS(err) || !state_->normalizer) {
-      state_->normalizer = nullptr;
-
-      return false;
-    }
-  }
-
-  if (!state_->options.accent && !state_->transliterator) {
-    // transliteration rule taken verbatim from: http://userguide.icu-project.org/transforms/general
-    const icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); // do not allocate statically since it causes memory leaks in ICU
-
-    // reusable object owned by *this
-    state_->transliterator.reset(icu::Transliterator::createInstance(
-      collationRule, UTransDirection::UTRANS_FORWARD, err));
-
-    if (!U_SUCCESS(err) || !state_->transliterator) {
-      state_->transliterator.reset();
-
-      return false;
-    }
-  }
-
-  if (!state_->break_iterator) {
-    // reusable object owned by *this
-    state_->break_iterator.reset(
-      icu::BreakIterator::createWordInstance(state_->options.locale, err));
-
-    if (!U_SUCCESS(err) || !state_->break_iterator) {
-      state_->break_iterator.reset();
-
-      return false;
-    }
-  }
-
-  // optional since not available for all locales
-  if (state_->options.stemming && !state_->stemmer) {
-    // reusable object owned by *this
-    state_->stemmer.reset(
-      sb_stemmer_new(state_->options.locale.getLanguage(),
-                     nullptr)); // defaults to utf-8
+  if (!state_->valid() && !init_from_options(state_->options, state_.get(), false)) {
+    state_->clear();
+    return false;
   }
 
   // Create ICU UnicodeString
