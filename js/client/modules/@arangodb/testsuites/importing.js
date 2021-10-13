@@ -206,6 +206,37 @@ const impTodos = [{
   convert: true,
   datatype: "value=string",
 }, {
+  id: 'csvmergeattributes',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  coll: 'UnitTestsImportCsvMergeAttributes',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  datatype: "value=string",
+  mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"],
+}, {
+  id: 'csvmergeattributesInvalid',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  coll: 'UnitTestsImportCsvMergeAttributesInvalid',
+  type: 'csv',
+  mergeAttributes: ["Id=[]"],
+  expectFailure: true,
+}, {
+  id: 'csvmergeattributesInvalid2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  coll: 'UnitTestsImportCsvMergeAttributesInvalid2',
+  type: 'csv',
+  mergeAttributes: ["idAndValue=[id[value]"],
+  expectFailure: true,
+}, {
+  id: 'csvmergeattributesInvalid3',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  coll: 'UnitTestsImportCsvMergeAttributesInvalid3',
+  type: 'csv',
+  mergeAttributes: ["idAndValue=[idAndValue]"],
+  expectFailure: true,
+}, {
   id: 'csvnoeol',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noeol.csv')),
   coll: 'UnitTestsImportCsvNoEol',
@@ -354,9 +385,13 @@ function importing (options) {
       result[impTodo.id].failed = 0;
 
       if (result[impTodo.id].status !== true && !options.force) {
-        result[impTodo.id].failed = 1;
-        result.failed += 1;
-        throw new Error('cannot run import');
+        if (impTodo.expectFailure) {
+          result[impTodo.id].status = true;
+        } else {
+          result[impTodo.id].failed = 1;
+          result.failed += 1;
+          throw new Error('cannot run import');
+        }
       }
     }
 
