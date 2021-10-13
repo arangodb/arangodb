@@ -326,6 +326,7 @@ struct container_iterator<BT_DENSE> {
   return true;
 }
 
+// cppcheck-suppress uninitMemberVarPrivate
 sparse_bitmap_iterator::sparse_bitmap_iterator(
     memory::managed_ptr<index_input>&& in,
     const options& opts)

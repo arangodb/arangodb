@@ -380,14 +380,6 @@ PATH enviroment variable, manual adjustment may be needed.
 #### (*nix) install notes:
 Shared version of libiresearch is used. Install IResearch before running Pyresearch.
 
-## Included 3rd party dependencies
-Code for all included 3rd party dependencies is located in the "external" directory.
-#### [MurMurHash](https://sites.google.com/site/murmurhash)
-used for fast computation of hashes for byte arrays
-#### [OpenFST](http://www.openfst.org/twiki/bin/view/FST/WebHome)
-used to generate very compact term dictionary prefix tries which can to be loaded
-in memory even for huge dictionaries
-
 ## External 3rd party dependencies
 External 3rd party dependencies must be made available to the IResearch library separately.
 They may either be installed through the distribution package management system or build
@@ -556,9 +548,9 @@ The following grammar is currently defined via Bison (the root is <query>):
 
 ## Supported compilers
 
-- GCC: 7.3-7.5, 8.1-8.4, 9.1-9.3
+- GCC: 7.3-7.5, 8.1-8.4, 9.1-9.3, 10
 - MSVC: 17 (VS 2015), 19 (VS 2017)
-- Apple Clang: 9
+- Apple Clang: 9-12
 
 ## License
 Copyright (c) 2017-2021 ArangoDB GmbH

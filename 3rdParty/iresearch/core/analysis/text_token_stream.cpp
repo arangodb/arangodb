@@ -81,8 +81,8 @@ namespace analysis {
 
 struct text_token_stream::state_t {
   struct ngram_state_t {
-    const byte_type* it; // iterator
-    uint32_t length{};
+    const byte_type* it{nullptr}; // iterator
+    uint32_t length{0};
   };
 
   struct stemmer_deleter {
@@ -674,6 +674,7 @@ bool make_vpack_config(
         // for simplifying comparison between properties we need deterministic order of stopwords
         sortedWords.reserve(options.explicit_stopwords.size());
         for (const auto& stopword : options.explicit_stopwords) {
+          // cppcheck-suppress useStlAlgorithm
           sortedWords.emplace_back(stopword);
         }
         std::sort(sortedWords.begin(), sortedWords.end());
@@ -909,6 +910,7 @@ text_token_stream::text_token_stream(
 }
 
 /*static*/ void text_token_stream::clear_cache() {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(::mutex);
   cached_state_by_key.clear();
 }
@@ -980,7 +982,7 @@ bool text_token_stream::reset(const string_ref& data) {
   }
 
   // Create ICU UnicodeString
-  if (data.size() > std::numeric_limits<int32_t>::max()) {
+  if (data.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
     return false;
   }
 
@@ -1069,6 +1071,7 @@ bool text_token_stream::next_ngram() {
   }
 
   bool finished{};
+  // cppcheck-suppress unreadVariable
   auto set_ngram_finished = make_finally([this, &finished]()noexcept->void {
     if (finished) {
       state_->set_ngram_finished();

@@ -208,8 +208,8 @@ struct collation_token_stream::state_t {
   std::string utf8_buf;
   byte_type term_buf[MAX_TOKEN_SIZE];
 
-  state_t(const options_t& opts)
-    : options(opts) {
+  explicit state_t(const options_t& opts) :
+      options(opts) {
   }
 };
 
