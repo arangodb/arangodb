@@ -37,6 +37,7 @@
 #include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/string.hpp"
+#include "utils/thread_utils.hpp"
 
 namespace {
 
@@ -49,105 +50,76 @@ namespace arangodb {
 namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief std::unique_lock<...> compliant wrapper for arangodb::ReadWriteLock
-////////////////////////////////////////////////////////////////////////////////
-class ReadMutex {
- public:
-  ReadMutex(basics::ReadWriteLock& mtx) noexcept
-    : _mtx(&mtx) {
-  }
-  ReadMutex(ReadMutex&& rhs) noexcept
-    : _mtx(rhs._mtx) {
-    rhs._mtx = nullptr;
-  }
-
-  void lock() { _mtx->lockRead(); }
-  bool try_lock() noexcept { return _mtx->tryLockRead(); }
-  void unlock() { _mtx->unlockRead(); }
-
- private:
-  ReadMutex(ReadMutex const&) = delete;
-  ReadMutex operator=(ReadMutex const&) = delete;
-  ReadMutex operator=(ReadMutex&&) = delete;
-
-  basics::ReadWriteLock* _mtx;
-}; // ReadMutex
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a read-mutex for a resource
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T>
-class ResourceMutexT {
+class AsyncValue {
  public:
-  explicit ResourceMutexT(T* resource) noexcept
-      : _readMutex(_mutex),
-        _resource(resource) {
-  }
-  ~ResourceMutexT() { reset(); }
+  class Value {
+   public:
+    Value() = default;
+    Value(Value&&) = default;
+    Value& operator=(Value&&) = default;
 
-  std::unique_lock<ReadMutex> lock() const {
-    return std::unique_lock<ReadMutex>{ _readMutex };
+    T* get() noexcept { return _resource; }
+    const T* get() const noexcept { return _resource; }
+    T* operator->() noexcept { return get(); }
+    const T* operator->() const noexcept { return get(); }
+
+    explicit operator bool() const noexcept {
+      return nullptr != get();
+    }
+
+    bool ownsLock() const noexcept {
+      return _lock.owns_lock();
+    }
+
+   private:
+    friend class AsyncValue<T>;
+
+    Value(std::shared_lock<std::shared_mutex>&& lock, T* resource)
+      : _lock{std::move(lock)}, _resource{resource} {
+    }
+
+    std::shared_lock<std::shared_mutex> _lock;
+    T* _resource{};
+  };
+
+  explicit AsyncValue(T* resource) noexcept
+    : _resource{resource} {
   }
 
-  std::unique_lock<ReadMutex> try_lock() const noexcept {
-    return { _readMutex, std::try_to_lock };
+  ~AsyncValue() { reset(); }
+
+  auto lock() const {
+    auto lock = irs::make_shared_lock(_mutex);
+    return Value{ std::move(lock), _resource };
+  }
+
+  auto try_lock() const {
+    auto lock = irs::make_shared_lock(_mutex, std::try_to_lock);
+
+    if (lock.owns_lock()) {
+      return Value{ std::move(lock), _resource };
+    }
+
+    return Value{};
   }
 
   // will block until a write lock can be acquired on the _mutex
   void reset() {
-    WRITE_LOCKER(lock, _mutex);
+    auto lock = irs::make_unique_lock(_mutex);
     _resource = nullptr;
   }
 
-  T* get() const noexcept {
-    TRI_ASSERT(_mutex.isLocked());
-    return _resource;
-  }
-
   bool empty() const {
-    auto lock = irs::make_unique_lock(_readMutex);
+    auto lock = irs::make_shared_lock(_mutex);
     return nullptr == _resource;
   }
 
  private:
-  basics::ReadWriteLock _mutex;
-  mutable ReadMutex _readMutex; // read-lock to prevent '_resource' reset()
-  T* _resource;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a read-mutex for a resource
-////////////////////////////////////////////////////////////////////////////////
-class ResourceMutex {
- public:
-  explicit ResourceMutex(void* resource) noexcept
-      : _resource(resource) {}
-  ~ResourceMutex() { reset(); }
-  operator bool() noexcept { return get() != nullptr; }
-  auto read_lock() const {
-    // prevent '_resource' reset()
-    return irs::make_shared_lock(_mutex);
-  }
-  void reset();  // will block until a write lock can be acquired on the _mutex
-
- protected:
-  void* get() const noexcept {
-    return _resource.load(std::memory_order_relaxed);
-  }
-
- private:
   mutable std::shared_mutex _mutex; // read-lock to prevent '_resource' reset()
-  std::atomic<void*> _resource;  // atomic because of 'operator bool()'
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a read-mutex for a resource of a specific type
-////////////////////////////////////////////////////////////////////////////////
-template <typename T>
-class TypedResourceMutex : public ResourceMutex {
- public:
-  explicit TypedResourceMutex(T* value) : ResourceMutex(value) {}
-  T* get() const { return static_cast<T*>(ResourceMutex::get()); }
+  T* _resource;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
