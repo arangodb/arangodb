@@ -859,10 +859,10 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
   std::unordered_set<std::string> followersToBeRemoved;
   OperationOptions options(ExecContext::current());
 
-  if (dropCollections) { // todo: make another function out of this
-    // Puts the collection with name \p colName to \p leadersToBeRemoved (if \p distributeShardsLike
-    // is not defined) or to \p followersToBeRemoved (if it is defined)
-    // or does nothing if there is no collection with this name.
+  if (dropCollections) {  // todo: make another function out of this
+    // Puts the collection with name \p colName to \p leadersToBeRemoved (if \p
+    // distributeShardsLike is not defined) or to \p followersToBeRemoved (if it
+    // is defined) or does nothing if there is no collection with this name.
     auto addToRemoveCollections = [this, &graph, &leadersToBeRemoved,
                                    &followersToBeRemoved](std::string const& colName) {
       std::shared_ptr<LogicalCollection> col =
@@ -1098,21 +1098,37 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
                                                                   VPackSlice input) const {
   try {
     TRI_ASSERT(input.isObject());
-    // TODO: check if it is executed or accessible by a database server
-    // if (ServerState::instance()->isCoordinator())
-    {
+
+    if (ServerState::instance()->isCoordinator() ||
+        ServerState::instance()->isSingleServer()) {
       VPackSlice s = input.get(StaticStrings::IsSmart);
-      if (s.isBoolean() && s.getBoolean()) {
-        s = input.get("options");
-        if (s.isObject()) {
-          s = s.get(StaticStrings::ReplicationFactor);
-          if ((s.isNumber() && s.getNumber<int>() == 0)) {
-            return Result{
-                TRI_ERROR_BAD_PARAMETER,
-                "invalid combination of 'isSmart' and 'replicationFactor'"};
-          } else if (s.isString() && s.stringRef() == "satellite") {
+      VPackSlice options = input.get(StaticStrings::GraphOptions);
+
+      bool smartSet = s.isBoolean() && s.getBoolean();
+      bool sgaSet = false;
+      if (options.isObject()) {
+        sgaSet = options.hasKey(StaticStrings::GraphSmartGraphAttribute) &&
+                 options.get(StaticStrings::GraphSmartGraphAttribute).isString();
+      }
+
+      if (smartSet || sgaSet) {
+        std::string errParameter;
+        if (smartSet) {
+          errParameter = StaticStrings::IsSmart;
+        } else {
+          errParameter = StaticStrings::GraphSmartGraphAttribute;
+        }
+
+        if (options.isObject()) {
+          VPackSlice replicationFactor = options.get(StaticStrings::ReplicationFactor);
+          if ((replicationFactor.isNumber() && replicationFactor.getNumber<int>() == 0)) {
             return Result{TRI_ERROR_BAD_PARAMETER,
-                          "invalid combination of 'isSmart' and 'satellite' "};
+                          "invalid combination of '" + errParameter +
+                              "' and 'replicationFactor'"};
+          } else if (replicationFactor.isString() &&
+                     replicationFactor.stringRef() == "satellite") {
+            return Result{TRI_ERROR_BAD_PARAMETER, "invalid combination of '" + errParameter +
+                                                       "' and 'satellite' "};
           }
         }
       }
