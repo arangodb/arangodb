@@ -53,7 +53,6 @@ add_library(arango_iresearch
   STATIC
   IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
   IResearch/AqlHelper.cpp IResearch/AqlHelper.h
-  IResearch/Containers.cpp IResearch/Containers.h
   IResearch/ExpressionFilter.cpp IResearch/ExpressionFilter.h
   IResearch/Geo.cpp IResearch/Geo.h
   IResearch/GeoAnalyzer.cpp IResearch/GeoAnalyzer.h

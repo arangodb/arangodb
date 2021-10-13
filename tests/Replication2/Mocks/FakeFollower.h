@@ -58,6 +58,14 @@ struct FakeFollower : AbstractFollower {
 
   auto hasPendingRequests() const -> bool { return !requests.empty(); }
 
+  void handleAllRequestsWithOk() {
+    while (hasPendingRequests()) {
+      resolveRequest(AppendEntriesResult{LogTerm{4}, TRI_ERROR_NO_ERROR,
+                                         AppendEntriesErrorReason::NONE,
+                                         currentRequest().messageId});
+    }
+  }
+
   struct AsyncRequest {
     explicit AsyncRequest(AppendEntriesRequest request)
         : request(std::move(request)) {}

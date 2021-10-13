@@ -1,4 +1,5 @@
 ; CPack install script designed for a nmake build
+!addplugindir  '@CPACK_PLUGIN_PATH@/EnVar_plugin/Plugins/x86-ansi'
 !addplugindir  '@CPACK_PLUGIN_PATH@/NSIS_Simple_Service_Plugin_1.30'
 !addplugindir  '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS/Ansi'
 !addplugindir  '@CPACK_PLUGIN_PATH@/AccessControl/Plugins'
@@ -123,7 +124,6 @@ SetCompressor @CPACK_NSIS_COMPRESSOR@
 ; RequestExecutionLevel admin
 RequestExecutionLevel highest
 
-!include "AddToPath.nsh"
 !include "AddToRegistry.nsh"
 !include "WaitForService.nsh"
 !include "ReadINIFileKeys.nsh"
@@ -1005,7 +1005,12 @@ SectionEnd
 Function .onInstSuccess
   Call insert_registration_keys
   ${If} $ADD_TO_PATH == "1"
-    !insertmacro AddToPath "$INSTDIR/${BIN_DIR}" $TRI_INSTALL_SCOPE_ALL
+    ${If} $TRI_INSTALL_SCOPE_ALL = "1"
+      EnVar::SetHKLM
+    ${Else}
+      EnVar::SetHKCU
+    ${EndIf}
+    EnVar::AddValue "PATH" "$INSTDIR\${BIN_DIR}"
   ${EndIf}
 
   IfSilent 0 continueUI
@@ -1089,8 +1094,10 @@ Function un.onInit
 
   ${If} $TRI_INSTALL_SCOPE_ALL == 1
     SetShellVarContext all
+    EnVar::SetHKLM
   ${Else}
     SetShellVarContext current
+    EnVar::SetHKCU
   ${EndIf}
 FunctionEnd
 
@@ -1255,7 +1262,12 @@ Done:
   DeleteRegKey HKLM "${TRI_UNINSTALL_REG_PATH}"
 
   ${If} $ADD_TO_PATH == 1
-    !InsertMacro un.RemoveFromPath "$INSTDIR/${BIN_DIR}"
+    ${If} $TRI_INSTALL_SCOPE_ALL = "1"
+      EnVar::SetHKLM
+    ${Else}
+      EnVar::SetHKCU
+    ${EndIf}  
+    EnVar::DeleteValue "PATH" "$INSTDIR\${BIN_DIR}"
   ${EndIf}
 SectionEnd
 
@@ -1308,6 +1320,16 @@ Function .onInit
     Abort
   ${EndIf}
 noInstDir:
+
+  # $AUTOMATIC_BACKUP would be set later in the UI code (if)
+  StrCpy $AUTOMATIC_BACKUP "0"
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/BACKUP_ON_UPGRADE="        $CMDUPGRADE
+  IfErrors noBackupOnUpgrade 0
+  IfSilent 0 noBackupOnUpgrade
+  StrCpy $AUTOMATIC_BACKUP "$CMDUPGRADE"
+noBackupOnUpgrade:
 
   # $AUTOMATIC_UPDATE would be set later in the UI code (if)
   StrCpy $AUTOMATIC_UPDATE "0"

@@ -33,7 +33,7 @@ namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class ngram_token_stream
-/// @brief produces ngram from a specified input in a range of 
+/// @brief produces ngram from a specified input in a range of
 ///         [min_gram;max_gram]. Can optionally preserve the original input.
 ////////////////////////////////////////////////////////////////////////////////
 class ngram_token_stream_base

@@ -44,7 +44,10 @@ TEST_F(WaitForSyncTest, no_wait_for_sync) {
 
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower = std::make_shared<FakeFollower>("follower");
-  auto leader = leaderLog->becomeLeader(LogConfig(2, waitForSync), "leader", term, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, waitForSync), "leader", term, {follower});
+  // first entry is always with waitForSync
+  leader->triggerAsyncReplication();
+  follower->handleAllRequestsWithOk();
 
   auto const firstIdx =
       leader->insert(LogPayload::createFromString("first entry"));
@@ -54,7 +57,7 @@ TEST_F(WaitForSyncTest, no_wait_for_sync) {
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{1});
+    EXPECT_EQ(req.messageId, MessageId{4});
     EXPECT_FALSE(req.waitForSync);
   }
 
@@ -72,7 +75,10 @@ TEST_F(WaitForSyncTest, global_wait_for_sync) {
 
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower = std::make_shared<FakeFollower>("follower");
-  auto leader = leaderLog->becomeLeader(LogConfig(2, waitForSync), "leader", term, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, waitForSync), "leader", term, {follower});
+  // first entry is always with waitForSync
+  leader->triggerAsyncReplication();
+  follower->handleAllRequestsWithOk();
 
   auto const firstIdx =
       leader->insert(LogPayload::createFromString("first entry"));
@@ -82,7 +88,7 @@ TEST_F(WaitForSyncTest, global_wait_for_sync) {
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{1});
+    EXPECT_EQ(req.messageId, MessageId{4});
     EXPECT_TRUE(req.waitForSync);
   }
 
@@ -100,7 +106,10 @@ TEST_F(WaitForSyncTest, per_entry_wait_for_sync) {
 
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower = std::make_shared<FakeFollower>("follower");
-  auto leader = leaderLog->becomeLeader(LogConfig(2, waitForSync), "leader", term, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, waitForSync), "leader", term, {follower});
+  // first entry is always with waitForSync
+  leader->triggerAsyncReplication();
+  follower->handleAllRequestsWithOk();
 
   auto const firstIdx =
       leader->insert(LogPayload::createFromString("first entry"), true);
@@ -110,7 +119,7 @@ TEST_F(WaitForSyncTest, per_entry_wait_for_sync) {
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{1});
+    EXPECT_EQ(req.messageId, MessageId{4});
     EXPECT_TRUE(req.waitForSync);
   }
 

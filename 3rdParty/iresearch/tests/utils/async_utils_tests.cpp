@@ -351,12 +351,15 @@ TEST_F(async_utils_tests, test_read_write_mutex_mt) {
 
       // write-pending
       std::thread thread0([&w_wrapper]()->void{ std::unique_lock<w_mutex_t> lock(w_wrapper); });
-      std::this_thread::sleep_for(100ms); // assume thread starts within 100msec
-
-      {
+      int try_count{100};
+      while ((--try_count) > 0) {
+        std::this_thread::sleep_for(50ms); // assume thread starts within 50msec but give it enough try attempts
         std::unique_lock<r_mutex_t> lock1(r_wrapper, std::try_to_lock);
-        ASSERT_FALSE(lock1.owns_lock()); // cannot aquire recursive read-lock if write-lock pending (limitation)
+        if (!lock1.owns_lock()) { // cannot aquire recursive read-lock if write-lock pending (limitation)
+          break;
+        }
       }
+      ASSERT_GT(try_count, 0);
 
       lock0.unlock();
       thread0.join();

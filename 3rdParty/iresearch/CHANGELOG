@@ -1,13 +1,17 @@
 master
 -------------------------
 
-* Fix threading related issues
+v1.1 (2021-10-04)
+-------------------------
+
+* Eliminate dependency to Boost.Locale.
+
+* Get rid of internal conversions during analysis. All text analyzers now expect UTF-8 encoded input.
+
+* Fix threading related issues reported by TSAN.
 
 * Add "object" locale parsing for the `collation_token_stream` to support definig locale variant
-  and keywords
-
-v1.1 (2021-08-25)
--------------------------
+  and keywords.
 
 * Get rid of `utf8_path` in favor of `std::filesystem::path`.
 

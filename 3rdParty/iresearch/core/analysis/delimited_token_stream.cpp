@@ -283,14 +283,12 @@ bool delimited_token_stream::next() {
     return false; // cannot fit the next token into offset calculation
   }
 
-  auto& payload = std::get<irs::payload>(attrs_);
   auto& term = std::get<term_attribute>(attrs_);
 
   offset.start = start;
   offset.end = uint32_t(end);
-  payload.value = bytes_ref(data_.c_str(), size);
-  term.value =  delim_.null() ? payload.value
-                              : eval_term(term_buf_, payload.value);
+  term.value =  delim_.null() ? bytes_ref(data_.c_str(), size)
+                              : eval_term(term_buf_, bytes_ref(data_.c_str(), size));
   data_ = size >= data_.size() ? bytes_ref::NIL
                                : bytes_ref(data_.c_str() + next, data_.size() - next);
 

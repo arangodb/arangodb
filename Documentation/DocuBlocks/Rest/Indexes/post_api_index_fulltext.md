@@ -21,6 +21,11 @@ Minimum character length of words to index. Will default
 to a server-defined value if unspecified. It is thus recommended to set
 this value explicitly when creating the index.
 
+@RESTBODYPARAM{inBackground,boolean,optional,}
+The optional attribute **inBackground** can be set to *true* to create the index
+in the background, which will not write-lock the underlying collection for
+as long as if the index is built in the foreground. The default value is *false*.
+
 @RESTDESCRIPTION
 Creates a fulltext index for the collection *collection-name*, if
 it does not already exist. The call expects an object containing the index

@@ -205,6 +205,24 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
   auto follower = std::make_shared<FakeFollower>("follower");
   auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
 
+  // The first entry written by the leader has always set the waitForSync flag
+  leader->triggerAsyncReplication();
+  ASSERT_TRUE(follower->hasPendingRequests());
+  {
+    auto req = follower->currentRequest();
+    EXPECT_EQ(req.messageId, MessageId{1});
+    // Note that the leader inserts an empty log entry in becomeLeader already
+    EXPECT_EQ(req.entries.size(), 1);
+    EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
+    EXPECT_EQ(req.leaderTerm, LogTerm{4});
+    EXPECT_EQ(req.leaderCommit, LogIndex{0});
+    EXPECT_TRUE(req.waitForSync);
+  }
+
+  follower->handleAllRequestsWithOk();
+
   auto const firstIdx =
       leader->insert(LogPayload::createFromString("first entry"), false,
           LogLeader::doNotTriggerAsyncReplication);
@@ -215,14 +233,14 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{1});
+    EXPECT_EQ(req.messageId, MessageId{4});
     // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 2);
+    EXPECT_EQ(req.entries.size(), 1);
     EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
-    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
-    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{1});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
-    EXPECT_EQ(req.leaderCommit, LogIndex{0});
+    EXPECT_EQ(req.leaderCommit, LogIndex{1});
     EXPECT_FALSE(req.waitForSync);
   }
 }
