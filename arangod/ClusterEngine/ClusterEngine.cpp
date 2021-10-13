@@ -125,9 +125,9 @@ std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
   return std::make_unique<transaction::Manager>(feature);
 }
 
-std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
+std::shared_ptr<PreTransactionState> ClusterEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid, transaction::Options const& options) {
-  return TransactionState::createClusterTransactionState(vocbase, tid, options);
+  return transaction::createClusterTransactionState(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> ClusterEngine::createTransactionCollection(

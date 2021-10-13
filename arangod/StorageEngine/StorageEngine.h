@@ -70,6 +70,7 @@ class PhysicalCollection;
 class Result;
 class TransactionCollection;
 class TransactionState;
+class PreTransactionState;
 class WalAccess;
 
 namespace rest {
@@ -95,8 +96,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual HealthData healthCheck() = 0;
 
   virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
-  virtual std::shared_ptr<TransactionState> createTransactionState(
-      TRI_vocbase_t& vocbase, TransactionId, transaction::Options const& options) = 0;
+  virtual std::shared_ptr<PreTransactionState> createTransactionState(
+      TRI_vocbase_t& vocbase, TransactionId tid, transaction::Options const& options) = 0;
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
       TransactionState& state, DataSourceId cid, AccessMode::Type accessType) = 0;
 

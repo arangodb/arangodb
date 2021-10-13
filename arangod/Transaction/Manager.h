@@ -43,6 +43,7 @@
 
 namespace arangodb {
 class TransactionState;
+class PreTransactionState;
 
 namespace velocypack {
 class Builder;
@@ -157,7 +158,7 @@ class Manager final {
                           std::vector<std::string> const& exclusiveCollections,
                           transaction::Options options, double ttl = 0.0);
 
-  static Result beginTransaction(transaction::Hints hints, std::shared_ptr<TransactionState>& state);
+  static ResultT<RunningTransactionState> beginTransaction(transaction::Hints hints, std::shared_ptr<PreTransactionState>&& state);
 
   /// @brief lease the transaction, increases nesting
   std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid, AccessMode::Type mode, bool isSideUser);
@@ -228,7 +229,7 @@ class Manager final {
  private:
   Result prepareOptions(transaction::Options& options);
   bool isFollowerTransactionOnDBServer(transaction::Options const& options) const;
-  Result lockCollections(TRI_vocbase_t& vocbase, std::shared_ptr<TransactionState> state,
+  Result lockCollections(TRI_vocbase_t& vocbase, std::shared_ptr<PreTransactionState> state,
                          std::vector<std::string> const& exclusiveCollections,
                          std::vector<std::string> const& writeCollections,
                          std::vector<std::string> const& readCollections);

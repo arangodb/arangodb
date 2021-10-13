@@ -1607,9 +1607,9 @@ std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransac
   return std::make_unique<arangodb::transaction::Manager>(feature);
 }
 
-std::shared_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
+std::shared_ptr<PreTransactionState> StorageEngineMock::createTransactionState(
     TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
-    arangodb::transaction::Options const& options) {
+    const arangodb::transaction::Options& options) {
   return std::make_shared<TransactionStateMock>(vocbase, tid, options);
 }
 

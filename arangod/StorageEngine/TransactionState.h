@@ -107,10 +107,10 @@ class TransactionState {
   }
   [[nodiscard]] ServerState::RoleEnum serverRole() const { return _serverRole; }
 
-  // [[nodiscard]] transaction::Options& options() { return _options; }
-  // [[nodiscard]] transaction::Options const& options() const {
-  //   return _options;
-  // }
+  [[nodiscard]] transaction::Options& options() { return _options; }
+  [[nodiscard]] transaction::Options const& options() const {
+    return _options;
+  }
   [[nodiscard]] TRI_vocbase_t& vocbase() const { return _vocbase; }
   [[nodiscard]] TransactionId id() const { return _id; }
   [[nodiscard]] transaction::Status status() const noexcept { return _transactionable->status(); }
@@ -342,5 +342,38 @@ class TransactionState {
 
   std::unique_ptr<arangodb::Transactionable> _transactionable;
 };
+
+class RunningTransactionState;
+class PreTransactionState;
+class PostTransactionState;
+class PreTransactionState {
+ public:
+  [[nodiscard]] auto beginTransaction() && -> ResultT<RunningTransactionState>;
+  [[nodiscard]] auto id() const noexcept -> TransactionId;
+  [[nodiscard]] Result addCollection(DataSourceId cid, std::string const& cname,
+                                     AccessMode::Type accessType, bool lockUsage);
+};
+
+class RunningTransactionState {
+ public:
+
+  [[nodiscard]] auto commitTransaction() && -> ResultT<PostTransactionState>;
+
+  [[nodiscard]] auto abortTransaction() && -> ResultT<PostTransactionState>;
+};
+
+class PostTransactionState {
+ public:
+
+};
+
+namespace transaction {
+auto createRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+                                   transaction::Options const& options)
+    -> std::shared_ptr<PreTransactionState>;
+auto createClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+                                   transaction::Options const& options)
+    -> std::shared_ptr<PreTransactionState>;
+}  // namespace transaction
 
 }  // namespace arangodb

@@ -385,8 +385,8 @@ transaction::Hints Manager::ensureHints(transaction::Options& options) const {
   return hints;
 }
 
-Result Manager::beginTransaction(transaction::Hints hints,
-                                 std::shared_ptr<TransactionState>& state) {
+ResultT Manager::beginTransaction(transaction::Hints hints,
+                                  std::shared_ptr<PreTransactionState>&& state) {
   Result res;
   try {
     res = state->beginTransaction(hints);  // registers with transaction manager
@@ -454,7 +454,7 @@ Result Manager::prepareOptions(transaction::Options& options) {
 }
 
 Result Manager::lockCollections(TRI_vocbase_t& vocbase,
-                                std::shared_ptr<TransactionState> state,
+                                std::shared_ptr<PreTransactionState> state,
                                 std::vector<std::string> const& exclusiveCollections,
                                 std::vector<std::string> const& writeCollections,
                                 std::vector<std::string> const& readCollections) {
@@ -464,7 +464,7 @@ Result Manager::lockCollections(TRI_vocbase_t& vocbase,
   auto lockCols = [&](std::vector<std::string> const& cols, AccessMode::Type mode) {
     for (auto const& cname : cols) {
       DataSourceId cid = DataSourceId::none();
-      if (state->isCoordinator()) {
+      if (ServerState::instance()->isCoordinator()) {
         cid = resolver.getCollectionIdCluster(cname);
       } else {  // only support local collections / shards
         cid = resolver.getCollectionIdLocal(cname);
@@ -477,7 +477,7 @@ Result Manager::lockCollections(TRI_vocbase_t& vocbase,
                       ": " + cname);
       } else {
 #ifdef USE_ENTERPRISE
-        if (state->isCoordinator()) {
+        if (ServerState::instance()->isCoordinator()) {
           try {
             std::shared_ptr<LogicalCollection> col = resolver.getCollection(cname);
             if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
@@ -559,20 +559,29 @@ ResultT<TransactionId> Manager::createManagedTrx(
   if (res.fail()) {
     return res;
   }
-  std::shared_ptr<TransactionState> state;
+  //std::shared_ptr<TransactionState> state;
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   TRI_ASSERT(ServerState::isSingleServerOrCoordinator(role));
   TransactionId tid = ServerState::isSingleServer(role)
                           ? TransactionId::createSingleServer()
                           : TransactionId::createCoordinator();
-  try {
-    // now start our own transaction
+  // try {
+  //   // now start our own transaction
+  //   StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  //   state = engine.createTransactionState(vocbase, tid, options);
+  // } catch (basics::Exception const& e) {
+  //   return res.reset(e.code(), e.message());
+  // }
+  auto maybeState = basics::catchToResultT([&] {
     StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
-    state = engine.createTransactionState(vocbase, tid, options);
-  } catch (basics::Exception const& e) {
-    return res.reset(e.code(), e.message());
+    return engine.createTransactionState(vocbase, tid, options);
+  });
+  if (!maybeState.ok()) {
+    return std::move(maybeState).result();
   }
+  auto& state = maybeState.get();
+
   TRI_ASSERT(state != nullptr);
   TRI_ASSERT(state->id() == tid);
 
