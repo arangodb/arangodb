@@ -100,6 +100,7 @@
   db.UnitTestsImportIgnore.ensureIndex({ type: "hash", fields: [ "value" ], unique: true });
   db._create("UnitTestsImportUniqueConstraints");
   db.UnitTestsImportUniqueConstraints.ensureIndex({ type: "hash", fields: [ "value" ], unique: true });
+  db._create("UnitTestsImportCsvMergeAttributes");
 })();
 
 return {
