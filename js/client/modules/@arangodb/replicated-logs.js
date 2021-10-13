@@ -87,6 +87,12 @@ ReplicatedLog.prototype.tail = function(limit = 10) {
   return requestResult.result;
 };
 
+ReplicatedLog.prototype.slice = function(start, stop) {
+  let requestResult = this._database._connection.GET(this._baseurl() + `/slice?start=${start}&stop=${stop}`);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult.result;
+};
+
 ReplicatedLog.prototype.poll = function(first, limit = 100) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/poll?first=${first}&limit=${limit}`);
   arangosh.checkRequestResult(requestResult);
@@ -109,7 +115,7 @@ ReplicatedLog.prototype.insert = function (payload, waitForSync = false) {
   let str = JSON.stringify(payload);
   let requestResult = this._database._connection.POST(this._baseurl() + `/insert?waitForSync=${waitForSync || false}`, str);
   arangosh.checkRequestResult(requestResult);
-  return requestResult;
+  return requestResult.result;
 };
 
 ReplicatedLog.prototype.toString = function () {

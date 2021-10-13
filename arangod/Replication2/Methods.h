@@ -65,13 +65,13 @@ struct ReplicatedLogMethods {
       -> futures::Future<std::optional<PersistingLogEntry>> = 0;
 
   virtual auto slice(LogId, LogIndex start, LogIndex stop) const
-      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
   virtual auto poll(LogId, LogIndex, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
-  virtual auto tail(LogId, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
   virtual auto head(LogId, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+  virtual auto tail(LogId, std::size_t limit) const
+      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
 
   virtual auto insert(LogId, LogPayload) const
       -> futures::Future<std::pair<LogIndex, replicated_log::WaitForResult>> = 0;
@@ -80,7 +80,7 @@ struct ReplicatedLogMethods {
   virtual auto release(LogId, LogIndex) const -> futures::Future<Result> = 0;
 
   static auto createInstance(TRI_vocbase_t& vocbase)
-      -> std::unique_ptr<ReplicatedLogMethods>;
+      -> std::shared_ptr<ReplicatedLogMethods>;
 };
 
 }  // namespace arangodb::replication2

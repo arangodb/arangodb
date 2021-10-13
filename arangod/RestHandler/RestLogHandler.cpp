@@ -39,6 +39,7 @@
 #include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -272,19 +273,17 @@ RestStatus RestLogHandler::handleGetPoll(ReplicatedLogMethods const& methods,
   LogIndex logIdx{basics::StringUtils::uint64(_request->value("first"))};
   std::size_t limit{basics::StringUtils::uint64(_request->value("limit"))};
   limit = limit == 0 ? 1000 : limit;
-  LOG_DEVEL << "poll with " << logIdx << " limit = " << limit;
-  auto fut =
-      methods.poll(logId, logIdx, limit).thenValue([&](std::unique_ptr<LogIterator> iter) {
-        VPackBuilder builder;
-        {
-          VPackArrayBuilder ab(&builder);
-          while (auto entry = iter->next()) {
-            entry->toVelocyPack(builder);
-          }
-        }
+  auto fut = methods.poll(logId, logIdx, limit).thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
+    VPackBuilder builder;
+    {
+      VPackArrayBuilder ab(&builder);
+      while (auto entry = iter->next()) {
+        entry->toVelocyPack(builder);
+      }
+    }
 
-        generateOk(rest::ResponseCode::OK, builder.slice());
-      });
+    generateOk(rest::ResponseCode::OK, builder.slice());
+  });
 
   return waitForFuture(std::move(fut));
 }
@@ -299,7 +298,7 @@ RestStatus RestLogHandler::handleGetTail(ReplicatedLogMethods const& methods,
   std::size_t limit{basics::StringUtils::uint64(_request->value("limit"))};
 
   auto fut =
-      methods.tail(logId, limit).thenValue([&](std::unique_ptr<LogIterator> iter) {
+      methods.tail(logId, limit).thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
         VPackBuilder builder;
         {
           VPackArrayBuilder ab(&builder);
@@ -324,7 +323,7 @@ RestStatus RestLogHandler::handleGetHead(ReplicatedLogMethods const& methods,
   std::size_t limit{basics::StringUtils::uint64(_request->value("limit"))};
 
   auto fut =
-      methods.head(logId, limit).thenValue([&](std::unique_ptr<LogIterator> iter) {
+      methods.head(logId, limit).thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
         VPackBuilder builder;
         {
           VPackArrayBuilder ab(&builder);
@@ -350,7 +349,7 @@ RestStatus RestLogHandler::handleGetSlice(ReplicatedLogMethods const& methods,
   LogIndex stop{basics::StringUtils::uint64(_request->value("stop"))};
 
   auto fut =
-      methods.slice(logId, start, stop).thenValue([&](std::unique_ptr<LogIterator> iter) {
+      methods.slice(logId, start, stop).thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
         VPackBuilder builder;
         {
           VPackArrayBuilder ab(&builder);
