@@ -28,6 +28,7 @@
 #include <unicode/brkiter.h> // for icu::BreakIterator
 #include <absl/container/node_hash_map.h>
 #include <frozen/unordered_map.h>
+#include <libstemmer.h>
 
 #include <cctype> // for std::isspace(...)
 #include <fstream>

@@ -23,6 +23,8 @@
 
 #include "text_token_stemming_stream.hpp"
 
+#include <libstemmer.h>
+
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
