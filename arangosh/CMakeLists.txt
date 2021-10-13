@@ -15,8 +15,9 @@ set(LIB_ARANGO_SHELL_SOURCES
   Shell/ConsoleFeature.cpp  
   Utils/ClientManager.cpp
   Utils/ManagedDirectory.cpp
+        ../lib/SimpleHttpClient/HttpResponseChecker.cpp
   V8Client/ArangoClientHelper.cpp
-)
+        ../lib/SimpleHttpClient/HttpResponseChecker.cpp ../lib/SimpleHttpClient/HttpResponseChecker.h)
 
 add_library(arango_shell STATIC
   ${LIB_ARANGO_SHELL_SOURCES}

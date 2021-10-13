@@ -95,7 +95,8 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       new BooleanParameter(&_useBackslash));
 
   options->addOption("--batch-size",
-                     "size for individual data batches (in bytes)",
+                     "size for individual data batche"
+                     "s (in bytes)",
                      new UInt64Parameter(&_chunkSize));
 
   options->addOption(

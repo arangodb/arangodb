@@ -275,6 +275,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/ShaEventListener.cpp
   RocksDBEngine/TransactionManagerTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
+  SimpleHttpClient/HttpResponseCheckerTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/Context-test.cpp
@@ -293,7 +294,7 @@ set(ARANGODB_TESTS_SOURCES
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
   Zkd/Library.cpp
-  ${ADDITIONAL_TEST_SOURCES})
+  ${ADDITIONAL_TEST_SOURCES} SimpleHttpClient/HttpResponseCheckerTest.cpp)
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/AppendEntriesBatchTest.cpp
