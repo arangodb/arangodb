@@ -53,7 +53,9 @@ v8::Handle<v8::Object> WrapReplicatedLog(v8::Isolate* isolate, LogId id) {
   result->SetInternalField(  // required for TRI_UnwrapClass(...)
       SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_REPLICATED_LOG_TYPE)  // args
   );
-  result->SetInternalField(SLOT_CLASS, v8::Uint32::NewFromUnsigned(isolate, id.id()));
+  result->SetInternalField(SLOT_CLASS,
+                           v8::Uint32::NewFromUnsigned(isolate,
+                                                       static_cast<uint32_t>(id.id())));
 
   TRI_GET_GLOBAL_STRING(_DbNameKey);
   result->Set(context, _DbNameKey, TRI_V8_STD_STRING(isolate, vocbase.name())).FromMaybe(false);
