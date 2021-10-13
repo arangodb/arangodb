@@ -22,25 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Methods.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
 #include "Aql/SortCondition.h"
-#include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/encoding.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
@@ -48,7 +43,6 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/RestHandler.h"
@@ -59,10 +53,7 @@
 #include "Network/Utils.h"
 #include "Random/RandomGenerator.h"
 #include "Replication/ReplicationMetricsFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
@@ -74,7 +65,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/Methods/Indexes.h"
 #include "VocBase/ticks.h"
 
 #ifdef USE_ENTERPRISE
@@ -1077,6 +1067,12 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         ServerState::instance()->isSingleServer()) {
       auto vsecol =
           dynamic_cast<arangodb::VirtualSmartEdgeCollection const*>(collection.get());
+
+      if (vsecol == nullptr) {
+        // Cast did not work. Illegal state
+        return Result(TRI_ERROR_NO_SMART_COLLECTION);
+      }
+
       auto vRes = vsecol->verifyEdge(value);
       if (vRes.fail()) {
         return vRes;
@@ -1093,6 +1089,12 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         transaction::BuilderLeaser req(this);
         auto svecol =
             dynamic_cast<arangodb::SmartVertexCollection const*>(collection.get());
+
+        if (svecol == nullptr) {
+          // Cast did not work. Illegal state
+          return Result(TRI_ERROR_NO_SMART_COLLECTION);
+        }
+
         auto sveRes = svecol->rewriteVertexOnInsert(value, *req.get(), options.isRestore);
         if (sveRes.fail()) {
           return sveRes;
