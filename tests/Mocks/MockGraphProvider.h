@@ -226,6 +226,8 @@ class MockGraphProvider {
   void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
 
+  void prepareIndexExpressions(aql::Ast* ast);
+
   [[nodiscard]] transaction::Methods* trx();
 
   aql::TraversalStats stealStats();

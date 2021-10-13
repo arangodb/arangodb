@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryExpressionContext.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
@@ -58,5 +59,31 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
   std::vector<Variable const*> const& _vars;
   std::vector<RegisterId> const& _regs;
 };
+
+class ResetableExecutorExpressionContext final : public QueryExpressionContext {
+ public:
+  ResetableExecutorExpressionContext(transaction::Methods& trx,
+                            QueryContext& context,
+                            AqlFunctionsInternalCache& cache);
+
+  ~ResetableExecutorExpressionContext() override = default;
+
+  void injectInputRow(InputAqlItemRow const& inputRow);
+
+  void injectVariableMapping(std::unordered_map<VariableId, RegisterId> const& varToRegisterMapping);
+
+  bool isDataFromCollection(Variable const* variable) const override {
+    return variable->isDataFromCollection;
+  }
+
+  AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                            bool& mustDestroy) const override;
+
+ private:
+  /// @brief temporary storage for expression data context
+  InputAqlItemRow const* _inputRow;
+  std::unordered_map<VariableId, RegisterId> const* _varToRegisterMapping;
+};
+
 }  // namespace aql
 }  // namespace arangodb

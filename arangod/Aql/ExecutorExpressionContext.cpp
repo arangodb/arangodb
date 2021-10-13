@@ -63,3 +63,38 @@ ExecutorExpressionContext::ExecutorExpressionContext(arangodb::transaction::Meth
                                                      std::vector<RegisterId> const& regs)
     : QueryExpressionContext(trx, context, cache),
       _inputRow(inputRow), _vars(vars), _regs(regs) {}
+
+void ResetableExecutorExpressionContext::injectInputRow(InputAqlItemRow const& inputRow) {
+  _inputRow = &inputRow;
+}
+
+void ResetableExecutorExpressionContext::injectVariableMapping(std::unordered_map<VariableId, RegisterId> const& varToRegisterMapping) {
+  _varToRegisterMapping = &varToRegisterMapping;
+}
+
+AqlValue ResetableExecutorExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
+                                                     bool& mustDestroy) const {
+  // If this assert kicks in injectInputRow has not been called yet.
+  TRI_ASSERT(_inputRow != nullptr);
+  // If this assert kicks in the injectVariableMapping has not been called yet.
+  TRI_ASSERT(_varToRegisterMapping != nullptr);
+  mustDestroy = false;
+
+  auto const searchId = variable->id;
+  auto regIt = _varToRegisterMapping->find(searchId);
+  if (regIt == _varToRegisterMapping->end()) {
+    std::string msg("variable not found '");
+    msg.append(variable->name);
+    msg.append("' in executeSimpleExpression()");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+  }
+  if (doCopy) {
+    mustDestroy = true;  // as we are copying
+    return _inputRow->getValue(regIt->second).clone();
+  }
+  return _inputRow->getValue(regIt->second);
+}
+
+ResetableExecutorExpressionContext::ResetableExecutorExpressionContext(
+    arangodb::transaction::Methods& trx, QueryContext& context, AqlFunctionsInternalCache& cache)
+    : QueryExpressionContext(trx, context, cache), _inputRow{nullptr}, _varToRegisterMapping(nullptr) {}

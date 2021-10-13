@@ -117,6 +117,8 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node, bool p
       auto* const graphNode = ExecutionNode::castTo<GraphNode*>(node);
       graphNode->prepareOptions();
       injectVertexCollections(graphNode);
+      LOG_DEVEL << "LOCAL Adding node, to initialize conditions";
+      // graphNode->initializeIndexConditions();
       break;
     }
     default:
@@ -709,6 +711,7 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
 void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node, bool pushToSingleServer) {
   node->prepareOptions();
   injectVertexCollections(node);
+  node->initializeIndexConditions();
   // SnippetID does not matter on GraphNodes
   _shardLocking.addNode(node, 0, pushToSingleServer);
   _graphNodes.emplace_back(node);

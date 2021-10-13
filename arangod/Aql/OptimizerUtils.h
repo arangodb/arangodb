@@ -49,9 +49,21 @@ struct RegisterId;
 namespace utils {
 
 struct NonConstExpressionContainer {
+  NonConstExpressionContainer() = default;
+  ~NonConstExpressionContainer() = default;
+  NonConstExpressionContainer(NonConstExpressionContainer const&) = delete;
+  NonConstExpressionContainer(NonConstExpressionContainer&&) = default;
+  NonConstExpressionContainer& operator=(NonConstExpressionContainer const&) = delete;
+
   std::vector<std::unique_ptr<NonConstExpression>> _expressions;
   std::unordered_map<VariableId, RegisterId> _varToRegisterMapping; 
   bool _hasV8Expression = false;
+
+  // Serializes this container into a velocypack builder.
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  static NonConstExpressionContainer fromVelocyPack(Ast* ast, arangodb::velocypack::Slice slice);
+
+  NonConstExpressionContainer clone(Ast* ast) const;
 };
 
 /// @brief Gets the best fitting index for an AQL condition.

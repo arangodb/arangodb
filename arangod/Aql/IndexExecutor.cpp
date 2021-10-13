@@ -546,7 +546,7 @@ void IndexExecutor::initializeCursor() {
   _skipped = 0;
 }
 
-void IndexExecutor::initIndexes(InputAqlItemRow& input) {
+void IndexExecutor::initIndexes(InputAqlItemRow const& input) {
   // We start with a different context. Return documents found in the previous
   // context again.
   _documentProducingFunctionContext.reset();
@@ -585,7 +585,7 @@ void IndexExecutor::initIndexes(InputAqlItemRow& input) {
   _currentIndex = _infos.getIndexes().size();
 }
 
-void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
+void IndexExecutor::executeExpressions(InputAqlItemRow const& input) {
   TRI_ASSERT(_infos.getCondition() != nullptr);
   TRI_ASSERT(!_infos.getNonConstExpressions().empty());
 

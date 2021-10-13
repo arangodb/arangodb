@@ -680,10 +680,11 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   TRI_ASSERT(traverser != nullptr);
   auto executorInfos = TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
                                               getStartVertex(), inputRegister,
-                                              std::move(filterConditionVariables));
+                                              std::move(filterConditionVariables),
+                                              plan()->getAst());
+
   // We need to prepare the variable accesses before we ask the index nodes.
-  // Those are located on the options, and need to be partially executed.
-  opts->initializeIndexConditions(plan()->getAst(), getRegisterPlan()->varInfo, getTemporaryVariable());
+  initializeIndexConditions();
 
   return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

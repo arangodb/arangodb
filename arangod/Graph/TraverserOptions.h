@@ -229,6 +229,8 @@ struct TraverserOptions : public graph::BaseOptions {
     aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
     aql::Variable const* indexVariable) override;
 
+  void calculateIndexExpressions(aql::Ast* ast) override;
+
  private:
   void readProduceInfo(VPackSlice obj);
 };

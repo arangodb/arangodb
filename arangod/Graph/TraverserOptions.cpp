@@ -772,6 +772,15 @@ void TraverserOptions::initializeIndexConditions(
   }
 }
 
+void TraverserOptions::calculateIndexExpressions(aql::Ast* ast) {
+  BaseOptions::calculateIndexExpressions(ast);
+  for (auto& [unused, infos] : _depthLookupInfo) {
+    for (auto& info : infos) {
+      info.calculateIndexExpressions(ast, _expressionCtx);
+    }
+  }
+}
+
 bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vertex,
                                                 uint64_t depth) {
   arangodb::aql::Expression* expression = nullptr;

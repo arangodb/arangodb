@@ -25,6 +25,7 @@
 
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/OptimizerUtils.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -39,9 +40,10 @@ namespace aql {
 struct AstNode;
 class ExecutionPlan;
 class Expression;
+class InputAqlItemRow;
 class QueryContext;
+class ResetableExecutorExpressionContext;
 struct VarInfo;
-
 }  // namespace aql
 
 namespace velocypack {
@@ -83,6 +85,8 @@ struct BaseOptions {
     // Position of _from / _to in the index search condition
     size_t conditionMemberToUpdate;
 
+    std::optional<aql::utils::NonConstExpressionContainer> _nonConstContainer;
+
     LookupInfo();
     ~LookupInfo();
 
@@ -96,9 +100,15 @@ struct BaseOptions {
                                        std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
                                        aql::Variable const* indexVariable);
 
+    void injectVariableValues(aql::Ast* ast,
+        aql::ResetableExecutorExpressionContext& ctx,
+        aql::InputAqlItemRow const& input);
+
     /// @brief Build a velocypack containing all relevant information
     ///        for DBServer traverser engines.
     void buildEngineInfo(arangodb::velocypack::Builder&) const;
+
+    void calculateIndexExpressions(aql::Ast* ast, aql::ExpressionContext& ctx);
 
     double estimateCost(size_t& nrItems) const;
   };
@@ -205,6 +215,12 @@ struct BaseOptions {
   virtual void initializeIndexConditions(
     aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
     aql::Variable const* indexVariable);
+
+  virtual void injectVariableValuesForIndexes(aql::Ast* ast,
+                                              aql::ResetableExecutorExpressionContext& ctx,
+                                              aql::InputAqlItemRow const& input);
+
+  virtual void calculateIndexExpressions(aql::Ast* ast);
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;

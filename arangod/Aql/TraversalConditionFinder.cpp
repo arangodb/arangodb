@@ -475,7 +475,36 @@ static bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan, AstNo
     parentOfReplace->changeMember(replaceIdx, replaceNode);
     // NOTE: We have to reload the NODE here, because we may have replaced
     // it entirely
-    tn->registerGlobalCondition(isEdge, parent->getMemberUnchecked(testIndex));
+    ///////////
+    // TEMP BLOCK TO BE EXTRACTED INTO UTIL FILE
+    ///////////
+    auto cond = parent->getMemberUnchecked(testIndex);
+    auto func = [&](AstNode* node) -> AstNode* {
+      if (node->type == NODE_TYPE_REFERENCE) {
+        auto variable = static_cast<Variable*>(node->getData());
+
+        if (variable != nullptr) {
+          auto setter = plan->getVarSetBy(variable->id);
+
+          if (setter != nullptr && setter->getType() == EN::CALCULATION) {
+            auto s = ExecutionNode::castTo<CalculationNode*>(setter);
+            auto filterExpression = s->expression();
+            AstNode* inNode = filterExpression->nodeForModification();
+            if (inNode->isDeterministic() && inNode->isSimple()) {
+              return inNode;
+            }
+          }
+        }
+      }
+      return node;
+    };
+
+    cond = Ast::traverseAndModify(cond, func);
+
+    ///////////
+    // END OF TEMP BLOCK
+    ///////////
+    tn->registerGlobalCondition(isEdge, cond);
   } else {
     conditionIsImpossible = !tn->isInRange(depth, isEdge);
     if (conditionIsImpossible) {
@@ -485,9 +514,40 @@ static bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan, AstNo
     TEMPORARILY_UNLOCK_NODE(parentOfReplace);
     // Point Access
     parentOfReplace->changeMember(replaceIdx, tempNode);
+
+    ///////////
+    // TEMP BLOCK TO BE EXTRACTED INTO UTIL FILE
+    ///////////
+    auto cond = parent->getMemberUnchecked(testIndex);
+    auto func = [&](AstNode* node) -> AstNode* {
+      if (node->type == NODE_TYPE_REFERENCE) {
+        auto variable = static_cast<Variable*>(node->getData());
+
+        if (variable != nullptr) {
+          auto setter = plan->getVarSetBy(variable->id);
+
+          if (setter != nullptr && setter->getType() == EN::CALCULATION) {
+            auto s = ExecutionNode::castTo<CalculationNode*>(setter);
+            auto filterExpression = s->expression();
+            AstNode* inNode = filterExpression->nodeForModification();
+            if (inNode->isDeterministic() && inNode->isSimple()) {
+              return inNode;
+            }
+          }
+        }
+      }
+      return node;
+    };
+
+    cond = Ast::traverseAndModify(cond, func);
+
+    ///////////
+    // END OF TEMP BLOCK
+    ///////////
+ 
     // NOTE: We have to reload the NODE here, because we may have replaced
     // it entirely
-    tn->registerCondition(isEdge, depth, parent->getMemberUnchecked(testIndex));
+    tn->registerCondition(isEdge, depth, cond);
   }
   return true;
 }
@@ -643,6 +703,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         varsUsedByCondition.clear();
         Ast::getReferencedVariables(cond, varsUsedByCondition);
         OptimizationCase usedCase = identifyCase();
+
         switch (usedCase) {
           case OptimizationCase::NON_OPTIMIZABLE:
             // we found a variable created after the
@@ -693,6 +754,34 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             // Both have about the Same code and just differ in the used variable.
             // auto usedVar = usedCase == OptimizationCase::VERTEX ? vertexVar : edgeVar;
             AstNode* conditionToOptimize = andNode->getMemberUnchecked(i - 1);
+            ///////////
+            // TEMP BLOCK TO BE EXTRACTED INTO UTIL FILE
+            ///////////
+            auto func = [&](AstNode* node) -> AstNode* {
+              if (node->type == NODE_TYPE_REFERENCE) {
+                auto variable = static_cast<Variable*>(node->getData());
+
+                if (variable != nullptr) {
+                  auto setter = _plan->getVarSetBy(variable->id);
+
+                  if (setter != nullptr && setter->getType() == EN::CALCULATION) {
+                    auto s = ExecutionNode::castTo<CalculationNode*>(setter);
+                    auto filterExpression = s->expression();
+                    AstNode* inNode = filterExpression->nodeForModification();
+                    if (inNode->isDeterministic() && inNode->isSimple()) {
+                      return inNode;
+                    }
+                  }
+                }
+              }
+              return node;
+            };
+
+            conditionToOptimize = Ast::traverseAndModify(conditionToOptimize, func);
+ 
+            ///////////
+            // END OF TEMP BLOCK
+            ///////////
             // Create a clone before we modify the Condition
             AstNode* cloned = conditionToOptimize->clone(_plan->getAst());
             // Retain original condition, as covered by this Node

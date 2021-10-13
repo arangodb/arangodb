@@ -507,5 +507,5 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable, IndexId 
 }
 
 NonConstExpression::NonConstExpression(std::unique_ptr<Expression> exp,
-                                       std::vector<size_t>&& idxPath)
+                                       std::vector<size_t> idxPath)
     : expression(std::move(exp)), indexPath(std::move(idxPath)) {}
