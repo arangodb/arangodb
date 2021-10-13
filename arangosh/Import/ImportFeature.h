@@ -76,6 +76,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   int* _result;
   bool _skipValidation;
   bool _latencyStats;
+  std::vector<std::string> _mergeAttributes;
 };
 
 }  // namespace arangodb

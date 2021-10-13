@@ -201,6 +201,10 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                          actionsJoined,
                      new DiscreteValuesParameter<StringParameter>(&_onDuplicateAction, actions));
 
+  options->addOption("--merge-attributes",
+                     "merge attributes into new document attribute (e.g. mergedAttribute=[someAttribute]-[otherAttribute]) (CSV and TSV only)",
+                     new VectorParameter<StringParameter>(&_mergeAttributes)).setIntroducedIn(30901);
+
   options->addOption(
       "--latency", "show 10 second latency statistics (values in microseconds)",
       new BooleanParameter(&_latencyStats));
@@ -522,6 +526,10 @@ void ImportFeature::start() {
   // progress
   if (_latencyStats) {
     ih.startHistogram();
+  }
+
+  if (!_mergeAttributes.empty()) {
+    ih.parseMergeAttributes(_mergeAttributes);
   }
 
   if (_onDuplicateAction != "error" && _onDuplicateAction != "update" &&

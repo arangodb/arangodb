@@ -175,6 +175,21 @@ class ImportHelper {
     }
   }
 
+  struct Step {
+    Step(std::string value, bool isLiteral)
+        : value(std::move(value)), isLiteral(isLiteral) {}
+    std::string value;
+    bool isLiteral;
+  };
+
+  std::vector<Step> tokenizeInput(std::string const& input, std::string const& key) const;
+
+  void verifyNestedAttributes(std::string const& input, std::string const& key) const;
+
+  void verifyMergeAttributesSyntax(std::string const& input) const;
+
+  void parseMergeAttributes(std::vector<std::string> const& args);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not to overwrite existing data in the collection
   //////////////////////////////////////////////////////////////////////////////
@@ -348,10 +363,14 @@ class ImportHelper {
 
   std::unordered_map<std::string, std::string> _translations;
   std::unordered_map<std::string, std::string> _datatypes;
+
+  std::vector<std::pair<std::string, std::vector<Step>>> _mergeAttributesInstructions;
+  std::unordered_map<std::string, std::string> _fieldsLookUpTable;
   std::unordered_set<std::string> _removeAttributes;
 
   bool _hasError;
   bool _headersSeen;
+  bool _emittedField;
   std::vector<std::string> _errorMessages;
 
   static double const ProgressStep;

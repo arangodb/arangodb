@@ -23,8 +23,8 @@
 #include "tests_shared.hpp"
 
 #include <utf8/core.h>
-
 #include "index/index_tests.hpp"
+#include "utils/arena_allocator.hpp"
 #include "utils/levenshtein_utils.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
@@ -37,6 +37,10 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
                     const irs::bytes_ref& target) {
     auto acceptor = irs::make_levenshtein_automaton(description, prefix, target);
     irs::automaton_table_matcher matcher(acceptor, true);
+
+    irs::memory::arena<uint32_t, 16> arena;
+    irs::memory::arena_vector<uint32_t, decltype(arena)> target_chars(arena);
+    irs::utf8_utils::utf8_to_utf32<false>(target.c_str(), target.size(), std::back_inserter(target_chars));
 
     for (auto& segment : reader) {
       auto fields = segment.fields();
@@ -55,7 +59,10 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
         while (expected_terms->next()) {
           auto& expected_term = expected_terms->value();
 
-          auto edit_distance = irs::edit_distance(expected_term, target);
+          irs::memory::arena_vector<uint32_t, decltype(arena)> expected_chars(arena);
+          irs::utf8_utils::utf8_to_utf32<false>(expected_term.c_str(), expected_term.size(), std::back_inserter(expected_chars));
+
+          auto edit_distance = irs::edit_distance(&expected_chars[0], expected_chars.size(), &target_chars[0], target_chars.size());
           if (edit_distance > description.max_distance()) {
             continue;
           }
@@ -71,6 +78,9 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
 
           ASSERT_TRUE(actual_terms->next());
           auto& actual_term = actual_terms->value();
+          SCOPED_TRACE(testing::Message("Actual term: '")
+            << irs::ref_cast<char>(actual_term));
+
           ASSERT_EQ(expected_term, actual_term);
           ASSERT_EQ(1, payload->value.size());
           ASSERT_EQ(edit_distance, payload->value[0]);
