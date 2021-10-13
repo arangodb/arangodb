@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add license information to frontend.
+
 * Fix windows installer PATH manipulation issue by replaceng the NSIS plugin
   (BTS-176).
 
