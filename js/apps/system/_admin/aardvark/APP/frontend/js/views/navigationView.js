@@ -135,8 +135,10 @@
         type: "GET",
         url: url,
         success: function (licenseData) {
-          self.setLicenseInfoToStorage(licenseData.status, licenseData.features.expires);
-          self.renderLicenseInfoFromStorage();
+          if (licenseData.status && licenseData.features && licenseData.features.expires) {
+            self.setLicenseInfoToStorage(licenseData.status, licenseData.features.expires);
+            self.renderLicenseInfoFromStorage();
+          }
         },
         error: function () {
           const errorElement = '<div id="subNavLicenseInfo" class="alert alert-danger"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">Error: Failed to fetch license information</span></div>';
@@ -158,7 +160,14 @@
     renderLicenseInfoFromStorage: function () {
       if (Storage !== 'undefined') {
         const info = sessionStorage.getItem('licenseInfo');
-        const infoJson = JSON.parse(info);
+        let infoJson = null;
+
+        try {
+          infoJson = JSON.parse(info);
+        } catch (err) {
+          arangoHelper.arangoError('License', 'Could not parse information: ' + err.toString());
+        }
+
         if (infoJson !== null) {
           let infotext = '';
           let daysInfo = '';
@@ -166,7 +175,7 @@
           switch (infoJson.status) {
             case 'expiring':
               daysInfo = Math.floor((infoJson.expires - Math.round(new Date().getTime() / 1000)) / (3600*24));
-              infotext = 'Your license is expiring ' + daysInfo + ' days from now. Please contact ArangoDB sales to extend your license urgently';
+              infotext = 'Your license is expiring ' + daysInfo + ' days from now. Please contact ArangoDB sales to extend your license urgently.';
               break;
             case 'expired':
               daysInfo = Math.floor((Math.round(new Date().getTime() / 1000) - infoJson.expires) / (3600*24));
