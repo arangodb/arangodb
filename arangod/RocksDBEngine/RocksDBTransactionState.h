@@ -144,6 +144,9 @@ class RocksDBTransactionState final : public TransactionState {
   ///        Used to update the estimate after the trx committed
   void trackIndexRemove(DataSourceId cid, IndexId idxObjectId, uint64_t hash);
 
+  /// @brief whether or not a transaction only has exclusive or read accesses
+  bool isOnlyExclusiveTransaction() const noexcept;
+
   [[nodiscard]] rocksdb::SequenceNumber beginSeq() const;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

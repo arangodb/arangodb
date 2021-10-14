@@ -225,9 +225,6 @@ class TransactionState {
     return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
-  /// @brief whether or not a transaction only has exculsive or read accesses
-  bool isOnlyExclusiveTransaction() const;
-
   /// @brief servers already contacted
   [[nodiscard]] ::arangodb::containers::HashSet<std::string> const& knownServers() const {
     return _knownServers;
