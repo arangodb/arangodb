@@ -52,15 +52,10 @@ using namespace arangodb;
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
-      _type(AccessMode::Type::READ),
-      _status(transaction::Status::CREATED),
-      _arena(),
       _collections{_arena},  // assign arena to vector
-      _hints(),
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
-      _id(tid),
-      _registeredTransaction(false) {
+      _id(tid) {
 
   // patch intermediateCommitCount for testing
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS

@@ -299,15 +299,15 @@ class TransactionState {
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
 
   /// @brief access type (read|write)
-  AccessMode::Type _type;
+  AccessMode::Type _type = AccessMode::Type::READ;
   /// @brief current status
-  transaction::Status _status;
+  transaction::Status _status = transaction::Status::CREATED;
 
   using ListType = arangodb::containers::SmallVector<TransactionCollection*>;
-  ListType::allocator_type::arena_type _arena;  // memory for collections
+  ListType::allocator_type::arena_type _arena{};  // memory for collections
   ListType _collections;  // list of participating collections
 
-  transaction::Hints _hints;  // hints; set on _nestingLevel == 0
+  transaction::Hints _hints{};  // hints; set on _nestingLevel == 0
 
   ServerState::RoleEnum const _serverRole;  /// role of the server
 
@@ -323,7 +323,7 @@ class TransactionState {
   ::arangodb::containers::HashSet<std::string> _knownServers;
 
   QueryAnalyzerRevisions _analyzersRevision;
-  bool _registeredTransaction;
+  bool _registeredTransaction = false;
 };
 
 }  // namespace arangodb
