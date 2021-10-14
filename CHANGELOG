@@ -1,7 +1,7 @@
 devel
 -----
 
-* Add license information to frontend.
+* Add license information to the web UI.
 
 * Now, arangoimport supports merging of attributes. When importing data from a
   file into a collection, a document attribute can be comprised of merging
