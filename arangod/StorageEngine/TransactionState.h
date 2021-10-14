@@ -38,6 +38,7 @@
 #include "VocBase/voc-types.h"
 
 #include <map>
+#include <variant>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 

@@ -435,18 +435,6 @@ void RocksDBTransactionState::trackIndexRemove(DataSourceId cid, IndexId idxId, 
   }
 }
 
-bool RocksDBTransactionState::isOnlyExclusiveTransaction() const {
-  if (!AccessMode::isWriteOrExclusive(_type)) {
-    return false;
-  }
-  for (TransactionCollection* coll : _collections) {
-    if (AccessMode::isWrite(coll->accessType())) {
-      return false;
-    }
-  }
-  return true;
-}
-
 rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
   return _rocksMethods->GetSequenceNumber();
 }
