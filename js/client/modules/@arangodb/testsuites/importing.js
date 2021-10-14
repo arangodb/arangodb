@@ -384,14 +384,16 @@ function importing (options) {
       result[impTodo.id] = pu.run.arangoImport(options, instanceInfo, impTodo, options.coreCheck);
       result[impTodo.id].failed = 0;
 
+      if (impTodo.expectFailure) {
+        // if status === false, we make true out of it
+        // if status === true, we make false out of it
+        result[impTodo.id].status = !result[impTodo.id].status;
+      }
+
       if (result[impTodo.id].status !== true && !options.force) {
-        if (impTodo.expectFailure) {
-          result[impTodo.id].status = true;
-        } else {
-          result[impTodo.id].failed = 1;
-          result.failed += 1;
-          throw new Error('cannot run import');
-        }
+        result[impTodo.id].failed = 1;
+        result.failed += 1;
+        throw new Error('cannot run import');
       }
     }
 
