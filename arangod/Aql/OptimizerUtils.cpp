@@ -712,7 +712,7 @@ NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(Ast* ast
   auto vars = slice.get(varMappingKey);
   TRI_ASSERT(vars.isObject());
   for (auto const& [varId, regId] : VPackObjectIterator(vars)) {
-    size_t variableId = 0;
+    VariableId variableId = 0;
     bool converted = basics::StringUtils::toNumber(varId.copyString(), variableId); 
     TRI_ASSERT(converted);
     result._varToRegisterMapping.emplace(variableId, regId.getNumber<RegisterId::value_t>());
