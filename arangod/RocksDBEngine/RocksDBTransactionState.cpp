@@ -280,7 +280,8 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
     cleanupTransaction();  // deletes trx
     ++statistics()._transactionsCommitted;
   } else {
-    abortTransaction(activeTrx);  // deletes trx
+    // what if this fails?
+    std::ignore = abortTransaction(activeTrx);  // deletes trx
   }
   TRI_ASSERT(!_cacheTx);
 
@@ -448,6 +449,28 @@ bool RocksDBTransactionState::isOnlyExclusiveTransaction() const {
 
 rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
   return _rocksMethods->GetSequenceNumber();
+}
+
+bool RocksDBTransactionState::hasFailedOperations() const {
+  return (_status == transaction::Status::ABORTED) && hasOperations();
+}
+RocksDBTransactionState* RocksDBTransactionState::toState(transaction::Methods* trx) {
+  TRI_ASSERT(trx != nullptr);
+  TransactionState* state = trx->state();
+  TRI_ASSERT(state != nullptr);
+  return static_cast<RocksDBTransactionState*>(state);
+}
+RocksDBTransactionMethods* RocksDBTransactionState::toMethods(transaction::Methods* trx) {
+  TRI_ASSERT(trx != nullptr);
+  TransactionState* state = trx->state();
+  TRI_ASSERT(state != nullptr);
+  return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
+}
+void RocksDBTransactionState::prepareForParallelReads() { _parallel = true; }
+bool RocksDBTransactionState::inParallelMode() const { return _parallel; }
+RocksDBTransactionMethods* RocksDBTransactionState::rocksdbMethods() {
+  TRI_ASSERT(_rocksMethods);
+  return _rocksMethods.get();
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

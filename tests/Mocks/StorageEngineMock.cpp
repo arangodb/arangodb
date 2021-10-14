@@ -1977,6 +1977,10 @@ bool TransactionStateMock::hasFailedOperations() const {
   return false;  // assume no failed operations
 }
 
+TRI_voc_tick_t TransactionStateMock::lastOperationTick() const noexcept {
+  return 0;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
