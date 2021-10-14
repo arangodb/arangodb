@@ -294,7 +294,7 @@ set(ARANGODB_TESTS_SOURCES
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
   Zkd/Library.cpp
-  ${ADDITIONAL_TEST_SOURCES} SimpleHttpClient/HttpResponseCheckerTest.cpp)
+  ${ADDITIONAL_TEST_SOURCES})
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/AppendEntriesBatchTest.cpp

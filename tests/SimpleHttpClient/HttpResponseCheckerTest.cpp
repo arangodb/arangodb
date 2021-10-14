@@ -24,10 +24,7 @@
 
 #include "gtest/gtest.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/ErrorCode.h"
-#include "Logger/LogMacros.h"
 #include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
@@ -91,7 +88,7 @@ TEST(HttpResponseCheckerTest, testValidResponseHtml) {
 
 TEST(HttpResponseCheckerTest, testErrorResponseJson) {
   std::unique_ptr<httpclient::SimpleHttpResult> response = std::make_unique<httpclient::SimpleHttpResult>();
-  response->addHeaderField("content-type: application/json", 28); //application/json
+  response->addHeaderField("content-type: application/json", 28);
   response->getBody().appendText("{\"errorNum\": 3, \"errorMessage\": \"foo bar\"}");
   response->setContentLength(response->getBody().length());
   response->setResultType(httpclient::SimpleHttpResult::resultTypes{arangodb::httpclient::SimpleHttpResult::COMPLETE});
@@ -105,7 +102,7 @@ TEST(HttpResponseCheckerTest, testErrorResponseJson) {
 
 TEST(HttpResponseCheckerTest, testErrorResponseJson2) {
   std::unique_ptr<httpclient::SimpleHttpResult> response = std::make_unique<httpclient::SimpleHttpResult>();
-  response->addHeaderField("content-type: application/json", 28); //application/json
+  response->addHeaderField("content-type: application/json", 28);
   response->getBody().appendText("{\"errorNum\": 3}");
   response->setContentLength(response->getBody().length());
   response->setResultType(httpclient::SimpleHttpResult::resultTypes{arangodb::httpclient::SimpleHttpResult::COMPLETE});
@@ -118,7 +115,7 @@ TEST(HttpResponseCheckerTest, testErrorResponseJson2) {
 
 TEST(HttpResponseCheckerTest, testErrorResponseJson3) {
   std::unique_ptr<httpclient::SimpleHttpResult> response = std::make_unique<httpclient::SimpleHttpResult>();
-  response->addHeaderField("content-type: application/json", 28); //application/json
+  response->addHeaderField("content-type: application/json", 28);
   response->getBody().appendText("{}");
   response->setContentLength(response->getBody().length());
   response->setResultType(httpclient::SimpleHttpResult::resultTypes{arangodb::httpclient::SimpleHttpResult::COMPLETE});
@@ -131,7 +128,7 @@ TEST(HttpResponseCheckerTest, testErrorResponseJson3) {
 
 TEST(HttpResponseCheckerTest, testErrorResponseJson4) {
   std::unique_ptr<httpclient::SimpleHttpResult> response = std::make_unique<httpclient::SimpleHttpResult>();
-  response->addHeaderField("content-type: application/json", 28); //application/json
+  response->addHeaderField("content-type: application/json", 28);
   response->getBody().appendText("{\"errorMessage\": \"foo bar\"}");
   response->setContentLength(response->getBody().length());
   response->setResultType(httpclient::SimpleHttpResult::resultTypes{arangodb::httpclient::SimpleHttpResult::COMPLETE});
@@ -144,7 +141,7 @@ TEST(HttpResponseCheckerTest, testErrorResponseJson4) {
 
 TEST(HttpResponseCheckerTest, testErrorResponseWithInvalidJson) {
   std::unique_ptr<httpclient::SimpleHttpResult> response = std::make_unique<httpclient::SimpleHttpResult>();
-  response->addHeaderField("content-type: application/json", 28); //application/json
+  response->addHeaderField("content-type: application/json", 28);
   response->getBody().appendText("{abc123..}");
   response->setContentLength(response->getBody().length());
   response->setResultType(httpclient::SimpleHttpResult::resultTypes{arangodb::httpclient::SimpleHttpResult::COMPLETE});
