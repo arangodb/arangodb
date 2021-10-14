@@ -129,56 +129,52 @@ namespace helper {
 
 template <typename F>
 [[nodiscard]] auto catchToResult(F&& fn) noexcept -> Result {
-  Result result{TRI_ERROR_NO_ERROR};
   // The outer try/catch catches possible exceptions thrown by result.reset(),
   // due to allocation failure. If we don't have enough memory to allocate an
   // error, let's just give up.
   try {
     try {
-      result = std::forward<F>(fn)();
+      return std::forward<F>(fn)();
       // TODO check whether there are other specific exceptions we should catch
     } catch (arangodb::basics::Exception const& e) {
-      result.reset(e.code(), e.message());
+      return Result(e.code(), e.message());
     } catch (std::bad_alloc const&) {
-      result.reset(TRI_ERROR_OUT_OF_MEMORY);
+      return Result(TRI_ERROR_OUT_OF_MEMORY);
     } catch (std::exception const& e) {
-      result.reset(TRI_ERROR_INTERNAL, e.what());
+      return Result(TRI_ERROR_INTERNAL, e.what());
     } catch (...) {
-      result.reset(TRI_ERROR_INTERNAL);
+      return Result(TRI_ERROR_INTERNAL);
     }
   } catch (std::exception const& e) {
     helper::dieWithLogMessage(e.what());
   } catch (...) {
     helper::dieWithLogMessage(nullptr);
   }
-  return result;
 }
 
 template <typename F, typename T = std::invoke_result_t<F>>
 [[nodiscard]] auto catchToResultT(F&& fn) noexcept -> ResultT<T> {
-  Result result{TRI_ERROR_NO_ERROR};
   // The outer try/catch catches possible exceptions thrown by result.reset(),
   // due to allocation failure. If we don't have enough memory to allocate an
   // error, let's just give up.
   try {
     try {
-      result = std::forward<F>(fn)();
+      return std::forward<F>(fn)();
       // TODO check whether there are other specific exceptions we should catch
     } catch (arangodb::basics::Exception const& e) {
-      result.reset(e.code(), e.message());
+      return ResultT<T>::error(e.code(), e.message());
     } catch (std::bad_alloc const&) {
-      result.reset(TRI_ERROR_OUT_OF_MEMORY);
+      return ResultT<T>::error(TRI_ERROR_OUT_OF_MEMORY);
     } catch (std::exception const& e) {
-      result.reset(TRI_ERROR_INTERNAL, e.what());
+      return ResultT<T>::error(TRI_ERROR_INTERNAL, e.what());
     } catch (...) {
-      result.reset(TRI_ERROR_INTERNAL);
+      return ResultT<T>::error(TRI_ERROR_INTERNAL);
     }
   } catch (std::exception const& e) {
     helper::dieWithLogMessage(e.what());
   } catch (...) {
     helper::dieWithLogMessage(nullptr);
   }
-  return result;
 }
 
 template <typename F>
