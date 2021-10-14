@@ -153,3 +153,7 @@ uint64_t ClusterTransactionState::numCommits() const {
   // return 1 for a committed transaction and 0 otherwise
   return _status == transaction::Status::COMMITTED ? 1 : 0;
 }
+
+TRI_voc_tick_t ClusterTransactionState::lastOperationTick() const noexcept {
+  return 0;
+}
