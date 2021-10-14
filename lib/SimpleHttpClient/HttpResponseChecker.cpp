@@ -55,7 +55,7 @@ Result HttpResponseChecker::check(std::string const& clientErrorMsg, httpclient:
 
     auto err = ErrorCode{errorNum};
     return {err, "got invalid response from server: HTTP " +
-                     itoa(response->getHttpReturnCode()) + ": '" + errorMsg +
+                     itoa(response->getHttpReturnCode()) + ": '" + errorMsg + "'" +
                      (actionMsg.empty() ? "" : " while executing " + actionMsg) +
                      (requestPayload.empty() ? "" : " with this requestPayload: '" + requestPayload + "'")};
   }
