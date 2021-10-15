@@ -131,21 +131,32 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     // as a copy, then modify the log on disk. This is an atomic operation. If
     // it fails, we forget the new state. Otherwise we replace the old in memory
     // state with the new value.
-    auto newInMemoryLog =
-        self->_inMemoryLog.takeSnapshotUpToAndIncluding(req.prevLogEntry.index);
 
     if (self->_inMemoryLog.getLastIndex() != req.prevLogEntry.index) {
+      auto newInMemoryLog =
+          self->_inMemoryLog.takeSnapshotUpToAndIncluding(req.prevLogEntry.index);
       auto res = self->_logCore->removeBack(req.prevLogEntry.index + 1);
       if (!res.ok()) {
         LOG_CTX("f17b8", ERR, _loggerContext)
             << "failed to remove log entries after " << req.prevLogEntry.index;
         return AppendEntriesResult::withPersistenceError(_currentTerm, req.messageId, res);
       }
-    }
 
-    // commit the deletion in memory
-    static_assert(std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
-    self->_inMemoryLog = std::move(newInMemoryLog);
+      // commit the deletion in memory
+      static_assert(std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
+      self->_inMemoryLog = std::move(newInMemoryLog);
+    }
+  }
+
+  // If there are no new entries to be appended, we can simply update the commit index
+  // and lci and return early.
+  auto toBeResolved = std::make_unique<WaitForQueue>();
+  if (req.entries.empty()) {
+    auto action = self->checkCommitIndex(req.leaderCommit, req.largestCommonIndex, std::move(toBeResolved));
+    auto result = AppendEntriesResult::withOk(self->_follower._currentTerm, req.messageId);
+    self.unlock(); // unlock here, action will be executed via destructor
+    static_assert(std::is_nothrow_move_constructible_v<AppendEntriesResult>);
+    return std::move(result);
   }
 
   // Allocations
@@ -163,11 +174,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     return self->_inMemoryLog.append(_loggerContext, req.entries);
   });
   auto iter = std::make_unique<InMemoryPersistedLogIterator>(req.entries);
-  auto toBeResolved = std::make_unique<WaitForQueue>();
 
   auto* core = self->_logCore.get();
   static_assert(std::is_nothrow_move_constructible_v<decltype(newInMemoryLog)>);
-  auto commitToMemoryAndResolve =
+  auto checkResultAndCommitIndex =
       [selfGuard = std::move(self), req = std::move(req),
        newInMemoryLog = std::move(newInMemoryLog), toBeResolved = std::move(toBeResolved)](
           futures::Try<Result>&& tryRes) mutable -> std::pair<AppendEntriesResult, DeferredAction> {
@@ -200,67 +210,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
           << req.prevLogEntry.index << ", leader commit index = " << req.leaderCommit;
     }
 
-    auto const generateToBeResolved = [&] {
-      try {
-        auto waitForQueue = self->_waitForQueue.getLockedGuard();
-
-        auto const end = waitForQueue->upper_bound(self->_commitIndex);
-        for (auto it = waitForQueue->begin(); it != end;) {
-          LOG_CTX("69022", TRACE, self->_follower._loggerContext)
-              << "resolving promise for index " << it->first;
-          toBeResolved->insert(waitForQueue->extract(it++));
-        }
-        return DeferredAction([commitIndex = self->_commitIndex,
-                               toBeResolved = std::move(toBeResolved)]() noexcept {
-          for (auto& it : *toBeResolved) {
-            if (!it.second.isFulfilled()) {
-              // This only throws if promise was fulfilled earlier.
-              it.second.setValue(WaitForResult{commitIndex, std::shared_ptr<QuorumData>{}});
-            }
-          }
-        });
-      } catch (std::exception const& e) {
-        // If those promises are not fulfilled we can not continue.
-        // Note that the move constructor of std::multi_map is not noexcept.
-        LOG_CTX("e7a3d", FATAL, self->_follower._loggerContext)
-            << "failed to fulfill replication promises due to exception; "
-               "system "
-               "can not continue. message: "
-            << e.what();
-        FATAL_ERROR_EXIT();
-      } catch (...) {
-        // If those promises are not fulfilled we can not continue.
-        // Note that the move constructor of std::multi_map is not noexcept.
-        LOG_CTX("c0bba", FATAL, self->_follower._loggerContext)
-            << "failed to fulfill replication promises due to exception; "
-               "system can not continue";
-        FATAL_ERROR_EXIT();
-      }
-    };
-
-    auto action = std::invoke([&]() noexcept -> DeferredAction {
-      TRI_ASSERT(req.largestCommonIndex >= self->_largestCommonIndex)
-          << "req.lci = " << req.largestCommonIndex
-          << ", self.lci = " << self->_largestCommonIndex;
-      if (self->_largestCommonIndex < req.largestCommonIndex) {
-        LOG_CTX("fc467", TRACE, self->_follower._loggerContext)
-            << "largest common index went from " << self->_largestCommonIndex
-            << " to " << req.largestCommonIndex << ".";
-        self->_largestCommonIndex = req.largestCommonIndex;
-        // TODO do we want to call checkCompaction here?
-        std::ignore = self->checkCompaction();
-      }
-
-      if (self->_commitIndex < req.leaderCommit && !self->_inMemoryLog.empty()) {
-        self->_commitIndex =
-            std::min(req.leaderCommit, self->_inMemoryLog.back().entry().logIndex());
-        LOG_CTX("1641d", TRACE, self->_follower._loggerContext)
-            << "increment commit index: " << self->_commitIndex;
-        return generateToBeResolved();
-      }
-
-      return {};
-    });
+    auto action = self->checkCommitIndex(req.leaderCommit, req.largestCommonIndex, std::move(toBeResolved));
 
     static_assert(noexcept(
         AppendEntriesResult::withOk(self->_follower._currentTerm, req.messageId)));
@@ -268,11 +218,11 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     return std::make_pair(AppendEntriesResult::withOk(self->_follower._currentTerm, req.messageId),
                           std::move(action));
   };
-  static_assert(std::is_nothrow_move_constructible_v<decltype(commitToMemoryAndResolve)>);
+  static_assert(std::is_nothrow_move_constructible_v<decltype(checkResultAndCommitIndex)>);
 
   // Action
   return core->insertAsync(std::move(iter), req.waitForSync)
-      .then(std::move(commitToMemoryAndResolve))
+      .then(std::move(checkResultAndCommitIndex))
       .then([measureTime = std::move(measureTimeGuard)](auto&& res) mutable {
         measureTime.fire();
         auto&& [result, action] = res.get();
@@ -281,6 +231,71 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         action.fire();
         return std::move(result);
       });
+}
+
+auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
+    LogIndex newCommitIndex, LogIndex newLCI,
+    std::unique_ptr<WaitForQueue> outQueue) noexcept -> DeferredAction {
+  TRI_ASSERT(outQueue != nullptr) << "expect outQueue to be preallocated";
+
+  auto const generateToBeResolved = [&] {
+    try {
+      auto waitForQueue = this->_waitForQueue.getLockedGuard();
+
+      auto const end = waitForQueue->upper_bound(this->_commitIndex);
+      for (auto it = waitForQueue->begin(); it != end;) {
+        LOG_CTX("69022", TRACE, this->_follower._loggerContext)
+            << "resolving promise for index " << it->first;
+        outQueue->insert(waitForQueue->extract(it++));
+      }
+      return DeferredAction([commitIndex = this->_commitIndex,
+                             toBeResolved = std::move(outQueue)]() noexcept {
+        for (auto& it : *toBeResolved) {
+          if (!it.second.isFulfilled()) {
+            // This only throws if promise was fulfilled earlier.
+            it.second.setValue(WaitForResult{commitIndex, std::shared_ptr<QuorumData>{}});
+          }
+        }
+      });
+    } catch (std::exception const& e) {
+      // If those promises are not fulfilled we can not continue.
+      // Note that the move constructor of std::multi_map is not noexcept.
+      LOG_CTX("e7a3d", FATAL, this->_follower._loggerContext)
+          << "failed to fulfill replication promises due to exception; "
+             "system "
+             "can not continue. message: "
+          << e.what();
+      FATAL_ERROR_EXIT();
+    } catch (...) {
+      // If those promises are not fulfilled we can not continue.
+      // Note that the move constructor of std::multi_map is not noexcept.
+      LOG_CTX("c0bba", FATAL, this->_follower._loggerContext)
+          << "failed to fulfill replication promises due to exception; "
+             "system can not continue";
+      FATAL_ERROR_EXIT();
+    }
+  };
+
+  TRI_ASSERT(newLCI >= this->_largestCommonIndex)
+      << "req.lci = " << newLCI << ", this.lci = " << this->_largestCommonIndex;
+  if (this->_largestCommonIndex < newLCI) {
+    LOG_CTX("fc467", TRACE, this->_follower._loggerContext)
+        << "largest common index went from " << this->_largestCommonIndex
+        << " to " << newLCI << ".";
+    this->_largestCommonIndex = newLCI;
+    // TODO do we want to call checkCompaction here?
+    std::ignore = this->checkCompaction();
+  }
+
+  if (this->_commitIndex < newCommitIndex && !this->_inMemoryLog.empty()) {
+    this->_commitIndex =
+        std::min(newCommitIndex, this->_inMemoryLog.back().entry().logIndex());
+    LOG_CTX("1641d", TRACE, this->_follower._loggerContext)
+        << "increment commit index: " << this->_commitIndex;
+    return generateToBeResolved();
+  }
+
+  return {};
 }
 
 replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(
