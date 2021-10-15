@@ -145,7 +145,7 @@ static void JS_Id(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  TRI_V8_RETURN(v8::Uint32::NewFromUnsigned(isolate, id.id()));
+  TRI_V8_RETURN(v8::Uint32::NewFromUnsigned(isolate, static_cast<std::uint32_t>(id.id())));
 
   TRI_V8_TRY_CATCH_END
 }
