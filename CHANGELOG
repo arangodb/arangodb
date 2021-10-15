@@ -1,6 +1,13 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* Do not use an edge index for range queries, i.e. with the comparison operators
+  `>`, `>=`, `<` or `<=`, but only for equality lookups using the `==` and `IN`
+  comparison operators.
+  The edge index is not fully ordered, so while using it for range queries may
+  produce _some_ documents, it is possible that other documents from the range
+  would be skipped.
+
 * Fixed counting of all read transaction as aborted. Added a new metric to count
   read transactions.
 
