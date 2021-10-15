@@ -156,7 +156,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     auto result = AppendEntriesResult::withOk(self->_follower._currentTerm, req.messageId);
     self.unlock(); // unlock here, action will be executed via destructor
     static_assert(std::is_nothrow_move_constructible_v<AppendEntriesResult>);
-    return std::move(result);
+    return {std::move(result)};
   }
 
   // Allocations
