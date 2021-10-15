@@ -274,6 +274,29 @@ TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term) {
   EXPECT_TRUE(e.participants.find("C") != e.participants.end());
 }
 
+TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term_r3_wc2) {
+
+  auto participants = ParticipantInfo{
+      {"A", ParticipantRecord{RebootId{1}, true}},
+      {"B", ParticipantRecord{RebootId{1}, true}},
+      {"C", ParticipantRecord{RebootId{1}, true}},
+  };
+
+  auto spec = makePlanSpecification(LogId{1});
+  spec.targetConfig.writeConcern = 2;
+  spec.targetConfig.replicationFactor = 3;
+  auto current = makeLogCurrent();
+
+  auto v = checkReplicatedLog("db", spec, current, participants);
+  auto& e = std::get<agency::LogPlanTermSpecification>(v);
+  EXPECT_EQ(e.term, LogTerm{1});
+  EXPECT_EQ(e.config, spec.targetConfig);
+  EXPECT_EQ(e.participants.size(), 3);
+  EXPECT_TRUE(e.participants.find("B") != e.participants.end());
+  EXPECT_TRUE(e.participants.find("C") != e.participants.end());
+  EXPECT_TRUE(e.participants.find("A") != e.participants.end());
+}
+
 TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term_not_enough_participants) {
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, false}},
