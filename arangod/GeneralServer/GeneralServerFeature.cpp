@@ -625,8 +625,8 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler("/_admin/database/target-version",
                                     RestHandlerCreator<arangodb::RestAdminDatabaseHandler>::createNoData);
 
-    _handlerFactory->addPrefixHandler("/_admin/log",
-                                      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_admin/log",
+                                    RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
   if (server().isEnabled<V8DealerFeature>()) {
     // the routing feature depends on V8. only enable it if JavaScript is enabled

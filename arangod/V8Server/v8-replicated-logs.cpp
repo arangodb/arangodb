@@ -63,7 +63,7 @@ v8::Handle<v8::Object> WrapReplicatedLog(v8::Isolate* isolate, LogId id) {
   return scope.Escape<v8::Object>(result);
 }
 
-static LogId UnwarpReplicatedLog(v8::Isolate* isolate, v8::Local<v8::Object> const& obj) {
+static LogId UnwrapReplicatedLog(v8::Isolate* isolate, v8::Local<v8::Object> const& obj) {
   if (obj->InternalFieldCount() <= SLOT_CLASS) {
     return LogId{0};
   }
@@ -106,11 +106,10 @@ static void JS_CreateReplicatedLog(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-
   if (!arangodb::ExecContext::current().isAdminUser()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN,
-        std::string("Creating replicated log forbidden"));
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   std::string(
+                                       "Creating replicated log forbidden"));
   }
 
   auto& vocbase = GetContextVocBase(isolate);
@@ -138,7 +137,7 @@ static void JS_Id(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto id = UnwarpReplicatedLog(isolate, args.Holder());
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (!arangodb::ExecContext::current().isAdminUser()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
@@ -155,15 +154,18 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   auto& vocbase = GetContextVocBase(isolate);
-  auto id = UnwarpReplicatedLog(isolate, args.Holder());
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (!arangodb::ExecContext::current().isAdminUser()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  auto res =
-      ReplicatedLogMethods::createInstance(vocbase)->deleteReplicatedLog(id).get();
+  if (auto res =
+          ReplicatedLogMethods::createInstance(vocbase)->deleteReplicatedLog(id).get();
+      !res.ok()) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
 
   TRI_V8_TRY_CATCH_END
 }
@@ -173,7 +175,7 @@ static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   auto& vocbase = GetContextVocBase(isolate);
-  auto id = UnwarpReplicatedLog(isolate, args.Holder());
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (!arangodb::ExecContext::current().isAdminUser()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
@@ -207,7 +209,7 @@ static void JS_Status(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
-  auto id = UnwarpReplicatedLog(isolate, args.Holder());
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (!arangodb::ExecContext::current().isAdminUser()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
@@ -225,7 +227,7 @@ static void JS_Head(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
-  auto id = UnwarpReplicatedLog(isolate, args.Holder());
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (!arangodb::ExecContext::current().isAdminUser()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
@@ -258,7 +260,7 @@ static void JS_Tail(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
-  auto id = UnwarpReplicatedLog(isolate, args.Holder());
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (!arangodb::ExecContext::current().isAdminUser()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
@@ -291,13 +293,12 @@ static void JS_Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
-  auto id = UnwarpReplicatedLog(isolate, args.Holder());
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (!arangodb::ExecContext::current().isAdminUser()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
-
 
   if (args.Length() != 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("slice(<start>, <stop>)");
@@ -305,7 +306,8 @@ static void JS_Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto start = LogIndex{args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value()};
   auto stop = LogIndex{args[1]->ToUint32(TRI_IGETC).ToLocalChecked()->Value()};
-  auto iter = ReplicatedLogMethods::createInstance(vocbase)->slice(id, start, stop).get();
+  auto iter =
+      ReplicatedLogMethods::createInstance(vocbase)->slice(id, start, stop).get();
   VPackBuilder response;
   {
     VPackArrayBuilder ab(&response);
