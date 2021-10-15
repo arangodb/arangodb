@@ -5395,6 +5395,7 @@ devel
 
 * Fixed an agency bug found in Windows tests.
 
+* Limited module resolution in arangosh to the path from which arangosh is invoked.
 
 v3.5.0-rc.7 (2019-08-01)
 ------------------------

@@ -120,6 +120,9 @@
     if (parent && parent.children) {
       parent.children.push(this);
     }
+    if (!parent) {
+      this[$_MODULE_ROOT] = NATIVE_MODULES.process.cwd();
+    }
 
     Object.defineProperty(this, $_MODULE_CONTEXT, {
       value: {
