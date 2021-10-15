@@ -27,7 +27,7 @@
 
 #include "utils/string.hpp"
 
-MSVC_ONLY(class IRESEARCH_API std::exception);
+MSVC_ONLY(class IRESEARCH_API std::exception); // cppcheck-suppress unknownMacro
 
 namespace iresearch {
 
