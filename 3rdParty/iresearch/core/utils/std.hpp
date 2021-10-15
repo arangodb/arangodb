@@ -279,7 +279,7 @@ struct initializer {
   static constexpr auto Idx = Size - 1;
 
   template<typename Array>
-  constexpr initializer(Array& cache) : init_(cache) {
+  constexpr explicit initializer(Array& cache) : init_(cache) {
     cache[Idx] = []() -> const type& {
       static const typename Builder::type INSTANCE
         = Builder::make(Idx);
@@ -297,7 +297,7 @@ struct initializer<Builder, 1> {
   static constexpr auto Idx = 0;
 
   template<typename Array>
-  constexpr initializer(Array& cache) {
+  constexpr explicit initializer(Array& cache) {
     cache[Idx] = []() -> const type& {
       static const typename Builder::type INSTANCE
         = Builder::make(Idx);

@@ -36,7 +36,7 @@ namespace iresearch {
     template<typename PTR>
     class IRESEARCH_API proxy_filter_t: public irs::filter {
      public:
-      proxy_filter_t(const type_info& type): irs::filter(type) {}
+      explicit proxy_filter_t(const type_info& type): irs::filter(type) {}
       template<typename T, typename... Args>
       T& proxy(Args&&... args) {
         typedef typename std::enable_if<

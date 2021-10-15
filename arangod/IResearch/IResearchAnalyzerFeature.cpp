@@ -1812,12 +1812,17 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
         VPackBuilder properties;
         static_assert(STATIC_ANALYZERS_NAMES.size() > 1, "Static analyzer count too low");
-        for (auto staticName = (STATIC_ANALYZERS_NAMES.cbegin()+1); staticName != STATIC_ANALYZERS_NAMES.cend(); ++staticName) {
+        for (auto staticName = (STATIC_ANALYZERS_NAMES.cbegin()+1);
+             staticName != STATIC_ANALYZERS_NAMES.cend(); ++staticName) {
           // { locale: "<locale>.UTF-8", stopwords: [] }
           {
             properties.clear();
             VPackObjectBuilder rootScope(&properties);
             properties.add("locale", VPackValue(std::string(staticName->second) + ".UTF-8"));
+            if (staticName->second == "zh") {
+              // no stemmer for Chinese
+              properties.add("stemming", VPackValue(false));
+            }
             VPackArrayBuilder stopwordsArrayScope(&properties, "stopwords");
           }
 

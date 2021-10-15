@@ -165,7 +165,7 @@ void visit(const index_reader& index, const string_ref& field,
 }
 
 }
-
-MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t)>;) // sub_reader::value_visitor_f
+// sub_reader::value_visitor_f
+MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t)>;) // cppcheck-suppress unknownMacro 
 
 #endif
