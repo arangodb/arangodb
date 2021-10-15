@@ -1,8 +1,10 @@
 master
 -------------------------
 
-v1.1 (2021-10-04)
+v1.1 (2021-10-13)
 -------------------------
+
+* Enhance troubleshooting experience for the analyzers required locale.
 
 * Eliminate dependency to Boost.Locale.
 
