@@ -31,7 +31,7 @@
 
 #include "parser_common.hpp"
 
-MSVC_ONLY(__pragma(warning(push)))
+MSVC_ONLY(__pragma(warning(push))) // cppcheck-suppress unknownMacro
 MSVC_ONLY(__pragma(warning(disable: 4146))) // unary minus operator applied to unsigned type, result still unsigned
 
 #include "iql/parser.hh"
@@ -42,7 +42,7 @@ namespace iresearch {
   namespace iql {
     class parser_context: public context {
     public:
-      parser_context(std::string const& sData, functions const& functions = functions::DEFAULT());
+      explicit parser_context(std::string const& sData, functions const& functions = functions::DEFAULT());
       parser_context& operator=(parser_context&) = delete; // because of references
 
       // parser operations

@@ -360,7 +360,7 @@ std::map<irs::string_ref, Analyzer> const& staticAnalyzers() {
         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_zh",
        {"text",
-        "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] "
+        "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ], \"stemming\": false "
         "}",
         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
   };
@@ -1918,7 +1918,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
           {"text_zh",
            {"text",
             "{ \"locale\": \"zh.UTF-8\", \"caseConvert\": \"lower\", "
-            "\"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+            "\"stopwords\": [ ], \"noAccent\": true, \"stemming\": false}"}},
           {"identity", {"identity", "{\n}"}},
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
@@ -3977,7 +3977,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
          {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_zh",
-         "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] "
+         "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ], \"stemming\":false "
          "}",
          {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},

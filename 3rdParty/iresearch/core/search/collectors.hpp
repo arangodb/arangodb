@@ -171,7 +171,7 @@ class field_collector_wrapper
   field_collector_wrapper() = default;
   field_collector_wrapper(field_collector_wrapper&&) = default;
   field_collector_wrapper& operator=(field_collector_wrapper&&) = default;
-  field_collector_wrapper(collector_type::ptr&& collector) noexcept
+  explicit field_collector_wrapper(collector_type::ptr&& collector) noexcept
     : base_type(collector.release()) {
   }
   field_collector_wrapper& operator=(collector_type::ptr&& collector) noexcept {
@@ -240,7 +240,7 @@ class term_collector_wrapper
   term_collector_wrapper() = default;
   term_collector_wrapper(term_collector_wrapper&&) = default;
   term_collector_wrapper& operator=(term_collector_wrapper&&) = default;
-  term_collector_wrapper(collector_type::ptr&& collector) noexcept
+  explicit term_collector_wrapper(collector_type::ptr&& collector) noexcept
     : base_type(collector.release()) {
   }
   term_collector_wrapper& operator=(collector_type::ptr&& collector) noexcept {
