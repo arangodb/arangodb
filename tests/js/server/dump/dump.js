@@ -47,7 +47,10 @@ jsunity.run(function dump_single_testsuite() {
     baseTests(),
     suite,
     "_single",
-    [
+    [ // <-- Blacklisted Tests
+      // Magic Hint: Those tests are tests which you need to additional blacklist in case they are not supported
+      // in that specific environment...
+
       "testUsers",
       // cluster tests:
       "testDatabaseProperties",
