@@ -550,10 +550,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if (testname.indexOf('-disabled') !== -1) {
-    whichFilter.filter = 'disabled';
-    return false;
-  }
+// *.<ext>_DISABLED should be used instead
+//  if (testname.indexOf('-disabled') !== -1) {
+//    whichFilter.filter = 'disabled';
+//    return false;
+//  }
 
   if ((testname.indexOf('-memoryintense') !== -1) && options.skipMemoryIntense) {
     whichFilter.filter = 'memoryintense';
