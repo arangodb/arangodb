@@ -409,7 +409,7 @@ std::string LogicalCollection::createKey(VPackSlice input) const {
 }
 
 #ifndef USE_ENTERPRISE
-std::string LogicalCollection::createSmartToSatKey(VPackSlice) {
+std::string LogicalCollection::createSmartToSatKey(VPackSlice) const {
   return keyGenerator()->generate();
 }
 #endif
