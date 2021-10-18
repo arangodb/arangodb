@@ -1249,7 +1249,7 @@ bool LogicalCollection::isSmartToSatEdgeCollection() const noexcept {
 }
 
 #ifndef USE_ENTERPRISE
-void LogicalCollection::decorateWithInternalEEValidators() {
+void LogicalCollection::decorateWithInternalEEValidators(bool) {
   // Only available in Enterprise Mode
 }
 #endif
