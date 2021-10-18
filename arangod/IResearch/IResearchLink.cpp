@@ -27,6 +27,7 @@
 #include <store/store_utils.hpp>
 #include <utils/encryption.hpp>
 #include <utils/singleton.hpp>
+#include <utils/file_utils.hpp>
 
 #include "IResearchLink.h"
 #include "IResearchDocument.h"
@@ -64,20 +65,19 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-using irs::async_utils::read_write_mutex;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the link state for a given TransactionState
 ////////////////////////////////////////////////////////////////////////////////
 struct LinkTrxState final : public TransactionState::Cookie {
   irs::index_writer::documents_context _ctx;
-  std::unique_lock<ReadMutex> _linkLock; // prevent data-store deallocation (lock @ AsyncSelf)
+  AsyncValue<IResearchLink>::Value _linkLock; // prevent data-store deallocation (lock @ AsyncSelf)
   PrimaryKeyFilterContainer _removals;  // list of document removals
 
-  LinkTrxState(std::unique_lock<ReadMutex>&& linkLock,
+  LinkTrxState(AsyncValue<IResearchLink>::Value&& linkLock,
                irs::index_writer& writer) noexcept
-      : _ctx(writer.documents()), _linkLock(std::move(linkLock)) {
-    TRI_ASSERT(_linkLock.owns_lock());
+      : _ctx(writer.documents()),
+        _linkLock(std::move(linkLock)) {
+    TRI_ASSERT(_linkLock.ownsLock());
   }
 
   virtual ~LinkTrxState() noexcept {
@@ -350,9 +350,9 @@ void CommitTask::operator()() {
     return;
   }
 
-  auto linkLock = link->try_lock();
+  auto linkPtr = link->try_lock();
 
-  if (!linkLock.owns_lock()) {
+  if (!linkPtr.ownsLock()) {
     LOG_TOPIC("eb0de", DEBUG, iresearch::TOPIC)
         << "failed to acquire the lock while committing the link '" << id
         << "', runId '" << size_t(&runId) << "'";
@@ -363,9 +363,7 @@ void CommitTask::operator()() {
     return;
   }
 
-  auto* link = this->link->get();
-
-  if (!link) {
+  if (!linkPtr) {
     LOG_TOPIC("ebada", DEBUG, iresearch::TOPIC)
         << "link '" << id << "' is no longer valid, run id '" << size_t(&runId) << "'";
     return;
@@ -373,7 +371,7 @@ void CommitTask::operator()() {
 
   IResearchLink::CommitResult code = IResearchLink::CommitResult::UNDEFINED;
 
-  auto reschedule = scopeGuard([&code, link, this]() noexcept {
+  auto reschedule = scopeGuard([&code, link = linkPtr.get(), this]() noexcept {
     try {
       finalize(link, code);
     } catch (std::exception const& ex) {
@@ -388,9 +386,9 @@ void CommitTask::operator()() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
-    READ_LOCKER(lock, link->_dataStore._mutex); // '_meta' can be asynchronously modified
-    auto& meta = link->_dataStore._meta;
+    TRI_ASSERT(linkPtr->_dataStore); // must be valid if _asyncSelf->get() is valid
+    READ_LOCKER(lock, linkPtr->_dataStore._mutex); // '_meta' can be asynchronously modified
+    auto& meta = linkPtr->_dataStore._meta;
 
     commitIntervalMsec = std::chrono::milliseconds(meta._commitIntervalMsec);
     consolidationIntervalMsec = std::chrono::milliseconds(meta._consolidationIntervalMsec);
@@ -411,7 +409,7 @@ void CommitTask::operator()() {
   }
 
   auto const syncStart = std::chrono::steady_clock::now(); // FIXME: add sync durations to metrics
-  auto res = link->commitUnsafe(false, &code); // run commit ('_asyncSelf' locked by async task)
+  auto res = linkPtr->commitUnsafe(false, &code); // run commit ('_asyncSelf' locked by async task)
 
   if (res.ok()) {
     LOG_TOPIC("7e323", TRACE, iresearch::TOPIC)
@@ -429,7 +427,7 @@ void CommitTask::operator()() {
         }
 
         auto const cleanupStart = std::chrono::steady_clock::now(); // FIXME: add cleanup durations to metrics
-        res = link->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
+        res = linkPtr->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
 
         if (res.ok()) {
           LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
@@ -454,7 +452,7 @@ void CommitTask::operator()() {
         << "error after running for " <<
         std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - syncStart).count()
-        << "ms while committing arangosearch link '" << link->id()
+        << "ms while committing arangosearch link '" << linkPtr->id()
         << "', run id '" << size_t(&runId)
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
@@ -492,9 +490,9 @@ void ConsolidationTask::operator()() {
     return;
   }
 
-  auto linkLock = link->try_lock();
+  auto linkPtr = link->try_lock();
 
-  if (!linkLock.owns_lock()) {
+  if (!linkPtr.ownsLock()) {
     LOG_TOPIC("eb0dc", DEBUG, iresearch::TOPIC)
         << "failed to acquire the lock while consolidating the link '" << id
         << "', run id '" << size_t(&runId) << "'";
@@ -505,9 +503,7 @@ void ConsolidationTask::operator()() {
     return;
   }
 
-  auto* link = this->link->get();
-
-  if (!link) {
+  if (!linkPtr) {
     LOG_TOPIC("eb0d1", DEBUG, iresearch::TOPIC)
         << "link '" << id << "' is no longer valid, run id '" << size_t(&runId) << "'";
     return;
@@ -532,9 +528,9 @@ void ConsolidationTask::operator()() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
-    READ_LOCKER(lock, link->_dataStore._mutex); // '_meta' can be asynchronously modified
-    auto& meta = link->_dataStore._meta;
+    TRI_ASSERT(linkPtr->_dataStore); // must be valid if _asyncSelf->get() is valid
+    READ_LOCKER(lock, linkPtr->_dataStore._mutex); // '_meta' can be asynchronously modified
+    auto& meta = linkPtr->_dataStore._meta;
 
     consolidationPolicy = meta._consolidationPolicy;
     consolidationIntervalMsec = std::chrono::milliseconds(meta._consolidationIntervalMsec);
@@ -566,7 +562,7 @@ void ConsolidationTask::operator()() {
   // run consolidation ('_asyncSelf' locked by async task)
   auto const consolidationStart = std::chrono::steady_clock::now(); // FIXME: add consolidation durations to metrics
   bool emptyConsolidation = false;
-  auto const res = link->consolidateUnsafe(consolidationPolicy, progress, emptyConsolidation);
+  auto const res = linkPtr->consolidateUnsafe(consolidationPolicy, progress, emptyConsolidation);
 
   if (res.ok()) {
     if (emptyConsolidation) {
@@ -575,7 +571,7 @@ void ConsolidationTask::operator()() {
        state->noopConsolidationCount = 0;
     }
     LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
-        << "successful consolidation of arangosearch link '" << link->id()
+        << "successful consolidation of arangosearch link '" << linkPtr->id()
         << "', run id '" << size_t(&runId) << "', took: " << 
         std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - consolidationStart).count()
@@ -585,7 +581,7 @@ void ConsolidationTask::operator()() {
         << "error after running for " <<
         std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - consolidationStart).count()
-        << "ms while consolidating arangosearch link '" << link->id()
+        << "ms while consolidating arangosearch link '" << linkPtr->id()
         << "', run id '" << size_t(&runId)
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
@@ -986,8 +982,8 @@ Result IResearchLink::drop() {
     bool exists;
 
     // remove persisted data store directory if present
-    if (!_dataStore._path.exists_directory(exists)
-        || (exists && !_dataStore._path.remove())) {
+    if (!irs::file_utils::exists_directory(exists, _dataStore._path.c_str())
+        || (exists && !irs::file_utils::remove(_dataStore._path.c_str()))) {
       return {TRI_ERROR_INTERNAL, "failed to remove arangosearch link '" +
                                       std::to_string(id().id()) + "'"};
     }
@@ -1289,27 +1285,28 @@ Result IResearchLink::initDataStore(
 
   // must manually ensure that the data store directory exists (since not using
   // a lockfile)
-  if (_dataStore._path.exists_directory(pathExists)
+  if (irs::file_utils::exists_directory(pathExists, _dataStore._path.c_str())
       && !pathExists
-      && !_dataStore._path.mkdir()) {
+      && !irs::file_utils::mkdir(_dataStore._path.c_str(), true)) {
     return {TRI_ERROR_CANNOT_CREATE_DIRECTORY,
             "failed to create data store directory with path '" +
-                _dataStore._path.utf8() + "' while initializing link '" +
+                _dataStore._path.u8string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
-
-  _dataStore._directory = std::make_unique<irs::mmap_directory>(_dataStore._path.utf8());
+  if (initCallback) {
+    _dataStore._directory = std::make_unique<irs::mmap_directory>(_dataStore._path.u8string(), initCallback());
+  } else {
+    _dataStore._directory = std::make_unique<irs::mmap_directory>(_dataStore._path.u8string());
+  }
 
   if (!_dataStore._directory) {
     return {TRI_ERROR_INTERNAL,
             "failed to instantiate data store directory with path '" +
-                _dataStore._path.utf8() + "' while initializing link '" +
+                _dataStore._path.u8string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
 
-  if (initCallback) {
-    initCallback(*_dataStore._directory);
-  }
+  
 
   switch (_engine->recoveryState()) {
     case RecoveryState::BEFORE: // link is being opened before recovery
@@ -1386,7 +1383,7 @@ Result IResearchLink::initDataStore(
     }
   }
   // setup columnstore compression/encryption if requested by storage engine
-  auto const encrypt = (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
+  auto const encrypt = (nullptr != _dataStore._directory->attributes().encryption());
   options.column_info =
     [encrypt, comprMap = std::move(compressionMap), primarySortCompression](
         const irs::string_ref& name) -> irs::column_info {
@@ -1412,7 +1409,7 @@ Result IResearchLink::initDataStore(
   if (!_dataStore._writer) {
     return {TRI_ERROR_INTERNAL,
             "failed to instantiate data store writer with path '" +
-                _dataStore._path.utf8() + "' while initializing link '" +
+                _dataStore._path.u8string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
 
@@ -1426,7 +1423,7 @@ Result IResearchLink::initDataStore(
 
     return {TRI_ERROR_INTERNAL,
             "failed to instantiate data store reader with path '" +
-                _dataStore._path.utf8() + "' while initializing link '" +
+                _dataStore._path.u8string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
 
@@ -1463,8 +1460,7 @@ Result IResearchLink::initDataStore(
 
   return dbFeature.registerPostRecoveryCallback(  // register callback
       [asyncSelf = _asyncSelf, &flushFeature]() -> Result {
-        auto lock = asyncSelf->lock();  // ensure link does not get deallocated before callback finishes
-        auto* link = asyncSelf->get();
+        auto link = asyncSelf->lock();  // ensure link does not get deallocated before callback finishes
 
         if (!link) {
           return {};  // link no longer in recovery state, i.e. during recovery it was created and later dropped
@@ -1840,9 +1836,9 @@ Result IResearchLink::remove(
 
 IResearchLink::Snapshot IResearchLink::snapshot() const {
   // '_dataStore' can be asynchronously modified
-  auto lock = _asyncSelf->lock();
+  auto link = _asyncSelf->lock();
 
-  if (!_asyncSelf.get()) {
+  if (!link) {
     LOG_TOPIC("f42dc", WARN, iresearch::TOPIC)
         << "failed to lock arangosearch link while retrieving snapshot from "
            "arangosearch link '"
@@ -1853,7 +1849,7 @@ IResearchLink::Snapshot IResearchLink::snapshot() const {
 
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
-  return Snapshot(std::move(lock),
+  return Snapshot(std::move(link),
                   irs::directory_reader(_dataStore._reader));  // return a copy of the current reader
 }
 

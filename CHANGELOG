@@ -1,6 +1,145 @@
 devel
 -----
 
+* Now, arangoimport supports merging of attributes. When importing data from a
+  file into a collection, a document attribute can be comprised of merging
+  attributes from the file into it, with separators and other literal strings.
+  The new document attribute will result in the concatenation of the literal
+  strings, the values of the attributes and the separators, as in the example:
+
+      arangoimport --merge-attributes fullName=[firstName]:[lastName] 
+
+* Do not use an edge index for range queries, i.e. with the comparison 
+  operators `>`, `>=`, `<` or `<=`, but only for equality lookups using the
+  `==` and `IN` comparison operators.
+  The edge index is not fully ordered, so while using it for range queries
+  may produce _some_ documents, it is possible that other documents from the
+  range would be skipped.
+
+* Do not rename the arangod process to "arangod [shutting down]" during the
+  server shutdown. The renaming can cause issues with tools that look for
+  the exact process name "arangod".
+
+* Remove internal AQL query option `readCompleteInput` that controled if
+  all input for a modification operation (UPDATE / REPLACE / REMOVE) are
+  read into memory first. This was a necessity with the MMFiles storage
+  engine in cases when a query read from a collection and wrote into it
+  in the same query afterwards. With the RocksDB engine and its snapshots, 
+  we never need to read the entire input into memory first.
+
+* Fix windows installer PATH manipulation issue by replaceng the NSIS plugin
+  (BTS-176).
+
+* Fixed counting of all read transaction as aborted. Added a new
+  metric to count read transactions.
+
+* Fixed potential issues with revision trees and document counters getting out
+  of sync with the underlying collection data.
+
+* Fix race in RocksDB throttle listener, when it was getting started lazily
+  during server shutdown.
+
+* Extended the Views web UI by letting it capture View properties that are
+  immutable once created.
+
+* Fixed BTS-602 by not starting license feature is upgrade mode.
+
+* APM-173: Now, arangobench, arangodump and arangorestore support multiple 
+  coordinators, so the flag `--server.endpoint` can be used multiple times, 
+  as in the example below:
+
+  arangobench \
+    --server.endpoint tcp://[::1]::8529 \
+    --server.endpoint tcp://[::1]::8530 \
+    --server.endpoint tcp://[::1]::8531 
+
+  This does not compromise the use of the other client tools, which preserve
+  the behavior of having one coordinator.
+
+* The server now has two flags to control the escaping control and Unicode 
+  characters in the log. The flag `--log.escape` is now deprecated and, instead, 
+  the new flags `--log.escape-control-chars` and `--log.escape-unicode-chars` 
+  should be used. 
+
+  - `--log.escape-control-chars`: this flag applies to the control characters, 
+    which have hex code below `\x20`, and also the character DEL, with hex code 
+    of `\x7f`. When its value is set to false, the control character will be 
+    retained, and its actual value will be displayed when it is a visible 
+    character, or a space ` ` character will be displayed if it is not a 
+    visible character. The same will happen to `DEL` character (code `\xF7`), 
+    even though it is not a control character, because it is not visible. For 
+    example, control characer `\n` is visible, so a `\n` will be displayed in 
+    the log, and control character `BEL` is not visible, so a space ` ` would 
+    be displayed. When its value is set to true, the hex code for the character
+    is displayed, for example, `BEL` character would be displayed as its hex 
+    code, `\x07`.
+      The default value for this flag is `true` for compatibility with 
+    previous versions.
+
+  - `--log.escape-unicode-chars`: when its value is set to false, the unicode 
+    character will be retained, and its actual value will be displayed. For 
+    example, `犬` will be displayed as `犬`. When its value is set to true, 
+    the character is escaped, and the hex code for the character is displayed. 
+    For example, `犬` would be displayed as its hex code, `\u72AC`. 
+      The default value for this flag is `false` for compatibility with 
+    previous versions.
+
+* Fixed BTS-582: ArangoDB client EXE package for Windows has incorrect metadata.
+
+* Fixed BTS-575: Windows EXE installer doesn't replace service during upgrade in
+  silent (non-UI) mode.
+
+* APM-121: allow the UPSERT query to have indexHint as an extra parameter for 
+  OPTIONS. It will be used as a hint by the inner FOR loop that is performed
+  as part of the UPSERT query, and would help in cases such as UPSERT not 
+  picking the best index automatically for lookup. 
+
+* Fix issue #14819: Query: AQL: missing variable # for node #... location
+  RestCursorHandler.cpp.
+
+* Added enterprise licensing support including (only for Enterprise version):
+    - additional API endpoint `_admin/license(GET/PUT)?force=true <text>`
+    - arangosh functions: `setLicense(<text>)`, `getLicense()`
+    - new error codes and metrics support
+
+* Fix issue #14807: Fix crash during optimization of certain AQL queries during
+  the remove-collect-variables optimizer rule, when a COLLECT node without output
+  variables (this includes RETURN DISTINCT) occured in the plan.
+
+* Update iresearch library to the upstream. Fixed TSan/ASan detected issues.
+
+* Added new ArangoSearch analyzer type 'collation'.
+
+* Add basic overload control to arangod. 
+  This change adds the `x-arango-queue-time-seconds` header to all responses
+  sent by arangod. This header contains the most recent request dequeing time 
+  (in seconds) as tracked by the scheduler. This value can be used by client
+  applications and drivers to detect server overload and react on it.
+  The new startup option `--http.return-queue-time-header` can be set to 
+  `false` to suppress these headers in responses sent by arangod.
+
+  In addition, client applications and drivers can optionally augment their
+  requests sent to arangod with a header of the same name. If set, the 
+  value of the header should contain the maximum queuing time (in seconds)
+  that the client is willing to accept. If the header is set in an incoming
+  request, arangod will compare the current dequeing time from its scheduler
+  with the maximum queue time value contained in the request. If the current
+  dequeing time exceeds the value set in the header, arangod will reject the
+  request and return HTTP 412 (precondition failed) with the new error code
+  21004 (queue time violated).
+
+  There is also a new metric `arangodb_scheduler_queue_time_violations_total`
+  that is increased whenever a request is dropped because of the requested
+  queue time not satisfiable.
+
+* Fixed a bug for array indexes on update of documents. See BTS-548.
+
+* Prevent some possible deadlocks under high load regarding transactions and
+  document operations, and also improve performance slightly.
+
+* Hide help text fragment about VST connection strings in client tools that
+  do not support VST.
+
 * Added REST API endpoint `/_admin/debug/failat/all` to retrieve the list
   of currently enabled failure points. This API is available only if 
   failure testing is enabled, but not in production.
@@ -117,6 +256,14 @@ devel
 * Added ArangoSearch condition optimization: STARTS_WITH is merged 
   with LEVENSHTEIN_MATCH if used in the same AND node and field name and prefix
   matches.
+
+* Hybrid (Disjoint) SmartGraphs (Enterprise Edition):
+  SmartGraphs have been extended with a new option to create Hybrid SmartGraphs.
+  Hybrid SmartGraphs are capable of using SatelliteCollections within their
+  graph definition. You can now select some VertexCollections to be satellites,
+  and therefore available on all DBServers. The SmartGraph can make use of those
+  to collections to increase the traversal performance by larger local
+  components.
 
 * Added multidimensional indexes which can be used to efficiently intersect
   multiple range queries. They are currently limited to IEEE-754 double values.

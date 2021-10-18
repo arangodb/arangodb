@@ -121,6 +121,11 @@ TEST(by_edit_distance_test, boost) {
 
 #ifndef IRESEARCH_DLL
 
+#ifdef __clang__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpotentially-evaluated-expression"
+#endif // __clang__
+
 TEST(by_edit_distance_test, test_type_of_prepared_query) {
   // term query
   {
@@ -129,6 +134,10 @@ TEST(by_edit_distance_test, test_type_of_prepared_query) {
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 }
+
+#ifdef __clang__
+#pragma GCC diagnostic pop
+#endif // __clang__
 
 #endif
 
@@ -886,13 +895,12 @@ INSTANTIATE_TEST_SUITE_P(
   by_edit_distance_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_1", "1_0"},
-                      tests::format_info{"1_2", "1_0"})
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      tests::format_info{"1_0"},
+      tests::format_info{"1_1", "1_0"},
+      tests::format_info{"1_2", "1_0"})),
+  by_edit_distance_test_case::to_string
 );

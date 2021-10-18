@@ -252,11 +252,6 @@ void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const& rule);
 #endif
 
-/// @brief patch UPDATE statement on single collection that iterates over the
-/// entire collection to operate in batches
-void patchUpdateStatementsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                               OptimizerRule const&);
-
 /// @brief optimizes away unused traversal output variables and
 /// merges filter nodes into graph traversal nodes
 void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,

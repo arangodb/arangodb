@@ -866,7 +866,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
   );
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
-  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
 
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
@@ -999,7 +999,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
   );
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
-  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
 
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
@@ -1592,7 +1592,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
 
     dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
 
-    std::thread consolidation_thread([&writer, &dir]() {
+    std::thread consolidation_thread([&writer]() {
       const irs::index_utils::consolidate_count consolidate_all;
       ASSERT_THROW(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)), irs::io_error); // consolidate
     });
@@ -1720,7 +1720,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
 
     dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
 
-    std::thread consolidation_thread([&writer, &dir]() {
+    std::thread consolidation_thread([&writer]() {
       const irs::index_utils::consolidate_count consolidate_all;
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all))); // consolidate
     });
@@ -2568,7 +2568,7 @@ TEST(index_death_test_formats_10, open_reader) {
   );
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
-  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
 
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
@@ -2668,7 +2668,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   );
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
-  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
 
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
@@ -2768,7 +2768,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   );
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
-  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
 
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);

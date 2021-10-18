@@ -27,7 +27,6 @@
 #include "analysis/token_attributes.hpp"
 #include "analysis/analyzers.hpp"
 #include "search/scorers.hpp"
-#include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/utf8_path.hpp"
 #include "utils/lz4compression.hpp"
@@ -1526,7 +1525,7 @@ TEST_F(IResearchViewTest, test_consolidate) {
 
 TEST_F(IResearchViewTest, test_drop) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-  std::string dataPath = ((((irs::utf8_path()/=testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-123")).utf8();
+  std::string dataPath = ((((irs::utf8_path()/=testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-123")).u8string();
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"id\": 123, \
     \"name\": \"testView\", \
@@ -1555,7 +1554,7 @@ TEST_F(IResearchViewTest, test_drop) {
 
 TEST_F(IResearchViewTest, test_drop_with_link) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-  std::string dataPath = ((((irs::utf8_path()/=testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-123")).utf8();
+  std::string dataPath = ((((irs::utf8_path()/=testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-123")).u8string();
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"id\": 123, \
     \"name\": \"testView\", \
@@ -1592,7 +1591,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
         std::to_string(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *view)
                            ->id()
                            .id())))
-          .utf8();
+          .u8string();
   EXPECT_TRUE((true == TRI_IsDirectory(dataPath.c_str())));
 
   {
@@ -3426,7 +3425,7 @@ TEST_F(IResearchViewTest, test_open) {
   // default data path
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-    std::string dataPath = ((((irs::utf8_path()/=testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-123")).utf8();
+    std::string dataPath = ((((irs::utf8_path()/=testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-123")).u8string();
     auto json = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
 
     EXPECT_TRUE((false == TRI_IsDirectory(dataPath.c_str())));
@@ -4251,8 +4250,9 @@ TEST_F(IResearchViewTest, test_unregister_link) {
       for (auto& index: logicalCollection->getIndexes()) {
         auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
         ASSERT_NE(nullptr, link);
-        auto lock = link->self()->lock();
-        ASSERT_TRUE((!link->self()->get())); // check that link is unregistred from view
+        auto resource = link->self()->lock();
+        ASSERT_TRUE(resource.ownsLock());
+        ASSERT_TRUE((!resource)); // check that link is unregistred from view
       }
     }
   }
@@ -4534,7 +4534,6 @@ TEST_F(IResearchViewTest, test_overwrite_immutable_properties) {
     EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
     builder.close();
     EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
-    EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
     EXPECT_TRUE(1 == meta._version);
     EXPECT_TRUE(25 == meta._writebufferActive);
     EXPECT_TRUE(12 == meta._writebufferIdle);
@@ -4585,7 +4584,6 @@ TEST_F(IResearchViewTest, test_overwrite_immutable_properties) {
     EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
     builder.close();
     EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
-    EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
     EXPECT_TRUE(1 == meta._version);
     EXPECT_TRUE(25 == meta._writebufferActive);
     EXPECT_TRUE(12 == meta._writebufferIdle);

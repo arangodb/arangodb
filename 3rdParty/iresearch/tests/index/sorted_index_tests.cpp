@@ -1113,7 +1113,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
 
   // remove document
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==C", "C");
     writer->documents().remove(*query_doc1.filter);
     writer->commit();
   }
@@ -1361,14 +1361,13 @@ INSTANTIATE_TEST_SUITE_P(
   sorted_index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values(tests::format_info{"1_1", "1_0"},
-                      tests::format_info{"1_2", "1_0"})
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      tests::format_info{"1_1", "1_0"},
+      tests::format_info{"1_2", "1_0"})),
+  sorted_index_test_case::to_string
 );
 
 }

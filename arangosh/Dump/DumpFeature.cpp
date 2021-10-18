@@ -59,9 +59,10 @@
 
 namespace {
 
-/// @brief fake client id we will send to the server. the server keeps
+/// @brief fake client and syncer ids we will send to the server. the server keeps
 /// track of all connected clients
 static std::string clientId;
+static std::string syncerId;
 
 /// @brief name of the feature to report to application server
 constexpr auto FeatureName = "Dump";
@@ -175,7 +176,7 @@ std::pair<arangodb::Result, uint64_t> startBatch(arangodb::httpclient::SimpleHtt
   using arangodb::basics::VelocyPackHelper;
   using arangodb::basics::StringUtils::uint64;
 
-  std::string url = "/_api/replication/batch?serverId=" + clientId;
+  std::string url = "/_api/replication/batch?serverId=" + clientId + "&syncerId=" + syncerId;
   std::string const body = "{\"ttl\":600}";
   if (!DBserver.empty()) {
     url += "&DBserver=" + DBserver;
@@ -212,7 +213,7 @@ void extendBatch(arangodb::httpclient::SimpleHttpClient& client,
   TRI_ASSERT(batchId > 0);
 
   std::string url = "/_api/replication/batch/" + itoa(batchId) +
-                    "?serverId=" + clientId;
+                    "?serverId=" + clientId + "&syncerId=" + syncerId;
   std::string const body = "{\"ttl\":600}";
   if (!DBserver.empty()) {
     url += "&DBserver=" + DBserver;
@@ -1096,6 +1097,7 @@ void DumpFeature::start() {
   // in the future, if we are sure the server is an ArangoDB 3.5 or
   // higher
   ::clientId = std::to_string(RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL)));
+  ::syncerId = std::to_string(RandomGenerator::interval(static_cast<uint64_t>(0xFFFFFFFFFFFFFFFFULL)));
 
   double const start = TRI_microtime();
 
@@ -1125,7 +1127,7 @@ void DumpFeature::start() {
   // get database name to operate on
   auto& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
   // get a client to use in main thread
-  auto httpClient = _clientManager.getConnectedClient(_options.force, true, true);
+  auto httpClient = _clientManager.getConnectedClient(_options.force, true, true, 0);
 
   // check if we are in cluster or single-server mode
   Result result{TRI_ERROR_NO_ERROR};
@@ -1180,7 +1182,7 @@ void DumpFeature::start() {
     for (auto const& db : databases) {
       if (_options.allDatabases) {
         client.setDatabaseName(db);
-        httpClient = _clientManager.getConnectedClient(_options.force, false, true);
+        httpClient = _clientManager.getConnectedClient(_options.force, false, true, 0);
       }
 
       try {

@@ -70,13 +70,12 @@ int main(int argc, char* argv[]) {
     server.addFeature<GreetingsFeaturePhase>(true);
 
     server.addFeature<BenchFeature>(&ret);
-    server.addFeature<ClientFeature, HttpEndpointProvider>(false);
+    server.addFeature<ClientFeature, HttpEndpointProvider>(false, std::numeric_limits<size_t>::max());  // provide max number of endpoints
     server.addFeature<ConfigFeature>("arangobench");
     server.addFeature<LoggerFeature>(false);
     server.addFeature<RandomFeature>();
     server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(BenchFeature))});
+    server.addFeature<ShutdownFeature>(std::vector<std::type_index>{std::type_index(typeid(BenchFeature))});
     server.addFeature<SslFeature>();
     server.addFeature<TempFeature>("arangobench");
     server.addFeature<VersionFeature>();

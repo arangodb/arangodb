@@ -35,6 +35,7 @@
 
 namespace arangodb {
 class Result;
+struct LoggerContext;
 }
 
 namespace arangodb::replication2::replicated_log {
@@ -100,5 +101,4 @@ struct LogUnconfiguredParticipant final
   std::unique_ptr<LogCore> _logCore;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
 };
-
 }  // namespace arangodb::replication2::replicated_log

@@ -30,47 +30,80 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
-#include "utils/locale_utils.hpp"
 #include "utils/vpack_utils.hpp"
 
 namespace {
 
 using namespace irs;
 
-constexpr VPackStringRef LOCALE_PARAM_NAME{"locale"};
+constexpr VPackStringRef LOCALE_PARAM_NAME {"locale"};
+
+bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
+  if (!slice.isString()) {
+    IR_FRMT_WARN(
+      "Non-string value in '%s' while constructing "
+      "collation_token_stream from VPack arguments",
+      LOCALE_PARAM_NAME.data());
+
+    return false;
+  }
+
+  const auto locale_name = get_string<std::string>(slice);
+
+  locale = icu::Locale::createCanonical(locale_name.c_str());
+
+  if (locale.isBogus()) {
+    IR_FRMT_WARN(
+      "Failed to instantiate locale from the supplied string '%s' "
+      "while constructing collation_token_stream from VPack arguments",
+      locale_name.c_str());
+
+    return false;
+  }
+
+  // validate creation of icu::Collator
+  auto err = UErrorCode::U_ZERO_ERROR;
+  std::unique_ptr<icu::Collator> collator{
+    icu::Collator::createInstance(locale, err)};
+
+  if (!collator) {
+    IR_FRMT_WARN(
+      "Can't instantiate icu::Collator from locale '%s'",
+      locale_name.c_str());
+    return false;
+  }
+
+  // print warn message
+  if (err != UErrorCode::U_ZERO_ERROR) {
+    IR_FRMT_WARN(
+      "Warning while instantiation of icu::Collator from locale '%s' : '%s'",
+      locale_name.c_str(), u_errorName(err));
+  }
+
+  return U_SUCCESS(err);
+}
 
 bool parse_vpack_options(
     const VPackSlice slice,
     analysis::collation_token_stream::options_t& options) {
-
-  if (!slice.isObject() && !slice.isString()) {
-    IR_FRMT_ERROR(
-      "Slice for collation_token_stream is not an object or string");
+  if (!slice.isObject()) {
+    IR_FRMT_ERROR("Slice for collation_token_stream is not an object");
     return false;
   }
 
   try {
-    switch (slice.type()) {
-      case VPackValueType::String:
-        return locale_utils::icu_locale(get_string<string_ref>(slice), options.locale);  // required
-      case VPackValueType::Object:
-      {
-        auto param_name_slice = slice.get(LOCALE_PARAM_NAME);
-        if (param_name_slice.isString()) {
-          if (!locale_utils::icu_locale(get_string<string_ref>(param_name_slice), options.locale)) {
-            return false;
-          }
+    const auto locale_slice = slice.get(LOCALE_PARAM_NAME);
 
-          return true;
-        }
-      }
-      [[fallthrough]];
-      default:
-        IR_FRMT_ERROR(
-          "Missing '%s' while constructing collation_token_stream"
-          "from VPack arguments",
-          LOCALE_PARAM_NAME.data());
+    if (locale_slice.isNone()) {
+      IR_FRMT_ERROR(
+        "Missing '%s' while constructing collation_token_stream "
+        "from VPack arguments",
+        LOCALE_PARAM_NAME.data());
+
+      return false;
     }
+
+    return locale_from_slice(locale_slice, options.locale);
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
       "Caught error '%s' while constructing collation_token_stream from VPack",
@@ -108,14 +141,10 @@ analysis::analyzer::ptr make_vpack(const string_ref& args) {
 bool make_vpack_config(
     const analysis::collation_token_stream::options_t& options,
     VPackBuilder* builder) {
+  VPackObjectBuilder object{builder};
 
-  VPackObjectBuilder object(builder);
-  {
-    // locale
-    const auto& locale_name = locale_utils::name(options.locale);
-    builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
-  }
-
+  const auto locale_name = options.locale.getName();
+  builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
   return true;
 }
 
@@ -133,37 +162,6 @@ bool normalize_vpack_config(const string_ref& args, std::string& config) {
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
-    return true;
-  }
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief args is a language to use for normalizing
-////////////////////////////////////////////////////////////////////////////////
-analysis::analyzer::ptr make_text(const string_ref& args) {
-  try {
-    analysis::collation_token_stream::options_t options;
-
-    if (locale_utils::icu_locale(args, options.locale)) {// interpret 'args' as a locale name
-      return memory::make_unique<analysis::collation_token_stream>(
-          std::move(options));
-    }
-  } catch (...) {
-    std::string err_msg = static_cast<std::string>(args);
-    IR_FRMT_ERROR(
-      "Caught error while constructing collation_token_stream TEXT arguments: %s",
-      err_msg.c_str());
-  }
-
-  return nullptr;
-}
-
-bool normalize_text_config(const string_ref& args,
-                           std::string& definition) {
-  std::locale locale;
-  if (locale_utils::icu_locale(args, locale)){
-    definition = locale_utils::name(locale);
     return true;
   }
   return false;
@@ -206,15 +204,13 @@ bool normalize_json_config(const string_ref& args, std::string& definition) {
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while normalizing text_token_normalizing_stream from JSON");
+      "Caught error while normalizing collation_token_stream from JSON");
   }
   return false;
 }
 
 REGISTER_ANALYZER_JSON(analysis::collation_token_stream, make_json,
                        normalize_json_config);
-REGISTER_ANALYZER_TEXT(analysis::collation_token_stream, make_text,
-                       normalize_text_config);
 REGISTER_ANALYZER_VPACK(analysis::collation_token_stream, make_vpack,
                        normalize_vpack_config);
 
@@ -226,38 +222,25 @@ namespace analysis {
 constexpr size_t MAX_TOKEN_SIZE = 1 << 15;
 
 struct collation_token_stream::state_t {
-  icu::Locale icu_locale;
   const options_t options;
   std::unique_ptr<icu::Collator> collator;
   std::string utf8_buf;
   byte_type term_buf[MAX_TOKEN_SIZE];
 
-  state_t(const options_t& opts)
-    : icu_locale("C"),
+  explicit state_t(const options_t& opts) :
       options(opts) {
-    // NOTE: use of the default constructor for Locale() or
-    //       use of Locale::createFromName(nullptr)
-    //       causes a memory leak with Boost 1.58, as detected by valgrind
-    icu_locale.setToBogus(); // set to uninitialized
   }
 };
 
 /*static*/ void collation_token_stream::init() {
   REGISTER_ANALYZER_JSON(collation_token_stream, make_json,
                          normalize_json_config);
-  REGISTER_ANALYZER_TEXT(collation_token_stream, make_text,
-                         normalize_text_config);
   REGISTER_ANALYZER_VPACK(collation_token_stream, make_vpack,
                          normalize_vpack_config);
 }
 
 void collation_token_stream::state_deleter_t::operator()(state_t* p) const noexcept {
   delete p;
-}
-
-/*static*/ analyzer::ptr collation_token_stream::make(
-    const string_ref& locale) {
-  return make_text(locale);
 }
 
 collation_token_stream::collation_token_stream(
@@ -268,19 +251,9 @@ collation_token_stream::collation_token_stream(
 }
 
 bool collation_token_stream::reset(const string_ref& data) {
-  if (state_->icu_locale.isBogus()) {
-    state_->icu_locale = icu::Locale(
-      std::string(locale_utils::language(state_->options.locale)).c_str(),
-      std::string(locale_utils::country(state_->options.locale)).c_str());
-
-    if (state_->icu_locale.isBogus()) {
-      return false;
-    }
-  }
-
   if (!state_->collator) {
     auto err = UErrorCode::U_ZERO_ERROR;
-    state_->collator.reset(icu::Collator::createInstance(state_->icu_locale, err));
+    state_->collator.reset(icu::Collator::createInstance(state_->options.locale, err));
 
     if (!U_SUCCESS(err) || !state_->collator) {
       state_->collator.reset();
@@ -289,26 +262,12 @@ bool collation_token_stream::reset(const string_ref& data) {
     }
   }
 
-  // ...........................................................................
-  // convert encoding to UTF8 for use with ICU
-  // ...........................................................................
-  string_ref data_utf8_ref;
-  if (locale_utils::is_utf8(state_->options.locale)) {
-    data_utf8_ref = data;
-  } else {
-    // valid conversion since 'locale_' was created with internal unicode encoding
-    if (!locale_utils::append_internal(state_->utf8_buf, data, state_->options.locale)) {
-      return false; // UTF8 conversion failure
-    }
-    data_utf8_ref = state_->utf8_buf;
-  }
-
-  if (data_utf8_ref.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
+  if (data.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
     return false; // ICU UnicodeString signatures can handle at most INT32_MAX
   }
 
   const icu::UnicodeString icu_token = icu::UnicodeString::fromUTF8(
-    icu::StringPiece(data_utf8_ref.c_str(), static_cast<int32_t>(data_utf8_ref.size())));
+    icu::StringPiece(data.c_str(), static_cast<int32_t>(data.size())));
 
   int32_t term_size = state_->collator->getSortKey(
     icu_token, state_->term_buf, sizeof state_->term_buf);
@@ -333,7 +292,6 @@ bool collation_token_stream::reset(const string_ref& data) {
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());
-  std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
   term_eof_ = false;
 
   return true;

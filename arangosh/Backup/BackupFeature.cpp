@@ -162,7 +162,7 @@ arangodb::Result waitForRestart(arangodb::ClientManager& clientManager,
   while (timeSinceStart() < maxWaitForRestart) {
     std::unique_ptr<arangodb::httpclient::SimpleHttpClient> client;
     try {
-      result = clientManager.getConnectedClient(client, true, false, false, true);
+      result = clientManager.getConnectedClient(client, true, false, false, true, 0);
       if (result.ok() && client != nullptr) {
         double uptime = 0.0;
         result = ::getUptime(*client, uptime);
@@ -860,7 +860,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 void BackupFeature::start() {
   Result result;
   std::unique_ptr<httpclient::SimpleHttpClient> client =
-      _clientManager.getConnectedClient(false, true, true);
+      _clientManager.getConnectedClient(false, true, true, 0);
   if (_options.operation == OperationList) {
     result = ::executeList(*client, _options);
   } else if (_options.operation == OperationCreate) {

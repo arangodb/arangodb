@@ -444,6 +444,13 @@ auto replicated_log::LogFollower::GuardedFollowerData::getCommittedLogIterator(L
 
 replicated_log::LogFollower::~LogFollower() {
   _logMetrics->replicatedLogFollowerNumber->fetch_sub(1);
+  if (auto queueEmpty =
+          _guardedFollowerData.getLockedGuard()->_waitForQueue.getLockedGuard()->empty();
+      !queueEmpty) {
+    TRI_ASSERT(false) << "expected wait-for-queue to be empty";
+    LOG_CTX("ce7f8", ERR, _loggerContext)
+        << "expected wait-for-queue to be empty";
+  }
 }
 
 auto LogFollower::release(LogIndex doneWithIdx) -> Result {

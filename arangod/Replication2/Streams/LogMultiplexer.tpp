@@ -102,11 +102,15 @@ struct LogMultiplexerImplementationBase {
   auto waitForIteratorInternal(LogIndex first)
       -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>> {
     return waitForInternal<StreamDescriptor>(first).thenValue(
-        [that = shared_from_self(), first](auto&&) {
-          return that->_guardedData.doUnderLock([&](MultiplexerData<Spec>& self) {
-            auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
-            return block.getIteratorRange(first, self._firstUncommittedIndex);
-          });
+        [weak = weak_from_self(), first](auto&&) -> std::unique_ptr<TypedLogRangeIterator<E>> {
+          if (auto that = weak.lock(); that != nullptr) {
+            return that->_guardedData.doUnderLock([&](MultiplexerData<Spec>& self) {
+              auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
+              return block.getIteratorRange(first, self._firstUncommittedIndex);
+            });
+          } else {
+            return nullptr;
+          }
         });
   }
 
@@ -214,6 +218,9 @@ struct LogMultiplexerImplementationBase {
 
   auto shared_from_self() -> std::shared_ptr<Derived> {
     return std::static_pointer_cast<Derived>(static_cast<Derived&>(*this).shared_from_this());
+  }
+  auto weak_from_self() -> std::weak_ptr<Derived> {
+    return shared_from_self();
   }
 
   Guarded<MultiplexerData<Spec>, basics::UnshackledMutex> _guardedData{};

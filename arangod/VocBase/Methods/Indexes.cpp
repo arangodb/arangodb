@@ -94,8 +94,8 @@ Result Indexes::getIndex(LogicalCollection const* collection, VPackSlice indexId
       Indexes::getAll(collection, Index::makeFlags(), /*withHidden*/ true, tmp, trx);
   if (res.ok()) {
     for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
-      if (index.get(StaticStrings::IndexId).compareString(id) == 0 ||
-          index.get(StaticStrings::IndexName).compareString(name) == 0) {
+      if ((index.hasKey(StaticStrings::IndexId) && index.get(StaticStrings::IndexId).compareString(id) == 0) ||
+          (index.hasKey(StaticStrings::IndexName) && index.get(StaticStrings::IndexName).compareString(name) == 0)) {
         out.add(index);
         return Result();
       }

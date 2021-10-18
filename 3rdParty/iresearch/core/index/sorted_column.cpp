@@ -94,7 +94,7 @@ std::pair<doc_map, field_id> sorted_column::flush(
 
   // flush sorted data
   auto column = writer.push_column(info_);
-  auto& column_writer = column.second;
+  const auto& column_writer = column.second;
 
   new_doc_id = doc_limits::min();
   for (auto end = new_old.end(); begin != end; ++begin) {
@@ -194,7 +194,7 @@ field_id sorted_column::flush(
   }
 
   auto column = writer.push_column(info_);
-  auto& column_writer = column.second;
+  const auto& column_writer = column.second;
 
   // temporarily push sentinel
   index_.emplace_back(doc_limits::eof(), data_buf_.size());

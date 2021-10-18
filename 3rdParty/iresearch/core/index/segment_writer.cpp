@@ -41,7 +41,7 @@ namespace {
 
 using namespace irs;
 
-inline bool is_subset_of(
+[[maybe_unused]] inline bool is_subset_of(
     const features_t& lhs,
     const feature_map_t& rhs) noexcept {
   for (const irs::type_info::type_id type: lhs) {
@@ -109,8 +109,8 @@ segment_writer::ptr segment_writer::make(
 }
 
 size_t segment_writer::memory_active() const noexcept {
-  const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
-    ? sizeof(bitvector::word_t) : 0;
+  const auto docs_mask_extra = (0 != (docs_mask_.size() % sizeof(bitvector::word_t)))
+     ? sizeof(bitvector::word_t) : 0;
 
   const auto column_cache_active = std::accumulate(
     columns_.begin(), columns_.end(), size_t(0),
@@ -126,7 +126,7 @@ size_t segment_writer::memory_active() const noexcept {
 }
 
 size_t segment_writer::memory_reserved() const noexcept {
-  const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
+  const auto docs_mask_extra = (0 != (docs_mask_.size() % sizeof(bitvector::word_t)))
     ? sizeof(bitvector::word_t) : 0;
 
   const auto column_cache_reserved = std::accumulate(

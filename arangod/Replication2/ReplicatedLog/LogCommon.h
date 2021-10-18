@@ -232,13 +232,15 @@ class InMemoryLogEntry {
  public:
   using clock = std::chrono::steady_clock;
 
-  explicit InMemoryLogEntry(PersistingLogEntry entry);
+  explicit InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync = false);
 
   [[nodiscard]] auto insertTp() const noexcept -> clock::time_point;
   void setInsertTp(clock::time_point) noexcept;
   [[nodiscard]] auto entry() const noexcept -> PersistingLogEntry const&;
+  [[nodiscard]] bool getWaitForSync() const noexcept { return _waitForSync; }
 
  private:
+  bool _waitForSync;
   // Immutable box that allows sharing, i.e. cheap copying.
   ::immer::box<PersistingLogEntry, ::arangodb::immer::arango_memory_policy> _logEntry;
   // Timepoint at which the insert was started (not the point in time where it
@@ -304,12 +306,13 @@ using LogRangeIterator = TypedLogRangeIterator<LogEntryView>;
 
 struct LogConfig {
   std::size_t writeConcern = 1;
+  std::size_t replicationFactor = 1;
   bool waitForSync = false;
 
   auto toVelocyPack(velocypack::Builder&) const -> void;
   explicit LogConfig(velocypack::Slice);
   LogConfig() noexcept = default;
-  LogConfig(std::size_t writeConcern, bool waitForSync) noexcept;
+  LogConfig(std::size_t writeConcern, std::size_t replicationFactor, bool waitForSync) noexcept;
 
   friend auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
   friend auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;

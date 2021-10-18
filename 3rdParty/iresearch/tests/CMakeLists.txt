@@ -104,7 +104,6 @@ set(IReSearch_tests_sources
   ./utils/bit_packing_tests.cpp
   ./utils/bit_utils_tests.cpp
   ./utils/block_pool_test.cpp
-  ./utils/locale_utils_tests.cpp
   ./utils/levenshtein_utils_test.cpp
   ./utils/wildcard_utils_test.cpp
   ./utils/ref_counter_tests.cpp
