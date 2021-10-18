@@ -83,6 +83,7 @@ class IRESEARCH_API norm2 : public norm_base {
   static void compute(
       const field_stats& stats,
       doc_id_t doc,
+      // cppcheck-suppress constParameter
       columnstore_writer::values_writer_f& writer) {
     writer(doc).write_int(stats.len);
   }
