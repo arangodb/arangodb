@@ -66,7 +66,7 @@ auto createFirstTerm(DatabaseID const& database, LogPlanSpecification const& spe
   LogPlanTermSpecification newTermSpec;
   newTermSpec.term = LogTerm{1};
   newTermSpec.config = spec.targetConfig;
-  for (std::size_t i = 0; i < spec.targetConfig.writeConcern; i++) {
+  for (std::size_t i = 0; i < spec.targetConfig.replicationFactor; i++) {
     newTermSpec.participants.emplace(ParticipantId{participants[i]},
                                      LogPlanTermSpecification::Participant{});
   }

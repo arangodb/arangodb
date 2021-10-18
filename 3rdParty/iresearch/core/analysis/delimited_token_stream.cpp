@@ -50,8 +50,6 @@ irs::bytes_ref eval_term(irs::bstring& buf, const irs::bytes_ref& data) {
       }
 
       if (escaped) {
-        escaped = false;
-
         break; // mismatched quote
       }
 
