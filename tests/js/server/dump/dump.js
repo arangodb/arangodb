@@ -74,6 +74,11 @@ jsunity.run(function dump_single_testsuite() {
       "testViewOnSmartEdgeCollection",
       "testSmartGraphAttribute",
 
+      // enterprise sharded graphs on single server tests
+      "testEmptySmartGraph",
+      "testSmartGraphWithoutData",
+      "testSmartGraphSingleServer",
+
       // Hotbackup tests:
       "testLatestId"
     ]
