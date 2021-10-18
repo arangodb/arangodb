@@ -1782,7 +1782,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       }
       print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.role);
       let url = arangod.url;
-      if (arangod.role === "coordinator") {
+      if (arangod.role === "coordinator" && arangod.args["javascript.enabled"] !== "false") {
         url += '/_admin/aardvark/index.html';
       } else {
         url += '/_api/version';
