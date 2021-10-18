@@ -877,7 +877,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 #ifdef USE_ENTERPRISE
   res = DropColEnterprise(&coll, allowDropSystem, timeout);
 #else
-  if (ServerState::isCoordinator(role)) {
+  if (ServerState::instance()->isCoordinator()) {
     res = DropVocbaseColCoordinator(&coll, allowDropSystem);
   } else {
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
