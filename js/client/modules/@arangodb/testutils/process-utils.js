@@ -1097,6 +1097,11 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
     args['datatype'] = what.datatype;
   }
 
+  if (what.mergeAttributes !== undefined) {
+    args['merge-attributes'] = what.mergeAttributes;
+  }
+
+
   return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
 }
 

@@ -4250,8 +4250,9 @@ TEST_F(IResearchViewTest, test_unregister_link) {
       for (auto& index: logicalCollection->getIndexes()) {
         auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
         ASSERT_NE(nullptr, link);
-        auto lock = link->self()->lock();
-        ASSERT_TRUE((!link->self()->get())); // check that link is unregistred from view
+        auto resource = link->self()->lock();
+        ASSERT_TRUE(resource.ownsLock());
+        ASSERT_TRUE((!resource)); // check that link is unregistred from view
       }
     }
   }

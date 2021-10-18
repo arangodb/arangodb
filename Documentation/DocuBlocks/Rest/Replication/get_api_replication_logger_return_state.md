@@ -39,9 +39,9 @@ attributes:
 
   - *serverId*: server id of client
 
-  - *lastServedTick*: last tick value served to this client via the *logger-follow* API
+  - *lastServedTick*: last tick value served to this client via the WAL tailing API
 
-  - *time*: date and time when this client last called the *logger-follow* API
+  - *time*: date and time when this client last called the WAL tailing API
 
 @RESTRETURNCODES
 

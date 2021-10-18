@@ -331,8 +331,10 @@ struct IRESEARCH_API columnstore_writer {
 
 }
 
-MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t, irs::bytes_ref&)>;) // columnstore_reader::values_reader_f
-MSVC_ONLY(template class IRESEARCH_API std::function<irs::column_output&(irs::doc_id_t)>;) // columnstore_writer::values_writer_f
+// columnstore_reader::values_reader_f
+MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t, irs::bytes_ref&)>;) // cppcheck-suppress unknownMacro
+// columnstore_writer::values_writer_f
+MSVC_ONLY(template class IRESEARCH_API std::function<irs::column_output&(irs::doc_id_t)>;) 
 
 namespace iresearch {
 

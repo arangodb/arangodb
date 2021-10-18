@@ -280,7 +280,7 @@ class doc_iterator final : public irs::doc_iterator {
     freq_in_ = freq;
     posting_ = &posting;
 
-    auto& ppos = std::get<attribute_ptr<position>>(attrs_);
+    const auto& ppos = std::get<attribute_ptr<position>>(attrs_);
 
     if (ppos.ptr && prox) {
       // reset positions only once,
@@ -435,6 +435,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
   }
 
   virtual bool next() noexcept override {
+    // cppcheck-suppress shadowFunction
     auto& value = std::get<document>(attrs_);
 
     while (it_ != docs_.end()) {
@@ -990,7 +991,9 @@ void field_data::add_term_random_access(
       auto& last_start_cookie = *prox_stream_cookie;
 
       write_cookie(doc_out, start_cookie - last_start_cookie);
+      // cppcheck-suppress selfAssignment
       last_start_cookie = start_cookie; // update previous cookie
+      // cppcheck-suppress selfAssignment
       start_cookie = end_cookie; // update start cookie
 
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);
