@@ -135,10 +135,10 @@ function gtestRunner (options) {
         argv.push('--gtest_filter='+options.testCase);
       } else {
         argv.push('--gtest_filter=-*_LongRunning');
-        let greylist =   readGreylist();
+        /*let greylist =   readGreylist();
         greylist.forEach(function(greyItem) {
           argv.push('--gtest_filter=-'+greyItem);
-        });
+        });*/
       }
       results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, options.coreCheck);
       results.basics.failed = results.basics.status ? 0 : 1;
