@@ -117,11 +117,11 @@
     this.exports = {};
     this.require = createRequire(this);
     this.parent = parent;
-    if (parent && parent.children) {
-      parent.children.push(this);
-    }
+
     if (!parent) {
       this[$_MODULE_ROOT] = NATIVE_MODULES.process.cwd();
+    } else if (parent.children) {
+      parent.children.push(this);
     }
 
     Object.defineProperty(this, $_MODULE_CONTEXT, {
