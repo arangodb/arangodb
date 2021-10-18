@@ -238,7 +238,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
     std::unique_ptr<WaitForQueue> outQueue) noexcept -> DeferredAction {
   TRI_ASSERT(outQueue != nullptr) << "expect outQueue to be preallocated";
 
-  auto const generateToBeResolved = [&] {
+  auto const generateToBeResolved = [&, this] {
     try {
       auto waitForQueue = this->_waitForQueue.getLockedGuard();
 
