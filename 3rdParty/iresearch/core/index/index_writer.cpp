@@ -546,6 +546,7 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
   segment_reader cached_reader;
 
   // FIXME consider moving open/reopen out of the scope of the lock
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(lock_);
   auto& reader = cache_[meta];
 
@@ -560,6 +561,7 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
 }
 
 void readers_cache::clear() noexcept {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(lock_);
   cache_.clear();
 }
@@ -572,6 +574,7 @@ size_t readers_cache::purge(
 
   size_t erased = 0;
 
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(lock_);
 
   for (auto it = cache_.begin(); it != cache_.end(); ) {
@@ -605,6 +608,7 @@ index_writer::active_segment_context::active_segment_context(
 #ifdef IRESEARCH_DEBUG
   if (flush_ctx) {
     // ensure there are no active struct update operations (only needed for assert)
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(flush_ctx->mutex_);
     // assert that flush_ctx and ctx are compatible
     assert(flush_ctx->pending_segment_contexts_[pending_segment_context_offset_].segment_ == ctx_);
@@ -895,8 +899,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   auto flush_lock = make_unique_lock(ctx.flush_mutex_, std::defer_lock);
 
   {
-    // pending_segment_contexts_ may be asynchronously read
-    auto lock = make_lock_guard(mutex_);
+    auto lock = make_lock_guard(mutex_); // pending_segment_contexts_ may be asynchronously read
 
     // update pending_segment_context
     // this segment_context has not yet been seen by this flush_context
@@ -1244,6 +1247,7 @@ index_writer::index_writer(
 }
 
 void index_writer::clear(uint64_t tick) {
+  // cppcheck-suppress unreadVariable
   auto commit_lock = make_lock_guard(commit_lock_);
 
   if (!pending_state_
@@ -1253,6 +1257,7 @@ void index_writer::clear(uint64_t tick) {
   }
 
   auto ctx = get_flush_context(false);
+  // cppcheck-suppress unreadVariable
   auto ctx_lock = make_lock_guard(ctx->mutex_); // ensure there are no active struct update operations
 
   auto pending_commit = memory::make_shared<committed_state_t::element_type>(
@@ -1262,7 +1267,6 @@ void index_writer::clear(uint64_t tick) {
 
   auto& dir = *ctx->dir_;
   auto& pending_meta = *pending_commit->first;
-  auto& pending_refs = pending_commit->second;
 
   // setup new meta
   pending_meta.update_generation(meta_); // clone index metadata generation
@@ -1282,6 +1286,7 @@ void index_writer::clear(uint64_t tick) {
 
   auto ref = directory_utils::reference(dir, writer_->filename(pending_meta), true);
   if (ref) {
+    auto& pending_refs = pending_commit->second;
     pending_refs.emplace_back(std::move(ref));
   }
 
@@ -1300,6 +1305,7 @@ void index_writer::clear(uint64_t tick) {
   cached_readers_.clear(); // original readers no longer required
 
   // clear consolidating segments
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(consolidation_lock_);
   consolidating_segments_.clear();
 }
@@ -1399,9 +1405,11 @@ uint64_t index_writer::buffered_docs() const {
   uint64_t docs_in_ram = 0;
   auto ctx = const_cast<index_writer*>(this)->get_flush_context();
   // 'pending_used_segment_contexts_'/'pending_free_segment_contexts_' may be modified
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(ctx->mutex_);
 
   for (auto& entry: ctx->pending_segment_contexts_) {
+    // cppcheck-suppress useStlAlgorithm
     docs_in_ram += entry.segment_->buffered_docs_.load(); // reading segment_writer::docs_count() is not thread safe
   }
 
@@ -1785,8 +1793,8 @@ bool index_writer::import(
   merge_writer merger(dir, column_info_, feature_column_info_, comparator_);
   merger.reserve(reader.size());
 
-  for (auto& segment : reader) {
-    merger.add(segment);
+  for (auto& curr_segment : reader) {
+    merger.add(curr_segment);
   }
 
   if (!merger.flush(segment, progress)) {
@@ -1798,6 +1806,7 @@ bool index_writer::import(
   auto refs = extract_refs(dir);
 
   auto ctx = get_flush_context();
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(ctx->mutex_); // lock due to context modification
 
   ctx->pending_segments_.emplace_back(

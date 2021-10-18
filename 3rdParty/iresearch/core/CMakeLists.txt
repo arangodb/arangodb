@@ -711,6 +711,8 @@ add_library(${IResearch_TARGET_NAME}-analyzer-text-shared
   SHARED
   ./analysis/text_token_stream.cpp
   ./analysis/text_token_stream.hpp
+  ./utils/snowball_stemmer.cpp
+  ./utils/snowball_stemmer.hpp
 )
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-text-shared)
@@ -718,6 +720,7 @@ set_ipo(${IResearch_TARGET_NAME}-analyzer-text-shared)
 add_library(${IResearch_TARGET_NAME}-analyzer-text-static
   STATIC
   ./analysis/text_token_stream.cpp
+  ./utils/snowball_stemmer.cpp
 )
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-text-static)
@@ -873,6 +876,8 @@ add_library(${IResearch_TARGET_NAME}-analyzer-stem-shared
   SHARED
   ./analysis/text_token_stemming_stream.cpp
   ./analysis/text_token_stemming_stream.hpp
+  ./utils/snowball_stemmer.cpp
+  ./utils/snowball_stemmer.hpp
 )
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-shared)
@@ -880,6 +885,7 @@ set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-shared)
 add_library(${IResearch_TARGET_NAME}-analyzer-stem-static
   STATIC
   ./analysis/text_token_stemming_stream.cpp
+  ./utils/snowball_stemmer.cpp
 )
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-static)

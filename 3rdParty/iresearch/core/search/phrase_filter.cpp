@@ -477,8 +477,8 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
 // -----------------------------------------------------------------------------
 // --SECTION--                                          by_phrase implementation
 // -----------------------------------------------------------------------------
-
-DEFINE_FACTORY_DEFAULT(by_phrase)
+// cppcheck-suppress unknownMacro
+DEFINE_FACTORY_DEFAULT(by_phrase) 
 
 filter::prepared::ptr by_phrase::prepare(
     const index_reader& index,

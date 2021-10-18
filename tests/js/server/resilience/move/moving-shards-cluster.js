@@ -1059,26 +1059,31 @@ function MovingShardsSuite ({useData}) {
       // followers which are not in Plan. This means that the moveShard
       // below will leave the old server in Current/servers and
       // Current/failoverCandidates.
-      debugSetFailAt(leaderEndpoint, "Maintenance::doNotRemoveUnPlannedFollowers");
+      try {
+        debugSetFailAt(leaderEndpoint, "Maintenance::doNotRemoveUnPlannedFollowers");
 
-      var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[1].name());
-      var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
-      assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
-      wait(5);   // After 5 seconds the situation should be unchanged!
-      assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
-      // Now we know that the old follower is not in the plan but is in
-      // failoverCandidates (and indeed in Current/servers). Let's now
-      // try to move the shard back, this ought to be denied:
-      assertTrue(moveShard("_system", c[1]._id, shard, toServer, fromServer, false, "Failed"));
-      debugClearFailAt(leaderEndpoint);
-      // Now we should go back to only 3 servers in Current.
-      assertTrue(waitForSynchronousReplication("_system"));
-      assertTrue(testServerEmpty(fromServer, false, 1, 1));
-      assertTrue(waitForSupervision());
-      checkCollectionContents();
+        var toServer = findServerNotOnList(servers);
+        var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+            "_system", c[1].name());
+        var shard = Object.keys(cinfo.shards)[0];
+        assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
+        assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
+        wait(5);   // After 5 seconds the situation should be unchanged!
+        assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
+        // Now we know that the old follower is not in the plan but is in
+        // failoverCandidates (and indeed in Current/servers). Let's now
+        // try to move the shard back, this ought to be denied:
+        assertTrue(moveShard("_system", c[1]._id, shard, toServer, fromServer, false, "Failed"));
+        debugClearFailAt(leaderEndpoint);
+        // Now we should go back to only 3 servers in Current.
+        assertTrue(waitForSynchronousReplication("_system"));
+        assertTrue(testServerEmpty(fromServer, false, 1, 1));
+        assertTrue(waitForSupervision());
+        checkCollectionContents();
+      } catch (err) {
+        debugClearFailAt(leaderEndpoint);
+        throw err;
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
