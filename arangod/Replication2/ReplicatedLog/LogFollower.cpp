@@ -240,15 +240,15 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
 
   auto const generateToBeResolved = [&, this] {
     try {
-      auto waitForQueue = this->_waitForQueue.getLockedGuard();
+      auto waitForQueue = _waitForQueue.getLockedGuard();
 
-      auto const end = waitForQueue->upper_bound(this->_commitIndex);
+      auto const end = waitForQueue->upper_bound(_commitIndex);
       for (auto it = waitForQueue->begin(); it != end;) {
-        LOG_CTX("69022", TRACE, this->_follower._loggerContext)
+        LOG_CTX("69022", TRACE, _follower._loggerContext)
             << "resolving promise for index " << it->first;
         outQueue->insert(waitForQueue->extract(it++));
       }
-      return DeferredAction([commitIndex = this->_commitIndex,
+      return DeferredAction([commitIndex = _commitIndex,
                              toBeResolved = std::move(outQueue)]() noexcept {
         for (auto& it : *toBeResolved) {
           if (!it.second.isFulfilled()) {
@@ -269,29 +269,29 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
     } catch (...) {
       // If those promises are not fulfilled we can not continue.
       // Note that the move constructor of std::multi_map is not noexcept.
-      LOG_CTX("c0bba", FATAL, this->_follower._loggerContext)
+      LOG_CTX("c0bba", FATAL, _follower._loggerContext)
           << "failed to fulfill replication promises due to exception; "
              "system can not continue";
       FATAL_ERROR_EXIT();
     }
   };
 
-  TRI_ASSERT(newLCI >= this->_largestCommonIndex)
-      << "req.lci = " << newLCI << ", this.lci = " << this->_largestCommonIndex;
-  if (this->_largestCommonIndex < newLCI) {
-    LOG_CTX("fc467", TRACE, this->_follower._loggerContext)
-        << "largest common index went from " << this->_largestCommonIndex
+  TRI_ASSERT(newLCI >= _largestCommonIndex)
+      << "req.lci = " << newLCI << ", this.lci = " << _largestCommonIndex;
+  if (_largestCommonIndex < newLCI) {
+    LOG_CTX("fc467", TRACE, _follower._loggerContext)
+        << "largest common index went from " << _largestCommonIndex
         << " to " << newLCI << ".";
-    this->_largestCommonIndex = newLCI;
+    _largestCommonIndex = newLCI;
     // TODO do we want to call checkCompaction here?
-    std::ignore = this->checkCompaction();
+    std::ignore = checkCompaction();
   }
 
-  if (this->_commitIndex < newCommitIndex && !this->_inMemoryLog.empty()) {
-    this->_commitIndex =
-        std::min(newCommitIndex, this->_inMemoryLog.back().entry().logIndex());
-    LOG_CTX("1641d", TRACE, this->_follower._loggerContext)
-        << "increment commit index: " << this->_commitIndex;
+  if (_commitIndex < newCommitIndex && !_inMemoryLog.empty()) {
+    _commitIndex =
+        std::min(newCommitIndex, _inMemoryLog.back().entry().logIndex());
+    LOG_CTX("1641d", TRACE, _follower._loggerContext)
+        << "increment commit index: " << _commitIndex;
     return generateToBeResolved();
   }
 
