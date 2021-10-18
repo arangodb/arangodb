@@ -198,19 +198,22 @@ void sortCollectionsForCreation(std::vector<VPackBuilder>& collections) {
 
   // a set of all collections that are a distributeShardsLike prototype for some
   // other collection.
-  auto const isDslPrototype = std::invoke([&collections] {
-    auto isDslPrototype = std::unordered_set<std::string>();
+  auto const dslPrototypes = std::invoke([&collections] {
+    auto dslPrototypes = std::unordered_set<std::string>();
     for (auto const& builder : collections) {
       auto const parameters = builder.slice().get("parameters");
 
       if (auto const distributeShardsLikeSlice =
-              parameters.get("distributeShardsLikeSlice");
+              parameters.get("distributeShardsLike");
           !distributeShardsLikeSlice.isNone()) {
-        isDslPrototype.emplace(distributeShardsLikeSlice.copyString());
+        dslPrototypes.emplace(distributeShardsLikeSlice.copyString());
       }
     }
-    return isDslPrototype;
+    return dslPrototypes;
   });
+  auto const isDslPrototype = [&dslPrototypes](auto const& name) {
+    return dslPrototypes.find(name) != dslPrototypes.end();
+  };
 
   enum class Rel {
     Less,
@@ -237,8 +240,7 @@ void sortCollectionsForCreation(std::vector<VPackBuilder>& collections) {
   // Orders distributeShardsLike-prototypes before (all) other collections,
   // apart from that imposes no additional ordering.
   auto const dslProtoToOrderedValue = [&isDslPrototype](auto const& name) {
-    auto isProto = isDslPrototype.find(name) != isDslPrototype.end();
-    return isProto ? 0 : 1;
+    return isDslPrototype(name) ? 0 : 1;
   };
 
   // Orders document collections before edge collections,
