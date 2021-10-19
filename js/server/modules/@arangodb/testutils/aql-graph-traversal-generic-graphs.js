@@ -59,9 +59,7 @@ const verifySmartCollection = (collection) => {
 };
 
 const verifySatelliteCollection = (collection) => {
-  console.warn("CURRENTLY FAILS - THIS NEEDS TO BE FIXED BEFORE WE MERGE BACK");
-  // assert.assertTrue(collection.properties().isSatellite);
-  console.warn("TODO: FIXME");
+  assert.assertTrue(collection.properties().replicationFactor === 'satellite');
   assert.assertFalse(collection.properties().isSmart);
 };
 

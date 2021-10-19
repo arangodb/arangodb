@@ -71,6 +71,7 @@ class ShardingInfo {
 
   void setWriteConcernAndReplicationFactor(size_t writeConcern, size_t replicationFactor);
 
+  std::pair<bool, bool> markAsSatellite(); // Return note booleans: (isError, isASatellite)
   bool isSatellite() const;
 
   size_t numberOfShards() const;

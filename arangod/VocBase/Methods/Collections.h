@@ -92,7 +92,7 @@ struct Collections {
       bool isNewDatabase,
       std::shared_ptr<LogicalCollection>& ret,
       bool allowSystem = false,
-      bool isSingleServerSmartGraph = false);  // invoke on collection creation
+      bool isSingleServerEnterpriseCollection = false);  // invoke on collection creation
 
   /// Create many collections, ownership of collections in callback is
   /// transferred to callee
@@ -103,7 +103,7 @@ struct Collections {
                        std::shared_ptr<LogicalCollection> const& colPtr,
                        std::vector<std::shared_ptr<LogicalCollection>>& ret,
                        bool allowSystem = false,
-                       bool isSingleServerSmartGraph = false); // todo find better name to also match satellite
+                       bool isSingleServerEnterpriseCollection = false); // todo find better name to also match satellite
 
   static Result createSystem(TRI_vocbase_t& vocbase, OperationOptions const&,
                              std::string const& name, bool isNewDatabase,

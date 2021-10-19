@@ -633,7 +633,7 @@ Result GraphManager::ensureCollections(
   OperationOptions opOptions(ExecContext::current());
 
 #ifdef USE_ENTERPRISE
-  const bool sssg = ServerState::instance()->isSingleServer() && graph.isSmart();
+  const bool sssg = ServerState::instance()->isSingleServer() && (graph.isSmart() || graph.isSatellite());
 #else
   const bool sssg = false;
 #endif
