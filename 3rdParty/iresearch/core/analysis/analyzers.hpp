@@ -96,7 +96,6 @@ class IRESEARCH_API analyzers {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find an analyzer by name, or nullptr if not found
   ///        indirect call to <class>::make(...)
-  ///        requires use of DECLARE_FACTORY() in class definition
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   ////////////////////////////////////////////////////////////////////////////////
   static result get(
@@ -109,7 +108,6 @@ class IRESEARCH_API analyzers {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find an analyzer by name, or nullptr if not found
   ///        indirect call to <class>::make(...)
-  ///        requires use of DECLARE_FACTORY() in class definition
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   ////////////////////////////////////////////////////////////////////////////////
   static analyzer::ptr get(

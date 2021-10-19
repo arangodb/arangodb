@@ -75,7 +75,7 @@ struct IRESEARCH_API by_prefix_options : by_prefix_filter_options {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
 
   static prepared::ptr prepare(
     const index_reader& index,

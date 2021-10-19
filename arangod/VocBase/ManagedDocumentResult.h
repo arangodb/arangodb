@@ -65,7 +65,6 @@ class ManagedDocumentResult {
 
   inline RevisionId revisionId() const noexcept { return _revisionId; }
   void setRevisionId(RevisionId rid) noexcept { _revisionId = rid; }
-  void setRevisionId() noexcept;
 
   void clearData() noexcept {
     _string.clear();

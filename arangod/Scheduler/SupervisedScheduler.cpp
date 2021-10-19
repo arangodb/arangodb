@@ -183,6 +183,8 @@ DECLARE_GAUGE(
     "Total number of ongoing RestHandlers coming from the low prio queue");
 DECLARE_COUNTER(arangodb_scheduler_queue_full_failures_total,
                 "Tasks dropped and not added to internal queue");
+DECLARE_COUNTER(arangodb_scheduler_queue_time_violations_total,
+                "Tasks dropped because the client-requested queue time restriction would be violated");
 DECLARE_GAUGE(arangodb_scheduler_queue_length, uint64_t,
               "Server's internal queue length");
 DECLARE_COUNTER(arangodb_scheduler_threads_started_total,
@@ -238,6 +240,8 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           arangodb_scheduler_threads_stopped_total{})),
       _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_scheduler_queue_full_failures_total{})),
+      _metricsQueueTimeViolations(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_queue_time_violations_total{})),
       _ongoingLowPriorityGauge(_server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_scheduler_ongoing_low_prio{})),
       _metricsLastLowPriorityDequeueTime(
@@ -766,7 +770,8 @@ std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     return nullptr;
   };
 
-  // how often did we check for new work without success
+  // how often did we check for new work without success (note: this counter
+  // is used only to reduce the "last dequeue time" metric in case of inactivity)
   uint64_t iterations = 0;
   uint64_t maxCheckedQueue = 0;
 
@@ -822,13 +827,16 @@ std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     }
     
     // nothing to do for a long time, but the previously stored dequeue time 
-    // is still set to something > 5ms (note: we use 5 here because a deque time 
-    // of > 0ms is not very unlikely for any request)
-    if (maxCheckedQueue == LowPriorityQueue &&
-        iterations >= 10 &&
-        _metricsLastLowPriorityDequeueTime.load(std::memory_order_relaxed) > 5) {
-      // set the dequeue time back to 0.
-      setLastLowPriorityDequeueTime(0);
+    // is still set to something > 0ms.
+    // now gradually decrease the stored dequeue time, so that in a period
+    // of inactivity the dequeue time smoothly goes down back to 0, but not
+    // abruptly
+    if (maxCheckedQueue == LowPriorityQueue && iterations % 4 == 0) {
+      auto old = _metricsLastLowPriorityDequeueTime.load(std::memory_order_relaxed);
+      if (old > 0) {
+        // reduce dequeue time to 66%
+        setLastLowPriorityDequeueTime((old * 2) / 3);
+      }
     }
 
     if (state->_sleepTimeout_ms == 0) {
@@ -930,7 +938,7 @@ SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler& scheduler)
       _sleeping(false),
       _ready(false),
       _lastJobStarted(clock::now()),
-      _thread(new SupervisedSchedulerWorkerThread(scheduler._server, scheduler)) {}
+      _thread(std::make_unique<SupervisedSchedulerWorkerThread>(scheduler._server, scheduler)) {}
 
 bool SupervisedScheduler::WorkerState::start() { return _thread->start(); }
 
@@ -975,6 +983,15 @@ void SupervisedScheduler::trackEndOngoingLowPriorityTask() {
   if (!_server.isStopping()) {
     --_ongoingLowPriorityGauge;
   }
+}
+
+void SupervisedScheduler::trackQueueTimeViolation() {
+  ++_metricsQueueTimeViolations;
+}
+
+/// @brief returns the last stored dequeue time [ms]
+uint64_t SupervisedScheduler::getLastLowPriorityDequeueTime() const noexcept {
+  return _metricsLastLowPriorityDequeueTime.load();
 }
 
 void SupervisedScheduler::setLastLowPriorityDequeueTime(uint64_t time) noexcept {

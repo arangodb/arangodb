@@ -54,31 +54,6 @@ struct IRESEARCH_API attributes {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API attribute { };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief base class for all attributes that can be deallocated via a ptr of
-///        this struct type using a virtual destructor
-///        an empty struct tag type with a virtual destructor
-///        all derived classes must implement the following functions:
-///        static const attribute::type_id type() noexcept
-///          via DECLARE_ATTRIBUTE_TYPE()/DEFINE_ATTRIBUTE_TYPE(...)
-///        static ptr make(Args&&... args)
-///          via DECLARE_FACTORY()/DECLARE_FACTORY()
-//////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API stored_attribute : attribute {
-  using ptr = std::unique_ptr<stored_attribute>;
-
-  stored_attribute() = default;
-  stored_attribute(const stored_attribute&) = default;
-  stored_attribute(stored_attribute&&) = default;
-  stored_attribute& operator=(const stored_attribute&) = default;
-  stored_attribute& operator=(stored_attribute&&) = default;
-
-  virtual ~stored_attribute() = default;
-};
-
-static_assert(std::is_nothrow_move_constructible_v<stored_attribute>);
-static_assert(std::is_nothrow_move_assignable_v<stored_attribute>);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                            Attribute registration
 // -----------------------------------------------------------------------------

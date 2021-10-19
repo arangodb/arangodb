@@ -131,7 +131,7 @@ class ngram_token_stream_base
 template<ngram_token_stream_base::InputType StreamType>
 class ngram_token_stream: public ngram_token_stream_base {
  public:
-  DECLARE_FACTORY(const ngram_token_stream_base::Options& options);
+  static ptr make(const ngram_token_stream_base::Options& options);
 
   ngram_token_stream(const ngram_token_stream_base::Options& options);
   
