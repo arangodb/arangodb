@@ -180,12 +180,12 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
             vocbase.isOneShard()) {
           // force one shard, and force distributeShardsLike to be "_graphs"
+          helper.add(StaticStrings::NumberOfShards, VPackValue(1));
           if (!isSatellite) {
             // SatelliteCollections must not be sharded like a
             // non-SatelliteCollection.
             helper.add(StaticStrings::DistributeShardsLike,
                        VPackValue(vocbase.shardingPrototypeName()));
-            helper.add(StaticStrings::NumberOfShards, VPackValue(1));
           }
         }
       }
