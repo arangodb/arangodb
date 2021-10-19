@@ -1,8 +1,8 @@
 devel
 -----
 
-* Fixed ES-881: Fixed LDAP global options. This need to use the first active provider,
-  not the first provider (ES-881) and it should be globally disabled.
+* Fixed ES-881: Fixed LDAP global options. This needs to use the first active
+  provider, not just the first provider and it should be globally disabled.
 
 * Now, arangoimport supports merging of attributes. When importing data from a
   file into a collection, a document attribute can be comprised of merging
