@@ -30,7 +30,7 @@
 #include <unicode/locid.h>
 #endif
 
-#include "ConsoleFeature.h"
+#include "ShellConsoleFeature.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ScopeGuard.h"
@@ -69,7 +69,7 @@ static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
 
 namespace arangodb {
 
-ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
+ShellConsoleFeature::ShellConsoleFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Console"),
 #ifdef _WIN32
       _cygwinShell(false),
@@ -109,7 +109,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
 #endif
 }
 
-void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void ShellConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--quiet", "silent startup", new BooleanParameter(&_quiet));
 
   options->addSection("console", "console");
@@ -148,7 +148,7 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new StringParameter(&_prompt));
 }
 
-void ConsoleFeature::prepare() {
+void ShellConsoleFeature::prepare() {
 #if _WIN32
   if (_is_cyg_tty(STDOUT_FILENO) || getenv("SHELL") != nullptr) {
     _cygwinShell = true;
@@ -156,14 +156,14 @@ void ConsoleFeature::prepare() {
 #endif
 }
 
-void ConsoleFeature::start() { openLog(); }
+void ShellConsoleFeature::start() { openLog(); }
 
-void ConsoleFeature::unprepare() { closeLog(); }
+void ShellConsoleFeature::unprepare() { closeLog(); }
 
 #ifdef _WIN32
 static void _newLine() { fprintf(stdout, "\n"); }
 
-void ConsoleFeature::_print2(std::string const& s) {
+void ShellConsoleFeature::_print2(std::string const& s) {
   size_t sLen = s.size();
 
   if (sLen == 0) {
@@ -190,7 +190,7 @@ void ConsoleFeature::_print2(std::string const& s) {
   }
 }
 
-void ConsoleFeature::_print(std::string const& s) {
+void ShellConsoleFeature::_print(std::string const& s) {
   auto pos = s.find_first_of("\x1b");
 
   if (pos == std::string::npos) {
@@ -284,7 +284,7 @@ void ConsoleFeature::_print(std::string const& s) {
 #endif
 
 // prints a string to stdout, without a newline
-void ConsoleFeature::printContinuous(std::string const& s) {
+void ShellConsoleFeature::printContinuous(std::string const& s) {
   if (s.empty()) {
     return;
   }
@@ -295,25 +295,25 @@ void ConsoleFeature::printContinuous(std::string const& s) {
   }
 }
 
-void ConsoleFeature::printLine(std::string const& s) {
+void ShellConsoleFeature::printLine(std::string const& s) {
   {
     fprintf(stdout, "%s\n", s.c_str());
     fflush(stdout);
   }
 }
 
-void ConsoleFeature::printErrorLine(std::string const& s) { printLine(s); }
+void ShellConsoleFeature::printErrorLine(std::string const& s) { printLine(s); }
 
-std::string ConsoleFeature::readPassword(std::string const& message) {
+std::string ShellConsoleFeature::readPassword(std::string const& message) {
   printContinuous(message);
 
   std::string password = readPassword();
-  ConsoleFeature::printLine("");
+  ShellConsoleFeature::printLine("");
 
   return password;
 }
 
-std::string ConsoleFeature::readPassword() {
+std::string ShellConsoleFeature::readPassword() {
   TRI_SetStdinVisibility(false);
 
   auto sg = arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
@@ -332,7 +332,7 @@ std::string ConsoleFeature::readPassword() {
   return password;
 }
 
-void ConsoleFeature::printWelcomeInfo() {
+void ShellConsoleFeature::printWelcomeInfo() {
   if (_quiet) {
     return;
   }
@@ -352,7 +352,7 @@ void ConsoleFeature::printWelcomeInfo() {
   printLine(s.str());
 }
 
-void ConsoleFeature::printByeBye() {
+void ShellConsoleFeature::printByeBye() {
   if (!_quiet) {
     printLine(TRI_BYE_MESSAGE);
   }
@@ -380,7 +380,7 @@ static std::string StripBinary(std::string const& value) {
   return result;
 }
 
-void ConsoleFeature::print(std::string const& message) {
+void ShellConsoleFeature::print(std::string const& message) {
   if (_toPager == stdout) {
     printContinuous(message);
   } else {
@@ -391,7 +391,7 @@ void ConsoleFeature::print(std::string const& message) {
   log(message);
 }
 
-void ConsoleFeature::openLog() {
+void ShellConsoleFeature::openLog() {
   if (!_auditFile.empty()) {
     _toAuditFile = TRI_FOPEN(_auditFile.c_str(), "w");
 
@@ -407,14 +407,14 @@ void ConsoleFeature::openLog() {
   }
 }
 
-void ConsoleFeature::closeLog() {
+void ShellConsoleFeature::closeLog() {
   if (_toAuditFile != nullptr) {
     fclose(_toAuditFile);
     _toAuditFile = nullptr;
   }
 }
 
-void ConsoleFeature::log(std::string const& message) {
+void ShellConsoleFeature::log(std::string const& message) {
   if (_toAuditFile != nullptr) {
     std::string sanitized = StripBinary(message);
 
@@ -425,13 +425,13 @@ void ConsoleFeature::log(std::string const& message) {
   }
 }
 
-void ConsoleFeature::flushLog() {
+void ShellConsoleFeature::flushLog() {
   if (_toAuditFile) {
     fflush(_toAuditFile);
   }
 }
 
-ConsoleFeature::Prompt ConsoleFeature::buildPrompt(ClientFeature* client) {
+ShellConsoleFeature::Prompt ShellConsoleFeature::buildPrompt(ClientFeature* client) {
   std::string result;
   bool esc = false;
 
@@ -519,7 +519,7 @@ ConsoleFeature::Prompt ConsoleFeature::buildPrompt(ClientFeature* client) {
   return {result, colored};
 }
 
-void ConsoleFeature::startPager() {
+void ShellConsoleFeature::startPager() {
 #ifndef _WIN32
   if (!_pager || _pagerCommand.empty() || _pagerCommand == "stdout" ||
       _pagerCommand == "-") {
@@ -537,7 +537,7 @@ void ConsoleFeature::startPager() {
 #endif
 }
 
-void ConsoleFeature::stopPager() {
+void ShellConsoleFeature::stopPager() {
 #ifndef _WIN32
   if (_toPager != stdout) {
     pclose(_toPager);

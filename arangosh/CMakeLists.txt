@@ -12,7 +12,7 @@ set(LIB_ARANGO_SHELL_SOURCES
   FeaturePhases/BasicFeaturePhaseClient.cpp
   FeaturePhases/V8ShellFeaturePhase.cpp
   Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp  
+  Shell/ShellConsoleFeature.cpp
   Utils/ClientManager.cpp
   Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
@@ -94,60 +94,60 @@ endif ()
 
 if (USE_ENTERPRISE)
 
-if (MSVC AND NOT(SKIP_PACKAGING))
-  generate_product_version(ProductVersionFiles_arangobackup
-    NAME arangobackup
-    FILE_DESCRIPTION ${ARANGO_BACKUP_FRIENDLY_STRING}
-    ICON ${ARANGO_ICON}
-    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
-    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
-    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
-    VERSION_REVISION ${BUILD_ID}
+  if (MSVC AND NOT(SKIP_PACKAGING))
+    generate_product_version(ProductVersionFiles_arangobackup
+      NAME arangobackup
+      FILE_DESCRIPTION ${ARANGO_BACKUP_FRIENDLY_STRING}
+      ICON ${ARANGO_ICON}
+      VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+      VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
+      VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
+      VERSION_REVISION ${BUILD_ID}
+    )
+  endif ()
+
+  add_executable(${BIN_ARANGOBACKUP}
+    ${ProductVersionFiles_arangobackup}
+    ../cmake/activeCodePage.manifest
+    Backup/BackupFeature.cpp
+    Backup/arangobackup.cpp
+    ${ADDITIONAL_BIN_ARANGOBACKUP_SOURCES}
   )
-endif ()
+  target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
-add_executable(${BIN_ARANGOBACKUP}
-  ${ProductVersionFiles_arangobackup}
-  ../cmake/activeCodePage.manifest
-  Backup/BackupFeature.cpp
-  Backup/arangobackup.cpp
-  ${ADDITIONAL_BIN_ARANGOBACKUP_SOURCES}
-)
-target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+  target_link_libraries(${BIN_ARANGOBACKUP}
+    arango
+    ${MSVC_LIBS}
+    ${SYSTEM_LIBRARIES}
+    boost_system
+    boost_boost
+    arango_shell
+    fuerte
+  )
 
-target_link_libraries(${BIN_ARANGOBACKUP}
-  arango
-  ${MSVC_LIBS}
-  ${SYSTEM_LIBRARIES}
-  boost_system
-  boost_boost
-  arango_shell
-  fuerte
-)
+  install(
+    TARGETS ${BIN_ARANGOBACKUP}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install(
-  TARGETS ${BIN_ARANGOBACKUP}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+  install_config(arangobackup)
 
-install_config(arangobackup)
+  if (NOT USE_PRECOMPILED_V8)
+    add_dependencies(arangobackup zlibstatic v8_build) # v8_build includes ICU build
+  else ()
+    add_dependencies(arangobackup zlibstatic)
+  endif ()
 
-if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangobackup zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangobackup zlibstatic)
-endif ()
+  if (USE_JEMALLOC)
+    add_dependencies(arangobackup jemalloc_build)
+  endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangobackup jemalloc_build)
-endif ()
-
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangobackup PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
-endif ()
+  if (USE_FAIL_ON_WARNINGS)
+   if (MSVC)
+     target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+   else ()
+     target_compile_options(arangobackup PRIVATE -Werror -Wno-error=deprecated-declarations)
+   endif ()
+  endif ()
 
 endif () # USE_ENTERPRISE
 
