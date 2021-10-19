@@ -472,8 +472,9 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
 #endif
     } else {
       TRI_ASSERT(ServerState::instance()->isSingleServer() ||
-                 ServerState::instance()->isDBServer());
-      // Here we do have a single server setup, or we're either on a DBServer.
+                 ServerState::instance()->isDBServer() ||
+                 ServerState::instance()->isAgent());
+      // Here we do have a single server setup, or we're either on a DBServer / Agency.
       // In that case, we're not batching collection creating.
       // Therefore, we need to iterate over the infoSlice and create each collection one by one.
       for (auto slice : VPackArrayIterator(infoSlice)) {
@@ -875,6 +876,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 
 // If we are a coordinator in a cluster, we have to behave differently:
 #ifdef USE_ENTERPRISE
+
   res = DropColEnterprise(&coll, allowDropSystem, timeout);
 #else
   if (ServerState::instance()->isCoordinator()) {
