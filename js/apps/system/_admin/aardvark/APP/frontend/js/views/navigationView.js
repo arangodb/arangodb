@@ -141,7 +141,7 @@
           }
         },
         error: function () {
-          const errorElement = '<div id="subNavLicenseInfo" class="alert alert-danger"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">Error: Failed to fetch license information</span></div>';
+          const errorElement = '<div id="subNavLicenseInfo" class="alert alert-danger alert-license"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">Error: Failed to fetch license information</span></div>';
           $('#licenseInfoArea').append(errorElement);
         }
       }); 
@@ -171,7 +171,7 @@
         if (infoJson !== null) {
           let infotext = '';
           let daysInfo = '';
-          let alertClasses = 'alert';
+          let alertClasses = 'alert alert-license';
           switch (infoJson.status) {
             case 'expiring':
               daysInfo = Math.floor((infoJson.expires - Math.round(new Date().getTime() / 1000)) / (3600*24));
