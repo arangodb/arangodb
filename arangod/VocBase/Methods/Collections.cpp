@@ -147,19 +147,32 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
     }
 
     if (!isLocalCollection(info) || isSingleServerEnterpriseCollection) {
+      auto const& cl = vocbase.server().getFeature<ClusterFeature>();
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
+
       if (replicationFactorSlice.isNone()) {
         auto factor = vocbase.replicationFactor();
         if (factor > 0 && isSystemName(info)) {
-          auto& cl = vocbase.server().getFeature<ClusterFeature>();
           factor = std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
         }
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
       };
 
-      auto const isSatellite =
-          Helper::getStringRef(info.properties, StaticStrings::ReplicationFactor,
-                               velocypack::StringRef{""}) == StaticStrings::Satellite;
+      bool isSatellite = false;
+      if (info.properties.hasKey(StaticStrings::ReplicationFactor)) {
+        if (info.properties.get(StaticStrings::ReplicationFactor).isNumber()) {
+          auto replFactor =
+              info.properties.get(StaticStrings::ReplicationFactor).getNumber<size_t>();
+          if (replFactor == 0) {
+            isSatellite = true;
+          }
+        } else if (info.properties.get(StaticStrings::ReplicationFactor).isString()) {
+          isSatellite =
+              Helper::getStringRef(info.properties.get(StaticStrings::ReplicationFactor),
+                                   StaticStrings::ReplicationFactor,
+                                   velocypack::StringRef{""}) == StaticStrings::Satellite;
+        }
+      }
 
       if (!isSystemName(info)) {
         // system-collections will be sharded normally. only user collections
@@ -167,17 +180,17 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
             vocbase.isOneShard()) {
           // force one shard, and force distributeShardsLike to be "_graphs"
-          helper.add(StaticStrings::NumberOfShards, VPackValue(1));
           if (!isSatellite) {
             // SatelliteCollections must not be sharded like a
             // non-SatelliteCollection.
             helper.add(StaticStrings::DistributeShardsLike,
                        VPackValue(vocbase.shardingPrototypeName()));
+            helper.add(StaticStrings::NumberOfShards, VPackValue(1));
           }
         }
       }
 
-      if(!isSatellite) {
+      if (!isSatellite) {
         auto writeConcernSlice = info.properties.get(StaticStrings::WriteConcern);
         if (writeConcernSlice.isNone()) {  // "minReplicationFactor" deprecated in 3.6
           writeConcernSlice = info.properties.get(StaticStrings::MinReplicationFactor);
@@ -202,8 +215,8 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
         VPackCollection::merge(info.properties, helper.slice(), false, true);
 
     bool haveShardingFeature = (ServerState::instance()->isCoordinator() ||
-         isSingleServerEnterpriseCollection) &&
-        vocbase.server().hasFeature<ShardingFeature>();
+                                isSingleServerEnterpriseCollection) &&
+                               vocbase.server().hasFeature<ShardingFeature>();
     if (haveShardingFeature &&
         !info.properties.get(StaticStrings::ShardingStrategy).isString()) {
       // NOTE: We need to do this in a second merge as the feature call requires the
@@ -391,8 +404,8 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
   std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = create(vocbase, options, infos, createWaitsForSyncReplication,
-                      enforceReplicationFactor, isNewDatabase, nullptr,
-                      collections, allowSystem, isSingleServerEnterpriseCollection);
+                      enforceReplicationFactor, isNewDatabase, nullptr, collections,
+                      allowSystem, isSingleServerEnterpriseCollection);
   if (res.ok() && collections.size() > 0) {
     ret = std::move(collections[0]);
   }

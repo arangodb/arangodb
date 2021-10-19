@@ -934,7 +934,8 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice slice, bool) {
         return Result(TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern");
       }
 
-      if (ServerState::instance()->isCoordinator() &&
+      if ((ServerState::instance()->isCoordinator() ||
+           (ServerState::instance()->isSingleServer() && (isSatellite() || isSmart()))) &&
           writeConcern != _sharding->writeConcern()) {  // check if changed
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
