@@ -24,26 +24,26 @@
 
 #include <Basics/Guarded.h>
 #include <Containers/ImmerMemoryPolicy.h>
+#include <chrono>
 #include <cstddef>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <chrono>
-#include <tuple>
 
+#include "Basics/Result.h"
+#include "Futures/Future.h"
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/NetworkMessages.h"
-#include "Replication2/ReplicatedLog/types.h"
-#include "Replication2/LoggerContext.h"
-#include "Basics/Result.h"
-#include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedLog/NetworkMessages.h"
+#include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb {
 struct DeferredAction;
@@ -85,7 +85,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   // Used in tests, forwards to overload below
   [[nodiscard]] static auto construct(
       LoggerContext const& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-      ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+      std::shared_ptr<ReplicatedLogOptions const> options, ParticipantId id,
+      std::unique_ptr<LogCore> logCore, LogTerm term,
       std::vector<std::shared_ptr<AbstractFollower>> const& followers,
       std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
 
@@ -93,7 +94,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
       LogConfig config, std::unique_ptr<LogCore> logCore,
       std::vector<std::shared_ptr<AbstractFollower>> const& followers,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
-      std::shared_ptr<ReplicatedLogMetrics> logMetrics) -> std::shared_ptr<LogLeader>;
+      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+      std::shared_ptr<ReplicatedLogOptions const> options) -> std::shared_ptr<LogLeader>;
 
   struct DoNotTriggerAsyncReplication {};
   constexpr static auto doNotTriggerAsyncReplication = DoNotTriggerAsyncReplication{};
@@ -139,7 +141,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
  protected:
   // Use the named constructor construct() to create a leader!
   LogLeader(LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-            LogConfig config, ParticipantId id, LogTerm term, InMemoryLog inMemoryLog);
+            std::shared_ptr<ReplicatedLogOptions const> options, LogConfig config,
+            ParticipantId id, LogTerm term, InMemoryLog inMemoryLog);
 
  private:
   struct GuardedLeaderData;
@@ -272,6 +275,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
 
   LoggerContext const _logContext;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
+  std::shared_ptr<ReplicatedLogOptions const> const _options;
   LogConfig const _config;
   ParticipantId const _id;
   LogTerm const _currentTerm;
