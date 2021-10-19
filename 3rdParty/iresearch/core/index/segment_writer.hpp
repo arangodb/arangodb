@@ -91,6 +91,7 @@ class IRESEARCH_API segment_writer : util::noncopyable {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief constructor
     ////////////////////////////////////////////////////////////////////////////
+    // cppcheck-suppress constParameter
     explicit document(segment_writer& writer) noexcept: writer_(writer) {}
 
     ////////////////////////////////////////////////////////////////////////////
@@ -356,12 +357,12 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   bool store(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
-    const auto name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
+    const auto field_name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
 
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 
-    return store(name, doc_id, field);
+    return store(field_name, doc_id, field);
   }
 
   template<typename Field>
@@ -378,7 +379,7 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   bool index(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
-    const auto name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
+    const auto field_name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const features_t&>(field.features());
@@ -387,14 +388,14 @@ class IRESEARCH_API segment_writer : util::noncopyable {
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 
-    return index(name, doc_id, index_features, features, tokens);
+    return index(field_name, doc_id, index_features, features, tokens);
   }
 
   template<bool Sorted, typename Field>
   bool index_and_store(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
-    const auto name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
+    const auto field_name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const features_t&>(field.features());
@@ -403,7 +404,7 @@ class IRESEARCH_API segment_writer : util::noncopyable {
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 
-    if (IRS_UNLIKELY(!index(name, doc_id, index_features, features, tokens))) {
+    if (IRS_UNLIKELY(!index(field_name, doc_id, index_features, features, tokens))) {
       return false; // indexing failed
     }
 
@@ -411,7 +412,7 @@ class IRESEARCH_API segment_writer : util::noncopyable {
       return store_sorted(doc_id, field);
     }
 
-    return store(name, doc_id, field);
+    return store(field_name, doc_id, field);
   }
 
   // returns stream for storing attributes in sorted order
@@ -460,6 +461,7 @@ class IRESEARCH_API segment_writer : util::noncopyable {
 
 }
 
-MSVC_ONLY(template class IRESEARCH_API std::unique_ptr<irs::segment_writer>;) // segment_writer::ptr
+// segment_writer::ptr
+MSVC_ONLY(template class IRESEARCH_API std::unique_ptr<irs::segment_writer>;) // cppcheck-suppress unknownMacro 
 
 #endif // IRESEARCH_SEGMENT_WRITER_H

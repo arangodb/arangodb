@@ -26,7 +26,6 @@
 
 #include "../Mocks/StorageEngineMock.h"
 
-#include "utils/locale_utils.hpp"
 #include "utils/lz4compression.hpp"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -81,7 +80,6 @@ TEST_F(IResearchViewMetaTest, test_defaults) {
               meta._consolidationPolicy.properties().get("segmentsBytesFloor").getNumber<size_t>());
   EXPECT_TRUE(size_t(5) * (1 << 30) ==
               meta._consolidationPolicy.properties().get("segmentsBytesMax").getNumber<size_t>());
-  EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
   EXPECT_TRUE(0 == meta._writebufferActive);
   EXPECT_TRUE(64 == meta._writebufferIdle);
   EXPECT_TRUE(32 * (size_t(1) << 20) == meta._writebufferSizeMax);
@@ -105,7 +103,6 @@ TEST_F(IResearchViewMetaTest, test_inheritDefaults) {
       irs::index_writer::consolidation_policy_t(),
       std::move(*arangodb::velocypack::Parser::fromJson(
           "{ \"type\": \"tier\", \"threshold\": 0.11 }")));
-  defaults._locale = irs::locale_utils::locale("C");
   defaults._writebufferActive = 10;
   defaults._writebufferIdle = 11;
   defaults._writebufferSizeMax = 12;
@@ -134,7 +131,6 @@ TEST_F(IResearchViewMetaTest, test_inheritDefaults) {
               meta._consolidationPolicy.properties().get("type").copyString());
     EXPECT_EQ(nullptr, meta._consolidationPolicy.policy());
     EXPECT_EQ(.11f, meta._consolidationPolicy.properties().get("threshold").getNumber<float>());
-    EXPECT_EQ(std::string("C"), irs::locale_utils::name(meta._locale));
     EXPECT_EQ(10, meta._writebufferActive);
     EXPECT_EQ(11, meta._writebufferIdle);
     EXPECT_EQ(12, meta._writebufferSizeMax);
@@ -167,7 +163,6 @@ TEST_F(IResearchViewMetaTest, test_readDefaults) {
                 meta._consolidationPolicy.properties().get("segmentsBytesFloor").getNumber<size_t>());
     EXPECT_TRUE(size_t(5) * (1 << 30) ==
                 meta._consolidationPolicy.properties().get("segmentsBytesMax").getNumber<size_t>());
-    EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
     EXPECT_TRUE((0 == meta._writebufferActive));
     EXPECT_TRUE((64 == meta._writebufferIdle));
     EXPECT_TRUE((32 * (size_t(1) << 20) == meta._writebufferSizeMax));
@@ -495,7 +490,6 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
                meta._consolidationPolicy.properties().get("type").copyString()));
   EXPECT_TRUE((false == !meta._consolidationPolicy.policy()));
   EXPECT_TRUE((.11f == meta._consolidationPolicy.properties().get("threshold").getNumber<float>()));
-  EXPECT_TRUE(std::string("C") == iresearch::locale_utils::name(meta._locale));
   EXPECT_TRUE((9 == meta._version));
   EXPECT_TRUE((10 == meta._writebufferActive));
   EXPECT_TRUE((11 == meta._writebufferIdle));
@@ -654,7 +648,6 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
       irs::index_writer::consolidation_policy_t(),
       std::move(*arangodb::velocypack::Parser::fromJson(
           "{ \"type\": \"tier\", \"threshold\": 0.11 }")));
-  meta._locale = iresearch::locale_utils::locale("en_UK.UTF-8");
   meta._version = 42;
   meta._writebufferActive = 10;
   meta._writebufferIdle = 11;
@@ -789,7 +782,6 @@ TEST_F(IResearchViewMetaTest, test_readMaskAll) {
   EXPECT_TRUE(mask._consolidationIntervalMsec);
   EXPECT_TRUE(mask._cleanupIntervalStep);
   EXPECT_TRUE(mask._consolidationPolicy);
-  EXPECT_FALSE(mask._locale); // intentionally disabled
   EXPECT_TRUE(mask._writebufferActive);
   EXPECT_TRUE(mask._writebufferIdle);
   EXPECT_TRUE(mask._writebufferSizeMax);
@@ -818,7 +810,6 @@ TEST_F(IResearchViewMetaTest, test_readMaskNone) {
   EXPECT_FALSE(mask._consolidationIntervalMsec);
   EXPECT_FALSE(mask._cleanupIntervalStep);
   EXPECT_FALSE(mask._consolidationPolicy);
-  EXPECT_FALSE(mask._locale);
   EXPECT_FALSE(mask._writebufferActive);
   EXPECT_FALSE(mask._writebufferIdle);
   EXPECT_FALSE(mask._writebufferSizeMax);

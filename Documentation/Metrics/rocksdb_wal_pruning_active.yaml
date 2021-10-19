@@ -1,0 +1,20 @@
+name: rocksdb_wal_pruning_active
+introducedIn: "3.8.2"
+help: |
+  Whether or not the pruning of archived RocksDB WAL files is currently
+  activated.
+unit: number
+type: gauge
+category: RocksDB
+complexity: medium
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric contains a value of 0 if the pruning of archived RocksDB WAL
+  files is not activated, and 1 if it is activated.
+  WAL file pruning is normally deactivated for the first few minutes after
+  an instance is started, so that other instances in the cluster can start
+  replicating from the instance before all archived WAL files are deleted.
+  The value should flip from 0 to 1 a few minutes after server start.

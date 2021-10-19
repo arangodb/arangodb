@@ -135,7 +135,11 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   // register with manager
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
   updateStatus(transaction::Status::RUNNING);
-  ++stats._transactionsStarted;
+  if (isReadOnlyTransaction()) {
+    ++stats._readTransactions;
+  } else {
+    ++stats._transactionsStarted;
+  }
 
   setRegistered();
 
@@ -215,16 +219,20 @@ void RocksDBTransactionState::maybeDisableIndexing() {
   }
 }
 
-void RocksDBTransactionState::prepareCollections() {
-  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+rocksdb::SequenceNumber RocksDBTransactionState::prepareCollections() {
+  auto& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
+
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
 
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-    coll->prepareTransaction(id(), preSeq);
+
+    rocksdb::SequenceNumber seq = coll->prepareTransaction(id());
+    preSeq = std::max(seq, preSeq);
   }
+
+  return preSeq;
 }
 
 void RocksDBTransactionState::commitCollections(rocksdb::SequenceNumber lastWritten) {

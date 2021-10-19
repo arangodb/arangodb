@@ -59,7 +59,7 @@ class IRESEARCH_API memory_file
   > raw_block_vector_t;
 
  public:
-  memory_file(const memory_allocator& alloc) noexcept
+  explicit memory_file(const memory_allocator& alloc) noexcept
     : raw_block_vector_t(alloc) {
     touch(meta_.mtime);
   }
@@ -72,17 +72,17 @@ class IRESEARCH_API memory_file
   }
 
   memory_file& operator>>(data_output& out) {
-    auto length = len_;
+    auto len = len_;
 
-    for (size_t i = 0, count = buffer_count(); i < count && length; ++i) {
+    for (size_t i = 0, count = buffer_count(); i < count && len; ++i) {
       auto& buffer = get_buffer(i);
-      auto to_copy = (std::min)(length, buffer.size);
+      auto to_copy = (std::min)(len, buffer.size);
 
       out.write_bytes(buffer.data, to_copy);
-      length -= to_copy;
+      len -= to_copy;
     }
 
-    assert(!length); // everything copied
+    assert(!len); // everything copied
 
     return *this;
   }

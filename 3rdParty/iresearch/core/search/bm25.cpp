@@ -184,7 +184,7 @@ struct byte_ref_iterator {
   const irs::byte_type* end_;
   const irs::byte_type* pos_;
 
-  byte_ref_iterator(const irs::bytes_ref& in)
+  explicit byte_ref_iterator(const irs::bytes_ref& in)
     : end_(in.c_str() + in.size()), pos_(in.c_str()) {
   }
 
@@ -398,9 +398,8 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     const auto total_term_freq = field_ptr ? field_ptr->total_term_freq : 0; // nullptr possible if e.g. 'all' filter
 
     // precomputed idf value
-    stats.idf += float_t(std::log(
-      1 + ((docs_with_field - docs_with_term + 0.5)/(docs_with_term + 0.5))
-    ));
+    stats.idf += float_t(std::log1p(
+      (docs_with_field - docs_with_term + 0.5)/(docs_with_term + 0.5)));
     assert(stats.idf >= 0.f);
 
     // - stats were already initialized

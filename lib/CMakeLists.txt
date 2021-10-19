@@ -159,6 +159,7 @@ add_library(arango STATIC
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
   Futures/Future.cpp
+  Logger/Escaper.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp

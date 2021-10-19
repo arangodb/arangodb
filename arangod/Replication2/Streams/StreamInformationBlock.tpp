@@ -107,31 +107,29 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIteratorRange
 
   struct Iterator : TypedLogRangeIterator<StreamEntryView<Type>> {
     ContainerType _log;
-    ContainerIterator current;
-    LogIndex start, stop;
+    ContainerIterator _current;
+    LogIndex _start, _stop;
 
     auto next() -> std::optional<StreamEntryView<Type>> override {
-      if (current != std::end(_log) && current->first < stop) {
-        auto view = std::make_pair(current->first, std::cref(current->second));
-        ++current;
+      if (_current != std::end(_log) && _current->first < _stop) {
+        auto view = std::make_pair(_current->first, std::cref(_current->second));
+        ++_current;
         return view;
       }
       return std::nullopt;
     }
     [[nodiscard]] auto range() const noexcept -> LogRange override {
-      return {start, stop};
+      return {_start, _stop};
     }
 
     explicit Iterator(ContainerType log, LogIndex start, LogIndex stop)
         : _log(std::move(log)),
-          current(std::lower_bound(std::begin(_log), std::end(_log), start,
-                                   [](StreamEntry<Type> const& left, LogIndex index) {
-                                     return left.first < index;
-                                   })),
-          // cppcheck-suppress 	selfInitialization
-          start(start),
-          // cppcheck-suppress 	selfInitialization
-          stop(stop) {}
+          _current(std::lower_bound(std::begin(_log), std::end(_log), start,
+                                    [](StreamEntry<Type> const& left, LogIndex index) {
+                                      return left.first < index;
+                                    })),
+          _start(start),
+          _stop(stop) {}
   };
   return std::make_unique<Iterator>(std::move(log), start, stop);
 }
