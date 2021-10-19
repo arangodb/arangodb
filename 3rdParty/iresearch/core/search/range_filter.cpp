@@ -121,7 +121,7 @@ void visit(
 
 namespace iresearch {
 
-DEFINE_FACTORY_DEFAULT(by_range)
+DEFINE_FACTORY_DEFAULT(by_range) // cppcheck-suppress unknownMacro
 
 /*static*/ filter::prepared::ptr by_range::prepare(
     const index_reader& index,

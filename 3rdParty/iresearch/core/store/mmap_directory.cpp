@@ -111,7 +111,7 @@ class mmap_index_input : public bytes_ref_input {
   }
 
  private:
-  mmap_index_input(mmap_handle_ptr&& handle) noexcept
+  explicit mmap_index_input(mmap_handle_ptr&& handle) noexcept
     : handle_(std::move(handle)) {
     if (handle_) {
       assert(handle_->addr() != MAP_FAILED);

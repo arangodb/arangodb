@@ -195,7 +195,7 @@ class same_position_query final : public filter::prepared {
 
 namespace iresearch {
 
-DEFINE_FACTORY_DEFAULT(by_same_position)
+DEFINE_FACTORY_DEFAULT(by_same_position) // cppcheck-suppress unknownMacro
 
 filter::prepared::ptr by_same_position::prepare(
     const index_reader& index,

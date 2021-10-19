@@ -46,6 +46,7 @@ template<typename Container,
 inline std::pair<typename Container::iterator, bool> try_emplace_update_key(
     Container& container, const KeyGenerator& generator,
     Key&& key, Args&&... args) {
+  // cppcheck-suppress redundantAssignment
   const auto res = container.try_emplace(std::forward<Key>(key),
                                          std::forward<Args>(args)...);
 

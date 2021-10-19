@@ -1,6 +1,14 @@
 devel
 -----
 
+* Now, arangoimport supports merging of attributes. When importing data from a
+  file into a collection, a document attribute can be comprised of merging
+  attributes from the file into it, with separators and other literal strings.
+  The new document attribute will result in the concatenation of the literal
+  strings, the values of the attributes and the separators, as in the example:
+
+      arangoimport --merge-attributes fullName=[firstName]:[lastName] 
+
 * Do not use an edge index for range queries, i.e. with the comparison 
   operators `>`, `>=`, `<` or `<=`, but only for equality lookups using the
   `==` and `IN` comparison operators.
@@ -248,6 +256,14 @@ devel
 * Added ArangoSearch condition optimization: STARTS_WITH is merged 
   with LEVENSHTEIN_MATCH if used in the same AND node and field name and prefix
   matches.
+
+* Hybrid (Disjoint) SmartGraphs (Enterprise Edition):
+  SmartGraphs have been extended with a new option to create Hybrid SmartGraphs.
+  Hybrid SmartGraphs are capable of using SatelliteCollections within their
+  graph definition. You can now select some VertexCollections to be satellites,
+  and therefore available on all DBServers. The SmartGraph can make use of those
+  to collections to increase the traversal performance by larger local
+  components.
 
 * Added multidimensional indexes which can be used to efficiently intersect
   multiple range queries. They are currently limited to IEEE-754 double values.

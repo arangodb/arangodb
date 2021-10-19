@@ -78,6 +78,7 @@ class IRESEARCH_API postings : util::noncopyable {
  public:
   using writer_t = byte_block_pool::inserter;
 
+  // cppcheck-suppress constParameter
   explicit postings(writer_t& writer)
     : map_{0, value_ref_hash{}, term_id_eq{postings_}},
       writer_(writer) {
@@ -112,7 +113,7 @@ class IRESEARCH_API postings : util::noncopyable {
       return (*data_)[lhs.second].term == rhs;
     }
 
-    bool operator()(const hashed_bytes_ref& lhs, ref_t& rhs) const noexcept {
+    bool operator()(const hashed_bytes_ref& lhs, const ref_t& rhs) const noexcept {
       return this->operator()(rhs, lhs);
     }
 

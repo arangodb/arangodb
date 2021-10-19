@@ -61,7 +61,7 @@ memory_allocator::memory_allocator(size_t pool_size)
 // --SECTION--                                                   index_file_refs
 // -----------------------------------------------------------------------------
 
-DEFINE_FACTORY_DEFAULT(index_file_refs)
+DEFINE_FACTORY_DEFAULT(index_file_refs) // cppcheck-suppress unknownMacro
 
 index_file_refs::ref_t index_file_refs::add(const std::string& key) {
   return refs_.add(std::string(key));
