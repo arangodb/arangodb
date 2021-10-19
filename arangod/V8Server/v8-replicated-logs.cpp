@@ -319,6 +319,98 @@ static void JS_Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_Poll(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  v8::HandleScope scope(isolate);
+  auto& vocbase = GetContextVocBase(isolate);
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
+  if (!arangodb::ExecContext::current().isAdminUser()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("No access to replicated log '") + to_string(id) + "'");
+  }
+
+  if (args.Length() < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("poll(<first, limit = 1000>)");
+  }
+  auto [first, limit] = std::invoke([&]() -> std::pair<LogIndex, std::size_t> {
+    auto firstIdx = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
+    if (args.Length() > 1) {
+      auto limitValue = args[1]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
+      return std::make_pair(LogIndex{firstIdx}, limitValue);
+    }
+    return std::make_pair(LogIndex{firstIdx}, 1000);
+  });
+
+  auto iter = ReplicatedLogMethods::createInstance(vocbase)->poll(id, first, limit).get();
+  VPackBuilder response;
+  {
+    VPackArrayBuilder ab(&response);
+    while (auto entry = iter->next()) {
+      entry->toVelocyPack(response);
+    }
+  }
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_At(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  v8::HandleScope scope(isolate);
+  auto& vocbase = GetContextVocBase(isolate);
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
+  if (!arangodb::ExecContext::current().isAdminUser()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("No access to replicated log '") + to_string(id) + "'");
+  }
+
+  LogIndex index;
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("at(<index>)");
+  } else {
+    index = LogIndex{args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value()};
+  }
+
+  auto entry = ReplicatedLogMethods::createInstance(vocbase)
+                   ->getLogEntryByIndex(id, index)
+                   .get();
+  VPackBuilder response;
+  entry->toVelocyPack(response);
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_Release(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  v8::HandleScope scope(isolate);
+  auto& vocbase = GetContextVocBase(isolate);
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
+  if (!arangodb::ExecContext::current().isAdminUser()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("No access to replicated log '") + to_string(id) + "'");
+  }
+
+  LogIndex index;
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("release(<index>)");
+  } else {
+    index = LogIndex{args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value()};
+  }
+
+  auto result = ReplicatedLogMethods::createInstance(vocbase)
+                   ->release(id, index)
+                   .get();
+  if (result.fail()) {
+    THROW_ARANGO_EXCEPTION(result);
+  }
+  TRI_V8_TRY_CATCH_END
+}
+
 void TRI_InitV8ReplicatedLogs(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
   auto db = v8::Local<v8::ObjectTemplate>::New(isolate, v8g->VocbaseTempl);
   TRI_AddMethodVocbase(isolate, db,
@@ -331,7 +423,7 @@ void TRI_InitV8ReplicatedLogs(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
   v8::Handle<v8::FunctionTemplate> ft;
 
   ft = v8::FunctionTemplate::New(isolate);
-  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ReplicatedLog"));
+  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoReplicatedLog"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);  // SLOT_CLASS_TYPE + SLOT_LOG_ID
@@ -343,6 +435,9 @@ void TRI_InitV8ReplicatedLogs(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "head"), JS_Head);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "tail"), JS_Tail);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "slice"), JS_Slice);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "at"), JS_At);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "release"), JS_Release);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "poll"), JS_Poll);
 
   v8g->VocbaseReplicatedLogTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate,

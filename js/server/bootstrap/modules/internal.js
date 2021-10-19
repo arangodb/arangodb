@@ -67,8 +67,8 @@
   // / @brief ArangoView
   // //////////////////////////////////////////////////////////////////////////////
 
-  exports.ReplicatedLog = global.ReplicatedLog;
-  delete global.ReplicatedLog;
+  exports.ArangoReplicatedLog = global.ArangoReplicatedLog;
+  delete global.ArangoReplicatedLog;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoUsers

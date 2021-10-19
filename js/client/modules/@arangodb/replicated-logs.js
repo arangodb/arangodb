@@ -25,19 +25,19 @@
 
 let arangosh = require('@arangodb/arangosh');
 
-function ReplicatedLog(database, id) {
+function ArangoReplicatedLog(database, id) {
   this._database = database;
   this._id = id;
   this._dbPrefix = '/_db/' + encodeURIComponent(database._name());
 }
 
-exports.ReplicatedLog = ReplicatedLog;
+exports.ArangoReplicatedLog = ArangoReplicatedLog;
 
-ReplicatedLog.prototype.id = function () {
+ArangoReplicatedLog.prototype.id = function () {
   return this._id;
 };
 
-ReplicatedLog.prototype._prefixurl = function (url) {
+ArangoReplicatedLog.prototype._prefixurl = function (url) {
   if (url.substr(0, 5) === '/_db/') {
     return url;
   }
@@ -48,7 +48,7 @@ ReplicatedLog.prototype._prefixurl = function (url) {
   return this._dbPrefix + '/' + url;
 };
 
-ReplicatedLog.prototype._baseurl = function (suffix) {
+ArangoReplicatedLog.prototype._baseurl = function (suffix) {
   let url = this._database._replicatedlogurl(this.id());
 
   if (suffix) {
@@ -58,59 +58,59 @@ ReplicatedLog.prototype._baseurl = function (suffix) {
   return this._prefixurl(url);
 };
 
-ReplicatedLog.prototype.drop = function() {
+ArangoReplicatedLog.prototype.drop = function() {
   let requestResult = this._database._connection.DELETE(this._baseurl());
   arangosh.checkRequestResult(requestResult);
 };
 
-ReplicatedLog.prototype.status = function() {
+ArangoReplicatedLog.prototype.status = function() {
   let requestResult = this._database._connection.GET(this._baseurl());
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ReplicatedLog.prototype.head = function(limit = 100) {
+ArangoReplicatedLog.prototype.head = function(limit = 100) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/head?limit=${limit}`);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ReplicatedLog.prototype.tail = function(limit = 100) {
+ArangoReplicatedLog.prototype.tail = function(limit = 100) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/tail?limit=${limit}`);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ReplicatedLog.prototype.slice = function(start, stop) {
+ArangoReplicatedLog.prototype.slice = function(start, stop) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/slice?start=${start}&stop=${stop}`);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ReplicatedLog.prototype.poll = function(first, limit = 100) {
+ArangoReplicatedLog.prototype.poll = function(first, limit = 100) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/poll?first=${first}&limit=${limit}`);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ReplicatedLog.prototype.at = function(index) {
+ArangoReplicatedLog.prototype.at = function(index) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/entry/${index}`);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ReplicatedLog.prototype.release = function(index) {
+ArangoReplicatedLog.prototype.release = function(index) {
   let requestResult = this._database._connection.POST(this._baseurl() + `/release?index=${index}`, {});
   arangosh.checkRequestResult(requestResult);
 };
 
-ReplicatedLog.prototype.insert = function (payload, waitForSync = false) {
+ArangoReplicatedLog.prototype.insert = function (payload, waitForSync = false) {
   let str = JSON.stringify(payload);
   let requestResult = this._database._connection.POST(this._baseurl() + `/insert?waitForSync=${waitForSync || false}`, str);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ReplicatedLog.prototype.toString = function () {
-  return `[object ReplicatedLog ${this.id()}]`;
+ArangoReplicatedLog.prototype.toString = function () {
+  return `[object ArangoReplicatedLog ${this.id()}]`;
 };

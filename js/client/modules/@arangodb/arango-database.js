@@ -51,7 +51,7 @@ exports.ArangoDatabase = ArangoDatabase;
 
 // load after exporting ArangoDatabase
 ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
-const ReplicatedLog = require('@arangodb/replicated-logs').ReplicatedLog;
+const ArangoReplicatedLog = require('@arangodb/replicated-logs').ArangoReplicatedLog;
 ArangoView = require('@arangodb/arango-view').ArangoView;
 var ArangoError = require('@arangodb').ArangoError;
 var ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
@@ -406,7 +406,7 @@ ArangoDatabase.prototype._replicatedLog = function (id) {
   // check all other errors and throw them
   arangosh.checkRequestResult(requestResult);
 
-  return new ReplicatedLog(this, id);
+  return new ArangoReplicatedLog(this, id);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -477,7 +477,7 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
 ArangoDatabase.prototype._createReplicatedLog = function (spec) {
   let requestResult = this._connection.POST(this._replicatedlogurl(), spec);
   arangosh.checkRequestResult(requestResult);
-  return new ReplicatedLog(this, spec.id);
+  return new ArangoReplicatedLog(this, spec.id);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
