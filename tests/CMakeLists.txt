@@ -267,6 +267,7 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/RestViewHandler-test.cpp
   RestHandler/VstResponse-test.cpp
   RestServer/FlushFeature-test.cpp
+  Restore/CollectionRestoreOrder.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/HotBackupTest.cpp
@@ -376,6 +377,7 @@ target_link_libraries(arangodbtests
   arango_rocksdb
   arango_v8server
   arangoserver
+  arango_restore
   fuerte
   rocksdb
   snappy

@@ -351,16 +351,23 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
+add_library(arango_restore
+  Restore/RestoreFeature.cpp
+)
+target_include_directories(arango_restore PUBLIC ${PROJECT_SOURCE_DIR}/arangosh)
+if (USE_ENTERPRISE)
+  target_include_directories(arango_restore PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+target_link_libraries(arango_restore arango_shell)
+
 add_executable(${BIN_ARANGORESTORE}
   ${ProductVersionFiles_arangorestore}
   ../cmake/activeCodePage.manifest
-  Restore/RestoreFeature.cpp
   Restore/arangorestore.cpp
-  ${ADDITIONAL_BIN_ARANGORESTORE_SOURCES}
 )
-target_include_directories(${BIN_ARANGORESTORE} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGORESTORE}
+  arango_restore
   arango
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
