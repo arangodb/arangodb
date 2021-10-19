@@ -1,14 +1,10 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertTrue, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test ttl configuration
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,16 +18,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const internal = require("internal");
-const print = internal.print;
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
 
@@ -41,7 +35,6 @@ const waitForLeader = function (id) {
       db._replicatedLog(id);
       break;
     } catch(err) {
-      print("waitForLeader error:", err);
       if (err.errorNum !== ERRORS.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code) {
         throw err;
       }
@@ -66,6 +59,12 @@ function ReplicatedLogsSuite () {
       waitForLeader(logId);
       assertEqual(db._replicatedLog(logId).id(), logId);
       log.drop();
+      try {
+        db._replicatedLog(logId);
+        fail();
+      } catch(err) {
+        assertEqual(err.errorNum, ERRORS.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code);
+      }
     }
   };
 }
@@ -125,6 +124,41 @@ function ReplicatedLogsWriteSuite () {
         index = next;
       }
       let s = log.slice(50, 60);
+      assertEqual(s.length, 10);
+      for (let i = 0; i < 10; i++) {
+        assertEqual(s[i].logIndex, 50 + i);
+      }
+    },
+
+    testAt : function() {
+      const log = db._replicatedLog(logId);
+      const index = log.insert({foo: "bar"}).index;
+      let s = log.at(index);
+      assertEqual(s.logIndex, index);
+      assertEqual(s.payload.foo, "bar");
+    },
+
+    testRelease : function() {
+      const log = db._replicatedLog(logId);
+      for (let i = 0; i < 2000; i++) {
+        log.insert({foo: i});
+      }
+      const s1 = log.status();
+      assertEqual(s1.local.firstIndex, 1);
+      log.release(1500);
+      let s2 = log.status();
+      assertEqual(s2.local.firstIndex, 1501);
+    },
+
+    testPoll : function() {
+      let log = db._replicatedLog(logId);
+      let index = 0;
+      for (let i = 0; i < 100; i++) {
+        let next = log.insert({foo: i}).index;
+        assertTrue(next > index);
+        index = next;
+      }
+      let s = log.poll(50, 10);
       assertEqual(s.length, 10);
       for (let i = 0; i < 10; i++) {
         assertEqual(s[i].logIndex, 50 + i);

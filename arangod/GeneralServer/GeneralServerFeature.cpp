@@ -499,7 +499,8 @@ void GeneralServerFeature::defineHandlers() {
 #endif
 
   if (cluster.isEnabled()) {
-    _handlerFactory->addPrefixHandler("/_api/log-internal", RestHandlerCreator<RestLogInternalHandler>::createNoData);
+    _handlerFactory->addPrefixHandler(std::string{StaticStrings::ApiLogInternal},
+                                      RestHandlerCreator<RestLogInternalHandler>::createNoData);
   }
 
   // This is the only handler were we need to inject

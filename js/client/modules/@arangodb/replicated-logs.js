@@ -69,19 +69,13 @@ ReplicatedLog.prototype.status = function() {
   return requestResult.result;
 };
 
-ReplicatedLog.prototype.term = function() {
-  let requestResult = this._database._connection.GET(this._baseurl());
-  arangosh.checkRequestResult(requestResult);
-  return requestResult.result.term;
-};
-
-ReplicatedLog.prototype.head = function(limit = 10) {
+ReplicatedLog.prototype.head = function(limit = 100) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/head?limit=${limit}`);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ReplicatedLog.prototype.tail = function(limit = 10) {
+ReplicatedLog.prototype.tail = function(limit = 100) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/tail?limit=${limit}`);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
@@ -102,13 +96,12 @@ ReplicatedLog.prototype.poll = function(first, limit = 100) {
 ReplicatedLog.prototype.at = function(index) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/entry/${index}`);
   arangosh.checkRequestResult(requestResult);
-  return requestResult;
+  return requestResult.result;
 };
 
 ReplicatedLog.prototype.release = function(index) {
   let requestResult = this._database._connection.POST(this._baseurl() + `/release?index=${index}`, {});
   arangosh.checkRequestResult(requestResult);
-  return requestResult;
 };
 
 ReplicatedLog.prototype.insert = function (payload, waitForSync = false) {
@@ -121,7 +114,3 @@ ReplicatedLog.prototype.insert = function (payload, waitForSync = false) {
 ReplicatedLog.prototype.toString = function () {
   return `[object ReplicatedLog ${this.id()}]`;
 };
-
-/*
-log.updateTerm({...})
-*/

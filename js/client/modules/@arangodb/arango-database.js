@@ -51,7 +51,7 @@ exports.ArangoDatabase = ArangoDatabase;
 
 // load after exporting ArangoDatabase
 ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
-let ReplicatedLog = require('@arangodb/replicated-logs').ReplicatedLog;
+const ReplicatedLog = require('@arangodb/replicated-logs').ReplicatedLog;
 ArangoView = require('@arangodb/arango-view').ArangoView;
 var ArangoError = require('@arangodb').ArangoError;
 var ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;

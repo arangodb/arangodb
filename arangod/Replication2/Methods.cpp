@@ -326,11 +326,17 @@ struct ReplicatedLogMethodsCoordinator final
   auto release(LogId id, LogIndex index) const -> futures::Future<Result> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "release");
 
+    VPackBufferUInt8 body;
+    {
+      VPackBuilder builder(body);
+      builder.add(VPackSlice::noneSlice());
+    }
+
     network::RequestOptions opts;
     opts.database = vocbase.name();
     opts.parameters["index"] = to_string(index);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
-                                fuerte::RestVerb::Post, path, {}, opts)
+                                fuerte::RestVerb::Post, path, std::move(body), opts)
         .thenValue([](network::Response&& resp) { return resp.combinedResult(); });
   }
 
@@ -342,8 +348,8 @@ struct ReplicatedLogMethodsCoordinator final
  private:
   auto getLogLeader(LogId id) const -> ServerID {
     auto leader = clusterInfo.getReplicatedLogLeader(vocbase.name(), id);
-    if (!leader) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    if (leader.fail()) {
+      THROW_ARANGO_EXCEPTION(leader.result());
     }
 
     return *leader;
