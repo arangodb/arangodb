@@ -33,13 +33,17 @@ using namespace arangodb::replication2::test;
 struct AppendEntriesBatchTest : ReplicatedLogTest {};
 
 TEST_F(AppendEntriesBatchTest, test_with_two_batches) {
+  // make batch size small enough to force more
+  // than one batch to be sent
+  _optionsMock->_maxNetworkBatchSize = 20000;
+
   auto leaderLog = std::invoke([&] {
     auto persistedLog = makePersistedLog(LogId{1});
     for (size_t i = 1; i <= 2000; i++) {
       persistedLog->setEntry(LogIndex{i}, LogTerm{4}, LogPayload::createFromString("log entry"));
     }
     return std::make_shared<TestReplicatedLog>(std::make_unique<LogCore>(persistedLog),
-                                               _logMetricsMock,
+                                               _logMetricsMock, _optionsMock,
                                                LoggerContext(Logger::REPLICATION2));
   });
 

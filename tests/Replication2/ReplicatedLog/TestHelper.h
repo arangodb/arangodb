@@ -26,6 +26,7 @@
 
 #include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
@@ -67,6 +68,7 @@ struct ReplicatedLogTest : ::testing::Test {
   auto makeReplicatedLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
     auto core = makeLogCore(id);
     return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock,
+                                               _optionsMock,
                                                LoggerContext(Logger::FIXME));
   }
 
@@ -75,6 +77,7 @@ struct ReplicatedLogTest : ::testing::Test {
     _persistedLogs[id] = persisted;
     auto core = std::make_unique<LogCore>(persisted);
     return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock,
+                                               _optionsMock,
                                                LoggerContext(Logger::FIXME));
   }
 
@@ -92,6 +95,7 @@ struct ReplicatedLogTest : ::testing::Test {
 
   std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
   std::shared_ptr<ReplicatedLogMetricsMock> _logMetricsMock = std::make_shared<ReplicatedLogMetricsMock>();
+  std::shared_ptr<ReplicatedLogOptions> _optionsMock = std::make_shared<ReplicatedLogOptions>();
 };
 
 
