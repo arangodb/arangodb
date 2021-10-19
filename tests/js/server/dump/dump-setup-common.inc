@@ -34,7 +34,7 @@ const db = require("@arangodb").db;
 const isCluster = require('internal').isCluster();
 const isEnterprise = require("internal").isEnterprise();
 
-const sgm;
+let sgm;
 if (isEnterprise) {
   sgm = require("@arangodb/smart-graph");
 }
