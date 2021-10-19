@@ -78,6 +78,24 @@ using namespace arangodb::methods;
 using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
+
+bool checkIfDefinedAsSatellite(VPackSlice const& properties) {
+  if (properties.hasKey(StaticStrings::ReplicationFactor)) {
+    if (properties.get(StaticStrings::ReplicationFactor).isNumber()) {
+      auto replFactor =
+          properties.get(StaticStrings::ReplicationFactor).getNumber<size_t>();
+      if (replFactor == 0) {
+        return true;
+      }
+    } else if (properties.get(StaticStrings::ReplicationFactor).isString()) {
+      return Helper::getStringRef(properties.get(StaticStrings::ReplicationFactor),
+                                  StaticStrings::ReplicationFactor,
+                                  velocypack::StringRef{""}) == StaticStrings::Satellite;
+    }
+  }
+  return false;
+}
+
 bool isLocalCollection(CollectionCreationInfo const& info) {
   return (!ServerState::instance()->isCoordinator() &&
           Helper::stringUInt64(info.properties.get(StaticStrings::DataSourcePlanId)) == 0);
@@ -132,7 +150,6 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
 
     // generate a rocksdb collection object id in case it does not exist
     if (isSingleServerEnterpriseCollection) {
-      // TODO: check if needed
       engine.addParametersForNewCollection(helper, info.properties);
     }
 
@@ -158,21 +175,7 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
       };
 
-      bool isSatellite = false;
-      if (info.properties.hasKey(StaticStrings::ReplicationFactor)) {
-        if (info.properties.get(StaticStrings::ReplicationFactor).isNumber()) {
-          auto replFactor =
-              info.properties.get(StaticStrings::ReplicationFactor).getNumber<size_t>();
-          if (replFactor == 0) {
-            isSatellite = true;
-          }
-        } else if (info.properties.get(StaticStrings::ReplicationFactor).isString()) {
-          isSatellite =
-              Helper::getStringRef(info.properties.get(StaticStrings::ReplicationFactor),
-                                   StaticStrings::ReplicationFactor,
-                                   velocypack::StringRef{""}) == StaticStrings::Satellite;
-        }
-      }
+      bool isSatellite = checkIfDefinedAsSatellite(info.properties);
 
       if (!isSystemName(info)) {
         // system-collections will be sharded normally. only user collections
@@ -203,8 +206,37 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
         }
       }
     } else {  // single server
-      helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice());  // delete empty string from info slice
-      helper.add(StaticStrings::ReplicationFactor, VPackSlice::nullSlice());
+      bool distributionSet = false;
+#ifdef USE_ENTERPRISE
+      // Special case for sharded graphs with satellites
+      if (info.properties.hasKey(StaticStrings::DistributeShardsLike)) {
+        // 1.) Either we distribute like another satellite collection
+        auto distributeShardsLikeSlice =
+            info.properties.get(StaticStrings::DistributeShardsLike);
+        if (distributeShardsLikeSlice.isString()) {
+          auto distributeShardsLikeColName = distributeShardsLikeSlice.copyString();
+          auto coll = vocbase.lookupCollection(distributeShardsLikeColName);
+          if (coll != nullptr && coll->isSatellite()) {
+            helper.add(StaticStrings::DistributeShardsLike,
+                       VPackValue(distributeShardsLikeColName));
+            helper.add(StaticStrings::ReplicationFactor,
+                       VPackValue(coll->replicationFactor()));
+            distributionSet = true;
+          }
+        }
+      } else if (info.properties.hasKey(StaticStrings::ReplicationFactor)) {
+        // 2.) OR the collection itself is a satellite collection
+        if (info.properties.get(StaticStrings::ReplicationFactor).isString() &&
+            info.properties.get(StaticStrings::ReplicationFactor).copyString() ==
+                StaticStrings::Satellite) {
+            distributionSet = true;
+          }
+      }
+#endif
+      if (!distributionSet) {
+        helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice());  // delete empty string from info slice
+        helper.add(StaticStrings::ReplicationFactor, VPackSlice::nullSlice());
+      }
       helper.add(StaticStrings::MinReplicationFactor, VPackSlice::nullSlice());  // deprecated
       helper.add(StaticStrings::WriteConcern, VPackSlice::nullSlice());
     }
