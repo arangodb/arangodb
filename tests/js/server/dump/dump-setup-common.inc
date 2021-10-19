@@ -33,7 +33,11 @@ const analyzers = require("@arangodb/analyzers");
 const db = require("@arangodb").db;
 const isCluster = require('internal').isCluster();
 const isEnterprise = require("internal").isEnterprise();
-const sgm = require("@arangodb/smart-graph");
+
+const sgm;
+if (isEnterprise) {
+  sgm = require("@arangodb/smart-graph");
+}
 
 function cleanup() {
   'use strict';
