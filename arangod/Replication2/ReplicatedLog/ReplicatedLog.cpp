@@ -46,11 +46,13 @@ using namespace arangodb::replication2;
 
 replicated_log::ReplicatedLog::ReplicatedLog(std::unique_ptr<LogCore> core,
                                              std::shared_ptr<ReplicatedLogMetrics> const& metrics,
+                                             std::shared_ptr<ReplicatedLogOptions const> options,
                                              LoggerContext const& logContext)
     : _logContext(logContext.with<logContextKeyLogId>(core->logId())),
       _participant(
           std::make_shared<replicated_log::LogUnconfiguredParticipant>(std::move(core), metrics)),
-      _metrics(metrics) {}
+      _metrics(metrics),
+      _options(std::move(options)) {}
 
 replicated_log::ReplicatedLog::~ReplicatedLog() {
   // If we have a participant, it must also hold a replicated log. The only way
@@ -77,10 +79,10 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     }
 
     auto [logCore, deferred] = std::move(*_participant).resign();
-    LOG_CTX("23d7b", DEBUG, _logContext)
-        << "becoming leader in term " << newTerm;
-    auto leader = LogLeader::construct(config, std::move(logCore), follower,
-                                       std::move(id), newTerm, _logContext, _metrics);
+    LOG_CTX("23d7b", DEBUG, _logContext) << "becoming leader in term " << newTerm;
+    auto leader =
+        LogLeader::construct(config, std::move(logCore), follower, std::move(id),
+                             newTerm, _logContext, _metrics, _options);
     _participant = std::static_pointer_cast<ILogParticipant>(leader);
     _metrics->replicatedLogLeaderTookOverNumber->count();
     return std::make_pair(std::move(leader), std::move(deferred));
