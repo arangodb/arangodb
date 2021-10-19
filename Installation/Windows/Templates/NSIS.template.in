@@ -1,4 +1,5 @@
 ; CPack install script designed for a nmake build
+!addplugindir  '@CPACK_PLUGIN_PATH@/EnVar_plugin/Plugins/x86-ansi'
 !addplugindir  '@CPACK_PLUGIN_PATH@/NSIS_Simple_Service_Plugin_1.30'
 !addplugindir  '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS/Ansi'
 !addplugindir  '@CPACK_PLUGIN_PATH@/AccessControl/Plugins'
@@ -123,7 +124,6 @@ SetCompressor @CPACK_NSIS_COMPRESSOR@
 ; RequestExecutionLevel admin
 RequestExecutionLevel highest
 
-!include "AddToPath.nsh"
 !include "AddToRegistry.nsh"
 !include "WaitForService.nsh"
 !include "ReadINIFileKeys.nsh"
@@ -226,6 +226,9 @@ Function check_previous_install
   StrCpy $UpgradeInstall "0"
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\SERVER" OldFound
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\ENGINE" OldFound
+  IfSilent 0 continueNoDirectMatch
+    IfFileExists "$DATADIR\ENGINE" OldFound
+continueNoDirectMatch:
   DetailPrint "This is a fresh install."
   return
 OldFound:
@@ -238,7 +241,16 @@ Function stop_old_service
      SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
      Call WaitForServiceDown
      SimpleSC::RemoveService  '${TRI_SVC_NAME}'
+     Pop $0 ; returns an errorcode (<>0) otherwise success (0)
+     IntCmp $0 0 Done_stop_old
+     IntCmp $0 1060 Done_stop_old ; service not there, we don't care.
+     Push $0
+     SimpleSC::GetErrorMessage
+     Pop $0
+     DetailPrint 'Stopping ArangoDB fails - Reason: $0'
+     MessageBox MB_OK 'Stopping ArangoDB fails - Reason: $0'
   ${EndIf}
+Done_stop_old:
 FunctionEnd
 
 
@@ -731,7 +743,7 @@ Function UpgradeExisting
   push ${ARANGO_EXIT_ALREADY_RUNNING}
   pop $0
 retryDetectUpgradeNeeded:
-  ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false --log.foreground-tty false --database.check-version" $0
+  ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false --log.foreground-tty false --database.check-version $DATADIR" $0
   DetailPrint "done Checking whether an existing database needs upgrade: $0"
   ${If} $0 == ${ARANGO_EXIT_ALREADY_RUNNING}
   ${OrIf} $0 == ${ARANGO_EXIT_COULD_NOT_LOCK}
@@ -759,7 +771,7 @@ retryDetectUpgradeNeeded:
     ${EndIf}
     DetailPrint "Attempting to run database upgrade: "
     ; Now actually do the upgrade
-    ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false  --log.level error --database.auto-upgrade true" $0
+    ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false  --log.level error --database.auto-upgrade true $DATADIR" $0
     DetailPrint "Done running database upgrade: $0"
     ${If} $0 != 0
       !insertmacro printExitCode $0 "the Upgrade failed, please do a manual upgrade" ""
@@ -886,6 +898,13 @@ FunctionEnd
 ;Installer Sections
 
 Section "-Core installation"
+  IfSilent 0 continueBaseInstall
+    ; this would be called inside the UI code:
+    Call check_previous_install
+    ${If} $UpgradeInstall == "1"
+      Call stop_old_service
+    ${EndIf}
+continueBaseInstall:
   ;Use the entire tree produced by the INSTALL target.  Keep the
   ;list of directories here in sync with the RMDir commands below.
   SetOutPath "$INSTDIR"
@@ -970,9 +989,6 @@ Section "-Core installation"
     CreateDirectory $LOGDIR
   ${EndIf}
 
-  ; non-interactive install only hits us here?
-  Call check_previous_install
-
   CreateDirectory $APPDIR
   Call assignFileRights
   ${If} $UpgradeInstall == "1"
@@ -989,7 +1005,12 @@ SectionEnd
 Function .onInstSuccess
   Call insert_registration_keys
   ${If} $ADD_TO_PATH == "1"
-    !insertmacro AddToPath "$INSTDIR/${BIN_DIR}" $TRI_INSTALL_SCOPE_ALL
+    ${If} $TRI_INSTALL_SCOPE_ALL = "1"
+      EnVar::SetHKLM
+    ${Else}
+      EnVar::SetHKCU
+    ${EndIf}
+    EnVar::AddValue "PATH" "$INSTDIR\${BIN_DIR}"
   ${EndIf}
 
   IfSilent 0 continueUI
@@ -1073,8 +1094,10 @@ Function un.onInit
 
   ${If} $TRI_INSTALL_SCOPE_ALL == 1
     SetShellVarContext all
+    EnVar::SetHKLM
   ${Else}
     SetShellVarContext current
+    EnVar::SetHKCU
   ${EndIf}
 FunctionEnd
 
@@ -1239,7 +1262,12 @@ Done:
   DeleteRegKey HKLM "${TRI_UNINSTALL_REG_PATH}"
 
   ${If} $ADD_TO_PATH == 1
-    !InsertMacro un.RemoveFromPath "$INSTDIR/${BIN_DIR}"
+    ${If} $TRI_INSTALL_SCOPE_ALL = "1"
+      EnVar::SetHKLM
+    ${Else}
+      EnVar::SetHKCU
+    ${EndIf}  
+    EnVar::DeleteValue "PATH" "$INSTDIR\${BIN_DIR}"
   ${EndIf}
 SectionEnd
 
@@ -1255,6 +1283,7 @@ SectionEnd
 ; "Program Files" for AllUsers, "My Documents" for JustMe...
 
 var CMDINSTDIR
+var CMDUPGRADE
 
 Function .onInit
   ; are we allowed to install admin in first place?
@@ -1292,7 +1321,27 @@ Function .onInit
   ${EndIf}
 noInstDir:
 
-   # we only want to manipulate APPDIR here if /APPDIR is really set!
+  # $AUTOMATIC_BACKUP would be set later in the UI code (if)
+  StrCpy $AUTOMATIC_BACKUP "0"
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/BACKUP_ON_UPGRADE="        $CMDUPGRADE
+  IfErrors noBackupOnUpgrade 0
+  IfSilent 0 noBackupOnUpgrade
+  StrCpy $AUTOMATIC_BACKUP "$CMDUPGRADE"
+noBackupOnUpgrade:
+
+  # $AUTOMATIC_UPDATE would be set later in the UI code (if)
+  StrCpy $AUTOMATIC_UPDATE "0"
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/UPGRADE="        $CMDUPGRADE
+  IfErrors noUpgrade 0
+  IfSilent 0 noUpgrade
+  StrCpy $AUTOMATIC_UPDATE "$CMDUPGRADE"
+noUpgrade:
+
+  # we only want to manipulate APPDIR here if /APPDIR is really set!
   ${GetParameters} $R0
   ClearErrors
   ${GetOptions} $R0 "/APPDIR="        $CMDINSTDIR

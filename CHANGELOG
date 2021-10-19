@@ -4,6 +4,35 @@ v3.7.16 (XXXX-XX-XX)
 * Fixed LDAP global options. This need to use the first active provider, not the
   first provider (ES-881) and it should be globally disabled.
 
+* Properly clean up replication client entries for tailing from WAL so that
+  archived WAL files are not retained for an unnecessary long time period.
+
+* Added metrics `rocksdb_wal_sequence_lower_bound`,
+  `rocksdb_archived_wal_files`, `rocskdb_prunable_wal_files` and
+  `rocksdb_wal_pruning_active` to allow inspection of WAL file pruning from the
+  outside.
+
+* Fixed issue BTS-536 "Upgrading without rest-server is aborted by error".
+  Now stating `--server.rest-server false` does not require the additional
+  `--console` argument for upgrading a server.
+
+* Fixed counting of all read transaction as aborted. Added a new metric to count
+  read transactions.
+
+* Fix assertion failure in AQL query profiling for queries with more than a
+  single shard per DB server and which join multiple collections.
+
+* Fix windows installer PATH manipulation issue by replaceng the NSIS plugin
+  (BTS-176).
+
+* Fix race in RocksDB throttle listener, when it was getting started lazily
+  during server shutdown.
+
+* Fixed BTS-582: ArangoDB client EXE package for Windows has incorrect metadata.
+
+* Fixed BTS-575: Windows EXE installer doesn't replace service during upgrade in
+  silent (non-UI) mode.
+
 * Fix issue #14807: Fix crash during optimization of certain AQL queries during
   the remove-collect-variables optimizer rule, when a COLLECT node without
   output variables (this includes RETURN DISTINCT) occured in the plan.

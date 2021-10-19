@@ -64,18 +64,27 @@ void RocksDBBackgroundThread::run() {
 
     try {
       if (!isStopping()) {
-        double start = TRI_microtime();
-        Result res = _engine.settingsManager()->sync(false);
-        if (res.fail()) {
-          LOG_TOPIC("a3d0c", WARN, Logger::ENGINES)
-              << "background settings sync failed: " << res.errorMessage();
-        }
+        try {
+          // it is important that we wrap the sync operation inside a
+          // try..catch of its own, because we still want the following
+          // garbage collection operations to be carried out even if
+          // the sync fails.
+          double start = TRI_microtime();
+          Result res = _engine.settingsManager()->sync(false);
+          if (res.fail()) {
+            LOG_TOPIC("a3d0c", WARN, Logger::ENGINES)
+                << "background settings sync failed: " << res.errorMessage();
+          }
 
-        double end = TRI_microtime();
-        if ((end - start) > 0.75) {
-          LOG_TOPIC("3ad54", WARN, Logger::ENGINES)
-              << "slow background settings sync: " << Logger::FIXED(end - start, 6)
-              << " s";
+          double end = TRI_microtime();
+          if ((end - start) > 3.0) {
+            LOG_TOPIC("3ad54", WARN, Logger::ENGINES)
+                << "slow background settings sync: " << Logger::FIXED(end - start, 6)
+                << " s";
+          }
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("4652c", WARN, Logger::ENGINES)
+            << "caught exception in rocksdb background sync operation: " << ex.what();
         }
       }
 
@@ -108,6 +117,12 @@ void RocksDBBackgroundThread::run() {
         _engine.determinePrunableWalFiles(minTick);
         // and then prune them when they expired
         _engine.pruneWalFiles();
+      } else {
+        // WAL file pruning not (yet) enabled. this will be the case the 
+        // first few minutes after the instance startup.
+        // only keep track of which WAL files exist and what the lower
+        // bound sequence number is
+        _engine.determineWalFilesInitial();
       }
 
       if (!isStopping()) {
@@ -122,5 +137,10 @@ void RocksDBBackgroundThread::run() {
     }
   }
 
-  _engine.settingsManager()->sync(true);  // final write on shutdown
+  try {
+    _engine.settingsManager()->sync(true);  // final write on shutdown
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("f3aa6", WARN, Logger::ENGINES)
+        << "caught exception during final RocksDB sync operation: " << ex.what();
+  }
 }

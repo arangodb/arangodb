@@ -126,6 +126,8 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
               v8::Number::New(isolate, (double)ts._transactionsCommitted.load())).FromMaybe(false);
   v8TransactionInfoObj->Set(context, TRI_V8_ASCII_STRING(isolate, "intermediateCommits"),
               v8::Number::New(isolate, (double)ts._intermediateCommits.load())).FromMaybe(false);
+  v8TransactionInfoObj->Set(context, TRI_V8_ASCII_STRING(isolate, "readOnly"),
+              v8::Number::New(isolate, (double)ts._readTransactions.load())).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "transactions"), v8TransactionInfoObj).FromMaybe(false);
 
   // v8 counters
