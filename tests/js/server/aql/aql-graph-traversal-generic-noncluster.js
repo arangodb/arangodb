@@ -35,16 +35,16 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
   let testGraphs = _.fromPairs(_.keys(protoGraphs).map(x => [x, {}]));
   _.each(protoGraphs, function (protoGraph) {
     _.each(protoGraph.prepareSingleServerGraph(), function (testGraph) {
-      testGraphs[protoGraph.name()][`${testGraph.name()}-single`] = testGraph;
+      testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerGeneralGraph`] = testGraph;
     });
     _.each(protoGraph.prepareSmartGraphs(TestVariants.SmartGraphSingleServer), function (testGraph) {
-      testGraphs[protoGraph.name()][`${testGraph.name()}-smart`] = testGraph;
+      testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerSmartGraph`] = testGraph;
     });
     _.each(protoGraph.prepareDisjointSmartGraphs(TestVariants.DisjointSmartGraphSingleServer), function (testGraph) {
-      testGraphs[protoGraph.name()][`${testGraph.name()}-disjointSmart`] = testGraph;
+      testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerDisjointSmartGraph`] = testGraph;
     });
     _.each(protoGraph.prepareSatelliteGraphs(TestVariants.SatelliteGraphSingleServer), function (testGraph) {
-      testGraphs[protoGraph.name()][`${testGraph.name()}-satellite`] = testGraph;
+      testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerSatelliteGraph`] = testGraph;
     });
   });
 

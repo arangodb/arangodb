@@ -409,7 +409,7 @@ std::string LogicalCollection::createKey(VPackSlice input) const {
 }
 
 #ifndef USE_ENTERPRISE
-std::string LogicalCollection::createSmartToSatKey(VPackSlice) {
+std::string LogicalCollection::createSmartToSatKey(VPackSlice) const {
   return keyGenerator()->generate();
 }
 #endif
@@ -1249,7 +1249,7 @@ bool LogicalCollection::isSmartToSatEdgeCollection() const noexcept {
 }
 
 #ifndef USE_ENTERPRISE
-void LogicalCollection::decorateWithInternalEEValidators() {
+void LogicalCollection::decorateWithInternalEEValidators(bool) {
   // Only available in Enterprise Mode
 }
 #endif
