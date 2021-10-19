@@ -191,120 +191,6 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
   return {TRI_ERROR_NO_ERROR};
 }
 
-/// @brief Sort collections for proper recreation order
-void sortCollectionsForCreation(std::vector<VPackBuilder>& collections) {
-  using namespace arangodb;
-  using namespace arangodb::basics;
-
-  // a set of all collections that are a distributeShardsLike prototype for some
-  // other collection.
-  auto const dslPrototypes = std::invoke([&collections] {
-    auto dslPrototypes = std::unordered_set<std::string>();
-    for (auto const& builder : collections) {
-      auto const parameters = builder.slice().get("parameters");
-
-      if (auto const distributeShardsLikeSlice =
-              parameters.get("distributeShardsLike");
-          !distributeShardsLikeSlice.isNone()) {
-        dslPrototypes.emplace(distributeShardsLikeSlice.copyString());
-      }
-    }
-    return dslPrototypes;
-  });
-  auto const isDslPrototype = [&dslPrototypes](auto const& name) {
-    return dslPrototypes.find(name) != dslPrototypes.end();
-  };
-
-  enum class Rel {
-    Less,
-    Equal,
-    Greater,
-  };
-
-  // use an existing operator<() to get a Rel
-  auto constexpr cmp = [](auto const& left, auto const& right) -> Rel {
-    if (left < right) {
-      return Rel::Less;
-    } else if (right < left) {
-      return Rel::Greater;
-    } else {
-      return Rel::Equal;
-    }
-  };
-
-  // project both values via supplied function before comparison
-  auto const cmpBy = [&cmp](auto const& projection, auto const& left, auto const& right) {
-    return cmp(projection(left), projection(right));
-  };
-
-  // Orders distributeShardsLike-prototypes before (all) other collections,
-  // apart from that imposes no additional ordering.
-  auto const dslProtoToOrderedValue = [&isDslPrototype](auto const& name) {
-    return isDslPrototype(name) ? 0 : 1;
-  };
-
-  // Orders document collections before edge collections,
-  // apart from that imposes no additional ordering.
-  auto constexpr typeToOrderedValue = [](auto const& slice) {
-    // If type is not set, default to document collection (2). Edge collections
-    // are 3.
-    return VelocyPackHelper::getNumericValue<int>(slice, "type", 2);
-  };
-
-  // Orders system collections before other collections,
-  // apart from that imposes no additional ordering.
-  auto constexpr systemToOrderedValue = [](auto const& name) {
-    auto isSystem = name.at(0) == '_';
-    return isSystem ? 0 : 1;
-  };
-
-  auto const chainedComparison = [&](auto const& left, auto const& right) -> Rel {
-    auto const leftName = left.get("name").copyString();
-    auto const rightName = right.get("name").copyString();
-    if (auto cmpRes = cmpBy(dslProtoToOrderedValue, leftName, rightName); cmpRes != Rel::Equal) {
-      return cmpRes;
-    }
-    if (auto cmpRes = cmpBy(typeToOrderedValue, left, right); cmpRes != Rel::Equal) {
-      return cmpRes;
-    }
-    if (auto cmpRes = cmpBy(systemToOrderedValue, leftName, rightName); cmpRes != Rel::Equal) {
-      return cmpRes;
-    }
-
-    auto res = strcasecmp(leftName.c_str(), rightName.c_str());
-    if (res < 0) {
-      return Rel::Less;
-    } else if (res > 0) {
-      return Rel::Greater;
-    } else {
-      return Rel::Equal;
-    }
-  };
-
-  auto const colLesserThan = [&](auto const& l, auto const& r) {
-    auto const left = l.slice().get("parameters");
-    auto const right = r.slice().get("parameters");
-    return chainedComparison(left, right) == Rel::Less;
-  };
-
-  std::sort(collections.begin(), collections.end(), colLesserThan);
-  {
-    using namespace std::string_literals;
-    auto msg = "{"s;
-    bool first = true;
-    for (auto const& it : collections) {
-      if (first) {
-        first = false;
-      } else {
-        msg += ", ";
-      }
-      msg += it.slice().get("parameters").get("name").stringView();
-    }
-    msg += "}";
-    LOG_DEVEL << "collections = " << msg;
-  }
-}
-
 void makeAttributesUnique(arangodb::velocypack::Builder& builder,
                           arangodb::velocypack::Slice slice) {
   if (slice.isObject()) {
@@ -858,7 +744,7 @@ arangodb::Result processInputDirectory(
     }
 
     // order collections so that prototypes for distributeShardsLike come first
-    sortCollectionsForCreation(collections);
+    arangodb::RestoreFeature::sortCollectionsForCreation(collections);
 
     std::unique_ptr<arangodb::RestoreFeature::RestoreMainJob> usersData;
     std::unique_ptr<arangodb::RestoreFeature::RestoreMainJob> analyzersData;
@@ -1059,6 +945,102 @@ void processJob(arangodb::httpclient::SimpleHttpClient& client, arangodb::Restor
 }  // namespace
 
 namespace arangodb {
+
+/// @brief Sort collections for proper recreation order
+void RestoreFeature::sortCollectionsForCreation(std::vector<VPackBuilder>& collections) {
+  // a set of all collections that are a distributeShardsLike prototype for some
+  // other collection.
+  auto const dslPrototypes = std::invoke([&collections] {
+    auto dslPrototypes = std::unordered_set<std::string>();
+    for (auto const& builder : collections) {
+      auto const parameters = builder.slice().get("parameters");
+
+      if (auto const distributeShardsLikeSlice =
+              parameters.get("distributeShardsLike");
+          !distributeShardsLikeSlice.isNone()) {
+        dslPrototypes.emplace(distributeShardsLikeSlice.copyString());
+      }
+    }
+    return dslPrototypes;
+  });
+  auto const isDslPrototype = [&dslPrototypes](auto const& name) {
+    return dslPrototypes.find(name) != dslPrototypes.end();
+  };
+
+  enum class Rel {
+    Less,
+    Equal,
+    Greater,
+  };
+
+  // use an existing operator<() to get a Rel
+  auto constexpr cmp = [](auto const& left, auto const& right) -> Rel {
+    if (left < right) {
+      return Rel::Less;
+    } else if (right < left) {
+      return Rel::Greater;
+    } else {
+      return Rel::Equal;
+    }
+  };
+
+  // project both values via supplied function before comparison
+  auto const cmpBy = [&cmp](auto const& projection, auto const& left, auto const& right) {
+    return cmp(projection(left), projection(right));
+  };
+
+  // Orders distributeShardsLike-prototypes before (all) other collections,
+  // apart from that imposes no additional ordering.
+  auto const dslProtoToOrderedValue = [&isDslPrototype](auto const& name) {
+    return isDslPrototype(name) ? 0 : 1;
+  };
+
+  // Orders document collections before edge collections,
+  // apart from that imposes no additional ordering.
+  auto constexpr typeToOrderedValue = [](auto const& slice) {
+    // If type is not set, default to document collection (2). Edge collections
+    // are 3.
+    return basics::VelocyPackHelper::getNumericValue<int>(slice, "type", 2);
+  };
+
+  // Orders system collections before other collections,
+  // apart from that imposes no additional ordering.
+  auto constexpr systemToOrderedValue = [](auto const& name) {
+    auto isSystem = name.at(0) == '_';
+    return isSystem ? 0 : 1;
+  };
+
+  auto const chainedComparison = [&](auto const& left, auto const& right) -> Rel {
+    auto const leftName = left.get("name").copyString();
+    auto const rightName = right.get("name").copyString();
+    if (auto cmpRes = cmpBy(dslProtoToOrderedValue, leftName, rightName); cmpRes != Rel::Equal) {
+      return cmpRes;
+    }
+    if (auto cmpRes = cmpBy(typeToOrderedValue, left, right); cmpRes != Rel::Equal) {
+      return cmpRes;
+    }
+    if (auto cmpRes = cmpBy(systemToOrderedValue, leftName, rightName); cmpRes != Rel::Equal) {
+      return cmpRes;
+    }
+
+    auto res = strcasecmp(leftName.c_str(), rightName.c_str());
+    if (res < 0) {
+      return Rel::Less;
+    } else if (res > 0) {
+      return Rel::Greater;
+    } else {
+      return Rel::Equal;
+    }
+  };
+
+  auto const colLesserThan = [&](auto const& l, auto const& r) {
+    auto const left = l.slice().get("parameters");
+    auto const right = r.slice().get("parameters");
+    return chainedComparison(left, right) == Rel::Less;
+  };
+
+  std::sort(collections.begin(), collections.end(), colLesserThan);
+}
 
 std::vector<RestoreFeature::DatabaseInfo> RestoreFeature::determineDatabaseList(std::string const& databaseName) {
   std::vector<RestoreFeature::DatabaseInfo> databases;
