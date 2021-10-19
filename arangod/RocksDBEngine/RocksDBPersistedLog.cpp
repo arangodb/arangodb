@@ -25,7 +25,9 @@
 #include <Basics/ScopeGuard.h>
 #include <Basics/debugging.h>
 #include <Replication2/ReplicatedLog/PersistedLog.h>
+#include <memory>
 
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBKey.h"
 #include "RocksDBPersistedLog.h"
 #include "RocksDBValue.h"
@@ -38,7 +40,8 @@ RocksDBPersistedLog::RocksDBPersistedLog(replication2::LogId id, uint64_t object
                                          std::shared_ptr<RocksDBLogPersistor> persistor)
     : PersistedLog(id), _objectId(objectId), _persistor(std::move(persistor)) {}
 
-auto RocksDBPersistedLog::insert(PersistedLogIterator& iter, WriteOptions const& options) -> Result {
+auto RocksDBPersistedLog::insert(PersistedLogIterator& iter, WriteOptions const& options)
+    -> Result {
   rocksdb::WriteBatch wb;
   auto res = prepareWriteBatch(iter, wb);
   if (!res.ok()) {
@@ -155,8 +158,9 @@ auto RocksDBPersistedLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter
 }
 
 RocksDBLogPersistor::RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf,
-                                         rocksdb::DB* db, std::shared_ptr<Executor> executor)
-    : _cf(cf), _db(db), _executor(std::move(executor)) {}
+                                         rocksdb::DB* db, std::shared_ptr<Executor> executor,
+                                         std::shared_ptr<replication2::ReplicatedLogOptions const> options)
+    : _cf(cf), _db(db), _executor(std::move(executor)), _options(std::move(options)) {}
 
 void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
   // This function is noexcept so in case an exception bubbles up we
@@ -185,16 +189,16 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         wb.Clear();
 
         // For simplicity, a single LogIterator of a specific PersistRequest
-        // (i.e. *nextReqToWrite->iter) is always written as a whole in a write batch.
-        // This is not strictly necessary for correctness, as long as an error
-        // is reported when any PersistingLogEntry is not written. Because then, the
-        // write will be retried, and it does not hurt that the persisted log
-        // already has some entries that are not yet confirmed (which may be
-        // overwritten later). This could still be improved upon a little by
-        // reporting up to which entry was written successfully.
-        while (wb.Count() < 1000 && nextReqToWrite != std::end(pendingRequests)) {
-          auto* log_ptr =
-              dynamic_cast<RocksDBPersistedLog*>(nextReqToWrite->log.get());
+        // (i.e. *nextReqToWrite->iter) is always written as a whole in a write
+        // batch. This is not strictly necessary for correctness, as long as an
+        // error is reported when any PersistingLogEntry is not written. Because
+        // then, the write will be retried, and it does not hurt that the
+        // persisted log already has some entries that are not yet confirmed
+        // (which may be overwritten later). This could still be improved upon a
+        // little by reporting up to which entry was written successfully.
+        while (wb.GetDataSize() < _options->_maxRocksDBWriteBatchSize &&
+               nextReqToWrite != std::end(pendingRequests)) {
+          auto* log_ptr = dynamic_cast<RocksDBPersistedLog*>(nextReqToWrite->log.get());
           TRI_ASSERT(log_ptr != nullptr);
           if (auto res = log_ptr->prepareWriteBatch(*nextReqToWrite->iter, wb);
               res.fail()) {
