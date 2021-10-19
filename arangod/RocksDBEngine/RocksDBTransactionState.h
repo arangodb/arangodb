@@ -169,6 +169,10 @@ class RocksDBTransactionState final : public TransactionState {
   void unuse() noexcept;
 #endif
 
+ protected:
+  std::unique_ptr<TransactionCollection> createTransactionCollection(
+      DataSourceId cid, AccessMode::Type accessType) override;
+
  private:
   rocksdb::SequenceNumber prepareCollections();
   void commitCollections(rocksdb::SequenceNumber lastWritten);

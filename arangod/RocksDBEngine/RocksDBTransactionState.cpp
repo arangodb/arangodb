@@ -450,6 +450,11 @@ rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
   return _rocksMethods->GetSequenceNumber();
 }
 
+std::unique_ptr<TransactionCollection> RocksDBTransactionState::createTransactionCollection(
+    DataSourceId cid, AccessMode::Type accessType) {
+  return std::make_unique<RocksDBTransactionCollection>(this, cid, accessType);
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 RocksDBTransactionStateGuard::RocksDBTransactionStateGuard(RocksDBTransactionState* state) noexcept
     : _state(state) {

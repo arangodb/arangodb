@@ -1029,12 +1029,6 @@ std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
   return std::make_shared<RocksDBTransactionState>(vocbase, tid, options);
 }
 
-std::unique_ptr<TransactionCollection> RocksDBEngine::createTransactionCollection(
-    TransactionState& state, DataSourceId cid, AccessMode::Type accessType) {
-  return std::unique_ptr<TransactionCollection>(
-      new RocksDBTransactionCollection(&state, cid, accessType));
-}
-
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
   if (!info.hasKey("objectId")) {
     builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
