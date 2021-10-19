@@ -321,6 +321,18 @@ struct LogConfig {
 [[nodiscard]] auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 [[nodiscard]] auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 
+struct ReplicatedLogOptions {
+ public:
+  static inline constexpr std::size_t defaultMaxNetworkBatchSize{1024 * 1024};
+  static inline constexpr std::size_t minNetworkBatchSize{1024 * 1024};
+
+  static inline constexpr std::size_t defaultMaxRocksDBWriteBatchSize{1024 * 1024};
+  static inline constexpr std::size_t minRocksDBWriteBatchSize{1024 * 1024};
+
+  std::size_t _maxNetworkBatchSize{defaultMaxNetworkBatchSize};
+  std::size_t _maxRocksDBWriteBatchSize{defaultMaxRocksDBWriteBatchSize};
+};
+
 }  // namespace arangodb::replication2
 
 namespace arangodb {
