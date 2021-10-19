@@ -312,7 +312,7 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
       (ServerState::instance()->isSingleServer() && isSmartOrSatellite)) {
     // We either want to expose _distributeShardsLike if we're either on a Coordinator
     // Or we have found a Smart or Satellite collection on a single server instance.
-    if (translateCids) {
+    if (translateCids && !ServerState::instance()->isSingleServer()) {
       CollectionNameResolver resolver(_collection->vocbase());
 
       result.add(StaticStrings::DistributeShardsLike,
