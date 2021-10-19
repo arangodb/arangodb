@@ -78,7 +78,7 @@
         'host_arch%': '<(host_arch)',
         'target_arch%': '<(target_arch)',
         'use_sysroot%': '<(use_sysroot)',
-        'base_dir%': 52
+        'base_dir%': '<!(<(PYTHON_EXECUTABLE) -c "import os; print(os.getcwd())")',
 
         # Instrument for code coverage and use coverage wrapper to exclude some
         # files. Uses gcov if clang=0 is set explicitly. Otherwise,
