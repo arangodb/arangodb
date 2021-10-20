@@ -15,20 +15,20 @@ router.all('/header-empty', function (req, res) {
 });
 
 router.all('/encode-array-base64', function (req, res) {
-  res.json(['this is an array']);
+  res.body = "['this is an array']";
   res.transformations = ['base64encode'];
 });
 router.all('/encode-object-base64encode', function (req, res) {
-  res.json({'this': 'is an object'});
+  res.body = "{'this': 'is an object'}";
   res.transformations = ['base64encode'];
 });
 
 router.all('/encode-array-deflate', function (req, res) {
-  res.json(['this is an array']);
+  res.body = ['this is an array'];
   res.transformations = ['deflate'];
 });
 router.all('/encode-object-deflate', function (req, res) {
-  res.json({'this': 'is an object'});
+  res.body = {'this': 'is an object'};
   res.transformations = ['deflate'];
 });
 
