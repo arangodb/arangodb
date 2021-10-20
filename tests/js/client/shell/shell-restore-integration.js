@@ -1043,7 +1043,7 @@ function restoreIntegrationSuite () {
         {"parameters": {"name": "Tag", "type": 2}},
       ];
       // satisfy the file format requirements by adding indexes
-      collectionsJson.forEach(col => col.indexes = []);
+      collectionsJson.forEach(col => { col.indexes = []; });
 
       const path = fs.getTempFile();
       try {
