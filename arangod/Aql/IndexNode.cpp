@@ -33,6 +33,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexExecutor.h"
+#include "Aql/NonConstExpressionContainer.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
@@ -505,7 +506,3 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable, IndexId 
                                                   indVars.second.indexFieldNum);
   }
 }
-
-NonConstExpression::NonConstExpression(std::unique_ptr<Expression> exp,
-                                       std::vector<size_t> idxPath)
-    : expression(std::move(exp)), indexPath(std::move(idxPath)) {}

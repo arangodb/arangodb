@@ -25,16 +25,10 @@
 
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/NonConstExpressionContainer.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
-
-// Note: only used for NonConstExpressionContainer
-// Could be extracted to it's own file.
-#include "Aql/OptimizerUtils.h"
-// Note: only used for NonConstExpression
-// Could be extracted to it's own file.
-#include "Aql/IndexNode.h"
 
 #include <optional>
 #include <vector>
@@ -51,7 +45,7 @@ struct IndexAccessor {
   IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
                 std::optional<size_t> memberToUpdate,
                 std::unique_ptr<arangodb::aql::Expression> expression, 
-                std::optional<aql::utils::NonConstExpressionContainer> nonConstPart,
+                std::optional<aql::NonConstExpressionContainer> nonConstPart,
                 size_t cursorId);
   IndexAccessor(IndexAccessor const&) = delete;
   IndexAccessor(IndexAccessor&&) = default;
@@ -65,7 +59,7 @@ struct IndexAccessor {
 
   bool hasNonConstParts() const;
 
-  aql::utils::NonConstExpressionContainer const& nonConstPart() const;
+  aql::NonConstExpressionContainer const& nonConstPart() const;
 
  private:
   transaction::Methods::IndexHandle _idx;
@@ -74,7 +68,7 @@ struct IndexAccessor {
   std::optional<size_t> _memberToUpdate;
   std::unique_ptr<arangodb::aql::Expression> _expression;
   size_t _cursorId;
-  std::optional<aql::utils::NonConstExpressionContainer> _nonConstContainer;
+  std::optional<aql::NonConstExpressionContainer> _nonConstContainer;
 };
 
 struct BaseProviderOptions {

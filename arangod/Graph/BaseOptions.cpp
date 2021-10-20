@@ -33,6 +33,7 @@
 #include "Aql/ExecutorExpressionContext.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/NonConstExpression.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Cluster/ClusterEdgeCursor.h"
@@ -116,7 +117,7 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
   indexCondition = query.ast()->createNode(read);
   read = info.get("nonConstContainer");
   if (read.isObject()) {
-    _nonConstContainer.emplace(utils::NonConstExpressionContainer::fromVelocyPack(query.ast(), read));
+    _nonConstContainer.emplace(NonConstExpressionContainer::fromVelocyPack(query.ast(), read));
   }
 }
 

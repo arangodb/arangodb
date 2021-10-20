@@ -25,7 +25,7 @@
 
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/FixedVarExpressionContext.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/NonConstExpressionContainer.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -85,7 +85,7 @@ struct BaseOptions {
     // Position of _from / _to in the index search condition
     size_t conditionMemberToUpdate;
 
-    std::optional<aql::utils::NonConstExpressionContainer> _nonConstContainer;
+    std::optional<aql::NonConstExpressionContainer> _nonConstContainer;
 
     LookupInfo();
     ~LookupInfo();

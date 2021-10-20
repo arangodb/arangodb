@@ -27,6 +27,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Ast.h"
 #include "Aql/AqlValueMaterializer.h"
+#include "Aql/NonConstExpression.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Steps/SingleServerProviderStep.h"

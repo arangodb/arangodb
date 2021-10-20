@@ -22,10 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Graph/Providers/BaseProviderOptions.h"
-
-// Note: only used for NonConstExpression
-// Could be extracted to it's own file.
-#include "Aql/IndexNode.h"
+#include "Aql/NonConstExpression.h"
+#include "Aql/NonConstExpressionContainer.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -33,7 +31,7 @@ using namespace arangodb::graph;
 IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
                              aql::AstNode* condition, std::optional<size_t> memberToUpdate,
                              std::unique_ptr<arangodb::aql::Expression> expression,
-                             std::optional<aql::utils::NonConstExpressionContainer> nonConstPart,
+                             std::optional<aql::NonConstExpressionContainer> nonConstPart,
                              size_t cursorId)
     : _idx(idx),
       _indexCondition(condition),
@@ -65,7 +63,7 @@ bool IndexAccessor::hasNonConstParts() const {
   return _nonConstContainer.has_value() && !_nonConstContainer->_expressions.empty();
 }
 
-aql::utils::NonConstExpressionContainer const& IndexAccessor::nonConstPart() const {
+aql::NonConstExpressionContainer const& IndexAccessor::nonConstPart() const {
   TRI_ASSERT(hasNonConstParts());
   return _nonConstContainer.value();
 }
