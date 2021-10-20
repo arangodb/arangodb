@@ -88,9 +88,10 @@ bool checkIfDefinedAsSatellite(VPackSlice const& properties) {
         return true;
       }
     } else if (properties.get(StaticStrings::ReplicationFactor).isString()) {
-      return Helper::getStringRef(properties.get(StaticStrings::ReplicationFactor),
-                                  StaticStrings::ReplicationFactor,
-                                  velocypack::StringRef{""}) == StaticStrings::Satellite;
+      auto replFactor = properties.get(StaticStrings::ReplicationFactor).copyString();
+      if (replFactor == StaticStrings::Satellite) {
+        return true;
+      }
     }
   }
   return false;
@@ -208,6 +209,7 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
     } else {  // single server
       bool distributionSet = false;
 #ifdef USE_ENTERPRISE
+      TRI_ASSERT(ServerState::instance()->isSingleServer());
       // Special case for sharded graphs with satellites
       if (info.properties.hasKey(StaticStrings::DistributeShardsLike)) {
         // 1.) Either we distribute like another satellite collection
