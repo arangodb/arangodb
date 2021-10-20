@@ -79,29 +79,12 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  TRI_ASSERT(_logicalCollection.isAStub() || _objectId.load() != 0);
+  TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
   collection.vocbase()
       .server()
       .getFeature<EngineSelectorFeature>()
       .engine<RocksDBEngine>()
-      .addCollectionMapping(_objectId.load(), _logicalCollection.vocbase().id(),
-                            _logicalCollection.id());
-}
-
-RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
-                                             PhysicalCollection const* physical)
-    : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
-      _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId.load()),
-      _revisionTreeApplied(0),
-      _revisionTreeCreationSeq(0),
-      _revisionTreeSerializedSeq(0),
-      _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  collection.vocbase()
-      .server()
-      .getFeature<EngineSelectorFeature>()
-      .engine<RocksDBEngine>()
-      .addCollectionMapping(_objectId.load(), _logicalCollection.vocbase().id(),
+      .addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
                             _logicalCollection.id());
 }
 
@@ -273,7 +256,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
       << vocbase.name() << "/" << _logicalCollection.name()
       << ": counted value: " << count << ", snapshot value: " << snapNumberOfDocuments 
       << ", current value: " << _meta.numberDocuments()
-      << ",  an offet of " << adjustment << " will be applied";
+      << ", an offset of " << adjustment << " will be applied";
     auto adjustSeq = engine.db()->GetLatestSequenceNumber();
     if (adjustSeq <= snapSeq) {
       adjustSeq = ::forceWrite(engine);
@@ -631,7 +614,7 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
   if (_revisionTreeSerializedSeq <= _revisionTreeCreationSeq) {
     return true;
   }
-  
+      
   return false;
 }
 
@@ -848,7 +831,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     auto lockGuard = scopeGuard([this] { unlockWrite(); });
     // get the exclusive lock on the collection, so that no new write transactions
     // can start for this collection
-    auto res = lockWrite(transaction::Options::defaultLockTimeout);
+    auto res = lockWrite(/*timeout*/ 180.0);
     if (res != TRI_ERROR_NO_ERROR) {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);
@@ -1000,7 +983,7 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
   // are single-threaded and don't need to worry about transactions anyway
 
   RocksDBKeyBounds documentBounds =
-      RocksDBKeyBounds::CollectionDocuments(_objectId.load());
+      RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Comparator const* cmp =
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
           ->GetComparator();
@@ -1033,7 +1016,7 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    newTree->checkConsistency();
+  newTree->checkConsistency();
 #endif
 
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
