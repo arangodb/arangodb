@@ -225,6 +225,10 @@ class PersistingLogEntry {
   // TODO It seems impractical to not copy persisting log entries, so we should
   //      probably make this a shared_ptr (or immer::box).
   std::optional<LogPayload> _payload;
+
+  // TODO this is a magic constant "measuring" the size of
+  //      of the non-payload data in a PersistingLogEntry
+  static inline constexpr auto approxMetaDataSize = std::size_t{42};
 };
 
 // A log entry, enriched with non-persisted metadata, to be stored in an

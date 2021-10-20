@@ -126,7 +126,7 @@ auto PersistingLogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
 }
 
 auto PersistingLogEntry::approxByteSize() const noexcept -> size_t {
-  auto size = sizeof(_logTerm) + sizeof(_logIndex);
+  auto size = approxMetaDataSize;
 
   if(_payload.has_value()) {
       size += _payload->byteSize();
