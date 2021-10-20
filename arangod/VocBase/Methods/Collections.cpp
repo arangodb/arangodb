@@ -206,10 +206,11 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
           helper.add(StaticStrings::WriteConcern, VPackValue(vocbase.writeConcern()));
         }
       }
-    } else {  // single server
+    } else {  // single server or agent
       bool distributionSet = false;
 #ifdef USE_ENTERPRISE
-      TRI_ASSERT(ServerState::instance()->isSingleServer());
+      TRI_ASSERT(ServerState::instance()->isSingleServer() ||
+                 ServerState::instance()->isAgent());
       // Special case for sharded graphs with satellites
       if (info.properties.hasKey(StaticStrings::DistributeShardsLike)) {
         // 1.) Either we distribute like another satellite collection
