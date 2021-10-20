@@ -125,7 +125,7 @@ auto PersistingLogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
   return TermIndexPair{_logTerm, _logIndex};
 }
 
-auto PersistingLogEntry::approxByteSize() const noexcept -> size_t {
+auto PersistingLogEntry::approxByteSize() const noexcept -> std::size_t {
   auto size = approxMetaDataSize;
 
   if(_payload.has_value()) {
