@@ -84,8 +84,8 @@ void ReplicatedLogFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
     FATAL_ERROR_EXIT();
   }
   if (_options->_maxRocksDBWriteBatchSize < ReplicatedLogOptions::minRocksDBWriteBatchSize) {
-    LOG_TOPIC("e83c3", FATAL, arangodb::Logger::REPLICATION2)
-        << "Invalid value for `--max-network-batch-size`. The value must be at "
+    LOG_TOPIC("e83c4", FATAL, arangodb::Logger::REPLICATION2)
+        << "Invalid value for `--max-rocksdb-write-batch-size`. The value must be at "
            "least "
         << ReplicatedLogOptions::minRocksDBWriteBatchSize;
     FATAL_ERROR_EXIT();
