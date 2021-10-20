@@ -5,6 +5,9 @@ v3.9.0 (XXXX-XX-XX)
   query output based on a world map when using SSL encryption. This lead to
   not displaying some world map tiles correctly (OASIS-590).
 
+* Web UI - Added missing HTML escaping inside the file upload plugin used in
+  the section of deploying a new Foxx application when uploading a zip file.
+
 * Now, arangoimport supports merging of attributes. When importing data from a
   file into a collection, a document attribute can be comprised of merging
   attributes from the file into it, with separators and other literal strings.
