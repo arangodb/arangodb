@@ -100,5 +100,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBValue.cpp
   RocksDBEngine/RocksDBWalAccess.cpp
   RocksDBEngine/RocksDBZkdIndex.cpp
+  RocksDBEngine/SimpleRocksDBTransactionState.cpp
 )
 set(ROCKSDB_SOURCES ${ROCKSDB_SOURCES} PARENT_SCOPE)

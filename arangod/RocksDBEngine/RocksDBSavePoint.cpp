@@ -145,7 +145,7 @@ void RocksDBSavePoint::rollback() {
   }  
   TRI_ASSERT(s.ok());
 
-  _state->rollbackOperation(_operationType);
+  _state->rocksdbMethods()->rollbackOperation(_operationType);
 
   _handled = true;  // in order to not roll back again by accident
 }
