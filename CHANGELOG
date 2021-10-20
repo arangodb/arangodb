@@ -1,6 +1,9 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
+* Fixed ES-881: Fixed LDAP global options. This needs to use the first active
+  provider, not just the first provider and it should be globally disabled.
+
 * Properly clean up replication client entries for tailing from WAL so that
   archived WAL files are not retained for an unnecessary long time period.
 
