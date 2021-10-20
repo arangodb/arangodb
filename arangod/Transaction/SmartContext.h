@@ -52,9 +52,6 @@ class SmartContext : public Context {
   /// @brief order a custom type handler
   arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
 
-  /// @brief return the resolver
-  CollectionNameResolver const& resolver() override final;
-
   /// @brief whether or not the transaction is embeddable
   bool isEmbeddable() const override final {
     return true;

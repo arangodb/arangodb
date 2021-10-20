@@ -39,7 +39,7 @@ void visit(
     const term_reader& field,
     const by_terms_options::search_terms& search_terms,
     Visitor& visitor) {
-  auto terms = field.iterator();
+  auto terms = field.iterator(SeekMode::NORMAL);
 
   if (IRS_UNLIKELY(!terms)) {
     return;

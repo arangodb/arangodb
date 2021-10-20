@@ -25,6 +25,7 @@
 #include "RocksDBKey.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
@@ -73,6 +74,29 @@ bool RocksDBKey::containsLocalDocumentId(LocalDocumentId const& documentId) cons
   }
 
   return false;
+}
+
+void RocksDBKey::constructZkdIndexValue(uint64_t indexId, const zkd::byte_string& value) {
+  _type = RocksDBEntryType::ZkdIndexValue;
+  size_t keyLength = sizeof(uint64_t) + value.size();
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  uint64ToPersistent(*_buffer, indexId);
+  auto sv = std::string_view{reinterpret_cast<const char*>(value.data()), value.size()};
+  _buffer->append(sv.data(), sv.size());
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
+void RocksDBKey::constructZkdIndexValue(uint64_t indexId, zkd::byte_string const& value, LocalDocumentId documentId) {
+  _type = RocksDBEntryType::ZkdIndexValue;
+  size_t keyLength = sizeof(uint64_t) + value.size() + sizeof(uint64_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  uint64ToPersistent(*_buffer, indexId);
+  auto sv = std::string_view{reinterpret_cast<const char*>(value.data()), value.size()};
+  _buffer->append(sv.data(), sv.size());
+  uint64ToPersistent(*_buffer, documentId.id());
+  TRI_ASSERT(_buffer->size() == keyLength);
 }
 
 void RocksDBKey::constructDatabase(TRI_voc_tick_t databaseId) {
@@ -277,6 +301,30 @@ void RocksDBKey::constructRevisionTreeValue(uint64_t collectionObjectId) {
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
+void RocksDBKey::constructLogEntry(uint64_t objectId, replication2::LogIndex idx) {
+  TRI_ASSERT(objectId != 0);
+  _type = RocksDBEntryType::LogEntry;
+  size_t keyLength = 2 * sizeof(uint64_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  uint64ToPersistent(*_buffer, objectId);
+  uintToPersistentBigEndian<uint64_t>(*_buffer, idx.value);
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
+void RocksDBKey::constructReplicatedLog(TRI_voc_tick_t databaseId,
+                                        arangodb::replication2::LogId logId) {
+    TRI_ASSERT(databaseId != 0);
+    _type = RocksDBEntryType::ReplicatedLog;
+    size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
+    _buffer->clear();
+    _buffer->reserve(keyLength);
+    _buffer->push_back(static_cast<char>(_type));
+    uint64ToPersistent(*_buffer, databaseId);
+    uint64ToPersistent(*_buffer, logId.id());
+    TRI_ASSERT(_buffer->size() == keyLength);
+}
+
 // ========================= Member methods ===========================
 
 RocksDBEntryType RocksDBKey::type(RocksDBKey const& key) {
@@ -372,6 +420,16 @@ uint64_t RocksDBKey::geoValue(rocksdb::Slice const& slice) {
   return uintFromPersistentBigEndian<uint64_t>(slice.data() + sizeof(uint64_t));
 }
 
+replication2::LogIndex RocksDBKey::logIndex(rocksdb::Slice const& slice) {
+  TRI_ASSERT(slice.size() == 2 * sizeof(uint64_t));
+  return replication2::LogIndex{
+      uintFromPersistentBigEndian<uint64_t>(slice.data() + sizeof(uint64_t))};
+}
+
+replication2::LogIndex RocksDBKey::logIndex(RocksDBKey const& key) {
+  return RocksDBKey::logIndex(key.string());
+}
+
 // ====================== Private Methods ==========================
 
 TRI_voc_tick_t RocksDBKey::databaseId(char const* data, size_t size) {
@@ -382,6 +440,7 @@ TRI_voc_tick_t RocksDBKey::databaseId(char const* data, size_t size) {
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::View:
+    case RocksDBEntryType::ReplicatedLog:
     case RocksDBEntryType::ReplicationApplierConfig: {
       TRI_ASSERT(size >= (sizeof(char) + sizeof(uint64_t)));
       return uint64FromPersistent(data + sizeof(char));
@@ -448,6 +507,17 @@ VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size > sizeof(uint64_t));
   return VPackSlice(reinterpret_cast<uint8_t const*>(data) + sizeof(uint64_t));
+}
+
+zkd::byte_string_view RocksDBKey::zkdIndexValue(char const* data, size_t size) {
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(size > 2 * sizeof(uint64_t));
+  return zkd::byte_string_view(reinterpret_cast<const std::byte*>(data) + sizeof(uint64_t),
+                               size - 2 * sizeof(uint64_t));
+}
+
+zkd::byte_string_view RocksDBKey::zkdIndexValue(const rocksdb::Slice& slice) {
+  return zkdIndexValue(slice.data(), slice.size());
 }
 
 namespace arangodb {

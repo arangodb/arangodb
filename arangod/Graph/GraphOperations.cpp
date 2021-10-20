@@ -223,8 +223,10 @@ Result GraphOperations::checkVertexCollectionAvailability(std::string const& ver
 }
 
 OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSlice,
+                                                    VPackSlice definitionOptions,
                                                     bool waitForSync,
                                                     std::string const& edgeDefinitionName) {
+  TRI_ASSERT(definitionOptions.isObject());
   OperationOptions options(ExecContext::current());
   auto maybeEdgeDef = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
   if (!maybeEdgeDef) {
@@ -246,13 +248,17 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
     };
   }
 
+  auto satData = definitionOptions.get(StaticStrings::GraphSatellites);
+  if (satData.isArray()) {
+    auto res = _graph.addSatellites(satData);
+    if (res.fail()) {
+      // Handles invalid Slice Content
+      return OperationResult{std::move(res), options};
+    }
+  }
+
   GraphManager gmngr{_vocbase};
-  VPackBuilder collectionsOptions;
-  collectionsOptions.openObject();
-  _graph.createCollectionOptions(collectionsOptions, waitForSync);
-  collectionsOptions.close();
-  res = gmngr.findOrCreateCollectionsByEdgeDefinition(_graph, edgeDefinition, waitForSync,
-                                                      collectionsOptions.slice());
+  res = gmngr.findOrCreateCollectionsByEdgeDefinition(_graph, edgeDefinition, waitForSync);
   if (res.fail()) {
     return OperationResult(res, options);
   }
@@ -300,11 +306,23 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
                                                      bool createCollection) {
   GraphManager gmngr{_vocbase};
   std::string collectionName = document.get("collection").copyString();
+
   std::shared_ptr<LogicalCollection> def;
 
   OperationOptions options(ExecContext::current());
   options.waitForSync = waitForSync;
   OperationResult result(Result(), options);
+
+  VPackSlice editOptions = document.get(StaticStrings::GraphOptions);
+  if (editOptions.isObject()) {
+    editOptions = editOptions.get(StaticStrings::GraphSatellites);
+    if (editOptions.isArray()) {
+      auto res = _graph.addSatellites(editOptions);
+      if (res.fail()) {
+        return OperationResult(std::move(res), options);
+      }
+    }
+  }
 
   if (_graph.hasVertexCollection(collectionName)) {
     if (_graph.hasOrphanCollection(collectionName)) {
@@ -325,7 +343,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   if (def == nullptr) {
     if (createCollection) {
       // ensure that all collections are available
-      res = gmngr.ensureCollections(&_graph, waitForSync);
+      res = gmngr.ensureAllCollections(&_graph, waitForSync);
 
       if (res.fail()) {
         return OperationResult{std::move(res), options};
@@ -338,7 +356,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
     }
   } else {
     // Hint: Now needed because of the initial property
-    res = gmngr.ensureCollections(&_graph, waitForSync);
+    res = gmngr.ensureAllCollections(&_graph, waitForSync);
     if (res.fail()) {
       return OperationResult{std::move(res), options};
     }
@@ -471,7 +489,9 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync,
 }
 
 OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinitionSlice,
+                                                   VPackSlice definitionOptions,
                                                    bool waitForSync) {
+  TRI_ASSERT(definitionOptions.isObject());
   OperationOptions options(ExecContext::current());
   ResultT<EdgeDefinition const*> defRes = _graph.addEdgeDefinition(edgeDefinitionSlice);
   if (defRes.fail()) {
@@ -489,7 +509,16 @@ OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinitionSlic
     return OperationResult(res, options);
   }
 
-  res = gmngr.ensureCollections(&_graph, waitForSync);
+  auto satData = definitionOptions.get(StaticStrings::GraphSatellites);
+  if (satData.isArray()) {
+    auto res = _graph.addSatellites(satData);
+    if (res.fail()) {
+      // Handles invalid Slice Content
+      return OperationResult{std::move(res), options};
+    }
+  }
+
+  res = gmngr.ensureAllCollections(&_graph, waitForSync);
 
   if (res.fail()) {
     return OperationResult{std::move(res), options};
@@ -943,8 +972,8 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
       bindVars->add("toDeleteId", VPackValue(toDeleteId));
       bindVars->close();
 
-      arangodb::aql::Query query(ctx(), queryString, bindVars);
-      auto queryResult = query.executeSync();
+      auto query = arangodb::aql::Query::create(ctx(), queryString, std::move(bindVars));
+      auto queryResult = query->executeSync();
 
       if (queryResult.result.fail()) {
         return OperationResult(std::move(queryResult.result), options);

@@ -135,12 +135,12 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
 
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(server.getSystemDatabase());
     auto const bindParamVpack = VPackParser::fromJson(bindParameters);
-    arangodb::aql::Query splicedQuery(ctx, arangodb::aql::QueryString(querystring), bindParamVpack,
-                                      ruleOptions(additionalOptions)->slice());
-    splicedQuery.prepareQuery(SerializationFormat::SHADOWROWS);
+    auto splicedQuery = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(querystring), bindParamVpack,
+                                                     arangodb::aql::QueryOptions(ruleOptions(additionalOptions)->slice()));
+    splicedQuery->prepareQuery(SerializationFormat::SHADOWROWS);
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
-    auto splicedPlan = const_cast<arangodb::aql::ExecutionPlan*>(splicedQuery.plan());
+    auto splicedPlan = const_cast<arangodb::aql::ExecutionPlan*>(splicedQuery->plan());
     ASSERT_NE(splicedPlan, nullptr) << "query string: " << querystring;
 
     SmallVector<ExecutionNode*>::allocator_type::arena_type a;
@@ -479,7 +479,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
     EXPECT_TRUE(document.get("_key").isString());
     EXPECT_EQ(std::string{"myKey"}, document.get("_key").copyString());
     return true;
-  });
+  }, arangodb::ReadOwnWrites::no);
   ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
 }

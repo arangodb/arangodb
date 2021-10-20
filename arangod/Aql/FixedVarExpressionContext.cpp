@@ -50,10 +50,14 @@ AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable, b
   return it->second;
 }
 
-void FixedVarExpressionContext::clearVariableValues() { _vars.clear(); }
+void FixedVarExpressionContext::clearVariableValues() noexcept { _vars.clear(); }
 
 void FixedVarExpressionContext::setVariableValue(Variable const* var, AqlValue const& value) {
   _vars.try_emplace(var, value);
+}
+
+void FixedVarExpressionContext::clearVariableValue(Variable const* var) {
+  _vars.erase(var);
 }
 
 void FixedVarExpressionContext::serializeAllVariables(velocypack::Options const& opts,
@@ -62,8 +66,8 @@ void FixedVarExpressionContext::serializeAllVariables(velocypack::Options const&
   for (auto const& it : _vars) {
     builder.openArray();
     it.first->toVelocyPack(builder);
-    it.second.toVelocyPack(&opts, builder, /*resolveExternals*/true,
-                           /*allowUnindexed*/false);
+    it.second.toVelocyPack(&opts, builder, /*resolveExternals*/ true,
+                           /*allowUnindexed*/ false);
     builder.close();
   }
 }
@@ -72,3 +76,39 @@ FixedVarExpressionContext::FixedVarExpressionContext(transaction::Methods& trx,
                                                      QueryContext& context,
                                                      AqlFunctionsInternalCache& cache)
     : QueryExpressionContext(trx, context, cache) {}
+
+SingleVarExpressionContext::SingleVarExpressionContext(transaction::Methods& trx,
+                                                       QueryContext& context,
+                                                       AqlFunctionsInternalCache& cache,
+                                                       Variable* var, AqlValue val)
+    : QueryExpressionContext(trx, context, cache), _variable(var), _value(val) {}
+
+SingleVarExpressionContext::SingleVarExpressionContext(transaction::Methods& trx,
+                                                       QueryContext& context,
+                                                       AqlFunctionsInternalCache& cache)
+    : SingleVarExpressionContext(trx, context, cache, nullptr, AqlValue(AqlValueHintNull())) {}
+
+
+SingleVarExpressionContext::~SingleVarExpressionContext() {
+  _value.destroy();
+}
+
+bool SingleVarExpressionContext::isDataFromCollection(Variable const*) const {
+  return false;
+}
+
+AqlValue SingleVarExpressionContext::getVariableValue(Variable const* var, bool,
+                                                     bool&) const {
+  if (var == _variable) {
+    return _value;
+  } else {
+    return AqlValue(AqlValueHintNull());
+  }
+}
+
+
+void SingleVarExpressionContext::setVariableValue(Variable* variable,
+                                                  AqlValue& value) {
+  _variable = variable;
+  _value = value;
+}

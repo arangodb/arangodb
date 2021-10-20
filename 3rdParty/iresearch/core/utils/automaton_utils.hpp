@@ -88,7 +88,7 @@ class automaton_term_iterator final : public seek_term_iterator {
     return *value_;
   }
 
-  virtual doc_iterator::ptr postings(const flags& features) const override {
+  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
     return it_->postings(features);
   }
 
@@ -281,6 +281,7 @@ class IRESEARCH_API utf8_transitions_builder {
 
       for (auto& arc: arcs) {
         hash = hash_combine(hash, arc.ilabel);
+        // cppcheck-suppress redundantAssignment
         hash = hash_combine(hash, arc.id);
       }
 
@@ -297,6 +298,7 @@ class IRESEARCH_API utf8_transitions_builder {
       size_t hash = 0;
       for (; begin != end; ++begin) {
         hash = hash_combine(hash, begin->ilabel);
+        // cppcheck-suppress redundantAssignment
         hash = hash_combine(hash, begin->nextstate);
       }
 

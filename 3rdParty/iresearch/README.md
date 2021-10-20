@@ -10,7 +10,7 @@
 -->
 
 # IResearch search engine
-### Version 1.0
+### Version 1.1
 
 ## Table of contents
 - [Overview](#overview)
@@ -59,16 +59,17 @@ A document is actually a collection of indexed/stored fields.
 In order to be processed each field should satisfy at least `IndexedField` or `StoredField` concept.
 
 #### IndexedField concept
-For type `T` to be `IndexedField`, the following conditions have to be satisfied for an object m of type `T`:
+For type `T` to be `IndexedField`, the following conditions have to be satisfied for an object `m` of type `T`:
 
 |Expression|Requires|Effects|
 |----|----|----|
 |`m.name()`|The output type must be convertible to `iresearch::string_ref`|A value uses as a key name.|
 |`m.get_tokens()`|The output type must be convertible to `iresearch::token_stream*`|A token stream uses for populating in invert procedure. If value is `nullptr` field is treated as non-indexed.|
-|`m.features()`|The output type must be convertible to `const iresearch::flags&`|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying.|
+|`m.index_features()`|The output type must be implicitly convertible to `iresearch::IndexFeatures`|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying and scoring.|
+|`m.features()`|The output type must be convertible to `const iresearch::flags&`|A set of user supplied features to be associated with a field. E.g. it may contain request of storing field norms. Later the stored information can be used during querying and scoring.|
 
 #### StoredField concept
-For type `T` to be `StoredField`, the following conditions have to be satisfied for an object m of type `T`:
+For type `T` to be `StoredField`, the following conditions have to be satisfied for an object `m` of type `T`:
 
 |Expression|Requires|Effects|
 |----|----|----|
@@ -99,32 +100,7 @@ versions/revisions of data in the said directory.
 v3.2 or later
 
 ### [Boost](http://www.boost.org/doc/libs/1_57_0/more/getting_started/index.html)
-v1.57.0 or later (locale system thread)
-
-#### install (*nix)
-> It looks like it is important to pass arguments to the bootstrap script in one 
-> line
-
-```bash
-./bootstrap.sh --with-libraries=locale,system,regex,thread
-./b2
-```
-
-#### install (MacOS)
-> Do not link Boost against 'iconv' because on MacOS it causes problems when
-> linking against Boost locale. Unfortunately this requires linking against ICU.
-
-```bash
-./bootstrap.sh --with-libraries=locale,system,regex,thread
-./b2 -sICU_PATH="${ICU_ROOT}" boost.locale.iconv=off boost.locale.icu=on
-```
-
-#### install (win32)
-```bash
-bootstrap.bat --with-libraries=test
-bootstrap.bat --with-libraries=thread
-b2 --build-type=complete stage address-model=64
-```
+v1.57.0 or later (headers only)
 
 #### set environment
 ```bash
@@ -218,7 +194,7 @@ via the distributions' package manager: libstemmer
 
 ```bash
 git clone https://github.com/snowballstem/snowball.git
-git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
+git reset --hard adc028f3ae646623bda2f99191fe9dc3287a909b
 mkdir build && cd build
 set PATH=%PATH%;<path-to>/build/Debug
 cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Visual studio 12" -Ax64 ..
@@ -238,6 +214,10 @@ point SNOWBALL_ROOT at the source directory to build together with IResearch
 ```bash
 SNOWBALL_ROOT=<path-to-snowball>
 ```
+
+### [VelocyPack](https://github.com/arangodb/velocypack)
+
+point VPACK_ROOT at the source directory to build together with IResearch
 
 ### [BFD](https://sourceware.org/binutils/) <optional>
 
@@ -400,14 +380,6 @@ PATH enviroment variable, manual adjustment may be needed.
 #### (*nix) install notes:
 Shared version of libiresearch is used. Install IResearch before running Pyresearch.
 
-## Included 3rd party dependencies
-Code for all included 3rd party dependencies is located in the "external" directory.
-#### [MurMurHash](https://sites.google.com/site/murmurhash)
-used for fast computation of hashes for byte arrays
-#### [OpenFST](http://www.openfst.org/twiki/bin/view/FST/WebHome)
-used to generate very compact term dictionary prefix tries which can to be loaded
-in memory even for huge dictionaries
-
 ## External 3rd party dependencies
 External 3rd party dependencies must be made available to the IResearch library separately.
 They may either be installed through the distribution package management system or build
@@ -425,15 +397,17 @@ v2.4 or later
 used for compilation of the IQL (index query language) grammar
 
 ### [ICU](http://site.icu-project.org/download)
-used by locale_utils as a back-end for locale facets
-used by analysis::text_analyzer for parsing, transforming and tokenising string data
+used by analyzers for parsing, transforming and tokenising string data
 
 ### [Snowball](http://snowball.tartarus.org)
-used by analysis::text_analyzer for computing word stems (i.e. roots) for more flexible matching
+used by analyzers for computing word stems (i.e. roots) for more flexible matching
 matching of words from languages not supported by 'snowball' are done verbatim
 
 ### [Google Test](https://code.google.com/p/googletest)
 used for writing tests for the IResearch library
+
+### [VelocyPack](https://github.com/arangodb/velocypack)
+used for JSON serialization/deserialization
 
 ### Stopword list
 used by analysis::text_analyzer for filtering out noise words that should not impact text ranging
@@ -458,6 +432,7 @@ the first whitespace is ignored), in the directory corresponding to its language
 |iresearch::by_range|for filtering of values within a given range, with the possibility of specifying open/closed ranges
 |iresearch::by_same_position|for term-insertion-order sensitive filtering of exact values
 |iresearch::by_term|for filtering of exact values
+|iresearch::by_terms|for filtering of exact values by a set of specified terms 
 |iresearch::by_wildcard|for filtering of values based on matching pattern
 |iresearch::And|boolean conjunction of multiple filters, influencing document ranks/scores as appropriate
 |iresearch::Or|boolean disjunction of multiple filters, influencing document ranks/scores as appropriate (including "minimum match" functionality)
@@ -573,12 +548,12 @@ The following grammar is currently defined via Bison (the root is <query>):
 
 ## Supported compilers
 
-- GCC: 7.3-7.5, 8.1-8.4, 9.1-9.3
+- GCC: 7.3-7.5, 8.1-8.4, 9.1-9.3, 10
 - MSVC: 17 (VS 2015), 19 (VS 2017)
-- Apple Clang: 9
+- Apple Clang: 9-12
 
 ## License
-Copyright (c) 2017-2020 ArangoDB GmbH
+Copyright (c) 2017-2021 ArangoDB GmbH
 
 Copyright (c) 2016-2017 EMC Corporation
 

@@ -112,6 +112,9 @@ void Option::printHelp(std::string const& search, size_t tw, size_t ow, bool) co
     if (hasFlag(arangodb::options::Flags::Obsolete)) {
       value += " (obsolete option)";
     } else {
+      if (hasFlag(arangodb::options::Flags::Experimental)) {
+        value += " (experimental)";
+      }
       std::string description = parameter->description();
       if (!description.empty()) {
         value.append(". ");

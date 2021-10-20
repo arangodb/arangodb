@@ -46,6 +46,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -314,7 +315,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
                               term_t term, uint64_t millis, std::string const& clientId,
                               bool leading, bool reconfiguration) {
   _logLock.assertLockedByCurrentThread();
-  
+
   // verbose logging for all agency operations
   // there are two different log levels in use here for the AGENCYSTORE topic
   // - DEBUG: will log writes only on the leader
@@ -338,7 +339,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
       << "RAFT member fails to persist log entries!";
     FATAL_ERROR_EXIT();
   }
-  
+
   auto byteSize = slice.byteSize();
   auto buf = std::make_shared<Buffer<uint8_t>>(byteSize);
   buf->append(slice.begin(), byteSize);
@@ -361,7 +362,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
       FATAL_ERROR_EXIT();
     }
   }
-  
+
   try {
     _log_size += l.entry->byteSize();
     _log.emplace_back(std::forward<log_t>(l));  // log to RAM or die
@@ -386,7 +387,7 @@ index_t State::logFollower(query_t const& transactions) {
   // Check whether we have got a snapshot in the first position:
   bool gotSnapshot = slices.length() > 0 && slices[0].isObject() &&
                      !slices[0].get("readDB").isNone();
-  
+
   MUTEX_LOCKER(logLock, _logLock);
 
   // In case of a snapshot, there are three possibilities:
@@ -542,10 +543,10 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
         bindVars->close();
 
         TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-        arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-                                   bindVars);
+        auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
+                                                  std::move(bindVars));
 
-        aql::QueryResult queryResult = query.executeSync();
+        aql::QueryResult queryResult = query->executeSync();
         if (queryResult.result.fail()) {
           THROW_ARANGO_EXCEPTION(queryResult.result);
         }
@@ -592,7 +593,7 @@ void State::logEraseNoLock(
       }
     }
   }
-  
+
   _clientIdLookupCount -= numRemoved;
 
   _log.erase(rbegin, rend);
@@ -817,9 +818,9 @@ bool State::ensureCollection(std::string const& name, bool drop) {
   Builder body;
   {
     VPackObjectBuilder b(&body);
-    body.add("type", VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
-    body.add("name", VPackValue(name));
-    body.add("isSystem", VPackValue(TRI_vocbase_t::IsSystemName(name)));
+    body.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
+    body.add(StaticStrings::DataSourceName, VPackValue(name));
+    body.add(StaticStrings::DataSourceSystem, VPackValue(NameValidator::isSystemName(name)));
   }
 
   if (drop && _vocbase->lookupCollection(name) != nullptr) {
@@ -876,7 +877,7 @@ bool State::loadPersisted() {
   loadOrPersistConfiguration();
 
   ensureCollection("election", false);
-  
+
   if (checkCollection("log") && checkCollection("compact")) {
     index_t lastCompactionIndex = loadCompacted();
     if (loadRemaining(lastCompactionIndex)) {
@@ -911,11 +912,11 @@ bool State::loadPersisted() {
 bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term) {
   std::string const aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
 
-  TRI_ASSERT(nullptr != _vocbase);  
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                             aql::QueryString(aql), nullptr);
+  TRI_ASSERT(nullptr != _vocbase);
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*_vocbase),
+                                            aql::QueryString(aql), nullptr);
 
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -924,7 +925,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
   VPackSlice result = queryResult.data->slice();
   // AQL results are guaranteed to be arrays
   TRI_ASSERT(result.isArray());
-    
+
   // Default: No compaction snapshot yet
   index = 0;
   term = 0;
@@ -952,10 +953,10 @@ index_t State::loadCompacted() {
   std::string const aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                             aql::QueryString(aql), nullptr);
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*_vocbase),
+                                            aql::QueryString(aql), nullptr);
 
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -968,7 +969,7 @@ index_t State::loadCompacted() {
   if (result.length()) {
     // Result can only have length 0 or 1.
     VPackSlice ii = result[0];
-    
+
     MUTEX_LOCKER(logLock, _logLock);
     _agent->setPersistedState(ii);
     try {
@@ -994,10 +995,10 @@ bool State::loadOrPersistConfiguration() {
   std::string const aql("FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                             aql::QueryString(aql), nullptr);
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*_vocbase),
+                                            aql::QueryString(aql), nullptr);
 
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1122,10 +1123,10 @@ bool State::loadRemaining(index_t cind) {
   std::string const aql("FOR l IN log FILTER l._key >= @key SORT l._key RETURN l");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                             aql::QueryString(aql), bindVars);
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*_vocbase),
+                                            aql::QueryString(aql), std::move(bindVars));
 
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1206,7 +1207,7 @@ bool State::loadRemaining(index_t cind) {
       }
     }
   }
-  
+
   return !_log.empty() && match;
 }
 
@@ -1327,20 +1328,37 @@ bool State::compactPersisted(index_t cind, index_t keep) {
   index_t cut = cind - keep;
 
   auto bindVars = std::make_shared<VPackBuilder>();
+  auto cutStr = stringify(cut);
   bindVars->openObject();
-  bindVars->add("key", VPackValue(stringify(cut)));
+  bindVars->add("key", VPackValue(cutStr));
   bindVars->close();
 
   std::string const aql("FOR l IN log FILTER l._key < @key REMOVE l IN log");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                             aql::QueryString(aql), bindVars);
 
-  aql::QueryResult queryResult = query.executeSync();
+  LOG_TOPIC("a8123", DEBUG, Logger::AGENCY) << "Removing log entries with keys lower than " << cutStr;
+
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*_vocbase),
+                                            aql::QueryString(aql), std::move(bindVars));
+
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
+  }
+
+  LOG_TOPIC("a8132", DEBUG, Logger::AGENCY) << "Compacting log collection";
+  try {
+    auto col = _vocbase->lookupCollection("log");
+    if (col == nullptr) {
+      LOG_TOPIC("d131f", FATAL, Logger::AGENCY) << "Failed to find log collection in agency.";
+      FATAL_ERROR_EXIT();
+    } else {
+      col->compact();
+    }
+  } catch (const std::exception& e) {
+    LOG_TOPIC("d13f1", WARN, Logger::AGENCY) << "Failed to compact agent's physical log collection: " << e.what();
   }
 
   return true;
@@ -1357,10 +1375,10 @@ bool State::removeObsolete(index_t cind) {
     std::string const aql("FOR c IN compact FILTER c._key < @key REMOVE c IN compact");
 
     TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-    arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                               aql::QueryString(aql), bindVars);
+    auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*_vocbase),
+                                              aql::QueryString(aql), std::move(bindVars));
 
-    aql::QueryResult queryResult = query.executeSync();
+    aql::QueryResult queryResult = query->executeSync();
 
     if (queryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1397,7 +1415,7 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
       std::shared_ptr<transaction::Context>(
         std::shared_ptr<transaction::Context>(), &ctx),
       "compact", AccessMode::Type::WRITE);
-  
+
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -1458,10 +1476,10 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
   std::string const aql("FOR l IN log REMOVE l IN log");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                             aql::QueryString(aql), nullptr);
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*_vocbase),
+                                            aql::QueryString(aql), nullptr);
 
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   // We ignore the result, in the worst case we have some log entries
   // too many.
@@ -1472,7 +1490,7 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
   _clientIdLookupTable.clear();
   _clientIdLookupCount = 0;
   _cur = index;
-  
+
   // This empty log should soon be rectified!
   return true;
 }
@@ -1526,22 +1544,22 @@ query_t State::allLogs() const {
   std::string const comp("FOR c IN compact SORT c._key RETURN c");
   std::string const logs("FOR l IN log SORT l._key RETURN l");
 
-  TRI_ASSERT(nullptr != _vocbase); 
-  
+  TRI_ASSERT(nullptr != _vocbase);
+
   MUTEX_LOCKER(mutexLocker, _logLock);
 
-  arangodb::aql::Query compq(transaction::StandaloneContext::Create(*_vocbase),
-                              aql::QueryString(comp), nullptr);
-  arangodb::aql::Query logsq(transaction::StandaloneContext::Create(*_vocbase),
-                             aql::QueryString(logs), nullptr);
+  auto compq = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*_vocbase),
+                                            aql::QueryString(comp), nullptr);
+  auto logsq = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*_vocbase),
+                                            aql::QueryString(logs), nullptr);
 
-  aql::QueryResult compqResult = compq.executeSync();
+  aql::QueryResult compqResult = compq->executeSync();
 
   if (compqResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(compqResult.result);
   }
 
-  aql::QueryResult logsqResult = logsq.executeSync();
+  aql::QueryResult logsqResult = logsq->executeSync();
 
   if (logsqResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(logsqResult.result);
@@ -1624,10 +1642,10 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
                                                        index_t& index, term_t& term) {
   // First get the latest snapshot, if there is any:
   std::string aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
-                             aql::QueryString(aql), nullptr);
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(vocbase),
+                                            aql::QueryString(aql), nullptr);
 
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1651,10 +1669,10 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
 
   // Now get the rest of the log entries, if there are any:
   aql = "FOR l IN log SORT l._key RETURN l";
-  arangodb::aql::Query query2(transaction::StandaloneContext::Create(vocbase),
-                               aql::QueryString(aql), nullptr);
+  auto query2 = arangodb::aql::Query::create(transaction::StandaloneContext::Create(vocbase),
+                                             aql::QueryString(aql), nullptr);
 
-  aql::QueryResult queryResult2 = query2.executeSync();
+  aql::QueryResult queryResult2 = query2->executeSync();
 
   if (queryResult2.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult2.result);
@@ -1721,10 +1739,10 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   std::string const logQueryStr("FOR l IN log FILTER l._key <= @key SORT l._key RETURN l");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query logQuery(transaction::StandaloneContext::Create(*_vocbase),
-                                aql::QueryString(logQueryStr), bindVars);
+  auto logQuery = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*_vocbase),
+                                               aql::QueryString(logQueryStr), std::move(bindVars));
 
-  aql::QueryResult logQueryResult = logQuery.executeSync();
+  aql::QueryResult logQueryResult = logQuery->executeSync();
 
   if (logQueryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(logQueryResult.result);
@@ -1738,7 +1756,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
   auto copyWithoutId = [&](VPackSlice slice, VPackBuilder& builder) {
     // Need to remove custom attribute in _id:
-    { 
+    {
       VPackObjectBuilder guard(&builder);
       for (auto const& p : VPackObjectIterator(slice)) {
         if (!p.key.isEqualString(StaticStrings::IdString)) {
@@ -1772,10 +1790,10 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
     std::string const compQueryStr("FOR c in compact FILTER c._key >= @key SORT c._key LIMIT 1 RETURN c");
 
-    arangodb::aql::Query compQuery(transaction::StandaloneContext::Create(*_vocbase),
-                                   aql::QueryString(compQueryStr), bindVars);
+    auto compQuery = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*_vocbase),
+                                                  aql::QueryString(compQueryStr), std::move(bindVars));
 
-    aql::QueryResult compQueryResult = compQuery.executeSync();
+    aql::QueryResult compQueryResult = compQuery->executeSync();
 
     if (compQueryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(compQueryResult.result);
@@ -1802,7 +1820,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 /// @brief dump the entire in-memory state to velocypack.
 /// should be used for testing only
 void State::toVelocyPack(velocypack::Builder& builder) const {
-  MUTEX_LOCKER(mutexLocker, _logLock); 
+  MUTEX_LOCKER(mutexLocker, _logLock);
 
   builder.openObject();
   builder.add("current", VPackValue(_cur));

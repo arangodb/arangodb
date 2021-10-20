@@ -39,8 +39,8 @@ class ReplicationTransaction : public transaction::Methods {
   explicit ReplicationTransaction(TRI_vocbase_t& vocbase)
       : transaction::Methods(transaction::StandaloneContext::Create(vocbase), transaction::Options::replicationDefaults()),
         _guard(vocbase) {
-    TRI_ASSERT(_state != nullptr);
-    _state->setExclusiveAccessType();
+    TRI_ASSERT(state() != nullptr);
+    state()->setExclusiveAccessType();
   }
 
  private:

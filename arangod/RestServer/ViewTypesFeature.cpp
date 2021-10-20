@@ -34,25 +34,28 @@
 
 namespace {
 
+using namespace arangodb;
+
 struct InvalidViewFactory : public arangodb::ViewFactory {
-  virtual arangodb::Result create(arangodb::LogicalView::ptr&, TRI_vocbase_t& vocbase,
-                                  arangodb::velocypack::Slice const& definition) const override {
+  virtual Result create(
+      LogicalView::ptr&, TRI_vocbase_t& vocbase,
+      VPackSlice definition, bool /*isUserRequest*/) const override {
     std::string name;
     if (definition.isObject()) {
-      name = arangodb::basics::VelocyPackHelper::getStringValue(
-          definition, arangodb::StaticStrings::DataSourceName, "");
+      name = basics::VelocyPackHelper::getStringValue(
+          definition, StaticStrings::DataSourceName, "");
     }
-    arangodb::events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
-    return arangodb::Result(
+    events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
+    return Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(
             "invalid type provided to create view with definition: ") +
             definition.toString());
   }
 
-  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr&, TRI_vocbase_t&,
-                                       arangodb::velocypack::Slice const& definition) const override {
-    return arangodb::Result(
+  virtual Result instantiate(LogicalView::ptr&, TRI_vocbase_t&,
+                             VPackSlice definition) const override {
+    return Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(
             "invalid type provided to instantiate view with definition: ") +

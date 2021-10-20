@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
+#include "Replication2/Version.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/voc-types.h"
 
@@ -72,9 +73,6 @@ class CreateDatabaseInfo {
   CreateDatabaseInfo(application_features::ApplicationServer&, ExecContext const&);
   Result load(std::string const& name, uint64_t id);
 
-  Result load(uint64_t id, VPackSlice const& options,
-              VPackSlice const& users = VPackSlice::emptyArraySlice());
-
   Result load(std::string const& name, VPackSlice const& options,
               VPackSlice const& users = VPackSlice::emptyArraySlice());
 
@@ -118,13 +116,15 @@ class CreateDatabaseInfo {
     TRI_ASSERT(_valid);
     return _writeConcern;
   }
+  [[nodiscard]] replication::Version replicationVersion() const {
+    TRI_ASSERT(_valid);
+    return _replicationVersion;
+  }
   std::string const& sharding() const {
     TRI_ASSERT(_valid);
     return _sharding;
   }
-  void sharding(std::string const& sharding) {
-    _sharding = sharding;
-  }
+  void sharding(std::string const& sharding) { _sharding = sharding; }
 
   ShardingPrototype shardingPrototype() const;
   void shardingPrototype(ShardingPrototype type);
@@ -146,6 +146,7 @@ class CreateDatabaseInfo {
 
   std::uint32_t _replicationFactor = 1;
   std::uint32_t _writeConcern = 1;
+  replication::Version _replicationVersion = replication::Version::ONE;
   ShardingPrototype _shardingPrototype = ShardingPrototype::Undefined;
 
   bool _validId = false;
@@ -156,13 +157,14 @@ struct VocbaseOptions {
   std::string sharding = "";
   std::uint32_t replicationFactor = 1;
   std::uint32_t writeConcern = 1;
+  replication::Version replicationVersion = replication::Version::ONE;
 };
 
 VocbaseOptions getVocbaseOptions(application_features::ApplicationServer&, velocypack::Slice const&);
 
-void addClusterOptions(velocypack::Builder& builder, std::string const& sharding,
-                                   std::uint32_t replicationFactor,
-                                   std::uint32_t writeConcern);
+void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
+                       std::uint32_t replicationFactor, std::uint32_t writeConcern,
+                       replication::Version replicationVersion);
 void addClusterOptions(velocypack::Builder&, VocbaseOptions const&);
 
 }  // namespace arangodb

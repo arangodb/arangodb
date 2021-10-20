@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Noty, Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
+/* global Noty, Blob, window, atob, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -124,6 +124,65 @@
       });
     },
 
+    lastActivity: function () {
+      // return timestamp of last activity (only seconds part)
+      return sessionStorage.getItem('lastActivity') || 0;
+    },
+
+    noteActivity: function () {
+      // note timestamp of last activity (only seconds part)
+      sessionStorage.setItem('lastActivity', Date.now() / 1000);
+    },
+  
+    renewJwt: function (callback) {
+      if (!window.atob) {
+        return;
+      }
+      var self = this;
+      var currentUser = self.getCurrentJwtUsername();
+      if (currentUser === undefined || currentUser === "") {
+        return;
+      }
+
+      $.ajax({
+        cache: false,
+        type: 'POST',
+        url: self.databaseUrl('/_open/auth/renew'),
+        data: JSON.stringify({ username: currentUser }),
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          var updated = false;
+          if (data.jwt) {
+            try {
+              var jwtParts = data.jwt.split('.');
+              if (!jwtParts[1]) {
+                throw "invalid token!";
+              }
+              var payload = JSON.parse(atob(jwtParts[1]));
+              if (payload.preferred_username === currentUser) {
+                self.setCurrentJwt(data.jwt, currentUser);
+                updated = true;
+              }
+            } catch (err) {
+            }
+          }
+          if (updated) {
+            // success
+            callback();
+          }
+        },
+        error: function (data) {
+          // this function is triggered by a non-interactive
+          // background task. if it fails for whatever reason,
+          // we don't report this error. 
+          // the worst thing that can happen is that the JWT
+          // is not renewed and thus the user eventually gets
+          // logged out
+        }
+      });
+    },
+
     getCoordinatorShortName: function (id) {
       var shortName;
       if (window.clusterHealth) {
@@ -160,11 +219,8 @@
         '_id': true,
         '_rev': true,
         '_key': true,
-        '_bidirectional': true,
-        '_vertices': true,
         '_from': true,
         '_to': true,
-        '$id': true
       };
     },
 
@@ -1043,11 +1099,9 @@
         a.style = 'display: none';
         a.href = blobUrl;
 
-        if (filename) {
-          a.download = filename + '-' + window.frontendConfig.db + '.' + type;
-        } else {
-          a.download = 'results-' + window.frontendConfig.db + '.' + type;
-        }
+        a.download = (filename ? filename : 'results') + '-' + 
+                     window.frontendConfig.db.replace(/[^-_a-z0-9]/gi, "_") + 
+                     '.' + type;
 
         a.click();
 

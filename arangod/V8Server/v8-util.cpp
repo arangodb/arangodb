@@ -52,7 +52,8 @@ TRI_vocbase_t& GetContextVocBase(v8::Isolate* isolate) {
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const arg,
+static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
+                                bool extendedNames,
                                 std::string& collectionName,
                                 std::unique_ptr<char[]>& key) {
   TRI_ASSERT(collectionName.empty());
@@ -62,7 +63,7 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> cons
   }
 
   // the handle must always be an ASCII string. These is no need to normalize it
-  // first
+  // first. 
   v8::String::Utf8Value str(isolate, arg);
 
   if (*str == nullptr) {
@@ -70,8 +71,8 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> cons
   }
 
   // collection name / document key
-  size_t split;
-  if (KeyGenerator::validateId(*str, str.length(), &split)) {
+  [[maybe_unused]] size_t split = 0;
+  if (KeyGenerator::validateId(*str, str.length(), extendedNames, split)) {
     collectionName = std::string(*str, split);
     auto const length = str.length() - split - 1;
     auto buffer = new char[length + 1];
@@ -102,6 +103,7 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> cons
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val,
+                           bool extendedNames,
                            std::string& collectionName, VPackBuilder& builder,
                            bool includeRev) {
   auto context = TRI_IGETC;
@@ -112,7 +114,7 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
 
   // extract the document identifier and revision from a string
   if (val->IsString()) {
-    bool res = ParseDocumentHandle(isolate, val, collectionName, key);
+    bool res = ParseDocumentHandle(isolate, val, extendedNames, collectionName, key);
     if (res) {
       if (key.get() == nullptr) {
         return false;
@@ -134,13 +136,13 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
     if (TRI_HasRealNamedProperty(context, isolate, obj, _IdKey)) {
       v8::Handle<v8::Value> didVal = obj->Get(context, _IdKey).FromMaybe(v8::Local<v8::Value>());
 
-      if (!ParseDocumentHandle(isolate, didVal, collectionName, key)) {
+      if (!ParseDocumentHandle(isolate, didVal, extendedNames, collectionName, key)) {
         return false;
       }
     } else if (TRI_HasRealNamedProperty(context, isolate, obj, _KeyKey)) {
       v8::Handle<v8::Value> didVal = obj->Get(context, _KeyKey).FromMaybe(v8::Local<v8::Value>());
 
-      if (!ParseDocumentHandle(isolate, didVal, collectionName, key)) {
+      if (!ParseDocumentHandle(isolate, didVal, extendedNames, collectionName, key)) {
         return false;
       }
     } else {

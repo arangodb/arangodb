@@ -114,8 +114,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption("--cluster.my-id", "this server's id", false);
 
   options->addObsoleteOption("--cluster.agency-prefix", "agency prefix", false);
-
-
+  
   options->addOption(
       "--cluster.require-persisted-id",
       "if set to true, then the instance will only start if a UUID file is "
@@ -227,7 +226,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                                    arangodb::options::Flags::OnCoordinator,
                                    arangodb::options::Flags::Hidden));
-  
+
   options
       ->addOption("--cluster.api-jwt-policy",
                   "access permissions required for accessing /_admin/cluster REST APIs "

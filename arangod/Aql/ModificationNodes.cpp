@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ModificationNodes.h"
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -103,8 +102,6 @@ void ModificationNode::cloneCommon(ModificationNode* c) const {
 ///////////////////////////////////////////////////////////////////////////////
 /// REMOVE
 ///
-using AllRowsRemoveExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, RemoveModifier>>;
 using SingleRowRemoveExecutionBlock =
     ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>>;
 
@@ -143,6 +140,7 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
 
   auto executorInfos = ModificationExecutorInfos(
+      &engine,
       inDocRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       _plan->getAst()->query(), std::move(options), collection(),
@@ -151,16 +149,9 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
-
-  if (_options.readCompleteInput) {
-    return std::make_unique<AllRowsRemoveExecutionBlock>(&engine, this,
+  return std::make_unique<SingleRowRemoveExecutionBlock>(&engine, this,
                                                          std::move(registerInfos),
                                                          std::move(executorInfos));
-  } else {
-    return std::make_unique<SingleRowRemoveExecutionBlock>(&engine, this,
-                                                           std::move(registerInfos),
-                                                           std::move(executorInfos));
-  }
 }
 
 /// @brief clone ExecutionNode recursively
@@ -186,8 +177,6 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
 ///////////////////////////////////////////////////////////////////////////////
 /// INSERT
 ///
-using AllRowsInsertExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, InsertModifier>>;
 using SingleRowInsertExecutionBlock =
     ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
 
@@ -231,6 +220,7 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
 
   ModificationExecutorInfos infos(
+      &engine,
       inputRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       _plan->getAst()->query(), std::move(options), collection(),
@@ -239,16 +229,9 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
-
-  if (_options.readCompleteInput) {
-    return std::make_unique<AllRowsInsertExecutionBlock>(&engine, this,
+  return std::make_unique<SingleRowInsertExecutionBlock>(&engine, this,
                                                          std::move(registerInfos),
                                                          std::move(infos));
-  } else {
-    return std::make_unique<SingleRowInsertExecutionBlock>(&engine, this,
-                                                           std::move(registerInfos),
-                                                           std::move(infos));
-  }
 }
 
 /// @brief clone ExecutionNode recursively
@@ -282,8 +265,6 @@ void InsertNode::replaceVariables(std::unordered_map<VariableId, Variable const*
 ///////////////////////////////////////////////////////////////////////////////
 /// REMOVE
 ///
-using AllRowsUpdateReplaceExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>>;
 using SingleRowUpdateReplaceExecutionBlock =
     ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
 
@@ -350,6 +331,7 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   auto executorInfos = ModificationExecutorInfos(
+      &engine,
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
@@ -357,14 +339,8 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
-  if (_options.readCompleteInput) {
-    return std::make_unique<AllRowsUpdateReplaceExecutionBlock>(&engine, this,
-                                                                std::move(registerInfos),
-                                                                std::move(executorInfos));
-  } else {
-    return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
-  }
+  return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 void RemoveNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
@@ -433,20 +409,15 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   auto executorInfos = ModificationExecutorInfos(
+      &engine,
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(true), IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
-  if (_options.readCompleteInput) {
-    return std::make_unique<AllRowsUpdateReplaceExecutionBlock>(&engine, this,
-                                                                std::move(registerInfos),
-                                                                std::move(executorInfos));
-  } else {
-    return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
-  }
+  return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 /// @brief clone ExecutionNode recursively
@@ -480,8 +451,6 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
 ///////////////////////////////////////////////////////////////////////////////
 /// UPSERT
 ///
-using AllRowsUpsertExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpsertModifier>>;
 using SingleRowUpsertExecutionBlock =
     ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
 
@@ -536,8 +505,11 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
 
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
+  // We must not disable indexing for UPSERTs because the subquery might rely on a non-unique secondary index
+  options.canDisableIndexing = false;
 
   auto executorInfos = ModificationExecutorInfos(
+      &engine,
       inDoc, insert, update, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
@@ -545,15 +517,9 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(_isReplace) /*(needed by upsert)*/,
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
-  if (_options.readCompleteInput) {
-    return std::make_unique<AllRowsUpsertExecutionBlock>(&engine, this,
+  return std::make_unique<SingleRowUpsertExecutionBlock>(&engine, this,
                                                          std::move(registerInfos),
                                                          std::move(executorInfos));
-  } else {
-    return std::make_unique<SingleRowUpsertExecutionBlock>(&engine, this,
-                                                           std::move(registerInfos),
-                                                           std::move(executorInfos));
-  }
 }
 
 /// @brief clone ExecutionNode recursively

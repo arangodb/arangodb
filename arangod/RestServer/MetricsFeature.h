@@ -176,7 +176,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   void toPrometheus(std::string& result, bool V2) const;
 
-  ServerStatistics& serverStatistics();
+  ServerStatistics& serverStatistics() noexcept;
 
  private:
   auto doAdd(metrics::Builder& builder) -> std::shared_ptr<::Metric>;

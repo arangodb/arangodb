@@ -47,13 +47,24 @@ class column_info {
   const compression::options& options() const noexcept { return options_; }
   bool encryption() const noexcept { return encryption_; }
 
+  bool operator==(const column_info& rhs) const noexcept {
+    return compression_ == rhs.compression_ &&
+           options_ == rhs.options_ &&
+           encryption_ == rhs.encryption_;
+  }
+
+  bool operator!=(const column_info& rhs) const noexcept {
+    return !(*this == rhs);
+  }
+
  private:
-  const type_info compression_;
-  const compression::options options_;
+  type_info compression_;
+  compression::options options_;
   bool encryption_;
 }; // column_info
 
-typedef std::function<column_info(const string_ref)> column_info_provider_t;
+using column_info_provider_t = std::function<column_info(const string_ref)>;
+using feature_column_info_provider_t = std::function<column_info(type_info::type_id)>;
 
 }
 

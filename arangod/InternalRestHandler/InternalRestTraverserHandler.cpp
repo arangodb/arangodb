@@ -29,9 +29,11 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
+#include "Logger/LogMacros.h"
 #include "Rest/GeneralResponse.h"
 #include "Transaction/StandaloneContext.h"
 
+#include <Logger/LogMacros.h>
 #include <chrono>
 #include <thread>
 
@@ -85,8 +87,9 @@ RestStatus InternalRestTraverserHandler::execute() {
 }
 
 void InternalRestTraverserHandler::createEngine() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "API traversal engine creation no longer supported");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "API traversal engine creation no longer supported");
 }
 
 void InternalRestTraverserHandler::queryEngine() {
@@ -117,7 +120,8 @@ void InternalRestTraverserHandler::queryEngine() {
     return;
   }
 
-  std::chrono::time_point<std::chrono::steady_clock> start =  std::chrono::steady_clock::now();
+  std::chrono::time_point<std::chrono::steady_clock> start =
+      std::chrono::steady_clock::now();
 
   traverser::BaseEngine* engine = nullptr;
   while (true) {
@@ -127,7 +131,8 @@ void InternalRestTraverserHandler::queryEngine() {
         break;
       }
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid TraverserEngine id - potentially the AQL query was already aborted or timed out");
+                    "invalid TraverserEngine id - potentially the AQL query "
+                    "was already aborted or timed out");
       return;
     } catch (basics::Exception const& ex) {
       // it is possible that the engine is already in use
@@ -147,18 +152,23 @@ void InternalRestTraverserHandler::queryEngine() {
       generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_LOCK_TIMEOUT);
       return;
     }
-  } 
+  }
 
   TRI_ASSERT(engine != nullptr);
 
   auto& registry = _registry;  // For the guard
-  auto cleanup = scopeGuard([registry, &engineId]() {
-    registry->closeEngine(engineId);
+  auto cleanup = scopeGuard([registry, &engineId]() noexcept {
+    try {
+        registry->closeEngine(engineId);
+    } catch(std::exception const& ex) {
+        LOG_TOPIC("dfc7a", ERR, Logger::AQL) << "Failed to close engine: " << ex.what();
+    }
   });
 
   if (option == "lock") {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "API for traversal engine locking no longer supported");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "API for traversal engine locking no longer supported");
   }
 
   VPackBuilder result;
@@ -182,7 +192,7 @@ void InternalRestTraverserHandler::queryEngine() {
         // Safe cast BaseTraverserEngines are all of type TRAVERSER
         auto eng = static_cast<BaseTraverserEngine*>(engine);
         TRI_ASSERT(eng != nullptr);
-        
+
         VPackSlice variables = body.get("variables");
         eng->injectVariables(variables);
 
@@ -223,7 +233,8 @@ void InternalRestTraverserHandler::queryEngine() {
       return;
     }
     engine->getVertexData(keysSlice, result, !depthSlice.isNone());
-  } else if (option == "smartSearch") {
+  } else if (option == "smartSearch" || option == "smartSearchBFS" ||
+             option == "smartSearchWeighted") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "this engine does not support the requested operation.");
@@ -233,26 +244,6 @@ void InternalRestTraverserHandler::queryEngine() {
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
     eng->smartSearch(body, result);
-  } else if (option == "smartSearchBFS") {
-    if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
-      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "this engine does not support the requested operation.");
-      return;
-    }
-    // Safe cast BaseTraverserEngines are all of type TRAVERSER
-    auto eng = static_cast<BaseTraverserEngine*>(engine);
-    TRI_ASSERT(eng != nullptr);
-    eng->smartSearchBFS(body, result);
-  } else if (option == "smartSearchWeighted") {
-    if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
-      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "this engine does not support the requested operation.");
-      return;
-    }
-    // Safe cast BaseTraverserEngines are all of type TRAVERSER
-    auto eng = static_cast<BaseTraverserEngine*>(engine);
-    TRI_ASSERT(eng != nullptr);
-    eng->smartSearchWeighted(body, result);
   } else {
     // PATH Info wrong other error
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "");

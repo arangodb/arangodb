@@ -2,7 +2,7 @@ name: arangodb_document_writes_total
 renamedFrom: arangodb_document_writes
 introducedIn: "3.8.0"
 help: |
-  Total number of document write operations (excl. synchronous replication).
+  Total number of document write operations (excluding synchronous replication).
 unit: number
 type: counter
 category: Transactions

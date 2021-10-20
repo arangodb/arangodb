@@ -39,6 +39,11 @@
 
 namespace std {
 
+#if defined(__clang__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wtautological-pointer-compare"
+#endif
+
 // MSVC++ > v14.0 (Visual Studio >2015) already implements this in <xstring>
 // MacOS requires this definition to be before first usage (i.e. in bytes_ref)
 #if !defined(_MSC_VER) || (_MSC_VER <= 1900)
@@ -53,26 +58,37 @@ struct char_traits<::iresearch::byte_type> {
     dst = src;
   }
 
-  static char_type* assign(char_type* ptr, size_t count, char_type ch) noexcept {
-    assert(ptr);
+  static char_type* assign(
+      char_type* ptr,
+      size_t count,
+      char_type ch) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
+    assert(nullptr != ptr);
     return reinterpret_cast<char_type*>(std::memset(ptr, ch, count));
   }
 
-  static int compare(const char_type* lhs, const char_type* rhs, size_t count) noexcept {
+  static int compare(
+      const char_type* lhs,
+      const char_type* rhs,
+      size_t count) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
     if (0 == count) {
       return 0;
     }
 
-    assert(lhs && rhs);
+    assert(nullptr != lhs);
+    assert(nullptr != rhs);
     return std::memcmp(lhs, rhs, count);
   }
 
-  static char_type* copy(char_type* dst, const char_type* src, size_t count) noexcept {
+  static char_type* copy(
+      char_type* dst,
+      const char_type* src,
+      size_t count) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
     if (0 == count) {
       return dst;
     }
 
-    assert(dst && src);
+    assert(nullptr != dst);
+    assert(nullptr != src);
     return reinterpret_cast<char_type*>(std::memcpy(dst, src, count));
   }
 
@@ -82,13 +98,16 @@ struct char_traits<::iresearch::byte_type> {
 
   static constexpr bool eq_int_type(int_type lhs, int_type rhs) noexcept { return lhs == rhs; }
 
-  static const char_type* find(const char_type* ptr, size_t count, const char_type& ch) noexcept {
+  static const char_type* find(
+       const char_type* ptr,
+       size_t count,
+       const char_type& ch) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
     if (0 == count) {
       return nullptr;
     }
 
-    assert(ptr);
-    return reinterpret_cast<char_type const*>(std::memchr(ptr, ch, count));
+    assert(nullptr != ptr);
+    return reinterpret_cast<const char_type*>(std::memchr(ptr, ch, count));
   }
 
   static size_t length(const char_type* /*ptr*/) noexcept {
@@ -119,8 +138,14 @@ struct char_traits<::iresearch::byte_type> {
 
   static constexpr int_type to_int_type(char_type ch) noexcept { return ch; }
 
-  MSVC_ONLY(static void _Copy_s(char_type* /*dst*/, size_t /*dst_size*/, const char_type* /*src*/, size_t /*src_size*/) { assert(false); });
+  MSVC_ONLY(static void _Copy_s(
+    char_type* /*dst*/, size_t /*dst_size*/,
+    const char_type* /*src*/, size_t /*src_size*/) { assert(false); });
 }; // char_traits
+#endif
+
+#if defined(__clang__)
+  #pragma GCC diagnostic pop
 #endif
 
 } // std
@@ -165,15 +190,18 @@ class basic_string_ref {
 
   // Constructs a string reference object from a C string computing
   // the size with ``std::char_traits<Char>::length``.
+  // cppcheck-suppress noExplicitConstructor
   constexpr basic_string_ref(const char_type* s) noexcept
     : data_(s), size_(s ? traits_type::length(s) : 0) {
   }
 
+  // cppcheck-suppress noExplicitConstructor
   constexpr basic_string_ref(const std::basic_string<char_type>& s) noexcept
     : data_(s.c_str()), size_(s.size()) {
   }
 
   // Constructs a string reference object from a std::basic_string_view<Elem>
+  // cppcheck-suppress noExplicitConstructor
   constexpr basic_string_ref(const std::basic_string_view<Elem>& str) noexcept
     : data_(str.data()), size_(str.size()) {
   }

@@ -114,7 +114,7 @@ std::string to_string(RestVerb type) {
   return "undefined";
 }
 
-RestVerb from_string(std::string const& type) {
+RestVerb from_string(std::string_view type) {
   if (type == "DELETE") {
     return RestVerb::Delete;
   } else if (type == "GET") {
@@ -132,6 +132,10 @@ RestVerb from_string(std::string const& type) {
   }
 
   return RestVerb::Illegal;
+}
+
+RestVerb from_string(std::string const& type) {
+  return from_string(std::string_view(type.data(), type.size()));
 }
 
 MessageType intToMessageType(int integral) {

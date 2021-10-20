@@ -50,6 +50,7 @@ class EncryptionProvider;
 
 namespace arangodb {
 
+struct RocksDBLogPersistor;
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
@@ -173,6 +174,7 @@ class RocksDBEngine final : public StorageEngine {
                                      arangodb::velocypack::Builder& result,
                                      bool wasCleanShutdown, bool isUpgrade) override;
 
+  void getReplicatedLogs(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result);
   ErrorCode getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
@@ -244,8 +246,17 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief whether or not purging of WAL files is currently allowed
   RocksDBFilePurgeEnabler startPurging() noexcept;
 
+  void scheduleTreeRebuild(TRI_voc_tick_t database, std::string const& collection);
+  void processTreeRebuilds();
+
   void compactRange(RocksDBKeyBounds bounds);
   void processCompactions();
+
+  virtual auto createReplicatedLog(TRI_vocbase_t&, arangodb::replication2::LogId)
+      -> ResultT<std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> override;
+  virtual auto dropReplicatedLog(TRI_vocbase_t&,
+                                 std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const&)
+      -> Result override;
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
@@ -300,6 +311,15 @@ class RocksDBEngine final : public StorageEngine {
   CollectionPair mapObjectToCollection(uint64_t) const;
   IndexTriple mapObjectToIndex(uint64_t) const;
 
+  /// @brief determine how many archived WAL files are available. this is called
+  /// during the first few minutes after the instance start, when we don't want
+  /// to prune any WAL files yet.
+  /// this also updates the metrics for the number of available WAL files.
+  void determineWalFilesInitial();
+
+  /// @brief determine which archived WAL files are prunable. as a side-effect,
+  /// this updates the metrics for the number of available and prunable WAL
+  /// files.
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
 
@@ -310,6 +330,12 @@ class RocksDBEngine final : public StorageEngine {
   virtual TRI_voc_tick_t currentTick() const override;
   virtual TRI_voc_tick_t releasedTick() const override;
   virtual void releaseTick(TRI_voc_tick_t) override;
+
+  /// @brief whether or not the database existed at startup. this function
+  /// provides a valid answer only after start() has successfully finished, 
+  /// so don't call it from other features during their start() if they are
+  /// earlier in the startup sequence
+  bool dbExisted() const noexcept { return _dbExisted; }
   
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
@@ -507,6 +533,9 @@ class RocksDBEngine final : public StorageEngine {
   /// checks for free disk space
   bool _lastHealthCheckSuccessful;
 
+  /// @brief whether or not the DB existed at startup
+  bool _dbExisted;
+
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes
   // (will only be set if _useThrottle is true)
@@ -536,12 +565,29 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief global health data, updated periodically
   HealthData _healthData;
 
-  // lock for _pendingCompactionsLock and _runningCompactions
+  /// @brief lock for _rebuildCollections
+  arangodb::Mutex _rebuildCollectionsLock;
+  /// @brief map of database/collection-guids for which we need to repair trees
+  std::map<std::pair<TRI_voc_tick_t, std::string>, bool> _rebuildCollections;
+  /// @brief number of currently running tree rebuild jobs jobs
+  size_t _runningRebuilds;
+
+  /// @brief lock for _pendingCompactions and _runningCompactions
   arangodb::basics::ReadWriteLock _pendingCompactionsLock;
-  // bounds for compactions that we have to process
+  /// @brief bounds for compactions that we have to process
   std::deque<RocksDBKeyBounds> _pendingCompactions;
-  // number of currently running compaction jobs
+  /// @brief number of currently running compaction jobs
   size_t _runningCompactions;
+  
+  Gauge<uint64_t>& _metricsWalSequenceLowerBound;
+  Gauge<uint64_t>& _metricsArchivedWalFiles;
+  Gauge<uint64_t>& _metricsPrunableWalFiles;
+  Gauge<uint64_t>& _metricsWalPruningActive;
+  Counter& _metricsTreeRebuildsSuccess;
+  Counter& _metricsTreeRebuildsFailure;
+  
+  // @brief persistor for replicated logs
+  std::shared_ptr<RocksDBLogPersistor> _logPersistor;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

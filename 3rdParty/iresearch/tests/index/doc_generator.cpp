@@ -480,7 +480,7 @@ class parse_json_handler : irs::util::noncopyable {
 json_doc_generator::json_doc_generator(
     const irs::utf8_path& file,
     const json_doc_generator::factory_f& factory) {
-  std::ifstream input(irs::utf8_path(file).utf8().c_str(), std::ios::in | std::ios::binary);
+  std::ifstream input(irs::utf8_path(file).u8string().c_str(), std::ios::in | std::ios::binary);
   assert(input);
 
   rapidjson::IStreamWrapper stream(input);

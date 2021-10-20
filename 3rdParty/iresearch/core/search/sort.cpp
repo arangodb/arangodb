@@ -146,10 +146,12 @@ order::prepared order::prepare() const {
       continue;
     }
 
+    // cppcheck-suppress shadowFunction
     const auto score_size = prepared->score_size();
     assert(score_size.second <= alignof(std::max_align_t));
     assert(math::is_power2(score_size.second)); // math::is_power2(0) returns true
 
+    // cppcheck-suppress shadowFunction
     const auto stats_size = prepared->stats_size();
     assert(stats_size.second <= alignof(std::max_align_t));
     assert(math::is_power2(stats_size.second)); // math::is_power2(0) returns true
@@ -159,14 +161,13 @@ order::prepared order::prepare() const {
 
     pord.score_size_ = memory::align_up(pord.score_size_, score_size.second);
     pord.stats_size_ = memory::align_up(pord.stats_size_, stats_size.second);
-    pord.features_ |= prepared->features();
+    pord.index_features_ |= prepared->features();
 
     pord.order_.emplace_back(
       std::move(prepared),
       pord.score_size_,
       pord.stats_size_,
-      entry.reverse()
-    );
+      entry.reverse());
 
     pord.score_size_ += memory::align_up(score_size.first, score_size.second);
     pord.stats_size_ += memory::align_up(stats_size.first, stats_size.second);

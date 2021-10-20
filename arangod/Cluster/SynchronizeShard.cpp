@@ -1111,17 +1111,22 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
       return ResultT<TRI_voc_tick_t>::error(res.errorNumber(), std::move(errorMessage));
     }
 
-    auto readLockGuard = arangodb::scopeGuard([&, this]() {
-      // Always cancel the read lock.
-      // Reported seperately
-      NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-      network::ConnectionPool* pool = nf.pool();
-      auto res = cancelReadLockOnLeader(pool, ep, getDatabase(), lockJobId, clientId, 60.0);
-      if (!res.ok()) {
-        LOG_TOPIC("b15ee", INFO, Logger::MAINTENANCE)
-            << "Could not cancel soft read lock on leader: " << res.errorMessage();
+    auto readLockGuard = arangodb::scopeGuard([&, this]() noexcept {
+      try {
+        // Always cancel the read lock.
+        // Reported seperately
+        NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
+        network::ConnectionPool* pool = nf.pool();
+        auto res = cancelReadLockOnLeader(pool, ep, getDatabase(), lockJobId, clientId, 60.0);
+        if (!res.ok()) {
+          LOG_TOPIC("b15ee", INFO, Logger::MAINTENANCE)
+              << "Could not cancel soft read lock on leader: " << res.errorMessage();
         }
-      });
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("e32be", ERR, Logger::MAINTENANCE)
+            << "Failed to cancel soft read lock on leader: " << ex.what();
+      }
+    });
 
     LOG_TOPIC("5eb37", DEBUG, Logger::MAINTENANCE) << "lockJobId: " << lockJobId;
 
@@ -1198,17 +1203,22 @@ Result SynchronizeShard::catchupWithExclusiveLock(
         "SynchronizeShard: error in startReadLockOnLeader (hard):", res.errorMessage());
     return {res.errorNumber(), std::move(errorMessage)};
   }
-  auto readLockGuard = arangodb::scopeGuard([&, this]() {
-    // Always cancel the read lock.
-    // Reported seperately
-    NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-    network::ConnectionPool* pool = nf.pool();
-    auto res = cancelReadLockOnLeader(pool, ep, getDatabase(), lockJobId, clientId, 60.0);
-    if (!res.ok()) {
-      LOG_TOPIC("067a8", INFO, Logger::MAINTENANCE)
-          << "Could not cancel hard read lock on leader: " << res.errorMessage();
+  auto readLockGuard = arangodb::scopeGuard([&, this]() noexcept {
+    try {
+      // Always cancel the read lock.
+      // Reported seperately
+      NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
+      network::ConnectionPool* pool = nf.pool();
+      auto res = cancelReadLockOnLeader(pool, ep, getDatabase(), lockJobId, clientId, 60.0);
+      if (!res.ok()) {
+        LOG_TOPIC("067a8", INFO, Logger::MAINTENANCE)
+            << "Could not cancel hard read lock on leader: " << res.errorMessage();
       }
-    });
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("d7848", ERR, Logger::MAINTENANCE)
+          << "Failed to cancel hard read lock on leader: " << ex.what();
+    }
+  });
 
   // Now we have got a unique id for this following term and have stored it
   // in _followingTermId, so we can use it to set the leader:
@@ -1308,7 +1318,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       options.timeout = network::Timeout(900.0);  // this can be slow!!!
       options.skipScheduler = true;  // hack to speed up future.get()
 
-      std::string const url = "/_api/collection/" + collection.name() + "/recalculateCount";
+      std::string const url = "/_api/collection/" + StringUtils::urlEncode(collection.name()) + "/recalculateCount";
 
       // send out the request
       auto future = network::sendRequest(pool, ep, fuerte::RestVerb::Put,
@@ -1361,7 +1371,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 void SynchronizeShard::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
     // by all means we must unlock when we leave this scope
-    auto shardUnlocker = scopeGuard([this] {
+    auto shardUnlocker = scopeGuard([this]() noexcept {
       _feature.unlockShard(getShard());
     });
 

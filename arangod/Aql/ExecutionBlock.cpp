@@ -185,20 +185,22 @@ void ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, Shar
           << " skipped=" << skipped.getSkipCount() << " produced=" << rows
           << " shadowRows=" << shadowRows
           << (clientId.empty() ? "" : " clientId=" + clientId);
-      ;
 
       if (_profileLevel >= ProfileLevel::TraceTwo) {
-        if (block == nullptr) {
-          LOG_QUERY("9b3f4", INFO)
-              << "execute type=" << node->getTypeString() << " result: nullptr";
-        } else {
-          auto const* opts = &_engine->getQuery().vpackOptions();
-          VPackBuilder builder;
-          block->toSimpleVPack(opts, builder);
-          LOG_QUERY("f12f9", INFO)
-              << "execute type=" << node->getTypeString()
-              << " result: " << VPackDumper::toString(builder.slice(), opts);
-        }
+        auto const resultString = std::invoke([&, &block = block]() -> std::string {
+          if (block == nullptr) {
+            return "nullptr";
+          } else {
+            auto const* opts = &_engine->getQuery().vpackOptions();
+            VPackBuilder builder;
+            block->toSimpleVPack(opts, builder);
+            return VPackDumper::toString(builder.slice(), opts);
+          }
+        });
+        LOG_QUERY("f12f9", INFO)
+            << "execute type=" << node->getTypeString() << " id=" << node->id()
+            << (clientId.empty() ? "" : " clientId=" + clientId)
+            << " result: " << resultString;
       }
     }
   }

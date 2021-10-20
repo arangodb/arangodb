@@ -25,6 +25,7 @@
 
 #include "RocksDBEngine/RocksDBIndex.h"
 
+#include <atomic>
 #include <mutex>
 
 namespace arangodb {
@@ -106,7 +107,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
     bool lock();
     void unlock();
     bool isLocked() const { return _locked; }
-  private:
+   private:
     RocksDBCollection* const _collection;
     bool _locked;
   };
@@ -117,6 +118,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
  private:
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
+  std::atomic<uint64_t> _docsProcessed;
 };
 }  // namespace arangodb
 

@@ -627,53 +627,12 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
 /// @brief get the (object) element by name
 AqlValue AqlValue::get(CollectionNameResolver const& resolver,
                        std::string const& name, bool& mustDestroy, bool doCopy) const {
-  mustDestroy = false;
-  AqlValueType t = type();
-  switch (t) {
-    case VPACK_SLICE_POINTER:
-      doCopy = false;
-    [[fallthrough]];
-    case VPACK_INLINE:
-    [[fallthrough]];
-    case VPACK_MANAGED_SLICE: {
-      VPackSlice s(slice(t));
-      if (s.isObject()) {
-        VPackSlice found(s.get(name));
-        if (found.isCustom()) {
-          // _id needs special treatment
-          mustDestroy = true;
-          return AqlValue(transaction::helpers::extractIdString(&resolver, s, VPackSlice()));
-        }
-        if (!found.isNone()) {
-          if (doCopy) {
-            mustDestroy = true;
-            return AqlValue(found);
-          }
-          // return a reference to an existing slice
-          return AqlValue(found.begin());
-        }
-      }
-      break;
-    }
-    case RANGE: {
-      // will return null
-      break;
-    }
-    case VPACK_INLINE_INT48:
-    case VPACK_INLINE_INT64:
-    case VPACK_INLINE_UINT64:
-    case VPACK_INLINE_DOUBLE:
-      break; // just do default
-  }
-
-  // default is to return null
-  return AqlValue(AqlValueHintNull());
+  return get(resolver, arangodb::velocypack::StringRef(name), mustDestroy, doCopy);
 }
 
 /// @brief get the (object) element by name
 AqlValue AqlValue::get(CollectionNameResolver const& resolver,
-                       arangodb::velocypack::StringRef const& name,
-                       bool& mustDestroy, bool doCopy) const {
+                       arangodb::velocypack::StringRef const& name, bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   AqlValueType t = type();
   switch (t) {

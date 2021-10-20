@@ -30,7 +30,8 @@ RocksDBBatchedMethods::RocksDBBatchedMethods(rocksdb::WriteBatch* wb)
 
 rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
-                                           rocksdb::PinnableSlice* val) {
+                                           rocksdb::PinnableSlice* val,
+                                           ReadOwnWrites) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "BatchedMethods does not provide Get");
 }

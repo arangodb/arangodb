@@ -191,22 +191,22 @@ void AuthenticationFeature::prepare() {
   if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
 #if USE_ENTERPRISE
     if (server().getFeature<LdapFeature>().isEnabled()) {
-      _userManager.reset(
-          new auth::UserManager(server(), std::make_unique<LdapAuthenticationHandler>(
-                                              server().getFeature<LdapFeature>())));
-    } else {
-      _userManager.reset(new auth::UserManager(server()));
+      _userManager = std::make_unique<auth::UserManager>(
+          server(), std::make_unique<LdapAuthenticationHandler>(server().getFeature<LdapFeature>()));
     }
-#else
-    _userManager.reset(new auth::UserManager(server()));
 #endif
+    if (_userManager == nullptr) {
+      _userManager = std::make_unique<auth::UserManager>(server());
+    }
+
+    TRI_ASSERT(_userManager != nullptr);
   } else {
     LOG_TOPIC("713c0", DEBUG, Logger::AUTHENTICATION)
         << "Not creating user manager";
   }
 
   TRI_ASSERT(_authCache == nullptr);
-  _authCache.reset(new auth::TokenCache(_userManager.get(), _authenticationTimeout));
+  _authCache = std::make_unique<auth::TokenCache>(_userManager.get(), _authenticationTimeout);
 
   if (_jwtSecretProgramOption.empty()) {
     LOG_TOPIC("43396", INFO, Logger::AUTHENTICATION)
@@ -249,12 +249,6 @@ void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }
 bool AuthenticationFeature::hasUserdefinedJwt() const {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
   return !_jwtSecretProgramOption.empty();
-}
-
-/// secret used for signing & verification of secrets
-std::string AuthenticationFeature::jwtActiveSecret() const {
-  std::lock_guard<std::mutex> guard(_jwtSecretsLock);
-  return _jwtSecretProgramOption;
 }
 
 #ifdef USE_ENTERPRISE

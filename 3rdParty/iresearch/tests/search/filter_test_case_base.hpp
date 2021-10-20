@@ -56,10 +56,10 @@ struct boost : public irs::sort {
 
   class prepared: public irs::prepared_sort_basic<irs::boost_t, void> {
    public:
-    prepared() { }
+    prepared() = default;
 
-    virtual const irs::flags& features() const override {
-      return irs::flags::empty_instance();
+    virtual irs::IndexFeatures features() const noexcept override {
+      return irs::IndexFeatures::NONE;
     }
 
     virtual irs::score_function prepare_scorer(
@@ -80,12 +80,9 @@ struct boost : public irs::sort {
         }
       };
     }
-
-   private:
-    const std::function<bool(score_t, score_t)>* less_;
   }; // sort::boost::prepared
 
-  DECLARE_FACTORY();
+  static ptr make();
   typedef irs::boost_t score_t;
   boost() : sort(irs::type<boost>::get()) {}
   virtual sort::prepared::ptr prepare() const {
@@ -238,8 +235,8 @@ struct custom_sort: public irs::sort {
       }
     }
 
-    virtual const irs::flags& features() const override {
-      return irs::flags::empty_instance();
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::NONE;
     }
 
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
@@ -313,7 +310,7 @@ struct custom_sort: public irs::sort {
   std::function<void()> term_reset_;
   std::function<void()> field_reset_;
 
-  DECLARE_FACTORY();
+  static ptr make();
   custom_sort(): sort(irs::type<custom_sort>::get()) {}
   virtual prepared::ptr prepare() const {
     return irs::memory::make_unique<custom_sort::prepared>(*this);
@@ -455,11 +452,10 @@ struct frequency_sort: public irs::sort {
     prepared() = default;
 
     virtual void collect(
-      irs::byte_type* stats_buf,
-      const irs::index_reader& index,
-      const irs::sort::field_collector* field,
-      const irs::sort::term_collector* term
-    ) const override {
+        irs::byte_type* stats_buf,
+        const irs::index_reader& /*index*/,
+        const irs::sort::field_collector* /*field*/,
+        const irs::sort::term_collector* term) const override {
       auto* term_ptr = dynamic_cast<const term_collector*>(term);
       if (term_ptr) { // may be null e.g. 'all' filter
         stats_cast(stats_buf).count = term_ptr->docs_count;
@@ -467,8 +463,8 @@ struct frequency_sort: public irs::sort {
       }
     }
 
-    virtual const irs::flags& features() const override {
-      return irs::flags::empty_instance();
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::NONE;
     }
 
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
@@ -525,7 +521,7 @@ struct frequency_sort: public irs::sort {
     }
   };
 
-  DECLARE_FACTORY();
+  static ptr make();
   frequency_sort(): sort(irs::type<frequency_sort>::get()) {}
   virtual prepared::ptr prepare() const {
     return irs::memory::make_unique<frequency_sort::prepared>();

@@ -1,9 +1,27 @@
 set (IResearchBenchmark_TARGET_NAME "iresearch-microbench" CACHE INTERNAL "")
 
-find_package(benchmark REQUIRED)
+if (NOT TARGET benchmark)
+  if ("${MICROBENCH_ROOT}" STREQUAL "")
+    set(MICROBENCH_ROOT "$ENV{MICROBENCH_ROOT}")
+  endif()
+
+  if (NOT ("${MICROBENCH_ROOT}" STREQUAL ""))
+    set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE INTERNAL "" FORCE)
+    set(BENCHMARK_ENABLE_TESTING OFF CACHE INTERNAL "" FORCE)
+    add_subdirectory(${MICROBENCH_ROOT}
+                     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-microbench.dir
+                     EXCLUDE_FROM_ALL)
+  else()
+   find_package(benchmark REQUIRED)
+  endif()
+endif()
+
+
 
 add_executable(${IResearchBenchmark_TARGET_NAME}
   ./top_term_collector_benchmark.cpp
+  ./segmentation_stream_benchmark.cpp
+  ./simd_utils_benchmark.cpp
   ./microbench_main.cpp
 )
 
@@ -49,7 +67,6 @@ include_directories(${IResearchBenchmark_TARGET_NAME}
   ${FROZEN_INCLUDE_DIR}
   $<TARGET_PROPERTY:absl-static,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
-  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>
 )

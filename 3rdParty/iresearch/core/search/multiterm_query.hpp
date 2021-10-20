@@ -35,7 +35,7 @@ namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 struct multiterm_state {
   struct term_state {
-    term_state(seek_term_iterator::seek_cookie::ptr&& cookie,
+    term_state(seek_cookie::ptr&& cookie,
                uint32_t stat_offset,
                boost_t boost = no_boost()) noexcept
       : cookie(std::move(cookie)),
@@ -43,12 +43,12 @@ struct multiterm_state {
         boost(boost) {
     }
 
-    seek_term_iterator::seek_cookie::ptr cookie;
+    seek_cookie::ptr cookie;
     uint32_t stat_offset{};
     float_t boost{ no_boost() };
   };
 
-  using unscored_term_state = seek_term_iterator::seek_cookie::ptr;
+  using unscored_term_state = seek_cookie::ptr;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return true if state is empty

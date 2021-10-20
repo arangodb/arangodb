@@ -607,7 +607,47 @@ function lateDocumentMaterializationRuleTestSuite () {
       let result = AQL_EXECUTE(query);
       assertEqual(1, result.json.length);
       assertEqual(result.json[0]._key, 'c0');
-    }
+    },
+    testConstrainedSortOnDbServer() {
+      let query = "FOR d IN " + prefixIndexCollectionName  + " FILTER d.obj.b == {sb: 'b_val_0'} " +
+                  "SORT d.obj.b LIMIT 10 RETURN {key: d._key, value:  d.some_value_from_doc}";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let materializeNodeFound = false;
+      let nodeDependency = null;
+      plan.nodes.forEach(function(node) {
+        if (node.type === "MaterializeNode") {
+          assertFalse(materializeNodeFound);
+          assertEqual(nodeDependency.type, isCluster ? "SortNode" : "LimitNode");
+          materializeNodeFound = true;
+        }
+        nodeDependency = node;
+      });
+      assertTrue(materializeNodeFound);
+      let result = AQL_EXECUTE(query);
+      assertEqual(1, result.json.length);
+      let expected = new Set(['c0']);
+      result.json.forEach(function(doc) {
+        assertTrue(expected.has(doc.key));
+        expected.delete(doc.key);
+      });
+      assertEqual(0, expected.size);
+    },
+
+    testIssue14819: function () {
+      let query = "FOR doc IN UNION((FOR doc IN " + severalIndexesCollectionName + " FILTER doc.a >= 1 && doc.a <= 10 COLLECT dt = DATE_FORMAT(DATE_TRUNC(doc.a, 'day'), '%yyyy-%mm-%dd') AGGREGATE sum = SUM(doc.b) LIMIT 1000000 RETURN { dt, sum }), []) LIMIT 1000000 RETURN doc";
+      let plans = AQL_EXPLAIN(query, null, { allPlans: true }).plans; 
+      assertEqual(2, plans.length);
+      // preferred plan without late materialization
+      let plan = plans[0];
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+      // other plan, with late materialization
+      plan = plans[1];
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query).json;
+      assertEqual(0, result.length);
+    },
+
   };
 }
 

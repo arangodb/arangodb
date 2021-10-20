@@ -421,7 +421,7 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
   
-  auto threadGuard = arangodb::scopeGuard([&]() {
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
     th.join();
   });
@@ -505,7 +505,7 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
   
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
 
-  auto threadGuard = arangodb::scopeGuard([&]() {
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
     th.join();
   });
@@ -565,7 +565,7 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
   
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
   
-  auto threadGuard = arangodb::scopeGuard([&]() {
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
     th.join();
   });
@@ -627,7 +627,7 @@ TEST(MaintenanceFeatureTestThreaded, priority_queue_should_be_able_to_process_fa
   
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
   
-  auto threadGuard = arangodb::scopeGuard([&]() {
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
     th.join();
   });
@@ -677,7 +677,7 @@ TEST(MaintenanceFeatureTestThreaded, action_delete) {
   
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
   
-  auto threadGuard = arangodb::scopeGuard([&]() {
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
     th.join();
   });

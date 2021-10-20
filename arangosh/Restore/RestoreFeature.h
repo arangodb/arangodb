@@ -28,6 +28,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
@@ -240,8 +241,16 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   };
   
   ClientTaskQueue<RestoreJob>& taskQueue();
-
+  
  private:
+  struct DatabaseInfo {
+    std::string directory;
+    VPackBuilder properties;
+    std::string name;
+  };
+
+  std::vector<DatabaseInfo> determineDatabaseList(std::string const& databaseName);
+
   ClientManager _clientManager;
   ClientTaskQueue<RestoreJob> _clientTaskQueue;
   std::unique_ptr<ManagedDirectory> _directory;
@@ -254,6 +263,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
 
   Mutex _buffersLock;
   std::vector<std::unique_ptr<basics::StringBuffer>> _buffers;
+
 };
 
 }  // namespace arangodb

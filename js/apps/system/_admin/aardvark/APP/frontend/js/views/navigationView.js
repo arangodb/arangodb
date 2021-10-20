@@ -128,9 +128,10 @@
 
     resize: function () {
       // set menu sizes - responsive
-      var height = $(window).height() - $('.subMenuEntries').first().height();
-      $('#navigationBar').css('min-height', height);
-      $('#navigationBar').css('height', height);
+      const height = $(window).height() - $('.subMenuEntries').first().height();
+      const navBar = $('#navigationBar');
+      navBar.css('min-height', height);
+      navBar.css('height', height);
     },
 
     navigateBySelect: function () {
@@ -295,18 +296,6 @@
         this.selectMenuItem(id + '-menu');
       }
     },
-
-    /*
-    breadcrumb: function (name) {
-
-      if (window.location.hash.split('/')[0] !== '#collection') {
-        $('#subNavigationBar .breadcrumb').html(
-          '<a class="activeBread" href="#' + name + '">' + name + '</a>'
-        )
-      }
-
-    },
-    */
 
     selectMenuItem: function (menuItem, noMenuEntry) {
       if (menuItem === undefined) {

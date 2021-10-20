@@ -63,10 +63,10 @@ struct test_compressor {
   static void init() {}
 
   static compression::compressor::ptr compressor(const options& opts) {
-    return iresearch::memory::make_shared<test_compressor_compressor>();
+    return irs::memory::make_managed<test_compressor_compressor>();
   }
   static compression::decompressor::ptr decompressor() {
-    return iresearch::memory::make_shared<test_compressor_decompressor>();
+    return irs::memory::make_managed<test_compressor_decompressor>();
   }
 
   static function_holder& functions() {
@@ -85,10 +85,10 @@ namespace mock {
 
 class test_encryption final : public ctr_encryption {
 public:
-  static std::shared_ptr<test_encryption> make(
+  static std::unique_ptr<test_encryption> make(
     size_t block_size,
     size_t header_length = DEFAULT_HEADER_LENGTH) {
-    return std::make_shared<test_encryption>(block_size, header_length);
+    return std::make_unique<test_encryption>(block_size, header_length);
   }
 
   explicit test_encryption(

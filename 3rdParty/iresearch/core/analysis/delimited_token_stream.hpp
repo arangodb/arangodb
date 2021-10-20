@@ -54,7 +54,6 @@ class delimited_token_stream final
   using attributes = std::tuple<
     increment,
     offset,        // token value with evaluated quotes
-    payload,       // raw token value
     term_attribute>;
 
   bytes_ref data_;

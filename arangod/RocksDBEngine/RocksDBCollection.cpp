@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
@@ -118,6 +119,19 @@ void reverseIdxOps(arangodb::PhysicalCollection::IndexContainerType const& index
       }
     }
   }
+}
+
+/// @brief remove an index from a container, by id
+bool removeIndex(arangodb::PhysicalCollection::IndexContainerType& indexes, arangodb::IndexId id) {
+  auto it = indexes.begin();
+  while (it != indexes.end()) {
+    if ((*it)->id() == id) {
+      indexes.erase(it);
+      return true;
+    }
+    ++it;
+  }
+  return false;
 }
 
 /// @brief helper RAII base class to count and time-track a CRUD operation
@@ -368,61 +382,59 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   }
 
   _numIndexCreations.fetch_add(1, std::memory_order_release);
-  auto colGuard = scopeGuard([&] {
+  auto colGuard = scopeGuard([&]() noexcept {
     _numIndexCreations.fetch_sub(1, std::memory_order_release);
     vocbase.release();
   });
+  
+
+  READ_LOCKER(inventoryLocker, vocbase._inventoryLock);
 
   RocksDBBuilderIndex::Locker locker(this);
   if (!locker.lock()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
   }
-
-  std::shared_ptr<Index> idx;
-  {  // Step 1. Check for matching index
-    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    if ((idx = findIndex(info, _indexes)) != nullptr) {
-      // We already have this index.
-      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
-        // special handling for TTL indexes
-        // if there is exactly the same index present, we return it
-        if (idx->matchesDefinition(info)) {
-          created = false;
-          return idx;
-        }
-        // if there is another TTL index already, we make things abort here
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            "there can only be one ttl index per collection");
-      }
-
-      created = false;
-      return idx;
-    }
-  }
-
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  
+  auto& selector = vocbase.server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
 
-  // Step 2. We are sure that we do not have an index of this type.
-  // We also hold the lock. Create it
-  bool const generateKey = !restore;
+  // Step 1. Create new index object
+  std::shared_ptr<Index> newIdx;
   try {
-    idx = engine.indexFactory().prepareIndexFromSlice(info, generateKey,
-                                                      _logicalCollection, false);
+    newIdx = engine.indexFactory().prepareIndexFromSlice(info, /*generateKey*/ !restore,
+                                                         _logicalCollection, false);
   } catch (std::exception const& ex) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED, ex.what());
   }
-
+  
   // we cannot persist primary or edge indexes
-  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
+  TRI_ASSERT(newIdx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+  TRI_ASSERT(newIdx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
 
-  {
+  {  
+    // Step 2. Check for existing matching index
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    for (auto const& other : _indexes) {  // conflicting index exists
-      if (other->id() == idx->id() || other->name() == idx->name()) {
+
+    if (auto existingIdx = findIndex(info, _indexes); existingIdx != nullptr) {
+      // We already have this index.
+      if (existingIdx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
+        // special handling for TTL indexes
+        // if there is exactly the same index present, we return it
+        if (!existingIdx->matchesDefinition(info)) {
+          // if there is another TTL index already, we make things abort here
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "there can only be one ttl index per collection");
+        }
+      }
+      // same index already exists. return it
+      created = false;
+      return existingIdx;
+    }
+
+    // check all existing indexes for id/new conflicts
+    for (auto const& other : _indexes) {  
+      if (other->id() == newIdx->id() || other->name() == newIdx->name()) {
         // definition shares an identifier with an existing index with a
         // different definition
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -440,18 +452,19 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     }
   }
 
-  Result res;
-
-  do {
+  // until here we have been completely read only. 
+  // modifications start now...
+      
+  Result res = arangodb::basics::catchToResult([&]() -> Result {
+    Result res;
 
     // Step 3. add index to collection entry (for removal after a crash)
     auto buildIdx =
-    std::make_shared<RocksDBBuilderIndex>(std::static_pointer_cast<RocksDBIndex>(idx));
-    if (!engine.inRecovery()) {  // manually modify collection entry, other
-      // methods need lock
+        std::make_shared<RocksDBBuilderIndex>(std::static_pointer_cast<RocksDBIndex>(newIdx));
+    if (!engine.inRecovery()) {  
+      // manually modify collection entry, other methods need lock
       RocksDBKey key;             // read collection info from database
-      key.constructCollection(_logicalCollection.vocbase().id(),
-                              _logicalCollection.id());
+      key.constructCollection(vocbase.id(), _logicalCollection.id());
       rocksdb::PinnableSlice ps;
       rocksdb::Status s =
           engine.db()->Get(rocksdb::ReadOptions(),
@@ -459,8 +472,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
                                RocksDBColumnFamilyManager::Family::Definitions),
                            key.string(), &ps);
       if (!s.ok()) {
-        res.reset(rocksutils::convertStatus(s));
-        break;
+        return res.reset(rocksutils::convertStatus(s));
       }
 
       VPackBuilder builder;
@@ -470,94 +482,94 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
           VPackArrayBuilder arrGuard(&builder, "indexes");
           builder.add(VPackArrayIterator(pair.value));
           buildIdx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Internals));
-          continue;
+        } else {
+          builder.add(pair.key);
+          builder.add(pair.value);
         }
-        builder.add(pair.key);
-        builder.add(pair.value);
       }
       builder.close();
-      res = engine.writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
+      res = engine.writeCreateCollectionMarker(vocbase.id(),
                                                _logicalCollection.id(), builder.slice(),
                                                RocksDBLogValue::Empty());
       if (res.fail()) {
-        break;
+        return res;
       }
     }
+
+    // release inventory lock while we are filling the index
+    inventoryLocker.unlock();
 
     // Step 4. fill index
     bool const inBackground =
         basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IndexInBackground, false);
-    if (inBackground) {  // allow concurrent inserts into index
+    if (inBackground) {  
+      // allow concurrent inserts into index
       {
         RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
         _indexes.emplace(buildIdx);
       }
+
       res = buildIdx->fillIndexBackground(locker);
     } else {
       res = buildIdx->fillIndexForeground();
     }
     if (res.fail()) {
-      break;
+      return res;
     }
-    locker.lock(); // always lock to avoid inconsistencies
+
+    // always (re-)lock to avoid inconsistencies
+    locker.lock(); 
+
+    inventoryLocker.lock();
 
     // Step 5. register in index list
     {
       RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-      if (inBackground) {  // swap in actual index
-        for (auto& it : _indexes) {
-          if (it->id() == buildIdx->id()) {
-            _indexes.erase(it);
-            _indexes.emplace(idx);
-            break;
-          }
-        }
-      } else {
-        _indexes.emplace(idx);
+      if (inBackground) {
+        // remove temporary index and swap in actual index
+        removeIndex(_indexes, buildIdx->id());
       }
+      _indexes.emplace(newIdx);
     }
 #if USE_PLAN_CACHE
-    arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection.vocbase());
+    arangodb::aql::PlanCache::instance()->invalidate(vocbase);
 #endif
 
     // inBackground index might not recover selectivity estimate w/o sync
-    if (inBackground && !idx->unique() && idx->hasSelectivityEstimate()) {
+    if (inBackground && !newIdx->unique() && newIdx->hasSelectivityEstimate()) {
       engine.settingsManager()->sync(false);
     }
 
     // Step 6. persist in rocksdb
-    if (!engine.inRecovery()) {  // write new collection marker
+    if (!engine.inRecovery()) {  
+      // write new collection marker
       auto builder = _logicalCollection.toVelocyPackIgnore(
           {"path", "statusString"},
           LogicalDataSource::Serialization::PersistenceWithInProgress);
       VPackBuilder indexInfo;
-      idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::Internals));
+      newIdx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::Internals));
       res = engine.writeCreateCollectionMarker(
-          _logicalCollection.vocbase().id(), _logicalCollection.id(), builder.slice(),
-          RocksDBLogValue::IndexCreate(_logicalCollection.vocbase().id(),
+          vocbase.id(), _logicalCollection.id(), builder.slice(),
+          RocksDBLogValue::IndexCreate(vocbase.id(),
                                        _logicalCollection.id(), indexInfo.slice()));
     }
-  } while (false);
 
-  // cleanup routine
-  if (res.fail()) { // We could not create the index. Better abort
-    {
-      RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-      auto it = _indexes.begin();
-      while (it != _indexes.end()) {
-        if ((*it)->id() == idx->id()) {
-          _indexes.erase(it);
-          break;
-        }
-        it++;
-      }
-    }
-    idx->drop();
-    THROW_ARANGO_EXCEPTION(res);
+    return res;
+  });
+
+  if (res.ok()) {
+    created = true;
+    return newIdx;
   }
 
-  created = true;
-  return idx;
+  // cleanup routine
+  // We could not create the index. Better abort
+  {
+    RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    removeIndex(_indexes, newIdx->id());
+  }
+  newIdx->drop();
+  THROW_ARANGO_EXCEPTION(res);
 }
 
 /// @brief Drop an index with the given iid.
@@ -628,8 +640,8 @@ bool RocksDBCollection::dropIndex(IndexId iid) {
   return res.ok();
 }
 
-std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(transaction::Methods* trx) const {
-  return std::make_unique<RocksDBAllIndexIterator>(&_logicalCollection, trx);
+std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(transaction::Methods* trx, ReadOwnWrites readOwnWrites) const {
+  return std::make_unique<RocksDBAllIndexIterator>(&_logicalCollection, trx, readOwnWrites);
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(transaction::Methods* trx) const {
@@ -648,7 +660,7 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
   RocksDBReplicationManager* manager = engine.replicationManager();
   RocksDBReplicationContext* ctx = batchId == 0 ? nullptr : manager->find(batchId);
-  auto guard = scopeGuard([manager, ctx]() -> void {
+  auto guard = scopeGuard([manager, ctx]() noexcept {
     if (ctx) {
       manager->release(ctx);
     }
@@ -778,15 +790,26 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
   // avoid OOM error for truncate by committing earlier
   uint64_t const prvICC = state->options().intermediateCommitCount;
-  state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
+  if (!state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
+  }
+
+  // push our current transaction on the stack
+  state->beginQuery(true);
+  auto stateGuard = scopeGuard([state, prvICC]() noexcept {
+    state->endQuery(true);
+    // reset to previous value after truncate is finished
+    state->options().intermediateCommitCount = prvICC;
+  });
 
   uint64_t found = 0;
 
   VPackBuilder docBuffer;
-  auto iter = mthds->NewIterator(documentBounds.columnFamily(), [&](rocksdb::ReadOptions& ro) {
+  auto iter = mthds->NewIterator(documentBounds.columnFamily(), [&](ReadOptions& ro) {
     ro.iterate_upper_bound = &end;
     // we are going to blow away all data anyway. no need to blow up the cache
     ro.fill_cache = false;
+    ro.readOwnWrites = false;
     TRI_ASSERT(ro.snapshot);
   });
   for (iter->Seek(documentBounds.start());
@@ -825,9 +848,6 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     trackWaitForSync(&trx, options);
   }
 
-  // reset to previous value after truncate is finished
-  state->options().intermediateCommitCount = prvICC;
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (state->numCommits() == 0) {
     // check IN TRANSACTION if documents have been deleted
@@ -848,12 +868,12 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 }
 
 Result RocksDBCollection::lookupKey(transaction::Methods* trx, VPackStringRef key,
-                                    std::pair<LocalDocumentId, RevisionId>& result) const {
+                                    std::pair<LocalDocumentId, RevisionId>& result, ReadOwnWrites readOwnWrites) const {
   result.first = LocalDocumentId::none();
   result.second = RevisionId::none();
 
   // lookup the revision id in the primary index
-  if (!primaryIndex()->lookupRevision(trx, key, result.first, result.second)) {
+  if (!primaryIndex()->lookupRevision(trx, key, result.first, result.second, readOwnWrites)) {
     // document not found
     TRI_ASSERT(!result.first.isSet());
     TRI_ASSERT(result.second.empty());
@@ -868,13 +888,13 @@ Result RocksDBCollection::lookupKey(transaction::Methods* trx, VPackStringRef ke
 }
 
 bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice const& key,
-                                       RevisionId& revisionId) const {
+                                       RevisionId& revisionId, ReadOwnWrites readOwnWrites) const {
   TRI_ASSERT(key.isString());
   LocalDocumentId documentId;
   revisionId = RevisionId::none();
   // lookup the revision id in the primary index
   if (!primaryIndex()->lookupRevision(trx, arangodb::velocypack::StringRef(key),
-                                      documentId, revisionId)) {
+                                      documentId, revisionId, readOwnWrites)) {
     // document not found
     TRI_ASSERT(revisionId.empty());
     return false;
@@ -888,7 +908,8 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
 
 Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
-                               IndexIterator::DocumentCallback const& cb) const {
+                               IndexIterator::DocumentCallback const& cb,
+                               ReadOwnWrites readOwnWrites) const {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
 
   ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
@@ -896,13 +917,13 @@ Result RocksDBCollection::read(transaction::Methods* trx,
   rocksdb::PinnableSlice ps;
   Result res;
   do {
-    LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
+    LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key, readOwnWrites);
     if (!documentId.isSet()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       break;
     }  // else found
 
-    res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true);
+    res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true, readOwnWrites);
     if (res.ok()) {
       cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
     }
@@ -914,20 +935,22 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 // read using a local document id
 Result RocksDBCollection::read(transaction::Methods* trx,
                              LocalDocumentId const& documentId,
-                             IndexIterator::DocumentCallback const& cb) const {
+                             IndexIterator::DocumentCallback const& cb,
+                             ReadOwnWrites readOwnWrites) const {
   ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
 
   if (!documentId.isSet()) {
     return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "invalid local document id"};
   }
 
-  return lookupDocumentVPack(trx, documentId, cb, /*withCache*/true);
+  return lookupDocumentVPack(trx, documentId, cb, /*withCache*/true, readOwnWrites);
 }
 
 // read using a local document id
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
-                                     ManagedDocumentResult& result) const {
+                                     ManagedDocumentResult& result,
+                                     ReadOwnWrites readOwnWrites) const {
   ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
 
   bool ret = false;
@@ -935,7 +958,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
   if (documentId.isSet()) {
     std::string* buffer = result.setManaged();
     rocksdb::PinnableSlice ps(buffer);
-    Result res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true);
+    Result res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true, readOwnWrites);
     if (res.ok()) {
       if (ps.IsPinned()) {
         buffer->assign(ps.data(), ps.size());
@@ -1019,125 +1042,26 @@ Result RocksDBCollection::update(transaction::Methods* trx,
                                  velocypack::Slice newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
-  RocksDBTransactionStateGuard transactionStateGuard(RocksDBTransactionState::toState(trx));
-
-  TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
-
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_update_sec, _statistics, options);
-
-  Result res;
-
-  VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
-  if (keySlice.isNone()) {
-    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
-  } else if (!keySlice.isString()) {
-    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  }
-  auto keyStr = VPackStringRef(keySlice);
-  if (keyStr.empty()) {
-    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  }
-
-  auto const oldDocumentId = primaryIndex()->lookupKey(trx, keyStr);
-  if (!oldDocumentId.isSet()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-  }
-  std::string* prevBuffer = previousMdr.setManaged();
-  // uses either prevBuffer or avoids memcpy (if read hits block cache)
-  rocksdb::PinnableSlice previousPS(prevBuffer);
-  res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
-                            /*readCache*/true, /*fillCache*/false);
-  if (res.fail()) {
-    return res;
-  }
-
-  TRI_ASSERT(previousPS.size() > 0);
-  VPackSlice const oldDoc(reinterpret_cast<uint8_t const*>(previousPS.data()));
-  previousMdr.setRevisionId(transaction::helpers::extractRevFromDocument(oldDoc));
-  TRI_ASSERT(previousMdr.revisionId().isSet());
-
-  if (!options.ignoreRevs) {  // Check old revision:
-    RevisionId expectedRev = RevisionId::fromSlice(newSlice);
-    if (!checkRevision(trx, expectedRev, previousMdr.revisionId())) {
-      return res.reset(TRI_ERROR_ARANGO_CONFLICT, "conflict, _rev values do not match");
-    }
-  }
-  
-  // merge old and new values
-  RevisionId revisionId;
-  auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
-
-  transaction::BuilderLeaser builder(trx);
-  res = mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
-                              options.mergeObjects, options.keepNull,
-                              *builder.get(), options.isRestore, revisionId);
-  if (res.fail()) {
-    return res;
-  }
-  LocalDocumentId const newDocumentId = ::generateDocumentId(_logicalCollection, revisionId);
-
-  if (_isDBServer) {
-    // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), true)) {
-      return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
-    }
-    if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc,
-                                            builder->slice(), true)) {
-      return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
-    }
-  }
-
-  if (options.validate && options.isSynchronousReplicationFrom.empty()) {
-    res = _logicalCollection.validate(builder->slice(), oldDoc,
-                                      trx->transactionContextPtr()->getVPackOptions());
-    if (res.fail()) {
-      return res;
-    }
-  }
-
-  VPackSlice newDoc(builder->slice());
-  auto* state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint savepoint(state, trx, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-
-  res = modifyDocument(trx, savepoint, oldDocumentId, oldDoc, newDocumentId, newDoc, options, revisionId);
-
-  if (res.ok()) {
-    trackWaitForSync(trx, options);
-
-    if (options.returnNew) {
-      resultMdr.setManaged(newDoc.begin());
-      TRI_ASSERT(!resultMdr.empty());
-    } else {  //  need to pass revId manually
-      resultMdr.setRevisionId(revisionId);
-    }
-    if (options.returnOld) {
-      if (previousPS.IsPinned()) { // value was not copied
-        prevBuffer->assign(previousPS.data(), previousPS.size());
-      }  // else value is already assigned
-      TRI_ASSERT(!previousMdr.empty());
-    } else {
-      previousMdr.clearData();
-    }
-
-    res = savepoint.finish(_logicalCollection.id(), revisionId);
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
-    
-  return res;
+  return performUpdateOrReplace(trx, newSlice, resultMdr, options, previousMdr, true);
 }
 
 Result RocksDBCollection::replace(transaction::Methods* trx,
                                   velocypack::Slice newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec, _statistics, options);
+  return performUpdateOrReplace(trx, newSlice, resultMdr, options, previousMdr, false);
+}
+                                  
+Result RocksDBCollection::performUpdateOrReplace(transaction::Methods* trx,
+                                                 velocypack::Slice newSlice,
+                                                 ManagedDocumentResult& resultMdr, OperationOptions& options,
+                                                 ManagedDocumentResult& previousMdr, bool isUpdate) {
   RocksDBTransactionStateGuard transactionStateGuard(RocksDBTransactionState::toState(trx));
 
   TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
 
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec, _statistics, options);
-  
   Result res;
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
@@ -1151,15 +1075,17 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
 
-  auto const oldDocumentId = primaryIndex()->lookupKey(trx, keyStr);
+  // modifications always need to observe all changes in order to validate uniqueness constraints
+  auto const oldDocumentId = primaryIndex()->lookupKey(trx, keyStr, ReadOwnWrites::yes);
   if (!oldDocumentId.isSet()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
   std::string* prevBuffer = previousMdr.setManaged();
   // uses either prevBuffer or avoids memcpy (if read hits block cache)
   rocksdb::PinnableSlice previousPS(prevBuffer);
+  // modifications always need to observe all changes in order to validate uniqueness constraints
   res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
-  /*readCache*/ true, /*fillCache*/ false);
+    /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
   if (res.fail()) {
     return res;
   }
@@ -1181,8 +1107,14 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   transaction::BuilderLeaser builder(trx);
-  res = newObjectForReplace(trx, oldDoc, newSlice, isEdgeCollection,
-                            *builder.get(), options.isRestore, revisionId);
+  if (isUpdate) {
+    res = mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
+                                options.mergeObjects, options.keepNull,
+                                *builder.get(), options.isRestore, revisionId);
+  } else {
+    res = newObjectForReplace(trx, oldDoc, newSlice, isEdgeCollection,
+                              *builder.get(), options.isRestore, revisionId);
+  }
   if (res.fail()) {
     return res;
   }
@@ -1190,11 +1122,11 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), false)) {
+    if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), isUpdate)) {
       return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
     if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc,
-                                            builder->slice(), false)) {
+                                            builder->slice(), isUpdate)) {
       return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
     }
   }
@@ -1210,7 +1142,8 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   }
 
   auto* state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint savepoint(state, trx, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+  auto opType = isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE : TRI_VOC_DOCUMENT_OPERATION_REPLACE;
+  RocksDBSavePoint savepoint(state, trx, opType);
 
   res = modifyDocument(trx, savepoint, oldDocumentId, oldDoc, newDocumentId, newDoc, options, revisionId);
 
@@ -1266,7 +1199,8 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
-  auto const documentId = primaryIndex()->lookupKey(&trx, keyStr);
+  // modifications always need to observe all changes in order to validate uniqueness constraints
+  auto const documentId = primaryIndex()->lookupKey(&trx, keyStr, ReadOwnWrites::yes);
   if (!documentId.isSet()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
@@ -1301,8 +1235,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
   std::string* prevBuffer = previousMdr.setManaged();
   // uses either prevBuffer or avoids memcpy (if read hits block cache)
   rocksdb::PinnableSlice previousPS(prevBuffer);
+  // modifications always need to observe all changes in order to validate uniqueness constraints
   res = lookupDocumentVPack(&trx, documentId, previousPS,
-  /*readCache*/ true, /*fillCache*/ false);
+  /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
   if (res.fail()) {
     return res;
   }
@@ -1340,13 +1275,6 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
   }
   
   return res;
-}
-
-void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t diff) {
-  RocksDBEngine& engine =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  auto seq = engine.db()->GetLatestSequenceNumber();
-  meta().adjustNumberDocuments(seq, RevisionId::none(), diff);
 }
 
 bool RocksDBCollection::hasDocuments() {
@@ -1512,7 +1440,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (performPreflightChecks) {
     rocksdb::PinnableSlice val;
-    rocksdb::Status s = mthds->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents), key->string(), &val);
+    rocksdb::Status s = mthds->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents), key->string(), &val, ReadOwnWrites::yes);
     TRI_ASSERT(s.IsNotFound() || !s.ok());
   }
 #endif
@@ -1614,7 +1542,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
     rocksdb::PinnableSlice val;
-    rocksdb::Status s = mthds->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents), key->string(), &val);
+    rocksdb::Status s = mthds->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents), key->string(), &val, ReadOwnWrites::yes);
     TRI_ASSERT(s.ok());
   }
 #endif
@@ -1838,7 +1766,8 @@ Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
 arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
                                                         LocalDocumentId const& documentId,
                                                         rocksdb::PinnableSlice& ps,
-                                                        bool readCache, bool fillCache) const {
+                                                        bool readCache, bool fillCache,
+                                                        ReadOwnWrites readOwnWrites) const {
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(objectId() != 0);
   Result res;
@@ -1868,7 +1797,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
   rocksdb::Status s =
       mthd->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
-                key->string(), &ps);
+                key->string(), &ps, readOwnWrites);
 
   if (!s.ok()) {
     LOG_TOPIC("f63dd", DEBUG, Logger::ENGINES)
@@ -1897,7 +1826,8 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
 Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
                                             LocalDocumentId const& documentId,
                                             IndexIterator::DocumentCallback const& cb,
-                                            bool withCache) const {
+                                            bool withCache,
+                                            ReadOwnWrites readOwnWrites) const {
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(objectId() != 0);
 
@@ -1921,7 +1851,7 @@ Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
   rocksdb::Status s =
       mthd->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
-                key->string(), &ps);
+                key->string(), &ps, readOwnWrites);
 
   if (!s.ok()) {
     return rocksutils::convertStatus(s);

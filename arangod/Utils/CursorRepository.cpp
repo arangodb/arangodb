@@ -170,7 +170,7 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
 /// the cursor will create a query internally and retain it until deleted
 //////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::createQueryStream(std::unique_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl) {
+Cursor* CursorRepository::createQueryStream(std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl) {
   if (_softShutdownOngoing != nullptr &&
       _softShutdownOngoing->load(std::memory_order_relaxed)) {
     // Refuse to create the cursor:

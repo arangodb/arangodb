@@ -29,26 +29,18 @@ TEST(container_utils_tests, test_bucket_allocator) {
   static size_t ACTUAL_SIZE{};
 
   struct bucket_builder {
-    typedef std::shared_ptr<irs::byte_type> ptr;
+    typedef std::unique_ptr<irs::byte_type[]> ptr;
 
     static ptr make(size_t size) {
       ACTUAL_SIZE = size;
       WAS_MADE = true;
 
-      // starting from gcc6 it's impossible to instanciate
-      // std::shared_ptr<T> from std::unique_ptr<T[]>
-      auto buf = irs::memory::make_unique<irs::byte_type[]>(size);
-      auto p = std::shared_ptr<irs::byte_type>(
-        buf.get(), std::default_delete<irs::byte_type[]>()
-      );
-      buf.release();
-      return p;
+      return irs::memory::make_unique<irs::byte_type[]>(size);
     }
   };
 
-  irs::container_utils::memory::bucket_allocator<bucket_builder, 16> alloc(
-    1   // how many buckets to cache for each level
-  );
+  // how many buckets to cache for each level
+  irs::container_utils::memory::bucket_allocator<bucket_builder, 16> alloc(1);
 
   typedef irs::container_utils::raw_block_vector<
     16, // total number of levels

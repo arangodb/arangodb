@@ -44,13 +44,11 @@ class Transaction;
 namespace arangodb {
 
 class RocksDBSettingsManager {
-  friend class RocksDBEngine;
-
+ public:
   /// Constructor needs to be called synchronously,
   /// will load counts from the db and scan the WAL
   explicit RocksDBSettingsManager(RocksDBEngine& engine);
 
- public:
   /// Retrieve initial settings values from database on engine startup
   void retrieveInitialValues();
 

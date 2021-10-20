@@ -1,7 +1,7 @@
 name: arangodb_v8_context_min
 introducedIn: "3.6.7"
 help: |
-  Minimum number of concurrent V8 contexts
+  Minimum number of concurrent V8 contexts.
 unit: number
 type: gauge
 category: Statistics

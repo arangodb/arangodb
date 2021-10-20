@@ -24,6 +24,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ResultT.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Queues/FifoQueue.h"
 
@@ -34,7 +35,7 @@ using namespace arangodb::graph;
 
 namespace arangodb {
 namespace tests {
-namespace queue_graph_cache_test {
+namespace fifo_queue_graph_cache_test {
 
 class Step : public arangodb::graph::BaseStep<Step> {
   size_t _id;

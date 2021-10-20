@@ -6,7 +6,9 @@
 
 @HINTS
 {% hint 'warning' %}
-The unload function is deprecated from version 3.8.0 onwards and should no longer be used.
+The unload function is deprecated from version 3.8.0 onwards and is a no-op 
+from version 3.9.0 onwards. It should no longer be used, as it may be removed
+in a future version of ArangoDB.
 {% endhint %}
 
 {% hint 'warning' %}
@@ -19,10 +21,10 @@ You should reference them via their names instead.
 @RESTURLPARAM{collection-name,string,required}
 
 @RESTDESCRIPTION
-Removes a collection from memory. This call does not delete any documents.
-You can use the collection afterwards; in which case it will be loaded into
-memory, again. On success an object with the following attributes is
-returned:
+Since ArangoDB version 3.9.0 this API does nothing. Previously it used to
+unload a collection from memory, while preserving all documents.
+When calling the API an object with the following attributes is
+returned for compatibility reasons:
 
 - *id*: The identifier of the collection.
 

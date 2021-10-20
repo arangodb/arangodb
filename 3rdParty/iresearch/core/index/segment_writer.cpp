@@ -35,6 +35,25 @@
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 
+#include "index/norm.hpp"
+
+namespace {
+
+using namespace irs;
+
+[[maybe_unused]] inline bool is_subset_of(
+    const features_t& lhs,
+    const feature_map_t& rhs) noexcept {
+  for (const irs::type_info::type_id type: lhs) {
+    if (!rhs.count(type)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+}
+
 namespace iresearch {
 
 segment_writer::stored_column::stored_column(
@@ -49,7 +68,7 @@ segment_writer::stored_column::stored_column(
     auto& info = stream.info();
     std::tie(id, writer) = columnstore.push_column(info);
   } else {
-    writer = [this](irs::doc_id_t doc)->columnstore_writer::column_output& {
+    writer = [this](irs::doc_id_t doc)-> column_output& {
       this->stream.prepare(doc);
       return this->stream;
     };
@@ -61,7 +80,7 @@ doc_id_t segment_writer::begin(
     size_t reserve_rollback_extra /*= 0*/) {
   assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
   valid_ = true;
-  norm_fields_.clear(); // clear norm fields
+  doc_.clear(); // clear norm fields
 
   if (docs_mask_.capacity() <= docs_mask_.size() + 1 + reserve_rollback_extra) {
     docs_mask_.reserve(
@@ -80,14 +99,18 @@ doc_id_t segment_writer::begin(
 
 segment_writer::ptr segment_writer::make(
     directory& dir,
+    const field_features_t& field_features,
     const column_info_provider_t& column_info,
+    const feature_column_info_provider_t& feature_column_info,
     const comparer* comparator) {
-  return memory::maker<segment_writer>::make(dir, column_info, comparator);
+  return memory::maker<segment_writer>::make(
+    dir, field_features, column_info,
+    feature_column_info, comparator);
 }
 
 size_t segment_writer::memory_active() const noexcept {
-  const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
-    ? sizeof(bitvector::word_t) : 0;
+  const auto docs_mask_extra = (0 != (docs_mask_.size() % sizeof(bitvector::word_t)))
+     ? sizeof(bitvector::word_t) : 0;
 
   const auto column_cache_active = std::accumulate(
     columns_.begin(), columns_.end(), size_t(0),
@@ -103,7 +126,7 @@ size_t segment_writer::memory_active() const noexcept {
 }
 
 size_t segment_writer::memory_reserved() const noexcept {
-  const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
+  const auto docs_mask_extra = (0 != (docs_mask_.size() % sizeof(bitvector::word_t)))
     ? sizeof(bitvector::word_t) : 0;
 
   const auto column_cache_reserved = std::accumulate(
@@ -134,11 +157,14 @@ bool segment_writer::remove(doc_id_t doc_id) {
 
 segment_writer::segment_writer(
     directory& dir,
+    const field_features_t& field_features,
     const column_info_provider_t& column_info,
+    const feature_column_info_provider_t& feature_column_info,
     const comparer* comparator) noexcept
   : sort_(column_info),
-    fields_(comparator),
+    fields_(field_features, feature_column_info, comparator),
     column_info_(&column_info),
+    field_features_(&field_features),
     dir_(dir),
     initialized_(false) {
 }
@@ -146,35 +172,31 @@ segment_writer::segment_writer(
 bool segment_writer::index(
     const hashed_string_ref& name,
     const doc_id_t doc,
-    const flags& features,
+    IndexFeatures index_features,
+    const features_t& features,
     token_stream& tokens) {
   REGISTER_TIMER_DETAILED();
+  assert(col_writer_);
 
-  auto* slot = fields_.emplace(name);
-  auto& slot_features = slot->meta().features;
+  auto* slot = fields_.emplace(name, index_features, features, *col_writer_);
 
-  const bool slot_empty = slot->empty();
-
-  // invert only if new field features are a subset of slot features
-  if ((slot_empty || features.is_subset_of(slot_features)) &&
-      slot->invert(tokens, slot_empty ? features : slot_features, doc)) {
-    if (slot->size() && features.check<norm>()) {
-      norm_fields_.insert(slot);
+  // invert only if new field index features are a subset of slot index features
+  assert(::is_subset_of(features, slot->meta().features));
+  if (is_subset_of(index_features, slot->meta().index_features) &&
+      slot->invert(tokens, doc)) {
+    if (!slot->seen() && slot->has_features()) {
+      doc_.emplace_back(slot);
+      slot->seen(true);
     }
 
-    fields_ += features; // accumulate segment features
     return true;
   }
 
+  valid_ = false;
   return false;
 }
 
-columnstore_writer::column_output& segment_writer::sorted_stream(const doc_id_t doc_id) {
-  sort_.stream.prepare(doc_id);
-  return sort_.stream;
-}
-
-columnstore_writer::column_output& segment_writer::stream(
+column_output& segment_writer::stream(
     const hashed_string_ref& name,
     const doc_id_t doc_id) {
   REGISTER_TIMER_DETAILED();
@@ -186,21 +208,6 @@ columnstore_writer::column_output& segment_writer::stream(
       ctor(name, *col_writer_, *column_info_,
            nullptr != fields_.comparator());
   })->writer(doc_id);
-}
-
-void segment_writer::finish() {
-  REGISTER_TIMER_DETAILED();
-
-  // write document normalization factors (for each field marked for normalization))
-  float_t value;
-  for (const auto* field: norm_fields_) {
-    assert(field && field->size() > 0);
-    value = 1.f / float_t(std::sqrt(double_t(field->size())));
-    if (value != norm::DEFAULT()) {
-      auto& stream = field->norms(*col_writer_);
-      write_zvfloat(stream, value);
-    }
-  }
 }
 
 void segment_writer::flush_column_meta(const segment_meta& meta) {
@@ -272,6 +279,11 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
   auto& meta = segment.meta;
 
   doc_map docmap;
+  flush_state state;
+  state.dir = &dir_;
+  state.doc_count = docs_cached();
+  state.name = seg_name_;
+  state.docmap = nullptr;
 
   if (fields_.comparator()) {
     std::tie(docmap, sort_.id) = sort_.stream.flush(
@@ -290,10 +302,14 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
     }
 
     meta.sort = sort_.id; // store sorted column id in segment meta
+
+    if (!docmap.empty()) {
+      state.docmap = &docmap;
+    }
   }
 
   // flush columnstore
-  if (col_writer_->commit()) {
+  if (col_writer_->commit(state)) {
     if (!columns_.empty()) {
       flush_column_meta(meta);
     }
@@ -354,7 +370,7 @@ void segment_writer::reset(const segment_meta& meta) {
   }
 
   if (!col_writer_) {
-    col_writer_ = meta.codec->get_columnstore_writer();
+    col_writer_ = meta.codec->get_columnstore_writer(false);
     assert(col_writer_);
   }
 

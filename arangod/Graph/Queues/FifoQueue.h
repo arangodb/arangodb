@@ -35,6 +35,7 @@ namespace graph {
 template <class StepType>
 class FifoQueue {
  public:
+  static constexpr bool RequiresWeight = false;
   using Step = StepType;
   // TODO: Add Sorting (Performance - will be implemented in the future - cluster relevant)
   // -> loose ends to the front
@@ -55,7 +56,7 @@ class FifoQueue {
     // if push_front() throws, no harm is done, and the memory usage increase
     // will be rolled back
     _queue.push_back(std::move(step));
-    guard.steal(); // now we are responsible for tracking the memory
+    guard.steal();  // now we are responsible for tracking the memory
   }
 
   bool hasProcessableElement() const {

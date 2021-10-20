@@ -366,7 +366,7 @@ function MovingShardsSuite ({useData}) {
 /// @brief order the cluster to clean out a server:
 ////////////////////////////////////////////////////////////////////////////////
 
-  function cleanOutServer(id) {
+  function cleanOutServer(id, dontwait = false) {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
@@ -385,6 +385,9 @@ function MovingShardsSuite ({useData}) {
     }
     console.info("cleanOutServer job:", JSON.stringify(body));
     console.info("result of request:", JSON.stringify(result.json));
+    if (dontwait) {
+      return result;
+    }
     // Now wait until the job we triggered is finished:
     var count = 1200;   // seconds
     while (true) {
@@ -535,11 +538,11 @@ function MovingShardsSuite ({useData}) {
         "Exception for PUT /_admin/cluster/moveShard:", err.stack);
       return false;
     }
+    console.info("moveShard job:", JSON.stringify(body));
+    console.info("result of request:", JSON.stringify(result.json));
     if (dontwait) {
       return result;
     }
-    console.info("moveShard job:", JSON.stringify(body));
-    console.info("result of request:", JSON.stringify(result.json));
     // Now wait until the job we triggered is finished:
     var count = 600;   // seconds
     while (true) {
@@ -585,12 +588,36 @@ function MovingShardsSuite ({useData}) {
   }
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Abort job
+////////////////////////////////////////////////////////////////////////////////
+
+  function cancelAgencyJob(id) {
+    console.log("Killing job " + id);
+    var coordEndpoint =
+        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+    var request = require("@arangodb/request");
+    var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    var url = endpointToURL(coordEndpoint);
+    var req;
+    try {
+      req = request({ method: "POST",
+                      url: url + "/_admin/cluster/cancelAgencyJob",
+                      body: JSON.stringify({id:id}) });
+    } catch (err) {
+      console.error(
+        "Exception for POS /_admin/cluster/cancelAgencyJob:" + {id:id}, err.stack);
+      return false;
+    }
+    return JSON.parse(req.body).error === false;
+  }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create some collections
 ////////////////////////////////////////////////////////////////////////////////
 
-  function createSomeCollections(n, nrShards, replFactor, useData) {
+  function createSomeCollections(n, nrShards, replFactor, useData, otherNumDocuments = 0) {
     assertEqual('boolean', typeof useData);
     var systemCollServers = findCollectionServers("_system", "_graphs");
     console.info("System collections use servers:", systemCollServers);
@@ -605,7 +632,8 @@ function MovingShardsSuite ({useData}) {
 
         if (useData) {
           // insert some documents
-          coll.insert(_.range(0, numDocuments).map(v => ({ value: v, x: "someString" + v })));
+          let nd = (otherNumDocuments === 0) ? numDocuments : otherNumDocuments;
+          coll.insert(_.range(0, nd).map(v => ({ value: v, x: "someString" + v })));
         }
 
         var servers = findCollectionServers("_system", name);
@@ -623,8 +651,9 @@ function MovingShardsSuite ({useData}) {
     }
   }
 
-  function checkCollectionContents() {
-    const numDocs = useData ? numDocuments : 0;
+  function checkCollectionContents(otherNumDocuments = 0) {
+    let nd = (otherNumDocuments === 0) ? numDocuments : otherNumDocuments;
+    const numDocs = useData ? nd : 0;
     for(const collection of c) {
       assertEqual(numDocs, collection.count());
       const values = db._query(
@@ -1030,26 +1059,155 @@ function MovingShardsSuite ({useData}) {
       // followers which are not in Plan. This means that the moveShard
       // below will leave the old server in Current/servers and
       // Current/failoverCandidates.
-      debugSetFailAt(leaderEndpoint, "Maintenance::doNotRemoveUnPlannedFollowers");
+      try {
+        debugSetFailAt(leaderEndpoint, "Maintenance::doNotRemoveUnPlannedFollowers");
 
+        var toServer = findServerNotOnList(servers);
+        var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+            "_system", c[1].name());
+        var shard = Object.keys(cinfo.shards)[0];
+        assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
+        assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
+        wait(5);   // After 5 seconds the situation should be unchanged!
+        assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
+        // Now we know that the old follower is not in the plan but is in
+        // failoverCandidates (and indeed in Current/servers). Let's now
+        // try to move the shard back, this ought to be denied:
+        assertTrue(moveShard("_system", c[1]._id, shard, toServer, fromServer, false, "Failed"));
+        debugClearFailAt(leaderEndpoint);
+        // Now we should go back to only 3 servers in Current.
+        assertTrue(waitForSynchronousReplication("_system"));
+        assertTrue(testServerEmpty(fromServer, false, 1, 1));
+        assertTrue(waitForSupervision());
+        checkCollectionContents();
+      } catch (err) {
+        debugClearFailAt(leaderEndpoint);
+        throw err;
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kill todo moveShard job
+////////////////////////////////////////////////////////////////////////////////
+
+    testCancelToDoMoveShard : function() {
+      createSomeCollections(1, 1, 3, useData);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
-      assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
-      wait(5);   // After 5 seconds the situation should be unchanged!
-      assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
-      // Now we know that the old follower is not in the plan but is in
-      // failoverCandidates (and indeed in Current/servers). Let's now
-      // try to move the shard back, this ought to be denied:
-      assertTrue(moveShard("_system", c[1]._id, shard, toServer, fromServer, false, "Failed"));
-      debugClearFailAt(leaderEndpoint);
-      // Now we should go back to only 3 servers in Current.
-      assertTrue(waitForSynchronousReplication("_system"));
-      assertTrue(testServerEmpty(fromServer, false, 1, 1));
+      assertTrue(maintenanceMode("on"));
+      let result = moveShard("_system", c[1]._id, shard, fromServer, toServer, true, "Finished");
+      assertEqual(result.statusCode, 202);
+      let id = JSON.parse(result.body).id;
+      assertTrue(cancelAgencyJob(id));
+      assertTrue(maintenanceMode("off"));
+      var job = queryAgencyJob(result.json.id);
+      assertEqual(job.status, "Failed");
+      assertEqual(job.abort);
       assertTrue(waitForSupervision());
       checkCollectionContents();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kill pending moveShard job
+////////////////////////////////////////////////////////////////////////////////
+
+    testCancelPendingMoveShard : function() {
+      if (useData) {
+        for (var i = 0; i < c.length; ++i) {
+          c[i].drop();
+        }
+        c = [];
+        let otherNumDocuments = 100000;
+        createSomeCollections(1, 1, 3, useData, otherNumDocuments);
+        assertTrue(waitForSynchronousReplication("_system"));
+        var servers = findCollectionServers("_system", c[0].name());
+        var fromServer = servers[0];
+        var toServer = findServerNotOnList(servers);
+        var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[0].name());
+        var shard = Object.keys(cinfo.shards)[0];
+        let result = moveShard("_system", c[0]._id, shard, fromServer, toServer, true, "Finished");
+        assertEqual(result.statusCode, 202);
+        let id = JSON.parse(result.body).id;
+        while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to start
+          wait(0.1);
+        }
+        assertTrue(cancelAgencyJob(id));
+        while (queryAgencyJob(result.json.id).status === "Pending") { // wait for job to be killed
+          wait(0.1);
+        }
+        var job = queryAgencyJob(result.json.id);
+        assertEqual(job.status, "Failed");
+        assertEqual(job.abort);
+        assertTrue(waitForSupervision());
+        checkCollectionContents(otherNumDocuments);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kill todo cleanOutServer job
+////////////////////////////////////////////////////////////////////////////////
+
+    testCancelToDoCleanOutServer : function() {
+      createSomeCollections(1, 1, 3, useData);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var fromServer = servers[0];
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[1].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      assertTrue(maintenanceMode("on"));
+      let result = cleanOutServer(servers[0], true);
+      assertEqual(result.statusCode, 202);
+      let id = JSON.parse(result.body).id;
+      assertTrue(cancelAgencyJob(id));
+      assertTrue(maintenanceMode("off"));
+      var job = queryAgencyJob(result.json.id);
+      assertEqual(job.status, "Failed");
+      assertEqual(job.abort);
+      assertTrue(waitForSupervision());
+      checkCollectionContents();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kill pending moveShard job
+////////////////////////////////////////////////////////////////////////////////
+
+    testCancelPendingCleanOutServer : function() {
+      if (useData) {
+        for (var i = 0; i < c.length; ++i) {
+          c[i].drop();
+        }
+        c = [];
+        let otherNumDocuments = 100000;
+        createSomeCollections(1, 1, 3, useData, otherNumDocuments);
+        assertTrue(waitForSynchronousReplication("_system"));
+        var servers = findCollectionServers("_system", c[0].name());
+        var fromServer = servers[0];
+        var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[0].name());
+        var shard = Object.keys(cinfo.shards)[0];
+        let result = cleanOutServer(fromServer, true);
+        assertEqual(result.statusCode, 202);
+        let id = JSON.parse(result.body).id;
+        while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to start
+          wait(0.1);
+        }
+        assertTrue(cancelAgencyJob(id));
+        while (queryAgencyJob(result.json.id).status === "Pending") { // wait for job to be killed
+          wait(0.1);
+        }
+        var job = queryAgencyJob(result.json.id);
+        assertEqual(job.status, "Failed");
+        assertEqual(job.abort);
+        assertTrue(waitForSupervision());
+        checkCollectionContents(otherNumDocuments);
+      }
     },
 
   };

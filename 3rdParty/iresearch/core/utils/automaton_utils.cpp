@@ -283,7 +283,7 @@ void utf8_transitions_builder::minimize(automaton& a, size_t prefix) {
       // here we deal with rho transition only for
       // intermediate states, i.e. char range is [128;191]
       const size_t rho_idx = last_.size() - i - 1;
-      assert(rho_idx >= 0 && rho_idx < IRESEARCH_COUNTOF(rho_states_));
+      assert(rho_idx < IRESEARCH_COUNTOF(rho_states_));
       s.add_rho_arc(128, 192, rho_states_[rho_idx]);
     }
 
@@ -327,7 +327,7 @@ void utf8_transitions_builder::insert(
 
 void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 #ifdef IRESEARCH_DEBUG
-  auto ensure_empty = make_finally([this]() {
+  auto ensure_empty = make_finally([this]() noexcept {
     // ensure everything is cleaned up
     assert(std::all_of(
       std::begin(states_), std::end(states_), [](const state& s) noexcept {

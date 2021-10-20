@@ -132,8 +132,10 @@ class RangeIterator {
     return *this;
   }
 
-//  iterator begin() { return RangeIterator(_buffers.begin(), _begin, _end); }
-//  const_iterator begin() const { return RangeIterator(_buffers.begin(), _begin, _end); }
+  size_t size() const noexcept {
+    return _size;
+  }
+
   bool hasMore() const noexcept {
     return _size > 0;
   }

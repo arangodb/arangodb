@@ -119,15 +119,15 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
   }
 
   void reset(size_t bits) {
-    const auto words = bits_to_words(bits);
+    const auto num_words = bits_to_words(bits);
 
-    if (words > words_) {
+    if (num_words > words_) {
       data_ = memory::allocate_unique<word_t[]>(
-        this->allocator(), words, memory::allocate_only
+        this->allocator(), num_words, memory::allocate_only
       );
     }
 
-    words_ = words;
+    words_ = num_words;
     bits_ = bits;
     clear();
   }

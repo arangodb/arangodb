@@ -66,7 +66,7 @@ class NgramMatchFunctionTest : public ::testing::Test {
     auto res =
       analyzers.emplace(result, TwoGramAnalyzer(), "ngram",
         VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
-        irs::flags{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() });
+        arangodb::iresearch::Features(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS));
     EXPECT_TRUE(res.ok());
   }
 

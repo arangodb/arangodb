@@ -393,7 +393,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     return rv;
   }
   
-  auto guard = scopeGuard([&ctx] {
+  auto guard = scopeGuard([&ctx]() noexcept {
     ctx.exitV8Context();
   });
   if (transaction::V8Context::isEmbedded()) { // do not enter context if already embedded

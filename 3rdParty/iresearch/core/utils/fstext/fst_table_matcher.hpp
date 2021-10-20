@@ -27,6 +27,7 @@
 
 #include "fst/matcher.h"
 #include "utils/automaton.hpp" // FIXME
+#include "utils/math_utils.hpp"
 #include "utils/misc.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/std.hpp"

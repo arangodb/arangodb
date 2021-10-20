@@ -27,6 +27,7 @@
 
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -35,30 +36,58 @@
 // TODO: Needed for the IndexAccessor, should be modified
 #include "Graph/Providers/SingleServerProvider.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::graph;
 
 namespace {
 IndexIteratorOptions defaultIndexIteratorOptions;
-}
 
-RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(transaction::Methods::IndexHandle idx,
-                                                         aql::AstNode* condition,
-                                                         std::optional<size_t> memberToUpdate)
+#ifdef USE_ENTERPRISE
+static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge) {
+  // for skipInaccessibleCollections we need to check the edge
+  // document, in that case nextWithExtra has no benefit
+  TRI_ASSERT(edge.isString());
+  arangodb::velocypack::StringRef str(edge);
+  size_t pos = str.find('/');
+  TRI_ASSERT(pos != std::string::npos);
+  return trx->isInaccessibleCollection(str.substr(0, pos).toString());
+}
+#endif
+}  // namespace
+
+template <class Step>
+RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(
+    transaction::Methods::IndexHandle idx, aql::AstNode* condition,
+    std::optional<size_t> memberToUpdate, aql::Expression* expression, size_t cursorID)
     : _idxHandle(std::move(idx)),
+      _expression(expression),
       _indexCondition(condition),
+      _cursorID(cursorID),
       _cursor(nullptr),
       _conditionMemberToUpdate(memberToUpdate) {}
 
-RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(LookupInfo&& other) noexcept
-    : _idxHandle(std::move(other._idxHandle)),
-      _expression(std::move(other._expression)),
-      _indexCondition(other._indexCondition),
-      _cursor(std::move(other._cursor)){};
+template <class Step>
+RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(LookupInfo&& other) = default;
 
-RefactoredSingleServerEdgeCursor::LookupInfo::~LookupInfo() = default;
+template <class Step>
+RefactoredSingleServerEdgeCursor<Step>::LookupInfo::~LookupInfo() = default;
 
-void RefactoredSingleServerEdgeCursor::LookupInfo::rearmVertex(
+template <class Step>
+aql::Expression* RefactoredSingleServerEdgeCursor<Step>::LookupInfo::getExpression() {
+  return _expression;
+}
+
+template <class Step>
+size_t RefactoredSingleServerEdgeCursor<Step>::LookupInfo::getCursorID() const {
+  return _cursorID;
+}
+
+template <class Step>
+void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     VertexType vertex, transaction::Methods* trx, arangodb::aql::Variable const* tmpVar) {
   auto& node = _indexCondition;
   // We need to rewire the search condition for the new vertex
@@ -76,6 +105,25 @@ void RefactoredSingleServerEdgeCursor::LookupInfo::rearmVertex(
     // TODO i think there is now a mutable String node available
     TEMPORARILY_UNLOCK_NODE(idNode);
     idNode->setStringValue(vertex.data(), vertex.length());
+  } else {
+    // If we have to inject the vertex value it has to be within
+    // the last member of the condition.
+    // We only get into this case iff the index used does
+    // not cover _from resp. _to.
+    // inject _from/_to value
+    auto expressionNode = _expression->nodeForModification();
+
+    TRI_ASSERT(expressionNode->numMembers() > 0);
+    auto dirCmp = expressionNode->getMemberUnchecked(expressionNode->numMembers() - 1);
+    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+    TRI_ASSERT(dirCmp->numMembers() == 2);
+
+    auto idNode = dirCmp->getMemberUnchecked(1);
+    TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
+    TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
+
+    TEMPORARILY_UNLOCK_NODE(idNode);
+    idNode->setStringValue(vertex.data(), vertex.length());
   }
 
   // We need to reset the cursor
@@ -83,64 +131,98 @@ void RefactoredSingleServerEdgeCursor::LookupInfo::rearmVertex(
   // check if the underlying index iterator supports rearming
   if (_cursor != nullptr && _cursor->canRearm()) {
     // rearming supported
-    if (!_cursor->rearm(node, tmpVar, ::defaultIndexIteratorOptions)) {
+    if (!_cursor->rearm(node, tmpVar, defaultIndexIteratorOptions)) {
       _cursor = std::make_unique<EmptyIndexIterator>(_cursor->collection(), trx);
     }
   } else {
     // rearming not supported - we need to throw away the index iterator
     // and create a new one
-    _cursor = trx->indexScanForCondition(_idxHandle, node, tmpVar, ::defaultIndexIteratorOptions);
+    _cursor = trx->indexScanForCondition(_idxHandle, node, tmpVar, ::defaultIndexIteratorOptions, ReadOwnWrites::no);
   }
 }
 
-IndexIterator& RefactoredSingleServerEdgeCursor::LookupInfo::cursor() {
+template <class Step>
+IndexIterator& RefactoredSingleServerEdgeCursor<Step>::LookupInfo::cursor() {
   // If this kicks in, you forgot to call rearm with a specific vertex
   TRI_ASSERT(_cursor != nullptr);
   return *_cursor;
 }
 
-RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
-    arangodb::transaction::Methods* trx,
-    arangodb::aql::Variable const* tmpVar, std::vector<IndexAccessor> const& indexConditions)
-    : _tmpVar(tmpVar), _currentCursor(0), _trx(trx) {
+template <class Step>
+RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
+    transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
+    std::vector<IndexAccessor> const& globalIndexConditions,
+    std::unordered_map<uint64_t, std::vector<IndexAccessor>> const& depthBasedIndexConditions,
+    arangodb::aql::FixedVarExpressionContext& expressionContext, bool requiresFullDocument)
+    : _tmpVar(tmpVar),
+      _trx(trx),
+      _expressionCtx(expressionContext),
+      _requiresFullDocument(requiresFullDocument) {
   // We need at least one indexCondition, otherwise nothing to serve
-  TRI_ASSERT(!indexConditions.empty());
-  _lookupInfo.reserve(indexConditions.size());
-  for (auto const& idxCond : indexConditions) {
+  TRI_ASSERT(!globalIndexConditions.empty());
+  _lookupInfo.reserve(globalIndexConditions.size());
+  _depthLookupInfo.reserve(depthBasedIndexConditions.size());
+
+  for (auto const& idxCond : globalIndexConditions) {
     _lookupInfo.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
-                             idxCond.getMemberToUpdate());
+                             idxCond.getMemberToUpdate(),
+                             idxCond.getExpression(), idxCond.cursorId());
+  }
+  for (auto const& obj : depthBasedIndexConditions) {
+    // Need to reset cursor ID.
+    // The cursorID relates to the used collection
+    // not the condition
+    auto& [depth, idxCondArray] = obj;
+
+    std::vector<LookupInfo> tmpLookupVec;
+    for (auto const& idxCond : idxCondArray) {
+      tmpLookupVec.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
+                                idxCond.getMemberToUpdate(),
+                                idxCond.getExpression(), idxCond.cursorId());
+    }
+    _depthLookupInfo.try_emplace(depth, std::move(tmpLookupVec));
   }
 }
 
-RefactoredSingleServerEdgeCursor::~RefactoredSingleServerEdgeCursor() {}
+template <class Step>
+RefactoredSingleServerEdgeCursor<Step>::~RefactoredSingleServerEdgeCursor() {}
 
-#ifdef USE_ENTERPRISE
-static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge) {
-  // for skipInaccessibleCollections we need to check the edge
-  // document, in that case nextWithExtra has no benefit
-  TRI_ASSERT(edge.isString());
-  arangodb::velocypack::StringRef str(edge);
-  size_t pos = str.find('/');
-  TRI_ASSERT(pos != std::string::npos);
-  return trx->isInaccessibleCollection(str.substr(0, pos).toString());
-}
-#endif
-
-void RefactoredSingleServerEdgeCursor::rearm(VertexType vertex, uint64_t /*depth*/) {
-  _currentCursor = 0;
-  for (auto& info : _lookupInfo) {
+template <class Step>
+void RefactoredSingleServerEdgeCursor<Step>::rearm(VertexType vertex, uint64_t depth) {
+  for (auto& info : getLookupInfos(depth)) {
     info.rearmVertex(vertex, _trx, _tmpVar);
   }
 }
 
-void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
-                                               Callback const& callback) {
-  TRI_ASSERT(!_lookupInfo.empty());
-  for (_currentCursor = 0; _currentCursor < _lookupInfo.size(); ++_currentCursor) {
-    auto& cursor = _lookupInfo[_currentCursor].cursor();
+template <class Step>
+void RefactoredSingleServerEdgeCursor<Step>::readAll(SingleServerProvider<Step>& provider,
+                                                     aql::TraversalStats& stats, size_t depth,
+                                                     Callback const& callback) {
+  TRI_ASSERT(!getLookupInfos(depth).empty());
+  VPackBuilder tmpBuilder;
+
+  auto evaluateEdgeExpressionHelper = [&](aql::Expression* expression,
+                                          EdgeDocumentToken edgeToken, VPackSlice edge) {
+    if (edge.isString()) {
+      tmpBuilder.clear();
+      provider.insertEdgeIntoResult(edgeToken, tmpBuilder);
+      edge = tmpBuilder.slice();
+    }
+    return evaluateEdgeExpression(expression, edge);
+  };
+
+  for (auto& lookupInfo : getLookupInfos(depth)) {
+    auto cursorID = lookupInfo.getCursorID();
+    // we can only have a cursorID that is within the amount of collections in use.
+    TRI_ASSERT(cursorID < _lookupInfo.size());
+
+    auto& cursor = lookupInfo.cursor();
     LogicalCollection* collection = cursor.collection();
     auto cid = collection->id();
-    if (cursor.hasExtra()) {
+    bool hasExtra = !_requiresFullDocument && cursor.hasExtra();
+    auto* expression = lookupInfo.getExpression();
+
+    if (hasExtra) {
       cursor.allExtra([&](LocalDocumentId const& token, VPackSlice edge) {
         stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
@@ -148,31 +230,98 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
           return false;
         }
 #endif
-        callback(EdgeDocumentToken(cid, token), edge, _currentCursor);
+
+        EdgeDocumentToken edgeToken(cid, token);
+        // evaluate expression if available
+        if (expression != nullptr &&
+            !evaluateEdgeExpressionHelper(expression, edgeToken, edge)) {
+          stats.incrFiltered();
+          return false;
+        }
+
+        callback(std::move(edgeToken), edge, cursorID);
         return true;
       });
     } else {
       cursor.all([&](LocalDocumentId const& token) {
-        return collection->getPhysical()->read(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
-          stats.addScannedIndex(1);
+        return collection->getPhysical()
+            ->read(
+                _trx, token,
+                [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+                  stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
-          if (_trx->skipInaccessible()) {
-            // TODO: we only need to check one of these
-            VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
-            VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
-            if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
-              return false;
-            }
-          }
+                  if (_trx->skipInaccessible()) {
+                    // TODO: we only need to check one of these
+                    VPackSlice from =
+                        transaction::helpers::extractFromFromDocument(edgeDoc);
+                    VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
+                    if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+                      return false;
+                    }
+                  }
 #endif
-          callback(EdgeDocumentToken(cid, token), edgeDoc, _currentCursor);
-          return true;
-        }).ok();
+                  // eval depth-based expression first if available
+                  EdgeDocumentToken edgeToken(cid, token);
+
+                  // evaluate expression if available
+                  if (expression != nullptr &&
+                      !evaluateEdgeExpressionHelper(expression, edgeToken, edgeDoc)) {
+                    stats.incrFiltered();
+                    return false;
+                  }
+
+                  callback(std::move(edgeToken), edgeDoc, cursorID);
+                  return true;
+                },
+                ReadOwnWrites::no)
+            .ok();
       });
     }
   }
 }
 
-arangodb::transaction::Methods* RefactoredSingleServerEdgeCursor::trx() const {
-  return _trx;
+template <class Step>
+bool RefactoredSingleServerEdgeCursor<Step>::evaluateEdgeExpression(arangodb::aql::Expression* expression,
+                                                                    VPackSlice value) {
+  if (expression == nullptr) {
+    return true;
+  }
+
+  TRI_ASSERT(value.isObject() || value.isNull());
+
+  aql::AqlValue edgeVal(aql::AqlValueHintDocumentNoCopy(value.begin()));
+  _expressionCtx.setVariableValue(_tmpVar, edgeVal);
+  ScopeGuard defer([&]() noexcept {
+    try {
+      _expressionCtx.clearVariableValue(_tmpVar);
+    } catch (...) {
+      // This method could in theory throw, if the
+      // _tmpVar is not in the list. However this is
+      // guaranteed by this code. If it would throw
+      // with not found, nothing bad has happened
+    }
+  });
+
+  bool mustDestroy = false;
+  aql::AqlValue res = expression->execute(&_expressionCtx, mustDestroy);
+  aql::AqlValueGuard guard(res, mustDestroy);
+  TRI_ASSERT(res.isBoolean());
+
+  return res.toBoolean();
 }
+
+template <class Step>
+auto RefactoredSingleServerEdgeCursor<Step>::getLookupInfos(uint64_t depth)
+    -> std::vector<LookupInfo>& {
+  auto const& depthInfo = _depthLookupInfo.find(depth);
+  if (depthInfo == _depthLookupInfo.end()) {
+    return _lookupInfo;
+  }
+  return depthInfo->second;
+}
+
+template class arangodb::graph::RefactoredSingleServerEdgeCursor<SingleServerProviderStep>;
+
+#ifdef USE_ENTERPRISE
+template class arangodb::graph::RefactoredSingleServerEdgeCursor<enterprise::SmartGraphStep>;
+#endif
