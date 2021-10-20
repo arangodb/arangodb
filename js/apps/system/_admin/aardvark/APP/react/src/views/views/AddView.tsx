@@ -1,4 +1,4 @@
-import React, { Dispatch, useReducer } from 'react';
+import React, { Dispatch, useReducer, useRef } from 'react';
 import { FormState, ViewProperties } from "./constants";
 import { DispatchArgs, State } from '../../utils/constants';
 import { cloneDeep, uniqueId } from "lodash";
@@ -36,6 +36,7 @@ interface AddViewProps {
 
 const AddView = ({ views }: AddViewProps) => {
   const [state, dispatch] = useReducer(getReducer<FormState>(initialState), initialState);
+  const cacheRef = useRef({});
 
   const formState = state.formState;
 
@@ -71,10 +72,10 @@ const AddView = ({ views }: AddViewProps) => {
     </IconButton>
     <Modal show={state.show} setShow={(show) => dispatch({ type: show ? 'show' : 'reset' })}
            key={`${views.length}-${state.show}`} cid={'modal-content-add-view'}>
-      <ModalHeader title={'Create View'}>
+      <ModalHeader title={'Create View'} minWidth={'90vw'}>
         <Grid>
           <Cell size={'2-3'}>
-            <CopyFromInput views={views} dispatch={dispatch}/>
+            {views.length ? <CopyFromInput views={views} dispatch={dispatch}/> : null}
           </Cell>
           <Cell size={'1-3'}>
             <button className={'button-info'} onClick={toggleJsonForm} disabled={state.lockJsonForm}
@@ -103,7 +104,7 @@ const AddView = ({ views }: AddViewProps) => {
                 <Cell size={'1'}>
                   <fieldset>
                     <legend style={{ fontSize: '12pt' }}>Link Properties</legend>
-                    <LinkPropertiesForm formState={formState} dispatch={dispatch}/>
+                    <LinkPropertiesForm formState={formState} dispatch={dispatch} cache={cacheRef.current}/>
                   </fieldset>
                 </Cell>
                 <Cell size={'1'}>

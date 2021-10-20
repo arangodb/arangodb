@@ -152,7 +152,7 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
             };
 
             return <tr key={idx} style={{ borderBottom: '1px  solid #DDD' }}>
-              <ArangoTD seq={0} valign={'middle'}>{idx + 1}.</ArangoTD>
+              <ArangoTD seq={0}>{idx + 1}.</ArangoTD>
               <ArangoTD seq={1}>
                 <Textbox type={'text'} value={item.field} onChange={updateField}
                          disabled={disabled}/>

@@ -118,11 +118,12 @@ const StoredValueFieldsInput = ({ formState, dispatch, disabled }: FormProps<Sto
               disabled
                 ? null
                 : <ArangoTD seq={1}>
-                  <IconButton icon={'trash-o'} type={'danger'} onClick={getRemover(idx)}/>&nbsp;
+                  <IconButton icon={'trash-o'} type={'danger'} onClick={getRemover(idx)}
+                              style={{ marginLeft: 0 }}/>&nbsp;
                   <IconButton icon={'arrow-up'} type={'warning'} onClick={getShifter('up', idx)}
-                              disabled={isFirst}/>&nbsp;
+                              disabled={isFirst} style={{ marginLeft: 0 }}/>&nbsp;
                   <IconButton icon={'arrow-down'} type={'warning'} onClick={getShifter('down', idx)}
-                              disabled={isLast}/>
+                              disabled={isLast} style={{ marginLeft: 0 }}/>
                 </ArangoTD>
             }
           </tr>;

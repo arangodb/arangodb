@@ -94,7 +94,7 @@ const StoredValuesInput = ({ formState, dispatch, disabled }: FormProps<StoredVa
             };
 
             return <tr key={idx} style={{ borderBottom: '1px  solid #DDD' }}>
-              <ArangoTD seq={0} valign={'middle'}>{idx + 1}.</ArangoTD>
+              <ArangoTD seq={0}>{idx + 1}.</ArangoTD>
               <ArangoTD seq={1}>
                 <StoredValueFieldsInput formState={item} disabled={disabled}
                                         dispatch={itemDispatch as Dispatch<DispatchArgs<StoredValue>>}/>

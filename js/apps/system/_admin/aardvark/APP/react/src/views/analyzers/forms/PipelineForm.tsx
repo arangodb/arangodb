@@ -117,7 +117,7 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps<PipelineState
             const itemDispatch = getWrappedDispatch(idx);
 
             return <tr key={idx} style={{ borderBottom: '1px  solid #DDD' }}>
-              <ArangoTD seq={0} valign={'middle'}>{idx + 1}.</ArangoTD>
+              <ArangoTD seq={0}>{idx + 1}.</ArangoTD>
               <ArangoTD seq={1}>
                 <Grid>
                   <Cell size={'3-4'}>
