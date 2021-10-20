@@ -283,6 +283,7 @@ set(ARANGODB_TESTS_SOURCES
   Transaction/RestTransactionHandler-test.cpp
   Utils/CollectionNameResolver-test.cpp
   Utils/NameValidatorTest.cpp
+  Utils/QuickGen.cpp
   V8Server/v8-analyzers-test.cpp
   V8Server/v8-users-test.cpp
   V8Server/v8-views-test.cpp
