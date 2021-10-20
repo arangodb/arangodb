@@ -289,6 +289,10 @@ class Index {
                       velocypack::Slice const& rhs,
                       std::string const& dbname);
 
+  static void normalizeFilterCosts(arangodb::Index::FilterCosts& costs, 
+                                   arangodb::Index const* index, size_t itemsInIndex,
+                                   size_t invocations);
+
   virtual bool canBeDropped() const = 0;
 
   /// @brief whether or not the index provides an iterator that can extract

@@ -159,24 +159,18 @@ class TestLambdaSkipExecutor;
 
 template <typename Executor>
 constexpr bool executorHasSideEffects =
-    is_one_of_v<Executor, ModificationExecutor<AllRowsFetcher, InsertModifier>,
+    is_one_of_v<Executor, 
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
-                ModificationExecutor<AllRowsFetcher, RemoveModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
-                ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
-                ModificationExecutor<AllRowsFetcher, UpsertModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
 
 template <typename Executor>
 constexpr bool executorCanReturnWaiting =
-    is_one_of_v<Executor, ModificationExecutor<AllRowsFetcher, InsertModifier>,
+    is_one_of_v<Executor, 
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
-                ModificationExecutor<AllRowsFetcher, RemoveModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
-                ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
-                ModificationExecutor<AllRowsFetcher, UpsertModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
 
 template <class Executor>
@@ -629,13 +623,9 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               TestLambdaSkipExecutor,
 #endif
-              ModificationExecutor<AllRowsFetcher, InsertModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
-              ModificationExecutor<AllRowsFetcher, RemoveModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
-              ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
-              ModificationExecutor<AllRowsFetcher, UpsertModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, TraversalExecutor,
               EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor,
               LimitExecutor, UnsortedGatherExecutor, SortingGatherExecutor, SortExecutor,
@@ -1756,9 +1746,25 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
           // we do not have any input for this executor on the current depth.
           // We have skipped over the full subquery execution, so claim it is
           // DONE for now. It will be resetted after this shadowRow. If one
-          // of the next SubqueryRuns is not skipepd over.
+          // of the next SubqueryRuns is not skipped over.
           localExecutorState = ExecutorState::DONE;
           _execState = ExecState::SHADOWROWS;
+          // The following line is in particular for the UnsortedGatherExecutor,
+          // which implies we're using a MultiDependencyRowFetcher.
+          // Imagine the following situation:
+          // In case the last subquery ended, at least for one dependency, on an
+          // item block-boundary. But the next row in this dependency - and thus,
+          // all other dependencies - is a non-relevant shadow row. Then the
+          // executor will have been called by now, possibly multiple times,
+          // until all dependencies have some input and thus arrived at this
+          // particular shadow row. So now the condition of this if-branch is
+          // true.
+          // The outcome of this is that the executor is no longer in a freshly
+          // initialized state, but may have progressed over one or more
+          // dependencies already.
+          // Without the following reset, these dependencies would thus be
+          // ignored in the next subquery iteration.
+          resetExecutor();
         } else {
           _execState = ExecState::CHECKCALL;
         }
@@ -2286,11 +2292,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<UnsortedGatherExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<RegisterId>>;
 template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<std::string const&>>;
 
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, InsertModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, RemoveModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpsertModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;

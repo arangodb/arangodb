@@ -23,7 +23,6 @@
 
 #include "ModificationExecutor.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -106,8 +105,7 @@ template <typename ProduceOrSkipData>
   }
 
   AqlCall upstreamCall{};
-  if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
-                !std::is_same_v<FetcherType, AllRowsFetcher>) {
+  if constexpr (std::is_same_v<ModifierType, UpsertModifier>) {
     upstreamCall.softLimit = _modifier->getBatchSize();
   }
 
@@ -120,8 +118,7 @@ template <typename ProduceOrSkipData>
   auto stats = ModificationStats{};
 
   auto const maxRows = std::invoke([&] {
-    if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
-                  !std::is_same_v<FetcherType, AllRowsFetcher>) {
+    if constexpr (std::is_same_v<ModifierType, UpsertModifier>) {
       return std::min(produceOrSkipData.maxOutputRows(), _modifier->getBatchSize());
     } else {
       return produceOrSkipData.maxOutputRows();
@@ -397,12 +394,8 @@ auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::upstreamStat
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;
 
 template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, InsertModifier>;
-template class ::arangodb::aql::ModificationExecutor<AllRowsFetcher, InsertModifier>;
 template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, RemoveModifier>;
-template class ::arangodb::aql::ModificationExecutor<AllRowsFetcher, RemoveModifier>;
 template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, UpdateReplaceModifier>;
-template class ::arangodb::aql::ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>;
 template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, UpsertModifier>;
-template class ::arangodb::aql::ModificationExecutor<AllRowsFetcher, UpsertModifier>;
 
 }  // namespace arangodb::aql

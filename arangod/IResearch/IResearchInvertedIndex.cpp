@@ -173,7 +173,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
           LocalDocumentId documentId;
           bool const readSuccess = DocumentPrimaryKey::read(documentId,  _pkValue->value);
           if (readSuccess) {
-            if constexpr (withExtra) {
+            if constexpr (withExtra || withCovering) {
               if (_extraValuesReader.itr && 
                   _doc->value == _extraValuesReader.itr->seek(_doc->value)) {
                 --limit;

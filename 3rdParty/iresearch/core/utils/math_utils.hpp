@@ -165,11 +165,14 @@ constexpr uint32_t popcnt32(uint32_t v) noexcept{
 }
 
 FORCE_INLINE uint32_t pop32(uint32_t v) noexcept {
-#if __GNUC__ >= 4 
+#if __GNUC__ >= 4
   return __builtin_popcount(v);
 #elif defined(_MSC_VER) 
   //TODO: compile time
   return cpuinfo::support_popcnt() ?__popcnt(v) : popcnt32(v);
+#else
+  #pragma message("pop32: fallback to popcnt32")
+  return popcnt32(v);
 #endif
 }
 
@@ -179,6 +182,9 @@ FORCE_INLINE uint64_t pop64(uint64_t v) noexcept{
 #elif defined(_MSC_VER) && defined(_M_X64)
   //TODO: compile time
   return cpuinfo::support_popcnt() ? __popcnt64(v) : popcnt64(v);
+#else
+  #pragma message("pop64: fallback to popcnt64")
+  return popcnt64(v);
 #endif
 }
 

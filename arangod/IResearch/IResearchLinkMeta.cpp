@@ -29,7 +29,6 @@
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
 #include "utils/hash_utils.hpp"
-#include "utils/locale_utils.hpp"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"

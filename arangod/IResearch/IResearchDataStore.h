@@ -48,7 +48,6 @@ class IResearchFeature;
 class IResearchView;
 class IResearchDataStore;
 class IResearchLink;
-template<typename T> class TypedResourceMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResarchLink handle to use with asynchronous tasks
@@ -57,10 +56,9 @@ class AsyncLinkHandle {
  public:
   explicit AsyncLinkHandle(IResearchDataStore* link);
   ~AsyncLinkHandle();
-  IResearchDataStore* get() noexcept { return _link.get(); }
   bool empty() const { return _link.empty(); }
-  std::unique_lock<ReadMutex> lock() { return _link.lock(); }
-  std::unique_lock<ReadMutex> try_lock() noexcept { return _link.try_lock(); }
+  auto lock() { return _link.lock(); }
+  auto try_lock() noexcept { return _link.try_lock(); }
   bool terminationRequested() const noexcept { return _asyncTerminate.load(); }
 
  private:
@@ -74,7 +72,7 @@ class AsyncLinkHandle {
 
   void reset();
 
-  ResourceMutexT<IResearchDataStore> _link;
+  AsyncValue<IResearchDataStore> _link;
   std::atomic<bool> _asyncTerminate{false}; // trigger termination of long-running async jobs
 }; // AsyncLinkHandle
 
@@ -84,13 +82,13 @@ class AsyncLinkHandle {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchTrxState final : public TransactionState::Cookie {
   irs::index_writer::documents_context _ctx;
-  std::unique_lock<ReadMutex> _linkLock; // prevent data-store deallocation (lock @ AsyncSelf)
+  AsyncValue<IResearchDataStore>::Value _linkLock; // prevent data-store deallocation (lock @ AsyncSelf)
   PrimaryKeyFilterContainer _removals;  // list of document removals
 
-  IResearchTrxState(std::unique_lock<ReadMutex>&& linkLock,
+  IResearchTrxState(AsyncValue<IResearchDataStore>::Value&& linkLock,
                irs::index_writer& writer) noexcept
       : _ctx(writer.documents()), _linkLock(std::move(linkLock)) {
-    TRI_ASSERT(_linkLock.owns_lock());
+    TRI_ASSERT(_linkLock.ownsLock());
   }
 
   virtual ~IResearchTrxState() noexcept {
@@ -131,22 +129,22 @@ class IResearchDataStore {
   class Snapshot {
    public:
     Snapshot() = default;
-    Snapshot(std::unique_lock<ReadMutex>&& lock,
+    Snapshot(AsyncValue<IResearchDataStore>::Value&& lock,
               irs::directory_reader&& reader) noexcept
         : _lock(std::move(lock)), _reader(std::move(reader)) {
-      TRI_ASSERT(_lock.owns_lock());
+      TRI_ASSERT(_lock.ownsLock());
     }
     Snapshot(Snapshot&& rhs) noexcept
       : _lock(std::move(rhs._lock)),
         _reader(std::move(rhs._reader)) {
-      TRI_ASSERT(_lock.owns_lock());
+      TRI_ASSERT(_lock.ownsLock());
     }
     Snapshot& operator=(Snapshot&& rhs) noexcept {
       if (this != &rhs) {
         _lock = std::move(rhs._lock);
         _reader = std::move(rhs._reader);
       }
-      TRI_ASSERT(_lock.owns_lock());
+      TRI_ASSERT(_lock.ownsLock());
       return *this;
     }
     operator irs::directory_reader const&() const noexcept {
@@ -154,7 +152,7 @@ class IResearchDataStore {
     }
 
    private:
-    std::unique_lock<ReadMutex> _lock; // lock preventing data store dealocation
+    AsyncValue<IResearchDataStore>::Value _lock; // lock preventing data store dealocation
     irs::directory_reader _reader;
   };
 

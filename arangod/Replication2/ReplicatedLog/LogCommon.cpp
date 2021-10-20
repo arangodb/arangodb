@@ -133,8 +133,8 @@ PersistingLogEntry::PersistingLogEntry(LogIndex index, velocypack::Slice persist
   }
 }
 
-InMemoryLogEntry::InMemoryLogEntry(PersistingLogEntry entry)
-    : _logEntry(std::move(entry)) {}
+InMemoryLogEntry::InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync)
+    : _waitForSync(waitForSync), _logEntry(std::move(entry)) {}
 
 void InMemoryLogEntry::setInsertTp(clock::time_point tp) noexcept {
   _insertTp = tp;
@@ -285,20 +285,25 @@ auto replication2::operator<<(std::ostream& os, TermIndexPair pair) -> std::ostr
 LogConfig::LogConfig(VPackSlice slice) {
   waitForSync = slice.get(StaticStrings::WaitForSyncString).extract<bool>();
   writeConcern = slice.get(StaticStrings::WriteConcern).extract<std::size_t>();
+  replicationFactor = slice.get(StaticStrings::ReplicationFactor).extract<std::size_t>();
 }
 
-LogConfig::LogConfig(std::size_t writeConcern, bool waitForSync) noexcept
-    : writeConcern(writeConcern), waitForSync(waitForSync) {}
+LogConfig::LogConfig(std::size_t writeConcern, std::size_t replicationFactor, bool waitForSync) noexcept
+    : writeConcern(writeConcern),
+      replicationFactor(replicationFactor),
+      waitForSync(waitForSync) {}
 
 auto LogConfig::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
+  builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
 }
 
 auto replication2::operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool {
   // TODO How can we make sure that we never forget a field here?
-  return left.waitForSync == right.waitForSync && left.writeConcern == right.writeConcern;
+  return left.waitForSync == right.waitForSync && left.writeConcern == right.writeConcern &&
+         left.replicationFactor == right.replicationFactor;
 }
 
 auto replication2::operator!=(const LogConfig& left, const LogConfig& right) noexcept -> bool {

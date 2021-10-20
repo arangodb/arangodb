@@ -360,7 +360,7 @@ std::map<irs::string_ref, Analyzer> const& staticAnalyzers() {
         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_zh",
        {"text",
-        "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] "
+        "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ], \"stemming\": false "
         "}",
         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
   };
@@ -1918,7 +1918,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
           {"text_zh",
            {"text",
             "{ \"locale\": \"zh.UTF-8\", \"caseConvert\": \"lower\", "
-            "\"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+            "\"stopwords\": [ ], \"noAccent\": true, \"stemming\": false}"}},
           {"identity", {"identity", "{\n}"}},
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
@@ -3977,7 +3977,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
          {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_zh",
-         "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] "
+         "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ], \"stemming\":false "
          "}",
          {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
@@ -4043,14 +4043,17 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
                            "norm", vpack->slice())
                   .ok());
   EXPECT_TRUE(result.first);
-  EXPECT_EQUAL_SLICES(vpack->slice(), result.first->properties());
+
+  EXPECT_EQUAL_SLICES(
+    VPackParser::fromJson(R"({"locale":"ru_RU","case":"upper","accent":true})")->slice(),
+    result.first->properties());
 
   // for persistence
   {
     auto expectedVpack = VPackParser::fromJson(
         "{ \"_key\": \"test_norm_analyzer4\", \"name\": "
         "\"test_norm_analyzer4\", \"type\": \"norm\", "
-        "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\","
+        "\"properties\":{\"locale\":\"ru_RU\",\"case\":\"upper\","
         "\"accent\":true}, "
         "\"features\": [], "
         "\"revision\": 0 } ");
@@ -4066,7 +4069,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
         VPackParser::fromJson("{ \"name\": \"" + arangodb::StaticStrings::SystemDatabase +
                               "::test_norm_analyzer4\", "
                               "\"type\": \"norm\", "
-                              "\"properties\":{\"locale\":\"ru_RU.utf-8\","
+                              "\"properties\":{\"locale\":\"ru_RU\","
                               "\"case\":\"upper\",\"accent\":true}, "
                               "\"features\": [] } ");
 
@@ -4080,7 +4083,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
     auto expectedVpack = VPackParser::fromJson(
         "{ \"name\": \"test_norm_analyzer4\", "
         "\"type\": \"norm\", "
-        "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\","
+        "\"properties\":{\"locale\":\"ru_RU\",\"case\":\"upper\","
         "\"accent\":true}, "
         "\"features\": [] } ");
 
@@ -4099,7 +4102,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
     auto expectedVpack = VPackParser::fromJson(
         "{ \"name\": \"::test_norm_analyzer4\", "
         "\"type\": \"norm\", "
-        "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\","
+        "\"properties\":{\"locale\":\"ru_RU\",\"case\":\"upper\","
         "\"accent\":true}, "
         "\"features\": []} ");
 
@@ -4114,7 +4117,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
         VPackParser::fromJson("{ \"name\": \"" + arangodb::StaticStrings::SystemDatabase +
                               "::test_norm_analyzer4\", "
                               "\"type\": \"norm\", "
-                              "\"properties\":{\"locale\":\"ru_RU.utf-8\","
+                              "\"properties\":{\"locale\":\"ru_RU\","
                               "\"case\":\"upper\",\"accent\":true}, "
                               "\"features\": []} ");
 
@@ -4233,7 +4236,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
             "{ "
-            "\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],"
+            "\"locale\":\"ru_RU\",\"case\":\"lower\",\"stopwords\":[],"
             "\"accent\":true,\"stemming\":false}")
             ->slice(),
         result.first->properties());
@@ -4252,7 +4255,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
-            "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],"
+            "{\"locale\":\"ru_RU\",\"case\":\"lower\",\"stopwords\":[],"
             "\"accent\":true,\"stemming\":false}")
             ->slice(),
         result.first->properties());
@@ -4271,7 +4274,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
-            "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],"
+            "{\"locale\":\"ru_RU\",\"case\":\"lower\",\"stopwords\":[],"
             "\"accent\":false,\"stemming\":false}")
             ->slice(),
         result.first->properties());
@@ -4290,7 +4293,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
-            "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],"
+            "{\"locale\":\"ru_RU\",\"case\":\"lower\",\"stopwords\":[],"
             "\"accent\":true,\"stemming\":true}")
             ->slice(),
         result.first->properties());
@@ -4307,7 +4310,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
                              "text", vpack->slice())
                     .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQUAL_SLICES(vpack->slice(), result.first->properties());
+    EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson(R"({"locale":"ru_RU","case":"upper","stopwords":[],"accent":true,"stemming":false})")->slice(),
+      result.first->properties());
   }
 
   // non-empty stopwords with duplicates
@@ -4355,7 +4360,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
                              "stem", vpack->slice())
                     .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\"}")->slice(),
+    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"locale\":\"ru\"}")->slice(),
                         result.first->properties());
   }
   // with invalid locale
@@ -4381,7 +4386,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
-            "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}")
+            "{\"locale\":\"ru_RU\",\"case\":\"lower\",\"accent\":true}")
             ->slice(),
         result.first->properties());
   }
@@ -4398,7 +4403,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
-            "{\"locale\":\"ru_RU.utf-8\",\"case\":\"none\",\"accent\":true}")
+            "{\"locale\":\"ru_RU\",\"case\":\"none\",\"accent\":true}")
             ->slice(),
         result.first->properties());
   }
@@ -4415,7 +4420,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
-            "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}")
+            "{\"locale\":\"ru_RU\",\"case\":\"lower\",\"accent\":true}")
             ->slice(),
         result.first->properties());
   }
@@ -4429,7 +4434,10 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
                              "norm", vpack->slice())
                     .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQUAL_SLICES(vpack->slice(), result.first->properties());
+
+    EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson(R"({"locale":"ru_RU","case":"upper","accent":true})")->slice(),
+      result.first->properties());
   }
   // with invalid locale
   {

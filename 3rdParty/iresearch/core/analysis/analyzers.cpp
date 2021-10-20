@@ -207,8 +207,8 @@ namespace analysis {
   irs::analysis::delimited_token_stream::init();
   irs::analysis::collation_token_stream::init();
   irs::analysis::ngram_token_stream_base::init();
-  irs::analysis::text_token_normalizing_stream::init();
-  irs::analysis::text_token_stemming_stream::init();
+  irs::analysis::normalizing_token_stream::init();
+  irs::analysis::stemming_token_stream::init();
   irs::analysis::text_token_stream::init();
   irs::analysis::token_stopwords_stream::init();
   irs::analysis::pipeline_token_stream::init();

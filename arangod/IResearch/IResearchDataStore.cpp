@@ -45,11 +45,12 @@
 #include <utils/file_utils.hpp>
 #include <chrono>
 
+using namespace std::literals;
+
 namespace {
 
 using namespace arangodb;
 using namespace arangodb::iresearch;
-using irs::async_utils::read_write_mutex;
 
 class IResearchFlushSubscription final : public FlushSubscription {
  public:
@@ -127,8 +128,6 @@ struct Task {
   IndexId id;
 }; // Task
 
-
-using irs::async_utils::read_write_mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts ArangoDB document into an IResearch data store
@@ -308,9 +307,9 @@ void CommitTask::operator()() {
     return;
   }
 
-  auto linkLock = link->try_lock();
+  auto linkPtr = link->try_lock();
 
-  if (!linkLock.owns_lock()) {
+  if (!linkPtr.ownsLock()) {
     LOG_TOPIC("eb0de", DEBUG, iresearch::TOPIC)
         << "failed to acquire the lock while committing the link '" << id
         << "', runId '" << size_t(&runId) << "'";
@@ -321,9 +320,7 @@ void CommitTask::operator()() {
     return;
   }
 
-  auto* link = this->link->get();
-
-  if (!link) {
+  if (!linkPtr) {
     LOG_TOPIC("ebada", DEBUG, iresearch::TOPIC)
         << "link '" << id << "' is no longer valid, run id '" << size_t(&runId) << "'";
     return;
@@ -331,7 +328,7 @@ void CommitTask::operator()() {
 
   IResearchDataStore::CommitResult code = IResearchDataStore::CommitResult::UNDEFINED;
 
-  auto reschedule = scopeGuard([&code, link, this]() noexcept{
+  auto reschedule = scopeGuard([&code, link = linkPtr.get(), this]() noexcept{
     try {
       finalize(link, code);
     } catch (std::exception const& ex) {
@@ -346,9 +343,9 @@ void CommitTask::operator()() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
-    READ_LOCKER(lock, link->_dataStore._mutex); // '_meta' can be asynchronously modified
-    auto& meta = link->_dataStore._meta;
+    TRI_ASSERT(linkPtr->_dataStore); // must be valid if _asyncSelf->get() is valid
+    READ_LOCKER(lock, linkPtr->_dataStore._mutex); // '_meta' can be asynchronously modified
+    auto& meta = linkPtr->_dataStore._meta;
 
     commitIntervalMsec = std::chrono::milliseconds(meta._commitIntervalMsec);
     consolidationIntervalMsec = std::chrono::milliseconds(meta._consolidationIntervalMsec);
@@ -369,7 +366,7 @@ void CommitTask::operator()() {
   }
 
   auto const syncStart = std::chrono::steady_clock::now(); // FIXME: add sync durations to metrics
-  auto res = link->commitUnsafe(false, &code); // run commit ('_asyncSelf' locked by async task)
+  auto res = linkPtr->commitUnsafe(false, &code); // run commit ('_asyncSelf' locked by async task)
 
   if (res.ok()) {
     LOG_TOPIC("7e323", TRACE, iresearch::TOPIC)
@@ -387,7 +384,7 @@ void CommitTask::operator()() {
         }
 
         auto const cleanupStart = std::chrono::steady_clock::now(); // FIXME: add cleanup durations to metrics
-        res = link->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
+        res = linkPtr->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
 
         if (res.ok()) {
           LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
@@ -412,7 +409,7 @@ void CommitTask::operator()() {
         << "error after running for " <<
         std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - syncStart).count()
-        << "ms while committing arangosearch link '" << link->id()
+        << "ms while committing arangosearch link '" << linkPtr->id()
         << "', run id '" << size_t(&runId)
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
@@ -450,9 +447,9 @@ void ConsolidationTask::operator()() {
     return;
   }
 
-  auto linkLock = link->try_lock();
+  auto linkPtr = link->try_lock();
 
-  if (!linkLock.owns_lock()) {
+  if (!linkPtr.ownsLock()) {
     LOG_TOPIC("eb0dc", DEBUG, iresearch::TOPIC)
         << "failed to acquire the lock while consolidating the link '" << id
         << "', run id '" << size_t(&runId) << "'";
@@ -463,9 +460,7 @@ void ConsolidationTask::operator()() {
     return;
   }
 
-  auto* link = this->link->get();
-
-  if (!link) {
+  if (!linkPtr) {
     LOG_TOPIC("eb0d1", DEBUG, iresearch::TOPIC)
         << "link '" << id << "' is no longer valid, run id '" << size_t(&runId) << "'";
     return;
@@ -490,9 +485,9 @@ void ConsolidationTask::operator()() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
-    READ_LOCKER(lock, link->_dataStore._mutex); // '_meta' can be asynchronously modified
-    auto& meta = link->_dataStore._meta;
+    TRI_ASSERT(linkPtr->_dataStore); // must be valid if _asyncSelf->get() is valid
+    READ_LOCKER(lock, linkPtr->_dataStore._mutex); // '_meta' can be asynchronously modified
+    auto& meta = linkPtr->_dataStore._meta;
 
     consolidationPolicy = meta._consolidationPolicy;
     consolidationIntervalMsec = std::chrono::milliseconds(meta._consolidationIntervalMsec);
@@ -524,7 +519,7 @@ void ConsolidationTask::operator()() {
   // run consolidation ('_asyncSelf' locked by async task)
   auto const consolidationStart = std::chrono::steady_clock::now(); // FIXME: add consolidation durations to metrics
   bool emptyConsolidation = false;
-  auto const res = link->consolidateUnsafe(consolidationPolicy, progress, emptyConsolidation);
+  auto const res = linkPtr->consolidateUnsafe(consolidationPolicy, progress, emptyConsolidation);
 
   if (res.ok()) {
     if (emptyConsolidation) {
@@ -533,7 +528,7 @@ void ConsolidationTask::operator()() {
        state->noopConsolidationCount = 0;
     }
     LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
-        << "successful consolidation of arangosearch link '" << link->id()
+        << "successful consolidation of arangosearch link '" << linkPtr->id()
         << "', run id '" << size_t(&runId) << "', took: " << 
         std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - consolidationStart).count()
@@ -543,7 +538,7 @@ void ConsolidationTask::operator()() {
         << "error after running for " <<
         std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - consolidationStart).count()
-        << "ms while consolidating arangosearch link '" << link->id()
+        << "ms while consolidating arangosearch link '" << linkPtr->id()
         << "', run id '" << size_t(&runId)
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
@@ -1083,53 +1078,52 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback, uint3
 
   return dbFeature.registerPostRecoveryCallback(  // register callback
       [asyncSelf = _asyncSelf, &flushFeature]() -> Result {
-        auto lock = asyncSelf->lock();  // ensure link does not get deallocated before callback finishes
-        auto* link = asyncSelf->get();
+        auto linkPtr = asyncSelf->lock();  // ensure link does not get deallocated before callback finishes
 
-        if (!link) {
+        if (!linkPtr) {
           return {};  // link no longer in recovery state, i.e. during recovery it was created and later dropped
         }
 
-        if (!link->_flushSubscription) {
+        if (!linkPtr->_flushSubscription) {
           return {
               TRI_ERROR_INTERNAL,
               "failed to register flush subscription for arangosearch link '" +
-                  std::to_string(link->id().id()) + "'"};
+                  std::to_string(linkPtr->id().id()) + "'"};
         }
 
-        auto& dataStore = link->_dataStore;
+        auto& dataStore = linkPtr->_dataStore;
 
-        if (dataStore._recoveryTick > link->_engine->recoveryTick()) {
+        if (dataStore._recoveryTick > linkPtr->_engine->recoveryTick()) {
           LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)
-              << "arangosearch link '" << link->id() << "' is recovered at tick '"
+              << "arangosearch link '" << linkPtr->id() << "' is recovered at tick '"
               << dataStore._recoveryTick << "' less than storage engine tick '"
-              << link->_engine->recoveryTick() << "', it seems WAL tail was lost and link '"
-              << link->id() << "' is out of sync with the underlying collection '"
-              << link->collection().name() << "', consider to re-create the link in order to synchronize them.";
+              << linkPtr->_engine->recoveryTick() << "', it seems WAL tail was lost and link '"
+              << linkPtr->id() << "' is out of sync with the underlying collection '"
+              << linkPtr->collection().name() << "', consider to re-create the link in order to synchronize them.";
         }
 
         // recovery finished
-        dataStore._inRecovery = link->_engine->inRecovery();
+        dataStore._inRecovery = linkPtr->_engine->inRecovery();
 
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
-            << "starting sync for arangosearch link '" << link->id() << "'";
+            << "starting sync for arangosearch link '" << linkPtr->id() << "'";
 
         [[maybe_unused]] CommitResult code;
-        auto res = link->commitUnsafe(true, &code);
+        auto res = linkPtr->commitUnsafe(true, &code);
 
         LOG_TOPIC("0e0ca", TRACE, iresearch::TOPIC)
-            << "finished sync for arangosearch link '" << link->id() << "'";
+            << "finished sync for arangosearch link '" << linkPtr->id() << "'";
 
         // register flush subscription
-        flushFeature.registerFlushSubscription(link->_flushSubscription);
+        flushFeature.registerFlushSubscription(linkPtr->_flushSubscription);
 
         // setup asynchronous tasks for commit, cleanup if enabled
         if (dataStore._meta._commitIntervalMsec) {
-          link->scheduleCommit(0ms);
+          linkPtr->scheduleCommit(0ms);
         }
         // setup asynchronous tasks for consolidation if enabled
         if (dataStore._meta._consolidationIntervalMsec) {
-          link->scheduleConsolidation(0ms);
+          linkPtr->scheduleConsolidation(0ms);
         }
 
         return res;

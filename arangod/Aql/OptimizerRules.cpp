@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+#////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
@@ -620,9 +620,6 @@ std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const removeDataMo
     arangodb::aql::ExecutionNode::REMOVE, arangodb::aql::ExecutionNode::INSERT,
     arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
     arangodb::aql::ExecutionNode::UPSERT};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const patchUpdateRemoveStatementsNodeTypes{
-    arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
-    arangodb::aql::ExecutionNode::REMOVE};
 std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const moveFilterIntoEnumerateTypes{
     arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION, arangodb::aql::ExecutionNode::INDEX};
 std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const undistributeNodeTypes{
@@ -5845,81 +5842,6 @@ void arangodb::aql::removeDataModificationOutVariablesRule(Optimizer* opt,
     }
   }
 
-  opt->addPlan(std::move(plan), rule, modified);
-}
-
-/// @brief patch UPDATE statement on single collection that iterates over the
-/// entire collection to operate in batches
-void arangodb::aql::patchUpdateStatementsRule(Optimizer* opt,
-                                              std::unique_ptr<ExecutionPlan> plan,
-                                              OptimizerRule const& rule) {
-  // no need to dive into subqueries here
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-
-  plan->findNodesOfType(nodes, ::patchUpdateRemoveStatementsNodeTypes, false);
-
-  bool modified = false;
-
-  for (auto const& n : nodes) {
-    auto node = ExecutionNode::castTo<ModificationNode*>(n);
-    TRI_ASSERT(node != nullptr);
-
-    auto& options = node->getOptions();
-    if (!options.readCompleteInput) {
-      // already ok
-      continue;
-    }
-
-    auto const collection = node->collection();
-
-    auto dep = n->getFirstDependency();
-
-    while (dep != nullptr) {
-      auto const type = dep->getType();
-
-      if (type == EN::ENUMERATE_LIST || type == EN::ENUMERATE_IRESEARCH_VIEW ||
-          type == EN::SUBQUERY) {
-        // not suitable
-        modified = false;
-        break;
-      }
-
-      if (type == EN::ENUMERATE_COLLECTION || type == EN::INDEX) {
-        if (::getCollection(dep) == collection) {
-          if (modified) {
-            // already saw the collection... that means we have seen the same
-            // collection two times in two FOR loops
-            modified = false;
-            // abort
-            break;
-          }
-          TRI_ASSERT(!modified);
-          // saw the same collection in FOR as in UPDATE
-          if (n->isVarUsedLater(::getOutVariable(dep))) {
-            // must abort, because the variable produced by the FOR loop is
-            // read after it is updated
-            break;
-          }
-          modified = true;
-        }
-      } else if (type == EN::TRAVERSAL || type == EN::K_SHORTEST_PATHS ||
-                 type == EN::SHORTEST_PATH) {
-        // unclear what will be read by the traversal
-        modified = false;
-        break;
-      }
-
-      dep = dep->getFirstDependency();
-    }
-
-    if (modified) {
-      options.readCompleteInput = false;
-    }
-  }
-
-  // always re-add the original plan, be it modified or not
-  // only a flag in the plan will be modified
   opt->addPlan(std::move(plan), rule, modified);
 }
 

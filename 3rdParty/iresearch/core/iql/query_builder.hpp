@@ -36,7 +36,7 @@ namespace iresearch {
     template<typename PTR>
     class IRESEARCH_API proxy_filter_t: public irs::filter {
      public:
-      proxy_filter_t(const type_info& type): irs::filter(type) {}
+      explicit proxy_filter_t(const type_info& type): irs::filter(type) {}
       template<typename T, typename... Args>
       T& proxy(Args&&... args) {
         typedef typename std::enable_if<
@@ -120,11 +120,10 @@ namespace iresearch {
        ////////////////////////////////////////////////////////////////////////////////
        typedef std::function<bool(
          proxy_filter& root,
-         const std::locale& locale,
+         const string_ref& locale,
          const string_ref& field,
          void* const& cookie,
-         const function_arg::fn_args_t& args
-       )> branch_builder_function_t;
+         const function_arg::fn_args_t& args)> branch_builder_function_t;
 
        struct IRESEARCH_API branch_builders {
          const branch_builder_function_t& range_ee; // range exclude/exclude - (,)
@@ -167,10 +166,9 @@ namespace iresearch {
       ////////////////////////////////////////////////////////////////////////////////
       query build(
         const std::string& query,
-        const std::locale& locale,
+        const irs::string_ref& locale,
         void* cookie = nullptr,
-        proxy_filter* root = nullptr
-      ) const;
+        proxy_filter* root = nullptr) const;
 
      private:
       const branch_builders& branch_builders_;

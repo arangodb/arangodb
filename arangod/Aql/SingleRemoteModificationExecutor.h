@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/ModificationExecutorInfos.h"
