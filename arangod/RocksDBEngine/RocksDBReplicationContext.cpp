@@ -353,7 +353,7 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
       LOG_TOPIC("5575c", WARN, Logger::REPLICATION)
           << "inconsistent collection count detected for "
           << vocbase.name() << "/" << cIter->logical->name() 
-          << ", an offet of " << adjustment << " will be applied";
+          << ", an offset of " << adjustment << " will be applied";
       auto adjustSeq = engine.db()->GetLatestSequenceNumber();
       if (adjustSeq <= blockerSeq) {
         adjustSeq = ::forceWrite(engine);
@@ -426,7 +426,7 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
       LOG_TOPIC("5575d", WARN, Logger::REPLICATION)
           << "inconsistent collection count detected for "
           << vocbase.name() << "/" << cIter->logical->name() 
-          << ", an offet of " << adjustment << " will be applied";
+          << ", an offset of " << adjustment << " will be applied";
       auto adjustSeq = engine.db()->GetLatestSequenceNumber();
       if (adjustSeq <= blockerSeq) {
         adjustSeq = ::forceWrite(engine);
@@ -563,7 +563,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       LOG_TOPIC("4986d", WARN, Logger::REPLICATION)
           << "inconsistent collection count detected for "
           << vocbase.name() << "/" << cIter->logical->name() 
-          << ", an offet of " << adjustment << " will be applied";
+          << ", an offset of " << adjustment << " will be applied";
       auto adjustSeq = engine.db()->GetLatestSequenceNumber();
       if (adjustSeq <= blockerSeq) {
         adjustSeq = ::forceWrite(engine);

@@ -279,7 +279,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     LOG_TOPIC("ad613", WARN, Logger::REPLICATION)
       << "inconsistent collection count detected for "
       << vocbase.name() << "/" << _logicalCollection.name()
-      << ", an offet of " << adjustment << " will be applied";
+      << ", an offset of " << adjustment << " will be applied";
     auto adjustSeq = engine->db()->GetLatestSequenceNumber();
     if (adjustSeq <= snapSeq) {
       adjustSeq = ::forceWrite(*engine);
