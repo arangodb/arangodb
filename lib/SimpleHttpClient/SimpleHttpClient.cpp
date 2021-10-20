@@ -187,7 +187,8 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
 
     if (tries++ >= _params._maxRetries) {
       LOG_TOPIC("de0be", WARN, arangodb::Logger::HTTPCLIENT)
-          << "" << _params._retryMessage << " - no retries left";
+          << "" << _params._retryMessage << " - no retries left"
+          << (_errorMessage.empty() ? std::string("") : std::string(" - ") + _errorMessage);
       break;
     }
 
@@ -201,10 +202,11 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
       break;
     }
 
-    if (!_params._retryMessage.empty() && (_params._maxRetries - tries) > 0) {
+    if (!_params._retryMessage.empty()) {
       LOG_TOPIC("2b48f", WARN, arangodb::Logger::HTTPCLIENT)
           << "" << _params._retryMessage
-          << " - retries left: " << (_params._maxRetries - tries);
+          << " - retries left: " << (_params._maxRetries - tries)
+          << (_errorMessage.empty() ? std::string("") : std::string(" - ") + _errorMessage);
     }
 
     // 1 microsecond == 10^-6 seconds

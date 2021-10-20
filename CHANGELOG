@@ -1,6 +1,9 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
+* Add better error message for replication request failures in case requests
+  are retried.
+
 * Make background statistics gathering more efficient by avoiding one AQL query
   every 10 seconds that fetched the most recent stats entry. Instead, buffer 
   the entry in value after we have written it. Also spread out the statistics
