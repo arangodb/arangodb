@@ -1,6 +1,10 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
+* Fix caching of index selectivity estimates in cluster.
+  The cache values expired too early in previous versions, making the cache 
+  ineffective.
+
 * Add better error message for replication request failures in case requests
   are retried.
 
