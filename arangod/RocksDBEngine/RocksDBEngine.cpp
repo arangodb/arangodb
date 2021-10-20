@@ -61,6 +61,7 @@
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
 #include "RocksDBEngine/Listeners/RocksDBShaCalculator.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
+#include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -1025,6 +1026,9 @@ std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
 
 std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid, transaction::Options const& options) {
+  if (vocbase.replicationVersion() == replication::Version::TWO) {
+    return std::make_shared<ReplicatedRocksDBTransactionState>(vocbase, tid, options);
+  }
   return std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options);
 }
 

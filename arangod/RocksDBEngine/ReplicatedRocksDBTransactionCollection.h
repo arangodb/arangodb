@@ -23,53 +23,42 @@
 
 #pragma once
 
-#include "RocksDBEngine/RocksDBTransactionState.h"
-#include "VocBase/Identifiers/DataSourceId.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 namespace arangodb {
 class RocksDBTransactionMethods;
+class ReplicatedRocksDBTransactionState;
 
-class SimpleRocksDBTransactionState final : public RocksDBTransactionState {
+class ReplicatedRocksDBTransactionCollection final : public RocksDBTransactionCollection {
  public:
-  SimpleRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                                transaction::Options const& options);
+  ReplicatedRocksDBTransactionCollection(ReplicatedRocksDBTransactionState* trx,
+                                         DataSourceId cid, AccessMode::Type accessType);
+  ~ReplicatedRocksDBTransactionCollection();
 
-  ~SimpleRocksDBTransactionState() override;
+  Result beginTransaction();
+  Result commitTransaction();
+  Result abortTransaction();
 
-  /// @brief begin a transaction
-  Result beginTransaction(transaction::Hints hints) override;
+  RocksDBTransactionMethods* rocksdbMethods() const { return _rocksMethods.get(); }
 
-  RocksDBTransactionMethods* rocksdbMethods(DataSourceId) const override { return _rocksMethods.get(); }
-
-  void beginQuery(bool isModificationQuery) override;
-  void endQuery(bool isModificationQuery) noexcept override;
+  void beginQuery(bool isModificationQuery);
+  void endQuery(bool isModificationQuery) noexcept;
 
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
   ///       transaction is committed
-  TRI_voc_tick_t lastOperationTick() const noexcept override;
+  TRI_voc_tick_t lastOperationTick() const noexcept;
 
   /// @brief number of commits, including intermediate commits
-  uint64_t numCommits() const override;
+  uint64_t numCommits() const;
 
-  bool hasOperations() const noexcept override;
+  uint64_t numOperations() const noexcept;
 
-  uint64_t numOperations() const noexcept override;
-
-  bool ensureSnapshot() override;
-
-  rocksdb::SequenceNumber beginSeq() const override;
-
- protected:
-  std::unique_ptr<TransactionCollection> createTransactionCollection(
-      DataSourceId cid, AccessMode::Type accessType) override;
-
-  Result doCommit() override;
-  Result doAbort() override;
+  bool ensureSnapshot();
 
  private:
   void maybeDisableIndexing();
-
+  
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBTransactionMethods> _rocksMethods;
 };

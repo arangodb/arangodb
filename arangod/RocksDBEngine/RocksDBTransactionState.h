@@ -85,7 +85,7 @@ class RocksDBTransactionState : public TransactionState {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
 
-  bool iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const;
+  bool iteratorMustCheckBounds(DataSourceId cid, ReadOwnWrites readOwnWrites) const;
 
   void prepareOperation(DataSourceId cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType);
@@ -98,7 +98,7 @@ class RocksDBTransactionState : public TransactionState {
                       bool& hasPerformedIntermediateCommit);
 
   /// @brief return wrapper around rocksdb transaction
-  virtual RocksDBTransactionMethods* rocksdbMethods() const = 0;
+  virtual RocksDBTransactionMethods* rocksdbMethods(DataSourceId collectionId) const = 0;
   
   /// @brief acquire a database snapshot if we do not yet have one.
   /// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
@@ -111,11 +111,11 @@ class RocksDBTransactionState : public TransactionState {
     return static_cast<RocksDBTransactionState*>(state);
   }
 
-  static RocksDBTransactionMethods* toMethods(transaction::Methods* trx) {
+  static RocksDBTransactionMethods* toMethods(transaction::Methods* trx, DataSourceId collectionId) {
     TRI_ASSERT(trx != nullptr);
     TransactionState* state = trx->state();
     TRI_ASSERT(state != nullptr);
-    return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
+    return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods(collectionId);
   }
 
   /// @brief make some internal preparations for accessing this state in

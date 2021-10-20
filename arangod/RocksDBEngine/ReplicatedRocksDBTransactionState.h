@@ -24,22 +24,21 @@
 #pragma once
 
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "VocBase/Identifiers/DataSourceId.h"
 
 namespace arangodb {
 class RocksDBTransactionMethods;
 
-class SimpleRocksDBTransactionState final : public RocksDBTransactionState {
+class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
  public:
-  SimpleRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+  ReplicatedRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                 transaction::Options const& options);
 
-  ~SimpleRocksDBTransactionState() override;
+  ~ReplicatedRocksDBTransactionState() override;
 
   /// @brief begin a transaction
   Result beginTransaction(transaction::Hints hints) override;
 
-  RocksDBTransactionMethods* rocksdbMethods(DataSourceId) const override { return _rocksMethods.get(); }
+  RocksDBTransactionMethods* rocksdbMethods(DataSourceId collectionId) const override;
 
   void beginQuery(bool isModificationQuery) override;
   void endQuery(bool isModificationQuery) noexcept override;
@@ -69,9 +68,7 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState {
 
  private:
   void maybeDisableIndexing();
-
-  /// @brief wrapper to use outside this class to access rocksdb
-  std::unique_ptr<RocksDBTransactionMethods> _rocksMethods;
+  bool _hasActiveTrx = false;
 };
 
 }  // namespace arangodb

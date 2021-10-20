@@ -250,20 +250,20 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
 /// iterate_upper_bound. this is currently true for all iterators that are based
 /// on in-flight writes of the current transaction. it is never necessary to
 /// check bounds for read-only transactions
-bool RocksDBTransactionState::iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const {
-  return rocksdbMethods()->iteratorMustCheckBounds(readOwnWrites);
+bool RocksDBTransactionState::iteratorMustCheckBounds(DataSourceId cid, ReadOwnWrites readOwnWrites) const {
+  return rocksdbMethods(cid)->iteratorMustCheckBounds(readOwnWrites);
 }
 
 void RocksDBTransactionState::prepareOperation(DataSourceId cid, RevisionId rid,
                                                TRI_voc_document_operation_e operationType) {
-  rocksdbMethods()->prepareOperation(cid, rid, operationType);
+  rocksdbMethods(cid)->prepareOperation(cid, rid, operationType);
 }
 
 /// @brief add an operation for a transaction collection
 Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisionId,
                                              TRI_voc_document_operation_e operationType,
                                              bool& hasPerformedIntermediateCommit) {
-  Result result = rocksdbMethods()->addOperation(cid, revisionId, operationType);
+  Result result = rocksdbMethods(cid)->addOperation(cid, revisionId, operationType);
 
   if (result.ok()) {
     auto tcoll = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
@@ -283,7 +283,7 @@ Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisi
       queryCache->invalidate(&_vocbase, tcoll->collection()->guid());
     }
     
-    result = rocksdbMethods()->checkIntermediateCommit(hasPerformedIntermediateCommit);
+    result = rocksdbMethods(cid)->checkIntermediateCommit(hasPerformedIntermediateCommit);
   }
   return result;
 }
