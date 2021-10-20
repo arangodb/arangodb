@@ -35,7 +35,7 @@ struct AppendEntriesBatchTest : ReplicatedLogTest {};
 TEST_F(AppendEntriesBatchTest, test_with_two_batches) {
   // make batch size small enough to force more
   // than one batch to be sent
-  _optionsMock->_maxNetworkBatchSize = 20000;
+  _optionsMock->_maxNetworkBatchSize = 60000;
 
   auto leaderLog = std::invoke([&] {
     auto persistedLog = makePersistedLog(LogId{1});
