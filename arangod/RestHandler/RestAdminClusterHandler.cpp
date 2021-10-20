@@ -1807,7 +1807,7 @@ void theSimpleStupidOne(std::map<std::string, std::unordered_set<CollectionShard
   // Please fill in all values of the `MoveShardDescription` struct.
 
   std::unordered_set<std::string> movedShards;
-  while (moves.size() < 10) {
+  while (moves.size() < arangodb::rest::server().getFeature<ClusterFeature>().numMoveShards()) {
     auto [emptiest, fullest] =
         std::minmax_element(shardMap.begin(), shardMap.end(),
                             [](auto const& a, auto const& b) {
@@ -1849,6 +1849,7 @@ void theSimpleStupidOne(std::map<std::string, std::unordered_set<CollectionShard
 
 RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalanceShards(
     const ReshardAlgorithm& algorithm) {
+  LOG_DEVEL << "OI 5";
   // dbserver -> shards
   std::vector<MoveShardDescription> moves;
   std::map<std::string, std::unordered_set<CollectionShardPair>> shardMap;
@@ -1891,6 +1892,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalance
 
   return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue([this](AsyncAgencyCommResult&& result) {
     if (result.ok() && result.statusCode() == 200) {
+      LOG_DEVEL << "OI 6";
       generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
     } else {
       generateError(result.asResult());
@@ -1898,23 +1900,23 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalance
   });
 }
 
-RestStatus RestAdminClusterHandler::handleRebalanceShards() {
+std::pair<RestStatus, std::uint32_t> RestAdminClusterHandler::handleRebalanceShards() {
   if (request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    return {RestStatus::DONE, 0};
   }
 
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
-    return RestStatus::DONE;
+    return {RestStatus::DONE, 0};
   }
 
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(auth::Level::RW)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficent permissions");
-    return RestStatus::DONE;
+    return {RestStatus::DONE, 0};
   }
 
   // ADD YOUR ALGORITHM HERE!!!
@@ -1926,10 +1928,10 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "unknown algorithm");
-    return RestStatus::DONE;
+    return {RestStatus::DONE, 0};
   }
 
-  return waitForFuture(
+  return {waitForFuture(
       handlePostRebalanceShards(algorithm)
           .thenError<VPackException>([this](VPackException const& e) {
             generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
@@ -1937,5 +1939,5 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+          })), server().getFeature<ClusterFeature>().numMoveShards()};
 }

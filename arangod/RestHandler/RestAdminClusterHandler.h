@@ -91,7 +91,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleQueryJobStatus();
 
   RestStatus handleRemoveServer();
-  RestStatus handleRebalanceShards();
+  std::pair<RestStatus, std::uint32_t> handleRebalanceShards();
 
  private:
   struct MoveShardContext {

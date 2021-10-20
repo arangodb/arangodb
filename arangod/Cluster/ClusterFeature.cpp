@@ -238,6 +238,13 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                                                arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30800);
+  options
+      ->addOption("--cluster.num-move-shards",
+                  "number of shards to be move per rebalance operation",
+                  new UInt32Parameter(&_numMoveShards),
+                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                               arangodb::options::Flags::OnCoordinator))
+      .setIntroducedIn(31000);
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -258,6 +265,13 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   } else if (_maxNumberOfShards == 0) {
     LOG_TOPIC("e83c2", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--max-number-of-shards`. The value must be at "
+           "least 1";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_numMoveShards == 0) {
+    LOG_TOPIC("38ea3", FATAL, arangodb::Logger::CLUSTER)
+        << "Invalid value for `--num-move-shards`. The value must be at "
            "least 1";
     FATAL_ERROR_EXIT();
   }

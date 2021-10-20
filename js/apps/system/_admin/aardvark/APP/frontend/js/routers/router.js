@@ -50,6 +50,7 @@
       'cluster': 'cluster',
       'nodes': 'nodes',
       'shards': 'shards',
+      'rebalanceShards': 'rebalanceShards',
       'maintenance': 'maintenance',
       'distribution': 'distribution',
       'node/:name': 'node',
@@ -413,6 +414,23 @@
           dbServers: this.dbServers
         });
         this.shardsView.render();
+      });
+    },
+
+    rebalanceShards: function () {
+      this.checkUser();
+      this.init.then(() => {
+        if (this.isCluster === false) {
+          this.routes[''] = 'dashboard';
+          this.navigate('#dashboard', { trigger: true });
+          return;
+        }
+        if (this.rebalanceShardsView) {
+          this.rebalanceShardsView.remove();
+        }
+        this.rebalanceShardsView = new window.RebalanceShardsView({
+        });
+        this.rebalanceShardsView.render();
       });
     },
 
