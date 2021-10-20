@@ -778,6 +778,10 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               out = StringUtils::decodeBase64(out);
               // set the correct content-encoding header
               response->setHeaderNC(StaticStrings::ContentEncoding, StaticStrings::Binary);
+            } else if (name == "gzip") {
+              response->setAllowCompression(true);
+            } else if (name == "deflate") {
+              response->setAllowCompression(true);
             }
           }
 
@@ -838,6 +842,10 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             // check available transformations
             if (name == "base64decode") {
               out = StringUtils::decodeBase64(out);
+            } else if (name == "gzip") {
+              response->setAllowCompression(true);
+            } else if (name == "deflate") {
+              response->setAllowCompression(true);
             }
           }
         }

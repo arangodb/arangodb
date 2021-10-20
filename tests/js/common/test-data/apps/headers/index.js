@@ -14,6 +14,24 @@ router.all('/header-empty', function (req, res) {
   // do nothing
 });
 
+router.all('/encode-array-base64', function (req, res) {
+  res.json(['this is an array']);
+  res.transformations = ['base64encode'];
+});
+router.all('/encode-object-base64encode', function (req, res) {
+  res.json({'this': 'is an object'});
+  res.transformations = ['base64encode'];
+});
+
+router.all('/encode-array-deflate', function (req, res) {
+  res.json(['this is an array']);
+  res.transformations = ['deflate'];
+});
+router.all('/encode-object-deflate', function (req, res) {
+  res.json({'this': 'is an object'});
+  res.transformations = ['deflate'];
+});
+
 router.all('/header-automatic', function (req, res) {
   res.set('x-foobar', 'baz');
   res.set('x-nofoobar', 'baz');

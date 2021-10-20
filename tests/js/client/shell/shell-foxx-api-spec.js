@@ -181,6 +181,39 @@ describe('FoxxApi commit', function () {
       expect(result).to.have.property('parsedBody');
     }      
 
+    result = arango.GET_RAW('/test/encode-object-deflate', {'accept-encoding': 'deflate'});
+    print(result)
+    //if (!isVst) {
+    //  // no transparent compression support in VST atm.
+    //  expect(result.body).to.be.instanceof(Buffer);
+    //} else {
+    //  expect(result).to.have.property('parsedBody');
+    //}      
+
+    result = arango.GET_RAW('/test/encode-array-deflate', {'accept-encoding': 'deflate'});
+    print(result)
+    //if (!isVst) {
+    //  // no transparent compression support in VST atm.
+    //  expect(result.body).to.be.instanceof(Buffer);
+    //} else {
+    //  expect(result).to.have.property('parsedBody');
+    //}      
+
+    result = arango.GET_RAW('/test/encode-object-base64encode');
+    print(result)
+
+    result = arango.GET_RAW('/test/encode-array-base64encode');
+    print(result)
+
+
+    result = arango.GET_RAW('/_api/version', {'accept-encoding': 'deflate'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }      
+
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'gzip'});
     expect(result).to.have.property('parsedBody');
 
