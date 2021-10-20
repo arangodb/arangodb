@@ -120,15 +120,19 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
       return false;
     }
     TRI_ASSERT(hasExtra());
-    return nextImplInternal<ExtraCallback, true>(callback, limit);
+    return nextImplInternal<ExtraCallback, true, false>(callback, limit);
   }
 
   bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override {
-    return nextImplInternal<LocalDocumentIdCallback, false>(callback, limit);
+    return nextImplInternal<LocalDocumentIdCallback, false, false>(callback, limit);
+  }
+
+  bool nextCoveringImpl(DocumentCallback const& callback, size_t limit) override {
+    return nextImplInternal<DocumentCallback, false, true>(callback, limit);
   }
 
   // FIXME: Evaluate buffering iresearch reads
-  template<typename Callback, bool withExtra>
+  template<typename Callback, bool withExtra, bool withCovering>
   bool nextImplInternal(Callback const& callback, size_t limit)  {
     if (limit == 0 || !_filter) {
       TRI_ASSERT(limit > 0); // Someone called with limit == 0. Api broken

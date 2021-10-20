@@ -229,7 +229,7 @@ class Index {
 
   /// @brief whether or not the index covers all the attributes passed in.
   /// the function may modify the projections by setting the coveringIndexPosition value in it.
-  bool covers(arangodb::aql::Projections& projections) const;
+  virtual bool covers(arangodb::aql::Projections& projections) const;
 
   /// @brief return the underlying collection
   inline LogicalCollection& collection() const { return _collection; }
