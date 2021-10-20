@@ -347,13 +347,13 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   TRI_ASSERT(appliedSeq > 0);
     
   TRI_ASSERT(batch.Count() == 0);
-  
-  RocksDBCollection* const rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
-
+ 
   Result res;
   if (coll.deleted()) {
     return res;
   }
+  
+  RocksDBCollection* const rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
     
   auto& engine = coll.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   std::string const context = coll.vocbase().name() + "/" + coll.name();
@@ -499,6 +499,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
 /// @brief deserialize collection metadata, only called on startup
 Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll) {
   TRI_ASSERT(!coll.isAStub());
+  std::string const context = coll.vocbase().name() + "/" + coll.name();
 
   RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
 
@@ -519,16 +520,16 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
     VPackSlice countSlice = RocksDBValue::data(value);
     _count = RocksDBMetadata::DocCount(countSlice);
     LOG_TOPIC("1387b", TRACE, Logger::ENGINES)
-        << "[" << this << "] recovered counter '" << countSlice.toJson()
+        << context << ": recovered counter '" << countSlice.toJson()
         << "' for collection with objectId '" << rcoll->objectId() << "'";
   } else if (!s.IsNotFound()) {
     LOG_TOPIC("1397c", TRACE, Logger::ENGINES)
-        << "[" << this << "] error while recovering counter for collection with objectId '"
+        << context << ": error while recovering counter for collection with objectId '"
         << rcoll->objectId() << "': " << rocksutils::convertStatus(s).errorMessage();
     return rocksutils::convertStatus(s);
   } else {
     LOG_TOPIC("1387c", TRACE, Logger::ENGINES)
-        << "[" << this << "] no counter found for collection with objectId '"
+        << context << ": no counter found for collection with objectId '"
         << rcoll->objectId() << "'";
   }
  
@@ -563,7 +564,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
 
   // Step 3. load the index estimates
   auto indexes = coll.getIndexes();
-  for (std::shared_ptr<arangodb::Index>& index : indexes) {
+  for (std::shared_ptr<arangodb::Index> const& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     if (idx->estimator() == nullptr) {
       continue;
@@ -574,9 +575,9 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
     if (!s.ok() && !s.IsNotFound()) {
       return rocksutils::convertStatus(s);
     } else if (s.IsNotFound()) {  // expected with nosync recovery tests
-      LOG_TOPIC("ecdbb", WARN, Logger::ENGINES)
-          << "[" << this << "] recalculating index estimate for index "
-          << "type '" << idx->typeName() << "' with id '" << idx->id().id() << "'";
+      LOG_TOPIC("ecdbb", INFO, Logger::ENGINES)
+          << context << ": no index estimate found for index of "
+          << "type '" << idx->typeName() << "', id '" << idx->id().id() << "', recalculating...";
       idx->recalculateEstimates();
       continue;
     }
@@ -587,14 +588,14 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
 
       auto est = std::make_unique<RocksDBCuckooIndexEstimatorType>(estimateInput);
       LOG_TOPIC("63f3b", DEBUG, Logger::ENGINES)
-          << "[" << this << "] found index estimator for objectId '"
+          << context << ": found index estimator for objectId '"
           << idx->objectId() << "' committed seqNr '" << est->appliedSeq()
           << "' with estimate " << est->computeEstimate();
 
       idx->setEstimator(std::move(est));
     } else {
       LOG_TOPIC("dcd98", ERR, Logger::ENGINES)
-          << "[" << this << "] unsupported index estimator format in index "
+          << context << ": unsupported index estimator format in index "
           << "with objectId '" << idx->objectId() << "'";
     }
   }
@@ -602,7 +603,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
   // Step 4. load the revision tree
   if (!coll.useSyncByRevision()) {
     LOG_TOPIC("92ca9", TRACE, Logger::ENGINES)
-        << "[" << this << "] no need to recover revision tree for "
+        << context << ": no need to recover revision tree for "
         << "collection with objectId '" << rcoll->objectId() << "', "
         << "it is not configured to sync by revision";
     // nothing to do
@@ -614,13 +615,15 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
   s = db->Get(ro, cf, key.string(), &value);
   if (!s.ok() && !s.IsNotFound()) {
     LOG_TOPIC("92caa", TRACE, Logger::ENGINES)
-        << "[" << this << "] error while recovering revision tree for "
+        << context << ": error while recovering revision tree for "
         << "collection with objectId '" << rcoll->objectId()
         << "': " << rocksutils::convertStatus(s).errorMessage();
     return rocksutils::convertStatus(s);
-  } 
+  }
 
-  if (!s.IsNotFound()) {
+  bool const treeFound = !s.IsNotFound();
+
+  if (treeFound) {
     // we do have a persisted tree.
     TRI_ASSERT(value.size() > sizeof(uint64_t));
 
@@ -642,7 +645,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         rcoll->setRevisionTree(std::move(tree), useSeq);
 
         LOG_TOPIC("92cab", TRACE, Logger::ENGINES)
-            << "[" << this << "] recovered revision tree for "
+            << context << ": recovered revision tree for "
             << "collection with objectId '" << rcoll->objectId() << "', "
             << "valid through " << useSeq << ", seq: " << seq << ", globalSeq: " << globalSeq;
 
@@ -650,14 +653,14 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       }
       
       LOG_TOPIC("dcd99", WARN, Logger::ENGINES)
-          << "unsupported revision tree format for collection " << coll.name();
+          << context << ": unsupported revision tree format";
 
       // we intentionally fall through to the tree rebuild process
     } catch (std::exception const& ex) {
       // error during tree processing.
       // the tree is either invalid or some other exception happened
-      LOG_TOPIC("84247", WARN, Logger::ENGINES)
-          << "caught exception while loading revision tree in collection "
+      LOG_TOPIC("84247", ERR, Logger::ENGINES)
+          << context << ": caught exception while loading revision tree in collection "
           << coll.name() << ": " << ex.what();
     }
   }
@@ -673,29 +676,46 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
                               RocksDBColumnFamilyManager::Family::Documents))};
   it->Seek(bounds.start());
   if (it->Valid() && cmp->Compare(it->key(), bounds.end()) < 0) {
-    LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
-        << "no or invalid revision tree found for collection " << coll.name() 
-        << ", rebuilding from collection data";
+    if (treeFound) {
+      LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
+          << context << ": invalid revision tree found for collection, "
+          << "rebuilding from collection data...";
+    } else {
+      LOG_TOPIC("ecdba", INFO, Logger::ENGINES)
+          << context << ": no revision tree found for collection, "
+          << "rebuilding from collection data...";
+    }
     rcoll->rebuildRevisionTree(it);
-    auto [countInTree, treeSeq] = rcoll->revisionTreeInfo();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    {
-      std::lock_guard<std::mutex> guard(_bufferLock);
-      TRI_ASSERT(_bufferedAdjs.empty());
-    }
-#endif
-    uint64_t stored = _numberDocuments.load();
-    if (stored != countInTree && treeSeq != 0) {
-      _numberDocuments.store(countInTree);
-      _count._added = countInTree;
-      _count._removed = 0;
-      _count._committedSeq = treeSeq; 
-    }
   } else {
     LOG_TOPIC("ecdbe", DEBUG, Logger::ENGINES)
-        << "no revision tree found for collection " << coll.name()
+        << context << ": no revision tree found for collection, "
         << ", but collection appears empty";
     rcoll->rebuildRevisionTree(it);
+  }
+    
+  auto [countInTree, treeSeq] = rcoll->revisionTreeInfo();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    std::lock_guard<std::mutex> guard(_bufferLock);
+    TRI_ASSERT(_bufferedAdjs.empty());
+  }
+#endif
+  uint64_t stored = _numberDocuments.load();
+  if (stored != countInTree && treeSeq != 0) {
+    // patch the document count to the correct value
+    adjustNumberDocumentsInRecovery(treeSeq, RevisionId{0}, static_cast<int64_t>(countInTree) - static_cast<int64_t>(stored));
+    // also patch the counter's sequence number, so that
+    // any changes encountered by the recovery do not modify
+    // the counter once more
+    _count._committedSeq = treeSeq;
+
+    TRI_ASSERT(_numberDocuments.load() == countInTree);
+    TRI_ASSERT(_count._added == 0);
+    TRI_ASSERT(_count._removed == 0);
+    
+    LOG_TOPIC("f3f38", INFO, Logger::ENGINES)
+          << context << ": rebuilt revision tree for collection with objectId '"
+          << rcoll->objectId() << "', seqNr " << treeSeq << ", count: " << countInTree;
   }
 
   return {};
