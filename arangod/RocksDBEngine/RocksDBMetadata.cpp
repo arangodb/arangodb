@@ -350,8 +350,6 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     return res;
   }
   
-  RocksDBCollection* const rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
-    
   auto& engine = coll.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   std::string const context = coll.vocbase().name() + "/" + coll.name();
 
