@@ -32,8 +32,6 @@ const jsunity = require("jsunity");
 const _ = require("lodash");
 const isEnterprise = require("internal").isEnterprise();
 
-print("is Enteprrise: " + isEnterprise)
-
 function graphTraversalGenericGeneralGraphStandaloneSuite() {
   let testGraphs = _.fromPairs(_.keys(protoGraphs).map(x => [x, {}]));
   _.each(protoGraphs, function (protoGraph) {
