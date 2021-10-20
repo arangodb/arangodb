@@ -41,7 +41,7 @@ uint64_t CountCache::get() const {
 uint64_t CountCache::getWithTtl() const {
   // (1) - this acquire-load synchronizes with the release-store (2)
   double ts = expireStamp.load(std::memory_order_acquire);
-  if (ts < TRI_microtime()) {
+  if (ts >= TRI_microtime()) {
     // not yet expired
     return get();
   }

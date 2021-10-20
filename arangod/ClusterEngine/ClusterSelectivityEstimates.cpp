@@ -114,11 +114,11 @@ void ClusterSelectivityEstimates::set(IndexEstMap const& estimates) {
   }
   
   double ttl = defaultTtl;
-  // let selectivity estimates expire less seldomly for system collections
+  // let selectivity estimates expire less often for system collections
   if (!_collection.name().empty() && _collection.name()[0] == '_') {
     ttl = systemCollectionTtl;
   }
-
+  
   // finally update the cache
-  std::atomic_store(&_data, std::make_shared<ClusterSelectivityEstimates::InternalData>(estimates, ttl));
+  std::atomic_store(&_data, std::make_shared<ClusterSelectivityEstimates::InternalData>(estimates, TRI_microtime() + ttl));
 }
