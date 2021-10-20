@@ -52,8 +52,14 @@ const setup = require(base);
   setup.createFoxx();
   setup.createAnalyzers();
   setup.createEmptySmartGraph();
+  setup.createEmptySatelliteGraph();
+  setup.createEmptyDisjointGraph();
   setup.createSmartGraphWithoutData();
+  setup.createSatelliteGraphWithoutData();
+  setup.createDisjointGraphWithoutData();
   setup.createSmartGraphSingleServer();
+  setup.createSatelliteSmartGraphSingleServer();
+  setup.createDisjointSmartGraphSingleServer();
 })();
 
 return {

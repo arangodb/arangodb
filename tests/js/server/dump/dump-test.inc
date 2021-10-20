@@ -1241,6 +1241,28 @@
         assertEqual(graph.orphanCollections.length, 0);
       },
 
+      testEmptySatelliteGraph: function () {
+        const smartGraphName = "UnitTestsDumpEmptySmartGraph"; // the same name as for SmartGraph
+        const graphsColl = db._collection('_graphs');
+        assertTrue(!!graphsColl.exists(smartGraphName));
+
+        const graph = graphsColl.document(smartGraphName);
+        assertCommon(graph);
+        assertEqual(graph.edgeDefinitions.length, 0);
+        assertEqual(graph.orphanCollections.length, 0);
+      },
+
+      testEmptyDisjointGraph: function () {
+        const smartGraphName = "UnitTestsDumpEmptySmartGraph"; // the same name as for SmartGraph
+        const graphsColl = db._collection('_graphs');
+        assertTrue(!!graphsColl.exists(smartGraphName));
+
+        const graph = graphsColl.document(smartGraphName);
+        assertCommon(graph);
+        assertEqual(graph.edgeDefinitions.length, 0);
+        assertEqual(graph.orphanCollections.length, 0);
+      },
+
       testSmartGraphWithoutData: function() {
         const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
         const vertexCollName = 'UnitTestDumpSmartVerticesWithoutData';
