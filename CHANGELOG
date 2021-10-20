@@ -1,6 +1,9 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed ES-881: Fixed LDAP global options. This needs to use the first active
+  provider, not just the first provider and it should be globally disabled.
+
 * Do not use an edge index for range queries, i.e. with the comparison operators
   `>`, `>=`, `<` or `<=`, but only for equality lookups using the `==` and `IN`
   comparison operators.
