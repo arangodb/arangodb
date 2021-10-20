@@ -402,15 +402,15 @@
       ['host_clang==1', {
         'conditions':[
           ['OS=="android"', {
-            'host_ld': '<!(which ld)',
-            'host_ranlib': '<!(which ranlib)',
+            'host_ld': '<!(<(PYTHON_EXECUTABLE)  -c "import distutils.spawn; print(distutils.spawn.find_executable(\\"ld\\"))")',
+            'host_ranlib': '<!(<(PYTHON_EXECUTABLE)  -c "import distutils.spawn; print(distutils.spawn.find_executable(\\"ranlib\\"))")',
           }],
         ],
         'host_cc': '<(clang_dir)/bin/clang',
         'host_cxx': '<(clang_dir)/bin/clang++',
       }, {
-        'host_cc': '<!(which gcc)',
-        'host_cxx': '<!(which g++)',
+        'host_cc': '<!(<(PYTHON_EXECUTABLE)  -c "import distutils.spawn; print(distutils.spawn.find_executable(\\"gcc\\"))")',
+        'host_cxx': '<!(<(PYTHON_EXECUTABLE)  -c "import distutils.spawn; print(distutils.spawn.find_executable(\\"g++\\"))")',
       }],
     ],
     # Default ARM variable settings.
@@ -1369,8 +1369,8 @@
       # Set default ARM cross tools on linux.  These can be overridden
       # using CC,CXX,CC.host and CXX.host environment variables.
       'make_global_settings': [
-        ['CC', '<!(which arm-linux-gnueabihf-gcc)'],
-        ['CXX', '<!(which arm-linux-gnueabihf-g++)'],
+        ['CC', '<!(<(PYTHON_EXECUTABLE)  -c "import distutils.spawn; print(distutils.spawn.find_executable(\\"arm-linux-gnueabihf-gcc\\"))")'],
+        ['CXX', '<!(<(PYTHON_EXECUTABLE)  -c "import distutils.spawn; print(distutils.spawn.find_executable(\\"arm-linux-gnueabihf-g++\\"))")'],
         ['CC.host', '<(host_cc)'],
         ['CXX.host', '<(host_cxx)'],
       ],
