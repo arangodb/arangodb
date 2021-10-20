@@ -207,6 +207,7 @@ class PersistingLogEntry {
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto logPayload() const noexcept -> std::optional<LogPayload> const&;
   [[nodiscard]] auto logTermIndexPair() const noexcept -> TermIndexPair;
+  [[nodiscard]] auto approxByteSize() const noexcept -> size_t;
 
   class OmitLogIndex {};
   constexpr static auto omitLogIndex = OmitLogIndex();
