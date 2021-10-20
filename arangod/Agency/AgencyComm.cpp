@@ -735,7 +735,7 @@ bool AgencyComm::exists(std::string const& key) {
   return !slice.isNone();
 }
 
-AgencyCommResult AgencyComm::getValues(std::string const& key) {
+AgencyCommResult AgencyComm::getValues(std::string const& key, double timeout) {
   std::string url = AgencyComm::AGENCY_URL_PREFIX + "/read";
 
   VPackBuilder builder;
@@ -749,7 +749,8 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
 
   AgencyCommResult result =
       sendWithFailover(arangodb::rest::RequestType::POST,
-                       AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout,
+                       (timeout == 0.0) ? AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout
+                                        : timeout,
                        url, builder.slice());
 
   if (!result.successful()) {
@@ -1376,7 +1377,7 @@ bool AgencyComm::tryInitializeStructure() {
         AgencyPrecondition("Plan", AgencyPrecondition::Type::EMPTY, true));
 
     AgencyCommResult result = sendTransactionWithFailover(initTransaction);
-    if (result.httpCode() ==ResponseCode::UNAUTHORIZED) {
+    if (result.httpCode() == ResponseCode::UNAUTHORIZED) {
       LOG_TOPIC("a695d", ERR, Logger::AUTHENTICATION)
           << "Cannot authenticate with agency,"
           << " check value of --server.jwt-secret";
@@ -1398,7 +1399,7 @@ bool AgencyComm::shouldInitializeStructure() {
   size_t nFail = 0;
 
   while (!_server.isStopping()) {
-    auto result = getValues("Plan");
+    auto result = getValues("Plan", 10.0);
 
     if (!result.successful()) {  // Not 200 - 299
 
