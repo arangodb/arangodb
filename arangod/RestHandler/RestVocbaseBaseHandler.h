@@ -127,6 +127,9 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                          GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();
 
+  virtual void prepareExecute(bool isContinue) override;
+  virtual void shutdownExecute(bool isFinalized) noexcept override;
+  
   virtual void cancel() override {
     RestBaseHandler::cancel();
     _context.cancel();
@@ -219,6 +222,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief the vocbase, managed by VocbaseContext
   TRI_vocbase_t& _vocbase;
+  
+  LogContext::Entry* _dbNameContext;
 };
 
 }  // namespace arangodb

@@ -23,62 +23,40 @@
 
 #include "LogContext.h"
 
-#include "Basics/debugging.h"
-
+#include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
 
 using namespace arangodb;
 
-namespace {
-  thread_local LogContext localLogContext;
-}
+thread_local LogContext::ThreadControlBlock LogContext::_threadControlBlock;
 
-LogContext::ScopedValue::~ScopedValue() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(_oldTail == LogContext::current()._tail.get());
-#endif
-  LogContext::current().popTail();
-}
-
-LogContext::ScopedContext::ScopedContext(LogContext ctx) {
-  if (ctx._tail != LogContext::current()._tail) {
-    _oldTail = std::move(LogContext::current()._tail);
-    _mustRestore = true;
+LogContext::ScopedContext::ScopedContext(LogContext ctx) noexcept {
+  auto& local = LogContext::controlBlock();
+  if (ctx._tail != local._logContext._tail) {
+    _oldContext = std::move(local._logContext);
     LogContext::setCurrent(std::move(ctx));
   }
 }
 
 LogContext::ScopedContext::~ScopedContext() {
-  if (_mustRestore) {
-    LogContext::setCurrent(LogContext(std::move(_oldTail)));
+  if (_oldContext) {
+    LogContext::setCurrent(LogContext(std::move(_oldContext).value()));
   }
-}
-
-void LogContext::pushEntry(std::shared_ptr<Entry> entry) {
-  entry->_prev = std::move(_tail);
-  _tail = std::move(entry);
-}
-
-void LogContext::popTail() noexcept {
-  TRI_ASSERT(_tail != nullptr);
-  _tail = _tail->_prev;
 }
 
 void LogContext::visit(Visitor const& visitor) const {
   doVisit(visitor, _tail);
 }
 
-void LogContext::doVisit(Visitor const& visitor, std::shared_ptr<Entry> const& entry) const {
+void LogContext::doVisit(Visitor const& visitor, Entry const* entry) const {
   if (entry != nullptr) {
     doVisit(visitor, entry->_prev);
     entry->visit(visitor);
   }
 }
 
-LogContext& LogContext::current() { return localLogContext; }
-
-void LogContext::setCurrent(LogContext ctx) {
-  localLogContext = std::move(ctx);
+void LogContext::setCurrent(LogContext ctx) noexcept {
+  _threadControlBlock._logContext = std::move(ctx);
 }

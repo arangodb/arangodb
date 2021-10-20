@@ -22,8 +22,8 @@
 
 #include "ReplicatedLog.h"
 
+#include "Logger/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
-#include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"

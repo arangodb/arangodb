@@ -33,6 +33,7 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -227,6 +228,15 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(application_features::Application
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;
 
+void RestVocbaseBaseHandler::prepareExecute(bool isContinue) {
+  //_dbNameContext = LogContext::current().push(LogContext::makeValue().with<logContextKeyDatabaseName>(_vocbase.name()));
+}
+
+void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
+  //LogContext::current().pop(_dbNameContext);
+  _dbNameContext = nullptr;
+}
+  
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestVocbaseBaseHandler::forwardingTarget() {
   bool found = false;

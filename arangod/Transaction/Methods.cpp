@@ -27,6 +27,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/ScopeGuard.h"
+#include "Logger/LogContextKeys.h"
 #include "Methods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -77,6 +79,8 @@
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/ticks.h"
 
+#include <cstddef>
+#include <memory>
 #include <sstream>
 
 using namespace arangodb;
@@ -2575,9 +2579,30 @@ Future<Result> Methods::finishInternal(Result const& res, MethodsApi api) {
   });
 }
 
+// template <class Vals, const char... Keys[]>
+// std::unique_ptr<LogContext::Entry> makeEntry(LogContext::ValueBuilder<Vals, Keys...>&& v) {
+//   using V = LogContext::ValuesImpl<Vals, Keys...>;
+//   return std::make_unique<LogContext::EntryImpl<V>>(V(std::move(v._vals)));
+// }
+
 Future<OperationResult> Methods::documentInternal(std::string const& cname, VPackSlice value,
                                                   OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+  
+  constexpr size_t numEntries = 100;
+  std::array<LogContext::Entry*, numEntries> entries;
+  
+  auto guard = scopeGuard([&entries]() noexcept {
+    auto& logCtx = LogContext::current();
+    for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
+      logCtx.pop(*it);
+    }
+  });
+
+  auto& logCtx = LogContext::current();
+  for (size_t i = 0; i < numEntries; ++i) {
+    entries[i] = logCtx.push(LogContext::makeValue().with<logContextKeyDatabaseName>(42));
+  }
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
@@ -2600,6 +2625,10 @@ Future<OperationResult> Methods::documentInternal(std::string const& cname, VPac
 Future<OperationResult> Methods::insertInternal(std::string const& cname, VPackSlice value,
                                                 OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+  
+  // LogContext::ScopedValue logCtx(LogContext::makeValue().
+  //   with<logContextKeyDatabaseName>(vocbase().name()).
+  //   with<logContextKeyCollectionName>(cname));
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
