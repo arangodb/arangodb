@@ -438,7 +438,7 @@ TEST_F(QueryPointsContainedInTest, polygon) {
   auto polygon = createBuilder(R"=({"type": "Polygon", "coordinates":
                                  [[[-11.5, 23.5], [-6, 26], [-10.5, 26.1], [-11.5, 23.5]]]})=");
 
-  geo::geojson::parsePolygon(polygon->slice(), params.filterShape);
+  geo::geojson::parsePolygon(polygon->slice(), params.filterShape, false);
   params.filterShape.updateBounds(params);
 
   AscIterator near(std::move(params));
@@ -454,7 +454,7 @@ TEST_F(QueryPointsContainedInTest, polygon) {
 
 TEST_F(QueryPointsContainedInTest, rectangle) {
   auto rect = createBuilder(R"=({"type": "Polygon", "coordinates":[[[0,0],[1.5,0],[1.5,1.5],[0,1.5],[0,0]]]})=");
-  geo::geojson::parsePolygon(rect->slice(), params.filterShape);
+  geo::geojson::parsePolygon(rect->slice(), params.filterShape, false);
   ASSERT_EQ(params.filterShape.type(), geo::ShapeContainer::Type::S2_POLYGON);
   params.filterShape.updateBounds(params);
 

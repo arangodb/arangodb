@@ -478,7 +478,7 @@ TEST(GeoFilterTest, query) {
 
     GeoFilter q;
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
-    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
+    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape, false).ok());
     ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, q.mutable_options()->shape.type());
     *q.mutable_field() = "geometry";
 
@@ -505,7 +505,7 @@ TEST(GeoFilterTest, query) {
 
     GeoFilter q;
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
-    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
+    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape, false).ok());
     ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, q.mutable_options()->shape.type());
     *q.mutable_field() = "geometry";
 
@@ -833,7 +833,7 @@ TEST(GeoFilterTest, checkScorer) {
 
     GeoFilter q;
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
-    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
+    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape, false).ok());
     ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, q.mutable_options()->shape.type());
     *q.mutable_field() = "geometry";
 
@@ -904,7 +904,7 @@ TEST(GeoFilterTest, checkScorer) {
     GeoFilter q;
     q.boost(1.5f);
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
-    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
+    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape, false).ok());
     ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, q.mutable_options()->shape.type());
     *q.mutable_field() = "geometry";
 

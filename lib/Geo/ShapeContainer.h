@@ -34,6 +34,7 @@
 class S2CellId;
 class S2Region;
 class S2RegionCoverer;
+class S2LatLngRect;
 class S2Polyline;
 class S2Polygon;
 
@@ -57,6 +58,8 @@ class ShapeContainer final {
     EMPTY = 0,
     S2_POINT,
     S2_POLYLINE,
+    S2_LATLNGRECT,     // only used in legacy code but kept for backwards
+                       // compatibility of the enum numerical values
     S2_POLYGON,
     S2_MULTIPOINT,
     S2_MULTIPOLYLINE
@@ -86,7 +89,7 @@ class ShapeContainer final {
   inline bool empty() const { return _type == Type::EMPTY; }
 
   bool isAreaType() const noexcept {
-    return _type == Type::S2_POLYGON;
+    return _type == Type::S2_POLYGON || _type == Type::S2_LATLNGRECT;
   }
 
   /// @brief centroid of this shape
@@ -109,6 +112,7 @@ class ShapeContainer final {
   /// contains this region the coordinate
   bool contains(S2Point const&) const;
   bool contains(S2Polyline const*) const;
+  bool contains(S2LatLngRect const*) const;
   bool contains(S2Polygon const*) const;
   bool contains(ShapeContainer const*) const;
 
@@ -118,6 +122,7 @@ class ShapeContainer final {
     return contains(p);  // same thing
   }
   bool intersects(S2Polyline const*) const;
+  bool intersects(S2LatLngRect const*) const;
   bool intersects(S2Polygon const*) const;
   bool intersects(ShapeContainer const*) const;
 
@@ -127,6 +132,7 @@ class ShapeContainer final {
   bool equals(double lat1, double lon1) const;
   bool equals(S2Polyline const*) const;
   bool equals(S2Polyline const*, S2Polyline const*) const;
+  bool equals(S2LatLngRect const*) const;
   bool equals(S2Polygon const*) const;
   bool equals(ShapeContainer const*) const;
 

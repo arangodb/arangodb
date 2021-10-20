@@ -110,7 +110,7 @@ TEST_F(ShapeContainerTest, valid_point_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape, false).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_POINT, shape.type());
@@ -177,7 +177,7 @@ TEST_F(ShapeContainerTest, valid_multipoint_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape, false).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_MULTIPOINT, shape.type());
@@ -249,7 +249,7 @@ TEST_F(ShapeContainerTest, valid_linestring_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape, false).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_POLYLINE, shape.type());
@@ -341,7 +341,7 @@ TEST_F(ShapeContainerTest, valid_multilinestring_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape, false).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_MULTIPOLYLINE, shape.type());
@@ -408,7 +408,7 @@ TEST_F(ShapeContainerTest, valid_polygon_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape, false).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());
@@ -456,7 +456,7 @@ TEST_F(ShapeContainerTest, polygon_area_test) {
   auto builder = VPackParser::fromJson(json);
   VPackSlice vpack = builder->slice();
   
-  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape, false).ok());
 
   // tolerance 50.000 km^2 vs 7.692.000 km^2 total
   ASSERT_NEAR(shape.area(geo::SPHERE), 7800367402432, 50000000000);
@@ -483,28 +483,28 @@ class ShapeContainerTest2 : public ::testing::Test {
       { "type": "Point",
       "coordinates": [ 6.537, 50.332 ]
       })=");
-    geojson::parseRegion(builder->slice(), point);
+    geojson::parseRegion(builder->slice(), point, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "MultiPoint",
         "coordinates": [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ]
       })=");
-    geojson::parseRegion(builder->slice(), multipoint);
+    geojson::parseRegion(builder->slice(), multipoint, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "LineString",
         "coordinates": [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ]
       })=");
-    geojson::parseRegion(builder->slice(), line);
+    geojson::parseRegion(builder->slice(), line, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "MultiLineString",
         "coordinates": [ [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ],
                          [ [ 6.621, 50.332 ], [ 6.621, 50.376 ] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), multiline);
+    geojson::parseRegion(builder->slice(), multiline, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [6,50], [7.5,50], [7.5,52], [6,51], [6,50] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), poly);
+    geojson::parseRegion(builder->slice(), poly, false);
     // Note that internally, a multipolygon is just a special polygon with
     // holes, which could have been initialized as polygon, too!
     builder = VPackParser::fromJson(R"=(
@@ -513,57 +513,57 @@ class ShapeContainerTest2 : public ::testing::Test {
                              [6.501,51], [6.501,50] ] ],
                          [ [ [6,50], [6.5,50], [6.5,51], [6,51], [6,50] ] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), multipoly);
+    geojson::parseRegion(builder->slice(), multipoly, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [6,50], [7.5,50], [7.5,51], [6,51], [6,50] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), rect);
+    geojson::parseRegion(builder->slice(), rect, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "LineString",
         "coordinates": [ [ 5.437, 50.332 ], [ 7.537, 50.376 ] ]
       })=");
-    geojson::parseRegion(builder->slice(), line2);
+    geojson::parseRegion(builder->slice(), line2, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [1.0,1.0], [4.0,1.0], [4.0,4.0], [1.0,4.0], [1.0,1.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), rects[0]);
+    geojson::parseRegion(builder->slice(), rects[0], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [2.0,2.0], [3.0,2.0], [3.0,3.0], [2.0,3.0], [2.0,2.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), rects[1]);
+    geojson::parseRegion(builder->slice(), rects[1], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [2.0,2.0], [5.0,2.0], [5.0,5.0], [2.0,5.0], [2.0,2.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), rects[2]);
+    geojson::parseRegion(builder->slice(), rects[2], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [7.0,7.0], [8.0,7.0], [8.0,8.0], [7.0,8.0], [7.0,7.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), rects[3]);
+    geojson::parseRegion(builder->slice(), rects[3], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [1.0,1.0], [4.0,1.0], [4.1,4.1], [1.0,4.0], [1.0,1.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), nearly[0]);
+    geojson::parseRegion(builder->slice(), nearly[0], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [2.0,2.0], [3.0,2.0], [3.1,3.1], [2.0,3.0], [2.0,2.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), nearly[1]);
+    geojson::parseRegion(builder->slice(), nearly[1], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [2.0,2.0], [5.0,2.0], [5.1,5.1], [2.0,5.0], [2.0,2.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), nearly[2]);
+    geojson::parseRegion(builder->slice(), nearly[2], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [7.0,7.0], [8.0,7.0], [8.1,8.1], [7.0,8.0], [7.0,7.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), nearly[3]);
+    geojson::parseRegion(builder->slice(), nearly[3], false);
   }
 };
 

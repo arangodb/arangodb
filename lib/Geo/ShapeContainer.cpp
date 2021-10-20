@@ -55,6 +55,24 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
+namespace {
+
+S2Polygon latLngRectToPolygon(S2LatLngRect const* rect) {
+  // Construct polygon from rect:
+  std::vector<S2Point> v;
+  v.reserve(5);
+  v.emplace_back(rect->GetVertex(0).ToPoint());
+  v.emplace_back(rect->GetVertex(1).ToPoint());
+  v.emplace_back(rect->GetVertex(2).ToPoint());
+  v.emplace_back(rect->GetVertex(3).ToPoint());
+  v.emplace_back(rect->GetVertex(0).ToPoint());
+  std::unique_ptr<S2Loop> loop;
+  loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
+  return S2Polygon{std::move(loop), S2Debug::DISABLE};
+}
+
+}
+
 Result ShapeContainer::parseCoordinates(VPackSlice const& json, bool geoJson) {
   if (!json.isArray() || json.length() < 2) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
@@ -121,6 +139,10 @@ S2Point ShapeContainer::centroid() const noexcept {
     case ShapeContainer::Type::S2_POLYLINE: {
       return (static_cast<S2Polyline const*>(_data))->GetCentroid().Normalize();
     }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
+      return static_cast<S2LatLngRect const*>(_data)->GetCenter().ToPoint();
+    }
     case ShapeContainer::Type::S2_POLYGON: {
       // not unit length by default
       return (static_cast<S2Polygon const*>(_data))->GetCentroid().Normalize();
@@ -165,6 +187,7 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const n
       return {S2CellId(c)};
     }
     case ShapeContainer::Type::S2_POLYLINE:
+    case ShapeContainer::Type::S2_LATLNGRECT:
     case ShapeContainer::Type::S2_POLYGON: {
       coverer->GetCovering(*_data, &cover);
       break;
@@ -256,6 +279,17 @@ bool ShapeContainer::contains(S2Polyline const* other) const {
       return ll->ApproxEquals(*other, S1Angle::Radians(1e-6));
     }
 
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
+      S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
+      for (int k = 0; k < other->num_vertices(); k++) {
+        if (!rect->Contains(other->vertex(k))) {
+          return false;
+        }
+      }
+      return true;
+    }
+
     case ShapeContainer::Type::S2_POLYGON: {
       // FIXME this seems to be incomplete
       S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
@@ -283,6 +317,78 @@ bool ShapeContainer::contains(S2Polyline const* other) const {
   return false;
 }
 
+bool ShapeContainer::contains(S2LatLngRect const* other) const {
+  // only used in legacy situations
+  switch (_type) {
+    case ShapeContainer::Type::S2_POINT:
+      if (other->is_point()) {
+        return static_cast<S2PointRegion*>(_data)->point() == other->lo().ToPoint();
+      }
+      return false;
+
+    case ShapeContainer::Type::S2_POLYLINE: {
+      if (other->is_point()) {
+        S2Point pp = other->lo().ToPoint();
+        S2Polyline* pl = static_cast<S2Polyline*>(_data);
+        for (int k = 0; k < pl->num_vertices(); k++) {
+          if (pl->vertex(k) == pp) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
+      return self->Contains(*other);
+    }
+
+    case ShapeContainer::Type::S2_POLYGON: {
+      S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
+      for (int k = 0; k < 4; k++) {
+        if (!poly->Contains(other->GetVertex(k).ToPoint())) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    case ShapeContainer::Type::S2_MULTIPOINT: {
+      if (other->is_point()) {
+        S2Point pp = other->lo().ToPoint();
+        S2MultiPointRegion* mpr = static_cast<S2MultiPointRegion*>(_data);
+        for (int k = 0; mpr->num_points() < k; k++) {
+          if (mpr->point(k) == pp) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    case ShapeContainer::Type::S2_MULTIPOLYLINE: {
+      if (other->is_point()) {
+        S2Point pp = other->lo().ToPoint();
+        S2MultiPolyline* mpl = static_cast<S2MultiPolyline*>(_data);
+        for (size_t k = 0; k < mpl->num_lines(); k++) {
+          S2Polyline const& pl = mpl->line(k);
+          for (int n = 0; n < pl.num_vertices(); n++) {
+            if (pl.vertex(n) == pp) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+    case ShapeContainer::Type::EMPTY:
+      TRI_ASSERT(false);
+  }
+  return false;
+}
+
 bool ShapeContainer::contains(S2Polygon const* poly) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT:
@@ -292,6 +398,19 @@ bool ShapeContainer::contains(S2Polygon const* poly) const {
     case ShapeContainer::Type::S2_POLYLINE:
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       return false;  // numerically not well defined
+    }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
+      S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
+      for (int k = 0; k < poly->num_loops(); k++) {
+        S2Loop const* loop = poly->loop(k);
+        for (int n = 0; n < loop->num_vertices(); n++) {
+          if (!rect->Contains(loop->vertex(n))) {
+            return false;
+          }
+        }
+      }
+      return true;
     }
     case ShapeContainer::Type::S2_POLYGON: {
       return (static_cast<S2Polygon const*>(_data))->Contains(poly);
@@ -310,6 +429,10 @@ bool ShapeContainer::contains(ShapeContainer const* cc) const {
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       return contains(static_cast<S2Polyline const*>(cc->_data));
+    }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
+      return contains(static_cast<S2LatLngRect const*>(cc->_data));
     }
     case ShapeContainer::Type::S2_POLYGON: {
       return contains(static_cast<S2Polygon const*>(cc->_data));
@@ -383,6 +506,12 @@ bool ShapeContainer::equals(S2Polyline const* poly, S2Polyline const* other) con
   return poly->Equals(other);
 }
 
+bool ShapeContainer::equals(S2LatLngRect const* other) const {
+  // only used in legacy situations
+  S2LatLngRect const* llrect = static_cast<S2LatLngRect const*>(_data);
+  return llrect->ApproxEquals(*other);
+}
+
 bool ShapeContainer::equals(S2Polygon const* other) const {
   S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
   return poly->Equals(other);
@@ -402,6 +531,10 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       return equals(static_cast<S2Polyline const*>(cc->_data));
+    }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
+      return equals(static_cast<S2LatLngRect const*>(cc->_data));
     }
     case ShapeContainer::Type::S2_POLYGON: {
       return equals(static_cast<S2Polygon const*>(cc->_data));
@@ -457,6 +590,12 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
       S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
       return ll->Intersects(other);
     }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
+      auto rectPoly = ::latLngRectToPolygon(static_cast<S2LatLngRect const*>(_data));
+      auto cuts = rectPoly.IntersectWithPolyline(*other);
+      return !cuts.empty();
+    }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
       auto cuts = poly->IntersectWithPolyline(*other);
@@ -474,6 +613,19 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
 }
 
 namespace {
+bool intersectRectPolygon(S2LatLngRect const* rect, S2Polygon const* poly) {
+  // only used in legacy situations
+  if (rect->is_full()) {
+    return true;  // rectangle spans entire sphere
+  } else if (rect->is_point()) {
+    return poly->Contains(rect->lo().ToPoint());  // easy case
+  } else if (!rect->Intersects(poly->GetRectBound())) {
+    return false;  // cheap rejection
+  }
+  auto rectPoly = ::latLngRectToPolygon(rect);
+  return poly->Intersects(&rectPoly);
+}
+
 bool insersectMultiPointsRegion(S2MultiPointRegion const* points, S2Region const* region) {
   for (int i = 0; i < points->num_points(); ++i) {
     if (region->Contains(points->point(i))) {
@@ -482,6 +634,47 @@ bool insersectMultiPointsRegion(S2MultiPointRegion const* points, S2Region const
   }
   return false;
 }
+}
+
+bool ShapeContainer::intersects(S2LatLngRect const* other) const {
+  // only used in legacy situations
+  switch (_type) {
+    case ShapeContainer::Type::S2_POINT: {
+      S2PointRegion const* self = static_cast<S2PointRegion const*>(_data);
+      return other->Contains(self->point());  // same
+    }
+
+    case ShapeContainer::Type::S2_POLYLINE: {
+      auto rectPoly = ::latLngRectToPolygon(static_cast<S2LatLngRect const*>(other));
+      S2Polyline const* self = static_cast<S2Polyline const*>(_data);
+      auto cuts = rectPoly.IntersectWithPolyline(*self);
+      return !cuts.empty();
+    }
+
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
+      return self->Intersects(*other);
+    }
+
+    case ShapeContainer::Type::S2_POLYGON: {
+      S2Polygon const* self = static_cast<S2Polygon const*>(_data);
+      return intersectRectPolygon(other, self);
+    }
+
+    case ShapeContainer::Type::S2_MULTIPOINT: {
+      S2MultiPointRegion* self = static_cast<S2MultiPointRegion*>(_data);
+      return insersectMultiPointsRegion(self, other);
+    }
+
+    case ShapeContainer::Type::S2_MULTIPOLYLINE: {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<multiline>, <latlngrect>) is not yet implemented.");
+    }
+
+    case ShapeContainer::Type::EMPTY:
+      TRI_ASSERT(false);
+  }
+  return false;
 }
 
 bool ShapeContainer::intersects(S2Polygon const* other) const {
@@ -494,6 +687,11 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
       S2Polyline* line = static_cast<S2Polyline*>(_data);
       auto cuts = other->IntersectWithPolyline(*line);
       return !cuts.empty();
+    }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
+      S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
+      return intersectRectPolygon(self, other);
     }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* self = static_cast<S2Polygon const*>(_data);
@@ -526,6 +724,10 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
     }
     case ShapeContainer::Type::S2_POLYGON: {
       return intersects(static_cast<S2Polygon const*>(cc->_data));
+    }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
+      return intersects(static_cast<S2LatLngRect const*>(cc->_data));
     }
     case ShapeContainer::Type::S2_MULTIPOINT: {
       if (_type == ShapeContainer::Type::S2_POLYLINE ||
@@ -560,6 +762,9 @@ double ShapeContainer::area(geo::Ellipsoid const& e) {
   // TODO: perhaps remove in favor of one code-path below ?
   if (e.flattening() == 0.0) {
     switch (_type) {
+      case Type::S2_LATLNGRECT:
+        // only used in legacy situations
+        return static_cast<S2LatLngRect*>(_data)->Area() * kEarthRadiusInMeters * kEarthRadiusInMeters;
       case Type::S2_POLYGON:
         return static_cast<S2Polygon*>(_data)->GetArea() * kEarthRadiusInMeters * kEarthRadiusInMeters;
       default:
@@ -575,6 +780,21 @@ double ShapeContainer::area(geo::Ellipsoid const& e) {
   double P = 0.0;
 
   switch (_type) {
+    case Type::S2_LATLNGRECT: {
+      // only used in legacy situations
+      struct geod_polygon p;
+      geod_polygon_init(&p, 0);
+
+      S2LatLngRect const* rect = static_cast<S2LatLngRect*>(_data);
+      geod_polygon_addpoint(&g, &p, rect->lat_lo().degrees(), rect->lng_lo().degrees());
+      geod_polygon_addpoint(&g, &p, rect->lat_lo().degrees(), rect->lng_hi().degrees());
+      geod_polygon_addpoint(&g, &p, rect->lat_hi().degrees(), rect->lng_hi().degrees());
+      geod_polygon_addpoint(&g, &p, rect->lat_hi().degrees(), rect->lng_lo().degrees());
+
+      geod_polygon_compute(&g, &p, 0, 1, &A, &P);
+      area = A;
+    } break;
+
     case Type::S2_POLYGON: {
       struct geod_polygon p;
 
