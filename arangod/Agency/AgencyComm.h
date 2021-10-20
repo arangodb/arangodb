@@ -592,7 +592,7 @@ class AgencyComm {
 
   bool exists(std::string const&);
 
-  AgencyCommResult getValues(std::string const&);
+  AgencyCommResult getValues(std::string const&, double timeout = 0.0);
 
   AgencyCommResult removeValues(std::string const&, bool);
 
