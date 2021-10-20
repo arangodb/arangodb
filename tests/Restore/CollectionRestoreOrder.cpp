@@ -115,7 +115,7 @@ static auto operator<<(std::ostream& ostream, CollectionName const& colName)
 struct Collection {
   CollectionName name;
   TRI_col_type_e type = TRI_COL_TYPE_DOCUMENT;
-  Collection* distributeShardsLike = nullptr;
+  Collection const* distributeShardsLike = nullptr;
 
   void toVelocyPack(velocypack::Builder& builder) {
     using namespace velocypack;
@@ -207,7 +207,12 @@ auto generate<CollectionSet>(std::int32_t max) -> CollectionSet {
       // choose a prototype with a smaller index, so we don't get cycles
       std::size_t protoIdx =
           RandomGenerator::interval(0, static_cast<std::int32_t>(i) - 1);
-      collections[i]->distributeShardsLike = collections[protoIdx].get();
+      auto const* const proto = collections[protoIdx].get();
+      // But don't target a collection that already has distributeShardsLike
+      // itself. This reduces the actual probability a little.
+      if (proto->distributeShardsLike == nullptr) {
+        collections[i]->distributeShardsLike = proto;
+      }
     }
   }
 
@@ -237,7 +242,32 @@ auto to_string(std::vector<velocypack::Builder> const& collections) -> std::stri
 }
 
 // Only checks order regarding distributeShardsLike for now
-void testValidity(CollectionSet const& collectionSet) {
+void checkOrderValidity(std::vector<velocypack::Builder> const& collections) {
+  auto const n = collections.size();
+  auto colToIdx = std::unordered_map<std::string, std::size_t>();
+  colToIdx.reserve(collections.size());
+  auto enumCols = enumerate(collections);
+  std::transform(enumCols.begin(), enumCols.end(),
+                 std::inserter(colToIdx, colToIdx.end()),
+                 [](auto const& it) -> std::pair<std::string, std::size_t> {
+                   auto const& [idx, builder] = it;
+                   return {builder.slice().get("parameters").get("name").copyString(), idx};
+                 });
+  ASSERT_EQ(n, colToIdx.size()) << to_string(collections);
+
+  for (auto const& [idx, builder] : enumerate(collections)) {
+    auto const parametersSlice = builder.slice().get("parameters");
+    if (auto const distributeShardsLikeSlice =
+            parametersSlice.get("distributeShardsLike");
+        !distributeShardsLikeSlice.isNone()) {
+      auto const distributeShardsLike = distributeShardsLikeSlice.copyString();
+      auto dslIdx = colToIdx.at(distributeShardsLike);
+      EXPECT_LT(dslIdx, idx) << to_string(collections);
+    }
+  }
+}
+
+void testSortCollectionsForCreationOn(CollectionSet const& collectionSet) {
   auto const n = collectionSet.collections.size();
 
   auto collections = std::vector<velocypack::Builder>();
@@ -251,35 +281,15 @@ void testValidity(CollectionSet const& collectionSet) {
 
   RestoreFeature::sortCollectionsForCreation(collections);
 
-  auto colToIdx = std::unordered_map<std::string, std::size_t>();
-  colToIdx.reserve(collections.size());
-  auto enumCols = enumerate(collections);
-  std::transform(enumCols.begin(), enumCols.end(),
-                 std::inserter(colToIdx, colToIdx.end()),
-                 [](auto const& it) -> std::pair<std::string, std::size_t> {
-                   auto const& [idx, builder] = it;
-                   return {builder.slice().get("parameters").get("name").copyString(), idx};
-                 });
-  ASSERT_EQ(n, colToIdx.size())
-      << "input: " << collectionSet << "; result: " << to_string(collections);
+  ASSERT_EQ(n, collections.size()) << "input: " << collectionSet;
 
-  for (auto const& [idx, builder] : enumerate(collections)) {
-    auto const parametersSlice = builder.slice().get("parameters");
-    if (auto const distributeShardsLikeSlice =
-            parametersSlice.get("distributeShardsLike");
-        !distributeShardsLikeSlice.isNone()) {
-      auto const distributeShardsLike = distributeShardsLikeSlice.copyString();
-      auto dslIdx = colToIdx.at(distributeShardsLike);
-      EXPECT_LT(dslIdx, idx) << "input: " << collectionSet
-                             << "; result: " << to_string(collections);
-    }
-  }
+  checkOrderValidity(collections);
 }
 
 void testRandomIterations(std::int32_t setSize, int iterations) {
   for (auto i = 0; i < iterations; ++i) {
     auto const collectionSet = quick::generate<CollectionSet>(setSize);
-    testValidity(collectionSet);
+    testSortCollectionsForCreationOn(collectionSet);
   }
 }
 

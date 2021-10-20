@@ -1024,13 +1024,15 @@ void RestoreFeature::sortCollectionsForCreation(std::vector<VPackBuilder>& colle
     }
 
     auto res = strcasecmp(leftName.c_str(), rightName.c_str());
+    auto cmpRes = Rel{};
     if (res < 0) {
-      return Rel::Less;
+      cmpRes =  Rel::Less;
     } else if (res > 0) {
-      return Rel::Greater;
+      cmpRes = Rel::Greater;
     } else {
-      return Rel::Equal;
+      cmpRes = Rel::Equal;
     }
+    return cmpRes;
   };
 
   auto const colLesserThan = [&](auto const& l, auto const& r) {
