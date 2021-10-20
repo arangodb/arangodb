@@ -1,7 +1,7 @@
 import { DispatchArgs, FormProps } from "../../../../utils/constants";
 import { LinkProperties } from "../../constants";
-import React, { ChangeEvent, Dispatch, useEffect, useMemo, useState } from "react";
-import { filter, get, has, isEmpty, map, negate, pickBy, set } from "lodash";
+import React, { ChangeEvent, Dispatch } from "react";
+import { filter, isEmpty, map, negate } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Textarea from "../../../../components/pure-css/form/Textarea";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
@@ -9,54 +9,31 @@ import Select from "../../../../components/pure-css/form/Select";
 import { ArangoTable, ArangoTD, ArangoTH } from "../../../../components/arango/table";
 import Textbox from "../../../../components/pure-css/form/Textbox";
 import { IconButton } from "../../../../components/arango/buttons";
+import { useLinkState } from "../../helpers";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
-  cache: { [key: string]: any };
 };
 
-const LinkPropertiesInput = ({
-                               formState,
-                               dispatch,
-                               disabled,
-                               basePath,
-                               cache
-                             }: LinkPropertiesInputProps) => {
-  const [field, setField] = useState('');
-  const [addDisabled, setAddDisabled] = useState(true);
-  const fields = useMemo(() => (formState.fields || {}), [formState.fields]);
-  const fieldsPath = useMemo(() => `${basePath}.fields`, [basePath]);
-  const fieldsCache = useMemo(() => get(cache, `${basePath}.fields`, {}), [basePath, cache]);
-
-  useEffect(() => {
-    setAddDisabled(!field || Object.keys(fields).includes(field));
-  }, [field, fields]);
-
-  useEffect(() => {
-    if (!has(cache, fieldsPath)) {
-      set(cache, fieldsPath, {});
-    }
-
-    Object.assign(fieldsCache, pickBy(fields, negate(isEmpty)));
-  }, [cache, fields, fieldsCache, fieldsPath]);
+const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPropertiesInputProps) => {
+  const [field, setField, addDisabled, fields] = useLinkState(formState, 'fields');
 
   const updateField = (event: ChangeEvent<HTMLSelectElement>) => {
     setField(event.target.value);
   };
 
-  const toggleField = (field: string, checked: boolean) => {
+  const removeField = (field: string) => {
     dispatch({
-      type: 'setField',
+      type: 'unsetField',
       field: {
-        path: `fields[${field}]`,
-        value: checked ? null : fieldsCache[field]
+        path: `fields[${field}]`
       },
       basePath
     });
   };
 
-  const getFieldToggler = (field: string) => (event: ChangeEvent<HTMLInputElement>) => {
-    toggleField(field, event.target.checked);
+  const getFieldRemover = (field: string) => () => {
+    removeField(field);
   };
 
   const addField = () => {
@@ -69,7 +46,6 @@ const LinkPropertiesInput = ({
       basePath
     });
     setField('');
-    fieldsCache[field] = {};
   };
 
   const updateAnalyzers = (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -123,11 +99,10 @@ const LinkPropertiesInput = ({
     );
   };
 
-  console.log(cache);
-
   return <Grid>
     <Cell size={'1-3'}>
-      <Textarea value={getAnalyzers()} onChange={updateAnalyzers} disabled={disabled} label={'Analyzers'}/>
+      <Textarea value={getAnalyzers()} onChange={updateAnalyzers} disabled={disabled} label={'Analyzers'}
+                rows={4}/>
     </Cell>
     <Cell size={'2-3'}>
       <Grid>
@@ -152,54 +127,59 @@ const LinkPropertiesInput = ({
         </Cell>
       </Grid>
     </Cell>
-    <Cell size={'1'}>
-      <ArangoTable>
-        <thead>
-        <tr>
-          {
-            disabled
-              ? null
-              : <ArangoTH seq={0} style={{ width: '2%' }}><i className={'fa fa-trash-o'}/></ArangoTH>
-          }
-          <ArangoTH seq={disabled ? 0 : 1} style={{ width: '8%' }}>Field</ArangoTH>
-          <ArangoTH seq={disabled ? 1 : 2} style={{ width: '90%' }}>Properties</ArangoTH>
-        </tr>
-        </thead>
-        <tbody>
-        {
-          map(fields, (properties, fld) => {
-            return <tr key={fld} style={{ borderBottom: '1px  solid #DDD' }}>
+    {
+      disabled && isEmpty(fields)
+        ? null
+        : <Cell size={'1'}>
+          <ArangoTable style={{ marginLeft: 0 }}>
+            <thead>
+            <tr>
               {
                 disabled
                   ? null
-                  : <ArangoTD seq={0} valign={'middle'}><Checkbox onChange={getFieldToggler(fld)}
-                                                                  checked={!fields[fld]}/></ArangoTD>
+                  : <ArangoTH seq={0} style={{ width: '2%' }}><i className={'fa fa-trash-o'}/></ArangoTH>
               }
-              <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
-              <ArangoTD seq={disabled ? 1 : 2}>
-                <LinkPropertiesInput formState={properties || fieldsCache[fld]} disabled={!properties}
-                                     dispatch={dispatch as unknown as Dispatch<DispatchArgs<LinkProperties>>}
-                                     basePath={`${basePath}.fields[${fld}]`} cache={cache}/>
-              </ArangoTD>
-            </tr>;
-          })
-        }
-        {
-          disabled
-            ? null
-            : <tr style={{ borderBottom: '1px  solid #DDD' }}>
-              <ArangoTD seq={0} colSpan={2}>
-                <Textbox type={'text'} placeholder={'Field'} onChange={updateField} value={field}/>
-              </ArangoTD>
-              <ArangoTD seq={1}>
-                <IconButton icon={'plus'} type={'warning'} onClick={addField}
-                            disabled={addDisabled}>Add</IconButton>
-              </ArangoTD>
+              <ArangoTH seq={disabled ? 0 : 1} style={{ width: '8%' }}>Field</ArangoTH>
+              <ArangoTH seq={disabled ? 1 : 2} style={{ width: '90%' }}>Properties</ArangoTH>
             </tr>
-        }
-        </tbody>
-      </ArangoTable>
-    </Cell>
+            </thead>
+            <tbody>
+            {
+              map(fields, (properties, fld) => {
+                return <tr key={fld} style={{ borderBottom: '1px  solid #DDD' }}>
+                  {
+                    disabled
+                      ? null
+                      : <ArangoTD seq={0} valign={'middle'}>
+                        <IconButton icon={'trash-o'} type={'danger'} onClick={getFieldRemover(fld)}/>
+                      </ArangoTD>
+                  }
+                  <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
+                  <ArangoTD seq={disabled ? 1 : 2}>
+                    <LinkPropertiesInput formState={properties} disabled={disabled}
+                                         basePath={`${basePath}.fields[${fld}]`}
+                                         dispatch={dispatch as unknown as Dispatch<DispatchArgs<LinkProperties>>}/>
+                  </ArangoTD>
+                </tr>;
+              })
+            }
+            {
+              disabled
+                ? null
+                : <tr style={{ borderBottom: '1px  solid #DDD' }}>
+                  <ArangoTD seq={0} colSpan={2}>
+                    <Textbox type={'text'} placeholder={'Field'} onChange={updateField} value={field}/>
+                  </ArangoTD>
+                  <ArangoTD seq={1}>
+                    <IconButton icon={'plus'} type={'warning'} onClick={addField}
+                                disabled={addDisabled}>Add</IconButton>
+                  </ArangoTD>
+                </tr>
+            }
+            </tbody>
+          </ArangoTable>
+        </Cell>
+    }
   </Grid>;
 };
 

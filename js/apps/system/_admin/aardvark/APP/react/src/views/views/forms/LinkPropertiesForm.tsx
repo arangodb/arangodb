@@ -1,25 +1,20 @@
 import { DispatchArgs, FormProps } from "../../../utils/constants";
 import { FormState, LinkProperties } from "../constants";
-import React, { ChangeEvent, Dispatch, useEffect, useMemo, useState } from "react";
+import React, { ChangeEvent, Dispatch, useEffect } from "react";
 import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
 import { isEmpty, map, negate, pickBy } from 'lodash';
 import Checkbox from "../../../components/pure-css/form/Checkbox";
 import LinkPropertiesInput from "./inputs/LinkPropertiesInput";
 import { IconButton } from "../../../components/arango/buttons";
 import Textbox from "../../../components/pure-css/form/Textbox";
+import { useLinkState } from "../helpers";
 
 type LinkPropertiesFormProps = FormProps<FormState> & {
   cache: { [key: string]: any };
 };
 
 const LinkPropertiesForm = ({ formState, dispatch, disabled, cache }: LinkPropertiesFormProps) => {
-  const [collection, setCollection] = useState('');
-  const [addDisabled, setAddDisabled] = useState(true);
-  const links = useMemo(() => (formState.links || {}), [formState.links]);
-
-  useEffect(() => {
-    setAddDisabled(!collection || Object.keys(links).includes(collection));
-  }, [collection, links]);
+  const [collection, setCollection, addDisabled, links] = useLinkState(formState, 'links');
 
   useEffect(() => {
     cache.links = cache.links || {};
@@ -83,7 +78,7 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled, cache }: LinkProper
           <ArangoTD seq={disabled ? 1 : 2}>
             <LinkPropertiesInput formState={properties || cache.links[coll]} disabled={!properties}
                                  dispatch={dispatch as unknown as Dispatch<DispatchArgs<LinkProperties>>}
-                                 basePath={`links[${coll}]`} cache={cache}/>
+                                 basePath={`links[${coll}]`}/>
           </ArangoTD>
         </tr>;
       })
