@@ -1036,8 +1036,8 @@ std::unique_ptr<TransactionCollection> RocksDBEngine::createTransactionCollectio
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
-  if (!info.hasKey("objectId")) {
-    builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
+  if (!info.hasKey(StaticStrings::ObjectId)) {
+    builder.add(StaticStrings::ObjectId, VPackValue(std::to_string(TRI_NewTickServer())));
   }
   if (!info.get(StaticStrings::CacheEnabled).isBool()) {
     builder.add(StaticStrings::CacheEnabled, VPackValue(false));
@@ -2350,7 +2350,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     RocksDBValue value(RocksDBEntryType::Collection, it->value());
 
     uint64_t const objectId =
-        basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
+        basics::VelocyPackHelper::stringUInt64(value.slice(), StaticStrings::ObjectId);
 
     auto const cnt = RocksDBMetadata::loadCollectionCount(_db, objectId);
     uint64_t const numberDocuments = cnt._added - cnt._removed;
@@ -2362,7 +2362,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
       for (VPackSlice it : VPackArrayIterator(indexes)) {
         // delete index documents
         uint64_t objectId =
-            basics::VelocyPackHelper::stringUInt64(it, "objectId");
+            basics::VelocyPackHelper::stringUInt64(it, StaticStrings::ObjectId);
         res = RocksDBMetadata::deleteIndexEstimate(db, objectId);
         if (res.fail()) {
           return;
