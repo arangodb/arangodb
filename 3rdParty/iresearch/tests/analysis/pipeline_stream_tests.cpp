@@ -33,9 +33,7 @@
 
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_stream.hpp"
-#include "utils/locale_utils.hpp"
 #include "utils/runtime_utils.hpp"
-#include "utils/utf8_path.hpp"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 

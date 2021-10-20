@@ -24,29 +24,38 @@
 #ifndef IRESEARCH_TEXT_TOKEN_STEMMING_STREAM_H
 #define IRESEARCH_TEXT_TOKEN_STEMMING_STREAM_H
 
+#include <unicode/locid.h>
+
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
-
-struct sb_stemmer; // forward declaration
+#include "utils/snowball_stemmer.hpp"
 
 namespace iresearch {
 namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class text_token_stemming_stream
+/// @class stemming_token_stream
 /// @brief an analyser capable of stemming the text, treated as a single token,
 ///        for supported languages
+/// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
-class text_token_stemming_stream final
+class stemming_token_stream final
   : public analyzer,
     private util::noncopyable {
  public:
+  struct options_t {
+    icu::Locale locale;
+
+    options_t() : locale{"C"} {
+      locale.setToBogus();
+    }
+  };
+
   static constexpr string_ref type_name() noexcept { return "stem"; }
   static void init(); // for trigering registration in a static build
-  static ptr make(const string_ref& locale);
 
-  explicit text_token_stemming_stream(const std::locale& locale);
+  explicit stemming_token_stream(const options_t& options);
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
@@ -57,13 +66,12 @@ class text_token_stemming_stream final
   using attributes = std::tuple<
     increment,
     offset,
-    payload,         // raw token value
     term_attribute>; // token value with evaluated quotes
 
    attributes attrs_;
-   std::locale locale_;
-   std::string term_buf_; // buffer for the last evaluated term
-   std::unique_ptr<sb_stemmer, void(*)(sb_stemmer*)> stemmer_;
+   options_t options_;
+   std::string buf_;
+   stemmer_ptr stemmer_;
    bool term_eof_;
 };
 

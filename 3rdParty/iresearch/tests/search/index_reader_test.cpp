@@ -29,7 +29,6 @@
 #include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"
 #include "utils/version_utils.hpp"
-#include "utils/utf8_path.hpp"
 
 using namespace std::chrono_literals;
 

@@ -389,32 +389,11 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
           
         estimatedItems /= nonEqualityReductionFactor; 
       }
-
-      // costs.estimatedItems is always set here, make it at least 1
-      costs.estimatedItems = std::max(size_t(1), static_cast<size_t>(estimatedItems));
-  
-      // seek cost is O(log(n))
-      costs.estimatedCosts = std::max(double(1.0),
-                                      std::log2(double(itemsInIndex)) * values);
-      // add per-document processing cost
-      costs.estimatedCosts += estimatedItems * 0.05;
-      // slightly prefer indexes that cover more attributes
-      costs.estimatedCosts -= (attributesCovered - 1) * 0.02;
     
-      // cost is already low... now slightly prioritize unique indexes
-      if (idx->unique() || idx->implicitlyUnique()) {
-        costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
-      }
+      costs.estimatedItems = static_cast<size_t>(estimatedItems);
 
-      if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-          idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
-        // primary and edge index have faster lookups due to very fast
-        // comparators
-        costs.estimatedCosts *= 0.9;
-      }
-
-      // box the estimated costs to [0 - inf
-      costs.estimatedCosts = std::max(double(0.0), costs.estimatedCosts);
+      // normalizes costs
+      Index::normalizeFilterCosts(costs, idx, itemsInIndex, values);
     }
   } else {
     // index does not help for this condition

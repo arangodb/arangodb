@@ -42,9 +42,7 @@ struct directory_meta {
 /// @class directory_reader
 /// @brief interface for an index reader over a directory of segments
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API directory_reader final
-    : public index_reader,
-      private atomic_shared_ptr_helper<const index_reader> {
+class IRESEARCH_API directory_reader final : public index_reader {
  public:
   typedef atomic_shared_ptr_helper<const index_reader> atomic_utils;
   typedef directory_reader element_type; // type same as self

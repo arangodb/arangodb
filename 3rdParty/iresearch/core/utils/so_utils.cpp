@@ -23,7 +23,6 @@
 #include "log.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/utf8_path.hpp"
-
 #include "so_utils.hpp"
 
 #if defined(_MSC_VER) // Microsoft compiler
@@ -93,8 +92,7 @@ void* load_library(const char* soname, int mode /* = 2 */) {
     return nullptr;
   }
 
-  utf8_path name(soname);
-
+  irs::utf8_path name{soname};
   name += FILENAME_EXTENSION;
 
 #if defined(_MSC_VER) // Microsoft compiler
@@ -106,7 +104,7 @@ void* load_library(const char* soname, int mode /* = 2 */) {
 
   if (!handle) {
     #ifdef _WIN32
-      IR_FRMT_ERROR("load failed of shared object: %s error: %s", name.utf8().c_str(), dlerror().c_str());
+      IR_FRMT_ERROR("load failed of shared object: %s error: %s", name.u8string().c_str(), dlerror().c_str());
     #else
       IR_FRMT_ERROR("load failed of shared object: %s error: %s", name.c_str(), dlerror());
     #endif
@@ -132,29 +130,25 @@ bool free_library(void* handle) {
 }
 
 void load_libraries(
-  const std::string& path,
-  const std::string& prefix,
-  const std::string& suffix
-) {
-  utf8_path plugin_path(path);
+    const std::string& path,
+    const std::string& prefix,
+    const std::string& suffix) {
+  irs::utf8_path plugin_path{path};
   bool result;
 
-  if (!plugin_path.exists_directory(result) || !result) {
-    IR_FRMT_INFO("library load failed, not a plugin path: %s", plugin_path.utf8().c_str());
+  if (!file_utils::exists_directory(result, plugin_path.c_str()) || !result) {
+    IR_FRMT_INFO("library load failed, not a plugin path: %s", plugin_path.u8string().c_str());
 
     return; // no plugins directory
   }
 
-  auto visitor = [&plugin_path, &prefix, &suffix](
-      const utf8_path::native_char_t* name
-  )->bool {
-    auto path = plugin_path;
+  auto visitor = [&plugin_path, &prefix, &suffix](auto name)->bool {
     bool result;
 
-    path /= name;
+    const auto path = plugin_path / name;
 
-    if (!path.exists_file(result)) {
-      IR_FRMT_ERROR("Failed to identify plugin file: %s", path.utf8().c_str());
+    if (!file_utils::exists_file(result, path.c_str())) {
+      IR_FRMT_ERROR("Failed to identify plugin file: %s", path.u8string().c_str());
 
       return false;
     }
@@ -163,13 +157,13 @@ void load_libraries(
       return true; // skip non-files
     }
 
-    auto path_parts = irs::file_utils::path_parts(name);
+    const auto path_parts = irs::file_utils::path_parts(name);
 
     if (FILENAME_EXTENSION != path_parts.extension) {
       return true; // skip non-library extensions
     }
 
-    auto stem = utf8_path(path_parts.stem).utf8();
+    auto stem = irs::utf8_path{irs::utf8_path::string_type(path_parts.stem)}.u8string();
 
     if (stem.size() < prefix.size() + suffix.size() ||
         strncmp(stem.c_str(), prefix.c_str(), prefix.size()) != 0 ||
@@ -177,21 +171,19 @@ void load_libraries(
       return true; // filename does not match
     }
 
-    auto path_stem = plugin_path;
-
-    path_stem /= stem; // strip extension
+    const auto path_stem = plugin_path / stem; // strip extension
 
     // FIXME TODO check double-load of same dll
-    void* handle = load_library(path_stem.utf8().c_str(), 1);
+    const void* handle = load_library(path_stem.u8string().c_str(), 1);
 
     if (!handle) {
-      IR_FRMT_ERROR("library load failed for path: %s", path_stem.utf8().c_str());
+      IR_FRMT_ERROR("library load failed for path: %s", path_stem.u8string().c_str());
     }
 
     return true;
   };
 
-  plugin_path.visit_directory(visitor, false);
+  file_utils::visit_directory(plugin_path.c_str(), visitor, false);
 }
 
 } // ROOT

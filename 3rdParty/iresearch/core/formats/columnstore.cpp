@@ -198,9 +198,13 @@ void read_compact(
   }
 
   // try direct buffer access
-  const byte_type* buf = cipher ? nullptr : in.read_buffer(buf_size, BufferHint::NORMAL);
+  const byte_type* buf = cipher ? nullptr : in.read_buffer(buf_size + bytes_io<uint64_t>::const_max_vsize, BufferHint::NORMAL);
 
-  if (!buf) {
+  uint64_t buff_size = 0;
+  if (buf) {
+    const byte_type* ptr = buf + buf_size;
+    buff_size = zvread<uint64_t>(ptr);
+  } else {
     irs::string_utils::oversize(encode_buf, buf_size);
 
 #ifdef IRESEARCH_DEBUG
@@ -217,10 +221,11 @@ void read_compact(
     }
 
     buf = encode_buf.c_str();
+    buff_size = irs::read_zvlong(in);
   }
 
   // ensure that we have enough space to store decompressed data
-  decode_buf.resize(irs::read_zvlong(in) + MAX_DATA_BLOCK_SIZE);
+  decode_buf.resize(buff_size + MAX_DATA_BLOCK_SIZE);
 
   const auto decoded = decompressor->decompress(
     buf, buf_size,
@@ -303,7 +308,7 @@ class index_block {
       return CP_DENSE | CP_FIXED;
     }
 
-    const auto size = this->size();
+    const auto num_elements = this->size();
 
     ColumnProperty props = CP_SPARSE;
 
@@ -311,8 +316,8 @@ class index_block {
     {
       // adjust number of elements to pack to the nearest value
       // that is multiple of the block size
-      const auto block_size = math::ceil32(size, packed::BLOCK_SIZE_32);
-      assert(block_size >= size);
+      const auto block_size = math::ceil32(num_elements, packed::BLOCK_SIZE_32);
+      assert(block_size >= num_elements);
 
       assert(std::is_sorted(keys_, key_));
       const auto stats = encode::avg::encode(keys_, key_);
@@ -330,8 +335,8 @@ class index_block {
     {
       // adjust number of elements to pack to the nearest value
       // that is multiple of the block size
-      const auto block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
-      assert(block_size >= size);
+      const auto block_size = math::ceil64(num_elements, packed::BLOCK_SIZE_64);
+      assert(block_size >= num_elements);
 
       assert(std::is_sorted(offsets_, offset_));
       const auto stats = encode::avg::encode(offsets_, offset_);
@@ -345,7 +350,7 @@ class index_block {
       }
     }
 
-    flushed_ += size;
+    flushed_ += num_elements;
 
     // reset pointers and clear data
     key_ = keys_;
@@ -378,6 +383,7 @@ class writer final : public irs::columnstore_writer {
 
   explicit writer(Version version) noexcept
     : buf_(2*MAX_DATA_BLOCK_SIZE, 0),
+      dir_(nullptr),
       version_(version) {
     static_assert(
       2*MAX_DATA_BLOCK_SIZE >= INDEX_BLOCK_SIZE*sizeof(uint64_t),
@@ -593,17 +599,16 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 
   if (version_ > Version::MIN) {
     bstring enc_header;
-    auto* enc = get_encryption(dir.attributes());
+    auto* enc = dir.attributes().encryption();
 
     const auto encrypt = irs::encrypt(filename, *data_out, enc, enc_header, data_out_cipher);
     assert(!encrypt || (data_out_cipher && data_out_cipher->block_size()));
     UNUSED(encrypt);
   }
 
-  alloc_ = &directory_utils::get_allocator(dir);
-
   // noexcept block
   dir_ = &dir;
+  alloc_ = &dir.attributes().allocator();
   data_out_ = std::move(data_out);
   data_out_cipher_ = std::move(data_out_cipher);
   filename_ = std::move(filename);
@@ -729,7 +734,7 @@ class sparse_block : util::noncopyable {
  private:
   struct ref {
     doc_id_t key{ doc_limits::eof() };
-    uint64_t offset;
+    uint64_t offset{ 0 };
   };
 
  public:
@@ -867,35 +872,33 @@ class sparse_block : util::noncopyable {
   }
 
   bool visit(const columnstore_reader::values_reader_f& visitor) const {
-    bytes_ref value;
+    bytes_ref payload;
 
     // visit first [begin;end-1) blocks
-    doc_id_t key;
-    size_t vbegin;
     auto begin = std::begin(index_);
     for (const auto end = end_-1; begin != end;) { // -1 for tail item
-      key = begin->key;
-      vbegin = begin->offset;
+      const doc_id_t key = begin->key;
+      const size_t vbegin = begin->offset;
 
       ++begin;
 
       assert(begin->offset >= vbegin);
-      value = bytes_ref(
+      payload = bytes_ref(
         data_.c_str() + vbegin, // start
         begin->offset - vbegin); // length
 
-      if (!visitor(key, value)) {
+      if (!visitor(key, payload)) {
         return false;
       }
     }
 
     // visit tail block
     assert(data_.size() >= begin->offset);
-    value = bytes_ref(
+    payload = bytes_ref(
       data_.c_str() + begin->offset, // start
       data_.size() - begin->offset); // length
 
-    return visitor(begin->key, value);
+    return visitor(begin->key, payload);
   }
 
  private:
@@ -910,6 +913,7 @@ class sparse_block : util::noncopyable {
   const ref* end_{ std::end(index_) };
 }; // sparse_block
 
+// cppcheck-suppress noConstructor
 class dense_block : util::noncopyable {
  public:
   class iterator {
@@ -1041,34 +1045,32 @@ class dense_block : util::noncopyable {
   }
 
   bool visit(const columnstore_reader::values_reader_f& visitor) const {
-    bytes_ref value;
+    bytes_ref payload;
 
-    // visit first [begin;end-1) blocks
-    doc_id_t key = base_;
-    size_t vbegin;
+    doc_id_t key = base_; // visit first [begin;end-1) blocks
     auto begin = std::begin(index_);
     for (const auto end = end_ - 1; begin != end; ++key) { // -1 for tail item
-      vbegin = *begin;
+      size_t vbegin = *begin;
 
       ++begin;
 
       assert(*begin >= vbegin);
-      value = bytes_ref(
+      payload = bytes_ref(
         data_.c_str() + vbegin, // start
         *begin - vbegin); // length
 
-      if (!visitor(key, value)) {
+      if (!visitor(key, payload)) {
         return false;
       }
     }
 
     // visit tail block
     assert(data_.size() >= *begin);
-    value = bytes_ref(
+    payload = bytes_ref(
       data_.c_str() + *begin, // start
       data_.size() - *begin); // length
 
-    return visitor(key, value);
+    return visitor(key, payload);
   }
 
  private:
@@ -1081,7 +1083,7 @@ class dense_block : util::noncopyable {
   uint32_t index_[INDEX_BLOCK_SIZE];
   bstring data_;
   uint32_t* end_{ index_ };
-  doc_id_t base_{ };
+  doc_id_t base_{ 0 };
 }; // dense_block
 
 class dense_fixed_offset_block : util::noncopyable {
@@ -1215,25 +1217,25 @@ class dense_fixed_offset_block : util::noncopyable {
   bool visit(const columnstore_reader::values_reader_f& visitor) const {
     assert(size_);
 
-    bytes_ref value;
+    bytes_ref payload;
 
     // visit first 'size_-1' blocks
     doc_id_t key = base_key_;
     size_t offset = base_offset_;
     for (const doc_id_t end = key + size_ - 1;  key < end; ++key, offset += avg_length_) {
-      value = bytes_ref(data_.c_str() + offset, avg_length_);
-      if (!visitor(key, value)) {
+      payload = bytes_ref(data_.c_str() + offset, avg_length_);
+      if (!visitor(key, payload)) {
         return false;
       }
     }
 
     // visit tail block
     assert(data_.size() >= offset);
-    value = bytes_ref(
+    payload = bytes_ref(
       data_.c_str() + offset, // start
       data_.size() - offset); // length
 
-    return visitor(key, value);
+    return visitor(key, payload);
   }
 
  private:
@@ -1504,10 +1506,11 @@ class read_context
 
   template<typename Block, typename... Args>
   Block& emplace_back(uint64_t offset, compression::decompressor* decomp, bool decrypt, Args&&... args) {
+    // cppcheck-suppress constVariable
     typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
 
     // add cache entry
-    auto& block = cache.emplace_back(std::forward<Args>(args)...);
+    auto& block {cache.emplace_back(std::forward<Args>(args)...)};
 
     try {
       load(block, decomp, decrypt, offset);
@@ -1592,6 +1595,7 @@ const typename BlockRef::block_t& load_block(
     }
   }
 
+  // cppcheck-suppress invalidLifetime
   return *cached;
 }
 
@@ -1921,8 +1925,8 @@ class sparse_column final : public column {
     block_ref() = default;
 
     block_ref(block_ref&& other) noexcept
-      : key(std::move(other.key)), offset(std::move(other.offset)) {
-      pblock = other.pblock.exchange(nullptr); // no std::move(...) for std::atomic<...>
+      : key(std::move(other.key)), offset(std::move(other.offset)),
+        pblock{other.pblock.exchange(nullptr)} {  // no std::move(...) for std::atomic<...>
     }
 
     doc_id_t key; // min key in a block
@@ -2102,8 +2106,8 @@ class dense_fixed_offset_column final : public column {
     block_ref() = default;
 
     block_ref(block_ref&& other) noexcept
-      : offset(std::move(other.offset)) {
-      pblock = other.pblock.exchange(nullptr); // no std::move(...) for std::atomic<...>
+      : offset(std::move(other.offset)),
+        pblock{ other.pblock.exchange(nullptr)} { // no std::move(...) for std::atomic<...>
     }
 
     uint64_t offset; // need to store base offset since blocks may not be located sequentially
@@ -2253,6 +2257,8 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     }
 
     virtual irs::doc_id_t seek(irs::doc_id_t doc) noexcept override {
+
+      // cppcheck-suppress shadowFunction
       auto& value = std::get<document>(attrs_);
 
       if (doc < min_) {
@@ -2270,6 +2276,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     }
 
     virtual bool next() noexcept override {
+      // cppcheck-suppress shadowFunction
       auto& value = std::get<document>(attrs_);
 
       if (min_ > max_) {
@@ -2384,7 +2391,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   encryption::stream::ptr cipher;
 
   if (version > writer::FORMAT_MIN) {
-    auto* enc = get_encryption(dir.attributes());
+    auto* enc = dir.attributes().encryption();
 
     if (irs::decrypt(filename, *stream, enc, cipher)) {
       assert(cipher && cipher->block_size());

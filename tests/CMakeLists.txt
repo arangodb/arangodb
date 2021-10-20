@@ -247,6 +247,7 @@ set(ARANGODB_TESTS_SOURCES
   Graph/SingleServerProviderTest.cpp
   Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
+  Logger/EscaperTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
@@ -292,9 +293,7 @@ set(ARANGODB_TESTS_SOURCES
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
   Zkd/Library.cpp
-  ${ADDITIONAL_TEST_SOURCES}
-)
-
+  ${ADDITIONAL_TEST_SOURCES})
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/AppendEntriesBatchTest.cpp
@@ -328,7 +327,10 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/TestLogSpecification.h
   Replication2/Streams/MultiplexerConcurrencyTest.cpp
   Replication2/Mocks/AsyncFollower.cpp
-  Replication2/Mocks/AsyncFollower.h)
+  Replication2/Mocks/AsyncFollower.h
+  Replication2/Mocks/FakeFollower.h
+  Replication2/ReplicatedLog/WaitForSyncTest.cpp
+  )
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags

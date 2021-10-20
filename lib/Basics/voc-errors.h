@@ -1918,3 +1918,43 @@ constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN             
 /// During the execution of an AIR program an error occurred
 constexpr auto TRI_ERROR_AIR_EXECUTION_ERROR                                     = ErrorCode{8001};
 
+/// 9001: ERROR_LICENSE_EXPIRED_OR_INVALID
+/// "license has expired or is invalid"
+/// The license has expired or is invalid.
+constexpr auto TRI_ERROR_LICENSE_EXPIRED_OR_INVALID                              = ErrorCode{9001};
+
+/// 9002: ERROR_LICENSE_SIGNATURE_VERIFICATION
+/// "license verification failed"
+/// Verification of license failed.
+constexpr auto TRI_ERROR_LICENSE_SIGNATURE_VERIFICATION                          = ErrorCode{9002};
+
+/// 9003: ERROR_LICENSE_NON_MATCHING_ID
+/// "non-matching license id"
+/// The ID of the license does not match the ID of this instance.
+constexpr auto TRI_ERROR_LICENSE_NON_MATCHING_ID                                 = ErrorCode{9003};
+
+/// 9004: ERROR_LICENSE_FEATURE_NOT_ENABLED
+/// "feature is not enabled by the license"
+/// The installed license does not cover this feature.
+constexpr auto TRI_ERROR_LICENSE_FEATURE_NOT_ENABLED                             = ErrorCode{9004};
+
+/// 9005: ERROR_LICENSE_RESOURCE_EXHAUSTED
+/// "the resource is exhausted"
+/// The installed license does not cover a higher number of this resource.
+constexpr auto TRI_ERROR_LICENSE_RESOURCE_EXHAUSTED                              = ErrorCode{9005};
+
+/// 9006: ERROR_LICENSE_INVALID
+/// "invalid license"
+/// The license does not hold features of an ArangoDB license.
+constexpr auto TRI_ERROR_LICENSE_INVALID                                         = ErrorCode{9006};
+
+/// 9007: ERROR_LICENSE_CONFLICT
+/// "conflicting license"
+/// The license has one or more inferior features.
+constexpr auto TRI_ERROR_LICENSE_CONFLICT                                        = ErrorCode{9007};
+
+/// 9008: ERROR_LICENSE_VALIDATION_FAILED
+/// "failed to validate license signature"
+/// Could not verify the license's signature.
+constexpr auto TRI_ERROR_LICENSE_VALIDATION_FAILED                               = ErrorCode{9008};
+

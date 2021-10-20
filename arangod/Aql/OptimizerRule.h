@@ -228,9 +228,6 @@ struct OptimizerRule {
     /// Pass 9: fuse filter conditions
     fuseFiltersRule,
 
-    /// Pass 9: patch update statements
-    patchUpdateStatementsRule,
-
     /// "Pass 10": final transformations for the cluster
 
     // optimize queries in the cluster so that the entire query

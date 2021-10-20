@@ -157,7 +157,8 @@ struct bucket_size_t {
 /// @param SkipBits 2^SkipBits is the size of the first bucket, consequently
 ///        the number of bits from a 'position' value to place into 1st bucket
 //////////////////////////////////////////////////////////////////////////////
-MSVC_ONLY(__pragma(warning(push)))
+
+MSVC_ONLY(__pragma(warning(push))) // cppcheck-suppress unknownMacro
 MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended to be optimized out
 template<size_t NumBuckets, size_t SkipBits>
 class bucket_meta {
@@ -200,7 +201,8 @@ class IRESEARCH_API_TEMPLATE bucket_allocator: private util::noncopyable { // no
   // number of pools
   static const size_t SIZE = Size;
 
-  typedef typename unbounded_object_pool<BucketFactory>::ptr value_type;
+  using pool_type = unbounded_object_pool<BucketFactory>;
+  using value_type = typename pool_type::ptr;
 
   explicit bucket_allocator(size_t pool_size)
     : pools_(pool_size) {
@@ -218,7 +220,7 @@ class IRESEARCH_API_TEMPLATE bucket_allocator: private util::noncopyable { // no
   }
 
  private:
-  array<unbounded_object_pool<BucketFactory>, Size> pools_;
+  array<pool_type, Size> pools_;
 }; // bucket_allocator
 
 // default stateless allocator

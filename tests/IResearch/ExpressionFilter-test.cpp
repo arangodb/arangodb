@@ -152,7 +152,7 @@ struct custom_sort : public irs::sort {
       const irs::term_reader& term_reader_;
     };
 
-    DECLARE_FACTORY(prepared);
+    static ptr make(prepared);
 
     prepared(const custom_sort& sort) : sort_(sort) {}
 
@@ -234,7 +234,7 @@ struct custom_sort : public irs::sort {
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
   std::function<void(irs::doc_id_t&)> scorer_score;
 
-  DECLARE_FACTORY();
+  static ptr make();
   custom_sort() : sort(irs::type<custom_sort>::get()) {}
   virtual prepared::ptr prepare() const override {
     return std::make_unique<custom_sort::prepared>(*this);
@@ -362,9 +362,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
   arangodb::velocypack::Builder testData;
   {
     irs::utf8_path resource;
-    resource /= irs::string_ref(arangodb::tests::testResourceDir);
-    resource /= irs::string_ref("simple_sequential.json");
-    testData = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+    resource /= std::string_view(arangodb::tests::testResourceDir);
+    resource /= std::string_view("simple_sequential.json");
+    testData = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
   }
   auto testDataRoot = testData.slice();
   ASSERT_TRUE(testDataRoot.isArray());

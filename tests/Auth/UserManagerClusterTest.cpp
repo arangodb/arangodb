@@ -31,10 +31,6 @@ namespace arangodb {
 namespace tests {
 namespace auth_info_test {
 
-namespace {
-static char const* FailureOnLoadDB = "UserManager::performDBLookup";
-}
-
 class UserManagerClusterTest : public ::testing::Test {
  public:
   mocks::MockCoordinator _server{};
@@ -76,6 +72,10 @@ class UserManagerClusterTest : public ::testing::Test {
 };
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
+namespace {
+static char const* FailureOnLoadDB = "UserManager::performDBLookup";
+}
+
 TEST_F(UserManagerClusterTest, regression_forgotten_update) {
   /* The following order of events did lead to a missing update:
    * 1. um->triggerLocalReload();
