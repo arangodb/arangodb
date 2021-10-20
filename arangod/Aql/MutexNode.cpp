@@ -56,21 +56,12 @@ ExecutionNode* MutexNode::clone(ExecutionPlan* plan, bool withDependencies,
                      withDependencies, withProperties);
 }
 
-/// @brief toVelocyPack, for MutexNode
-void MutexNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                   std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-  
-  {
-    VPackArrayBuilder arrayScope(&nodes, "clients");
-    for (auto const& client : _clients) {
-      nodes.add(VPackValue(client));
-    }
+/// @brief doToVelocyPack, for MutexNode
+void MutexNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+  VPackArrayBuilder arrayScope(&nodes, "clients");
+  for (auto const& client : _clients) {
+    nodes.add(VPackValue(client));
   }
-
-  // And close it
-  nodes.close();
 }
 
 /// @brief creates corresponding ExecutionBlock

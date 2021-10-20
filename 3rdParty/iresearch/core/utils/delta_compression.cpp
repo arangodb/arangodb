@@ -68,11 +68,11 @@ bytes_ref delta_decompressor::decompress(
 }
 
 compressor::ptr delta::compressor(const options& /*opts*/) {
-  return compressor::ptr(compressor::ptr(), &COMPRESSOR);
+  return memory::to_managed<delta_compressor, false>(&COMPRESSOR);
 }
 
 decompressor::ptr delta::decompressor() {
-  return decompressor::ptr(decompressor::ptr(), &DECOMPRESSOR);
+  return memory::to_managed<delta_decompressor, false>(&DECOMPRESSOR);
 }
 
 void delta::init() {

@@ -134,7 +134,7 @@ class same_position_query final : public filter::prepared {
     }
 
     // get features required for query & order
-    auto features = ord.features() | by_same_position::required();
+    const IndexFeatures features = ord.features() | by_same_position::required();
 
     same_position_iterator::doc_iterators_t itrs;
     itrs.reserve(query_state->size());
@@ -145,16 +145,12 @@ class same_position_query final : public filter::prepared {
     const bool no_score = ord.empty();
     auto term_stats = stats_.begin();
     for (auto& term_state : *query_state) {
-      auto term = term_state.reader->iterator();
-
-      // use bytes_ref::blank here since we do not need just to "jump"
-      // to cached state, and we are not interested in term value itself */
-      if (!term->seek(bytes_ref::NIL, *term_state.cookie)) {
-        return doc_iterator::empty();
-      }
+      auto* reader = term_state.reader;
+      assert(reader);
 
       // get postings
-      auto docs = term->postings(features);
+      auto docs = reader->postings(*term_state.cookie, features);
+      assert(docs);
 
       // get needed postings attributes
       auto* pos = irs::get_mutable<position>(docs.get());
@@ -199,12 +195,7 @@ class same_position_query final : public filter::prepared {
 
 namespace iresearch {
 
-DEFINE_FACTORY_DEFAULT(by_same_position)
-
-/* static */ const flags& by_same_position::required() {
-  static const flags features{ irs::type<frequency>::get(), irs::type<position>::get() };
-  return features;
-}
+DEFINE_FACTORY_DEFAULT(by_same_position) // cppcheck-suppress unknownMacro
 
 filter::prepared::ptr by_same_position::prepare(
     const index_reader& index,
@@ -240,7 +231,7 @@ filter::prepared::ptr by_same_position::prepare(
     size_t term_idx = 0;
 
     for (const auto& branch : terms) {
-      auto next_stats = irs::make_finally([&term_idx](){ ++term_idx; });
+      auto next_stats = irs::make_finally([&term_idx]()noexcept{ ++term_idx; });
 
       // get term dictionary for field
       const term_reader* field = segment.field(branch.first);
@@ -249,14 +240,14 @@ filter::prepared::ptr by_same_position::prepare(
       }
 
       // check required features
-      if (!required().is_subset_of(field->meta().features)) {
+      if (required() != (field->meta().index_features & required())) {
         continue;
       }
 
       field_stats.collect(segment, *field); // collect field statistics once per segment
 
       // find terms
-      seek_term_iterator::ptr term = field->iterator();
+      seek_term_iterator::ptr term = field->iterator(SeekMode::NORMAL);
 
       if (!term->seek(branch.second)) {
         if (ord.empty()) {

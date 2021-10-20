@@ -39,8 +39,7 @@ void visit(
     const term_reader& reader,
     const bytes_ref& prefix,
     Visitor& visitor) {
-  // find term
-  auto terms = reader.iterator();
+  auto terms = reader.iterator(SeekMode::NORMAL);
 
   // seek to prefix
   if (IRS_UNLIKELY(!terms) || SeekResult::END == terms->seek_ge(prefix)) {
@@ -68,8 +67,7 @@ void visit(
 }
 
 namespace iresearch {
-
-DEFINE_FACTORY_DEFAULT(by_prefix)
+DEFINE_FACTORY_DEFAULT(by_prefix) // cppcheck-suppress unknownMacro
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
     const index_reader& index,

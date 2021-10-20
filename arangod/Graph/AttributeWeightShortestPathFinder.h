@@ -21,11 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_ATTRIBUTE_WEIGHT_SHORTEST_PATH_FINDER_H
-#define ARANGODB_GRAPH_ATTRIBUTE_WEIGHT_SHORTEST_PATH_FINDER_H 1
-
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
+#pragma once
 
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
@@ -34,9 +30,9 @@
 #include <velocypack/StringRef.h>
 
 #include <memory>
-#include <thread>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace graph {
 class EdgeCursor;
@@ -88,64 +84,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   struct ThreadInfo {
     PQueue _pq;
-    arangodb::Mutex _mutex;
   };
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a Dijkstra searcher for the multi-threaded search
-  //////////////////////////////////////////////////////////////////////////////
-
-  /*
-  class SearcherTwoThreads {
-    AttributeWeightShortestPathFinder* _pathFinder;
-    ThreadInfo& _myInfo;
-    ThreadInfo& _peerInfo;
-    arangodb::velocypack::Slice _start;
-    ExpanderFunction _expander;
-    std::string _id;
-
-   public:
-    SearcherTwoThreads(AttributeWeightShortestPathFinder* pathFinder,
-                       ThreadInfo& myInfo, ThreadInfo& peerInfo,
-                       arangodb::velocypack::Slice const& start,
-                       ExpanderFunction expander, std::string const& id);
-
-   private:
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief Insert a neighbor to the todo list.
-    ////////////////////////////////////////////////////////////////////////////////
-    void insertNeighbor(Step* step, double newWeight);
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief Lookup our current vertex in the data of our peer.
-    ////////////////////////////////////////////////////////////////////////////////
-
-    void lookupPeer(arangodb::velocypack::Slice& vertex, double weight);
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief Search graph starting at Start following edges of the given
-    /// direction only
-    ////////////////////////////////////////////////////////////////////////////////
-
-    void run();
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief start and join functions
-    ////////////////////////////////////////////////////////////////////////////////
-
-   public:
-    void start();
-
-    void join();
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief The thread object.
-    ////////////////////////////////////////////////////////////////////////////////
-
-   private:
-    std::thread _thread;
-  };
-  */
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a Dijkstra searcher for the single-threaded search
@@ -183,6 +122,8 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     ThreadInfo& _peerInfo;
     arangodb::velocypack::StringRef _start;
     bool _backward;
+    /// @brief temp value, which is used only in Searcher::oneStep() and recycled.
+    std::vector<std::unique_ptr<Step>> _neighbors;
   };
 
   // -----------------------------------------------------------------------------
@@ -214,9 +155,10 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   bool shortestPath(arangodb::velocypack::Slice const& start,
                     arangodb::velocypack::Slice const& target,
                     arangodb::graph::ShortestPathResult& result) override;
+  
+ private:
 
-  void inserter(std::unordered_map<arangodb::velocypack::StringRef, size_t>& candidates,
-                std::vector<std::unique_ptr<Step>>& result,
+  void inserter(std::vector<std::unique_ptr<Step>>& result,
                 arangodb::velocypack::StringRef const& s,
                 arangodb::velocypack::StringRef const& t, double currentWeight,
                 graph::EdgeDocumentToken&& edge);
@@ -224,20 +166,10 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   void expandVertex(bool backward, arangodb::velocypack::StringRef const& source,
                     std::vector<std::unique_ptr<Step>>& result);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the shortest path between the start and target vertex,
-  /// multi-threaded version using SearcherTwoThreads.
-  //////////////////////////////////////////////////////////////////////////////
+  void clearCandidates() noexcept;
+  size_t candidateMemoryUsage() const noexcept;
 
-  // Caller has to free the result
-  // If this returns true there is a path, if this returns false there is no
-  // path
-
-  /* Unused for now maybe reactived
-  bool shortestPathTwoThreads(arangodb::velocypack::Slice& start,
-                              arangodb::velocypack::Slice& target,
-                              arangodb::graph::ShortestPathResult& result);
-  */
+  arangodb::ResourceMonitor& _resourceMonitor;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lowest total weight for a complete path found
@@ -258,12 +190,6 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   std::atomic<bool> _bingo;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief _resultMutex, this is used to protect access to the result data
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::Mutex _resultMutex;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief _intermediate, one vertex on the shortest path found, flag
   /// indicates
   /// whether or not it was set.
@@ -271,7 +197,11 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   bool _intermediateSet;
   arangodb::velocypack::StringRef _intermediate;
-
+  
+  /// @brief temporary value, which is going to be populate in  inserter,
+  /// and recycled between calls
+  std::unordered_map<arangodb::velocypack::StringRef, size_t> _candidates;
+  
   std::unique_ptr<EdgeCursor> _forwardCursor;
   std::unique_ptr<EdgeCursor> _backwardCursor;
 };
@@ -279,4 +209,3 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

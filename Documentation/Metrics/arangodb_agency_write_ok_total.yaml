@@ -2,7 +2,7 @@ name: arangodb_agency_write_ok_total
 renamedFrom: arangodb_agency_write_ok
 introducedIn: "3.8.0"
 help: |
-  Number of successful agency write operations.
+  Number of successful Agency write operations.
 unit: number
 type: counter
 category: Agency
@@ -10,9 +10,9 @@ complexity: simple
 exposedBy:
   - agent
 description: |
-  Number of agency write operations which were successful (i.e. completed
+  Number of Agency write operations which were successful (i.e. completed
   without any error). Successful writes can only be executed on the leader, so
-  this metric is supposed to increase only on agency leaders, but not on
+  this metric is supposed to increase only on Agency leaders, but not on
   followers. Write requests that are executed on followers will be rejected
   and can be tracked via the metric `arangodb_agency_write_no_leader_total`.
   This metric was named `arangodb_agency_write_ok` in previous

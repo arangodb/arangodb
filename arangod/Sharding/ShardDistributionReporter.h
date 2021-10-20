@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_SHARD_DISTRIBUTED_REPORTER_H
-#define ARANGOD_CLUSTER_SHARD_DISTRIBUTED_REPORTER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Network/Methods.h"
@@ -83,4 +82,3 @@ class ShardDistributionReporter {
 }  // namespace cluster
 }  // namespace arangodb
 
-#endif

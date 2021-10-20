@@ -50,7 +50,7 @@ class SharedScatterExecutionBlockTest {
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
+  std::shared_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
   velocypack::Options vpackOptions;
   std::vector<std::string> clientIds{"a", "b", "c"};

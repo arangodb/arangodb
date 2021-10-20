@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_REST_REPLICATION_HANDLER_H
-#define ARANGOD_ROCKSDB_ROCKSDB_REST_REPLICATION_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestReplicationHandler.h"
 
@@ -75,6 +74,9 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   /// @brief handle a dump command for a specific collection
   void handleCommandDump() override;
 
+  /// @brief return the revision tree for a given collection, if available
+  void handleCommandRevisionTree() override;
+
  private:
   /// Manage RocksDBReplicationContext containing the dump state for the initial
   /// sync and incremental sync
@@ -87,4 +89,3 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
 };
 }  // namespace arangodb
 
-#endif

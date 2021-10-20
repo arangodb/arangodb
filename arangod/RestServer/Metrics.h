@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_METRICS_H
-#define ARANGODB_REST_SERVER_METRICS_H 1
+#pragma once
 
 #include <atomic>
 #include <cmath>
@@ -71,7 +70,7 @@ class Counter : public Metric {
   Counter(Counter const&) = delete;
   ~Counter();
   std::ostream& print (std::ostream&) const;
-  Counter& operator++();
+  Counter& operator++() noexcept;
   Counter& operator++(int);
   Counter& operator+=(uint64_t const&);
   Counter& operator=(uint64_t const&);
@@ -212,7 +211,7 @@ struct scale_t {
   /**
    * @brief number of buckets
    */
-  size_t n() const {
+  [[nodiscard]] size_t n() const {
     return _n;
   }
   /**
@@ -230,7 +229,7 @@ struct scale_t {
   /**
    * @brief number of buckets
    */
-  std::string const delim(size_t s) const {
+  [[nodiscard]] std::string delim(size_t s) const {
     return (s < _n - 1) ? std::to_string(_delim.at(s)) : "+Inf";
   }
   /**
@@ -317,6 +316,17 @@ struct log_scale_t : public scale_t<T> {
 
   using value_type = T;
   static constexpr ScaleType scale_type = Logarithmic;
+
+  static constexpr auto getHighFromSmallestBucket(T smallestBucketSize, T base, T low, size_t n) -> T {
+    return static_cast<T>((smallestBucketSize - low) * std::pow(base, n - 1) + low);
+  }
+  struct supply_smallest_bucket_t {};
+  static constexpr auto supply_smallest_bucket = supply_smallest_bucket_t{};
+
+  log_scale_t(supply_smallest_bucket_t, T const& base, T const& low,
+              T const& smallestBucketSize, size_t n)
+      : log_scale_t(base, low,
+                    getHighFromSmallestBucket(smallestBucketSize, base, low, n), n) {}
 
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n), _base(base) {
@@ -416,26 +426,34 @@ template<typename Scale> class Histogram : public Metric {
   Histogram(Scale&& scale, std::string const& name, std::string const& help,
             std::string const& labels = std::string())
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
-      _lowr(std::numeric_limits<value_type>::max()),
-      _highr(std::numeric_limits<value_type>::min()),
       _n(_scale.n() - 1),
       _sum(0) {}
 
   Histogram(Scale const& scale, std::string const& name, std::string const& help,
             std::string const& labels = std::string())
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(scale),
-      _lowr(std::numeric_limits<value_type>::max()),
-      _highr(std::numeric_limits<value_type>::min()),
-      _n(_scale.n() - 1) {}
+      _n(_scale.n() - 1),
+      _sum(0) {}
 
   ~Histogram() = default;
 
-  void records(value_type const& val) {
-    if (val < _lowr) {
-      _lowr = val;
-    } else if (val > _highr) {
-      _highr = val;
+  void track_extremes(value_type const& val) noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // the value extremes are not actually required and therefore only tracked in
+    // maintainer mode so they can be used when debugging.
+    auto expected = _lowr.load(std::memory_order_relaxed);
+    while (val < expected) {
+      if (_lowr.compare_exchange_weak(expected, val, std::memory_order_relaxed)) {
+        return;
+      }
     }
+    expected = _highr.load(std::memory_order_relaxed);
+    while (val > expected) {
+      if (_highr.compare_exchange_weak(expected, val, std::memory_order_relaxed)) {
+        return;
+      }
+    }
+#endif
   }
 
   virtual std::string type() const override { return "histogram"; }
@@ -448,11 +466,11 @@ template<typename Scale> class Histogram : public Metric {
     return _scale.pos(t);
   }
 
-  void count(value_type t) {
+  void count(value_type t) noexcept {
     count(t, 1);
   }
 
-  void count(value_type t, uint64_t n) {
+  void count(value_type t, uint64_t n) noexcept {
     if (t < _scale.delims().front()) {
       _c[0] += n;
     } else if (t >= _scale.delims().back()) {
@@ -460,14 +478,17 @@ template<typename Scale> class Histogram : public Metric {
     } else {
       _c[pos(t)] += n;
     }
-    value_type tmp = _sum.load(std::memory_order_relaxed);
-    do {
-    } while (!_sum.compare_exchange_weak(tmp,
-                                       tmp + static_cast<value_type>(n) * t,
-                                       std::memory_order_relaxed,
-                                       std::memory_order_relaxed));
-
-    records(t);
+    if constexpr(std::is_integral_v<value_type>) {
+      _sum.fetch_add(static_cast<value_type>(n) * t);
+    } else {
+      value_type tmp = _sum.load(std::memory_order_relaxed);
+      do {
+      } while (!_sum.compare_exchange_weak(tmp,
+                                        tmp + static_cast<value_type>(n) * t,
+                                        std::memory_order_relaxed,
+                                        std::memory_order_relaxed));
+    }
+    track_extremes(t);
   }
 
   value_type low() const { return _scale.low(); }
@@ -533,16 +554,22 @@ template<typename Scale> class Histogram : public Metric {
   }
 
   std::ostream& print(std::ostream& o) const {
-    o << name() << " scale: " <<  _scale << " extremes: [" << _lowr << ", " << _highr << "]";
+    o << name() << " scale: " <<  _scale;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    o << " extremes: [" << _lowr << ", " << _highr << "]";
+#endif
     return o;
   }
 
  private:
   Metrics::hist_type _c;
-  Scale _scale;
-  value_type _lowr, _highr;
-  size_t _n;
+  Scale const _scale;
+  size_t const _n;
   std::atomic<value_type> _sum;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::atomic<value_type> _lowr{std::numeric_limits<value_type>::max()};
+  std::atomic<value_type> _highr{std::numeric_limits<value_type>::min()};
+#endif
 };
 
 std::ostream& operator<< (std::ostream&, Metrics::counter_type const&);
@@ -551,4 +578,3 @@ std::ostream& operator<<(std::ostream& o, Histogram<T> const& h) {
   return h.print(o);
 }
 
-#endif

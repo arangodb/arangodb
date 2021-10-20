@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COUNT_COLLECT_EXECUTOR_H
-#define ARANGOD_AQL_COUNT_COLLECT_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
@@ -114,4 +113,3 @@ class CountCollectExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

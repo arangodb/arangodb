@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_RESULT_T_H
-#define ARANGODB_BASICS_RESULT_T_H
+#pragma once
 
 #include <type_traits>
 
@@ -32,6 +31,11 @@
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 11)
+#pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 
 namespace arangodb {
 
@@ -264,4 +268,6 @@ class ResultT {
 
 }  // namespace arangodb
 
-#endif  // ARANGODB_BASICS_RESULT_T_H
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 11)
+#pragma GCC diagnostic pop
+#endif

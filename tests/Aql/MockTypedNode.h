@@ -41,8 +41,7 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
 
   // Necessary overrides, all not implemented:
 
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override;
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override;
 
   std::unique_ptr<::arangodb::aql::ExecutionBlock> createBlock(
       ::arangodb::aql::ExecutionEngine& engine,

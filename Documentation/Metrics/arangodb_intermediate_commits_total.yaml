@@ -15,7 +15,7 @@ description: |
   An intermediate commit happens if a logical transaction needs to be
   split into multiple physical transaction because of the volume of data
   handled in the transaction. The thresholds for when to perform an
-  intermediate commit can be controlled by startup options 
+  intermediate commit can be controlled by startup options
   `--rocksdb.intermediate-commit-count` (number of write operations after
   which an intermediate commit is triggered) and `--rocksdb.intermediate-commit-size`
   (cumulated size of write operations after which an intermediate commit is triggered).
@@ -25,7 +25,7 @@ description: |
 troubleshoot: |
   If this value is non-zero, it doesn't necessarily indicate a problem. It can
   happen for large transactions and large data-loading jobs. However, as modifications
-  performed by intermediate commits are persisted and cannot simply be rolled back in 
+  performed by intermediate commits are persisted and cannot simply be rolled back in
   memory, it should be monitored whether the intermediate commits only happen for
   operations where they are expected. If they also happen for operations that are
   supposed to be atomic, then the intermediate commit size and count parameters need

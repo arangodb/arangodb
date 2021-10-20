@@ -83,7 +83,7 @@ ClusterFeature::~ClusterFeature() {
 }
 
 void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("cluster", "Configure the cluster");
+  options->addSection("cluster", "cluster");
 
   options->addObsoleteOption("--cluster.username",
                              "username used for cluster-internal communication", true);
@@ -114,8 +114,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption("--cluster.my-id", "this server's id", false);
 
   options->addObsoleteOption("--cluster.agency-prefix", "agency prefix", false);
-
-
+  
   options->addOption(
       "--cluster.require-persisted-id",
       "if set to true, then the instance will only start if a UUID file is "
@@ -227,7 +226,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                                    arangodb::options::Flags::OnCoordinator,
                                    arangodb::options::Flags::Hidden));
-  
+
   options
       ->addOption("--cluster.api-jwt-policy",
                   "access permissions required for accessing /_admin/cluster REST APIs "
@@ -539,6 +538,7 @@ void ClusterFeature::prepare() {
 DECLARE_COUNTER(arangodb_dropped_followers_total, "Number of drop-follower events");
 DECLARE_COUNTER(arangodb_refused_followers_total, "Number of refusal answers from a follower during synchronous replication");
 DECLARE_COUNTER(arangodb_sync_wrong_checksum_total, "Number of times a mismatching shard checksum was detected when syncing shards");
+DECLARE_COUNTER(arangodb_sync_rebuilds_total, "Number of times a follower shard needed to be completely rebuilt because of too many synchronization failures");
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
@@ -613,6 +613,8 @@ void ClusterFeature::start() {
       server().getFeature<arangodb::MetricsFeature>().add(arangodb_refused_followers_total{});
     _followersWrongChecksumCounter =
       server().getFeature<arangodb::MetricsFeature>().add(arangodb_sync_wrong_checksum_total{});
+    _followersTotalRebuildCounter =
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_sync_rebuilds_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -620,7 +622,7 @@ void ClusterFeature::start() {
       << (_forceOneShard ? " with one-shard mode" : "")
       << ". Agency version: " << version << ", Agency endpoints: " << endpoints
       << ", server id: '" << myId << "', internal endpoint / address: " << _myEndpoint
-      << "', advertised endpoint: " << _myAdvertisedEndpoint << ", role: " << role;
+      << "', advertised endpoint: " << _myAdvertisedEndpoint << ", role: " << ServerState::roleToString(role);
 
   auto [acb, idx] = _agencyCache->read(
     std::vector<std::string>{AgencyCommHelper::path("Sync/HeartbeatIntervalMs")});
@@ -851,10 +853,9 @@ AgencyCache& ClusterFeature::agencyCache() {
 
 
 void ClusterFeature::allocateMembers() {
-  _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
+  _agencyCallbackRegistry = std::make_unique<AgencyCallbackRegistry>(server(), agencyCallbacksPath());
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get(), _syncerShutdownCode);
-  _agencyCache =
-    std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry, _syncerShutdownCode);
+  _agencyCache = std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry, _syncerShutdownCode);
 }
 
 void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {
@@ -872,7 +873,7 @@ void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, 
   }
 }
 
-void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& databases) {
+void ClusterFeature::addDirty(std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& databases) {
   if (databases.size() > 0) {
     MUTEX_LOCKER(guard, _dirtyLock);
     bool addedAny = false;

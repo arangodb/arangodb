@@ -21,17 +21,16 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REMOVE_MODIFIER_H
-#define ARANGOD_AQL_REMOVE_MODIFIER_H
+#pragma once
 
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
+#include "Futures/Future.h"
 
 #include <velocypack/Builder.h>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 struct ModificationExecutorInfos;
 
@@ -42,13 +41,11 @@ class RemoveModifierCompletion {
 
   ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
                                    InputAqlItemRow& row);
-  OperationResult transact(transaction::Methods& trx, VPackSlice const& data);
+  futures::Future<OperationResult> transact(transaction::Methods& trx, VPackSlice const& data);
 
  private:
   ModificationExecutorInfos& _infos;
   arangodb::velocypack::Builder _keyDocBuilder;
 };
 
-}  // namespace aql
-}  // namespace arangodb
-#endif
+}  // namespace arangodb::aql

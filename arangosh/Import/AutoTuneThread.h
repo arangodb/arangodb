@@ -21,8 +21,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IMPORT_AUTOTUNE_THREAD_H
-#define ARANGODB_IMPORT_AUTOTUNE_THREAD_H 1
+#pragma once
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
@@ -62,4 +61,3 @@ class AutoTuneThread final : public arangodb::Thread {
 };
 }  // namespace import
 }  // namespace arangodb
-#endif

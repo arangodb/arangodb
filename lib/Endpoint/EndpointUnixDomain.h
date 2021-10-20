@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_UNIX_DOMAIN_H
-#define ARANGODB_ENDPOINT_ENDPOINT_UNIX_DOMAIN_H 1
+#pragma once
 
 #include "Basics/operating-system.h"
 #include "Basics/socket-utils.h"
@@ -75,4 +74,3 @@ class EndpointUnixDomain final : public Endpoint {
 
 #endif
 
-#endif

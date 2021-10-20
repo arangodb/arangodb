@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H
-#define ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H 1
+#pragma once
 
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/CommTask.h"
@@ -66,7 +65,7 @@ class GeneralCommTask : public CommTask {
     
   std::unique_ptr<AsioSocket<T>> _protocol;
           
-  GeneralServerFeature const& _generalServerFeature;
+  GeneralServerFeature& _generalServerFeature;
   
   bool _reading;
   bool _writing;
@@ -78,4 +77,3 @@ class GeneralCommTask : public CommTask {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

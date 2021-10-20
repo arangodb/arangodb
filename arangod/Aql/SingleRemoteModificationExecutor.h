@@ -21,10 +21,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SINGLE_REMOTE_MODIFICATION_EXECUTOR_H
-#define ARANGOD_AQL_SINGLE_REMOTE_MODIFICATION_EXECUTOR_H 1
+#pragma once
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/ModificationExecutorInfos.h"
@@ -35,9 +33,11 @@
 
 namespace arangodb {
 namespace aql {
+class ExecutionEngine;
 
 struct SingleRemoteModificationInfos : ModificationExecutorInfos {
-  SingleRemoteModificationInfos(RegisterId inputRegister, RegisterId outputNewRegisterId,
+  SingleRemoteModificationInfos(ExecutionEngine* engine,
+                                RegisterId inputRegister, RegisterId outputNewRegisterId,
                                 RegisterId outputOldRegisterId, RegisterId outputRegisterId,
                                 arangodb::aql::QueryContext& query, OperationOptions options,
                                 aql::Collection const* aqlCollection,
@@ -45,7 +45,7 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
                                 IgnoreErrors ignoreErrors,
                                 IgnoreDocumentNotFound ignoreDocumentNotFound,
                                 std::string key, bool hasParent, bool replaceIndex)
-      : ModificationExecutorInfos(inputRegister, RegisterPlan::MaxRegisterId,
+      : ModificationExecutorInfos(engine, inputRegister, RegisterPlan::MaxRegisterId,
                                   RegisterPlan::MaxRegisterId, outputNewRegisterId,
                                   outputOldRegisterId, outputRegisterId, query,
                                   std::move(options), aqlCollection,
@@ -113,4 +113,3 @@ struct SingleRemoteModificationExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

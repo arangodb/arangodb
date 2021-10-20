@@ -89,8 +89,6 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
   // Different implementations of the Scheduler may require different
   // options to be set. This requires a solution here.
 
-  options->addSection("server", "Server features");
-
   // max / min number of threads
   options->addOption("--server.maximal-threads",
                      std::string(
@@ -385,7 +383,7 @@ extern "C" void c_exit_handler(int signal, siginfo_t* info, void*) {
       application_features::ApplicationServer::CTRL_C.store(true);
     } else {
       LOG_TOPIC("11ca3", FATAL, arangodb::Logger::FIXME)
-          << signals::name(signal) << "received during shutdown sequence (sender pid "
+          << signals::name(signal) << " received during shutdown sequence (sender pid "
           << info->si_pid << "), terminating!";
       FATAL_ERROR_EXIT();
     }

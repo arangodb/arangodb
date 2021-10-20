@@ -33,41 +33,48 @@
           </table>
       </div>
 
-          <div id="newIndexView" class="new-index-view" style="display:none">
+        <div id="newIndexView" class="new-index-view" style="display:none">
             <table>
-              <tr>
-                <th class="collectionTh">Type:</th>
-                <th class="">
-                  <select id="newIndexType">
-                    <option style="display: none" disabled selected value="unknown"> -- select an index -- </option>
-                    <% if (supported.indexOf('geo') > -1) { %> 
-                      <option value="Geo">Geo Index</option>
-                    <% } %> 
-                    <% if (supported.indexOf('hash') > -1) { %> 
-                      <option value="Hash">Hash Index</option>
-                    <% } %> 
-                    <% if (supported.indexOf('persistent') > -1) { %> 
-                      <option value="Persistent">Persistent Index</option>
-                    <% } %> 
-                    <% if (supported.indexOf('fulltext') > -1) { %> 
-                      <option value="Fulltext">Fulltext Index</option>
-                    <% } %> 
-                    <% if (supported.indexOf('skiplist') > -1) { %> 
-                      <option value="Skiplist">Skiplist Index</option>
-                    <% } %> 
-                    <% if (supported.indexOf('ttl') > -1) { %> 
-                      <option value="Ttl">TTL Index</option>
-                    <% } %> 
-                  </select>
-                </th>
-                <th class="tooltipInfoTh">
-                  <div class="tooltipDiv">
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Type of index to create. <% if (supported.indexOf('hash') <= -1) { %>Please note that for the RocksDB engine the index types hash, skiplist and persistent are identical, so that they are not offered seperately here.<% } %>">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
+                <tr>
+                    <th class="collectionTh">Type:</th>
+                    <th class="">
+                        <select id="newIndexType">
+                            <option style="display: none" disabled selected value="unknown"> -- select an index type
+                                --
+                            </option>
+                            <% if (supported.indexOf('persistent') > -1) { %>
+                                <option value="Persistent">Persistent Index</option>
+                            <% } %>
+                            <% if (supported.indexOf('geo') > -1) { %>
+                                <option value="Geo">Geo Index</option>
+                            <% } %>
+                            <% if (supported.indexOf('hash') > -1) { %>
+                                <option value="Hash">Hash Index</option>
+                            <% } %>
+                            <% if (supported.indexOf('fulltext') > -1) { %>
+                                <option value="Fulltext">Fulltext Index</option>
+                            <% } %>
+                            <% if (supported.indexOf('skiplist') > -1) { %>
+                                <option value="Skiplist">Skiplist Index</option>
+                            <% } %>
+                            <% if (supported.indexOf('ttl') > -1) { %>
+                                <option value="Ttl">TTL Index</option>
+                            <% } %>
+                            <% if (supported.indexOf('zkd') > -1) { %>
+                                <option value="Zkd">ZKD Index (EXPERIMENTAL!)</option>
+                            <% } %>
+                        </select>
+                    </th>
+                    <th class="tooltipInfoTh">
+                        <div class="tooltipDiv">
+                            <a class="index-tooltip" data-toggle="tooltip" data-placement="left"
+                               title="Type of index to create. <% if (supported.indexOf(
+                                       'hash') <= -1) { %>Please note that for the RocksDB engine the index types hash, skiplist and persistent are identical, so that they are not offered seperately here.<% } %>">
+                                <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                            </a>
+                        </div>
+                    </th>
+                </tr>
             </table>
             <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
               <table>
@@ -485,25 +492,83 @@
                   <th>
                     <input id="newTtlBackground" type="checkbox" name="newTtlBackground" value="true">
                   </th>
-                  <th class="tooltipInfoTh">
-                    <div class="tooltipDiv">
-                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
-                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                      </a>
-                    </div>
-                  </th>
+                    <th class="tooltipInfoTh">
+                        <div class="tooltipDiv">
+                            <a class="index-tooltip" data-toggle="tooltip" data-placement="left"
+                               title="Create the index in background.">
+                                <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                            </a>
+                        </div>
+                    </th>
                 </tr>
               </table>
             </div>
+            <div id="newIndexTypeZkd" class="newIndexClass" style="display:none">
+                <table>
+                    <tr>
+                        <th class="collectionTh">Fields:</th>
+                        <th><input type="text" id="newZkdFields" value=""/></th>
+                        <th class="tooltipInfoTh">
+                            <div class="tooltipDiv">
+                                <a class="index-tooltip" data-toggle="tooltip" data-placement="left"
+                                   title="A comma-separated list of attribute paths.">
+                                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                                </a>
+                            </div>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th class="collectionTh">Name:</th>
+                        <th><input type="text" id="newZkdName" value=""/></th>
+                        <th class="tooltipInfoTh">
+                            <div class="tooltipDiv">
+                                <a class="index-tooltip" data-toggle="tooltip" data-placement="left"
+                                   title="Index name. If left blank, a name will be auto-generated. Example: byValue">
+                                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                                </a>
+                            </div>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th class="collectionTh">Field Value Types:</th>
+                        <th>
+                            <input type="text" id="newZkdFieldValueTypes" value="double" disabled
+                                   style="background: #dddddd !important; cursor: not-allowed"/>
+                        </th>
+                        <th class="tooltipInfoTh">
+                            <div class="tooltipDiv">
+                                <a class="index-tooltip" data-toggle="tooltip" data-placement="left"
+                                   title="The value type of the fields being indexed (only double supported for now).">
+                                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                                </a>
+                            </div>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th class="collectionTh">Create in background:</th>
+                        <th>
+                            <input id="newZkdBackground" type="checkbox" name="newZkdBackground" value="true">
+                        </th>
+                        <th class="tooltipInfoTh">
+                            <div class="tooltipDiv">
+                                <a class="index-tooltip" data-toggle="tooltip" data-placement="left"
+                                   title="Create the index in background.">
+                                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                                </a>
+                            </div>
+                        </th>
+                    </tr>
+                </table>
+            </div>
             <div class="index-button-bar index-button-bar2">
-              <button id="createIndex" class="button-success" style="margin-left: 15px;">Create</button>
-              <button id="cancelIndex" class="button-close" style="margin-left: 0;"><i class="fa fa-arrow-left"></i>
-                <span style="margin-left: 5px;">Back</span>
-              </button>
+                <button id="createIndex" class="button-success" style="margin-left: 15px;">Create</button>
+                <button id="cancelIndex" class="button-close" style="margin-left: 0;"><i class="fa fa-arrow-left"></i>
+                    <span style="margin-left: 5px;">Back</span>
+                </button>
             </div>
         </div>
         <div id="modal-dialog">
-          <div class="modal-footer" style="border: none"></div>
+            <div class="modal-footer" style="border: none"></div>
         </div>
       </div>
     <% } %>

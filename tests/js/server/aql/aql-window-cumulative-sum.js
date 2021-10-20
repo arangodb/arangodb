@@ -383,28 +383,6 @@ FOR i IN 1..10
         assertEqual(err.errorNum, errors.ERROR_QUERY_COMPILE_TIME_OPTIONS.code);
       }
     },
-    
-    testNoPrecedingNoFollowing : function () {
-      const query = `
-FOR i IN 1..3
-  WINDOW {} AGGREGATE sum = SUM(i)
-  RETURN sum
-`;
-
-      let result = db._query(query).toArray();
-      validateResult(result, 3, 1, 3, 0, 0);
-    },
-    
-    testEmptyInput : function () {
-      const query = `
-FOR i IN []
-  WINDOW {} AGGREGATE sum = SUM(i)
-  RETURN sum
-`;
-
-      let result = db._query(query).toArray();
-      assertEqual([], result);
-    },
 
     testChainedWindowStatements : function () {
       let query = `

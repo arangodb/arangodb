@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H
-#define ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H 1
+#pragma once
 
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
@@ -153,4 +152,3 @@ class InputAqlItemRow {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

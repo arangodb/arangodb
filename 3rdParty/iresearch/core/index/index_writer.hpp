@@ -28,14 +28,16 @@
 
 #include <absl/container/flat_hash_map.h>
 
-#include "field_meta.hpp"
-#include "column_info.hpp"
-#include "index_meta.hpp"
-#include "merge_writer.hpp"
-#include "segment_reader.hpp"
-#include "segment_writer.hpp"
-
 #include "formats/formats.hpp"
+
+#include "index/column_info.hpp"
+#include "index/field_meta.hpp"
+#include "index/index_features.hpp"
+#include "index/index_meta.hpp"
+#include "index/merge_writer.hpp"
+#include "index/segment_reader.hpp"
+#include "index/segment_writer.hpp"
+
 #include "search/filter.hpp"
 
 #include "utils/async_utils.hpp"
@@ -55,6 +57,7 @@ class directory_reader;
 class readers_cache final : util::noncopyable {
  public:
   struct key_t {
+    // cppcheck-suppress noExplicitConstructor
     key_t(const segment_meta& meta); // implicit constructor
 
     bool operator==(const key_t& other) const noexcept {
@@ -71,6 +74,7 @@ class readers_cache final : util::noncopyable {
     }
   };
 
+  // cppcheck-suppress constParameter
   explicit readers_cache(directory& dir) noexcept
     : dir_(dir) {}
 
@@ -110,12 +114,7 @@ ENABLE_BITMASK_ENUM(OpenMode);
 ///        the same directory simultaneously.
 ///        Thread safe.
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API index_writer
-    : private atomic_shared_ptr_helper<
-        std::pair<
-          std::shared_ptr<index_meta>, std::vector<index_file_refs::ref_t>
-      >>,
-      private util::noncopyable {
+class IRESEARCH_API index_writer : private util::noncopyable {
  private:
   struct flush_context; // forward declaration
   struct segment_context; // forward declaration
@@ -135,11 +134,10 @@ class IRESEARCH_API index_writer
    public:
     active_segment_context() = default;
     active_segment_context(
-        segment_context_ptr ctx,
-        std::atomic<size_t>& segments_active,
-        flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
-        size_t pending_segment_context_offset = std::numeric_limits<size_t>::max() // the segment offset in flush_ctx_->pending_segments_
-    ) noexcept;
+      segment_context_ptr ctx,
+      std::atomic<size_t>& segments_active,
+      flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
+      size_t pending_segment_context_offset = std::numeric_limits<size_t>::max()) noexcept; // the segment offset in flush_ctx_->pending_segments_
     active_segment_context(active_segment_context&&)  = default;
     ~active_segment_context();
     active_segment_context& operator=(active_segment_context&& other) noexcept;
@@ -186,6 +184,7 @@ class IRESEARCH_API index_writer
       size_t update_id_;
     };
 
+    // cppcheck-suppress constParameter
     explicit documents_context(index_writer& writer) noexcept
       : writer_(writer) {
     }
@@ -215,8 +214,7 @@ class IRESEARCH_API index_writer
       return document(
         std::move(ctx),
         segment_.ctx(),
-        segment_.ctx()->make_update_context()
-      );
+        segment_.ctx()->make_update_context());
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -228,6 +226,7 @@ class IRESEARCH_API index_writer
     template<typename Filter>
     void remove(Filter&& filter) {
       // thread-safe to use ctx_/segment_ while have lock since active flush_context will not change
+      // cppcheck-suppress unreadVariable
       auto ctx = update_segment(); // updates 'segment_' and 'ctx_'
       assert(segment_.ctx());
 
@@ -285,7 +284,8 @@ class IRESEARCH_API index_writer
         ++segment->active_count_;
       }
 
-      auto clear_busy = make_finally([ctx, segment]()->void {
+      auto clear_busy = make_finally([ctx, segment](){
+        // FIXME make me noexcept as I'm begin called from within ~finally()
         if (!--segment->active_count_) {
           auto lock = make_lock_guard(ctx->mutex_); // lock due to context modification and notification
           ctx->pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
@@ -294,12 +294,12 @@ class IRESEARCH_API index_writer
       auto& writer = *(segment->writer_);
       segment_writer::document doc(writer);
       std::exception_ptr exception;
+      // cppcheck-suppress shadowFunction
       bitvector rollback; // 0-based offsets to roll back on failure for this specific replace(..) operation
       auto uncomitted_doc_id_begin =
         segment->uncomitted_doc_id_begin_ > segment->flushed_update_contexts_.size()
         ? (segment->uncomitted_doc_id_begin_ - segment->flushed_update_contexts_.size()) // uncomitted start in 'writer_'
-        : doc_limits::min() // uncommited start in 'flushed_'
-        ;
+        : doc_limits::min(); // uncommited start in 'flushed_'
       auto update = segment->make_update_context(std::forward<Filter>(filter));
 
       try {
@@ -441,6 +441,18 @@ class IRESEARCH_API index_writer
   //////////////////////////////////////////////////////////////////////////////
   struct init_options : public segment_options {
     ////////////////////////////////////////////////////////////////////////////
+    /// @brief a set of all allowed custom field features the index writer
+    ///        supports
+    ////////////////////////////////////////////////////////////////////////////
+    field_features_t features;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief returns column info for a feature the writer should use for
+    ///        columnstore
+    ////////////////////////////////////////////////////////////////////////////
+    feature_column_info_provider_t feature_column_info;
+
+    ////////////////////////////////////////////////////////////////////////////
     /// @brief returns column info the writer should use for columnstore
     ////////////////////////////////////////////////////////////////////////////
     column_info_provider_t column_info;
@@ -456,12 +468,6 @@ class IRESEARCH_API index_writer
     ///        empty == use default system sorting order
     ////////////////////////////////////////////////////////////////////////////
     const comparer* comparator{nullptr};
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief number of memory blocks to cache by the internal memory pool
-    ///        0 == use default from memory_allocator::global()
-    ////////////////////////////////////////////////////////////////////////////
-    size_t memory_pool_size{0};
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of free segments cached in the segment pool for reuse
@@ -623,8 +629,7 @@ class IRESEARCH_API index_writer
   bool import(
     const index_reader& reader,
     format::ptr codec = nullptr,
-    const merge_writer::flush_progress_t& progress = {}
-  );
+    const merge_writer::flush_progress_t& progress = {});
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief opens new index writer
@@ -637,8 +642,7 @@ class IRESEARCH_API index_writer
     directory& dir,
     format::ptr codec,
     OpenMode mode,
-    const init_options& opts = init_options()
-  );
+    const init_options& opts = init_options());
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief modify the runtime segment options as per the specified values
@@ -662,6 +666,7 @@ class IRESEARCH_API index_writer
   /// @returns true if transaction has been sucessflully started
   ////////////////////////////////////////////////////////////////////////////
   bool begin() {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(commit_lock_);
 
     return start();
@@ -671,6 +676,7 @@ class IRESEARCH_API index_writer
   /// @brief rollbacks the two-phase transaction 
   ////////////////////////////////////////////////////////////////////////////
   void rollback() {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(commit_lock_);
 
     abort();
@@ -685,6 +691,7 @@ class IRESEARCH_API index_writer
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
   bool commit() {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(commit_lock_);
 
     const bool modified = start();
@@ -701,6 +708,8 @@ class IRESEARCH_API index_writer
 
  private:
   typedef std::vector<index_file_refs::ref_t> file_refs_t;
+
+  static constexpr size_t NON_UPDATE_RECORD = std::numeric_limits<size_t>::max(); // non-update
 
   struct consolidation_context_t : util::noncopyable {
     consolidation_context_t() = default;
@@ -836,18 +845,18 @@ class IRESEARCH_API index_writer
     struct flushed_t: public index_meta::index_segment_t {
       doc_id_t docs_mask_tail_doc_id{std::numeric_limits<doc_id_t>::max()}; // starting doc_id that should be added to docs_mask
       flushed_t() = default;
-      flushed_t(segment_meta&& meta)
-        : index_meta::index_segment_t(std::move(meta)) {}
+      explicit flushed_t(segment_meta&& meta)
+               : index_meta::index_segment_t(std::move(meta)) {}
     };
     using segment_meta_generator_t = std::function<segment_meta()>;
-    using ptr = std::shared_ptr<segment_context>;
+    using ptr = std::unique_ptr<segment_context>;
 
     std::atomic<size_t> active_count_; // number of active in-progress operations (insert/replace) (e.g. document instances or replace(...))
     std::atomic<size_t> buffered_docs_; // for use with index_writer::buffered_docs() asynchronous call
     format::ptr codec_; // the codec to used for flushing a segment writer
-    bool dirty_; // true if flush_all() started processing this segment (this segment should not be used for any new operations), guarded by the flush_context::flush_mutex_
+    std::atomic<bool> dirty_; // true if flush_all() started processing this segment (this segment should not be used for any new operations), guarded by the flush_context::flush_mutex_
     ref_tracking_directory dir_; // ref tracking for segment_writer to allow for easy ref removal on segment_writer reset
-    std::recursive_mutex flush_mutex_; // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
+    std::mutex flush_mutex_; // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
     std::vector<flushed_t> flushed_; // all of the previously flushed versions of this segment, guarded by the flush_context::flush_mutex_
     std::vector<segment_writer::update_context> flushed_update_contexts_; // update_contexts to use with 'flushed_' sequentially increasing through all offsets (sequential doc_id in 'flushed_' == offset + type_limits<type_t::doc_id_t>::min(), size() == sum of all 'flushed_'.'docs_count')
     segment_meta_generator_t meta_generator_; // function to get new segment_meta from
@@ -858,8 +867,21 @@ class IRESEARCH_API index_writer
     segment_writer::ptr writer_;
     index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
 
-    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator, const column_info_provider_t& column_info, const comparer* comparator);
-    segment_context(directory& dir, segment_meta_generator_t&& meta_generator, const column_info_provider_t& column_info, const comparer* comparator);
+    static segment_context::ptr make(
+      directory& dir,
+      segment_meta_generator_t&& meta_generator,
+      const field_features_t& field_features,
+      const column_info_provider_t& column_info,
+      const feature_column_info_provider_t& feature_column_info,
+      const comparer* comparator);
+
+    segment_context(
+      directory& dir,
+      segment_meta_generator_t&& meta_generator,
+      const field_features_t& field_features,
+      const column_info_provider_t& column_info,
+      const feature_column_info_provider_t& feature_column_info,
+      const comparer* comparator);
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief flush current writer state into a materialized segment
@@ -868,7 +890,9 @@ class IRESEARCH_API index_writer
     uint64_t flush();
 
     // returns context for "insert" operation
-    segment_writer::update_context make_update_context();
+    segment_writer::update_context make_update_context() const noexcept {
+      return { uncomitted_generation_offset_, NON_UPDATE_RECORD };
+    }
 
     // returns context for "update" operation
     segment_writer::update_context make_update_context(const filter& filter);
@@ -895,10 +919,10 @@ class IRESEARCH_API index_writer
     std::atomic<size_t> segment_count_max; // @see segment_options::max_segment_count
     std::atomic<size_t> segment_docs_max; // @see segment_options::max_segment_docs
     std::atomic<size_t> segment_memory_max; // @see segment_options::max_segment_memory
-    segment_limits(const segment_options& opts) noexcept
-      : segment_count_max(opts.segment_count_max),
-        segment_docs_max(opts.segment_docs_max),
-        segment_memory_max(opts.segment_memory_max) {
+    explicit segment_limits(const segment_options& opts) noexcept
+             : segment_count_max(opts.segment_count_max),
+               segment_docs_max(opts.segment_docs_max),
+               segment_memory_max(opts.segment_memory_max) {
     }
     segment_limits& operator=(const segment_options& opts) noexcept {
       segment_count_max.store(opts.segment_count_max);
@@ -932,16 +956,16 @@ class IRESEARCH_API index_writer
       size_t doc_id_end_; // ending segment_context::document_contexts_ for this flush_context range [pending_segment_context::doc_id_begin_, std::min(pending_segment_context::doc_id_end_, segment_context::uncomitted_doc_ids_))
       const size_t modification_offset_begin_; // starting segment_context::modification_queries_ for this flush_context range [pending_segment_context::modification_offset_begin_, std::min(pending_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
       size_t modification_offset_end_; // ending segment_context::modification_queries_ for this flush_context range [pending_segment_context::modification_offset_begin_, std::min(pending_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
-      const segment_context::ptr segment_;
+      const std::shared_ptr<segment_context> segment_;
 
       pending_segment_context(
-        const segment_context::ptr& segment,
-        size_t pending_segment_context_offset
-      ): doc_id_begin_(segment->uncomitted_doc_id_begin_),
-         doc_id_end_(std::numeric_limits<size_t>::max()),
-         modification_offset_begin_(segment->uncomitted_modification_queries_),
-         modification_offset_end_(std::numeric_limits<size_t>::max()),
-         segment_(segment) {
+          const std::shared_ptr<segment_context>& segment,
+          size_t pending_segment_context_offset)
+        : doc_id_begin_(segment->uncomitted_doc_id_begin_),
+          doc_id_end_(std::numeric_limits<size_t>::max()),
+          modification_offset_begin_(segment->uncomitted_modification_queries_),
+          modification_offset_end_(std::numeric_limits<size_t>::max()),
+          segment_(segment) {
         assert(segment);
         value = pending_segment_context_offset;
       }
@@ -949,7 +973,7 @@ class IRESEARCH_API index_writer
 
     std::atomic<size_t> generation_{ 0 }; // current modification/update generation
     ref_tracking_directory::ptr dir_; // ref tracking directory used by this context (tracks all/only refs for this context)
-    async_utils::read_write_mutex flush_mutex_; // guard for the current context during flush (write) operations vs update (read)
+    std::shared_mutex flush_mutex_; // guard for the current context during flush (write) operations vs update (read)
     std::mutex mutex_; // guard for the current context during struct update operations, e.g. pending_segments_, pending_segment_contexts_
     flush_context* next_context_; // the next context to switch to
     std::vector<import_context> pending_segments_; // complete segments to be added during next commit (import)
@@ -997,6 +1021,7 @@ class IRESEARCH_API index_writer
 
     template<typename Visitor>
     bool visit(const Visitor& visitor, const index_meta& meta) const {
+      // cppcheck-suppress shadowFunction
       auto begin = files.begin();
 
       for (auto& entry : segments) {
@@ -1073,10 +1098,15 @@ class IRESEARCH_API index_writer
     const segment_options& segment_limits,
     const comparer* comparator,
     const column_info_provider_t& column_info,
+    const feature_column_info_provider_t& feature_column_info,
     const payload_provider_t& meta_payload_provider,
+    const field_features_t& field_features,
     index_meta&& meta,
-    committed_state_t&& committed_state
-  );
+    committed_state_t&& committed_state);
+
+  std::pair<std::vector<std::unique_lock<std::mutex>>, uint64_t> flush_pending(
+    flush_context& ctx,
+    std::unique_lock<std::mutex>& ctx_lock);
 
   pending_context_t flush_all();
 
@@ -1088,6 +1118,8 @@ class IRESEARCH_API index_writer
   void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  field_features_t field_features_;
+  feature_column_info_provider_t feature_column_info_;
   column_info_provider_t column_info_;
   payload_provider_t meta_payload_provider_; // provides payload for new segments
   const comparer* comparator_;

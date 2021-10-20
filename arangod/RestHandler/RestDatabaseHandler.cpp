@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
+#include "Basics/Utf8Helper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -142,6 +143,11 @@ RestStatus RestDatabaseHandler::createDatabase() {
     return RestStatus::DONE;
   }
   std::string dbName = nameVal.copyString();
+  if (dbName != normalizeUtf8ToNFC(dbName)) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+    events::CreateDatabase(dbName, Result(TRI_ERROR_ARANGO_ILLEGAL_NAME), _context);
+    return RestStatus::DONE;
+  }
 
   VPackSlice options = body.get("options");
   VPackSlice users = body.get("users");
@@ -170,7 +176,7 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
     events::DropDatabase("", Result(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE), _context);
     return RestStatus::DONE;
   }
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     events::DropDatabase("", Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
@@ -178,6 +184,11 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
   }
 
   std::string const& dbName = suffixes[0];
+  if (dbName != normalizeUtf8ToNFC(dbName)) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+    events::DropDatabase(dbName, Result(TRI_ERROR_ARANGO_ILLEGAL_NAME), _context);
+    return RestStatus::DONE;
+  }
   Result res = methods::Databases::drop(_context, &_vocbase, dbName);
 
   if (res.ok()) {

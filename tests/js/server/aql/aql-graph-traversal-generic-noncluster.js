@@ -25,9 +25,9 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-const {protoGraphs} = require('@arangodb/aql-graph-traversal-generic-graphs.js');
-const {testsByGraph, metaTests} = require('@arangodb/aql-graph-traversal-generic-tests.js');
-
+const {protoGraphs} = require('@arangodb/testutils/aql-graph-traversal-generic-graphs.js');
+const {testsByGraph, metaTests} = require('@arangodb/testutils/aql-graph-traversal-generic-tests.js');
+const console = require('console');
 const jsunity = require("jsunity");
 const _ = require("lodash");
 

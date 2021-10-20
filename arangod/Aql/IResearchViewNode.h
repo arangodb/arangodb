@@ -22,14 +22,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H
-#define ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H 1
+#pragma once
 
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
+#include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
 #include "IResearch/IResearchViewStoredValues.h"
@@ -70,8 +70,6 @@ ENABLE_BITMASK_ENUM(MaterializeType);
 
 /// @brief class EnumerateViewNode
 class IResearchViewNode final : public arangodb::aql::ExecutionNode {
-  friend class arangodb::aql::RedundantCalculationsReplacer;
-
  public:
   /// @brief node options
   struct Options {
@@ -93,6 +91,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
     /// @brief skipAll method for view
     CountApproximate countApproximate{CountApproximate::Exact};
+
+    /// @brief iresearch filters optimization level
+    FilterOptimization filterOptimization {FilterOptimization::MAX};
   };  // Options
 
   IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
@@ -104,10 +105,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_IRESEARCH_VIEW; }
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief clone ExecutionNode recursively
   aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,
@@ -121,6 +118,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief the cost of an enumerate view node
   aql::CostEstimate estimateCost() const override final;
+  
+  void replaceVariables(std::unordered_map<arangodb::aql::VariableId, arangodb::aql::Variable const*> const& replacements) override;
 
   /// @brief getVariablesSetHere
   std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final;
@@ -155,6 +154,15 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief return the scorers to pass to the view
   std::vector<Scorer> const& scorers() const noexcept { return _scorers; }
+
+  // we could merge if it is allowed in general and there are no scores - as changing
+  // filters will affect score and we will lose backward compatibility
+  FilterOptimization filterOptimization() const noexcept {
+    if (!_scorers.empty()) {
+      return FilterOptimization::NONE;
+    }
+    return _options.filterOptimization;
+  }
 
   /// @brief set the scorers to pass to the view
   void scorers(std::vector<Scorer>&& scorers) noexcept {
@@ -271,6 +279,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   OptimizationState& state() noexcept { return _optState; }
 
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned) const override final;
 
  private:
   /// @brief the database
@@ -327,4 +338,3 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__ENUMERATE_VIEW_NODE_H

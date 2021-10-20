@@ -52,8 +52,7 @@
 /// Author: Ray Sidney
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOGGER_H
-#define ARANGODB_LOGGER_LOGGER_H 1
+#pragma once
 
 #include <atomic>
 #include <cstddef>
@@ -64,7 +63,6 @@
 #include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/threads.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogTimeFormat.h"
@@ -162,6 +160,7 @@ class Logger {
   static LogTopic AUTHENTICATION;
   static LogTopic AUTHORIZATION;
   static LogTopic BACKUP;
+  static LogTopic BENCH;
   static LogTopic CACHE;
   static LogTopic CLUSTER;
   static LogTopic CLUSTERCOMM;
@@ -177,6 +176,7 @@ class Logger {
   static LogTopic GRAPHS;
   static LogTopic HEARTBEAT;
   static LogTopic HTTPCLIENT;
+  static LogTopic LICENSE;
   static LogTopic MAINTENANCE;
   static LogTopic MEMORY;
   static LogTopic MMAP;
@@ -184,6 +184,7 @@ class Logger {
   static LogTopic PREGEL;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
+  static LogTopic REPLICATION2;
   static LogTopic REQUESTS;
   static LogTopic RESTORE;
   static LogTopic ROCKSDB;
@@ -277,8 +278,10 @@ class Logger {
   static void setShowThreadName(bool);
   static void setUseColor(bool);
   static bool getUseColor() { return _useColor; };
-  static void setUseEscaped(bool);
-  static bool getUseEscaped() { return _useEscaped; };
+  static void setUseControlEscaped(bool);
+  static void setUseUnicodeEscaped(bool);
+  static bool getUseControlEscaped() { return _useControlEscaped; };
+  static bool getUseUnicodeEscaped() { return _useUnicodeEscaped; };
   static bool getUseLocalTime() { return LogTimeFormats::isLocalFormat(_timeFormat); }
   static void setTimeFormat(LogTimeFormats::TimeFormat);
   static void setKeepLogrotate(bool);
@@ -314,12 +317,9 @@ class Logger {
  public:
   static void initialize(application_features::ApplicationServer&, bool);
   static void shutdown();
-  static void shutdownLogThread();
   static void flush() noexcept;
 
  private:
-  static Mutex _initializeMutex;
-
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
@@ -332,9 +332,9 @@ class Logger {
   static bool _showThreadIdentifier;
   static bool _showThreadName;
   static bool _showRole;
-  static bool _threaded;
   static bool _useColor;
-  static bool _useEscaped;
+  static bool _useControlEscaped;
+  static bool _useUnicodeEscaped;
   static bool _keepLogRotate;
   static bool _logRequestParameters;
   static bool _showIds;
@@ -344,8 +344,25 @@ class Logger {
   static std::string _outputPrefix;
   static std::string _hostname;
 
-  static std::unique_ptr<LogThread> _loggingThread;
+  struct ThreadRef {
+    ThreadRef();
+    ~ThreadRef();
+    
+    ThreadRef(const ThreadRef&) = delete;
+    ThreadRef(ThreadRef&&) = delete;
+    ThreadRef& operator=(const ThreadRef&) = delete;
+    ThreadRef& operator=(ThreadRef&&) = delete;
+    
+    LogThread* operator->() const noexcept { return _thread; }
+    operator bool() const noexcept { return _thread != nullptr; }
+   private:
+    LogThread* _thread;
+  };
+  
+  // logger thread. only populated when threaded logging is selected.
+  // the pointer must only be used with atomic accessors after the ref counter
+  // has been increased. Best to usethe ThreadRef class for this!
+  static std::atomic<std::size_t> _loggingThreadRefs;
+  static std::atomic<LogThread*> _loggingThread;
 };
 }  // namespace arangodb
-
-#endif

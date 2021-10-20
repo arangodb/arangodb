@@ -22,8 +22,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_OPTIONS_GRAPH_OPTIONS_H
-#define ARANGODB_GRAPH_OPTIONS_GRAPH_OPTIONS_H 1
+#pragma once
 
 #include <numeric>
 #include <cstddef>
@@ -48,4 +47,3 @@ struct TwoSidedEnumeratorOptions {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

@@ -67,16 +67,16 @@ arangodb::aql::QueryResult executeQuery(const std::shared_ptr<arangodb::transact
                                         std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
                                         std::string const& optionsString = "{}"
 ) {
-  arangodb::aql::Query query(ctx,
-                             arangodb::aql::QueryString(queryString),
-                             bindVars,
-                             arangodb::velocypack::Parser::fromJson(optionsString)->slice());
+  auto query = arangodb::aql::Query::create(ctx,
+                                            arangodb::aql::QueryString(queryString),
+                                            bindVars,
+                                            arangodb::aql::QueryOptions(arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
   arangodb::aql::QueryResult result;
   while (true) {
-    auto state = query.execute(result);
+    auto state = query->execute(result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
-      query.sharedState()->waitForAsyncWakeup();
+      query->sharedState()->waitForAsyncWakeup();
     } else {
       break;
     }
@@ -460,15 +460,15 @@ TEST_F(IndexNodeTest, constructIndexNode) {
   );
 
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(
+  auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(
                                "FOR d IN testCollection FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT 10 RETURN d"),
                              nullptr);
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   {
     // short path for a test
     {
-      auto vars = query.ast()->variables();
+      auto vars = query->ast()->variables();
       for (auto const& v : {
             std::make_unique<arangodb::aql::Variable>("d", 0, false),
             std::make_unique<arangodb::aql::Variable>("3", 4, false),
@@ -482,21 +482,16 @@ TEST_F(IndexNodeTest, constructIndexNode) {
 
     // deserialization
     arangodb::aql::IndexNode indNode(
-      const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
-      createJson->slice());
+      const_cast<arangodb::aql::ExecutionPlan*>(query->plan()), createJson->slice());
     ASSERT_TRUE(indNode.isLateMaterialized());
 
     // serialization and deserialization
     {
       VPackBuilder builder;
-      std::unordered_set<arangodb::aql::ExecutionNode const*> seen;
-      {
-        VPackArrayBuilder guard(&builder);
-        indNode.toVelocyPackHelper(builder, arangodb::aql::ExecutionNode::SERIALIZE_DETAILS, seen);
-      }
+      static_cast<arangodb::aql::ExecutionNode&>(indNode).toVelocyPack(builder, arangodb::aql::ExecutionNode::SERIALIZE_DETAILS);
 
       arangodb::aql::IndexNode indNodeDeserialized(
-        const_cast<arangodb::aql::ExecutionPlan*>(query.plan()), createJson->slice());
+        const_cast<arangodb::aql::ExecutionPlan*>(query->plan()), builder.slice());
       ASSERT_TRUE(indNodeDeserialized.isLateMaterialized());
     }
 
@@ -506,7 +501,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       {
         auto indNodeClone = dynamic_cast<arangodb::aql::IndexNode*>(
           indNode.clone(
-            const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
+            const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
             true, false));
 
         EXPECT_EQ(indNode.getType(), indNodeClone->getType());
@@ -521,14 +516,14 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       // with properties
       {
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-        arangodb::aql::Query queryClone(ctx, arangodb::aql::QueryString(
+        auto queryClone = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(
                                           "RETURN 1"),
                                         nullptr);
-        queryClone.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+        queryClone->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
         indNode.invalidateVarUsage();
         auto indNodeClone = dynamic_cast<arangodb::aql::IndexNode*>(
           indNode.clone(
-            const_cast<arangodb::aql::ExecutionPlan*>(queryClone.plan()), true, true));
+            const_cast<arangodb::aql::ExecutionPlan*>(queryClone->plan()), true, true));
 
         EXPECT_EQ(indNode.getType(), indNodeClone->getType());
         EXPECT_NE(indNode.outVariable(), indNodeClone->outVariable());
@@ -558,12 +553,12 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   ASSERT_FALSE(!collection);
 
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(
+  auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(
                                "FOR d IN testCollection FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT 10 RETURN d"),
                              nullptr);
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
-  auto vars = query.plan()->getAst()->variables();
+  auto vars = query->plan()->getAst()->variables();
   auto const& v = std::make_unique<arangodb::aql::Variable>("5", 6, false);
   if (vars->getVariable(v->id) == nullptr) {
     vars->createVariable(v.get());
@@ -613,7 +608,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     );
     // deserialization
     arangodb::aql::IndexNode indNode(
-      const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
+      const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
       createJson->slice());
     ASSERT_TRUE(indNode.isLateMaterialized());
   }
@@ -661,7 +656,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     // deserialization
     try {
       arangodb::aql::IndexNode indNode(
-        const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
+        const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
         createJson->slice());
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
@@ -716,7 +711,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     // deserialization
     try {
       arangodb::aql::IndexNode indNode(
-        const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
+        const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
         createJson->slice());
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
@@ -771,7 +766,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     // deserialization
     try {
       arangodb::aql::IndexNode indNode(
-        const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
+        const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
         createJson->slice());
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
@@ -824,7 +819,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       "}"
     );
     arangodb::aql::IndexNode indNode(
-      const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
+      const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
       createJson->slice());
     ASSERT_TRUE(indNode.isLateMaterialized()); // do not read the name
   }
@@ -874,7 +869,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     // deserialization
     try {
       arangodb::aql::IndexNode indNode(
-        const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
+        const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
         createJson->slice());
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
@@ -924,7 +919,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     );
     // deserialization
     arangodb::aql::IndexNode indNode(
-      const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
+      const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
       createJson->slice());
     ASSERT_FALSE(indNode.isLateMaterialized());
   }

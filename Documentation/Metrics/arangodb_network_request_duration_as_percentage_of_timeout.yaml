@@ -11,7 +11,7 @@ exposedBy:
   - dbserver
   - agent
 description: |
-  Histogram providing the round-trip time of internal requests as a percentage 
+  Histogram providing the round-trip time of internal requests as a percentage
   of the respective request timeout.
   This metric will provide values between 0 and 100.
 troubleshoot: |

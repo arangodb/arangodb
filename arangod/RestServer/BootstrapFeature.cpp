@@ -87,6 +87,13 @@ BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& serv
   return FEATURE_NAME;
 }
 
+bool BootstrapFeature::isReady() const {
+  TRI_IF_FAILURE("BootstrapFeature_not_ready") {
+    return false;
+  }
+  return _isReady;
+}
+
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("hund", "make ArangoDB bark on startup", new BooleanParameter(&_bark),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));

@@ -329,11 +329,6 @@ void OptimizerRulesFeature::addRules() {
   registerRule("fuse-filters", fuseFiltersRule, OptimizerRule::fuseFiltersRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  // patch update statements
-  registerRule("patch-update-statements", patchUpdateStatementsRule,
-               OptimizerRule::patchUpdateStatementsRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-
 #ifdef USE_ENTERPRISE
   // must be the first cluster optimizer rule
   registerRule("cluster-one-shard", clusterOneShardRule, OptimizerRule::clusterOneShardRule,
@@ -473,6 +468,15 @@ void OptimizerRulesFeature::addRules() {
   // during rolling upgrades.
   registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
                OptimizerRule::makeFlags());
+
+  // allow nodes to asynchronously prefetch the next batch while processing the current batch.
+  // this effectively allows parts of the query to run in parallel, but as some internal details
+  // are currently not guaranteed to be thread safe (e.g., TransactionState), this is currently
+  // disabled, and should only be activated for experimental usage at one's own risk.
+  registerRule("async-prefetch", asyncPrefetchRule, OptimizerRule::asyncPrefetch,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::DisabledByDefault,
+                                        OptimizerRule::Flags::Hidden));
 
   // finally sort all rules by their level
   std::sort(

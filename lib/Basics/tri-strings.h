@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TRI__STRINGS_H
-#define ARANGODB_BASICS_TRI__STRINGS_H 1
+#pragma once
 
 #include <cstdint>
 #include <cstdlib>
@@ -102,31 +101,13 @@ void TRI_CopyString(char* dst, char const* src, size_t length);
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeString(char*);
+void TRI_FreeString(char*) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sha256 of a string
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the maximum result length for an escaped string
-/// (4 * inLength) + 2 bytes!
-////////////////////////////////////////////////////////////////////////////////
-
-constexpr size_t TRI_MaxLengthEscapeControlsCString(size_t inLength) {
-  return (4 * inLength) + 2;  // for newline and 0 byte
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes special characters using C escapes
-/// the target buffer must have been allocated already and big enough to hold
-/// the result of at most (4 * inLength) + 2 bytes!
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_EscapeControlsCString(char const* in, size_t inLength, char* out,
-                                size_t* outLength, bool appendNewline);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unescapes unicode escape sequences
@@ -161,4 +142,3 @@ size_t TRI_CharLengthUtf8String(char const*, size_t);
 
 char* TRI_PrefixUtf8String(char const*, const uint32_t);
 
-#endif

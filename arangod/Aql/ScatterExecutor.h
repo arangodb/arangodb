@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SCATTER_EXECUTOR_H
-#define ARANGOD_AQL_SCATTER_EXECUTOR_H
+#pragma once
 
 #include "Aql/BlocksWithClients.h"
 #include "Aql/ClusterNodes.h"
@@ -90,4 +89,3 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClientsImpl<Scatter
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_SCATTER_EXECUTOR_H

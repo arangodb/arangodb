@@ -78,6 +78,7 @@ class BooleanWeight {
   }
 
   constexpr BooleanWeight() noexcept = default;
+  // cppcheck-suppress noExplicitConstructor
   constexpr BooleanWeight(bool v, PayloadType payload = 0) noexcept
     : v_(PayloadType(v)), p_(payload) {
   }
@@ -285,14 +286,10 @@ uint64 ComputeProperties(
 
     struct RangeLabelComparer {
       bool operator()(Label lhs, Label rhs) const noexcept {
-        if (lhs > rhs) {
-          std::swap(lhs, rhs);
-        }
-
         fsa::RangeLabel lhsRange{lhs};
         fsa::RangeLabel rhsRange{rhs};
 
-        return lhsRange.min < rhsRange.min && lhsRange.max < rhsRange.min;
+        return lhsRange.min < rhsRange.min && lhsRange.max < rhsRange.min; 
       }
     };
 

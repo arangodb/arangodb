@@ -21,8 +21,7 @@
 /// @author Andreas Dominik Jung
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_TIMEZONE_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_TIMEZONE_FEATURE_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -55,4 +54,3 @@ class TimeZoneFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

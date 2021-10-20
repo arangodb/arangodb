@@ -67,12 +67,11 @@ namespace arangodb {
 
 ExportFeature::ExportFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "Export"),
-      _collections(),
-      _graphName(),
       _xgmmlLabelAttribute("label"),
       _typeExport("json"),
+      _queryMaxRuntime(0.0),
+      _useMaxRuntime(false),
       _xgmmlLabelOnly(false),
-      _outputDirectory(),
       _overwrite(false),
       _progress(true),
       _useGzip(false),
@@ -98,6 +97,10 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       new VectorParameter<StringParameter>(&_collections));
 
   options->addOption("--query", "AQL query to run", new StringParameter(&_query));
+  
+  options->addOption("--query-max-runtime", "runtime threshold for AQL queries (in seconds, 0 = no limit)", 
+                     new DoubleParameter(&_queryMaxRuntime))
+                     .setIntroducedIn(30800);
 
   options->addOption("--graph-name", "name of a graph to export",
                      new StringParameter(&_graphName));
@@ -192,6 +195,9 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
     _csvFields = StringUtils::split(_csvFieldOptions, ',');
   }
+  
+  // we will use _maxRuntime only if the option was set by the user
+  _useMaxRuntime = options->processingResult().touched("--query-max-runtime");
 }
 
 void ExportFeature::prepare() {
@@ -298,8 +304,10 @@ void ExportFeature::start() {
     }
   }
 
-  std::cout << "Processed " << _collections.size() << " collection(s), wrote " << exportedSize
-            << " byte(s), " << _httpRequestsDone << " HTTP request(s)" << std::endl;
+  using arangodb::basics::StringUtils::formatSize;
+
+  std::cout << "Processed " << _collections.size() << " collection(s), wrote " << formatSize(exportedSize)
+            << ", " << _httpRequestsDone << " HTTP request(s)" << std::endl;
 
   *_result = ret;
 }
@@ -348,7 +356,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
 
     while (body.hasKey("id")) {
       std::string const url = "/_api/cursor/" + body.get("id").copyString();
-      parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
+      parsedBody = httpCall(httpClient, url, rest::RequestType::POST);
       body = parsedBody->slice();
 
       writeBatch(*fd, VPackArrayIterator(body.get("result")), fileName);
@@ -379,6 +387,9 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   post.add("ttl", VPackValue(::ttlValue));
   post.add("batchSize", VPackValue(_documentsPerBatch));
   post.add("options", VPackValue(VPackValueType::Object));
+  if (_useMaxRuntime) {
+    post.add("maxRuntime", VPackValue(_queryMaxRuntime));
+  }
   post.add("stream", VPackSlice::trueSlice());
   post.close();
   post.close();
@@ -402,7 +413,7 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
 
   while (body.hasKey("id")) {
     std::string const url = "/_api/cursor/" + body.get("id").copyString();
-    parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
+    parsedBody = httpCall(httpClient, url, rest::RequestType::POST);
     body = parsedBody->slice();
 
     writeBatch(*fd, VPackArrayIterator(body.get("result")), fileName);
@@ -547,7 +558,10 @@ void ExportFeature::writeBatch(ManagedDirectory::File & fd, VPackArrayIterator i
 
 void ExportFeature::writeToFile(ManagedDirectory::File & fd, std::string const& line) {
   fd.write(line.c_str(), line.size());
-  THROW_ARANGO_EXCEPTION_IF_FAIL(fd.status());
+  auto res = fd.status();
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(std::move(res));
+  }
 }
 
 std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClient,
@@ -684,7 +698,7 @@ directed="1">
 
     while (body.hasKey("id")) {
       std::string const url = "/_api/cursor/" + body.get("id").copyString();
-      parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
+      parsedBody = httpCall(httpClient, url, rest::RequestType::POST);
       body = parsedBody->slice();
 
       writeGraphBatch(*fd, VPackArrayIterator(body.get("result")), fileName);

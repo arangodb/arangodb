@@ -30,14 +30,20 @@ let arangodb = require('@arangodb');
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
-const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
+
 const graphModule = require('@arangodb/general-graph');
 const { expect } = require('chai');
-const primaryEndpoint = arango.getEndpoint();
 const toArgv = require('internal').toArgv;
 
+let { debugCanUseFailAt,
+      debugSetFailAt,
+      debugResetRaceControl,
+      debugRemoveFailAt,
+      debugClearFailAt
+    } = require('@arangodb/test-helper');
+
 const getMetric = (name) => {
-  let res = arango.GET_RAW("/_admin/metrics");
+  let res = arango.GET_RAW("/_admin/metrics/v2");
   let re = new RegExp("^" + name + "({[^}]*})?");
   let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
   if (!matches.length) {
@@ -302,72 +308,6 @@ function GenericAqlSetupPathSuite(type) {
   const vertexName = "UnitTestVertices";
   const edgeName = "UnitTestEdges";
   const viewName = "UnitTestView";
-
-  /// @brief set failure point
-  function debugCanUseFailAt(endpoint) {
-    try {
-      reconnectRetry(endpoint, db._name(), "root", "");
-      
-      let res = arango.GET_RAW('/_admin/debug/failat');
-      return res.code === 200;
-    } finally {
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
-    }
-  }
-
-  /// @brief set failure point
-  function debugSetFailAt(endpoint, failAt) {
-    try {
-      reconnectRetry(endpoint, db._name(), "root", "");
-      let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
-      if (res.parsedBody !== true) {
-        throw "Error setting failure point + " + res;
-      }
-      return true;
-    } finally {
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
-    }
-  }
-
-  function debugResetRaceControl(endpoint) {
-    try {
-      reconnectRetry(endpoint, db._name(), "root", "");
-      let res = arango.DELETE_RAW('/_admin/debug/raceControl');
-      if (res.code !== 200) {
-        throw "Error resetting race control.";
-      }
-      return false;
-    } finally {
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
-    }
-  };
-
-  /// @brief remove failure point
-  function debugRemoveFailAt(endpoint, failAt) {
-    try {
-      reconnectRetry(endpoint, db._name(), "root", "");
-      let res = arango.DELETE_RAW('/_admin/debug/failat/' + failAt);
-      if (res.code !== 200) {
-        throw "Error removing failure point";
-      }
-      return true;
-    } finally {
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
-    }
-  }
-
-  function debugClearFailAt(endpoint) {
-    try {
-      reconnectRetry(endpoint, db._name(), "root", "");
-      let res = arango.DELETE_RAW('/_admin/debug/failat');
-      if (res.code !== 200) {
-        throw "Error removing failure points";
-      }
-      return true;
-    } finally {
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
-    }
-  }
 
   const activateShardLockingFailure = () => {
     const shardList = db[twoShardColName].shards(true);

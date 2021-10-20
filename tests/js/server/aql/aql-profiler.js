@@ -25,15 +25,13 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // contains common code for aql-profiler* tests
-const profHelper = require("@arangodb/aql-profiler-test-helper");
+const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
 
 const db = require('@arangodb').db;
 const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
 const _ = require('lodash');
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @file test suite for AQL tracing/profiling
@@ -158,6 +156,35 @@ function ahuacatlProfilerTestSuite () {
 
 
   return {
+    testProfileQueryWithJoins : function () {
+      const collections = ["UnitTestsCollection1", "UnitTestsCollection2", "UnitTestsCollection3"];
+          
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ foreign1: "test" + i, foreign2: "test" + i, _key: "test" + i });
+      }
+
+      try {
+        collections.forEach((cn) => {
+          // must have more shards than DB servers
+          let c = db._create(cn, { numberOfShards: 10 });
+          c.insert(docs);
+        });
+
+        const query = `FOR c1 IN UnitTestsCollection1
+          FOR c2 IN UnitTestsCollection2 FILTER c2._key == c1.foreign1 
+          FOR c3 IN UnitTestsCollection3 FILTER c3._key == c1.foreign2
+          RETURN { c1, c2, c3 }`;
+
+        // this is a test that verifies if we still run into a specific assertion
+        // failure on a coordinator. the success criterion is that this query
+        // does not trigger the assertion failure
+        const profile = db._query(query, {}, {profile: 2, silent: true}).getExtra();
+        assertTrue(profile.hasOwnProperty("stats"));
+      } finally {
+        collections.forEach((cn) => { db._drop(cn); });
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test {profile: 0}

@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_CONNECTION_INFO_H
-#define ARANGODB_ENDPOINT_CONNECTION_INFO_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Endpoint/Endpoint.h"
@@ -71,4 +70,3 @@ struct ConnectionInfo {
 
 }  // namespace arangodb
 
-#endif

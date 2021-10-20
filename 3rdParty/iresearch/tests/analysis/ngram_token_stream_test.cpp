@@ -21,11 +21,16 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <sstream>
-#include "tests_shared.hpp"
 #include "analysis/ngram_token_stream.hpp"
-#include "utils/locale_utils.hpp"
+
+#include <unicode/locid.h>
 #include <utf8.h>
+
+#include <sstream>
+
+#include "tests_shared.hpp"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
 #ifndef IRESEARCH_DLL
 
@@ -88,7 +93,7 @@ TEST(ngram_token_stream_test, construct) {
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>::id(), stream->type());
 
-    auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>(stream);
+    auto impl = dynamic_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>*>(stream.get());
     ASSERT_NE(nullptr, impl);
     ASSERT_EQ(2, impl->min_gram());
     ASSERT_EQ(2, impl->max_gram());
@@ -114,7 +119,7 @@ TEST(ngram_token_stream_test, construct) {
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>::id(), stream->type());
 
-    auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>(stream);
+    auto impl = dynamic_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>*>(stream.get());
     ASSERT_NE(nullptr, impl);
     ASSERT_EQ(1, impl->min_gram());
     ASSERT_EQ(2, impl->max_gram());
@@ -140,7 +145,7 @@ TEST(ngram_token_stream_test, construct) {
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>::id(), stream->type());
 
-    auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>(stream);
+    auto impl = dynamic_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>*>(stream.get());
     ASSERT_NE(nullptr, impl);
     ASSERT_EQ(std::numeric_limits<size_t>::max(), impl->min_gram());
     ASSERT_EQ(std::numeric_limits<size_t>::max(), impl->max_gram());
@@ -216,7 +221,7 @@ TEST(ngram_token_stream_test, next_utf8) {
     ASSERT_FALSE(stream.next());
   };
 
-  auto locale = irs::locale_utils::locale("C.UTF-8");
+  auto locale = icu::Locale::createFromName("C.UTF-8");
 
   {
     SCOPED_TRACE("1-gram");
@@ -225,10 +230,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
 
-    std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    std::string data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 
     const std::vector<utf8token> expected {
       { "a", 0, 1 },
@@ -264,10 +266,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
 
-    std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    const std::string data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 
     const std::vector<utf8token> expected {
       { "a\xc2\xa2", 0, 3 },
@@ -288,10 +287,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
 
-    std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    const std::string data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 
     const std::vector<utf8token> expected{
       { "a", 0, 1 },
@@ -319,10 +315,8 @@ TEST(ngram_token_stream_test, next_utf8) {
         irs::analysis::ngram_token_stream_base::Options(5, 5, false,
                                                      irs::analysis::ngram_token_stream_base::InputType::UTF8,
                                                      irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
-    std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+
+    const std::string data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
     const std::vector<utf8token> expected{
       { "\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84", 0, 10 }
     };
@@ -335,10 +329,8 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::Options(5, 5, false,
         irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
-    std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+
+    const std::string data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
     const std::vector<utf8token> expected{
       { "\xc2\xa2\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84", 0, 10, "\xc2\xa2", irs::string_ref::EMPTY },
       { "\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84\xc2\xa1", 0, 10, irs::string_ref::EMPTY, "\xc2\xa1" }
@@ -352,10 +344,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         irs::analysis::ngram_token_stream_base::Options(5, 5, true,
                                                      irs::analysis::ngram_token_stream_base::InputType::UTF8,
                                                      irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
-    std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    const std::string data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
     const std::vector<utf8token> expected{
       { "\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84", 0, 10}
     };
@@ -369,10 +358,7 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::Options(6, 6, true,
         irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
-    std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    const std::string data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
     const std::vector<utf8token> expected{
       { "\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84", 0, 10 }
     };
@@ -385,10 +371,7 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::Options(6, 6, false,
         irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
-    std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    const std::string data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
     ASSERT_TRUE(stream.reset(data));
     ASSERT_FALSE(stream.next());
   }
@@ -400,10 +383,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2), irs::bytes_ref::EMPTY));
 
-    std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    const std::string data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 
     const std::vector<utf8token> expected{
       { "\xc2\xa1""a", 0, 1, "\xc2\xa1", irs::string_ref::EMPTY },
@@ -431,10 +411,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_ref(reinterpret_cast <const irs::byte_type*>("\xc2\xa1"), 2), irs::bytes_ref::EMPTY));
 
-    std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    const std::string data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 
     const std::vector<utf8token> expected{
       { "\xc2\xa1""a", 0, 1, "\xc2\xa1", irs::string_ref::EMPTY },
@@ -463,10 +440,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref(reinterpret_cast <const irs::byte_type*>("\xc2\xa1"), 2)));
 
-    std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    const std::string data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 
     const std::vector<utf8token> expected{
       { "a""\xc2\xa2", 0, 3},
@@ -494,10 +468,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
 
-    std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    const std::string data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 
     const std::vector<utf8token> expected{
       { "a", 0, 1},
@@ -533,10 +504,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
 
-    std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    const std::string data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 
     const std::vector<utf8token> expected{
       { "\xc2\xa2""a", 0, 1, "\xc2\xa2", irs::string_ref::EMPTY},
@@ -573,10 +541,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
 
-    std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    const std::string data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 
     const std::vector<utf8token> expected{
       { "\xc2\xa2""a", 0, 1, "\xc2\xa2", irs::string_ref::EMPTY},
@@ -1169,7 +1134,8 @@ TEST(ngram_token_stream_test, test_make_config_json) {
     std::string config = "{\"min\":1,\"max\":5,\"preserveOriginal\":false,\"invalid_parameter\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"min\":1,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"binary\"}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"min\":1,\"max\":5,\"preserveOriginal\":false,"
+                                    "\"streamType\":\"binary\",\"startMarker\":\"\",\"endMarker\":\"\"}")->toString(), actual);
   }
 
   //with changed values
@@ -1177,7 +1143,7 @@ TEST(ngram_token_stream_test, test_make_config_json) {
     std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"startMarker\":\"$\",\"endMarker\":\"#\",\"streamType\":\"utf8\"}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"utf8\",\"startMarker\":\"$\",\"endMarker\":\"#\"}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"utf8\",\"startMarker\":\"$\",\"endMarker\":\"#\"}")->toString(), actual);
   }
 
   //with only start marker
@@ -1185,14 +1151,29 @@ TEST(ngram_token_stream_test, test_make_config_json) {
     std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"startMarker\":\"$123\"}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\",\"startMarker\":\"$123\"}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\","
+                                    "\"startMarker\":\"$123\", \"endMarker\":\"\"}")->toString(), actual);
   }
   //with only end marker
   {
     std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"endMarker\":\"#456\"}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\",\"endMarker\":\"#456\"}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\","
+                                    "\"startMarker\":\"\", \"endMarker\":\"#456\"}")->toString(), actual);
+  }
+
+  // test vpack
+  {
+    std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"endMarker\":\"#456\"}";
+    auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
+    std::string in_str;
+    in_str.assign(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
+    std::string out_str;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "ngram", irs::type<irs::text_format::vpack>::get(), in_str));
+    VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
+    ASSERT_EQ(VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\","
+                                     "\"startMarker\":\"\", \"endMarker\":\"#456\"}")->toString(), out_slice.toString());
   }
 }
 
@@ -1237,13 +1218,10 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
 //      irs::analysis::ngram_token_stream_base::InputType::UTF8,
 //      irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
 //
-//  std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
+//  std::string data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 //  for (size_t i = 0; i < 100000; ++i) {
-//    sDataUCS2 += L"a\u00A2b\u00A3c\u00A4d\u00A5";
+//    data += u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 //  }
-//  auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-//  std::string data;
-//  ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
 //  //std::cerr << "Set debug breakpoint here";
 //  for (size_t i = 0; i < 10; ++i) {
 //    stream.reset(data);
@@ -1275,13 +1253,10 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
 //      irs::analysis::ngram_token_stream_base::InputType::UTF8,
 //      irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
 //
-//  std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
+//  std::wstring data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 //  for (size_t i = 0; i < 100000; ++i) {
-//    sDataUCS2 += L"a\u00A2b\u00A3c\u00A4d\u00A5";
+//    data += u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 //  }
-//  auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-//  std::string data;
-//  ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
 //  //std::cerr << "Set debug breakpoint here";
 //  for (size_t i = 0; i < 10; ++i) {
 //    stream.reset(data);
@@ -1313,7 +1288,9 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
 TEST(ngram_token_stream_test, test_load) {
   {
     irs::string_ref data("quick");
-    auto stream = irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{ \"min\":5,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"binary\"}");
+    auto stream = irs::analysis::analyzers::get(
+      "ngram", irs::type<irs::text_format::json>::get(),
+      "{ \"min\":5,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"binary\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -1330,11 +1307,10 @@ TEST(ngram_token_stream_test, test_load) {
   }
 
   {
-    std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string data;
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
-    auto stream = irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{ \"min\":5,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"utf8\"}");
+    std::string data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
+    auto stream = irs::analysis::analyzers::get(
+      "ngram", irs::type<irs::text_format::json>::get(),
+      "{ \"min\":5,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"utf8\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));

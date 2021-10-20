@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ShoPath_H
-#define ARANGODB_PREGEL_ALGOS_ShoPath_H 1
+#pragma once
 
 #include "Pregel/Algorithm.h"
 
@@ -60,4 +59,3 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

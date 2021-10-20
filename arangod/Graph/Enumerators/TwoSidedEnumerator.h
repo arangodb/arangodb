@@ -22,8 +22,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_ENUMERATORS_TWO_SIDED_ENUMERATOR_H
-#define ARANGODB_GRAPH_ENUMERATORS_TWO_SIDED_ENUMERATOR_H 1
+#pragma once
 
 #include "Containers/HashSet.h"
 
@@ -48,6 +47,7 @@ class HashedStringRef;
 
 namespace graph {
 
+class PathValidatorOptions;
 struct TwoSidedEnumeratorOptions;
 
 template <class ProviderType, class Step>
@@ -70,10 +70,10 @@ class TwoSidedEnumerator {
   class Ball {
    public:
     Ball(Direction dir, ProviderType&& provider, GraphOptions const& options,
-         arangodb::ResourceMonitor& resourceMonitor);
+         PathValidatorOptions validatorOptions, arangodb::ResourceMonitor& resourceMonitor);
     ~Ball();
     auto clear() -> void;
-    auto reset(VertexRef center) -> void;
+    auto reset(VertexRef center, size_t depth = 0) -> void;
     auto startNextDepth() -> void;
     [[nodiscard]] auto noPathLeft() const -> bool;
     [[nodiscard]] auto getDepth() const -> size_t;
@@ -83,7 +83,8 @@ class TwoSidedEnumerator {
 
     auto buildPath(Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> void;
 
-    auto matchResultsInShell(Step const& match, ResultList& results, PathValidatorType const& otherSideValidator) -> void;
+    auto matchResultsInShell(Step const& match, ResultList& results,
+                             PathValidatorType const& otherSideValidator) -> void;
     auto computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results) -> void;
 
     // Ensure that we have fetched all vertices
@@ -119,10 +120,12 @@ class TwoSidedEnumerator {
 
  public:
   TwoSidedEnumerator(ProviderType&& forwardProvider, ProviderType&& backwardProvider,
-                     TwoSidedEnumeratorOptions&& options,
+                     TwoSidedEnumeratorOptions&& options, PathValidatorOptions validatorOptions,
                      arangodb::ResourceMonitor& resourceMonitor);
   TwoSidedEnumerator(TwoSidedEnumerator const& other) = delete;
-  TwoSidedEnumerator(TwoSidedEnumerator&& other) noexcept = default;
+  TwoSidedEnumerator& operator=(TwoSidedEnumerator const& other) = delete;
+  TwoSidedEnumerator(TwoSidedEnumerator&& other) = delete;
+  TwoSidedEnumerator& operator=(TwoSidedEnumerator&& other) = delete;
 
   ~TwoSidedEnumerator();
 
@@ -146,7 +149,7 @@ class TwoSidedEnumerator {
    * @param source The source vertex to start the paths
    * @param target The target vertex to end the paths
    */
-  void reset(VertexRef source, VertexRef target);
+  void reset(VertexRef source, VertexRef target, size_t depth = 0);
 
   /**
    * @brief Get the next path, if available written into the result build.
@@ -206,4 +209,3 @@ class TwoSidedEnumerator {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

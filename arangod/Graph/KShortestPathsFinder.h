@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_CONSTANT_WEIGHT_K_SHORTEST_PATHS_FINDER_H
-#define ARANGODB_GRAPH_CONSTANT_WEIGHT_K_SHORTEST_PATHS_FINDER_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Containers/HashSet.h"
@@ -37,6 +36,7 @@
 #include <optional>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace velocypack {
 class Slice;
@@ -84,7 +84,22 @@ class KShortestPathsFinder : public ShortestPathFinder {
       _weight = 0;
       _branchpoint = 0;
     }
+    
+    static constexpr size_t pathItemMemoryUsage() {
+      return sizeof(typename decltype(_vertices)::value_type) +
+             sizeof(typename decltype(_edges)::value_type) +
+             sizeof(typename decltype(_weights)::value_type);
+    }
+
+    size_t memoryUsage() const noexcept {
+      return sizeof(Path) + 
+             _vertices.size() * sizeof(typename decltype(_vertices)::value_type) +
+             _edges.size() * sizeof(typename decltype(_edges)::value_type) +
+             _weights.size() * sizeof(typename decltype(_weights)::value_type);
+    }
+
     size_t length() const { return _vertices.size(); }
+
     void append(Path const& p, size_t a, size_t b) {
       if (this->length() == 0) {
         _vertices.emplace_back(p._vertices.at(a));
@@ -275,7 +290,12 @@ class KShortestPathsFinder : public ShortestPathFinder {
                        EdgeSet const& forbiddenEdges,
                        VertexRef& join, std::optional<double>& currentBest);
 
+  // return the size of a map entry plus some assumed overhead
+  size_t vertexCacheEntryMemoryUsage() const noexcept;
+
  private:
+  arangodb::ResourceMonitor& _resourceMonitor;
+
   bool _traversalDone{true};
 
   VertexRef _start;
@@ -302,4 +322,3 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

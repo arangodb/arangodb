@@ -131,9 +131,11 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
   requiresElevatedPrivileges(false);
 }
 
-void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
+MaintenanceFeature::~MaintenanceFeature() {
+  stop();
+}
 
+void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--server.maintenance-threads",
       "maximum number of threads available for maintenance actions",
@@ -744,7 +746,7 @@ arangodb::Result MaintenanceFeature::dbError(std::string const& database,
 arangodb::Result MaintenanceFeature::removeDBError(std::string const& database) {
   try {
     MUTEX_LOCKER(guard, _seLock);
-    _shardErrors.erase(database);
+    _dbErrors.erase(database);
   } catch (std::exception const&) {
     std::stringstream error;
     error << "erasing database error for " << database << " failed";
@@ -860,6 +862,81 @@ arangodb::Result MaintenanceFeature::storeIndexError(
   }
 
   return Result();
+}
+
+/// @brief remove all replication errors for all shards of the database
+void MaintenanceFeature::removeReplicationError(std::string const& database) {
+  MUTEX_LOCKER(guard, _replLock);
+  _replErrors.erase(database);
+}
+
+/// @brief remove all replication errors for the shard in the database
+void MaintenanceFeature::removeReplicationError(std::string const& database, std::string const& shard) {
+  MUTEX_LOCKER(guard, _replLock);
+  
+  auto it = _replErrors.find(database);
+  if (it != _replErrors.end()) {
+    (*it).second.erase(shard);
+  }
+}
+
+/// @brief store a replication error for the shard in the database.
+/// we currently don't store the exact error for simplicity reasons.
+/// all we do here is to store a _timestamp_ of the last x errors per
+/// shard, so that we can calculate the number of errors in a given
+/// time period.
+void MaintenanceFeature::storeReplicationError(
+    std::string const& database, std::string const& shard) {
+
+  auto now = std::chrono::steady_clock::now();
+
+  MUTEX_LOCKER(guard, _replLock);
+  // this may create the new entries on-the-fly
+  auto& bucket = _replErrors[database][shard];
+  size_t n = bucket.size();
+
+  // clean up existing bucket data while we are already on it
+  bucket.erase(std::remove_if(bucket.begin(), bucket.end(), [&](auto const& value) {
+    if (n >= maxReplicationErrorsPerShard ||
+        value < now - maxReplicationErrorsPerShardAge) {
+      // too many values. delete the first x OR entry too old
+      --n;
+      return true;
+    } 
+    // keep all the rest
+    return false;
+  }), bucket.end());
+
+  TRI_ASSERT(bucket.size() == n);
+  bucket.emplace_back(now);
+  TRI_ASSERT(bucket.size() <= maxReplicationErrorsPerShard);
+}
+
+/// @brief return the number of replication errors for a particular shard.
+/// note: we will return only those errors which happened not longer than
+/// maxReplicationErrorsPerShardAge  ago
+size_t MaintenanceFeature::replicationErrors(std::string const& database,   
+                                             std::string const& shard) const {
+  auto since = std::chrono::steady_clock::now() - maxReplicationErrorsPerShardAge;
+
+  MUTEX_LOCKER(guard, _replLock);
+
+  auto it = _replErrors.find(database);
+  if (it == _replErrors.end()) {
+    // no errors recorded for database, 
+    return 0;
+  }
+
+  auto it2 = (*it).second.find(shard);
+  if (it2 == (*it).second.end()) {
+    // no errors recorded for shard
+    return 0;
+  }
+  
+  auto& bucket = (*it2).second;
+  return std::count_if(bucket.begin(), bucket.end(), [&](auto const& value) {
+    return value >= since;
+  });
 }
 
 template <typename T>
@@ -1056,7 +1133,7 @@ bool MaintenanceFeature::lockShard(
   return pair.second;
 }
 
-bool MaintenanceFeature::unlockShard(ShardID const& shardId) {
+bool MaintenanceFeature::unlockShard(ShardID const& shardId) noexcept {
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
   auto it = _shardActionMap.find(shardId);
   if (it == _shardActionMap.end()) {

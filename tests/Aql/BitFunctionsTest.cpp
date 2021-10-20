@@ -116,6 +116,7 @@ T evaluate(AstNode const& node, char const* input1, char const* input2 = nullptr
     return out;
   } 
   EXPECT_TRUE(false);
+  return {};
 }
 
 void expectFailed(AstNode const& node, char const* input1, char const* input2 = nullptr, char const* input3 = nullptr) {

@@ -22,8 +22,7 @@
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_SETTINGS_MANAGER_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_SETTINGS_MANAGER_H 1
+#pragma once
 
 #include <rocksdb/types.h>
 #include "Basics/Common.h"
@@ -45,13 +44,11 @@ class Transaction;
 namespace arangodb {
 
 class RocksDBSettingsManager {
-  friend class RocksDBEngine;
-
+ public:
   /// Constructor needs to be called synchronously,
   /// will load counts from the db and scan the WAL
   explicit RocksDBSettingsManager(RocksDBEngine& engine);
 
- public:
   /// Retrieve initial settings values from database on engine startup
   void retrieveInitialValues();
 
@@ -66,11 +63,15 @@ class RocksDBSettingsManager {
 
   bool lockForSync(bool force);
 
- private:
   RocksDBEngine& _engine;
 
-  /// @brief a reusable builder, used inside sync() to serialize objects
+  /// @brief a reusable builder, used inside sync() to serialize objects.
+  /// implicitly protected by _syncing.
   arangodb::velocypack::Builder _tmpBuilder;
+
+  /// @brief a reusable string object used for serialization.
+  /// implicitly protected by _syncing.
+  std::string _scratch;
 
   /// @brief last sync sequence number
   std::atomic<rocksdb::SequenceNumber> _lastSync;
@@ -85,4 +86,3 @@ class RocksDBSettingsManager {
 };
 }  // namespace arangodb
 
-#endif

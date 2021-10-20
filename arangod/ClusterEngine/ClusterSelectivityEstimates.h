@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_SELECTIVITY_ESTIMATES_H
-#define ARANGOD_CLUSTER_ENGINE_CLUSTER_SELECTIVITY_ESTIMATES_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
@@ -64,4 +63,3 @@ class ClusterSelectivityEstimates {
 
 }  // namespace arangodb
 
-#endif

@@ -38,7 +38,6 @@
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/EnvironmentFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
@@ -54,6 +53,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/EnvironmentFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -70,8 +70,6 @@ InitDatabaseFeature::InitDatabaseFeature(application_features::ApplicationServer
 }
 
 void InitDatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("database", "Configure the database");
-
   options->addOption("--database.init-database", "initializes an empty database",
                      new BooleanParameter(&_initDatabase),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
@@ -151,7 +149,7 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::cout << message << ": " << std::flush;
 #ifdef _WIN32
   TRI_SetStdinVisibility(false);
-  TRI_DEFER(TRI_SetStdinVisibility(true));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);

@@ -21,8 +21,7 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_MEMORY__MAP_H
-#define ARANGODB_BASICS_MEMORY__MAP_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ErrorCode.h"
@@ -78,4 +77,3 @@ ErrorCode TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
 
 ErrorCode TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice);
 
-#endif

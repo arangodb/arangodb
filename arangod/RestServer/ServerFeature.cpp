@@ -23,10 +23,8 @@
 
 #include "ServerFeature.h"
 
-#include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/SupervisorFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
@@ -41,7 +39,9 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"
+#include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SupervisorFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -78,7 +78,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console", "start a JavaScript emergency console",
                      new BooleanParameter(&_console));
 
-  options->addSection("server", "Server features");
+  options->addSection("server", "server features");
 
   options->addOption("--server.rest-server", "start a rest-server",
                      new BooleanParameter(&_restServer),
@@ -87,8 +87,6 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--server.validate-utf8-strings", "perform UTF-8 string validation for incoming JSON and VelocyPack data",
                      new BooleanParameter(&_validateUtf8Strings),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden)).setIntroducedIn(30700);
-
-  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption("--javascript.script", "run scripts and exit",
                      new VectorParameter<StringParameter>(&_scripts));
@@ -101,16 +99,12 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 #endif
 
   // add several obsoleted options here
-  options->addSection("vst", "Configure the VelocyStream protocol");
+  options->addSection("vst", "VelocyStream protocol", "", true, true);
   options->addObsoleteOption("--vst.maxsize", "maximal size (in bytes) "
                              "for a VelocyPack chunk", true);
   
-  options->addObsoleteOption(
-      "--server.session-timeout",
-      "timeout of web interface server sessions (in seconds)", true);
-
   // add obsolete MMFiles WAL options (obsoleted in 3.7)
-  options->addSection("wal", "Configure the WAL of the MMFiles engine");
+  options->addSection("wal", "WAL of the MMFiles engine", "", true, true);
   options->addObsoleteOption("--wal.allow-oversize-entries",
                              "allow entries that are bigger than '--wal.logfile-size'", false);
   options->addObsoleteOption("--wal.use-mlock",
@@ -150,8 +144,10 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << "'--javascript.script'";
     FATAL_ERROR_EXIT();
   }
+  
+  DatabaseFeature& db = server().getFeature<DatabaseFeature>();
 
-  if (_operationMode == OperationMode::MODE_SERVER && !_restServer) {
+  if (_operationMode == OperationMode::MODE_SERVER && !_restServer && !db.upgrade()) {
     LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
         << "need at least '--console', '--javascript.unit-tests' or"
         << "'--javascript.script if rest-server is disabled";
@@ -253,9 +249,6 @@ void ServerFeature::stop() {
 }
 
 void ServerFeature::beginShutdown() {
-  std::string msg =
-      ArangoGlobalContext::CONTEXT->binaryName() + " [shutting down]";
-  TRI_SetProcessTitle(msg.c_str());
   _isStopping = true;
 }
 

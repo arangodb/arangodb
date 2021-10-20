@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECT_NODE_H
-#define ARANGOD_AQL_COLLECT_NODE_H 1
+#pragma once
 
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
@@ -41,14 +40,12 @@ class Slice;
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
-class RedundantCalculationsReplacer;
 struct Aggregator;
 
 /// @brief class CollectNode
 class CollectNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
   CollectNode(ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
@@ -89,10 +86,6 @@ class CollectNode : public ExecutionNode {
 
   /// @brief getOptions
   CollectOptions& getOptions();
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief calculate the expression register
   void calcExpressionRegister(RegisterId& expressionRegister,
@@ -162,7 +155,7 @@ class CollectNode : public ExecutionNode {
 
   /// @brief restrict the KEEP variables (which may also be the auto-collected
   /// variables of an unrestricted `INTO var`) to the passed `variables`.
-  void restrictKeepVariables(std::unordered_set<const Variable*> const& variables);
+  void restrictKeepVariables(containers::HashSet<Variable const*> const& variables);
 
   /// @brief return the variable map
   std::unordered_map<VariableId, std::string const> const& variableMap() const;
@@ -178,6 +171,8 @@ class CollectNode : public ExecutionNode {
 
   /// @brief get all aggregate variables (out, in)
   std::vector<AggregateVarInfo>& aggregateVariables();
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -187,6 +182,10 @@ class CollectNode : public ExecutionNode {
 
   static void calculateAccessibleUserVariables(ExecutionNode const& node,
                                                std::vector<Variable const*>& userVariables);
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
   /// @brief options for the aggregation
@@ -220,4 +219,3 @@ class CollectNode : public ExecutionNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

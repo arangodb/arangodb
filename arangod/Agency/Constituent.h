@@ -21,14 +21,14 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_CONSTITUENT_H
-#define ARANGOD_CONSENSUS_CONSTITUENT_H 1
+#pragma once
 
 #include "AgencyCommon.h"
 
 #include "AgentConfiguration.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "RestServer/MetricsFeature.h"
 
@@ -198,4 +198,3 @@ class Constituent : public Thread {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

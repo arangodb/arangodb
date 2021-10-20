@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_EXECCONTEXT_H
-#define ARANGOD_UTILS_EXECCONTEXT_H 1
+#pragma once
 
 #include "Auth/Common.h"
 #include "Rest/RequestContext.h"
@@ -39,7 +38,7 @@ class Methods;
 /// context in which this thread is executed.
 /// We should strive to have it always accessible
 /// from ExecContext::CURRENT. Inherits from request
-/// context for convencience
+/// context for convenience
 class ExecContext : public RequestContext {
   friend struct ExecContextScope;
   friend struct ExecContextSuperuserScope;
@@ -184,4 +183,3 @@ private:
 
 }  // namespace arangodb
 
-#endif

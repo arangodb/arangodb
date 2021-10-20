@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLCALLSET_H
-#define ARANGOD_AQL_AQLCALLSET_H
+#pragma once
 
 #include "Aql/AqlCallList.h"
 
@@ -51,4 +50,3 @@ auto operator<<(std::ostream&, AqlCallSet const&) -> std::ostream&;
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_AQLCALLSET_H

@@ -154,27 +154,18 @@ struct IRESEARCH_API sub_reader : index_reader {
 
 template<typename Visitor, typename FilterVisitor>
 void visit(const index_reader& index, const string_ref& field,
-           const flags& required, const FilterVisitor& field_visitor,
-           Visitor& visitor) {
+           const FilterVisitor& field_visitor, Visitor& visitor) {
   for (auto& segment : index) {
     const auto* reader = segment.field(field);
 
-    if (!reader || (!required.empty() && !required.is_subset_of(reader->meta().features))) {
-      continue;
+    if (IRS_LIKELY(reader)) {
+      field_visitor(segment, *reader, visitor);
     }
-
-    field_visitor(segment, *reader, visitor);
   }
 }
 
-template<typename Visitor, typename FilterVisitor>
-void visit(const index_reader& index, const string_ref& field,
-           const FilterVisitor& field_visitor, Visitor& visitor) {
-  visit(index, field, flags::empty_instance(), field_visitor, visitor);
 }
-
-}
-
-MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t)>;) // sub_reader::value_visitor_f
+// sub_reader::value_visitor_f
+MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t)>;) // cppcheck-suppress unknownMacro 
 
 #endif

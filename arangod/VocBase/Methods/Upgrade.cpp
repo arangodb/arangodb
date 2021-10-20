@@ -103,13 +103,13 @@ UpgradeResult Upgrade::createDB(TRI_vocbase_t& vocbase,
 UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool ignoreFileErrors) {
   if (ServerState::instance()->isCoordinator()) {
     // coordinators do not have any persistent data, so there is no VERSION file
-    // available. We don't know the previous version we are upgrading from, so we
-    // need to pretend no upgrade is necessary
+    // available. We don't know the previous version we are upgrading from, so
+    // we need to pretend no upgrade is necessary
     return UpgradeResult(TRI_ERROR_NO_ERROR, methods::VersionResult::VERSION_MATCH);
   }
-  
+
   uint32_t clusterFlag = 0;
-  
+
   if (ServerState::instance()->isSingleServer()) {
     clusterFlag = Flags::CLUSTER_NONE;
   } else {
@@ -144,8 +144,8 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
       break;
     case VersionResult::VERSION_MATCH:
       if (isUpgrade) {
-        dbflag = Flags::DATABASE_UPGRADE; // forcing the upgrade as server is in 
-                                          // upgrade state with some features disabled
+        dbflag = Flags::DATABASE_UPGRADE;  // forcing the upgrade as server is in
+                                           // upgrade state with some features disabled
       }
       break;  // just run tasks that weren't run yet
     case VersionResult::UPGRADE_NEEDED: {
@@ -215,7 +215,8 @@ UpgradeResult methods::Upgrade::startupCoordinator(TRI_vocbase_t& vocbase) {
   VersionResult vinfo = Version::check(&vocbase);
 
   VPackSlice const params = VPackSlice::emptyObjectSlice();
-  return runTasks(vocbase, vinfo, params, Flags::CLUSTER_COORDINATOR_GLOBAL, Flags::DATABASE_UPGRADE);
+  return runTasks(vocbase, vinfo, params, Flags::CLUSTER_COORDINATOR_GLOBAL,
+                  Flags::DATABASE_UPGRADE);
 }
 
 /// @brief register tasks, only run once on startup
@@ -233,11 +234,12 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           &UpgradeTasks::createSystemCollectionsAndIndices);
   addTask(upgradeFeature, "createSystemStatisticsDBServer",
           "creates the statistics system collections including their indices",
-      /*system*/ Flags::DATABASE_SYSTEM,
-      /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-      /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
+          /*system*/ Flags::DATABASE_SYSTEM,
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
+          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::createStatisticsCollectionsAndIndices);
-  addTask(upgradeFeature, "addDefaultUserOther", "add default users for a new database",
+  addTask(upgradeFeature, "addDefaultUserOther",
+          "add default users for a new database",
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT, &UpgradeTasks::addDefaultUserOther);
@@ -251,15 +253,18 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
   // IResearch related upgrade tasks:
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
   //       instead they get their cache populated from coordinators
-  addTask(upgradeFeature, "dropLegacyAnalyzersCollection",            // name
-          "drop _iresearch_analyzers collection",     // description
-          Upgrade::Flags::DATABASE_SYSTEM,            // system flags
-          Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL  // cluster flags
+  addTask(upgradeFeature, "dropLegacyAnalyzersCollection",  // name
+          "drop _iresearch_analyzers collection",           // description
+          Upgrade::Flags::DATABASE_SYSTEM,                  // system flags
+          Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL        // cluster flags
               | Upgrade::Flags::CLUSTER_NONE,
           Upgrade::Flags::DATABASE_INIT  // database flags
               | Upgrade::Flags::DATABASE_UPGRADE,
           &UpgradeTasks::dropLegacyAnalyzersCollection  // action
   );
+#ifdef USE_ENTERPRISE
+  registerTasksEE(upgradeFeature);
+#endif
 }
 
 UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,

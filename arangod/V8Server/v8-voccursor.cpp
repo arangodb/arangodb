@@ -98,22 +98,17 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_ASSERT(builder.get() != nullptr);
 
-  try {
-    arangodb::Cursor* cursor =
-        cursors->createFromQueryResult(std::move(result),
-                                       static_cast<size_t>(batchSize), ttl, true);
+  arangodb::Cursor* cursor =
+      cursors->createFromQueryResult(std::move(result),
+                                     static_cast<size_t>(batchSize), ttl, true);
+  TRI_ASSERT(cursor != nullptr);
+  auto sg = arangodb::scopeGuard([&]() noexcept { cursors->release(cursor); });
 
-    TRI_ASSERT(cursor != nullptr);
-    TRI_DEFER(cursors->release(cursor));
+  // need to fetch id before release() as release() might delete the cursor
+  CursorId id = cursor->id();
 
-    // need to fetch id before release() as release() might delete the cursor
-    CursorId id = cursor->id();
-
-    auto result = TRI_V8UInt64String<TRI_voc_tick_t>(isolate, id);
-    TRI_V8_RETURN(result);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
+  auto result2 = TRI_V8UInt64String<TRI_voc_tick_t>(isolate, id);
+  TRI_V8_RETURN(result2);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -140,7 +135,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool busy;
   Cursor* cursor = cursors->find(cursorId, busy);
-  TRI_DEFER(cursors->release(cursor));
+  auto sg = arangodb::scopeGuard([&]() noexcept { cursors->release(cursor); });
 
   if (cursor == nullptr) {
     if (busy) {
@@ -228,7 +223,7 @@ struct V8Cursor final {
         TRI_V8_SET_ERROR(TRI_errno_string(TRI_ERROR_CURSOR_BUSY));
         return false;  // someone else is using it
       }
-      TRI_DEFER(cc->release());
+      auto sg = arangodb::scopeGuard([&]() noexcept { cc->release(); });
 
       Result r = fetchData(cc);
       if (r.fail()) {
@@ -332,14 +327,15 @@ struct V8Cursor final {
     auto* cursors = vocbase->cursorRepository();  // create a cursor
     double ttl = std::numeric_limits<double>::max();
         
-    auto ctx = transaction::V8Context::CreateWhenRequired(*vocbase, true);
-    auto q = std::make_unique<aql::Query>(ctx,
-                                          aql::QueryString(queryString), std::move(bindVars),
-                                          options.slice());
+    auto q = aql::Query::create(transaction::V8Context::CreateWhenRequired(*vocbase, true),
+                                aql::QueryString(queryString), std::move(bindVars),
+                                aql::QueryOptions(options.slice()));
     
     // specify ID 0 so it uses the external V8 context
-    auto cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
-    arangodb::ScopeGuard releaseCursorGuard([&]() {
+    Cursor* cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
+    // a soft shutdown will throw here!
+ 
+    arangodb::ScopeGuard releaseCursorGuard([&]() noexcept {
       cc->release();
     });
     // args.Holder() is supposedly better than args.This()

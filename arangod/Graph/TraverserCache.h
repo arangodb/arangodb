@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_H
-#define ARANGOD_GRAPH_TRAVERSER_CACHE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/StringHeap.h"
@@ -166,4 +165,3 @@ class TraverserCache {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

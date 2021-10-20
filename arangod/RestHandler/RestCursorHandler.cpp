@@ -71,7 +71,12 @@ RestStatus RestCursorHandler::execute() {
   rest::RequestType const type = _request->requestType();
 
   if (type == rest::RequestType::POST) {
-    return createQueryCursor();
+    if (_request->suffixes().size() == 0) {
+      // POST /_api/cursor
+      return createQueryCursor();
+    }
+    // POST /_api/cursor/cursor-id
+    return modifyQueryCursor();
   } else if (type == rest::RequestType::PUT) {
     return modifyQueryCursor();
   } else if (type == rest::RequestType::DELETE_REQ) {
@@ -92,12 +97,17 @@ RestStatus RestCursorHandler::continueExecute() {
 
   if (_query != nullptr) {  // non-stream query
     if (type == rest::RequestType::POST || type == rest::RequestType::PUT) {
-      return processQuery(/*continuation*/ true);
+      return processQuery();
     }
   } else if (_cursor) {  // stream cursor query
-
     if (type == rest::RequestType::POST) {
-      return generateCursorResult(rest::ResponseCode::CREATED);
+      if (_request->suffixes().size() == 0) {
+        // POST /_api/cursor
+        return generateCursorResult(rest::ResponseCode::CREATED);
+      } else {
+        // POST /_api/cursor/cursor-id
+        return generateCursorResult(ResponseCode::OK);
+      }
     } else if (type == rest::RequestType::PUT) {
       if (_request->requestPath() == SIMPLE_QUERY_ALL_PATH) {
         // RestSimpleQueryHandler::allDocuments uses PUT for cursor creation
@@ -113,7 +123,7 @@ RestStatus RestCursorHandler::continueExecute() {
 }
 
 void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
-  TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
+  auto sg = arangodb::scopeGuard([&]() noexcept { RestVocbaseBaseHandler::shutdownExecute(isFinalized); });
 
   // request not done yet
   if (!isFinalized) {
@@ -129,7 +139,8 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   }
   
   // only trace create cursor requests
-  if (_request->requestType() != rest::RequestType::POST) {
+  if (_request->requestType() != rest::RequestType::POST ||
+      _request->suffixes().size() > 0) {
     return;
   }
   
@@ -196,9 +207,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   
   // simon: access mode can always be write on the coordinator
   const AccessMode::Type mode = AccessMode::Type::WRITE;
-  auto query = std::make_unique<aql::Query>(createTransactionContext(mode),
-      arangodb::aql::QueryString(querySlice.copyString()),
-      bindVarsBuilder, opts);
+  auto query = aql::Query::create(createTransactionContext(mode),
+                                  arangodb::aql::QueryString(querySlice.stringRef()),
+                                  std::move(bindVarsBuilder), aql::QueryOptions(opts));
 
   if (stream) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
@@ -211,6 +222,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
     _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl);
+    // Throws if soft shutdown is ongoing!
     _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
     
     return generateCursorResult(rest::ResponseCode::CREATED);
@@ -232,7 +244,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   }
 
   registerQuery(std::move(query));
-  return processQuery(/*continuation*/false);
+  return processQuery();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -241,7 +253,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 /// in AQL we can post a handler calling this function again.
 //////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestCursorHandler::processQuery(bool continuation) {
+RestStatus RestCursorHandler::processQuery() {
   if (_query == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -250,7 +262,7 @@ RestStatus RestCursorHandler::processQuery(bool continuation) {
 
   {
     // always clean up
-    auto guard = scopeGuard([this]() { unregisterQuery(); });
+    auto guard = scopeGuard([this]() noexcept { unregisterQuery(); });
 
     // continue handler is registered earlier
     auto state = _query->execute(_queryResult);
@@ -357,6 +369,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     TRI_ASSERT(_queryResult.data.get() != nullptr);
     // steal the query result, cursor will take over the ownership
     _cursor = cursors->createFromQueryResult(std::move(_queryResult), batchSize, ttl, count);
+    // throws if a coordinator soft shutdown is ongoing
 
     return generateCursorResult(rest::ResponseCode::CREATED);
   }
@@ -370,7 +383,13 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
   }
 
   rest::RequestType const type = _request->requestType();
-  if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
+  if (type != rest::RequestType::POST &&
+      type != rest::RequestType::PUT && 
+      type != rest::RequestType::DELETE_REQ) {
+    // request forwarding only exists for
+    // POST /_api/cursor/cursor-id
+    // PUT /_api/cursor/cursor-id
+    // DELETE /_api/cursor/cursor-id
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
@@ -393,7 +412,7 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
 /// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::registerQuery(std::unique_ptr<arangodb::aql::Query> query) {
+void RestCursorHandler::registerQuery(std::shared_ptr<arangodb::aql::Query> query) {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_queryKilled) {
@@ -409,7 +428,7 @@ void RestCursorHandler::registerQuery(std::unique_ptr<arangodb::aql::Query> quer
 /// @brief unregister the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::unregisterQuery() {
+void RestCursorHandler::unregisterQuery() noexcept {
   TRI_IF_FAILURE("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled") {
     _query->debugKillQuery();
   }
@@ -603,7 +622,7 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting PUT /_api/cursor/<cursor-id>");
+                  "expecting POST /_api/cursor/<cursor-id>");
     return RestStatus::DONE;
   }
 

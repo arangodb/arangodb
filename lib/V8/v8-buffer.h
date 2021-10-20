@@ -46,8 +46,7 @@
 /// USE OR OTHER DEALINGS IN THE SOFTWARE.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__BUFFER_H
-#define ARANGODB_V8_V8__BUFFER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -286,8 +285,6 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
   void* _callbackHint;
 };
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the buffer module

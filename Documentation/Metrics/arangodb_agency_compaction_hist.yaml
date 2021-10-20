@@ -10,7 +10,7 @@ exposedBy:
   - agent
 description: |
   Agency compaction time histogram. Provides a distribution
-  of agency compaction run times. Compactions are triggered after
+  of Agency compaction run times. Compactions are triggered after
   `--agency.compaction-keep-size` entries have accumulated in the
   RAFT log.
 troubleshoot: |

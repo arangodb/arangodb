@@ -21,104 +21,68 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_DOCUMENT_CRUD_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_DOCUMENT_CRUD_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 #include "helpers.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct DocumentCrudTest : public Benchmark<DocumentCrudTest> {
-  static std::string name() { return "crud"; }
+  struct DocumentCrudTest : public Benchmark<DocumentCrudTest> {
+    static std::string name() { return "crud"; }
 
-  DocumentCrudTest(BenchFeature& arangobench) : Benchmark<DocumentCrudTest>(arangobench) {}
+    DocumentCrudTest(BenchFeature& arangobench) : Benchmark<DocumentCrudTest>(arangobench) {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return DeleteCollection(client, _arangobench.collection()) &&
-           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
-  }
-
-  void tearDown() override {}
-
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    size_t const mod = globalCounter % 5;
-
-    if (mod == 0) {
-      return std::string("/_api/document?collection=" + _arangobench.collection());
-    } else {
-      size_t keyId = (size_t)(globalCounter / 5);
-      std::string const key = "testkey" + StringUtils::itoa(keyId);
-
-      return std::string("/_api/document/" + _arangobench.collection() + "/" + key);
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      return DeleteCollection(client, _arangobench.collection()) &&
+        CreateCollection(client, _arangobench.collection(), 2, _arangobench);
     }
-  }
 
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    size_t const mod = globalCounter % 5;
+    void tearDown() override {}
 
-    if (mod == 0) {
-      return rest::RequestType::POST;
-    } else if (mod == 1) {
-      return rest::RequestType::GET;
-    } else if (mod == 2) {
-      return rest::RequestType::PATCH;
-    } else if (mod == 3) {
-      return rest::RequestType::GET;
-    } else if (mod == 4) {
-      return rest::RequestType::DELETE_REQ;
-    } else {
-      TRI_ASSERT(false);
-      return rest::RequestType::GET;
-    }
-  }
-
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    size_t const mod = globalCounter % 5;
-
-    if (mod == 0 || mod == 2) {
-      uint64_t const n = _arangobench.complexity();
-      TRI_string_buffer_t* buffer;
-
-      buffer = TRI_CreateSizedStringBuffer(256);
-      TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
-
-      size_t keyId = (size_t)(globalCounter / 5);
+    void buildRequest(size_t threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      size_t keyId = static_cast<size_t>(globalCounter / 5);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
-      TRI_AppendStringStringBuffer(buffer, key.c_str());
-      TRI_AppendStringStringBuffer(buffer, "\"");
+      size_t const mod = globalCounter % 5;
 
-      for (uint64_t i = 1; i <= n; ++i) {
-        TRI_AppendStringStringBuffer(buffer, ",\"value");
-        TRI_AppendUInt64StringBuffer(buffer, i);
-        if (mod == 0) {
-          TRI_AppendStringStringBuffer(buffer, "\":true");
+      if (mod == 0) {
+        requestData.url = std::string("/_api/document?collection=" + _arangobench.collection()) + "&silent=true";
+        requestData.type = rest::RequestType::POST;
+      } else {
+        requestData.url = std::string("/_api/document/" + _arangobench.collection() + "/" + key);
+        if (mod == 2) {
+          requestData.type = rest::RequestType::PATCH;
+        } else if (mod == 4) {
+          requestData.type = rest::RequestType::DELETE_REQ;
         } else {
-          TRI_AppendStringStringBuffer(buffer, "\":false");
+          requestData.type = rest::RequestType::GET;
         }
       }
-
-      TRI_AppendCharStringBuffer(buffer, '}');
-
-      *length = TRI_LengthStringBuffer(buffer);
-      *mustFree = true;
-      char* ptr = TRI_StealStringBuffer(buffer);
-      TRI_FreeStringBuffer(buffer);
-
-      return (char const*)ptr;
-    } else if (mod == 1 || mod == 3 || mod == 4) {
-      *length = 0;
-      *mustFree = false;
-      return (char const*)nullptr;
-    } else {
-      TRI_ASSERT(false);
-      return nullptr;
+      if (mod == 0 || mod == 2) {
+        using namespace arangodb::velocypack;
+        requestData.payload.openObject();
+        requestData.payload.add(StaticStrings::KeyString, Value(key));
+        uint64_t n = _arangobench.complexity();
+        for (uint64_t i = 1; i <= n; ++i) {
+          bool value = (mod == 0) ? true : false;
+          requestData.payload.add(std::string("value") + std::to_string(i), Value(value));
+        }
+        requestData.payload.close();
+      }
     }
-  }
-};
+
+    char const* getDescription() const noexcept override {
+      return "will perform a mix of insert, update, get and remove operations for documents. 20% of the operations will be single-document inserts, 20% of the operations will be single-document updates, 40% of the operations are single-document read requests, and 20% of the operations will be single-document removals. There will be a total of --requests operations. The --complexity parameter can be used to control the number of attributes for the inserted and updated documents.";
+    }
+
+    bool isDeprecated() const noexcept override {
+      return false;
+    }
+
+  };
 
 }  // namespace arangodb::arangobench
-#endif

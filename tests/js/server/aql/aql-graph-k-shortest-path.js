@@ -31,7 +31,8 @@
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const gm = require("@arangodb/general-graph");
-const _ = require("underscore");
+const _ = require("lodash");
+const internal = require('internal');
 
 const graphName = "UnitTestGraph";
 const vName = "UnitTestVertices";
@@ -49,7 +50,7 @@ const isPathValid = (path, length, expectedWeight, allowInbound = false) => {
   assertTrue(path.hasOwnProperty("edges"));
   assertTrue(path.hasOwnProperty("weight"));
   // Assert weight and number of edges are correct
-  const { vertices, edges, weight } = path;
+  const {vertices, edges, weight} = path;
   assertEqual(edges.length, length);
   assertEqual(weight, expectedWeight);
   assertEqual(edges.length + 1, vertices.length);
@@ -115,9 +116,9 @@ const tearDownAll = () => {
 
 const createGraph = () => {
   gm._create(graphName, [
-    gm._relation(e1Name, vName, vName),
-    gm._relation(e2Name, vName, vName)
-  ], [],
+      gm._relation(e1Name, vName, vName),
+      gm._relation(e2Name, vName, vName)
+    ], [],
     {
       numberOfShards: 9
     }
@@ -135,7 +136,7 @@ const createGraph = () => {
   vertices.push({
     _key: "badTarget"
   });
-  vertices.push({ _key: "looper" });
+  vertices.push({_key: "looper"});
 
   // Insert Data:
 
@@ -148,44 +149,44 @@ const createGraph = () => {
     const weight = (pathNum + 1) * (pathNum + 1);
     for (let step = 0; step < 3; ++step) {
       const key = `vertex_${pathNum}_${step}`;
-      vertices.push({ _key: key });
+      vertices.push({_key: key});
       // Add valid edges:
       switch (step) {
         case 0: {
           if (pathNum < 6) {
             // source -> v
-            e1s.push({ _from: source, _to: `${vName}/${key}`, weight });
+            e1s.push({_from: source, _to: `${vName}/${key}`, weight});
             if (pathNum < 3) {
               // Add INBOUND shortcut 0 <- 2 in e2 (we intentionally go to path 6-8 to not interfer with the original paths)
-              e2s.push({ _from: `${vName}/vertex_${pathNum + 6}_0`, _to: `${vName}/${key}`, weight });
+              e2s.push({_from: `${vName}/vertex_${pathNum + 6}_0`, _to: `${vName}/${key}`, weight});
             }
           } else if (pathNum < 9) {
             // v -> target
-            e1s.push({ _from: `${vName}/${key}`, _to: target, weight });
+            e1s.push({_from: `${vName}/${key}`, _to: target, weight});
           } else {
             // v-> bad
-            e1s.push({ _from: `${vName}/${key}`, _to: badTarget, weight });
+            e1s.push({_from: `${vName}/${key}`, _to: badTarget, weight});
           }
           break;
         }
         case 1: {
           // connect to step 0
-          e1s.push({ _from: `${vName}/vertex_${pathNum}_0`, _to: `${vName}/${key}`, weight });
+          e1s.push({_from: `${vName}/vertex_${pathNum}_0`, _to: `${vName}/${key}`, weight});
           const mod = pathNum % 3;
           if (mod !== 0) {
             // Connect to the path before
-            e1s.push({ _from: `${vName}/vertex_${pathNum - 1}_0`, _to: `${vName}/${key}`, weight });
+            e1s.push({_from: `${vName}/vertex_${pathNum - 1}_0`, _to: `${vName}/${key}`, weight});
           }
           if (mod !== 2) {
             // Connect to the path after
-            e1s.push({ _from: `${vName}/vertex_${pathNum + 1}_0`, _to: `${vName}/${key}`, weight });
+            e1s.push({_from: `${vName}/vertex_${pathNum + 1}_0`, _to: `${vName}/${key}`, weight});
           }
           if (mod === 2 && pathNum === 2) {
             // Add a path loop and a duplicate edge
             // duplicate edge
-            e1s.push({ _from: `${vName}/vertex_${pathNum}_0`, _to: `${vName}/${key}`, weight: weight + 1 });
-            e1s.push({ _from: `${vName}/${key}`, _to: looper, weight });
-            e1s.push({ _from: looper, _to: `${vName}/vertex_${pathNum}_0`, weight });
+            e1s.push({_from: `${vName}/vertex_${pathNum}_0`, _to: `${vName}/${key}`, weight: weight + 1});
+            e1s.push({_from: `${vName}/${key}`, _to: looper, weight});
+            e1s.push({_from: looper, _to: `${vName}/vertex_${pathNum}_0`, weight});
           }
           break;
         }
@@ -194,17 +195,17 @@ const createGraph = () => {
             // These are the valid paths we care for
             if (pathNum === 1) {
               const additional = `vertex_${pathNum}_3`;
-              vertices.push({ _key: additional });
+              vertices.push({_key: additional});
               // Add an aditional step only on the second path to have differnt path lengths
-              e1s.push({ _from: `${vName}/${key}`, _to: `${vName}/${additional}`, weight });
-              e1s.push({ _from: `${vName}/${additional}`, _to: target, weight });
+              e1s.push({_from: `${vName}/${key}`, _to: `${vName}/${additional}`, weight});
+              e1s.push({_from: `${vName}/${additional}`, _to: target, weight});
             } else {
-              e1s.push({ _from: `${vName}/${key}`, _to: target, weight });
+              e1s.push({_from: `${vName}/${key}`, _to: target, weight});
             }
           }
           // Always connect to source:
           // 1 -> 2 is connected in e2
-          e2s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: `${vName}/${key}`, weight });
+          e2s.push({_from: `${vName}/vertex_${pathNum}_1`, _to: `${vName}/${key}`, weight});
           break;
         }
       }
@@ -539,10 +540,103 @@ function kShortestPathsSyntaxTestSuite() {
   };
 }
 
+function kShortestPathsErrorTestSuite() {
+
+  const graphName = "UnitTestGraph";
+  const vName = "UnitTestVertices";
+  const eName = "UnitTestEdges";
+
+  const keyA = "A";
+  const keyB = "B";
+  const keyC = "C";
+  const keyD = "D";
+
+  function createGraph() {
+    // Graph: Simple diamond
+    gm._create(graphName, [gm._relation(eName, vName, vName)], [], {});
+
+    const vertexes = [
+      {_key: keyA, value: 1},
+      {_key: keyB, value: 1},
+      {_key: keyC, value: 1},
+      {_key: keyD, value: 1}
+    ];
+
+    const edges = [
+      {_from: `${vName}/${keyA}`, _to: `${vName}/${keyB}`, weight: -1},
+      {_from: `${vName}/${keyB}`, _to: `${vName}/${keyD}`, weight: 1},
+      {_from: `${vName}/${keyA}`, _to: `${vName}/${keyC}`, weight: 1},
+      {_from: `${vName}/${keyC}`, _to: `${vName}/${keyD}`, weight: -1}
+    ];
+
+    db[vName].insert(vertexes);
+    db[eName].insert(edges);
+  }
+
+
+  return {
+    setUpAll: function () {
+      createGraph();
+    },
+
+    tearDownAll: function () {
+      gm._drop(graphName, true);
+    },
+
+    testKShortestPathsNegativeDefaultEdgeWeight: function () {
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const bindVars = {
+        weight: -1
+      };
+
+      const query = `
+        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {defaultWeight: @weight}
+          LIMIT 2
+          RETURN path
+      `;
+
+      try {
+        let res = db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        console.warn(err);
+        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
+      }
+    },
+
+    testKShortestPathsNegativeEdgeWeight: function () {
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const bindVars = {
+        weight: 1,
+        weightAttributeToUse: "weight"
+      };
+
+      const query = `
+        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {defaultWeight: @weight, weightAttribute: @weightAttributeToUse}
+          LIMIT 2
+          RETURN path
+      `;
+
+      try {
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
+      }
+    }
+  };
+}
 
 jsunity.run(kShortestPathsSyntaxTestSuite);
 jsunity.run(kConstantWeightShortestPathTestSuite);
 jsunity.run(kAttributeWeightShortestPathTestSuite);
+jsunity.run(kShortestPathsErrorTestSuite);
 
 
 return jsunity.done();

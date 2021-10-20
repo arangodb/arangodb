@@ -22,8 +22,7 @@
 /// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_FEATURE_H
-#define ARANGOD_IRESEARCH__IRESEARCH_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -118,4 +117,3 @@ class IResearchFeature final : public application_features::ApplicationFeature {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

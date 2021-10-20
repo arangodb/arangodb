@@ -32,6 +32,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
@@ -51,10 +52,9 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief creates a query
-QueryContext::QueryContext(TRI_vocbase_t& vocbase)
+QueryContext::QueryContext(TRI_vocbase_t& vocbase, QueryId id)
     : _resourceMonitor(GlobalResourceMonitor::instance()),
-      _baseOverHeadTracker(_resourceMonitor, baseMemoryUsage),
-      _queryId(TRI_NewServerSpecificTick()),
+      _queryId(id ? id : TRI_NewServerSpecificTick()),
       _collections(&vocbase),
       _vocbase(vocbase),
       _execState(QueryExecutionState::ValueType::INVALID_STATE),
@@ -76,9 +76,7 @@ QueryContext::~QueryContext() {
 }
 
 Collections& QueryContext::collections() {
-#ifndef ARANGODB_USE_GOOGLE_TESTS
-  TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
-#endif
+  TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION || ClusterEngine::Mocking);
   return _collections;
 }
 

@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_GROUP_H
-#define ARANGODB_LOGGER_LOG_GROUP_H 1
+#pragma once
 
 #include <atomic>
 #include <cstddef>
@@ -64,4 +63,3 @@ class LogGroup {
 
 }  // namespace arangodb
 
-#endif

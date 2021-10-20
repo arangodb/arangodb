@@ -28,16 +28,15 @@
 
 #include <iostream>
 
+namespace arangodb {
+
 std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r) {
   return r.print(o);
 }
 
-std::ostream& operator<<(std::ostream& o, 
-  arangodb::QueryAnalyzerRevisions const& r) {
+std::ostream& operator<<(std::ostream& o, arangodb::QueryAnalyzerRevisions const& r) {
   return r.print(o);
 }
-
-namespace arangodb {
 
 void QueryAnalyzerRevisions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder scope(&builder, StaticStrings::ArangoSearchAnalyzersRevision);

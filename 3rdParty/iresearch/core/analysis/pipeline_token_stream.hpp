@@ -33,6 +33,8 @@
 namespace iresearch {
 namespace analysis {
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class pipeline_token_stream
 /// @brief an analyser capable of chaining other analyzers
@@ -48,14 +50,55 @@ class pipeline_token_stream final
 
   explicit pipeline_token_stream(options_t&& options);
   virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
-    return irs::get_mutable(attrs_, id);
+    auto attr = irs::get_mutable(attrs_, id);
+    if (!attr) {
+      // if attribute is not strictly pipeline-controlled let`s find nearest to end
+      // provider with desired attribute
+      if(irs::type<payload>::id() != id &&
+         irs::type<offset>::id() != id) {
+        for (auto it = rbegin(pipeline_); it != rend(pipeline_); ++it) {
+          attr = const_cast<analyzer&>(it->get_stream()).get_mutable(id);
+          if (attr) {
+            break;
+          }
+        }
+      }
+    }
+    return attr;
   }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief calls visitor on pipeline members in respective order. Visiting is 
+  /// interrupted on first visitor returning false.
+  /// @param visitor visitor to call
+  /// @return true if all visits returned true, false otherwise
+  //////////////////////////////////////////////////////////////////////////////
+  template<typename Visitor>
+  bool visit_members(Visitor&& visitor) const {
+    for (const auto& sub : pipeline_) {
+      if (sub.get_stream().type() == type()) { //pipe inside pipe - forward visiting
+#if IRESEARCH_DEBUG
+        const auto& sub_pipe = dynamic_cast<const pipeline_token_stream&>(sub.get_stream());
+#else
+        const auto& sub_pipe = static_cast<const pipeline_token_stream&>(sub.get_stream());
+#endif
+        if (!sub_pipe.visit_members(visitor)) {
+          return false;
+        }
+      } else {
+        if (!visitor(sub.get_stream())) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
  private:
   struct sub_analyzer_t {
-    explicit sub_analyzer_t(const irs::analysis::analyzer::ptr& a, bool track_offset);
+    explicit sub_analyzer_t(irs::analysis::analyzer::ptr a, bool track_offset);
     sub_analyzer_t();
 
     bool reset(uint32_t start, uint32_t end, const string_ref& data) {
@@ -91,6 +134,11 @@ class pipeline_token_stream final
     uint32_t data_start{ 0 };
     uint32_t data_end{ 0 };
     uint32_t pos{ std::numeric_limits<uint32_t>::max() };
+
+    const irs::analysis::analyzer& get_stream() const noexcept {
+      assert(analyzer);
+      return *analyzer;
+    }
 
    private:
     // sub analyzer should be operated through provided next/release

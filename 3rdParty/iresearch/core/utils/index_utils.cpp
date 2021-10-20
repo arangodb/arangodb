@@ -43,6 +43,7 @@ inline size_t size_without_removals(const irs::segment_meta& segment) noexcept{
 namespace tier {
 
 struct segment_stat {
+  // cppcheck-suppress noExplicitConstructor
   segment_stat(const irs::segment_meta& meta) noexcept
     : meta(&meta), 
       size(size_without_removals(meta)),
@@ -50,6 +51,7 @@ struct segment_stat {
   }
 
   bool operator<(const segment_stat& rhs) const noexcept {
+    // cppcheck-suppress constVariable
     auto& lhs = *this;
 
     if (lhs.size == rhs.size) {
@@ -92,8 +94,8 @@ struct consolidation_candidate {
 
   const segment_stat& back() const noexcept {
     assert(segments.first != segments.second);
-    auto end = segments.second;
-    return *(--end);
+    auto curr_end = segments.second;
+    return *(--curr_end);
   }
 
   void reset() noexcept {
@@ -193,6 +195,7 @@ index_writer::consolidation_policy_t consolidation_policy(
     size_t segment_count = meta.size();
 
     for (auto& segment : meta) {
+      // cppcheck-suppress 	useStlAlgorithm
       all_segment_bytes_size += segment.meta.size;
     }
 
@@ -300,6 +303,7 @@ index_writer::consolidation_policy_t consolidation_policy(
     size_t segment_count = meta.size();
 
     for (auto& segment : meta) {
+      // cppcheck-suppress useStlAlgorithm
       all_segment_docs_count += segment.meta.live_docs_count;
     }
 
@@ -364,7 +368,8 @@ index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier
     /// calculate overall stats
     ///////////////////////////////////////////////////////////////////////////
 
-    for (auto begin = sorted_segments.begin(); begin != sorted_segments.end();)  {
+    auto segments_end =  sorted_segments.data() + sorted_segments.size();
+    for (auto begin = sorted_segments.data(); begin < segments_end;)  {
       auto& segment = *begin;
 
       min_segment_size = std::min(min_segment_size, segment.size);
@@ -375,6 +380,7 @@ index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier
         consolidating_size += segment.size;
         total_docs_count += segment.meta->live_docs_count; // exclude removals from stats for consolidating segments
         irstd::swap_remove(sorted_segments, begin); // segment is already marked for consolidation, filter it out
+        --segments_end;
       } else {
         total_docs_count += segment.meta->docs_count;
         ++begin;
@@ -395,13 +401,14 @@ index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier
 
     const double_t total_fill_factor = double_t(total_live_docs_count) / total_docs_count;
     const size_t too_big_segments_threshold = max_segments_bytes / 2;
-
-    for (auto begin = sorted_segments.begin(); begin != sorted_segments.end();)  {
+    segments_end =  sorted_segments.data() + sorted_segments.size();
+    for (auto begin = sorted_segments.data(); begin < segments_end;)  {
       auto& segment = *begin;
       const double_t segment_fill_factor = double_t(segment.meta->live_docs_count) / segment.meta->docs_count;
       if (segment.size > too_big_segments_threshold && (total_fill_factor <= segment_fill_factor)) {
         // filter out segments that are too big
         irstd::swap_remove(sorted_segments, begin);
+        --segments_end;
       } else {
         ++begin;
       }

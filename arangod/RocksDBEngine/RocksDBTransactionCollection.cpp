@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
@@ -52,8 +53,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
       _numRemoves(0),
       _usageLocked(false),
       _exclusiveWrites(
-          trx->vocbase().server().getFeature<arangodb::RocksDBOptionFeature>()._exclusiveWrites) {
-}
+          trx->vocbase().server().getFeature<arangodb::RocksDBOptionFeature>()._exclusiveWrites) {}
 
 RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
 
@@ -78,48 +78,22 @@ bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const 
 }
 
 Result RocksDBTransactionCollection::lockUsage() {
+  Result res;
+
   bool doSetup = false;
-
   if (_collection == nullptr) {
-    // open the collection
-    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
-        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
-      // use and usage-lock
-      LOG_TRX("b72bb", TRACE, _transaction) << "using collection " << _cid.id();
-
-#ifdef USE_ENTERPRISE
-      // we don't need to check the permissions of collections that we only
-      // read from if skipInaccessible is set
-      bool checkPermissions = AccessMode::isWriteOrExclusive(_accessType) || !_transaction->options().skipInaccessibleCollections;
-#else
-      bool checkPermissions = true;
-#endif
-      // will throw if collection does not exist
-      try {
-        _collection = _transaction->vocbase().useCollection(_cid, checkPermissions);
-      } catch (basics::Exception const& ex) {
-        return {ex.code(), ex.what()};
-      }
-
-      TRI_ASSERT(_collection != nullptr);
-      _usageLocked = true;
-    } else {
-      // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase().lookupCollection(_cid);
-
-      if (_collection == nullptr) {
-        return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
-      }
+    res = ensureCollection();
+    if (res.fail()) {
+      return res;
     }
-
     doSetup = true;
   }
-
+ 
   TRI_ASSERT(_collection != nullptr);
-
+      
   if (/*AccessMode::isWriteOrExclusive(_accessType) &&*/!isLocked()) {
     // r/w lock the collection
-    Result res = doLock(_accessType);
+    res = doLock(_accessType);
 
     // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
     // operation has actually acquired the lock (and that the lock has not
@@ -191,13 +165,19 @@ void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e ope
   }
 }
 
-void RocksDBTransactionCollection::prepareTransaction(TransactionId trxId, uint64_t beginSeq) {
+rocksdb::SequenceNumber RocksDBTransactionCollection::prepareTransaction(TransactionId trxId) {
   TRI_ASSERT(_collection != nullptr);
   if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
+  
+    TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
+    }
     auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
-    TRI_ASSERT(beginSeq > 0);
-    coll->meta().placeBlocker(trxId, beginSeq);
+    rocksdb::SequenceNumber seq = coll->placeRevisionTreeBlocker(trxId);
+    return seq;
   }
+
+  return 0;
 }
 
 void RocksDBTransactionCollection::abortCommit(TransactionId trxId) {
@@ -218,6 +198,7 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId, uint64_t co
   // Update the collection count
   int64_t adj = _numInserts - _numRemoves;
   if (hasOperations()) {
+    TRI_ASSERT(_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
     TRI_ASSERT(_revision.isSet() && commitSeq != 0);
       
     TRI_IF_FAILURE("RocksDBCommitCounts") {
@@ -255,7 +236,7 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId, uint64_t co
   }
 
   if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
-    rcoll->meta().removeBlocker(trxId);
+    rcoll->removeRevisionTreeBlocker(trxId);
   }
 
   _initialNumberDocuments += adj; // needed for intermediate commits
@@ -268,12 +249,18 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId, uint64_t co
 
 void RocksDBTransactionCollection::trackInsert(RevisionId rid) {
   if (_collection->useSyncByRevision()) {
+    if (_trackedOperations.inserts.empty() && !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+      _trackedOperations.inserts.reserve(8);
+    }
     _trackedOperations.inserts.emplace_back(static_cast<std::uint64_t>(rid.id()));
   }
 }
 
 void RocksDBTransactionCollection::trackRemove(RevisionId rid) {
   if (_collection->useSyncByRevision()) {
+    if (_trackedOperations.removals.empty() && !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+      _trackedOperations.removals.reserve(8);
+    }
     _trackedOperations.removals.emplace_back(static_cast<std::uint64_t>(rid.id()));
   }
 }
@@ -400,6 +387,45 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
   }
 
   _lockType = AccessMode::Type::NONE;
+
+  return {};
+}
+
+Result RocksDBTransactionCollection::ensureCollection() {
+  if (_collection == nullptr) {
+    // open the collection
+    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
+        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+      // use and usage-lock
+      LOG_TRX("b72bb", TRACE, _transaction) << "using collection " << _cid.id();
+
+#ifdef USE_ENTERPRISE
+      // we don't need to check the permissions of collections that we only
+      // read from if skipInaccessible is set
+      bool checkPermissions = AccessMode::isWriteOrExclusive(_accessType) || !_transaction->options().skipInaccessibleCollections;
+#else
+      bool checkPermissions = true;
+#endif
+      // will throw if collection does not exist
+      try {
+        _collection = _transaction->vocbase().useCollection(_cid, checkPermissions);
+      } catch (basics::Exception const& ex) {
+        return {ex.code(), ex.what()};
+      }
+
+      TRI_ASSERT(_collection != nullptr);
+      _usageLocked = true;
+    } else {
+      // use without usage-lock (lock already set externally)
+      _collection = _transaction->vocbase().lookupCollection(_cid);
+
+      if (_collection == nullptr) {
+        return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+      }
+    }
+  }
+
+  TRI_ASSERT(_collection != nullptr);
 
   return {};
 }

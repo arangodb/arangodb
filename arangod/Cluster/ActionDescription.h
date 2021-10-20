@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_MAINTENANCE_ACTION_DESCRIPTION_H
-#define ARANGODB_CLUSTER_MAINTENANCE_ACTION_DESCRIPTION_H
+#pragma once
 
 #include "Basics/Result.h"
 #include "Cluster/MaintenanceStrings.h"
@@ -113,7 +112,7 @@ struct ActionDescription final {
    * @exception    std::out_of_range if the we do not have this key in discriminatory container
    * @return       Value to specified key
    */
-  std::string get(std::string const& key) const;
+  std::string const& get(std::string const& key) const;
 
   /**
    * @brief Get a string value from description
@@ -211,4 +210,3 @@ struct hash<arangodb::maintenance::ActionDescription> {
 
 }  // namespace std
 
-#endif

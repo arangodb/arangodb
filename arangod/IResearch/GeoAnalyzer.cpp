@@ -235,7 +235,7 @@ irs::analysis::analyzer::ptr make(
     return nullptr;
   }
 
-  return std::make_shared<Analyzer>(opts);
+  return std::make_unique<Analyzer>(opts);
 }
 
 }

@@ -21,17 +21,22 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_VERSION_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_VERSION_TEST_H
+#pragma once
 
 #include "Benchmark.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/ValueType.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
 struct VersionTest : public Benchmark<VersionTest> {
   static std::string name() { return "version"; }
 
-  VersionTest(BenchFeature& arangobench) : Benchmark<VersionTest>(arangobench), _url("/_api/version") {}
+  VersionTest(BenchFeature& arangobench) 
+      : Benchmark<VersionTest>(arangobench),
+        _url("/_api/version") {}
 
   bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
     return true;
@@ -39,27 +44,22 @@ struct VersionTest : public Benchmark<VersionTest> {
 
   void tearDown() override {}
 
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return _url;
+  void buildRequest(size_t threadNumber, size_t threadCounter,
+                    size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+    requestData.url = _url;
+    requestData.type = rest::RequestType::GET;
   }
 
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::GET;
+  char const* getDescription() const noexcept override {
+    return "queries the server version and then instantly returns. In a cluster, this means that Coordinators instantly respond to the requests without ever accessing DB-Servers. This test can be used to establish a baseline for single server or Coordinator throughput. The --complexity parameter is not used.";
   }
 
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    static char const* payload = "";
-
-    *mustFree = false;
-    *length = 0;
-    return payload;
+  bool isDeprecated() const noexcept override {
+    return false;
   }
 
-  std::string _url;
+ private:
+  std::string const _url;
 };
 
 }  // namespace arangodb::arangobench
-#endif

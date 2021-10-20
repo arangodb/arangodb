@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOSH_UTILS_CLIENT_MANAGER_H
-#define ARANGOSH_UTILS_CLIENT_MANAGER_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -67,7 +66,7 @@ class ClientManager {
    */
   Result getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
                             bool force, bool logServerVersion,
-                            bool logDatabaseNotFound, bool quiet);
+                            bool logDatabaseNotFound, bool quiet, size_t threadNumber);
 
   /**
    * @brief Initializes a client, connects to server, and verifies version
@@ -84,7 +83,7 @@ class ClientManager {
    * @return         A connected `SimpleHttpClient`
    */
   std::unique_ptr<httpclient::SimpleHttpClient> getConnectedClient(bool force, bool logServerVersion,
-                                                                   bool logDatabaseNotFound);
+                                                                   bool logDatabaseNotFound, size_t threadNumber);
 
   /**
    * @brief Conditionally prefixes a relative URI with database-specific path
@@ -118,4 +117,3 @@ class ClientManager {
 };
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_REPLICATION_TAILING_H
-#define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_TAILING_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Replication/common-defines.h"
@@ -49,4 +48,3 @@ arangodb::TRI_replication_operation_e convertLogType(RocksDBLogType t);
 }  // namespace rocksutils
 }  // namespace arangodb
 
-#endif

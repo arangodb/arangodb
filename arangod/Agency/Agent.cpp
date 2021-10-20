@@ -576,12 +576,14 @@ void Agent::sendAppendEntriesRPC() {
       auto startTime = steady_clock::now();
       SteadyTimePoint earliestPackage;
       SteadyTimePoint lastAcked;
+      SteadyTimePoint lastSent;
 
       {
         t = this->term();
         MUTEX_LOCKER(tiLocker, _tiLock);
         TRI_ASSERT(_lastAckedIndex.find(followerId) != _lastAckedIndex.end());
         std::tie(lastAcked, lastConfirmed) = _lastAckedIndex.at(followerId);
+        lastSent = _lastSent[followerId];
       }
 
       // We essentially have to send some log entries from their lastConfirmed+1
@@ -645,10 +647,9 @@ void Agent::sendAppendEntriesRPC() {
       // if lastConfirmed is equal to the last index in our log, in which
       // case there is nothing to replicate.
 
-      duration<double> m = steady_clock::now() - _lastSent[followerId];
+      duration<double> m = steady_clock::now() - lastSent;
 
-      if (m.count() > _config.minPing() &&
-          _lastSent[followerId].time_since_epoch().count() != 0) {
+      if (m.count() > _config.minPing() && lastSent.time_since_epoch().count() != 0) {
         LOG_TOPIC("0ddbd", DEBUG, Logger::AGENCY)
             << "Note: sent out last AppendEntriesRPC "
             << "to follower " << followerId
@@ -761,7 +762,10 @@ void Agent::sendAppendEntriesRPC() {
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
 
-      _lastSent[followerId] = steady_clock::now();
+      {
+        MUTEX_LOCKER(tiLocker, _tiLock);
+        _lastSent[followerId] = steady_clock::now();
+      }
       // _constituent.notifyHeartbeatSent(followerId);
       // Do not notify constituent, because the AppendEntriesRPC here could
       // take a very long time, so this must not disturb the empty ones
@@ -1183,7 +1187,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
   size_t failed;
   auto ret = std::make_shared<arangodb::velocypack::Builder>();
   {
-    TRI_DEFER(removeTrxsOngoing(qs));
+    auto sg = arangodb::scopeGuard([&]() noexcept { removeTrxsOngoing(qs); });
     // Note that once the transactions are in our log, we can remove them
     // from the list of ongoing ones, although they might not yet be committed.
     // This is because then, inquire will find them in the log and draw its
@@ -1358,8 +1362,9 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   }
 
   {
-    addTrxsOngoing(query->slice());  // remember that these are ongoing
-    TRI_DEFER(removeTrxsOngoing(query->slice()));
+    auto slice = query->slice();
+    addTrxsOngoing(slice);  // remember that these are ongoing
+    auto sg = arangodb::scopeGuard([&]() noexcept { removeTrxsOngoing(slice); });
     // Note that once the transactions are in our log, we can remove them
     // from the list of ongoing ones, although they might not yet be committed.
     // This is because then, inquire will find them in the log and draw its
@@ -1367,7 +1372,6 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
     // from when we receive the request until we have appended the trxs
     // ourselves.
 
-    auto slice = query->slice();
     size_t ntrans = slice.length();
     size_t npacks = ntrans / _config.maxAppendSize();
     if (ntrans % _config.maxAppendSize() != 0) {
@@ -1513,13 +1517,7 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
   while (pit != _promises.end()) {
     if (pit->first < tp) {
       auto pp = std::make_shared<futures::Promise<query_t>>(std::move(pit->second));
-      bool queued = scheduler->queue(
-        RequestLane::CLUSTER_INTERNAL, [pp, qu] { pp->setValue(qu); });
-      if (!queued) {
-        LOG_TOPIC("3647c", WARN, Logger::AGENCY) <<
-          "Failed to schedule logsForTrigger running in main thread";
-        pp->setValue(qu);
-      }
+      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [pp, qu] { pp->setValue(qu); });
       pit = _promises.erase(pit);
     } else {
       ++pit;
@@ -2310,13 +2308,12 @@ void Agent::emptyCbTrashBin() {
   // queue + write.
   auto* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {
-    bool ok = scheduler->queue(RequestLane::INTERNAL_LOW, [&server = server(), envelope = std::move(envelope)] {
+    scheduler->queue(RequestLane::INTERNAL_LOW, [&server = server(), envelope = std::move(envelope)] {
         auto* agent = server.getFeature<AgencyFeature>().agent();
         if (!server.isStopping() && agent) {
           agent->write(envelope);
         }
       });
-    LOG_TOPIC_IF("52461", DEBUG, Logger::AGENCY, !ok) << "Could not schedule callback cleanup job.";
   }
 
 }
@@ -2375,7 +2372,7 @@ void Agent::addTrxsOngoing(Slice trxs) {
   }
 }
 
-void Agent::removeTrxsOngoing(Slice trxs) {
+void Agent::removeTrxsOngoing(Slice trxs) noexcept {
   try {
     MUTEX_LOCKER(guard, _trxsLock);
     for (auto const& trx : VPackArrayIterator(trxs)) {

@@ -13,7 +13,7 @@ description: |
   The number of replication tailing failures due to missing tick on leader.
 troubleshoot:
   If this is non-zero, action is required. A required follower tick is not present (potentially
-  removed) on a leader dbserver. Please check the related leader dbserver
+  removed) on a leader DB-Server. Please check the related leader DB-Server
   log-files to identify the origin of the cause. It may be required to do
   a full re-sync and/or increase the number of historic logfiles on the
   leader(s).

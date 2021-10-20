@@ -233,7 +233,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           break;
         }
 
+        if (startStopHandlers && startStopHandlers.hasOwnProperty('preRun')) {
+          startStopHandlers.preRun(te);
+        }
         pu.getMemProfSnapshot(instanceInfo, options, memProfCounter++);
+        
         print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
         let reply = runFn(options, instanceInfo, te, env);
 
@@ -263,9 +267,21 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             break;
           }
         }
+
         if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
             healthCheck(options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers)) {
           continueTesting = true;
+
+          // TODO: we are currently filtering out the UnitTestDB here because it is 
+          // created and not cleaned up by a lot of the `authentication` tests. This
+          // should be fixed eventually
+          let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
+          if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
+            results[te] = {
+              status: false,
+              message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(results[te])
+            };
+          }
 
           // Check whether some collections & views were left behind, and if mark test as failed.
           let collectionsAfter = [];
@@ -277,8 +293,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             db._views().forEach(view => {
               viewsAfter.push(view._name);
             });
-          }
-          catch (x) {
+          } catch (x) {
             results[te] = {
               status: false,
               message: 'failed to fetch the currently available collections & views: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
@@ -296,10 +311,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             return ! ((name[0] === '_') || (name === "compact") || (name === "election")
                      || (name === "log"));
           });
-          if ((delta.length !== 0) || (deltaViews.length !== 0)){
+          if ((delta.length !== 0) || (deltaViews.length !== 0)) {
             results[te] = {
               status: false,
-              message: 'Cleanup missing - test left over collections / views : ' + delta + ' / ' + deltaViews + '. Original test status: ' + JSON.stringify(results[te])
+              message: 'Cleanup missing - test left over collections / views: ' + delta + ' / ' + deltaViews + '. Original test status: ' + JSON.stringify(results[te])
             };
             collectionsBefore = [];
             viewsBefore = [];
@@ -310,8 +325,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
               db._views().forEach(view => {
                 viewsBefore.push(view._name);
               });
-            }
-            catch (x) {
+            } catch (x) {
               results[te] = {
                 status: false,
                 message: 'failed to fetch the currently available delta collections / views: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
@@ -324,8 +338,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           let graphs;
           try {
             graphs = db._collection('_graphs');
-          }
-          catch (x) {
+          } catch (x) {
             results[te] = {
               status: false,
               message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
@@ -342,6 +355,18 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
                 JSON.stringify(results[te])
             };
             graphCount = graphs.count();
+          }
+          let failurePoints = pu.checkServerFailurePoints(instanceInfo);
+          if (failurePoints.length > 0) {
+            continueTesting = false;
+            results[te] = {
+              status: false,
+              message: 'Cleanup of failure points missing - found failure points engaged: [ ' +
+                JSON.stringify(failurePoints) +
+                ' ] - Original test status: ' +
+                JSON.stringify(results[te])
+            };
+
           }
         } else {
           serverDead = true;
@@ -546,10 +571,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if (testname.indexOf('-disabled') !== -1) {
-    whichFilter.filter = 'disabled';
-    return false;
-  }
+// *.<ext>_DISABLED should be used instead
+//  if (testname.indexOf('-disabled') !== -1) {
+//    whichFilter.filter = 'disabled';
+//    return false;
+//  }
 
   if ((testname.indexOf('-memoryintense') !== -1) && options.skipMemoryIntense) {
     whichFilter.filter = 'memoryintense';
@@ -934,7 +960,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   } catch (ex) {
     let timeout = SetGlobalExecutionDeadlineTo(0.0);
     print(RED + 'test has thrown: ' + (timeout? "because of timeout in execution":""));
-    print(ex);
+    print(ex, ex.stack);
     print(RESET);
     return {
       timeout: timeout,

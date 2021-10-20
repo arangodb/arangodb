@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_HELPERS_H
-#define ARANGOD_TRANSACTION_HELPERS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Transaction/CountCache.h"
@@ -53,6 +52,9 @@ class Methods;
 namespace helpers {
 /// @brief extract the _key attribute from a slice
 arangodb::velocypack::StringRef extractKeyPart(VPackSlice);
+
+/// @brief extract the _key attribute from a StringRef
+arangodb::velocypack::StringRef extractKeyPart(velocypack::StringRef);
 
 std::string extractIdString(CollectionNameResolver const*, VPackSlice, VPackSlice const&);
 
@@ -157,4 +159,3 @@ class BuilderLeaser {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

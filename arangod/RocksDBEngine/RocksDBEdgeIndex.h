@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H 1
+#pragma once
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -100,7 +99,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
                                                       arangodb::aql::AstNode const* node,
                                                       arangodb::aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts) override;
+                                                      IndexIteratorOptions const& opts,
+                                                      ReadOwnWrites readOwnWrites) override;
 
   arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
                                               arangodb::aql::Variable const* reference) const override;
@@ -114,7 +114,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& /*options*/) override;
+                OperationOptions const& /*options*/,
+                bool /*performChecks*/) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
@@ -124,7 +125,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   /// @brief create the iterator
   std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*,
                                                   arangodb::aql::AstNode const*,
-                                                  arangodb::aql::AstNode const*, bool) const;
+                                                  arangodb::aql::AstNode const*, bool, ReadOwnWrites) const;
 
   std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*,
                                                   arangodb::aql::AstNode const*,
@@ -161,4 +162,3 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 };
 }  // namespace arangodb
 
-#endif

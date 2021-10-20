@@ -19,8 +19,8 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGOD_IRESEARCH_ANALYZER_VALUE_TYPE
-#define ARANGOD_IRESEARCH_ANALYZER_VALUE_TYPE 1
+
+#pragma once
 
 #include <utils/attributes.hpp>
 #include <utils/bit_utils.hpp>
@@ -81,4 +81,3 @@ using AnalyzerValueTypeEnumDeserializer = arangodb::velocypack::deserializer::en
 
 } // namespace iresearch
 } // namespace arangodb
-#endif // ARANGOD_IRESEARCH_ANALYZER_VALUE_TYPE

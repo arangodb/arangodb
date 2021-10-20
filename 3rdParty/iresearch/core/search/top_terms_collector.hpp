@@ -61,7 +61,6 @@ struct top_term {
   key_type key;
 };
 
-// FIXME use C++14 with transparent comparison???
 template<typename T>
 struct top_term_comparer {
   bool operator()(const top_term<T>& lhs,

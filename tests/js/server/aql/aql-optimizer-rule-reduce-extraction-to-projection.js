@@ -274,8 +274,49 @@ function optimizerRuleTestSuite () {
 
         assertEqual(2, found);
       });
-    }
-    
+    },
+
+    testBts562 : function () {
+      c.truncate();
+      c.insert({ foo: { attr: 1 }, bar: { attr: 2 } });
+
+      let result = AQL_EXECUTE(`FOR doc IN @@cn RETURN [ doc.foo.attr, doc.bar.attr ]`, { "@cn" : cn }).json; 
+      assertEqual(1, result.length);
+      assertEqual([ 1, 2 ], result[0]);
+
+      c.truncate();
+      c.insert({ foo: { attr: 1 }, bar: { attr: 2 }, baz: { attr: 3 } });
+      
+      result = AQL_EXECUTE(`FOR doc IN @@cn RETURN [ doc.foo.attr, doc.bar.attr, doc.baz.attr ]`, { "@cn" : cn }).json; 
+      assertEqual(1, result.length);
+      assertEqual([ 1, 2, 3 ], result[0]);
+
+      c.truncate();
+      c.insert({ result: {} });
+      c.insert({ result: { status: "ok" } });
+
+      result = AQL_EXECUTE(`FOR d IN @@cn COLLECT resultStatus = d.result.status, requestStatus = d.request.status WITH COUNT INTO count SORT resultStatus RETURN { resultStatus, requestStatus, count }`, { "@cn": cn }).json;
+
+      assertEqual(2, result.length);
+      assertEqual({ resultStatus: null, requestStatus: null, count: 1 }, result[0]);
+      assertEqual({ resultStatus: "ok", requestStatus: null, count: 1 }, result[1]);
+
+      result = AQL_EXECUTE(`FOR d IN @@cn COLLECT resultStatus = d.result.status, requestOther = d.request.other WITH COUNT INTO count SORT resultStatus RETURN { resultStatus, requestOther, count }`, { "@cn" : cn }).json;
+      assertEqual(2, result.length);
+      assertEqual({ resultStatus: null, requestOther: null, count: 1 }, result[0]);
+      assertEqual({ resultStatus: "ok", requestOther: null, count: 1 }, result[1]);
+
+      c.truncate();
+      c.insert({ result: { status: "ok" }, request: { status: "ok" } });
+      c.insert({ result: { status: "ok" }, request: { status: "blarg" } });
+
+      result = AQL_EXECUTE(`FOR d IN @@cn COLLECT resultStatus = d.result.status, requestStatus = d.request.status WITH COUNT INTO count SORT requestStatus RETURN { resultStatus, requestStatus, count }`, { "@cn" : cn }).json;
+
+      assertEqual(2, result.length);
+      assertEqual({ resultStatus: "ok", requestStatus: "blarg", count: 1 }, result[0]);
+      assertEqual({ resultStatus: "ok", requestStatus: "ok", count: 1 }, result[1]);
+    },
+
   };
 }
 

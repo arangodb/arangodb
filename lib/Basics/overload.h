@@ -21,9 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-
-#ifndef ARANGODB_BASICS_OVERLOAD_H
-#define ARANGODB_BASICS_OVERLOAD_H 1
+#pragma once
 
 namespace arangodb {
 
@@ -46,4 +44,3 @@ template<class... Ts> overload(Ts...) -> overload<Ts...>;
   */
 }
 
-#endif // ARANGODB_BASICS_OVERLOAD_H

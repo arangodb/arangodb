@@ -88,7 +88,7 @@ option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing de
 # ARANGODB_RPM_REVISION
 
 set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "9")
+set(ARANGODB_VERSION_MINOR "10")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
@@ -368,7 +368,7 @@ endif()
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
+  "${CMAKE_CURRENT_SOURCE_DIR}/ARANGO-VERSION"
   NEWLINE_STYLE UNIX
 )
 
@@ -978,6 +978,7 @@ if (MSVC)
     add_definitions(/Z7)
   endif ()
 
+  add_definitions(/bigobj)
 else () # NOT MSVC
   set(EXTRA_C_FLAGS "")
   set(EXTRA_CXX_FLAGS "")
@@ -986,6 +987,9 @@ else () # NOT MSVC
     message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
     set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
+    endif()
   elseif (CMAKE_COMPILER_IS_CLANG)
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
@@ -1047,6 +1051,13 @@ else () # NOT MSVC
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
+
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      # On Darwin -fstandalone-debug is enabled by default, so we don't need
+      # to add it for AppleClang.
+      set(CMAKE_CXX_FLAGS_DEBUG             "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
+      set(CMAKE_CXX_FLAGS_RELWITHDEBINFO    "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fstandalone-debug")
+  endif ()
 
 endif ()
 
@@ -1238,7 +1249,7 @@ include_directories(${ROCKSDB_INCLUDE_DIR})
 
 set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
-add_dependencies(rocksdb snappy-static)
+add_dependencies(rocksdb snappy)
 
 if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc_build)

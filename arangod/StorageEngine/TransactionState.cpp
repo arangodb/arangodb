@@ -51,7 +51,6 @@ using namespace arangodb;
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
-      _lastWrittenOperationTick(0),
       _type(AccessMode::Type::READ),
       _status(transaction::Status::CREATED),
       _arena(),
@@ -161,27 +160,44 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
     }
   }
 #endif
-  Result res;
 
-  // upgrade transaction type if required
-  if (_status == transaction::Status::CREATED) {
+  Result res = addCollectionInternal(cid, cname, accessType, lockUsage);
+
+  if (res.ok()) {
+    // upgrade transaction type if required
     if (AccessMode::isWriteOrExclusive(accessType) &&
         !AccessMode::isWriteOrExclusive(_type)) {
-      // if one collection is written to, the whole transaction becomes a
-      // write-y transaction
-      _type = std::max(_type, accessType);
+        // if one collection is written to, the whole transaction becomes a
+        // write-y transaction
+      if (_status == transaction::Status::CREATED) {
+        // this is safe to do before the transaction has started
+        _type = std::max(_type, accessType);
+      } else if (_status == transaction::Status::RUNNING &&
+                 _options.allowImplicitCollectionsForWrite &&
+                 !isReadOnlyTransaction()) {
+        // it is also safe to add another write collection to a write
+        _type = std::max(_type, accessType);
+      } else {
+        // everything else is not safe and must be rejected
+        res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+                  std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
+                  ": " + cname + " [" + AccessMode::typeString(accessType) + "]");
+      }
     }
   }
+
+  return res;
+}
+
+Result TransactionState::addCollectionInternal(DataSourceId cid, std::string const& cname,
+                                               AccessMode::Type accessType, bool lockUsage) {
+  Result res;
 
   // check if we already got this collection in the _collections vector
   size_t position = 0;
   TransactionCollection* trxColl = findCollection(cid, position);
 
   if (trxColl != nullptr) {
-    static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
-                      AccessMode::Type::READ < AccessMode::Type::WRITE &&
-                      AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
-                  "AccessMode::Type total order fail");
     LOG_TRX("ad6d0", TRACE, this)
         << "updating collection usage " << cid << ": '" << cname << "'";
 
@@ -418,7 +434,7 @@ void TransactionState::resetTransactionId() {
 #endif
 
 /// @brief update the status of a transaction
-void TransactionState::updateStatus(transaction::Status status) {
+void TransactionState::updateStatus(transaction::Status status) noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_status != transaction::Status::CREATED && _status != transaction::Status::RUNNING) {
     LOG_TOPIC("257ea", ERR, Logger::FIXME)
@@ -458,7 +474,7 @@ char const* TransactionState::actorName() const noexcept {
 
 void TransactionState::coordinatorRerollTransactionId() {
   TRI_ASSERT(isCoordinator());
-  TRI_ASSERT(isRunning())
+  TRI_ASSERT(isRunning());
   auto old = _id;
   _id = transaction::Context::makeTransactionId();
   LOG_TOPIC("a565a", DEBUG, Logger::TRANSACTIONS)

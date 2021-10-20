@@ -286,7 +286,7 @@ while (id === null) {
   require("internal").sleep(0.1);
 }
 while (id !== null) {
-  result = arango.PUT_RAW("/_api/cursor/" + encodeURIComponent(id), {});
+  result = arango.POST_RAW("/_api/cursor/" + encodeURIComponent(id), {});
   if (result.code === 410) {
     // killed
     break;

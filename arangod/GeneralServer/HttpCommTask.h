@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H
-#define ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H 1
+#pragma once
 
 #include "GeneralServer/GeneralCommTask.h"
 
@@ -70,6 +69,7 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void checkVSTPrefix();
 
   void processRequest();
+  void doProcessRequest();
 
   // called on IO context thread
   void writeResponse(RequestStatistics::Item stat);
@@ -86,6 +86,7 @@ class HttpCommTask final : public GeneralCommTask<T> {
   std::string _lastHeaderField;
   std::string _lastHeaderValue;
   std::string _origin;  // value of the HTTP origin header the client sent
+  std::string _url;
   std::unique_ptr<HttpRequest> _request;
   std::unique_ptr<basics::StringBuffer> _response;
   bool _lastHeaderWasValue;
@@ -97,4 +98,3 @@ class HttpCommTask final : public GeneralCommTask<T> {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

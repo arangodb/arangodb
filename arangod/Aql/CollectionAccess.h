@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECTIONACCESS_H
-#define ARANGOD_AQL_COLLECTIONACCESS_H
+#pragma once
 
 #include <memory>
 #include <optional>
@@ -95,4 +94,3 @@ class CollectionAccess {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_COLLECTIONACCESS_H

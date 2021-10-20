@@ -30,8 +30,8 @@ node_cmp(const node_t *a, const node_t *b) {
 static int
 node_cmp_magic(const node_t *a, const node_t *b) {
 
-	assert_u32_eq(a->magic, NODE_MAGIC, "Bad magic");
-	assert_u32_eq(b->magic, NODE_MAGIC, "Bad magic");
+	expect_u32_eq(a->magic, NODE_MAGIC, "Bad magic");
+	expect_u32_eq(b->magic, NODE_MAGIC, "Bad magic");
 
 	return node_cmp(a, b);
 }
@@ -74,7 +74,7 @@ heap_print(const heap_t *heap) {
 
 	for (auxelm = phn_next_get(node_t, link, heap->ph_root); auxelm != NULL;
 	    auxelm = phn_next_get(node_t, link, auxelm)) {
-		assert_ptr_eq(phn_next_get(node_t, link, phn_prev_get(node_t,
+		expect_ptr_eq(phn_next_get(node_t, link, phn_prev_get(node_t,
 		    link, auxelm)), auxelm,
 		    "auxelm's prev doesn't link to auxelm");
 		node_print(auxelm, 0);
@@ -90,7 +90,7 @@ node_validate(const node_t *node, const node_t *parent) {
 	node_t *leftmost_child, *sibling;
 
 	if (parent != NULL) {
-		assert_d_ge(node_cmp_magic(node, parent), 0,
+		expect_d_ge(node_cmp_magic(node, parent), 0,
 		    "Child is less than parent");
 	}
 
@@ -98,13 +98,13 @@ node_validate(const node_t *node, const node_t *parent) {
 	if (leftmost_child == NULL) {
 		return nnodes;
 	}
-	assert_ptr_eq((void *)phn_prev_get(node_t, link, leftmost_child),
+	expect_ptr_eq((void *)phn_prev_get(node_t, link, leftmost_child),
 	    (void *)node, "Leftmost child does not link to node");
 	nnodes += node_validate(leftmost_child, node);
 
 	for (sibling = phn_next_get(node_t, link, leftmost_child); sibling !=
 	    NULL; sibling = phn_next_get(node_t, link, sibling)) {
-		assert_ptr_eq(phn_next_get(node_t, link, phn_prev_get(node_t,
+		expect_ptr_eq(phn_next_get(node_t, link, phn_prev_get(node_t,
 		    link, sibling)), sibling,
 		    "sibling's prev doesn't link to sibling");
 		nnodes += node_validate(sibling, node);
@@ -125,7 +125,7 @@ heap_validate(const heap_t *heap) {
 
 	for (auxelm = phn_next_get(node_t, link, heap->ph_root); auxelm != NULL;
 	    auxelm = phn_next_get(node_t, link, auxelm)) {
-		assert_ptr_eq(phn_next_get(node_t, link, phn_prev_get(node_t,
+		expect_ptr_eq(phn_next_get(node_t, link, phn_prev_get(node_t,
 		    link, auxelm)), auxelm,
 		    "auxelm's prev doesn't link to auxelm");
 		nnodes += node_validate(auxelm, NULL);
@@ -142,9 +142,9 @@ TEST_BEGIN(test_ph_empty) {
 	heap_t heap;
 
 	heap_new(&heap);
-	assert_true(heap_empty(&heap), "Heap should be empty");
-	assert_ptr_null(heap_first(&heap), "Unexpected node");
-	assert_ptr_null(heap_any(&heap), "Unexpected node");
+	expect_true(heap_empty(&heap), "Heap should be empty");
+	expect_ptr_null(heap_first(&heap), "Unexpected node");
+	expect_ptr_null(heap_any(&heap), "Unexpected node");
 }
 TEST_END
 
@@ -203,7 +203,7 @@ TEST_BEGIN(test_ph_random) {
 		for (j = 1; j <= NNODES; j++) {
 			/* Initialize heap and nodes. */
 			heap_new(&heap);
-			assert_u_eq(heap_validate(&heap), 0,
+			expect_u_eq(heap_validate(&heap), 0,
 			    "Incorrect node count");
 			for (k = 0; k < j; k++) {
 				nodes[k].magic = NODE_MAGIC;
@@ -214,34 +214,34 @@ TEST_BEGIN(test_ph_random) {
 			for (k = 0; k < j; k++) {
 				heap_insert(&heap, &nodes[k]);
 				if (i % 13 == 12) {
-					assert_ptr_not_null(heap_any(&heap),
+					expect_ptr_not_null(heap_any(&heap),
 					    "Heap should not be empty");
 					/* Trigger merging. */
-					assert_ptr_not_null(heap_first(&heap),
+					expect_ptr_not_null(heap_first(&heap),
 					    "Heap should not be empty");
 				}
-				assert_u_eq(heap_validate(&heap), k + 1,
+				expect_u_eq(heap_validate(&heap), k + 1,
 				    "Incorrect node count");
 			}
 
-			assert_false(heap_empty(&heap),
+			expect_false(heap_empty(&heap),
 			    "Heap should not be empty");
 
 			/* Remove nodes. */
 			switch (i % 6) {
 			case 0:
 				for (k = 0; k < j; k++) {
-					assert_u_eq(heap_validate(&heap), j - k,
+					expect_u_eq(heap_validate(&heap), j - k,
 					    "Incorrect node count");
 					node_remove(&heap, &nodes[k]);
-					assert_u_eq(heap_validate(&heap), j - k
+					expect_u_eq(heap_validate(&heap), j - k
 					    - 1, "Incorrect node count");
 				}
 				break;
 			case 1:
 				for (k = j; k > 0; k--) {
 					node_remove(&heap, &nodes[k-1]);
-					assert_u_eq(heap_validate(&heap), k - 1,
+					expect_u_eq(heap_validate(&heap), k - 1,
 					    "Incorrect node count");
 				}
 				break;
@@ -249,10 +249,10 @@ TEST_BEGIN(test_ph_random) {
 				node_t *prev = NULL;
 				for (k = 0; k < j; k++) {
 					node_t *node = node_remove_first(&heap);
-					assert_u_eq(heap_validate(&heap), j - k
+					expect_u_eq(heap_validate(&heap), j - k
 					    - 1, "Incorrect node count");
 					if (prev != NULL) {
-						assert_d_ge(node_cmp(node,
+						expect_d_ge(node_cmp(node,
 						    prev), 0,
 						    "Bad removal order");
 					}
@@ -263,15 +263,15 @@ TEST_BEGIN(test_ph_random) {
 				node_t *prev = NULL;
 				for (k = 0; k < j; k++) {
 					node_t *node = heap_first(&heap);
-					assert_u_eq(heap_validate(&heap), j - k,
+					expect_u_eq(heap_validate(&heap), j - k,
 					    "Incorrect node count");
 					if (prev != NULL) {
-						assert_d_ge(node_cmp(node,
+						expect_d_ge(node_cmp(node,
 						    prev), 0,
 						    "Bad removal order");
 					}
 					node_remove(&heap, node);
-					assert_u_eq(heap_validate(&heap), j - k
+					expect_u_eq(heap_validate(&heap), j - k
 					    - 1, "Incorrect node count");
 					prev = node;
 				}
@@ -279,17 +279,17 @@ TEST_BEGIN(test_ph_random) {
 			} case 4: {
 				for (k = 0; k < j; k++) {
 					node_remove_any(&heap);
-					assert_u_eq(heap_validate(&heap), j - k
+					expect_u_eq(heap_validate(&heap), j - k
 					    - 1, "Incorrect node count");
 				}
 				break;
 			} case 5: {
 				for (k = 0; k < j; k++) {
 					node_t *node = heap_any(&heap);
-					assert_u_eq(heap_validate(&heap), j - k,
+					expect_u_eq(heap_validate(&heap), j - k,
 					    "Incorrect node count");
 					node_remove(&heap, node);
-					assert_u_eq(heap_validate(&heap), j - k
+					expect_u_eq(heap_validate(&heap), j - k
 					    - 1, "Incorrect node count");
 				}
 				break;
@@ -297,11 +297,11 @@ TEST_BEGIN(test_ph_random) {
 				not_reached();
 			}
 
-			assert_ptr_null(heap_first(&heap),
+			expect_ptr_null(heap_first(&heap),
 			    "Heap should be empty");
-			assert_ptr_null(heap_any(&heap),
+			expect_ptr_null(heap_any(&heap),
 			    "Heap should be empty");
-			assert_true(heap_empty(&heap), "Heap should be empty");
+			expect_true(heap_empty(&heap), "Heap should be empty");
 		}
 	}
 	fini_gen_rand(sfmt);

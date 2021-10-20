@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_THREADS__WIN32_H
-#define ARANGODB_BASICS_THREADS__WIN32_H 1
+#pragma once
 
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
@@ -47,4 +46,3 @@
 
 #define TRI_thread_t HANDLE
 
-#endif

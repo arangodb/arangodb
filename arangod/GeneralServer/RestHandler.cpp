@@ -94,7 +94,7 @@ uint64_t RestHandler::messageId() const {
 
   return messageId;
 }
-  
+
 RequestLane RestHandler::determineRequestLane() {
   if (_lane == RequestLane::UNDEFINED) {
     bool found;
@@ -130,9 +130,9 @@ void RestHandler::trackTaskEnd() noexcept {
   if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
-    
+
     // update the time the last low priority item spent waiting in the queue.
-    
+
     // the queueing time is in ms
     uint64_t queueTimeMs = static_cast<uint64_t>(_statistics.ELAPSED_WHILE_QUEUED() * 1000.0);
     SchedulerFeature::SCHEDULER->setLastLowPriorityDequeueTime(queueTimeMs);
@@ -194,7 +194,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   std::map<std::string, std::string> headers{_request->headers().begin(),
                                              _request->headers().end()};
 
-  // always remove HTTP "Connection" header, so that we don't relay 
+  // always remove HTTP "Connection" header, so that we don't relay
   // "Connection: Close" or "Connection: Keep-Alive" or such
   headers.erase(StaticStrings::Connection);
 
@@ -218,7 +218,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(900);
-  
+
   if (useVst && _request->contentType() == rest::ContentType::UNSET) {
     // request is using VST, but doesn't have a Content-Type header set.
     // it is likely VelocyPack content, so let's assume that here.
@@ -230,23 +230,32 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   }
 
   options.acceptType = rest::contentTypeToString(_request->contentTypeResponse());
-    
+
   for (auto const& i : _request->values()) {
     options.param(i.first, i.second);
   }
-  
+
   auto requestType =
       fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
 
   VPackStringRef resPayload = _request->rawPayload();
   VPackBuffer<uint8_t> payload(resPayload.size());
   payload.append(resPayload.data(), resPayload.size());
-  
+
   nf.trackForwardedRequest();
- 
-  auto future = network::sendRequest(pool, "server:" + serverId, requestType,
-                                     _request->requestPath(),
-                                     std::move(payload), options, std::move(headers));
+
+  // Should the coordinator be gone by now, we'll respond with 404.
+  // There is no point forwarding requests. This affects transactions, cursors, ...
+  if (server().getFeature<ClusterFeature>().clusterInfo().getServerEndpoint(serverId).empty()) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_CLUSTER_SERVER_UNKNOWN,
+                  std::string("cluster server ") + serverId + " unknown");
+    return Result(TRI_ERROR_CLUSTER_SERVER_UNKNOWN);
+  }
+
+  auto future = network::sendRequestRetry(pool, "server:" + serverId, requestType,
+                                          _request->requestPath(), std::move(payload),
+                                          options, std::move(headers));
   auto cb = [this, serverId, useVst,
              self = shared_from_this()](network::Response&& response) -> Result {
     auto res = network::fuerteToArangoErrorCode(response);
@@ -257,7 +266,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
     resetResponse(static_cast<rest::ResponseCode>(response.statusCode()));
     _response->setContentType(fuerte::v1::to_string(response.response().contentType()));
-    
+
     if (!useVst) {
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
       if (_response == nullptr) {
@@ -268,7 +277,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     } else {
       _response->setPayload(std::move(*response.response().stealPayload()));
     }
-    
+
 
     auto const& resultHeaders = response.response().messageHeader().meta();
     for (auto const& it : resultHeaders) {
@@ -280,7 +289,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       _response->setHeader(it.first, it.second);
     }
     _response->setHeaderNC(StaticStrings::RequestForwardedTo, serverId);
-    
+
     return Result();
   };
   return std::move(future).thenValue(cb);
@@ -378,7 +387,7 @@ void RestHandler::runHandlerStateMachine() {
         shutdownExecute(true); // may not be moved down
 
         _state = HandlerState::DONE;
-        
+
         // compress response if required
         compressResponse();
         // Callback may stealStatistics!

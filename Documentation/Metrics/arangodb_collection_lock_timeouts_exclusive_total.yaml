@@ -17,6 +17,6 @@ description: |
   cannot be acquired within the configured lock timeout.
 troubleshoot: |
   In case this value is considered too high, check if there are AQL queries
-  or transactions that use exclusive locks on collections, and try to reduce them. 
-  Operations using exclusive locks may lock out other queries/transactions temporarily, 
+  or transactions that use exclusive locks on collections, and try to reduce them.
+  Operations using exclusive locks may lock out other queries/transactions temporarily,
   which can lead to other operations running into timeouts waiting for the same locks.

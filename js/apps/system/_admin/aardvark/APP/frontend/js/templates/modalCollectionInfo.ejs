@@ -89,6 +89,17 @@ if (!figuresData.figures) {
         </th>
       </tr>
     <% } %>
+
+    <% if (figuresData.hasOwnProperty('syncByRevision')) { %>
+      <tr>
+        <th class="collectionInfoTh2">Uses revision trees:</th>
+        <th class="collectionInfoTh">
+          <div class="modal-text"><%= figuresData.syncByRevision %></div>
+        </th>
+        <th class="collectionInfoTh">
+        </th>
+      </tr>
+    <% } %>
   </table>
 
   <% if (figuresData.hasOwnProperty('figures')) { %>
@@ -107,7 +118,7 @@ if (!figuresData.figures) {
           <th class="tooltipInfoTh">
             <div>
                 <span class="modalTooltips arangoicon icon_arangodb_info"
-                      title="The approximate cumulative size of all documents in this collection (on the leader). This is an estimate provided by the storage engine and may not accurate.">
+                      title="The approximate cumulative size of all documents in this collection (on the leader). This is an estimate provided by the storage engine and may not be accurate.">
                 </span>
             </div>
           </th>
@@ -136,7 +147,7 @@ if (!figuresData.figures) {
               <th class="tooltipInfoTh">
                 <div>
                   <span class="modalTooltips arangoicon icon_arangodb_info"
-                        title="The approximate cumulative size of all indexes entries in this collection (on the leader). This is an estimate provided by the storage engine and may not accurate.">
+                        title="The approximate cumulative size of all indexes entries in this collection (on the leader). This is an estimate provided by the storage engine and may not be accurate.">
                   </span>
                 </div>
               </th>
@@ -292,7 +303,7 @@ if (!figuresData.figures) {
                   <span><%= shardName %></span>
                 </td>
                 <td>
-                  <span><%= count %>
+                  <span><%= count %></span>
                 </td>
                 <td>
                   <%

@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGOD_NETWORK_UTILS_H
-#define ARANGOD_NETWORK_UTILS_H 1
 
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
@@ -93,5 +91,3 @@ void addSourceHeader(consensus::Agent* agent, fuerte::Request& req);
 
 }  // namespace network
 }  // namespace arangodb
-
-#endif

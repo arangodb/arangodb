@@ -38,7 +38,7 @@ AttributeTranslator::~AttributeTranslator() {}
 
 void AttributeTranslator::add(std::string const& key, uint64_t id) {
   if (_builder == nullptr) {
-    _builder.reset(new Builder());
+    _builder = std::make_unique<Builder>();
     _builder->add(Value(ValueType::Object));
   }
 

@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TRAVERSAL_CONDITION_FINDER_H
-#define ARANGOD_AQL_TRAVERSAL_CONDITION_FINDER_H 1
+#pragma once
 
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
@@ -55,4 +54,3 @@ class TraversalConditionFinder final
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

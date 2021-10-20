@@ -24,8 +24,8 @@
 #include "FileDescriptorsFeature.h"
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Basics/exitcodes.h"
 #include "Basics/application-exit.h"
+#include "Basics/exitcodes.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -36,10 +36,11 @@
 #include <sys/resource.h>
 #endif
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
-#include <string>
 #include <sstream>
+#include <string>
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -53,7 +54,7 @@ struct FileDescriptors {
 
   rlim_t hard;
   rlim_t soft;
-  
+
   static FileDescriptors load() {
     struct rlimit rlim;
     int res = getrlimit(RLIMIT_NOFILE, &rlim);
@@ -89,7 +90,7 @@ struct FileDescriptors {
     return 8192;
 #else
     // on Linux, we will also use 8192 for now. this should be low enough so that it
-    // doesn't cause too much trouble when upgrading. however, this is not a high 
+    // doesn't cause too much trouble when upgrading. however, this is not a high
     // enough value to operate with larger amounts of data! it is a MINIMUM!
     return 8192;
 #endif
@@ -116,8 +117,6 @@ FileDescriptorsFeature::FileDescriptorsFeature(application_features::Application
 }
 
 void FileDescriptorsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-
   options->addOption("--server.descriptors-minimum",
                      "minimum number of file descriptors needed to start (0 = no minimum)",
                      new UInt64Parameter(&_descriptorsMinimum),
@@ -193,33 +192,40 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
         TRI_ASSERT(current.hard >= recommended);
         recommended = current.hard;
       }
-    
+
+#ifdef __APPLE__
+      // For MacOs there is an upper bound on open file-handles
+      // in addition to the user defined hard limit.
+      // The bad news is that the user-defined hard limit can be larger
+      // than the upper bound, in this case the below setting of soft limit
+      // to hard limit will always fail. With the below line we only set
+      // to at most the upper bound given by the System (OPEN_MAX).
+      recommended = std::min((rlim_t)OPEN_MAX, recommended);
+#endif
       if (current.soft < recommended) {
         LOG_TOPIC("2940e", DEBUG, arangodb::Logger::SYSCALL)
-          << "soft limit " << current.soft << " is too small, trying to raise";
+            << "soft limit " << current.soft << " is too small, trying to raise";
 
         FileDescriptors copy = current;
         copy.soft = recommended;
         if (copy.store() != 0) {
           LOG_TOPIC("ba733", WARN, arangodb::Logger::SYSCALL)
-            << "cannot raise the file descriptors limit to " << recommended << ": "
-            << strerror(errno);
+              << "cannot raise the file descriptors limit to " << recommended
+              << ": " << strerror(errno);
         }
       }
     }
   };
 
-  // first try to raise file descriptors to at least the recommended minimum value.
-  // as the recommended minimum value is pretty low, there is a high chance that this
-  // actually succeeds and does not violate any hard limits
-  doAdjust(std::max<rlim_t>(
-    static_cast<rlim_t>(_descriptorsMinimum),
-    FileDescriptors::recommendedMinimum()
-  ));
+  // first try to raise file descriptors to at least the recommended minimum
+  // value. as the recommended minimum value is pretty low, there is a high
+  // chance that this actually succeeds and does not violate any hard limits
+  doAdjust(std::max<rlim_t>(static_cast<rlim_t>(_descriptorsMinimum),
+                            FileDescriptors::recommendedMinimum()));
 
-  // still, we are not satisfied and will now try to raise the file descriptors limit
-  // even further. if that fails, then it is at least likely that the small raise in
-  // step 1 has worked.
+  // still, we are not satisfied and will now try to raise the file descriptors
+  // limit even further. if that fails, then it is at least likely that the
+  // small raise in step 1 has worked.
   doAdjust(65535);
 }
 

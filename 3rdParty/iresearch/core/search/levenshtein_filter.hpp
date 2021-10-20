@@ -44,6 +44,12 @@ struct IRESEARCH_API by_edit_distance_filter_options {
   bstring term;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief match this number of characters from the beginning of the
+  ///        target regardless of edit distance
+  //////////////////////////////////////////////////////////////////////////////
+  bstring prefix;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @returns current parametric description provider, nullptr - use default
   /// @note since creation of parametric description is expensive operation,
   ///       especially for distances > 4, expert users may want to set its own
@@ -68,9 +74,9 @@ struct IRESEARCH_API by_edit_distance_filter_options {
   }
 
   size_t hash() const noexcept {
-    return hash_combine(std::hash<bool>()(with_transpositions),
-                        hash_combine(std::hash<bstring>()(term),
-                                     std::hash<byte_type>()(max_distance)));
+    const auto hash0 = hash_combine(std::hash<bool>()(with_transpositions), std::hash<bstring>()(term));
+    const auto hash1 = hash_combine(std::hash<byte_type>()(max_distance), std::hash<bstring>()(prefix));
+    return hash_combine(hash0, hash1); 
   }
 };
 
@@ -104,7 +110,7 @@ struct IRESEARCH_API by_edit_distance_options : by_edit_distance_filter_options 
 class IRESEARCH_API by_edit_distance final
     : public filter_base<by_edit_distance_options> {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
 
   static prepared::ptr prepare(
     const index_reader& index,
@@ -115,7 +121,8 @@ class IRESEARCH_API by_edit_distance final
     size_t terms_limit,
     byte_type max_distance,
     options_type::pdp_f provider,
-    bool with_transpositions);
+    bool with_transpositions,
+    const bytes_ref& prefix);
 
   static field_visitor visitor(
     const options_type::filter_options& options);
@@ -130,7 +137,7 @@ class IRESEARCH_API by_edit_distance final
     return prepare(index, order, this->boost()*boost,
                    field(), options().term, options().max_terms,
                    options().max_distance, options().provider,
-                   options().with_transpositions);
+                   options().with_transpositions, options().prefix);
   }
 }; // by_edit_distance
 

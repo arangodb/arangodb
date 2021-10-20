@@ -255,6 +255,11 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
           }
         } else if (name == "defaultWeight" && value->isNumericValue()) {
           options->defaultWeight = value->getDoubleValue();
+          if (options->defaultWeight < 0.) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,
+                "negative default weight not allowed");
+          }
         } else if (name == "weightAttribute" && value->isStringValue()) {
           options->weightAttribute = value->getString();
         } else if (name == "parallelism") {
@@ -265,6 +270,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
           }
         } else if (name == StaticStrings::GraphRefactorFlag && value->isBoolValue()) {
           options->setRefactor(value);
+        } else {
+          ExecutionPlan::invalidOptionAttribute(ast->query(), "TRAVERSAL", name.data(), name.size());
         }
       }
     }
@@ -310,12 +317,14 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(Ast* ast, AstNode 
         TRI_ASSERT(value->isConstant());
 
         if (name == "weightAttribute" && value->isStringValue()) {
-          options->weightAttribute =
-              std::string(value->getStringValue(), value->getStringLength());
+          options->setWeightAttribute(
+              std::string(value->getStringValue(), value->getStringLength()));
         } else if (name == "defaultWeight" && value->isNumericValue()) {
-          options->defaultWeight = value->getDoubleValue();
+          options->setDefaultWeight(value->getDoubleValue());
         } else if (name == StaticStrings::GraphRefactorFlag) {
           options->setRefactor(value->getBoolValue());
+        } else {
+          ExecutionPlan::invalidOptionAttribute(ast->query(), "SHORTEST_PATH", name.data(), name.size());
         }
       }
     }
@@ -411,6 +420,20 @@ ExecutionPlan::~ExecutionPlan() {
   return plan;
 }
 
+void ExecutionPlan::invalidOptionAttribute(QueryContext& query,
+                                           char const* operationName, 
+                                           char const* name, size_t length) {
+  std::string msg("usage of unknown OPTIONS attribute '");
+  msg.append(name, length);
+  msg.append("' in ");
+  msg.append(operationName);
+  msg.append(" statement");
+
+  // if warnings are converted into errors, adding this warning will
+  // abort the query
+  query.warnings().registerWarning(TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE, msg.c_str());
+}
+
 bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
   TRI_ASSERT(_varUsageComputed);
   return _typeCounts[type] > 0;
@@ -494,10 +517,12 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose,
   if (explainRegisterPlan == ExplainRegisterPlan::Yes) {
     flags |= ExecutionNode::SERIALIZE_REGISTER_INFORMATION;
   }
-  // keeps top level of built object open
-  _root->toVelocyPack(builder, flags, true);
+  builder.openObject();
+  builder.add(VPackValue("nodes"));
 
-  TRI_ASSERT(!builder.isClosed());
+  _root->allToVelocyPack(builder, flags);
+
+  TRI_ASSERT(builder.isOpenObject());
 
   // set up rules
   builder.add(VPackValue("rules"));
@@ -824,7 +849,9 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
 }
 
 /// @brief create modification options from an AST node
-ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node) {
+ModificationOptions ExecutionPlan::parseModificationOptions(QueryContext& query,
+                                                            char const* operationName, AstNode const* node,
+                                                            bool addWarnings) {
   ModificationOptions options;
 
   // parse the modification options we got
@@ -848,10 +875,10 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
           options.keepNull = value->isTrue();
         } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
-        } else if (name == StaticStrings::Overwrite && value->isTrue()) {
+        } else if (name == StaticStrings::Overwrite) {
           // legacy: overwrite is set, superseded by overwriteMode
           // default behavior if only "overwrite" is specified
-          if (!options.isOverwriteModeSet()) {
+          if (!options.isOverwriteModeSet() && value->isTrue()) {
             options.overwriteMode = OperationOptions::OverwriteMode::Replace;
           }
         } else if (name == StaticStrings::OverwriteMode && value->isStringValue()) {
@@ -867,6 +894,10 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
           options.exclusive = value->isTrue();
         } else if (name == "ignoreErrors") {
           options.ignoreErrors = value->isTrue();
+        } else {
+          if (addWarnings) {
+            invalidOptionAttribute(query, operationName, name.data(), name.size());
+          }
         }
       }
     }
@@ -876,41 +907,8 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
 }
 
 /// @brief create modification options from an AST node
-ModificationOptions ExecutionPlan::createModificationOptions(AstNode const* node) {
-  ModificationOptions options = parseModificationOptions(node);
-
-  // this means a data-modification query must first read the entire input data
-  // before starting with the modifications
-  // this is safe in all cases
-  // the flag can be set to false later to execute read and write operations in
-  // lockstep
-  options.readCompleteInput = true;
-
-  if (!_ast->functionsMayAccessDocuments()) {
-    // no functions in the query can access document data...
-    bool isReadWrite = false;
-
-    if (_ast->containsTraversal()) {
-      // its unclear which collections the traversal will access
-      isReadWrite = true;
-    } else {
-      _ast->query().collections().visit([&isReadWrite](std::string const&, aql::Collection& collection) {
-        if (collection.isReadWrite()) {
-          // stop iterating
-          isReadWrite = true;
-          return false;
-        }
-        return true;
-      });
-    }
-
-    if (!isReadWrite) {
-      // no collection is used in both read and write mode
-      // this means the query's write operation can use read & write in lockstep
-      options.readCompleteInput = false;
-    }
-  }
-
+ModificationOptions ExecutionPlan::createModificationOptions(char const* operationName, AstNode const* node) {
+  ModificationOptions options = parseModificationOptions(_ast->query(), operationName, node, /*addWarnings*/ true);
   return options;
 }
 
@@ -926,12 +924,19 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
+        bool handled = false;
         auto const name = member->getStringRef();
         if (name == "method") {
           auto value = member->getMember(0);
           if (value->isStringValue()) {
             options.method = CollectOptions::methodFromString(value->getString());
+            if (options.method != CollectOptions::CollectMethod::UNDEFINED) {
+              handled = true;
+            }
           }
+        }
+        if (!handled) {
+          invalidOptionAttribute(_ast->query(), "COLLECT", name.data(), name.size());
         }
       }
     }
@@ -1000,7 +1005,7 @@ ExecutionNode* ExecutionPlan::addDependency(ExecutionNode* previous, ExecutionNo
   }
 }
 
-/// @brief create an execution plan element from an AST FOR (non-view) node
+/// @brief create an execution plan element from an AST FOR node
 ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR);
   TRI_ASSERT(node->numMembers() == 3);
@@ -1008,7 +1013,6 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
   auto variable = node->getMember(0);
   auto expression = node->getMember(1);
   auto options = node->getMember(2);
-  IndexHint hint(options);
 
   // fetch 1st operand (out variable name)
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -1028,6 +1032,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "no collection for EnumerateCollection");
     }
+    IndexHint hint(_ast->query(), options);
     en = registerNode(new EnumerateCollectionNode(this, nextId(), collection, v, false, hint));
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view
@@ -1677,7 +1682,7 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous, AstNode co
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
   TRI_ASSERT(node->numMembers() == 4);
 
-  auto options = createModificationOptions(node->getMember(0));
+  auto options = createModificationOptions("REMOVE", node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
@@ -1719,7 +1724,7 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous, AstNode co
   TRI_ASSERT(node->numMembers() > 3);
   TRI_ASSERT(node->numMembers() < 6);
 
-  auto options = createModificationOptions(node->getMember(0));
+  auto options = createModificationOptions("INSERT", node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
@@ -1768,7 +1773,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous, AstNode co
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
   TRI_ASSERT(node->numMembers() == 6);
 
-  auto options = createModificationOptions(node->getMember(0));
+  auto options = createModificationOptions("UPDATE", node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
@@ -1832,7 +1837,7 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous, AstNode c
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
   TRI_ASSERT(node->numMembers() == 6);
 
-  auto options = createModificationOptions(node->getMember(0));
+  auto options = createModificationOptions("REPLACE", node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
@@ -1896,7 +1901,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous, AstNode co
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPSERT);
   TRI_ASSERT(node->numMembers() == 7);
 
-  auto options = createModificationOptions(node->getMember(0));
+  auto options = createModificationOptions("UPSERT", node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
@@ -2140,6 +2145,13 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 
     if (en == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "type not handled");
+    }
+    
+    if (_ids.size() > maxPlanNodes) {
+      // maximum number of execution nodes reached
+      // we have to limit this to prevent super-long runtimes for query
+      // optimization and execution
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_TOO_MUCH_NESTING);
     }
   }
 

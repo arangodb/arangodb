@@ -77,6 +77,7 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
   me->_lastHeaderField.clear();
   me->_lastHeaderValue.clear();
   me->_origin.clear();
+  me->_url.clear();
   me->_request = std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ 1,
                                                me->_allowMethodOverride);
   me->_response.reset();
@@ -93,16 +94,15 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
 template <SocketType T>
 int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  me->_request->parseUrl(at, len);
   me->_request->setRequestType(llhttpToRequestType(p));
   if (me->_request->requestType() == RequestType::ILLEGAL) {
     me->sendSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED,
                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
-
   me->statistics(1UL).SET_REQUEST_TYPE(me->_request->requestType());
 
+  me->_url.append(at, len);
   return HPE_OK;
 }
 
@@ -146,16 +146,16 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
                               std::move(me->_lastHeaderValue));
   }
 
-  if ((p->http_major != 1 && p->http_minor != 0) &&
-      (p->http_major != 1 && p->http_minor != 1)) {
+  if ((p->http_major != 1 || p->http_minor != 0) &&
+      (p->http_major != 1 || p->http_minor != 1)) {
     me->sendSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_USER;
+    return HPE_OK;
   }
   if (p->content_length > GeneralCommTask<T>::MaximalBodySize) {
     me->sendSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_USER;
+    return HPE_OK;
   }
   me->_shouldKeepAlive = llhttp_should_keep_alive(p);
 
@@ -193,6 +193,7 @@ int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) {
 template <SocketType T>
 int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
+  me->_request->parseUrl(me->_url.data(), me->_url.size());
 
   me->statistics(1UL).SET_READ_END();
   me->_messageDone = true;
@@ -245,15 +246,28 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     size_t nparsed = 0;
     for (auto const& buffer : this->_protocol->buffer.data()) {
       const char* data = reinterpret_cast<const char*>(buffer.data());
+      const char* end = data + buffer.size();
+      do {
+        size_t datasize = end - data;
 
-      err = llhttp_execute(&_parser, data, buffer.size());
-      if (err != HPE_OK) {
-        ptrdiff_t diff = llhttp_get_error_pos(&_parser) - data;
-        TRI_ASSERT(diff >= 0);
-        nparsed += static_cast<size_t>(diff);
-        break;
-      }
-      nparsed += buffer.size();
+        TRI_IF_FAILURE("HttpCommTask<T>::readCallback_in_small_chunks") {
+          // we had an issue that URLs were cut off because the url data was handed
+          // in in multiple buffers.
+          // To cover this case, we simulate that data fed to the parser in small chunks.
+          constexpr size_t chunksize = 5;
+          datasize = std::min<size_t>(datasize, chunksize);
+        }
+        
+        err = llhttp_execute(&_parser, data, datasize);
+        if (err != HPE_OK) {
+          ptrdiff_t diff = llhttp_get_error_pos(&_parser) - data;
+          TRI_ASSERT(diff >= 0);
+          nparsed += static_cast<size_t>(diff);
+          break;
+        }
+        nparsed += datasize;
+        data += datasize;
+      } while (ADB_UNLIKELY(data < end));
     }
 
     TRI_ASSERT(nparsed < std::numeric_limits<size_t>::max());
@@ -389,7 +403,7 @@ static void DTraceHttpCommTaskProcessRequest(size_t) {}
 template <SocketType T>
 std::string HttpCommTask<T>::url() const {
   if (_request != nullptr) {
-    return std::string((_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())) +
+    return std::string((_request->databaseName().empty() ? "" : "/_db/" + StringUtils::urlEncode(_request->databaseName()))) +
       (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath());
   }
   return "";
@@ -400,6 +414,24 @@ void HttpCommTask<T>::processRequest() {
   DTraceHttpCommTaskProcessRequest((size_t)this);
 
   TRI_ASSERT(_request);
+  auto msgId = _request->messageId();
+  auto respContentType = _request->contentTypeResponse();
+  try {
+    doProcessRequest();
+  } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC("1e6f8", WARN, Logger::REQUESTS) << "request failed with error " << ex.code()
+      << " " << ex.message();
+    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()), respContentType,
+                            msgId, ex.code(), ex.message());
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("1fbd2", WARN, Logger::REQUESTS) << "request failed with error " << ex.what();
+    this->sendErrorResponse(ResponseCode::SERVER_ERROR, respContentType,
+                            msgId, ErrorCode(TRI_ERROR_FAILED), ex.what());
+  }
+}
+
+template <SocketType T>
+void HttpCommTask<T>::doProcessRequest() {
   this->_protocol->timer.cancel();
   if (this->stopped()) {
     return;  // we have to ignore this request because the connection has already been closed
@@ -432,6 +464,7 @@ void HttpCommTask<T>::processRequest() {
         << HttpRequest::translateMethod(_request->requestType()) << "\",\"" << url() << "\"";
 
     VPackStringRef body = _request->rawPayload();
+    this->_generalServerFeature.countHttp1Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
       LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
@@ -446,7 +479,6 @@ void HttpCommTask<T>::processRequest() {
   // OPTIONS requests currently go unauthenticated
   if (_request->requestType() == rest::RequestType::OPTIONS) {
     this->processCorsOptions(std::move(_request), _origin);
-
     return;
   }
 

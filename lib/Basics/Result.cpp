@@ -150,7 +150,7 @@ auto Result::errorMessage() && noexcept -> std::string {
   }
 }
 
-auto operator<<(std::ostream& out, arangodb::Result const& result) -> std::ostream& {
+auto arangodb::operator<<(std::ostream& out, arangodb::Result const& result) -> std::ostream& {
   VPackBuilder dump;
   {
     VPackObjectBuilder b(&dump);

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_ACCESS_MODE_H
-#define ARANGOD_VOC_BASE_ACCESS_MODE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -100,4 +99,3 @@ struct hash<arangodb::AccessMode::Type> {
   }
 };
 }  // namespace std
-#endif

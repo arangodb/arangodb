@@ -28,8 +28,7 @@
 #include <fst/expanded-fst.h>
 
 #include "shared.hpp"
-#include "store/data_output.hpp"
-#include "store/data_input.hpp"
+#include "store/store_utils.hpp"
 #include "utils/misc.hpp"
 
 namespace fst {
@@ -56,6 +55,8 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   using internal::FstImpl<A>::Properties;
 
   static constexpr const char kTypePrefix[] = "immutable";
+  static constexpr size_t kMaxArcs = 1 + std::numeric_limits<irs::byte_type>::max();
+  static constexpr size_t kMaxStateWeight = std::numeric_limits<size_t>::max() >> 1;
 
   ImmutableFstImpl()
       : narcs_(0),
@@ -125,7 +126,8 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
 };
 
 template<typename Arc>
-std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(irs::data_input& stream) {
+std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(
+    irs::data_input& stream) {
   auto impl = std::make_shared<ImmutableFstImpl<Arc>>();
 
   // read header
@@ -135,9 +137,9 @@ std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(irs::data_inp
 
   const uint64_t props = stream.read_long();
   const size_t total_weight_size = stream.read_long();
-  const StateId start = stream.read_vint();
-  const size_t nstates = stream.read_vlong();
-  const size_t narcs = stream.read_vlong();
+  const StateId nstates = stream.read_int();
+  const StateId start = nstates - stream.read_vint();
+  const size_t narcs = irs::read_zvlong(stream) + nstates;
 
   auto states = std::make_unique<State[]>(nstates);
   auto arcs = std::make_unique<Arc[]>(narcs);
@@ -148,16 +150,24 @@ std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(irs::data_inp
   auto* arc = arcs.get();
   for (auto state = states.get(), end = state + nstates; state != end; ++state) {
     state->arcs = arc;
-    state->narcs = stream.read_byte(); // FIXME total number of arcs can be encoded with 1 byte
-    state->weight = { weight, stream.read_vlong() };
 
-    weight += state->weight.Size();
+    size_t weight_size = stream.read_vlong();
+    const bool has_arcs = !irs::shift_unpack_64(weight_size, weight_size);
+    state->weight = { weight, weight_size };
+    weight += weight_size;
 
-    for (auto* end = arc + state->narcs; arc != end; ++arc) {
-      arc->ilabel = stream.read_byte();
-      arc->nextstate = stream.read_vint();
-      arc->weight = { weight, stream.read_vlong() };
-      weight += arc->weight.Size();
+    if (has_arcs) {
+      state->narcs = static_cast<uint32_t>(stream.read_byte()) + 1;
+
+      for (auto* end = arc + state->narcs; arc != end; ++arc) {
+        arc->ilabel = stream.read_byte();
+        arc->nextstate = stream.read_vint();
+        const size_t weight_size = stream.read_vlong();
+        arc->weight = { weight, weight_size };
+        weight += weight_size;
+      }
+    } else {
+      state->narcs = 0;
     }
   }
 
@@ -192,7 +202,9 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
 
   ImmutableFst() : ImplToExpandedFst<Impl>(std::make_shared<Impl>()) {}
 
-  explicit ImmutableFst(const ImmutableFst<A> &fst, bool safe = false)
+  explicit ImmutableFst(
+      const ImmutableFst<A> &fst,
+      [[maybe_unused]] bool safe = false)
     : ImplToExpandedFst<Impl>(fst) {}
 
   // Gets a copy of this ConstFst. See Fst<>::Copy() for further doc.
@@ -249,6 +261,8 @@ bool ImmutableFst<A>::Write(
     const FST& fst,
     irs::data_output& stream,
     const Stats& stats) {
+  static_assert(sizeof(StateId) == sizeof(uint32_t));
+
   auto* impl = fst.GetImpl();
   assert(impl);
 
@@ -260,31 +274,43 @@ bool ImmutableFst<A>::Write(
   stream.write_byte(static_cast<irs::byte_type>(Impl::Version::MIN));
   stream.write_long(properties);
   stream.write_long(stats.total_weight_size);
-  stream.write_vint(fst.Start());
-  stream.write_vlong(stats.num_states);
-  stream.write_vlong(stats.num_arcs);
+  stream.write_int(static_cast<StateId>(stats.num_states));
+  assert(stats.num_states >= static_cast<size_t>(fst.Start()));
+  stream.write_vint(stats.num_states - fst.Start());
+  irs::write_zvlong(stream, stats.num_arcs - stats.num_states);
 
-  // FIXME SIMD???
   // write states & arcs
   for (StateIterator<FST> siter(fst); !siter.Done(); siter.Next()) {
     const StateId s = siter.Value();
-    const size_t narcs = impl->NumArcs(s);
 
-    assert(narcs <= std::numeric_limits<irs::byte_type>::max());
-    stream.write_byte(static_cast<irs::byte_type>(narcs & 0xFF));
+    size_t weight_size;
     if constexpr (detail::has_member_FinalRef_v<typename FST::Impl>) {
-      stream.write_vlong(impl->FinalRef(s).Size());
+      weight_size = impl->FinalRef(s).Size();
     } else {
-      stream.write_vlong(impl->Final(s).Size());
+      weight_size = impl->Final(s).Size();
     }
 
-    for (ArcIterator<FST> aiter(fst, s); !aiter.Done(); aiter.Next()) {
-      const auto& arc = aiter.Value();
+    if (IRS_LIKELY(weight_size <= Impl::kMaxStateWeight)) {
+      const size_t narcs = impl->NumArcs(s);
+      assert(narcs <= Impl::kMaxArcs);
 
-      assert(arc.ilabel <= std::numeric_limits<irs::byte_type>::max());
-      stream.write_byte(static_cast<irs::byte_type>(arc.ilabel & 0xFF));
-      stream.write_vint(arc.nextstate);
-      stream.write_vlong(arc.weight.Size());
+      stream.write_vlong(irs::shift_pack_64(weight_size, !narcs));
+      if (narcs) {
+        // -1 to fit byte_type
+        stream.write_byte(static_cast<irs::byte_type>((narcs - 1) & 0xFF));
+
+        for (ArcIterator<FST> aiter(fst, s); !aiter.Done(); aiter.Next()) {
+          const auto& arc = aiter.Value();
+
+          assert(arc.ilabel <= std::numeric_limits<irs::byte_type>::max());
+          stream.write_byte(static_cast<irs::byte_type>(arc.ilabel & 0xFF));
+          stream.write_vint(arc.nextstate);
+          stream.write_vlong(arc.weight.Size());
+        }
+      }
+    } else {
+      assert(false);
+      return false;
     }
   }
 

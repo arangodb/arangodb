@@ -53,7 +53,7 @@ void Section::printHelp(std::string const& search, size_t tw, size_t ow, bool co
     << (colors ? ShellColorsFeature::SHELL_COLOR_BRIGHT : "")
     << displayName() 
     << (colors ? ShellColorsFeature::SHELL_COLOR_RESET : "")
-    << "' (" << description << ")";
+    << "' (configure " << description << ")";
 
   if (!link.empty()) {
     std::cout << " [";
@@ -78,7 +78,12 @@ void Section::printHelp(std::string const& search, size_t tw, size_t ow, bool co
       std::cout << " # " << (*hl).second << std::endl;
       ++hl;
     }
-
+    
+    if (it.second.hasFlag(arangodb::options::Flags::Obsolete)) {
+      // skip obsolete options
+      continue;
+    }
+    
     // print help for option
     it.second.printHelp(search, tw, ow, colors);
   }

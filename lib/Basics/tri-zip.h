@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TRI__ZIP_H
-#define ARANGODB_BASICS_TRI__ZIP_H 1
+#pragma once
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -51,4 +50,3 @@ ErrorCode TRI_ZipFile(char const* filename, char const* dir,
 ErrorCode TRI_UnzipFile(char const* filename, char const* outPath, bool skipPaths,
                         bool overwrite, char const* password, std::string& errorMessage);
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_APPENDER_SYSLOG_H
-#define ARANGODB_LOGGER_LOG_APPENDER_SYSLOG_H 1
+#pragma once
 
 #include "Logger/LogAppender.h"
 
@@ -48,4 +47,3 @@ class LogAppenderSyslog final : public LogAppender {
 #endif
 }  // namespace arangodb
 
-#endif

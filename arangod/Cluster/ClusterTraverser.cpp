@@ -83,10 +83,14 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
 }
 
 void ClusterTraverser::clear() {
-  traverserCache()->clear();
-
+  _vertexGetter->clear();
   _vertices.clear();
   _verticesToFetch.clear();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(!_vertexGetter->pointsIntoTraverserCache());
+#endif
+  traverserCache()->clear();
 }
 
 bool ClusterTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
@@ -198,7 +202,7 @@ void ClusterTraverser::destroyEngines() {
 
   // TODO: use collectAll to parallelize shutdown ?
   for (auto const& it : *_engines) {
-    auto res = network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
+    auto res = network::sendRequestRetry(pool, "server:" + it.first, fuerte::RestVerb::Delete,
                                     "/_internal/traverser/" +
                                         arangodb::basics::StringUtils::itoa(it.second),
                                     body, options);

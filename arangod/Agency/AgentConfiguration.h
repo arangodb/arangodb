@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_AGENT_CONFIGURATION_H
-#define ARANGOD_CONSENSUS_AGENT_CONFIGURATION_H 1
+#pragma once
 
 #include "Agency/AgencyCommon.h"
 #include "Basics/ReadWriteLock.h"
@@ -258,4 +257,3 @@ struct config_t {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

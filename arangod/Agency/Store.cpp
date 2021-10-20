@@ -416,10 +416,13 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
     Node const* node = &Node::dummyNode();
 
     // Check is guarded in ::apply
-    bool found = _node.has(pv);
-    if (found) {
-      node = &_node(pv);
+    bool found = false;
+    if (auto n = _node.get(pv); n.has_value()) {
+      found = true;
+      node = &n->get();
     }
+
+
 
     if (precond.value.isObject()) {
       for (auto const& op : VPackObjectIterator(precond.value)) {
@@ -665,7 +668,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   std::vector<std::string> query_strs;
   for (auto const& sub_query : VPackArrayIterator(query)) {
     query_strs.emplace_back(sub_query.copyString());
-    showHidden |= (query_strs.back().find("/.") != std::string::npos);
+    showHidden |= (query_strs.back().find('.') == 0 || (query_strs.back().find("/.") != std::string::npos));
   }
 
   // Remove double ranges (inclusion / identity)
@@ -697,7 +700,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
       ret.add(VPackValue(*it));
     }
     if (e == pv.size()) {  // existing
-      _node(pv).toBuilder(ret, showHidden);
+      _node.get(pv).value().get().toBuilder(ret, showHidden);
     } else {
       VPackObjectBuilder guard(&ret);
     }
@@ -712,13 +715,13 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
       std::vector<std::string> pv = split(path);
       size_t e = _node.exists(pv).size();
       if (e == pv.size()) {  // existing
-        copy(pv) = _node(pv);
+        copy.getOrCreate(pv) = _node.get(pv)->get();
       } else {  // non-existing
         for (size_t i = 0; i < pv.size() - e + 1; ++i) {
           pv.pop_back();
         }
-        if (copy(pv).type() == LEAF && copy(pv).slice().isNone()) {
-          copy(pv) = arangodb::velocypack::Slice::emptyObjectSlice();
+        if (copy.getOrCreate(pv).type() == LEAF && copy.getOrCreate(pv).slice().isNone()) {
+          copy.getOrCreate(pv) = arangodb::velocypack::Slice::emptyObjectSlice();
         }
       }
     }
@@ -903,11 +906,11 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
           }
         }
       } else {
-        auto ret = _node.hasAsWritableNode(abskeys.at(i.first)).first.applyOp(value);
+        auto ret = _node.hasAsWritableNode(abskeys.at(i.first)).applyOp(value);
         success &= ret.ok();
       }
     } else {
-      success &= _node.hasAsWritableNode(abskeys.at(i.first)).first.applies(value);
+      success &= _node.hasAsWritableNode(abskeys.at(i.first)).applies(value);
     }
   }
 
@@ -941,7 +944,7 @@ Store& Store::operator=(VPackSlice const& s) {
           auto const& key = entry.key.copyString();
           if (_node.has(key)) {
             auto tp = TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
-            _node(key).timeToLive(tp);
+            _node.getOrCreate(key).timeToLive(tp);
             _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
           }
         }
@@ -987,18 +990,6 @@ std::multimap<TimePoint, std::string> const& Store::timeTable() const {
   return _timeTable;
 }
 
-/// Observer table
-std::unordered_multimap<std::string, std::string>& Store::observerTable() {
-  _storeLock.assertLockedByCurrentThread();
-  return _observerTable;
-}
-
-/// Observer table
-std::unordered_multimap<std::string, std::string> const& Store::observerTable() const {
-  _storeLock.assertLockedByCurrentThread();
-  return _observerTable;
-}
-
 /// Observed table
 std::unordered_multimap<std::string, std::string>& Store::observedTable() {
   _storeLock.assertLockedByCurrentThread();
@@ -1014,13 +1005,19 @@ std::unordered_multimap<std::string, std::string> const& Store::observedTable() 
 /// Get node at path under mutex and store it in velocypack
 void Store::get(std::string const& path, arangodb::velocypack::Builder& b, bool showHidden) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
-  _node.hasAsNode(path).first.toBuilder(b, showHidden);
+  if (auto node = _node.hasAsNode(path); node) {
+    node.value().get().toBuilder(b, showHidden);
+  } else {
+    // Backwards compatibility of a refactoring. Would be better to communicate
+    // this clearly via a return code or so.
+    b.add(arangodb::velocypack::Slice::emptyObjectSlice());
+  }
 }
 
 /// Get node at path under mutex
 Node Store::get(std::string const& path) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
-  return _node.hasAsNode(path).first;
+  return _node.hasAsNode(path).value().get();
 }
 
 /// Get node at path under mutex
@@ -1120,5 +1117,5 @@ std::vector<std::string> Store::split(std::string const& str) {
  *        Caller must enforce locking.
  */
 Node const* Store::nodePtr(std::string const& path) const {
-  return &_node(path);
+  return &_node.get(path).value().get();
 }

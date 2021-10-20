@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_COMM_TASK_H
-#define ARANGOD_GENERAL_SERVER_COMM_TASK_H 1
+#pragma once
 
 #include "Auth/TokenCache.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -166,4 +165,3 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

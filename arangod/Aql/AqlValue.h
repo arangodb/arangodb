@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_VALUE_H
-#define ARANGOD_AQL_AQL_VALUE_H 1
+#pragma once
 
 #include "Aql/AqlValueFwd.h"
 #include "Aql/types.h"
@@ -528,4 +527,3 @@ static_assert(sizeof(AqlValue) == 16, "invalid AqlValue size");
 
 }  // namespace arangodb
 
-#endif

@@ -16,7 +16,12 @@ Main sections:
   - [Linux Core Dumps](#linux-core-dumps)
   - [Windows Core Dumps](#windows-core-dumps)
 - [Unittests](#unittests)
-
+  - [invoking driver tests](#driver-tests) via scripts/unittests
+  - [capturing test HTTP communication](#running-tcpdump--windump-for-the-sut) but
+    [forcing communication to use plain-text JSON](#forcing-downgrade-from-vpack-to-json)
+  - [Evaluating previous testruns](#evaluating-json-test-reports-from-previous-testruns)
+    sorting by setup time etc. 
+- [what to test where and how](tests/README.md)
 ---
 
 ## Source Code
@@ -127,17 +132,39 @@ but do not include `Documentation/Metrics/allMetrics.yaml` in your PR
 
 ## Building
 
+Note: Make sure that your source path does not contain spaces otherwise the build process will likely fail.
+
 ### Building the binaries
 
 ArangoDB uses a build system called [Oskar](https://github.com/arangodb/oskar).
 Please refer to the documentation of Oskar for details.
+
+Optimizations and limit of architecture (list of possible CPU instuctions) are set using this `cmake` option
+in addition to the other options:
+
+```
+-DTARGET_ARCHITECTURE
+```
+
+Oskar uses predefined architecture which is defined in `./VERSIONS` file or `westmere` if it's not defined.
+
+Note: if you use more modern architecture for optimizations or any additional implementation with extended
+set of CPU instructions please notice that result could be different to the default one.
+
+If you would like to disable architecture-specific optimizations or your CPU architecture isn't recognized
+by `cmake` module the following option could be used:
+
+```
+-DUSE_OPTIMIZE_FOR_ARCHITECTURE="OFF"
+```
 
 For building the ArangoDB starter checkout the
 [ArangoDB Starter](https://github.com/arangodb-helper/arangodb).
 
 ### Building the Web Interface
 
-To build Web UI, also known as frontend or *Aardvark*, use CMake in the
+To build Web UI, also known as frontend or *Aardvark*, [Node.js](https://nodejs.org/)
+and [Yarn](https://yarnpkg.com/) need to be installed. You can then use CMake in the
 build directory:
 
     cmake --build . --target frontend
@@ -210,7 +237,7 @@ Depending on the platform, ArangoDB tries to locate the temporary directory:
 ### Local Cluster Startup
 
 The scripts `scripts/startLocalCluster` helps you to quickly fire up a testing
-cluster on your local machine. `scripts/stopLocalCluster` stops it again.
+cluster on your local machine. `scripts/shutdownLocalCluster` stops it again.
 
 `scripts/startLocalCluster [numDBServers numCoordinators [mode]]`
 
@@ -672,7 +699,6 @@ or skipped depending on parameters:
 | `-cluster`      | These tests will only run if clustering is tested (option 'cluster' needs to be true).
 | `-noncluster`   | These tests will only run if no cluster is used (option 'cluster' needs to be false)
 | `-timecritical` | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to *true*.
-| `-disabled`     | These tests are disabled. You may however want to run them by hand.
 | `-spec`         | These tests are run using the mocha framework instead of jsunity.
 | `-nightly`      | These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.
 | `-grey`         | These tests are currently listed as "grey", which means that they are known to be unstable or broken. These tests will not be executed by the testing framework if the option `--skipGrey` is given. If `--onlyGrey` option is given then non-"grey" tests are skipped. See `tests/Greylist.txt` for up-to-date information about greylisted tests. Please help to keep this file up to date.
@@ -691,9 +717,13 @@ To locate the suite(s) associated with a specific test file use:
 
     ./scripts/unittest find --test tests/js/common/shell/shell-aqlfunctions.js
 
-Run all suite(s) associated with a specific test file:
+Run all suite(s) associated with a specific test file in single server mode:
 
     ./scripts/unittest auto --test tests/js/common/shell/shell-aqlfunctions.js
+
+Run all suite(s) associated with a specific test file in cluster mode:
+
+    ./scripts/unittest auto --cluster true --test tests/js/common/shell/shell-aqlfunctions.js
 
 Run all C++ based Google Test (gtest) tests using the `arangodbtests` binary:
 

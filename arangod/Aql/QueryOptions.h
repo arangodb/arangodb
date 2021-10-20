@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_OPTIONS_H
-#define ARANGOD_AQL_QUERY_OPTIONS_H 1
+#pragma once
 
 #include <string>
 #include <unordered_set>
@@ -73,6 +72,7 @@ struct QueryOptions {
   size_t memoryLimit;
   size_t maxNumberOfPlans;
   size_t maxWarningCount;
+  size_t maxNodesPerCallstack;
   double maxRuntime; // query has to execute within the given time or will be killed
   double satelliteSyncWait;
   double ttl; // time until query cursor expires - avoids coursors to
@@ -92,6 +92,10 @@ struct QueryOptions {
   bool skipAudit; // skips audit logging - used only internally
   ExplainRegisterPlan explainRegisters;
 
+  /// @brief shard key attribute value used to push a query down
+  /// to a single server
+  std::string forceOneShardAttributeValue;
+
   /// @brief optimizer rules to turn off/on manually
   std::vector<std::string> optimizerRules;
   
@@ -107,6 +111,7 @@ struct QueryOptions {
   
   static size_t defaultMemoryLimit;
   static size_t defaultMaxNumberOfPlans;
+  static size_t defaultMaxNodesPerCallstack;
   static double defaultMaxRuntime;
   static double defaultTtl;
   static bool defaultFailOnWarning;
@@ -116,4 +121,3 @@ struct QueryOptions {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

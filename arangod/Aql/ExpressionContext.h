@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXPRESSION_CONTEXT_H
-#define ARANGOD_AQL_EXPRESSION_CONTEXT_H 1
+#pragma once
 
 #include "Basics/ErrorCode.h"
 
@@ -75,4 +74,3 @@ class ExpressionContext {
 };
 }  // namespace aql
 }  // namespace arangodb
-#endif

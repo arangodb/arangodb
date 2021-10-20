@@ -331,8 +331,7 @@
 
         stat.url = coord.get('protocol') + '://' +
         coord.get('address') +
-        '/_admin/clusterStatistics?DBserver=' +
-        dbserver.get('name');
+        '/_admin/cluster/statistics?DBserver=' + encodeURIComponent(dbserver.get('name'));
 
         statCollect.add(stat);
       });
@@ -348,8 +347,7 @@
         var stat = new window.Statistics({name: coordinator.id});
 
         stat.url = coordinator.get('protocol') + '://' +
-          coordinator.get('address') +
-          '/_admin/statistics';
+          coordinator.get('address') + '/_admin/statistics';
 
         statCollect.add(stat);
       });

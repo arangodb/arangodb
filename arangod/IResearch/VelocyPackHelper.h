@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VELOCY_PACK_HELPER_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VELOCY_PACK_HELPER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -367,4 +366,3 @@ class Iterator {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

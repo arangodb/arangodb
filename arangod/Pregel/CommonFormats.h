@@ -25,8 +25,7 @@
 // in the
 // cpp files to do template specialization
 
-#ifndef ARANGODB_PREGEL_COMMON_MFORMATS_H
-#define ARANGODB_PREGEL_COMMON_MFORMATS_H 1
+#pragma once
 
 #include <map>
 
@@ -113,6 +112,11 @@ struct SCCValue {
   uint64_t color;
 };
 
+struct WCCValue {
+  uint64_t component;
+  std::unordered_set<PregelID> inboundNeighbors;
+};
+
 template <typename T>
 struct SenderMessage {
   SenderMessage() = default;
@@ -145,4 +149,3 @@ struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

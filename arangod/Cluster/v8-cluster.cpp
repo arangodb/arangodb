@@ -1509,7 +1509,7 @@ static void JS_PropagateSelfHeal(v8::FunctionCallbackInfo<v8::Value> const& args
         // ourselves
         continue;
       }
-      auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Post,
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator, fuerte::RestVerb::Post,
                                     url, buffer, options, headers);
       futures.emplace_back(std::move(f));
     }

@@ -23,25 +23,13 @@
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require('jsunity');
-let internal = require('internal');
-let arangodb = require('@arangodb');
-let _ = require('lodash');
-let db = arangodb.db;
-let { getEndpointById, getEndpointsByType } = require('@arangodb/test-helper');
+const jsunity = require('jsunity');
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const _ = require('lodash');
+const db = arangodb.db;
+const { getEndpointById, getEndpointsByType, getMetric } = require('@arangodb/test-helper');
 const request = require('@arangodb/request');
-
-function getMetric(endpoint, name) {
-  let res = request.get({
-    url: endpoint + '/_admin/metrics',
-  });
-  let re = new RegExp("^" + name + "\\{");
-  let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
-  if (!matches.length) {
-    throw "Metric " + name + " not found";
-  }
-  return Number(matches[0].replace(/^.*?\} (\d+)$/, '$1'));
-}
 
 function transactionDroppedFollowersSuite() {
   'use strict';
@@ -75,7 +63,7 @@ function transactionDroppedFollowersSuite() {
       let droppedFollowers = {};
       servers.forEach((serverId) => {
         let endpoint = getEndpointById(serverId);
-        droppedFollowers[serverId] = getMetric(endpoint, "arangodb_dropped_followers_count");
+        droppedFollowers[serverId] = getMetric(endpoint, "arangodb_dropped_followers_total");
       });
 
       for (let i = 0; i < 50; ++i) { 
@@ -89,7 +77,7 @@ function transactionDroppedFollowersSuite() {
       // follower must not have been dropped
       servers.forEach((serverId) => {
         let endpoint = getEndpointById(serverId);
-        assertEqual(droppedFollowers[serverId], getMetric(endpoint, "arangodb_dropped_followers_count"));
+        assertEqual(droppedFollowers[serverId], getMetric(endpoint, "arangodb_dropped_followers_total"));
       });
 
       assertEqual(1000 * 50, c.count());
@@ -113,7 +101,7 @@ function transactionDroppedFollowersSuite() {
       let droppedFollowers = {};
       servers.forEach((serverId) => {
         let endpoint = getEndpointById(serverId);
-        droppedFollowers[serverId] = getMetric(endpoint, "arangodb_dropped_followers_count");
+        droppedFollowers[serverId] = getMetric(endpoint, "arangodb_dropped_followers_total");
       });
 
       for (let i = 0; i < 50; ++i) { 
@@ -127,7 +115,7 @@ function transactionDroppedFollowersSuite() {
       // follower must not have been dropped
       servers.forEach((serverId) => {
         let endpoint = getEndpointById(serverId);
-        assertEqual(droppedFollowers[serverId], getMetric(endpoint, "arangodb_dropped_followers_count"));
+        assertEqual(droppedFollowers[serverId], getMetric(endpoint, "arangodb_dropped_followers_total"));
       });
       
       assertEqual(1000 * 50, c.count());

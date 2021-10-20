@@ -21,7 +21,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "Validators.h"
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
@@ -31,13 +30,12 @@
 #include <tao/json/jaxn/to_string.hpp>
 #include <validation/validation.hpp>
 
-
 #include <iostream>
 #include <tao/json/to_string.hpp>
 
 namespace arangodb {
 
-std::string const&  to_string(ValidationLevel level) {
+std::string const& to_string(ValidationLevel level) {
   switch (level) {
     case ValidationLevel::None:
       return StaticStrings::ValidationLevelNone;
@@ -54,8 +52,10 @@ std::string const&  to_string(ValidationLevel level) {
 
 //////////////////////////////////////////////////////////////////////////////
 
-ValidatorBase::ValidatorBase(VPackSlice params)
-    : _level(ValidationLevel::Strict), _special(validation::SpecialProperties::None) {
+ValidatorBase::ValidatorBase()
+    : _level(ValidationLevel::Strict), _special(validation::SpecialProperties::None) {}
+
+ValidatorBase::ValidatorBase(VPackSlice params) : ValidatorBase() {
   // parse message
   auto msgSlice = params.get(StaticStrings::ValidationParameterMessage);
   if (msgSlice.isString()) {
@@ -83,7 +83,8 @@ ValidatorBase::ValidatorBase(VPackSlice params)
   }
 }
 
-Result ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert, VPackOptions const* options) const {
+Result ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc,
+                               bool isInsert, VPackOptions const* options) const {
   // This function performs the validation depending on operation (Insert /
   // Update / Replace) and requested validation level (None / Insert / New /
   // Strict / Moderate).
@@ -127,6 +128,7 @@ void ValidatorBase::toVelocyPack(VPackBuilder& b) const {
   VPackObjectBuilder guard(&b);
   b.add(StaticStrings::ValidationParameterMessage, VPackValue(_message));
   b.add(StaticStrings::ValidationParameterLevel, VPackValue(to_string(this->_level)));
+  b.add(StaticStrings::ValidationParameterType, VPackValue(this->type()));
   this->toVelocyPackDerived(b);
 }
 
@@ -146,14 +148,12 @@ void ValidatorBool::toVelocyPackDerived(VPackBuilder& b) const {
   b.add(StaticStrings::ValidationParameterRule, VPackValue(_result));
 }
 
-std::string const& ValidatorBool::type() const {
-  static std::string const rv = std::string("bool");
-  return rv;
-}
+char const* ValidatorBool::type() const { return "bool"; }
 
 /////////////////////////////////////////////////////////////////////////////
 
-ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(params) {
+ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params)
+    : ValidatorBase(params) {
   auto rule = params.get(StaticStrings::ValidationParameterRule);
   if (!rule.isObject()) {
     std::string msg = "No valid schema in rule attribute given (no object): ";
@@ -165,7 +165,7 @@ ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(para
     _schema = std::make_shared<tao::json::schema>(taoRuleValue);
     _builder.add(rule);
   } catch (std::exception const& ex) {
-    auto valueString =  tao::json::to_string(taoRuleValue, 4);
+    auto valueString = tao::json::to_string(taoRuleValue, 4);
     auto msg = std::string("invalid object") + valueString + "exception: " + ex.what();
     LOG_TOPIC("baabe", ERR, Logger::VALIDATION) << msg;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER, msg);
@@ -183,9 +183,7 @@ void ValidatorJsonSchema::toVelocyPackDerived(VPackBuilder& b) const {
   TRI_ASSERT(!_builder.slice().isNone());
   b.add(StaticStrings::ValidationParameterRule, _builder.slice());
 }
-std::string const& ValidatorJsonSchema::type() const {
-  static std::string const rv = std::string("json");
-  return rv;
-}
+
+char const* ValidatorJsonSchema::type() const { return "json"; }
 
 }  // namespace arangodb

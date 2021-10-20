@@ -21,107 +21,76 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_TRANSACTION_AQL_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_TRANSACTION_AQL_TEST_H
+#pragma once
 
 #include "Benchmark.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct TransactionAqlTest : public Benchmark<TransactionAqlTest> {
-  static std::string name() { return "aqltrx"; }
+  struct TransactionAqlTest : public Benchmark<TransactionAqlTest> {
+    static std::string name() { return "aqltrx"; }
 
-  TransactionAqlTest(BenchFeature& arangobench) : Benchmark<TransactionAqlTest>(arangobench) {}
+    TransactionAqlTest(BenchFeature& arangobench) : Benchmark<TransactionAqlTest>(arangobench) {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    _c1 = std::string(_arangobench.collection() + "1");
-    _c2 = std::string(_arangobench.collection() + "2");
-    _c3 = std::string(_arangobench.collection() + "3");
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      _c1 = std::string(_arangobench.collection() + "1");
+      _c2 = std::string(_arangobench.collection() + "2");
+      _c3 = std::string(_arangobench.collection() + "3");
 
-    return DeleteCollection(client, _c1) &&
-           DeleteCollection(client, _c2) &&
-           DeleteCollection(client, _c3) &&
-           CreateCollection(client, _c1, 2, _arangobench) &&
-           CreateCollection(client, _c2, 2, _arangobench) &&
-           CreateCollection(client, _c3, 2, _arangobench);
-  }
-
-  void tearDown() override {}
-
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return std::string("/_api/cursor");
-  }
-
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
-
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    size_t const mod = globalCounter % 8;
-    TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(256);
-
-    if (mod == 0) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c IN ");
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
-    } else if (mod == 1) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c IN ");
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
-    } else if (mod == 2) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c IN ");
-      TRI_AppendStringStringBuffer(buffer, _c3.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
-    } else if (mod == 3) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c1 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-      TRI_AppendStringStringBuffer(buffer, " FOR c2 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
-    } else if (mod == 4) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c2 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-      TRI_AppendStringStringBuffer(buffer, " FOR c1 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
-    } else if (mod == 5) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c3 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c3.c_str());
-      TRI_AppendStringStringBuffer(buffer, " FOR c1 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
-    } else if (mod == 6) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c2 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-      TRI_AppendStringStringBuffer(buffer, " FOR c3 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c3.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
-    } else if (mod == 7) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c1 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-      TRI_AppendStringStringBuffer(buffer, " FOR c2 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-      TRI_AppendStringStringBuffer(buffer, " FOR c3 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c3.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+      return DeleteCollection(client, _c1) &&
+        DeleteCollection(client, _c2) &&
+        DeleteCollection(client, _c3) &&
+        CreateCollection(client, _c1, 2, _arangobench) &&
+        CreateCollection(client, _c2, 2, _arangobench) &&
+        CreateCollection(client, _c3, 2, _arangobench);
     }
 
-    *length = TRI_LengthStringBuffer(buffer);
-    *mustFree = true;
-    char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(buffer);
+    void tearDown() override {}
 
-    return (char const*)ptr;
-  }
+    void buildRequest(size_t threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.url = "/_api/cursor";
+      requestData.type = rest::RequestType::POST;
+      size_t mod = globalCounter % 8;
+      std::string query;
+      if (mod == 0) {
+        query = "FOR c IN " + _c1;
+      } else if (mod == 1) {
+        query = "FOR c IN " + _c2;
+      } else if (mod == 2) {
+        query = "FOR c IN " + _c3;
+      } else if (mod == 3) {
+        query = "FOR c1 IN " + _c1 + " FOR c2 IN " + _c2;
+      } else if (mod == 4) {
+        query = "FOR c2 IN " + _c2 + " FOR c1 IN " + _c1;
+      } else if (mod == 5) {
+        query = "FOR c3 IN " + _c3 + " FOR c1 IN " + _c1;
+      } else if (mod == 6) {
+        query = "FOR c2 IN " + _c2 + " FOR c3 IN " + _c3;
+      } else if (mod == 7) {
+        query = "FOR c1 IN " + _c1 + " FOR c2 IN " + _c2 + " FOR c3 IN " + _c3;
+      }
+      query += " RETURN 1";
+      using namespace arangodb::velocypack;
+      requestData.payload.openObject();
+      requestData.payload.add("query", Value(query));
+      requestData.payload.close();
+    }
 
-  std::string _c1;
-  std::string _c2;
-  std::string _c3;
-};
+    char const* getDescription() const noexcept override {
+      return "creates 3 empty collections and then performs different AQL read queries on these collections, partially using joins. This test was once used to test shard locking, but is now largely obsolete. In a cluster, it still provides a little value because it effectively measures query setup and shutdown times for concurrent AQL queries.";
+    }
+
+    bool isDeprecated() const noexcept override {
+      return true;
+    }
+
+    std::string _c1;
+    std::string _c2;
+    std::string _c3;
+  };
 
 }  // namespace arangodb::arangobench
-#endif

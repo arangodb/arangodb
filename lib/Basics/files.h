@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_FILES_H
-#define ARANGODB_BASICS_FILES_H 1
+#pragma once
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -42,6 +41,8 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
+
+struct stat;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -352,7 +353,13 @@ ErrorCode TRI_GetTempName(char const* directory, std::string& result, bool creat
 /// @brief copies a file from source to dest.
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
 bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& error);
+#else
+// this API allows passing already retrieved stat info to the copy routine, in
+// order to avoid extra stat calls
+bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& error, struct stat* statbuf = nullptr);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the file Attributes from source to dest.
@@ -394,10 +401,6 @@ std::string TRI_LocateInstallDirectory(char const* argv0, const char* binaryPath
 
 std::string TRI_LocateConfigDirectory(char const* binaryPath);
 
-/// @brief creates a new datafile
-/// returns the file descriptor or -1 if the file cannot be created
-int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether path is full qualified or relative
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,4 +440,3 @@ struct TRI_SHA256Functor {
   EVP_MD_CTX* _context;
 };// struct TRI_SHA256Functor
 
-#endif

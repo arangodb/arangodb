@@ -21,61 +21,49 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_TRANSACTION_COUNT_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_TRANSACTION_COUNT_TEST_H
+#pragma once
 
 #include "Benchmark.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/ValueType.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct TransactionCountTest : public Benchmark<TransactionCountTest> {
-  static std::string name() { return "counttrx"; }
+  struct TransactionCountTest : public Benchmark<TransactionCountTest> {
+    static std::string name() { return "counttrx"; }
 
-  TransactionCountTest(BenchFeature& arangobench) : Benchmark<TransactionCountTest>(arangobench) {}
+    TransactionCountTest(BenchFeature& arangobench) : Benchmark<TransactionCountTest>(arangobench) {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return DeleteCollection(client, _arangobench.collection()) &&
-           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
-  }
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      return DeleteCollection(client, _arangobench.collection()) &&
+        CreateCollection(client, _arangobench.collection(), 2, _arangobench);
+    }
 
-  void tearDown() override {}
+    void tearDown() override {}
 
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return std::string("/_api/transaction");
-  }
+    void buildRequest(size_t threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.url = "/_api/transaction";
+      requestData.type = rest::RequestType::POST;
+      using namespace arangodb::velocypack;
+      requestData.payload(Value(ValueType::Object));
+      requestData.payload.add("collections", Value(ValueType::Object));
+      requestData.payload.add("write", Value(_arangobench.collection()));
+      requestData.payload.close();
+      requestData.payload.add("action", Value(std::string("function () { var c = require('internal').db['") + _arangobench.collection() + std::string("']; var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw 'error, counters deviate!'; } c.save({ }); } }")));
+      requestData.payload.close();
+    }
 
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
+    char const* getDescription() const noexcept override {
+      return "executes JavaScript Transactions that each insert 50 (empty) documents into a collection and validates that collection counts are as expected. There will be 50 times the number of --requests documents inserted in total. The --complexity parameter is not used.";
+    }
 
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(256);
+    bool isDeprecated() const noexcept override {
+      return true;
+    }
 
-    TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { \"write\": \"");
-    TRI_AppendStringStringBuffer(buffer, _arangobench.collection().c_str());
-    TRI_AppendStringStringBuffer(buffer,
-                                 "\" }, \"action\": \"function () { var c = "
-                                 "require(\\\"internal\\\").db[\\\"");
-    TRI_AppendStringStringBuffer(buffer, _arangobench.collection().c_str());
-    TRI_AppendStringStringBuffer(
-        buffer,
-        "\\\"]; var startcount = c.count(); for (var "
-        "i = 0; i < 50; ++i) { if (startcount + i !== "
-        "c.count()) { throw \\\"error, counters deviate!\\\"; } c.save({ "
-        "}); } }\" }");
-
-    *length = TRI_LengthStringBuffer(buffer);
-    *mustFree = true;
-    char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(buffer);
-
-    return (char const*)ptr;
-  }
-};
+  };
 
 }  // namespace arangodb::arangobench
-#endif

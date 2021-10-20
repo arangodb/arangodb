@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_COLLECTION_H
-#define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_COLLECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -31,6 +30,8 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
+
+#include <rocksdb/types.h>
 
 namespace arangodb {
 struct RocksDBDocumentOperation;
@@ -67,9 +68,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /**
    * @brief Prepare collection for commit by placing collection blockers
    * @param trxId    Active transaction ID
-   * @param beginSeq Current seq/tick on transaction begin
    */
-  void prepareTransaction(TransactionId trxId, uint64_t beginSeq);
+  rocksdb::SequenceNumber prepareTransaction(TransactionId trxId);
 
   /**
    * @brief Signal upstream abort/rollback to clean up index blockers
@@ -142,6 +142,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 
   /// @brief request an unlock for a collection
   Result doUnlock(AccessMode::Type) override;
+  
+  Result ensureCollection();
 
  private:
   uint64_t _initialNumberDocuments;
@@ -163,4 +165,3 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 };
 }  // namespace arangodb
 
-#endif

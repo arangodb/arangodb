@@ -49,9 +49,9 @@ SimpleHttpResult::SimpleHttpResult()
       _hasContentLength(false),
       _chunked(false),
       _deflated(false),
-      _resultBody(false),
-      _requestResultType(UNKNOWN),
-      _haveSentRequestFully(false) {
+      _haveSentRequestFully(false),
+      _requestResultType(UNKNOWN), 
+      _resultBody(false) {
   _resultBody.ensureNullTerminated();
 }
 

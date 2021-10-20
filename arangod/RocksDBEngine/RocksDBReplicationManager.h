@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_REPLICATION_MANAGER_H
-#define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_MANAGER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -186,4 +185,3 @@ class RocksDBReplicationContextGuard {
 };
 }  // namespace arangodb
 
-#endif

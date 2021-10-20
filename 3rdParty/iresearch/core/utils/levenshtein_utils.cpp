@@ -103,7 +103,7 @@ FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
 ///          i.e. |rhs.offset-lhs.offset| < rhs.distance - lhs.distance
 ////////////////////////////////////////////////////////////////////////////////
 FORCE_INLINE bool subsumes(const position& lhs, const position& rhs) noexcept {
-  return (lhs.transpose | !rhs.transpose)
+  return (lhs.transpose | (!rhs.transpose))
       ? abs_diff(lhs.offset, rhs.offset) + lhs.distance <= rhs.distance
       : abs_diff(lhs.offset, rhs.offset) + lhs.distance <  rhs.distance;
 }
@@ -120,11 +120,10 @@ class parametric_state {
   }
 
   bool emplace(const position& new_pos) {
-    for (auto& pos : positions_) {
-      if (subsumes(pos, new_pos)) {
-        // nothing to do
-        return false;
-      }
+    if (std::any_of(std::begin(positions_), std::end(positions_),
+                    [&new_pos](auto& pos){ return subsumes(pos, new_pos); })) {
+      // nothing to do
+      return false;
     }
 
     if (!positions_.empty()) {
@@ -222,16 +221,17 @@ class parametric_states {
     }
 
     bool operator()(const parametric_state& state) const noexcept {
-      size_t seed = parametric_state_hash::seed();
+      size_t value = parametric_state_hash::seed();
       for (auto& pos: state) {
+        // cppcheck-suppress unreadVariable
         const size_t hash = absl::hash_internal::CityHashState::hash(
           size_t(pos.offset) << 33  |
           size_t(pos.distance) << 1 |
           size_t(pos.transpose));
 
-        seed = irs::hash_combine(seed, hash);
+        value = irs::hash_combine(value, hash);
       }
-      return seed;
+      return value;
     }
 
     static const void* SEED;
@@ -582,6 +582,7 @@ parametric_description read(data_input& in) {
 
 automaton make_levenshtein_automaton(
     const parametric_description& description,
+    const bytes_ref& prefix,
     const bytes_ref& target) {
   assert(description);
 
@@ -613,18 +614,30 @@ automaton make_levenshtein_automaton(
   UNUSED(invalid_state);
 
   // initial state
-  a.SetStart(a.AddState());
+  auto start_state = a.AddState();
+  a.SetStart(start_state);
+
+  auto begin = prefix.begin();
+  auto end = prefix.end();
+  decltype(start_state) to;
+  for (; begin != end; ) {
+    const byte_type* next = utf8_utils::next(begin, end);
+    to = a.AddState();
+    auto dist = std::distance(begin, next);
+    irs::utf8_emplace_arc(a, start_state, bytes_ref(begin, dist), to);
+    start_state = to;
+    begin = next;
+  }
 
   // check if start state is final
-  const auto distance = description.distance(1, utf8_size);
-
-  if (distance <= description.max_distance()) {
-    a.SetFinal(a.Start(), {true, distance});
+  if (const auto distance = description.distance(1, utf8_size);
+      distance <= description.max_distance()) {
+    a.SetFinal(start_state, {true, distance});
   }
 
   // state stack
   std::vector<state> stack;
-  stack.emplace_back(0, 1, a.Start());  // 0 offset, 1st parametric state, initial automaton state
+  stack.emplace_back(0, 1, start_state);  // 0 offset, 1st parametric state, initial automaton state
 
   std::vector<std::pair<bytes_ref, automaton::StateId>> arcs;
   arcs.resize(utf8_size); // allocate space for max possible number of arcs
@@ -650,9 +663,8 @@ automaton make_levenshtein_automaton(
       } else if (fst::kNoStateId == to) {
         to = a.AddState();
 
-        const auto distance = description.distance(transition.first, utf8_size - offset);
-
-        if (distance <= description.max_distance()) {
+        if (const auto distance = description.distance(transition.first, utf8_size - offset);
+            distance <= description.max_distance()) {
           a.SetFinal(to, {true, distance});
         }
 
@@ -714,7 +726,7 @@ size_t edit_distance(const parametric_description& description,
     const auto c = utf8_utils::next(rhs);
 
     const auto begin = lhs_chars.begin() + ptrdiff_t(offset);
-    const auto end = std::min(begin + ptrdiff_t(description.chi_size()), lhs_chars.end());
+    const auto end = lhs_chars.begin() + std::min(offset + description.chi_size(), static_cast<uint64_t>(lhs_chars.size()));
     const auto chi = ::chi(begin, end, c);
     const auto& transition = description.transition(state, chi);
 
@@ -753,7 +765,7 @@ bool edit_distance(
     }
 
     const auto begin = lhs_chars.begin() + ptrdiff_t(offset);
-    const auto end = std::min(begin + ptrdiff_t(description.chi_size()), lhs_chars.end());
+    const auto end = lhs_chars.begin() + std::min(offset + description.chi_size(), static_cast<uint64_t>(lhs_chars.size()));
     const auto chi = ::chi(begin, end, c);
     const auto& transition = description.transition(state, chi);
 

@@ -53,25 +53,20 @@ constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
 constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 
 CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescription const& desc)
-    : ActionBase(feature, desc) {
+    : ActionBase(feature, desc),
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
-
-  if (!desc.has(DATABASE)) {
-    error << "database must be specified. ";
-  }
-  TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(COLLECTION)) {
     error << "cluster-wide collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
 
-  if (!desc.has(SHARD)) {
-    error << "shard must be specified. ";
+  if (!ShardDefinition::isValid()) {
+    error << "database and shard must be specified. ";
   }
-  TRI_ASSERT(desc.has(SHARD));
 
   if (!desc.has(THE_LEADER)) {
     error << "shard leader must be specified. ";
@@ -99,7 +94,7 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescriptio
   if (!error.str().empty()) {
     LOG_TOPIC("7c60f", ERR, Logger::MAINTENANCE)
         << "CreateCollection: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -107,15 +102,17 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescriptio
 CreateCollection::~CreateCollection() = default;
 
 bool CreateCollection::first() {
-  auto const& database = _description.get(DATABASE);
+  auto const& database = getDatabase();
   auto const& collection = _description.get(COLLECTION);
-  auto const& shard = _description.get(SHARD);
+  auto const& shard = getShard();
   auto const& leader = _description.get(THE_LEADER);
   auto const& props = properties();
 
   LOG_TOPIC("21710", DEBUG, Logger::MAINTENANCE)
       << "CreateCollection: creating local shard '" << database << "/" << shard
       << "' for central '" << database << "/" << collection << "'";
+
+  Result res;
 
   try {  // now try to guard the vocbase
     auto& df = _feature.server().getFeature<DatabaseFeature>();
@@ -156,9 +153,9 @@ bool CreateCollection::first() {
 
     std::shared_ptr<LogicalCollection> col;
     OperationOptions options(ExecContext::current());
-    _result = Collections::create(vocbase, options, shard, type, docket.slice(),
-                                  waitForRepl, enforceReplFact, false, col);
-
+    res.reset(Collections::create(vocbase, options, shard, type, docket.slice(),
+                                  waitForRepl, enforceReplFact, false, col));
+    result(res);
     if (col) {
       LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
           << "local collection " << database << "/" << shard
@@ -168,31 +165,33 @@ bool CreateCollection::first() {
         std::vector<std::string> noFollowers;
         col->followers()->takeOverLeadership(noFollowers, nullptr);
       } else {
-        col->followers()->setTheLeader(leader);
+        col->followers()->setTheLeader(LEADER_NOT_YET_KNOWN);
       }
     }
 
-    if (_result.fail()) {
+    if (res.fail()) {
       // If this is TRI_ERROR_ARANGO_DUPLICATE_NAME, then we assume that a previous
       // incarnation of ourselves has already done the work. This can happen, if
       // the timing of phaseOne runs is unfortunate with asynchronous creation of
       // shards.
       // In this case, we do not report an error and do not increase the version
       // number of the shard in `setState` below.
-      if (_result.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
+      if (res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
         LOG_TOPIC("9db9c", INFO, Logger::MAINTENANCE)
         << "local collection " << database << "/" << shard
         << " already found, ignoring...";
-        _result.reset(TRI_ERROR_NO_ERROR);
+        result(TRI_ERROR_NO_ERROR);
         _doNotIncrement = true;
         return false;
       }
       std::stringstream error;
       error << "creating local shard '" << database << "/" << shard << "' for central '"
-            << database << "/" << collection << "' failed: " << _result;
+            << database << "/" << collection << "' failed: " << res;
       LOG_TOPIC("63687", ERR, Logger::MAINTENANCE) << error.str();
 
-      _result.reset(TRI_ERROR_FAILED, error.str());
+      res.reset(TRI_ERROR_FAILED, error.str());
+      result(res);
+      
     }
 
   } catch (std::exception const& e) {
@@ -200,12 +199,13 @@ bool CreateCollection::first() {
 
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC("60514", WARN, Logger::MAINTENANCE) << error.str();
-    _result.reset(TRI_ERROR_FAILED, error.str());
+    res.reset(TRI_ERROR_FAILED, error.str());
+    result(res);
   }
 
-  if (_result.fail()) {
+  if (res.fail()) {
     _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), _result);
+                             _description.get(SERVER_ID), res);
   }
 
   LOG_TOPIC("4562c", DEBUG, Logger::MAINTENANCE)
@@ -216,10 +216,12 @@ bool CreateCollection::first() {
 
 void CreateCollection::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    TRI_ASSERT(_description.has(SHARD));
-    _feature.unlockShard(_description.get(SHARD));
+    // calling unlockShard here is safe, because nothing before it
+    // can go throw. if some code is added before the unlock that
+    // can throw, it must be made sure that the unlock is always called
+    _feature.unlockShard(getShard());
     if (!_doNotIncrement) {
-      _feature.incShardVersion(_description.get(SHARD));
+      _feature.incShardVersion(getShard());
     }
   }
   ActionBase::setState(state);

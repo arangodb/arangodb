@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_BENCHMARK_H
-#define ARANGODB_BENCHMARK_TESTCASES_BENCHMARK_H
+#pragma once
 
 #include "../BenchmarkOperation.h"
 #include "../BenchFeature.h"
@@ -41,4 +40,3 @@ struct Benchmark : public BenchmarkOperation {
 };
 
 }  // namespace arangodb::arangobench
-#endif

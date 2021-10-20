@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_SYNCHRONIZE_SHARD_H
-#define ARANGODB_MAINTENANCE_SYNCHRONIZE_SHARD_H
+#pragma once
 
 #include "Basics/ResultT.h"
 #include "Cluster/ActionBase.h"
@@ -43,7 +42,7 @@ struct SyncerId;
 
 namespace maintenance {
 
-class SynchronizeShard : public ActionBase {
+class SynchronizeShard : public ActionBase, public ShardDefinition {
  public:
   SynchronizeShard(MaintenanceFeature&, ActionDescription const& d);
 
@@ -60,25 +59,31 @@ class SynchronizeShard : public ActionBase {
 
  private:
   arangodb::Result getReadLock(network::ConnectionPool* pool,
-                               std::string const& endpoint, std::string const& database,
-                               std::string const& collection, std::string const& clientId,
-                               uint64_t rlid, bool soft, double timeout);
+                               std::string const& endpoint, 
+                               std::string const& collection, 
+                               std::string const& clientId,
+                               uint64_t rlid, 
+                               bool soft, 
+                               double timeout);
 
   arangodb::Result startReadLockOnLeader(std::string const& endpoint,
-                                         std::string const& database,
                                          std::string const& collection,
-                                         std::string const& clientId, uint64_t& rlid,
-                                         bool soft, double timeout = 300.0);
+                                         std::string const& clientId, 
+                                         uint64_t& rlid,
+                                         bool soft, 
+                                         double timeout = 300.0);
 
   arangodb::ResultT<TRI_voc_tick_t> catchupWithReadLock(
-      std::string const& ep, std::string const& database, LogicalCollection const& collection,
-      std::string const& clientId, std::string const& shard,
+      std::string const& ep, 
+      LogicalCollection const& collection,
+      std::string const& clientId, 
       std::string const& leader, TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
 
   arangodb::Result catchupWithExclusiveLock(
-      std::string const& ep, std::string const& database,
-      LogicalCollection& collection, std::string const& clientId,
-      std::string const& shard, std::string const& leader, SyncerId syncerId,
+      std::string const& ep, 
+      LogicalCollection& collection, 
+      std::string const& clientId,
+      std::string const& leader, SyncerId syncerId,
       TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
 
   /// @brief Short, informative description of the replication client, passed to the server
@@ -86,9 +91,9 @@ class SynchronizeShard : public ActionBase {
 
   /// @brief information about the leader, reused across multiple replication steps
   arangodb::replutils::LeaderInfo _leaderInfo;
+  uint64_t _followingTermId;
 };
 
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

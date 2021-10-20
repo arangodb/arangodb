@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_MAINTENANCE_ACTION_H
-#define ARANGODB_CLUSTER_MAINTENANCE_ACTION_H
+#pragma once
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
@@ -209,4 +208,3 @@ class Action {
 namespace std {
 ostream& operator<<(ostream& o, arangodb::maintenance::Action const& d);
 }
-#endif

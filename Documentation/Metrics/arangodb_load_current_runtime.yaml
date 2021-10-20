@@ -13,9 +13,9 @@ description: |
   Histogram of `Current` loading runtimes, i.e. the runtimes
   of the `ClusterInfo::loadCurrent` internal method. Provides a
   distribution of all loading times for the `Current`
-  section of the agency data. The `Current` section gets
-  loaded on server startup, and then gets reloaded on servers 
-  only for any databases in which there have been recent structural 
+  section of the Agency data. The `Current` section gets
+  loaded on server startup, and then gets reloaded on servers
+  only for any databases in which there have been recent structural
   changes (i.e. DDL changes).
 troubleshoot: |
   In case this histogram contains very high loading times, this

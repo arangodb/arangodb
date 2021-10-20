@@ -77,20 +77,20 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
   auto tmp_parent = _snapshot.hasAsString(path + PARENT_JOB_ID);
 
-  if (tmp_database.second && tmp_collection.second && tmp_from.second && tmp_to.second &&
-      tmp_shard.second && tmp_creator.second && tmp_isLeader.second) {
-    _database = tmp_database.first;
-    _collection = tmp_collection.first;
-    _from = tmp_from.first;
-    _to = tmp_to.first;
-    _shard = tmp_shard.first;
-    _isLeader = tmp_isLeader.first.isTrue();
+  if (tmp_database && tmp_collection && tmp_from && tmp_to &&
+      tmp_shard && tmp_creator && tmp_isLeader) {
+    _database = tmp_database.value();
+    _collection = tmp_collection.value();
+    _from = tmp_from.value();
+    _to = tmp_to.value();
+    _shard = tmp_shard.value();
+    _isLeader = tmp_isLeader.value().isTrue();
     _remainsFollower =
-        tmp_remainsFollower.second ? tmp_remainsFollower.first.isTrue() : _isLeader;
+        tmp_remainsFollower.has_value() ? tmp_remainsFollower->isTrue() : _isLeader;
     _toServerIsFollower = false;
-    _creator = tmp_creator.first;
-    if (tmp_parent.second) {
-      _parentJobId = std::move(tmp_parent.first);
+    _creator = tmp_creator.value();
+    if (tmp_parent) {
+      _parentJobId = std::move(*tmp_parent);
     }
   } else {
     std::stringstream err;
@@ -124,7 +124,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice plan = _snapshot.hasAsSlice(planPath).first;
+  Slice plan = _snapshot.hasAsSlice(planPath).value();
   TRI_ASSERT(plan.isArray());
   TRI_ASSERT(plan[0].isString());
 #endif
@@ -181,6 +181,11 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
 }
 
 bool MoveShard::start(bool&) {
+
+  if (considerCancellation()) {
+    return false;
+  }
+
   // If anything throws here, the run() method catches it and finishes
   // the job.
 
@@ -203,7 +208,7 @@ bool MoveShard::start(bool&) {
   }
   auto const& collection =
       _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
-  if (collection.second && collection.first.has("distributeShardsLike")) {
+  if (collection && collection->get().has("distributeShardsLike")) {
     moveShardFinish(false, false,
            "collection must not have 'distributeShardsLike' attribute");
     return false;
@@ -218,10 +223,9 @@ bool MoveShard::start(bool&) {
   }
 
   // Check that the toServer is not locked:
-  // cppcheck-suppress *
-  if (auto const& [jobId, has] = _snapshot.hasAsString(blockedServersPrefix + _to); has) {
+  if (auto jobId = _snapshot.hasAsString(blockedServersPrefix + _to); jobId) {
     LOG_TOPIC("de054", DEBUG, Logger::SUPERVISION)
-        << "server " << _to << " is currently locked by " << jobId
+        << "server " << _to << " is currently locked by " << *jobId
         << ", not starting MoveShard job " << _jobId;
     return false;
   }
@@ -243,7 +247,7 @@ bool MoveShard::start(bool&) {
   // Check that _to is not in `Target/CleanedServers`:
   VPackBuilder cleanedServersBuilder;
   auto cleanedServersNode = _snapshot.hasAsBuilder(cleanedPrefix, cleanedServersBuilder);
-  if (!cleanedServersNode.second) {
+  if (!cleanedServersNode) {
     // ignore this check
     cleanedServersBuilder.clear();
     { VPackArrayBuilder guard(&cleanedServersBuilder); }
@@ -261,7 +265,7 @@ bool MoveShard::start(bool&) {
   // Check that _to is not in `Target/FailedServers`:
   VPackBuilder failedServersBuilder;
   auto failedServersNode = _snapshot.hasAsBuilder(failedServersPrefix, failedServersBuilder);
-  if (!failedServersNode.second) {
+  if (!failedServersNode) {
     // ignore this check
     failedServersBuilder.clear();
     { VPackObjectBuilder guard(&failedServersBuilder); }
@@ -278,7 +282,7 @@ bool MoveShard::start(bool&) {
   // Look at Plan:
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  Slice planned = _snapshot.hasAsSlice(planPath).first;
+  Slice planned = _snapshot.hasAsSlice(planPath).value();
 
   int found = -1;
   int foundTo = -1;
@@ -353,7 +357,7 @@ bool MoveShard::start(bool&) {
     // in _jb:
     if (_jb == nullptr) {
       auto tmp_todo = _snapshot.hasAsBuilder(toDoPrefix + _jobId, todo);
-      if (!tmp_todo.second) {
+      if (!tmp_todo) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("2482a", INFO, Logger::SUPERVISION)
@@ -448,8 +452,8 @@ bool MoveShard::start(bool&) {
             std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
             foCandsPath += StaticStrings::FailoverCandidates;
             auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
-            if (foCands.second) {
-              addPreconditionUnchanged(pending, foCandsPath, foCands.first);
+            if (foCands) {
+              addPreconditionUnchanged(pending, foCandsPath, *foCands);
             }
           });
       addPreconditionShardNotBlocked(pending, _shard);
@@ -477,6 +481,13 @@ bool MoveShard::start(bool&) {
 }
 
 JOB_STATUS MoveShard::status() {
+
+  if (_status == PENDING || _status == TODO) {
+    if (considerCancellation()) {
+      return FAILED;
+    }
+  }
+
   if (_status != PENDING) {
     return _status;
   }
@@ -495,19 +506,6 @@ JOB_STATUS MoveShard::status() {
 
 JOB_STATUS MoveShard::pendingLeader() {
 
-  auto considerTimeout = [&]() -> bool {
-    // Not yet all in sync, consider timeout:
-    std::string timeCreatedString =
-        _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated").first;
-    Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
-    Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(43200.0)) {  // 12h
-      abort("MoveShard timed out in pending leader");
-      return true;
-    }
-    return false;
-  };
-
   // Find the other shards in the same distributeShardsLike group:
   std::vector<Job::shard_t> shardsLikeMe =
       clones(_snapshot, _database, _collection, _shard);
@@ -516,7 +514,7 @@ JOB_STATUS MoveShard::pendingLeader() {
   // in the Plan:
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  Slice plan = _snapshot.hasAsSlice(planPath).first;
+  Slice plan = _snapshot.hasAsSlice(planPath).value();
   Builder trx;
   Builder pre;  // precondition
   bool finishedAfterTransaction = false;
@@ -556,12 +554,9 @@ JOB_STATUS MoveShard::pendingLeader() {
                      }
                    });
 
-    // Consider timeout:
+    // Consider cancellation:
     if (done < shardsLikeMe.size()) {
-      if (considerTimeout()) {
-        return FAILED;
-      }
-      return PENDING;  // do not act
+      return considerCancellation() ? FAILED : PENDING;
     }
 
     // We need to ask the old leader to retire:
@@ -623,12 +618,9 @@ JOB_STATUS MoveShard::pendingLeader() {
                      }
                    });
 
-    // Consider timeout:
+    // Consider cancellation:
     if (done < shardsLikeMe.size()) {
-      if (considerTimeout()) {
-        return FAILED;
-      }
-      return PENDING;  // do not act!
+      return considerCancellation() ? FAILED : PENDING;
     }
 
     // We need to switch leaders:
@@ -642,9 +634,9 @@ JOB_STATUS MoveShard::pendingLeader() {
       for (auto const& sh : shardsLikeMe) {
         auto const shardPath = curColPrefix + _database + "/" + sh.collection + "/" + sh.shard;
         auto const tmp = _snapshot.hasAsArray(shardPath + "/servers");
-        if (tmp.second) { // safe iterator below
+        if (tmp) { // safe iterator below
           bool found = false;
-          for (auto const& server : VPackArrayIterator(tmp.first)) {
+          for (auto const& server : VPackArrayIterator(*tmp)) {
             if (server.isEqualString(_to)) {
               found = true;
               break;
@@ -752,12 +744,9 @@ JOB_STATUS MoveShard::pendingLeader() {
                      }
                    });
 
-    // Consider timeout:
+    // Consider cancellation
     if (done < shardsLikeMe.size()) {
-      if (considerTimeout()) {
-        return FAILED;
-      }
-      return PENDING;  // do not act!
+      return considerCancellation() ? FAILED : PENDING;
     }
 
     // We need to end the job, Plan remains unchanged:
@@ -808,7 +797,7 @@ JOB_STATUS MoveShard::pendingLeader() {
         addPreconditionCollectionStillThere(pre, _database, _collection);
         addRemoveJobFromSomewhere(trx, "Pending", _jobId);
         Builder job;
-        _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
+        std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
         addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
         addReleaseShard(trx, _shard);
         addMoveShardToServerUnLock(trx);
@@ -841,11 +830,12 @@ JOB_STATUS MoveShard::pendingLeader() {
 }
 
 JOB_STATUS MoveShard::pendingFollower() {
+
   // Check if any of the servers in the Plan are FAILED, if so,
   // we abort:
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  Slice plan = _snapshot.hasAsSlice(planPath).first;
+  Slice plan = _snapshot.hasAsSlice(planPath).value();
   if (plan.isArray() && Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
     LOG_TOPIC("f8c22", DEBUG, Logger::SUPERVISION)
         << "MoveShard (follower): found FAILED server in Plan, aborting job, "
@@ -868,16 +858,7 @@ JOB_STATUS MoveShard::pendingFollower() {
                  });
 
   if (done < shardsLikeMe.size()) {
-    // Not yet all in sync, consider timeout:
-    std::string timeCreatedString =
-        _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated").first;
-    Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
-    Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(10000.0)) {
-      abort("MoveShard timed out in pending follower");
-      return FAILED;
-    }
-    return PENDING;
+    return considerCancellation() ? FAILED : PENDING;
   }
 
   // All in sync, so move on and remove the fromServer, for all shards,
@@ -928,7 +909,7 @@ JOB_STATUS MoveShard::pendingFollower() {
 
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       Builder job;
-      _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
+      std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
       addPreconditionCollectionStillThere(precondition, _database, _collection);
       addReleaseShard(trx, _shard);
@@ -981,7 +962,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       }
     }
 
-    if (finish("", "", true, "job aborted (1): " + reason, todoPrec)) {
+    if (finish("", "", false, "job aborted (1): " + reason, todoPrec)) {
       return result;
     }
     _status = PENDING;
@@ -999,7 +980,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
   // shards of the distributeShardsLike group has already gone to new leader
   if (_isLeader) {
     auto const& plan = _snapshot.hasAsArray(planColPrefix + _database + "/" + _collection + "/shards/" + _shard);
-    if (plan.second && plan.first[0].copyString() == _to) {
+    if (plan && plan.value()[0].copyString() == _to) {
       LOG_TOPIC("72a82", INFO, Logger::SUPERVISION)
       << "MoveShard can no longer abort through reversion to where it "
          "started. Flight forward, leaving Plan as it is now.";
@@ -1083,7 +1064,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       }
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       Builder job;
-      _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
+      std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(trx, "Failed", job.slice(), "job aborted (3): " + reason);
       addReleaseShard(trx, _shard);
       addMoveShardToServerUnLock(trx);

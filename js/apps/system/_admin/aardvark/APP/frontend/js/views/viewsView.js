@@ -144,6 +144,9 @@
       searchInput[0].setSelectionRange(strLength, strLength);
 
       arangoHelper.checkDatabasePermissions(this.setReadOnly.bind(this));
+
+      self.events['click .graphViewer-icon-button.add'] = self.addRow.bind(self);
+      self.events['click .graphViewer-icon-button.delete'] = self.removeRow.bind(self);
     },
 
     setReadOnly: function () {
@@ -223,6 +226,10 @@
     createViewModal: function () {
       var buttons = [];
       var tableContent = [];
+      var advanced = [];
+      let primarySortTableContent = [];
+      let storedValuesTableContent = [];
+      let advancedTableContent = [];
 
       tableContent.push(
         window.modalView.createTextEntry(
@@ -257,20 +264,295 @@
         )
       );
 
+      tableContent.push(
+        window.modalView.createSelectEntry(
+          'newPrimarySortCompression',
+          'Primary Sort Compression',
+          'lz4',
+          false,
+          [
+            window.modalView.createOptionEntry('LZ4', 'lz4'),
+            window.modalView.createOptionEntry('None', 'none')
+          ],
+          'width: unset;'
+        )
+      );
+
+      primarySortTableContent.push(
+        window.modalView.createTableEntry(
+          'newPrimarySort',
+          {
+            noLabel: true // Dummy object. Entry will only be created if this is set as a String.
+          },
+          ['Field', 'Direction'],
+          [[
+            window.modalView.createTextEntry(
+              undefined,
+              undefined,
+              '',
+              false,
+              undefined,
+              true,
+              [
+                {
+                  rule: Joi.string().required(),
+                  msg: 'No field name given.'
+                }
+              ]
+            ),
+            window.modalView.createSelectEntry(
+              _.uniqueId('direction-'),
+              undefined,
+              'asc',
+              false,
+              [
+                window.modalView.createOptionEntry('ASC', 'asc'),
+                window.modalView.createOptionEntry('DESC', 'desc')
+              ]
+            )
+          ]],
+          undefined,
+          'padding-left: 0;'
+        )
+      );
+
+      storedValuesTableContent.push(
+        window.modalView.createTableEntry(
+          'newStoredValues',
+          {
+            noLabel: true // Dummy object. Entry will only be created if this is set as a String.
+          },
+          ['Fields', 'Compression'],
+          [[
+            window.modalView.createSelect2Entry(
+              _.uniqueId('field-'),
+              null,
+              null,
+              null,
+              null,
+              true,
+              false,
+              false,
+              null
+            ),
+            window.modalView.createSelectEntry(
+              _.uniqueId('compression-'),
+              undefined,
+              'lz4',
+              false,
+              [
+                window.modalView.createOptionEntry('LZ4', 'lz4'),
+                window.modalView.createOptionEntry('None', 'none')
+              ]
+            )
+          ]],
+          undefined,
+          'margin-top: 10px; padding-left: 0;'
+        )
+      );
+
+      advancedTableContent.push(
+        window.modalView.createTextEntry(
+          'newWriteBufferIdle',
+          'Write Buffer Idle',
+          64,
+          false,
+          undefined,
+          false,
+          [
+            {
+              rule: Joi.number().integer().min(0),
+              msg: 'Only non-negative integers allowed.'
+            }
+          ]
+        )
+      );
+
+      advancedTableContent.push(
+        window.modalView.createTextEntry(
+          'newWriteBufferActive',
+          'Write Buffer Active',
+          '0',
+          false,
+          undefined,
+          false,
+          [
+            {
+              rule: Joi.number().integer().min(0),
+              msg: 'Only non-negative integers allowed.'
+            }
+          ]
+        )
+      );
+
+      advancedTableContent.push(
+        window.modalView.createTextEntry(
+          'newWriteBufferSizeMax',
+          'Write Buffer Size Max',
+          33554432,
+          false,
+          undefined,
+          false,
+          [
+            {
+              rule: Joi.number().integer().min(0),
+              msg: 'Only non-negative integers allowed.'
+            }
+          ]
+        )
+      );
+
+      advanced.push({
+        header: 'Primary Sort',
+        content: primarySortTableContent
+      });
+
+      advanced.push({
+        header: 'Stored Values',
+        content: storedValuesTableContent
+      });
+
+      advanced.push({
+        header: 'Advanced',
+        content: advancedTableContent
+      });
+
       buttons.push(
         window.modalView.createSuccessButton('Create', this.submitCreateView.bind(this))
       );
 
-      window.modalView.show('modalTable.ejs', 'Create New View', buttons, tableContent);
+      window.modalView.show('modalTable.ejs', 'Create New View', buttons, tableContent, advanced,
+        undefined, this.events);
+
+      // select2 workaround
+      this.select2FixSearchBar();
+    },
+
+    select2FixSearchBar: function () {
+      $('.select2-search-field input').on('focusout', function (e) {
+        if ($('.select2-drop').is(':visible')) {
+          if (!$('#select2-search-field input').is(':focus')) {
+            window.setTimeout(function () {
+              $(e.currentTarget).parent().parent().parent().select2('close');
+            }, 200);
+          }
+        }
+      });
+    },
+
+    addRow: function (e) {
+      e.stopPropagation();
+
+      const row = $(e.currentTarget).closest('table').find('tbody').children().last();
+      let foundSelect2 = false;
+      if (row.find('.select2-container').length > 0) {
+        foundSelect2 = true;
+      }
+
+      let newRow;
+      if (!foundSelect2) {
+        newRow = row.clone(true);
+      } else {
+        newRow = row.clone(false);
+      }
+
+      const idParts = newRow.attr('id').split('-');
+      idParts[idParts.length - 1] = parseInt(idParts[idParts.length - 1]) + 1;
+      const newId = idParts.join('-');
+
+      newRow.attr('id', newId);
+
+      let select2id = '';
+      if (foundSelect2) {
+        select2id = newId + '-select2';
+        let firstCell = newRow.find('td:first-child');
+        firstCell.html('<input type="hidden" id="' + select2id + '"/>');
+      } else {
+        const inputs = newRow.find('input,textarea');
+        inputs.val('');
+        inputs.attr('id', (idx, id) => id ? `${id.split('-')[0]}-${_.uniqueId()}` : id);
+      }
+
+      if (!newRow.find('button.delete').length) {
+        const lastCell = newRow.children().last().find('span');
+        $(`
+            <button style="margin-left: 5px;"
+                    class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete addDelete">
+            </button>
+        `).appendTo(lastCell);
+      }
+
+      newRow.insertAfter(row);
+
+      if (foundSelect2) {
+        // unfortunately we need to trigger select2 creation after input gets rendered
+        window.modalView.handleSelect2Row({
+          id: select2id,
+          width: "resolve"
+        });
+        this.select2FixSearchBar();
+      }
+    },
+
+    removeRow: function (e) {
+      e.stopPropagation();
+      $(e.currentTarget).closest('tr').remove();
     },
 
     submitCreateView: function () {
       var self = this;
       var name = $('#newName').val();
+      var primarySortCompression = $('#newPrimarySortCompression').val();
+      var writebufferIdle = parseInt($('#newWriteBufferIdle').val());
+      var writebufferActive = parseInt($('#newWriteBufferActive').val());
+      var writebufferSizeMax = parseInt($('#newWriteBufferSizeMax').val());
+
+      const primarySort = [];
+      $('#newPrimarySort tbody').children().each((idx, tr) => {
+        const inputs = $(tr).find('input,select');
+        const [field, direction] = inputs.map((idx, input) => input.value);
+
+        if (field) {
+          primarySort.push({
+            field,
+            direction: direction || 'asc'
+          });
+        }
+      });
+
+      // Section: "Stored Values"
+      const storedValues = [];
+      $('#newStoredValues tbody').children().each((idx, tr) => {
+        const s2field = $(tr).find('.select2-container');
+        const compression = $(tr).find('select').val();
+
+        if (s2field) {
+          let s2dataObj = $(s2field).select2('data');
+          let fieldsArr = [];
+
+          if (s2dataObj.length > 0) {
+            _.each(s2dataObj, function(value, key) {
+              fieldsArr.push(value.text);
+            });
+          }
+
+          storedValues.push({
+            fields: fieldsArr,
+            compression: compression || 'lz4'
+          });
+        }
+      });
+
+
       var options = JSON.stringify({
         name: name,
         type: 'arangosearch',
-        properties: {}
+        primarySortCompression,
+        writebufferIdle,
+        writebufferActive,
+        writebufferSizeMax,
+        primarySort,
+        storedValues
       });
 
       $.ajax({

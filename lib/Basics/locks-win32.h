@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_LOCKS__WIN32_H
-#define ARANGODB_BASICS_LOCKS__WIN32_H 1
+#pragma once
 
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
@@ -38,4 +37,3 @@ struct TRI_condition_t {
 
 #endif
 
-#endif

@@ -28,6 +28,7 @@
 
 namespace arangodb {
 namespace transaction {
+
 Status statusFromString(char const* str, size_t len) {
   if (len == 9 && memcmp(str, "undefined", len) == 0) {
     return Status::UNDEFINED;
@@ -44,10 +45,11 @@ Status statusFromString(char const* str, size_t len) {
   TRI_ASSERT(false);
   return Status::UNDEFINED;
 }
-}  // namespace transaction
-}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s) {
   stream << arangodb::transaction::statusString(s);
   return stream;
 }
+
+}  // namespace transaction
+}  // namespace arangodb

@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_LINK_H
-#define ARANGOD_IRESEARCH__IRESEARCH_LINK_H 1
+#pragma once
 
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
@@ -49,7 +48,6 @@ struct MaintenanceState;
 class IResearchFeature;
 class IResearchView;
 class IResearchLink;
-template<typename T> class TypedResourceMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResarchLink handle to use with asynchronous tasks
@@ -58,22 +56,22 @@ class AsyncLinkHandle {
  public:
   explicit AsyncLinkHandle(IResearchLink* link);
   ~AsyncLinkHandle();
-  IResearchLink* get() noexcept { return _link.get(); }
   bool empty() const { return _link.empty(); }
-  std::unique_lock<ReadMutex> lock() { return _link.lock(); }
-  std::unique_lock<ReadMutex> try_lock() noexcept { return _link.try_lock(); }
+  auto lock() { return _link.lock(); }
+  auto try_lock() noexcept { return _link.try_lock(); }
   bool terminationRequested() const noexcept { return _asyncTerminate.load(); }
 
  private:
+  friend class IResearchLink;
+
   AsyncLinkHandle(AsyncLinkHandle const&) = delete;
   AsyncLinkHandle(AsyncLinkHandle&&) = delete;
   AsyncLinkHandle& operator=(AsyncLinkHandle const&) = delete;
   AsyncLinkHandle& operator=(AsyncLinkHandle&&) = delete;
 
-  friend class IResearchLink;
   void reset();
 
-  ResourceMutexT<IResearchLink> _link;
+  AsyncValue<IResearchLink> _link;
   std::atomic<bool> _asyncTerminate{false}; // trigger termination of long-running async jobs
 }; // AsyncLinkHandle
 
@@ -84,6 +82,7 @@ class AsyncLinkHandle {
 class IResearchLink {
  public:
   using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
+  using InitCallback = std::function<irs::directory_attributes()>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a snapshot representation of the data-store
@@ -92,22 +91,22 @@ class IResearchLink {
   class Snapshot {
    public:
     Snapshot() = default;
-    Snapshot(std::unique_lock<ReadMutex>&& lock,
+    Snapshot(AsyncValue<IResearchLink>::Value&& lock,
              irs::directory_reader&& reader) noexcept
         : _lock(std::move(lock)), _reader(std::move(reader)) {
-      TRI_ASSERT(_lock.owns_lock());
+      TRI_ASSERT(_lock.ownsLock());
     }
     Snapshot(Snapshot&& rhs) noexcept
       : _lock(std::move(rhs._lock)),
         _reader(std::move(rhs._reader)) {
-      TRI_ASSERT(_lock.owns_lock());
+      TRI_ASSERT(_lock.ownsLock());
     }
     Snapshot& operator=(Snapshot&& rhs) noexcept {
       if (this != &rhs) {
         _lock = std::move(rhs._lock);
         _reader = std::move(rhs._reader);
       }
-      TRI_ASSERT(_lock.owns_lock());
+      TRI_ASSERT(_lock.ownsLock());
       return *this;
     }
     operator irs::directory_reader const&() const noexcept {
@@ -115,7 +114,7 @@ class IResearchLink {
     }
 
    private:
-    std::unique_lock<ReadMutex> _lock; // lock preventing data store dealocation
+    AsyncValue<IResearchLink>::Value _lock; // lock preventing data store dealocation
     irs::directory_reader _reader;
   };
 
@@ -258,14 +257,18 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const;
 
-  typedef std::function<void(irs::directory&)> InitCallback;
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
   Result init(velocypack::Slice const& definition,
               InitCallback const& initCallback = {});
-              
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @return arangosearch internal format identifier
+  ////////////////////////////////////////////////////////////////////////////////
+  std::string_view format() const noexcept;
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get stored values
   ////////////////////////////////////////////////////////////////////////////////
@@ -385,7 +388,9 @@ class IResearchLink {
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
   Result initDataStore(
-    InitCallback const& initCallback, bool sorted,
+    InitCallback const& initCallback,
+    uint32_t version,
+    bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
     irs::type_info::type_id primarySortCompression);
 
@@ -422,4 +427,3 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

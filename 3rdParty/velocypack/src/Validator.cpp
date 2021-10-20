@@ -553,7 +553,7 @@ void Validator::validateIndexedObject(uint8_t const* ptr, std::size_t length) {
       tableGuard.reset(table);   // for automatic deletion
     } else {
       // if we have even more items, we directly create an unordered_set
-      offsetSet.reset(new std::unordered_set<ValueLength>());
+      offsetSet = std::make_unique<std::unordered_set<ValueLength>>();
     }
   }
   ValueLength actualNrItems = 0;

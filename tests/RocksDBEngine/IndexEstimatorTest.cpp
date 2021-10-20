@@ -152,8 +152,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     std::vector<uint64_t> toRemove(0);
     std::generate(toInsert.begin(), toInsert.end(), [&index] { return ++index; });
     expected = currentSeq;  // only commit up to blocker
-    auto res = meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
-    ASSERT_TRUE(res.ok());
+    meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
     // make sure we don't apply yet
@@ -181,8 +180,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     std::vector<uint64_t> toRemove(10);
     std::generate(toRemove.begin(), toRemove.end(), [&index] { return ++index; });
     expected = currentSeq;  // only commit up to blocker
-    auto res = meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
-    ASSERT_TRUE(res.ok());
+    meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
     // make sure we don't apply yet
@@ -222,8 +220,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_overlapping) {
     std::generate(toInsert.begin(), toInsert.end(), [&index] { return ++index; });
 
     auto expected = currentSeq;  // only commit up to blocker
-    auto res = meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
-    ASSERT_TRUE(res.ok());
+    meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
     // remove previous blocker
@@ -255,8 +252,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
     if (0 == iteration) {
       expected = currentSeq;  // only commit up to blocker
     }
-    auto res = meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
-    ASSERT_TRUE(res.ok());
+    meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
     // remove only if not first blocker
     meta.removeBlocker(TransactionId{std::max(static_cast<size_t>(1), iteration)});

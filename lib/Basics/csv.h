@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_CSV_H
-#define ARANGODB_BASICS_CSV_H 1
+#pragma once
 
 #include <cstdlib>
 
@@ -93,7 +92,7 @@ void TRI_InitCsvParser(TRI_csv_parser_t*, void (*)(TRI_csv_parser_t*, size_t),
 /// @brief destroys a CSV parser
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyCsvParser(TRI_csv_parser_t* parser);
+void TRI_DestroyCsvParser(TRI_csv_parser_t* parser) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the separator
@@ -121,4 +120,3 @@ void TRI_UseBackslashCsvParser(TRI_csv_parser_t* parser, bool value);
 
 ErrorCode TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t length);
 
-#endif

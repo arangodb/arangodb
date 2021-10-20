@@ -21,8 +21,7 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_METHODS_AQL_USER_FUNCTIONS_HANDLER_H
-#define ARANGOD_VOCBASE_METHODS_AQL_USER_FUNCTIONS_HANDLER_H 1
+#pragma once
 
 #include "Basics/Result.h"
 
@@ -86,4 +85,3 @@ Result toArrayUserFunctions(TRI_vocbase_t& vocbase, std::string const& functionF
 
 }  // namespace arangodb
 
-#endif

@@ -85,12 +85,8 @@ CollectNode::CollectNode(
 
 CollectNode::~CollectNode() = default;
 
-/// @brief toVelocyPack, for CollectNode
-void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                     std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+/// @brief doToVelocyPack, for CollectNode
+void CollectNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // group variables
   nodes.add(VPackValue("groups"));
   {
@@ -148,9 +144,6 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   nodes.add("specialized", VPackValue(_specialized));
   nodes.add(VPackValue("collectOptions"));
   _options.toVelocyPack(nodes);
-
-  // And close it:
-  nodes.close();
 }
 
 void CollectNode::calcExpressionRegister(arangodb::aql::RegisterId& expressionRegister,
@@ -645,6 +638,25 @@ void CollectNode::calculateAccessibleUserVariables(ExecutionNode const& node,
   std::ignore = ::calculateAccessibleUserVariables(node, userVariables, false, 0);
 }
 
+void CollectNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  for (auto& variable : _groupVariables) {
+    variable.inVar = Variable::replace(variable.inVar, replacements);
+  }
+  for (auto& variable : _keepVariables) {
+    auto old = variable;
+    variable = Variable::replace(old, replacements);
+  }
+  for (auto& variable : _aggregateVariables) {
+    variable.inVar = Variable::replace(variable.inVar, replacements);
+  }
+  if (_expressionVariable != nullptr) {
+    _expressionVariable = Variable::replace(_expressionVariable, replacements);
+  }
+  for (auto const& it : replacements) {
+    _variableMap.try_emplace(it.second->id, it.second->name);
+  }
+}
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void CollectNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto const& p : _groupVariables) {
@@ -768,7 +780,7 @@ std::vector<Variable const*> const& CollectNode::keepVariables() const {
   return _keepVariables;
 }
 
-void CollectNode::restrictKeepVariables(std::unordered_set<const Variable*> const& variables) {
+void CollectNode::restrictKeepVariables(containers::HashSet<Variable const*> const& variables) {
   auto remainingKeepVariables = decltype(this->_keepVariables){};
   remainingKeepVariables.reserve(std::min(_keepVariables.size(), variables.size()));
 

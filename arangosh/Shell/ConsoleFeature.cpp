@@ -112,7 +112,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
 void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--quiet", "silent startup", new BooleanParameter(&_quiet));
 
-  options->addSection("console", "Configure the console");
+  options->addSection("console", "console");
 
   options->addOption("--console.colors", "enable color support",
                      new BooleanParameter(&_colors),
@@ -316,7 +316,7 @@ std::string ConsoleFeature::readPassword(std::string const& message) {
 std::string ConsoleFeature::readPassword() {
   TRI_SetStdinVisibility(false);
 
-  TRI_DEFER(TRI_SetStdinVisibility(true));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
 
   std::string password;
 

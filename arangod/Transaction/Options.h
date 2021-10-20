@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_OPTIONS_H
-#define ARANGOD_TRANSACTION_OPTIONS_H 1
+#pragma once
 
 #include <cstdint>
 
@@ -58,6 +57,8 @@ struct Options {
   static void adjustIntermediateCommitCount(Options& options);
 #endif
 
+  bool isIntermediateCommitEnabled() const noexcept;
+
   static constexpr double defaultLockTimeout = 900.0;
   static uint64_t defaultMaxTransactionSize;
   static uint64_t defaultIntermediateCommitSize;
@@ -74,6 +75,7 @@ struct Options {
   bool skipInaccessibleCollections;
 #endif
   bool waitForSync;
+  bool fillBlockCache;
   bool isFollowerTransaction;
 
   /// @brief originating server of this transaction. will be populated
@@ -107,4 +109,3 @@ struct AllowImplicitCollectionsSwitcher {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

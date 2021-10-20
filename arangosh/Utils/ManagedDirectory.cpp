@@ -258,7 +258,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
     // path exists, but is a file, not a directory
     if (!isDirectory) {
       _status.reset(TRI_ERROR_FILE_EXISTS,
-                    "path specified already exists as a non-directory file");
+                    std::string("the specified path '") + _path + "' already exists as a non-directory file");
       return;
     }
 
@@ -267,7 +267,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
       // directory exists, has files, and we aren't allowed to overwrite
       if (requireEmpty) {
         _status.reset(TRI_ERROR_CANNOT_OVERWRITE_FILE,
-                      "path specified is a non-empty directory");
+                      std::string("the specified path '") + _path + "' is a non-empty directory");
         return;
       }
 
@@ -468,21 +468,8 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
 
   if (isGzip) {
-    char const* gzFlags = nullptr;
-
-    if (_fd >= 0) {
-      // gzip is going to perform a redundant close,
-      //  simpler code to give it redundant handle
-      _gzfd = TRI_DUP(_fd);
-    }
-    
-    if (O_WRONLY & flags) {
-      gzFlags = "wb";
-    } else {
-      gzFlags = "rb";
-    } // else
-    _gzFile = gzdopen(_gzfd, gzFlags);
-  } // if
+    prepareGzip((O_WRONLY & _flags) ? "wb" : "rb");
+  }
 }
 
 ManagedDirectory::File::File(ManagedDirectory const& directory,
@@ -504,19 +491,8 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
 
   if (isGzip) {
-    char const* gzFlags = nullptr;
-
-    // gzip is going to perform a redundant close,
-    //  simpler code to give it redundant handle
-    _gzfd = TRI_DUP(_fd);
-
-    if (0 /*O_WRONLY & flags*/) {
-      gzFlags = "wb";
-    } else {
-      gzFlags = "rb";
-    } // else
-    _gzFile = gzdopen(_gzfd, gzFlags);
-  } // if
+    prepareGzip("rb");
+  }
 }
 
 ManagedDirectory::File::~File() {
@@ -532,6 +508,28 @@ ManagedDirectory::File::~File() {
       ::closeFile(_fd, _status);
     }
   } catch (...) {
+  }
+}
+
+void ManagedDirectory::File::prepareGzip(char const* gzFlags) {
+  TRI_ASSERT(_gzFile == nullptr);
+
+  if (_fd >= 0) {
+    // gzip is going to perform a redundant close,
+    //  simpler code to give it redundant handle
+    _gzfd = TRI_DUP(_fd);
+  }
+    
+  _gzFile = gzdopen(_gzfd, gzFlags);
+
+  if (_gzFile != nullptr) {
+    // allocate a larger buffer for decompression.
+    // 128kb seems to be enough here... larger buffers didn't
+    // really improve speed during testing
+    int r = gzbuffer(_gzFile, 128 * 1024); 
+    if (r != 0) {
+      _status.reset(TRI_ERROR_OUT_OF_MEMORY, "unable to allocate gzip buffer");
+    }
   }
 }
 

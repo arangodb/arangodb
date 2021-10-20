@@ -1720,7 +1720,7 @@ TEST(numeric_utils_test, uint_traits) {
   {
     traits_t::integral_t value(0x12345678);
 
-    if (irs::numeric_utils::is_big_endian()) {
+    if constexpr (irs::is_big_endian()) {
       ASSERT_EQ(value, traits_t::hton(value));
       ASSERT_EQ(value, traits_t::ntoh(value));
     } else {
@@ -1810,7 +1810,7 @@ TEST(numeric_utils_test, ulong_traits) {
   {
     traits_t::integral_t value(0x1234567890ABCDEF);
 
-    if (irs::numeric_utils::is_big_endian()) {
+    if constexpr (irs::is_big_endian()) {
       ASSERT_EQ(value, traits_t::hton(value));
       ASSERT_EQ(value, traits_t::ntoh(value));
     } else {

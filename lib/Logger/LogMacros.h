@@ -51,8 +51,7 @@
 /// Author: Ray Sidney
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_MACROS_H
-#define ARANGODB_LOGGER_LOG_MACROS_H 1
+#pragma once
 
 #include "Logger/LogVoidify.h"
 #include "Logger/Logger.h"
@@ -65,7 +64,7 @@
   << ::arangodb::Logger::LOGID((id))
 
 /// @brief logs a message for a topic given that a condition is true
-#if ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // in maintainer mode, we *intentionally and always build all log messages* if
 // the condition is true.
 // we do this to find any errors when building log messages in low log levels
@@ -113,5 +112,3 @@
 
 #define LOG_DEVEL_IF(cond) \
   LOG_TOPIC_IF("xxxxx", LOG_DEVEL_LEVEL, ::arangodb::Logger::FIXME, (cond)) << "###### "
-
-#endif

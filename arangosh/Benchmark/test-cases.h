@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include "testcases/AqlInsertTest.h"
 #include "testcases/AqlV8Test.h"
 #include "testcases/CustomQuery.h"

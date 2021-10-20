@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SUBQUERY_END_EXECUTION_NODE_H
-#define ARANGOD_AQL_SUBQUERY_END_EXECUTION_NODE_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -47,9 +46,6 @@ class SubqueryEndNode : public ExecutionNode {
   Variable const* inVariable() const { return _inVariable; }
 
   Variable const* outVariable() const { return _outVariable; }
-
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -77,6 +73,9 @@ class SubqueryEndNode : public ExecutionNode {
   // node
   bool isModificationNode() const override;
 
+ protected:
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+
  private:
   Variable const* _inVariable;
   Variable const* _outVariable;
@@ -85,4 +84,3 @@ class SubqueryEndNode : public ExecutionNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

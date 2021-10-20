@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_CPU_USAGE_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_CPU_USAGE_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/CpuUsageSnapshot.h"
@@ -68,4 +67,3 @@ class CpuUsageFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

@@ -1,0 +1,16 @@
+name: arangodb_vst_connections_total
+introducedIn: "3.7.15"
+help: |
+  Total number of VST connections accepted.
+unit: number
+type: counter
+category: Connectivity
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of connections accepted for VST, this are upgraded
+  connections from HTTP/1.1.

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H 1
+#pragma once
 
 #include <stddef.h>
 #include <atomic>
@@ -35,6 +34,7 @@
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
+class CommunicationFeaturePhase;
 }
 namespace basics {
 class StringBuffer;
@@ -119,6 +119,9 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   inline size_t connectRetries() const { return _connectRetries; }
+
+  void repurpose(double connectTimeout, double requestTimeout,
+                 size_t connectRetries);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connect
@@ -239,7 +242,11 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   Endpoint* _endpoint;
-  bool _freeEndpointOnDestruction;
+  
+  // reference to communication feature phase (populated only once for
+  // the entire lifetime of the SimpleHttpClient, as the repeated feature
+  // lookup may be expensive otherwise)
+  application_features::CommunicationFeaturePhase& _comm;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request timeout (in seconds)
@@ -264,6 +271,8 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t _numConnectRetries;
+  
+  bool _freeEndpointOnDestruction;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether we're connected
@@ -285,4 +294,3 @@ class GeneralClientConnection {
 }  // namespace httpclient
 }  // namespace arangodb
 
-#endif

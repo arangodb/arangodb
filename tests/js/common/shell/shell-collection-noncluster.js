@@ -28,13 +28,13 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var ArangoCollection = arangodb.ArangoCollection;
-var testHelper = require("@arangodb/test-helper").Helper;
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const ArangoCollection = arangodb.ArangoCollection;
+const testHelper = require("@arangodb/test-helper").Helper;
 const internal = require("internal");
-var db = arangodb.db;
-var ERRORS = arangodb.errors;
+const db = arangodb.db;
+const ERRORS = arangodb.errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: collection
@@ -250,46 +250,6 @@ function CollectionSuite () {
           if (idx.figures.cacheInUse) {
             assertTrue(Math.abs(initial[i].cacheSize - idx.figures.cacheSize) < 1024);
             assertTrue(idx.figures.cacheLifeTimeHitRate > initial[i].cacheLifeTimeHitRate, idx, { idx, initial });
-          }
-        });
-
-        // cache usage should be 0 after unload
-        c.unload(); // destorys cache
-        idxs = c.getIndexes(true); // loads collection
-        idxs.forEach(function(idx, i) {
-          if (idx.figures.cacheInUse) {
-            assertTrue(idx.figures.cacheSize > 0);
-            assertEqual(idx.figures.cacheUsage, 0);
-          }
-        });
-
-        // lets do some reads
-        for (let i = 0; i < 10000; i++) {
-          c.outEdges("c/v" + (i / 100));
-          c.inEdges("c/v" + (i / 100));
-        }
-        idxs = c.getIndexes(true);
-        // cache was empty, hit rate should be 0
-        idxs.forEach(function(idx) {
-          if (idx.figures.cacheInUse) {
-            assertTrue(idx.figures.cacheSize > 0, idx);
-            assertTrue(idx.figures.cacheUsage > 0, idx);
-            assertEqual(idx.figures.cacheLifeTimeHitRate, 0, idx);
-          }
-        });
-
-        for(let i = 0; i < 10000; i++) {
-          c.outEdges("c/v" + (i / 100));
-          c.inEdges("c/v" + (i / 100));
-        }
-        idxs = c.getIndexes(true);
-        // cache was partially filled same queries, lifetime hit rate
-        // should be about 50 %
-        // but actual lifetime hit rate is unpredictable due to varying
-        // load and memory constraints during tests
-        idxs.forEach(function(idx) {
-          if (idx.figures.cacheInUse) {
-            assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
           }
         });
       } finally {

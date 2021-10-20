@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SOCKET__UTILS_H
-#define ARANGODB_BASICS_SOCKET__UTILS_H 1
+#pragma once
 
 #include <stddef.h>
 
@@ -211,8 +210,6 @@ int TRI_closesocket(TRI_socket_t);
 
 int TRI_readsocket(TRI_socket_t, void* buffer, size_t numBytesToRead, int flags);
 
-int TRI_writesocket(TRI_socket_t, const void* buffer, size_t numBytesToWrite, int flags);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets non-blocking mode for a socket
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,4 +238,3 @@ ErrorCode TRI_InetPton4(char const* src, unsigned char* dst);
 
 ErrorCode TRI_InetPton6(char const* src, unsigned char* dst);
 
-#endif

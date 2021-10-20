@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_MASTER_CONTEXT_H
-#define ARANGODB_PREGEL_MASTER_CONTEXT_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 #include "Basics/Common.h"
@@ -134,4 +133,3 @@ class MasterContext {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

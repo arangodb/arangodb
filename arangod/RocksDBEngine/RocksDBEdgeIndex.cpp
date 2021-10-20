@@ -34,7 +34,7 @@
 #include "Basics/cpu-relax.h"
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
-#include "Indexes/SortedIndexAttributeMatcher.h"
+#include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -42,8 +42,8 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -89,8 +89,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   RocksDBEdgeIndexLookupIterator(LogicalCollection* collection, transaction::Methods* trx,
                                  arangodb::RocksDBEdgeIndex const* index,
                                  std::unique_ptr<VPackBuilder> keys,
-                                 std::shared_ptr<cache::Cache> cache)
-      : IndexIterator(collection, trx),
+                                 std::shared_ptr<cache::Cache> cache,
+                                 ReadOwnWrites readOwnWrites)
+      : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
         _cache(std::move(cache)),
         _keys(std::move(keys)),
@@ -111,7 +112,12 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   char const* typeName() const override { return "edge-index-iterator"; }
 
-  bool hasExtra() const override { return true; }
+  bool hasExtra() const override {
+    TRI_IF_FAILURE("RocksDBEdgeIndex::disableHasExtra") {
+      return false;
+    }
+    return true;
+  }
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
@@ -305,9 +311,6 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     // Bad (slow) case: read from RocksDB
     
     auto* mthds = RocksDBTransactionState::toMethods(_trx);
-    // intentional copy of the options
-    rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
-    ro.fill_cache = EdgeIndexFillBlockCache;
     
     // create iterator only on demand, so we save the allocation in case
     // the reads can be satisfied from the cache
@@ -331,7 +334,11 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     // iterator every time we look for an edge. the performance hit is mitigated by that
     // edge lookups are normally using the in-memory edge cache, so we only hit this
     // method when connections are not yet in the cache.
-    std::unique_ptr<rocksdb::Iterator> iterator = mthds->NewIterator(ro, _index->columnFamily());
+    std::unique_ptr<rocksdb::Iterator> iterator =
+        mthds->NewIterator(_index->columnFamily(), [this](ReadOptions& ro) {
+          ro.fill_cache = EdgeIndexFillBlockCache;
+          ro.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
+        });
 
     TRI_ASSERT(iterator != nullptr);
 
@@ -473,7 +480,8 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
 
 Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice doc, OperationOptions const& /*options*/) {
+                                velocypack::Slice doc, OperationOptions const& /*options*/,
+                                bool /*performChecks*/) {
   Result res;
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
@@ -546,13 +554,14 @@ Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
-  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
+  SimpleAttributeEqualityMatcher matcher(this->_fields);
+  return matcher.matchOne(this, node, reference, itemsInIndex);
 }
 
 /// @brief creates an IndexIterator for the given Condition
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
+    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
   TRI_ASSERT(node != nullptr);
@@ -562,10 +571,16 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
 
   TRI_ASSERT(aap.attribute->stringEquals(_directionAttr));
 
+  TRI_ASSERT(aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+             aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN);
+  
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, aap.attribute, aap.value, opts.enableCache);
-  } else if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    return createEqIterator(trx, aap.attribute, aap.value, opts.enableCache, readOwnWrites);
+  } 
+  if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    // "in"-checks never needs to observe own writes
+    TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
     // a.b IN values
     if (aap.value->isArray()) {
       return createInIterator(trx, aap.attribute, aap.value, opts.enableCache);
@@ -582,7 +597,8 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBEdgeIndex::specializeCondition(
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
-  return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
+  SimpleAttributeEqualityMatcher matcher(this->_fields);
+  return matcher.specializeOne(this, node, reference);
 }
 
 static std::string FindMedian(rocksdb::Iterator* it, std::string const& start,
@@ -781,7 +797,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
     }
     if (needsInsert) {
       LocalDocumentId const docId = RocksDBKey::edgeDocumentId(key);
-      if (!rocksColl->readDocument(trx, docId, mdr)) {
+      // warmup does not need to observe own writes
+      if (!rocksColl->readDocument(trx, docId, mdr, ReadOwnWrites::no)) {
         // Data Inconsistency. revision id without a document...
         TRI_ASSERT(false);
         continue;
@@ -819,7 +836,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
 /// @brief create the iterator
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(
     transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
-    arangodb::aql::AstNode const* valNode, bool useCache) const {
+    arangodb::aql::AstNode const* valNode, bool useCache, ReadOwnWrites readOwnWrites) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -827,7 +844,8 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(
   fillLookupValue(*keys, valNode);
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx,
                                                           this, std::move(keys),
-                                                          useCache ? _cache : nullptr);
+                                                          useCache ? _cache : nullptr,
+                                                          readOwnWrites);
 }
 
 /// @brief create the iterator
@@ -839,9 +857,11 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(
   std::unique_ptr<VPackBuilder> keys(builder.steal());
 
   fillInLookupValues(trx, *(keys.get()), valNode);
+  // "in"-checks never need to observe own writes.
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx,
                                                           this, std::move(keys),
-                                                          useCache ? _cache : nullptr);
+                                                          useCache ? _cache : nullptr,
+                                                          ReadOwnWrites::no);
 }
 
 void RocksDBEdgeIndex::fillLookupValue(VPackBuilder& keys,

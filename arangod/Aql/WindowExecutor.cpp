@@ -142,6 +142,7 @@ void BaseWindowExecutor::produceInvalidOutputRow(InputAqlItemRow& input, OutputA
   for (auto const& regId : _infos.getAggregatedRegisters()) {
     output.moveValueInto(/*outRegister*/ regId.first, input, nullSlice);
   }
+  output.advanceRow();
 }
 
 // -------------- AccuWindowExecutor --------------

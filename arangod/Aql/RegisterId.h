@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REGISTER_ID_H
-#define ARANGOD_AQL_REGISTER_ID_H 1
+#pragma once
 
 #include "Basics/debugging.h"
 
@@ -80,12 +79,12 @@ struct RegisterId {
   }
 
   constexpr bool operator<(RegisterId const& rhs) const noexcept {
-    TRI_ASSERT(type() == rhs.type())
+    TRI_ASSERT(type() == rhs.type());
     return _value < rhs._value;
   }
 
   constexpr bool operator>(RegisterId const& rhs) const noexcept {
-    TRI_ASSERT(type() == rhs.type())
+    TRI_ASSERT(type() == rhs.type());
     return _value > rhs._value;
   }
 
@@ -130,4 +129,3 @@ struct equal_to<arangodb::aql::RegisterId> {
 };
 }  // namespace std
 
-#endif

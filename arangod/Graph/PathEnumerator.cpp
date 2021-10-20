@@ -25,7 +25,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Containers/Helpers.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserCache.h"
@@ -42,10 +42,10 @@ namespace arangodb {
 namespace traverser {
 
 EnumeratedPath::EnumeratedPath(arangodb::ResourceMonitor& resourceMonitor)
-  : _resourceMonitor(resourceMonitor) {}
+    : _resourceMonitor(resourceMonitor) {}
 
 EnumeratedPath::~EnumeratedPath() {
-  size_t memoryUsage = 
+  size_t memoryUsage =
       (_vertices.capacity() * sizeof(typename decltype(_vertices)::value_type)) +
       (_edges.capacity() * sizeof(typename decltype(_edges)::value_type));
 
@@ -54,21 +54,8 @@ EnumeratedPath::~EnumeratedPath() {
 
 template <typename T>
 void EnumeratedPath::growStorage(std::vector<T>& data) {
-  size_t capacity;
+  size_t capacity = arangodb::containers::Helpers::nextCapacity(data, 8);
 
-  if (data.empty()) {
-    // reserve some initial space
-    capacity = 8;
-  } else {
-    capacity = data.size() + 1;
-    // allocate with power of 2 growth
-    if (capacity > data.capacity()) {
-      capacity *= 2;
-    }
-  }
-
-  TRI_ASSERT(capacity > data.size());
-  
   if (capacity > data.capacity()) {
     // reserve space
     ResourceUsageScope guard(_resourceMonitor, (capacity - data.capacity()) * sizeof(T));
@@ -95,7 +82,7 @@ void EnumeratedPath::popVertex() noexcept {
   _vertices.pop_back();
 }
 
-void EnumeratedPath::popEdge() noexcept { 
+void EnumeratedPath::popEdge() noexcept {
   TRI_ASSERT(!_edges.empty());
   _edges.pop_back();
 }
@@ -109,9 +96,13 @@ size_t EnumeratedPath::numVertices() const noexcept { return _vertices.size(); }
 
 size_t EnumeratedPath::numEdges() const noexcept { return _edges.size(); }
 
-std::vector<arangodb::velocypack::StringRef> const& EnumeratedPath::vertices() const noexcept { return _vertices; }
+std::vector<arangodb::velocypack::StringRef> const& EnumeratedPath::vertices() const noexcept {
+  return _vertices;
+}
 
-std::vector<graph::EdgeDocumentToken> const& EnumeratedPath::edges() const noexcept { return _edges; }
+std::vector<graph::EdgeDocumentToken> const& EnumeratedPath::edges() const noexcept {
+  return _edges;
+}
 
 arangodb::velocypack::StringRef const& EnumeratedPath::lastVertex() const noexcept {
   TRI_ASSERT(!_vertices.empty());
@@ -123,11 +114,11 @@ graph::EdgeDocumentToken const& EnumeratedPath::lastEdge() const noexcept {
   return _edges.back();
 }
 
-} // namespace
-} // namespace
+}  // namespace traverser
+}  // namespace arangodb
 
 PathEnumerator::PathEnumerator(Traverser* traverser, TraverserOptions* opts)
-    : _traverser(traverser), 
+    : _traverser(traverser),
       _opts(opts),
       _enumeratedPath(_opts->resourceMonitor()),
       _httpRequests(0),
@@ -142,6 +133,27 @@ void PathEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex)
   _enumeratedPath.clear();
   _enumeratedPath.pushVertex(startVertex);
 }
+
+bool PathEnumerator::usePostFilter(aql::PruneExpressionEvaluator* evaluator) {
+  TRI_ASSERT(evaluator != nullptr);
+
+  aql::AqlValue vertex, edge;
+  aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
+  if (evaluator->needsVertex()) {
+    vertex = lastVertexToAqlValue();
+    evaluator->injectVertex(vertex.slice());
+  }
+  if (evaluator->needsEdge()) {
+    edge = lastEdgeToAqlValue();
+    evaluator->injectEdge(edge.slice());
+  }
+  TRI_ASSERT(!evaluator->needsPath());
+  if (!evaluator->evaluate()) {
+    // do not return the path in that case
+    return false;
+  }
+  return true;
+};
 
 bool PathEnumerator::keepEdge(arangodb::graph::EdgeDocumentToken& eid,
                               arangodb::velocypack::Slice edge,
@@ -190,7 +202,14 @@ bool DepthFirstEnumerator::next() {
       _pruneNext = true;
     }
     if (_opts->minDepth == 0) {
-      return true;
+      if (_opts->usesPostFilter()) {
+        auto evaluator = _opts->getPostFilterEvaluator();
+        if (usePostFilter(evaluator)) {
+          return true;
+        }
+      } else {
+        return true;
+      }
     }
   }
   if (_enumeratedPath.numVertices() == 0) {
@@ -219,8 +238,7 @@ bool DepthFirstEnumerator::next() {
     bool foundPath = false;
 
     auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice const& edge, size_t cursorId) {
-      if (!keepEdge(eid, edge,
-                    arangodb::velocypack::StringRef(_enumeratedPath.lastVertex()),
+      if (!keepEdge(eid, edge, arangodb::velocypack::StringRef(_enumeratedPath.lastVertex()),
                     _enumeratedPath.numEdges(), cursorId)) {
         return;
       }
@@ -266,6 +284,10 @@ bool DepthFirstEnumerator::next() {
           }
         }
 
+        if (!validDisjointPath()) {
+          return;
+        }
+
         _enumeratedPath.pushEdge(eid);
         foundPath = true;
       }
@@ -285,6 +307,14 @@ bool DepthFirstEnumerator::next() {
             // We have a valid prefix, but do NOT return this path
             break;
           }
+
+          if (_opts->usesPostFilter()) {
+            auto evaluator = _opts->getPostFilterEvaluator();
+            if (!usePostFilter(evaluator)) {
+              break;
+            }
+          }
+
           return true;
         }
       } else {
@@ -320,27 +350,30 @@ arangodb::aql::AqlValue DepthFirstEnumerator::lastEdgeToAqlValue() {
   return _opts->cache()->fetchEdgeAqlResult(_enumeratedPath.lastEdge());
 }
 
-VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result) {
+VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result, bool fromPrune) {
   result.clear();
   result.openObject();
-  result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
-  for (auto const& it : _enumeratedPath.edges()) {
-    // TRI_ASSERT(it != nullptr);
-    _opts->cache()->insertEdgeIntoResult(it, result);
+  if (fromPrune || _opts->producePathsEdges()) {
+    result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
+    for (auto const& it : _enumeratedPath.edges()) {
+      _opts->cache()->insertEdgeIntoResult(it, result);
+    }
+    result.close();
   }
-  result.close();
-  result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
-  for (auto const& it : _enumeratedPath.vertices()) {
-    _traverser->addVertexToVelocyPack(VPackStringRef(it), result);
+  if (fromPrune || _opts->producePathsVertices()) {
+    result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
+    for (auto const& it : _enumeratedPath.vertices()) {
+      _traverser->addVertexToVelocyPack(VPackStringRef(it), result);
+    }
+    result.close();
   }
-  result.close();
   result.close();
   TRI_ASSERT(result.isClosed());
   return result.slice();
 }
 
 arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(VPackBuilder& result) {
-  return arangodb::aql::AqlValue(pathToSlice(result));
+  return arangodb::aql::AqlValue(pathToSlice(result, false));
 }
 
 bool DepthFirstEnumerator::shouldPrune() {
@@ -367,8 +400,14 @@ bool DepthFirstEnumerator::shouldPrune() {
     evaluator->injectEdge(edge.slice());
   }
   if (evaluator->needsPath()) {
-    VPackSlice path = pathToSlice(*pathBuilder.get());
+    VPackSlice path = pathToSlice(*pathBuilder.get(), true);
     evaluator->injectPath(path);
   }
   return evaluator->evaluate();
 }
+
+#ifndef USE_ENTERPRISE
+bool DepthFirstEnumerator::validDisjointPath() const {
+  return true;
+}
+#endif

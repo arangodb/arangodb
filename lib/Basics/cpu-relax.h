@@ -21,8 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_CPU_RELAX_H
-#define ARANGO_CPU_RELAX_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/operating-system.h"
@@ -50,4 +49,3 @@ inline void cpu_relax() noexcept {
 
 }  // namespace arangodb::basics
 
-#endif

@@ -2564,7 +2564,7 @@ function ahuacatlUpdateSuite () {
         assertEqual(i, doc["new"].value1);
         assertEqual("test" + i, doc.old.value2);
         assertEqual("test" + i, doc["new"].value2);
-        assertEqual(doc.old._rev, doc["new"]._rev); // _rev should not have changed
+        assertNotEqual(doc.old._rev, doc["new"]._rev); // _rev must have changed
       }
     },
 
@@ -2587,7 +2587,7 @@ function ahuacatlUpdateSuite () {
         assertEqual(i, doc.NEW.value1);
         assertEqual("test" + i, doc.OLD.value2);
         assertEqual("test" + i, doc.NEW.value2);
-        assertEqual(doc.OLD._rev, doc.NEW._rev); // _rev should not have changed
+        assertNotEqual(doc.OLD._rev, doc.NEW._rev); // _rev must have changed
       }
     },
 
@@ -3395,7 +3395,7 @@ false
         assertEqual(i, doc["new"].value1);
         assertEqual("test" + i, doc.old.value2);
         assertEqual("test" + i, doc["new"].value2);
-        assertEqual(doc.old._rev, doc["new"]._rev); // _rev should not have changed
+        assertNotEqual(doc.old._rev, doc["new"]._rev); // _rev must have changed
       }
     },
 
@@ -3418,7 +3418,7 @@ false
         assertEqual(i, doc.NEW.value1);
         assertEqual("test" + i, doc.OLD.value2);
         assertEqual("test" + i, doc.NEW.value2);
-        assertEqual(doc.OLD._rev, doc.NEW._rev); // _rev should not have changed
+        assertNotEqual(doc.OLD._rev, doc.NEW._rev); // _rev must have changed
       }
     },
 

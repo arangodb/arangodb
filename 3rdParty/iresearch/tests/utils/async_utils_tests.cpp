@@ -107,264 +107,6 @@ TEST_F(async_utils_tests, test_busywait_mutex_mt) {
   }
 }
 
-TEST_F(async_utils_tests, test_read_write_mutex_mt) {
-  typedef irs::async_utils::read_write_mutex mutex_t;
-  typedef irs::async_utils::read_write_mutex::read_mutex r_mutex_t;
-  typedef irs::async_utils::read_write_mutex::write_mutex w_mutex_t;
-
-  // concurrent read lock
-  {
-    mutex_t mutex;
-    r_mutex_t wrapper(mutex);
-    std::lock_guard<r_mutex_t> lock(wrapper);
-
-    ASSERT_FALSE(mutex.owns_write());
-
-    std::thread thread([&wrapper]()->void{ std::unique_lock<r_mutex_t> lock(wrapper); ASSERT_TRUE(lock.owns_lock()); });
-    thread.join();
-  }
-
-  // exclusive write lock
-  {
-    mutex_t mutex;
-    w_mutex_t wrapper(mutex);
-    std::lock_guard<w_mutex_t> lock(wrapper);
-
-    ASSERT_TRUE(mutex.owns_write());
-    ASSERT_TRUE(wrapper.owns_write());
-
-    std::thread thread([&wrapper]()->void{ ASSERT_FALSE(wrapper.try_lock()); });
-    thread.join();
-  }
-
-  // read block write
-  {
-    mutex_t mutex;
-    r_mutex_t wrapper(mutex);
-    std::lock_guard<r_mutex_t> lock(wrapper);
-
-    std::thread thread([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
-    thread.join();
-  }
-
-  // write block read
-  {
-    mutex_t mutex;
-    w_mutex_t wrapper(mutex);
-    std::lock_guard<w_mutex_t> lock(wrapper);
-
-    std::thread thread([&mutex]()->void{ r_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
-    thread.join();
-  }
-
-  // writer non-starvation (reader waits for pending writers)
-  {
-    std::condition_variable cond;
-    std::mutex cond_mtx;
-    std::mutex begin0, end0;
-    std::mutex begin1, end1;
-    std::mutex begin2, end2;
-    std::unique_lock<std::mutex> cond_lock(cond_mtx);
-    std::unique_lock<std::mutex> lock_begin0(begin0), lock_end0(end0);
-    std::unique_lock<std::mutex> lock_begin1(begin1), lock_end1(end1);
-    std::unique_lock<std::mutex> lock_begin2(begin2), lock_end2(end2);
-    mutex_t mutex;
-
-    std::thread thread0([&begin0, &end0, &cond, &mutex]()->void{
-      std::unique_lock<std::mutex> lock_begin(begin0); // wait for start
-      r_mutex_t wrapper(mutex);
-      std::lock_guard<r_mutex_t> lock(wrapper);
-      cond.notify_all(); // notify work done
-      lock_begin.unlock();
-      std::lock_guard<std::mutex> lock_end(end0); // wait for end
-    });
-    std::thread thread1([&begin1, &end1, &cond, &cond_mtx, &mutex]()->void{
-      std::unique_lock<std::mutex> lock_begin(begin1); // wait for start
-      w_mutex_t wrapper(mutex);
-      std::lock_guard<w_mutex_t> lock(wrapper);
-      {
-        std::lock_guard<std::mutex> cond_lock(cond_mtx);
-        cond.notify_all(); // notify work done
-        lock_begin.unlock();
-      }
-      std::lock_guard<std::mutex> lock_end(end1); // wait for end
-    });
-    std::thread thread2([&begin2, &end2, &cond, &cond_mtx, &mutex]()->void{
-      std::unique_lock<std::mutex> lock_begin(begin2); // wait for start
-      r_mutex_t wrapper(mutex);
-      std::lock_guard<r_mutex_t> lock(wrapper);
-      {
-        std::lock_guard<std::mutex> cond_lock(cond_mtx);
-        cond.notify_all(); // notify work done
-        lock_begin.unlock();
-      }
-      std::lock_guard<std::mutex> lock_end(end2); // wait for end
-    });
-
-    ASSERT_TRUE(std::cv_status::no_timeout == cond.wait_for(lock_begin0, 1000ms)); // wait for 1st reader
-
-    lock_begin1.unlock(); // start writer
-    std::this_thread::sleep_for(100ms); // assume writer blocks on lock within 100ms
-    lock_begin2.unlock(); // start 2nd reader
-    std::this_thread::sleep_for(100ms); // assume 2nd reader blocks on lock within 100ms
-    // assume writer registers with mutex before reader due to timeout above
-
-    lock_end0.unlock(); // allow first reader to finish
-    ASSERT_TRUE(std::cv_status::no_timeout == cond.wait_for(cond_lock, 1000ms)); // wait for reader or writer to finish
-    ASSERT_FALSE(lock_begin2.try_lock()); // reader should still be blocked
-    ASSERT_TRUE(lock_begin1.try_lock()); // writer should have already unblocked
-
-    cond_lock.unlock(); // allow remaining thread to notify condition
-    lock_end1.unlock(); // allow writer thread to finish
-    lock_end2.unlock(); // allow 2nd reader thread to finish
-    thread0.join();
-    thread1.join();
-    thread2.join();
-  }
-
-  // reader downgrade to a reader blocks a new writer but allows concurrent reader
-  {
-    mutex_t mutex;
-    r_mutex_t wrapper(mutex);
-    std::lock_guard<r_mutex_t> lock(wrapper);
-
-    ASSERT_FALSE(mutex.owns_write());
-    mutex.unlock(true); // downgrade to a read lock
-    ASSERT_FALSE(mutex.owns_write());
-
-    // test write lock aquire fails (mutex is locked)
-    std::thread w_thread([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
-    w_thread.join();
-
-    // test write lock aquire passes (mutex is not write-locked)
-    std::thread r_thread([&wrapper]()->void{ std::unique_lock<r_mutex_t> lock(wrapper); ASSERT_TRUE(lock.owns_lock()); });
-    r_thread.join();
-  }
-
-  // writer downgrade to a reader blocks a new writer but allows concurrent reader
-  {
-    mutex_t mutex;
-    r_mutex_t r_wrapper(mutex);
-    w_mutex_t w_wrapper(mutex);
-    std::lock_guard<w_mutex_t> lock(w_wrapper);
-
-    ASSERT_TRUE(mutex.owns_write());
-    ASSERT_TRUE(w_wrapper.owns_write());
-    w_wrapper.unlock(true); // downgrade to a read lock
-    ASSERT_FALSE(mutex.owns_write());
-    ASSERT_FALSE(w_wrapper.owns_write());
-
-    // test write lock aquire fails (mutex is locked)
-    std::thread w_thread([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
-    w_thread.join();
-
-    // test write lock aquire passes (mutex is not write-locked)
-    std::thread r_thread([&r_wrapper]()->void{ std::unique_lock<r_mutex_t> lock(r_wrapper); ASSERT_TRUE(lock.owns_lock()); });
-    r_thread.join();
-  }
-
-  // reader recursive lock
-  {
-    mutex_t mutex;
-    r_mutex_t r_wrapper(mutex);
-    w_mutex_t w_wrapper(mutex);
-
-    {
-      std::lock_guard<r_mutex_t> lock0(r_wrapper);
-
-      // test write lock aquire fails (mutex is locked)
-      std::thread thread0([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
-      thread0.join();
-
-      {
-        std::unique_lock<r_mutex_t> lock1(r_wrapper, std::try_to_lock);
-        ASSERT_TRUE(lock1.owns_lock());
-
-        // test write lock aquire fails (mutex is locked)
-        std::thread thread1([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
-        thread1.join();
-      }
-
-      // test write lock aquire fails (mutex is locked)
-      std::thread thread2([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
-      thread2.join();
-    }
-
-    // test write lock aquire passes (mutex is not write-locked)
-    std::thread thread3([&w_wrapper]()->void{ std::unique_lock<w_mutex_t> lock(w_wrapper, std::try_to_lock); ASSERT_TRUE(lock.owns_lock()); });
-    thread3.join();
-  }
-
-  // writer recursive lock
-  {
-    mutex_t mutex;
-    r_mutex_t r_wrapper(mutex);
-    w_mutex_t w_wrapper(mutex);
-
-    {
-      std::lock_guard<w_mutex_t> lock0(w_wrapper);
-
-      // test write lock aquire fails (mutex is locked)
-      std::thread thread0([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
-      thread0.join();
-
-      {
-        std::unique_lock<w_mutex_t> lock1(w_wrapper, std::try_to_lock);
-        ASSERT_TRUE(lock1.owns_lock());
-
-        // test read lock aquire fails (mutex is locked)
-        std::thread thread1([&mutex]()->void{ r_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
-        thread1.join();
-
-        // test write lock aquire fails (mutex is locked)
-        std::thread thread2([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
-        thread2.join();
-
-        w_wrapper.unlock(true); // downgrade recursion to read-only
-
-        // test read lock aquire fails (mutex is locked)
-        std::thread thread3([&mutex]()->void{ r_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
-        thread3.join();
-
-        // test write lock aquire fails (mutex is locked)
-        std::thread thread4([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
-        thread4.join();
-
-        std::unique_lock<r_mutex_t> lock2(r_wrapper, std::try_to_lock);
-        ASSERT_TRUE(lock2.owns_lock());
-      }
-    }
-
-    // test write lock aquire passes (mutex is not write-locked)
-    std::thread thread5([&w_wrapper]()->void{ std::unique_lock<w_mutex_t> lock(w_wrapper, std::try_to_lock); ASSERT_TRUE(lock.owns_lock()); });
-    thread5.join();
-  }
-
-  // reader recursive with writer pending
-  {
-    mutex_t mutex;
-    r_mutex_t r_wrapper(mutex);
-    w_mutex_t w_wrapper(mutex);
-
-    {
-      std::unique_lock<r_mutex_t> lock0(r_wrapper);
-
-      // write-pending
-      std::thread thread0([&w_wrapper]()->void{ std::unique_lock<w_mutex_t> lock(w_wrapper); });
-      std::this_thread::sleep_for(100ms); // assume thread starts within 100msec
-
-      {
-        std::unique_lock<r_mutex_t> lock1(r_wrapper, std::try_to_lock);
-        ASSERT_FALSE(lock1.owns_lock()); // cannot aquire recursive read-lock if write-lock pending (limitation)
-      }
-
-      lock0.unlock();
-      thread0.join();
-    }
-  }
-
-}
-
 TEST_F(async_utils_tests, test_thread_pool_run_mt) {
   // test schedule 1 task
   {
@@ -453,7 +195,13 @@ TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
     pool.run(std::move(task2));
     pool.run(std::move(task3));
     pool.max_threads(2);
-    std::this_thread::sleep_for(100ms); // assume threads start within 100msec
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (1 != pool.tasks_pending() || 2 != pool.tasks_active() || count != 2) {
+        std::this_thread::sleep_for(10ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
     ASSERT_EQ(2, count); // 2 tasks started
     ASSERT_EQ(2, pool.threads());
     ASSERT_EQ(2, pool.tasks_active());
@@ -473,7 +221,13 @@ TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
     ASSERT_EQ(0, pool.threads());
     pool.run(std::move(task));
     pool.max_threads_delta(1);
-    std::this_thread::sleep_for(100ms); // assume threads start within 100msec
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (0 != pool.tasks_pending() || 1 != pool.tasks_active() || count != 1) {
+        std::this_thread::sleep_for(10ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
     ASSERT_EQ(1, count); // 1 task started
     ASSERT_EQ(1, pool.threads());
     ASSERT_EQ(1, pool.tasks_active());
@@ -521,14 +275,20 @@ TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
     pool.run(std::move(task3));
     pool.limits(3, 1);
     ASSERT_EQ(std::make_pair(size_t(3), size_t(1)), pool.limits());
-    ASSERT_TRUE(start_count || std::cv_status::no_timeout == start_cond.wait_for(start_lock, 1000ms) || start_count); // wait for all 3 tasks to start
+    ASSERT_TRUE(start_count || std::cv_status::no_timeout == start_cond.wait_for(start_lock, 10000ms) || start_count); // wait for all 3 tasks to start
     ASSERT_EQ(0, count); // 0 tasks complete
     ASSERT_EQ(3, pool.threads());
     ASSERT_EQ(3, pool.tasks_active());
     ASSERT_EQ(0, pool.tasks_pending());
     ASSERT_EQ(std::make_tuple(size_t(3), size_t(0), size_t(3)), pool.stats());
     lock1.unlock();
-    std::this_thread::sleep_for(100ms); // assume threads finish within 100msec
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (2 != pool.threads() || count != 2) {
+        std::this_thread::sleep_for(10ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
     ASSERT_EQ(2, count); // 2 tasks complete
     ASSERT_EQ(2, pool.threads());
     lock2.unlock();
@@ -634,10 +394,10 @@ TEST_F(async_utils_tests, test_thread_pool_max_idle_mt) {
         ASSERT_LE(std::chrono::steady_clock::now(), end);
       }
     }
-    lock.unlock();
     ASSERT_EQ(0, pool.tasks_pending());
     ASSERT_EQ(4, pool.tasks_active());
     ASSERT_EQ(4, count);
+    lock.unlock();
     {
       const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
       while (pool.tasks_active()) {

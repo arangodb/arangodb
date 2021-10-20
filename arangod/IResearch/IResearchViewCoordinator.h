@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H 1
+#pragma once
 
 #include "IResearch/IResearchViewMeta.h"
 #include "VocBase/LogicalView.h"
@@ -63,22 +62,21 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   /// @note definitions are not persisted
   /// @return the 'link' was newly added to the IResearch View
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result link(IResearchLink const& link);
+  Result link(IResearchLink const& link);
 
-  void open() override {
-    // NOOP
-  }
+  void open() override { /* NOOP */ }
 
   using LogicalDataSource::properties;
-  virtual arangodb::Result properties(velocypack::Slice const& properties,
-                                      bool partialUpdate) override;
+  virtual Result properties(VPackSlice properties,
+                            bool isUserRequest,
+                            bool partialUpdate) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection
   ///        IDs
   /// @return success == view does not track collection
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result unlink(DataSourceId cid) noexcept;
+  Result unlink(DataSourceId cid) noexcept;
 
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
@@ -104,24 +102,23 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   }
 
  protected:
-  virtual Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
+  virtual Result appendVelocyPackImpl(VPackBuilder& builder,
                                       Serialization context) const override;
 
-  virtual arangodb::Result dropImpl() override;
+  virtual Result dropImpl() override;
 
-  arangodb::Result renameImpl(std::string const& oldName) override;
+  Result renameImpl(std::string const& oldName) override;
 
  private:
   struct ViewFactory;  // forward declaration
 
-  IResearchViewCoordinator(TRI_vocbase_t& vocbase, velocypack::Slice info);
+  IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info);
 
-  std::unordered_map<DataSourceId, std::pair<std::string, arangodb::velocypack::Builder>> _collections;  // transient member, not persisted
-  mutable irs::async_utils::read_write_mutex _mutex;  // for use with '_collections'
+  std::unordered_map<DataSourceId, std::pair<std::string, VPackBuilder>> _collections;  // transient member, not persisted
+  mutable std::shared_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
 };  // IResearchViewCoordinator
 
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H

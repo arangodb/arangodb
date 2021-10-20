@@ -164,6 +164,43 @@ TEST_F(StringUtilsTest, test_toupper) {
   EXPECT_EQ(StringUtils::toupper("HELLo-world-NONO "), "HELLO-WORLD-NONO ");
 }
 
+TEST_F(StringUtilsTest, test_equalStringsCaseInsensitive) {
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string(), std::string()));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("ABC"), std::string("ABC")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("ABC 1235667"), std::string("ABC 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("abc 1235667"), std::string("ABC 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("abc 1235667"), std::string("AbC 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("abc 1235667"), std::string("aBc 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("ABC 1235667"), std::string("abc 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("mötör"), std::string("MöTöR")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string(".'2!#"), std::string(".'2!#")));
+  
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string(" ABC"), std::string("ABC")));
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string("ABC"), std::string("12345")));
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string("mötör"), std::string("MÖTÖR")));
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string(".'2!#"), std::string("abcd")));
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string(".'2!#"), std::string(".'2!!")));
+
+  {
+    std::string s1;
+    std::string s2;
+    for (std::size_t i = 0; i < 500; ++i) {
+      s1.push_back('a');
+      s2.push_back('a');
+    }
+    s1.push_back('A');
+    s2.push_back('B');
+  
+    EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(s1, s2));
+
+    s1.pop_back();
+    EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(s1, s2));
+
+    s2.pop_back();
+    EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(s1, s2));
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_uint64
 ////////////////////////////////////////////////////////////////////////////////
@@ -378,4 +415,32 @@ TEST_F(StringUtilsTest, joinT) {
   EXPECT_EQ("hello, world", StringUtils::joinT(""sv, "hello", ", ", "world"));
   EXPECT_EQ("cstr 42 stdstr view", StringUtils::joinT(""sv, "cstr ", 42, " stdstr "s, "view"sv));
   EXPECT_EQ("cstr, 42, stdstr, view", StringUtils::joinT(", "sv, "cstr", 42, "stdstr"s, "view"sv));
+}
+
+TEST_F(StringUtilsTest, formatSize) {
+  EXPECT_EQ("0 bytes", StringUtils::formatSize(0ULL));
+  EXPECT_EQ("1 byte", StringUtils::formatSize(1ULL));
+  EXPECT_EQ("2 bytes", StringUtils::formatSize(2ULL));
+  EXPECT_EQ("3 bytes", StringUtils::formatSize(3ULL));
+  EXPECT_EQ("16 bytes", StringUtils::formatSize(16ULL));
+  EXPECT_EQ("255 bytes", StringUtils::formatSize(255ULL));
+  EXPECT_EQ("256 bytes", StringUtils::formatSize(256ULL));
+  EXPECT_EQ("999 bytes", StringUtils::formatSize(999ULL));
+  EXPECT_EQ("1.0 KB", StringUtils::formatSize(1000ULL));
+  EXPECT_EQ("1.0 KB", StringUtils::formatSize(1001ULL));
+  EXPECT_EQ("1.9 KB", StringUtils::formatSize(1999ULL));
+  EXPECT_EQ("2.0 KB", StringUtils::formatSize(2000ULL));
+  EXPECT_EQ("9.9 KB", StringUtils::formatSize(9999ULL));
+  EXPECT_EQ("10.0 KB", StringUtils::formatSize(10000ULL));
+  EXPECT_EQ("999.9 KB", StringUtils::formatSize(999999ULL));
+  EXPECT_EQ("1.0 MB", StringUtils::formatSize(1000000ULL));
+  EXPECT_EQ("16.0 MB", StringUtils::formatSize(16000000ULL));
+  EXPECT_EQ("240.0 MB", StringUtils::formatSize(240000000ULL));
+  EXPECT_EQ("1.0 GB", StringUtils::formatSize(1000000000ULL));
+  EXPECT_EQ("17.8 GB", StringUtils::formatSize(17800000000ULL));
+  EXPECT_EQ("246.4 GB", StringUtils::formatSize(246463000000ULL));
+  EXPECT_EQ("246.4 GB", StringUtils::formatSize(246463000000ULL));
+  EXPECT_EQ("999.9 GB", StringUtils::formatSize(999900000000ULL));
+  EXPECT_EQ("1.0 TB", StringUtils::formatSize(1000000000000ULL));
+  EXPECT_EQ("1.9 TB", StringUtils::formatSize(1900000000000ULL));
 }

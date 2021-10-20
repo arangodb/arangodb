@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_SUPERVISION_H
-#define ARANGOD_CONSENSUS_SUPERVISION_H 1
+#pragma once
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgentInterface.h"
@@ -172,6 +171,9 @@ class Supervision : public arangodb::Thread {
   /// @brief Check for broken analyzers
   void checkBrokenAnalyzers();
 
+  /// @brief Check replicated logs
+  void checkReplicatedLogs();
+
   struct ResourceCreatorLostEvent {
     std::shared_ptr<Node> const& resource;
     std::string const& coordinatorId;
@@ -256,8 +258,8 @@ class Supervision : public arangodb::Thread {
 
   bool handleJobs();
   void handleShutdown();
-  bool verifyCoordinatorRebootID(std::string const& coordinatorID,
-                                 uint64_t wantedRebootID, bool& coordinatorFound);
+  bool verifyServerRebootID(std::string const& serverID,
+                                 uint64_t wantedRebootID, bool& serverFound);
   void deleteBrokenDatabase(std::string const& database, std::string const& coordinatorID,
                             uint64_t rebootID, bool coordinatorFound);
   void deleteBrokenCollection(std::string const& database, std::string const& collection,
@@ -329,4 +331,3 @@ query_t removeTransactionBuilder(std::vector<std::string> const&);
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

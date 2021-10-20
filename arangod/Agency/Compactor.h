@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_COMPACTOR_H
-#define ARANGOD_CONSENSUS_COMPACTOR_H 1
+#pragma once
 
 #include "Agency/AgencyCommon.h"
 #include "Basics/ConditionVariable.h"
@@ -68,4 +67,3 @@ class Compactor : public arangodb::Thread {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

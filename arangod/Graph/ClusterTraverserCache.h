@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_CLUSTER_TRAVERSER_CACHE_H
-#define ARANGOD_GRAPH_CLUSTER_TRAVERSER_CACHE_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Cluster/ClusterInfo.h"
@@ -114,4 +113,3 @@ class ClusterTraverserCache final : public TraverserCache {
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

@@ -314,7 +314,9 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_QUERY_FAIL_CALLED):
     case static_cast<int>(TRI_ERROR_QUERY_INVALID_DATE_VALUE):
     case static_cast<int>(TRI_ERROR_QUERY_MULTI_MODIFY):
+    case static_cast<int>(TRI_ERROR_QUERY_TOO_MUCH_NESTING):
     case static_cast<int>(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS):
+    case static_cast<int>(TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE):
     case static_cast<int>(TRI_ERROR_QUERY_DISALLOWED_DYNAMIC_CALL):
     case static_cast<int>(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION):
     case static_cast<int>(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME):
@@ -371,6 +373,8 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE):
     case static_cast<int>(TRI_ERROR_ARANGO_READ_ONLY):
     case static_cast<int>(TRI_ERROR_FORBIDDEN):
+    case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER):
+    case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER):
       return ResponseCode::FORBIDDEN;
 
     case static_cast<int>(TRI_ERROR_HTTP_NOT_FOUND):
@@ -391,6 +395,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST):
     case static_cast<int>(TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION):
     case static_cast<int>(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED):
+    case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND):
       return ResponseCode::NOT_FOUND;
 
     case static_cast<int>(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION):
@@ -428,12 +433,16 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_TRANSACTION_INTERNAL):
       return ResponseCode::SERVER_ERROR;
 
-    case static_cast<int>(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE):
     case static_cast<int>(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED):
+      return ResponseCode::MISDIRECTED_REQUEST;
+
+    case static_cast<int>(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE):
     case static_cast<int>(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING):
     case static_cast<int>(TRI_ERROR_CLUSTER_NOT_LEADER):
     case static_cast<int>(TRI_ERROR_SHUTTING_DOWN):
+    case static_cast<int>(TRI_ERROR_STARTING_UP):
     case static_cast<int>(TRI_ERROR_CLUSTER_CONNECTION_LOST):
+    case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED):
       return ResponseCode::SERVICE_UNAVAILABLE;
 
     case static_cast<int>(TRI_ERROR_HTTP_NOT_IMPLEMENTED):

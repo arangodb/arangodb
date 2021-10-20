@@ -23,8 +23,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_READ_LOCKER_H
-#define ARANGODB_BASICS_READ_LOCKER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Locking.h"
@@ -54,8 +53,7 @@
   arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
       &lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 /// @brief read locker
 /// A ReadLocker read-locks a read-write lock during its lifetime and unlocks
@@ -69,7 +67,7 @@ class ReadLocker {
   /// @brief acquires a read-lock
   /// The constructor acquires a read lock, the destructor unlocks the lock.
   ReadLocker(LockType* readWriteLock, LockerType type, bool condition,
-             char const* file, int line)
+             char const* file, int line) noexcept
       : _readWriteLock(readWriteLock),
         _file(file),
         _line(line),
@@ -119,17 +117,17 @@ class ReadLocker {
   }
 
   /// @brief whether or not we acquired the lock
-  bool isLocked() const { return _isLocked; }
+  bool isLocked() const noexcept { return _isLocked; }
 
   /// @brief eventually acquire the read lock
-  void lockEventual() {
+  void lockEventual() noexcept {
     while (!tryLock()) {
       std::this_thread::yield();
     }
     TRI_ASSERT(_isLocked);
   }
 
-  bool tryLock() {
+  bool tryLock() noexcept {
     TRI_ASSERT(!_isLocked);
     if (_readWriteLock->tryLockRead()) {
       _isLocked = true;
@@ -138,14 +136,14 @@ class ReadLocker {
   }
 
   /// @brief acquire the read lock, blocking
-  void lock() {
+  void lock() noexcept {
     TRI_ASSERT(!_isLocked);
     _readWriteLock->lockRead();
     _isLocked = true;
   }
 
   /// @brief unlocks the lock if we own it
-  bool unlock() {
+  bool unlock() noexcept {
     if (_isLocked) {
       _readWriteLock->unlockRead();
       _isLocked = false;
@@ -155,7 +153,7 @@ class ReadLocker {
   }
 
   /// @brief steals the lock, but does not unlock it
-  bool steal() {
+  bool steal() noexcept {
     if (_isLocked) {
       _isLocked = false;
       return true;
@@ -182,7 +180,4 @@ class ReadLocker {
 #endif
 };
 
-}  // namespace basics
-}  // namespace arangodb
-
-#endif
+}  // namespace arangodb::basics

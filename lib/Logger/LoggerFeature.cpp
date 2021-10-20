@@ -92,11 +92,11 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
 
 LoggerFeature::~LoggerFeature() {
   Logger::shutdown();
-  Logger::shutdownLogThread();
 }
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.tty", "log.foreground-tty");
+  options->addOldOption("log.escape", "log.escape-control-chars");
 
   options
       ->addOption("--log", "the global or topic-specific log level",
@@ -104,14 +104,18 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setDeprecatedIn(30500);
 
-  options->addSection("log", "Configure the logging");
+  options->addSection("log", "logging");
 
   options->addOption("--log.color", "use colors for TTY logging",
                      new BooleanParameter(&_useColor),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--log.escape", "escape characters when logging",
-                     new BooleanParameter(&_useEscaped));
+  options->addOption("--log.escape-control-chars", "escape control characters when logging",
+                     new BooleanParameter(&_useControlEscaped))
+                     .setIntroducedIn(30900);
+  options->addOption("--log.escape-unicode-chars", "escape unicode characters when logging",
+                     new BooleanParameter(&_useUnicodeEscaped))
+                     .setIntroducedIn(30900);
 
   options->addOption(
       "--log.output,-o",
@@ -195,7 +199,9 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_file),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption("--log.line-number", "append line number and file name",
+  options->addOption("--log.line-number",
+                     "include the function name, file name and line number of the source code "
+                     "that issues the log message. Format: `[func@FileName.cpp:123]`",
                      new BooleanParameter(&_lineNumber),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
@@ -392,7 +398,8 @@ void LoggerFeature::prepare() {
   Logger::setShowRole(_showRole);
   Logger::setUseColor(_useColor);
   Logger::setTimeFormat(LogTimeFormats::formatFromName(_timeFormatString));
-  Logger::setUseEscaped(_useEscaped);
+  Logger::setUseControlEscaped(_useControlEscaped);
+  Logger::setUseUnicodeEscaped(_useUnicodeEscaped);
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShortenFilenames(_shortenFilenames);
   Logger::setShowProcessIdentifier(_processId);

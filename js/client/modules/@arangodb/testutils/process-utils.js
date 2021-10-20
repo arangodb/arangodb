@@ -34,6 +34,7 @@ const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
+const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
 
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -56,6 +57,7 @@ const GREEN = internal.COLORS.COLOR_GREEN;
 const RED = internal.COLORS.COLOR_RED;
 const RESET = internal.COLORS.COLOR_RESET;
 // const YELLOW = internal.COLORS.COLOR_YELLOW;
+const IS_A_TTY = RED.length !== 0;
 
 const platform = internal.platform;
 
@@ -63,6 +65,7 @@ const abortSignal = 6;
 const termSignal = 15;
 
 let tcpdump;
+let assertLines = [];
 
 class ConfigBuilder {
   constructor(type) {
@@ -98,6 +101,12 @@ class ConfigBuilder {
       throw new Error("must not specify all-databases and database");
     }
     this.config['server.database'] = database;
+  }
+  setThreads(threads) {
+    if (this.type !== 'restore' && this.type !== 'dump') {
+      throw '"threads" is not supported for binary: ' + this.type;
+    }
+    this.config['threads'] = threads;
   }
   setIncludeSystem(active) {
     if (this.type !== 'restore' && this.type !== 'dump') {
@@ -364,6 +373,7 @@ function setupBinaries (builddir, buildType, configDir) {
       throw new Error('unable to locate ' + checkFiles[b]);
     }
   }
+  global.ARANGOSH_BIN = ARANGOSH_BIN;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -438,6 +448,40 @@ function readImportantLogLines (logPath) {
   }
 
   return importantLines;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief scans the log files for assert lines
+// //////////////////////////////////////////////////////////////////////////////
+
+function readAssertLogLines (logPath) {
+  const list = fs.list(logPath);
+
+  for (let i = 0; i < list.length; i++) {
+    let fnLines = [];
+
+    if (list[i].slice(0, 3) === 'log') {
+      const buf = fs.readBuffer(fs.join(logPath, list[i]));
+      let lineStart = 0;
+      let maxBuffer = buf.length;
+
+      for (let j = 0; j < maxBuffer; j++) {
+        if (buf[j] === 10) { // \n
+          const line = buf.asciiSlice(lineStart, j);
+          lineStart = j + 1;
+
+          // scan for asserts from the crash dumper
+          if (line.search('{crash}') !== -1) {
+            if (!IS_A_TTY) {
+              // else the server has already printed these:
+              print("ERROR: " + line);
+            }
+            assertLines.push(line);
+          }
+        }
+      }
+    }
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -733,7 +777,7 @@ function getMemProfSnapshot(instanceInfo, options, counter) {
       }
 
       let fnMetrics = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.metrics`);
-      let metricsReply = download(arangod.url + '/_admin/metrics', opts);
+      let metricsReply = download(arangod.url + '/_admin/metrics/v2', opts);
       if (metricsReply.code === 200) {
         fs.write(fnMetrics, metricsReply.body);
         print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
@@ -1044,9 +1088,19 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
   if (what.convert !== undefined) {
     args['convert'] = what.convert ? 'true' : 'false';
   }
+
   if (what.removeAttribute !== undefined) {
     args['remove-attribute'] = what.removeAttribute;
   }
+
+  if (what.datatype !== undefined) {
+    args['datatype'] = what.datatype;
+  }
+
+  if (what.mergeAttributes !== undefined) {
+    args['merge-attributes'] = what.mergeAttributes;
+  }
+
 
   return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
 }
@@ -1316,6 +1370,31 @@ function checkInstanceAlive (instanceInfo, options) {
     });
   }
   return rc;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks whether any instance has failure points set
+// //////////////////////////////////////////////////////////////////////////////
+
+function checkServerFailurePoints(instanceInfo) {
+  let failurePoints = [];
+  instanceInfo.arangods.forEach(arangod => {
+    // we don't have JWT success atm, so if, skip:
+    if ((arangod.role !== "agent") &&
+        !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&
+        !arangod.args.hasOwnProperty('server.jwt-secret')) {
+      let fp = debugGetFailurePoints(arangod.endpoint);
+      if (fp.length > 0) {
+        failurePoints.push({
+          "role": arangod.role,
+          "pid":  arangod.pid,
+          "database.directory": arangod['database.directory'],
+          "failurePoints": fp
+        });
+      }
+    }
+  });
+  return failurePoints;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1662,6 +1741,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       }
     });
   }
+  instanceInfo.arangods.forEach(arangod => {
+    readAssertLogLines(arangod.rootDir);
+  });
   if (tcpdump !== undefined) {
     print(CYAN + "Stopping tcpdump" + RESET);
     killExternal(tcpdump.pid);
@@ -1730,13 +1812,19 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     ++count;
 
     instanceInfo.arangods.forEach(arangod => {
-      if (arangod.suspended) {
+      if (arangod.suspended || arangod.upAndRunning) {
         // just fake the availability here
         arangod.upAndRunning = true;
         return;
       }
-      print(Date() + " tickeling cluster node " + arangod.url);
-      const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(instanceInfo.authOpts));
+      print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.role);
+      let url = arangod.url;
+      if (arangod.role === "coordinator" && arangod.args["javascript.enabled"] !== "false") {
+        url += '/_admin/aardvark/index.html';
+      } else {
+        url += '/_api/version';
+      }
+      const reply = download(url, '', makeAuthorizationHeaders(instanceInfo.authOpts));
       if (!reply.error && reply.code === 200) {
         arangod.upAndRunning = true;
         return true;
@@ -1882,6 +1970,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       coordinatorArgs['cluster.my-address'] = endpoint;
       coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
       coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
+      coordinatorArgs['foxx.force-update-on-startup'] = 'true';
       if (!addArgs.hasOwnProperty('cluster.default-replication-factor')) {
         coordinatorArgs['cluster.default-replication-factor'] = (platform.substr(0, 3) === 'win') ? '1':'2';
       }
@@ -2005,7 +2094,10 @@ function launchFinalize(options, instanceInfo, startTime) {
     } else {
       ports.push('port ' + port);
     }
-    processInfo.push('  [' + arangod.role + '] up with pid ' + arangod.pid + ' on port ' + port);
+    processInfo.push('  [' + arangod.role +
+                     '] up with pid ' + arangod.pid +
+                     ' on port ' + port +
+                     ' - ' + arangod.args['database.directory']);
   });
 
   print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
@@ -2371,6 +2463,12 @@ function reStartInstance(options, instanceInfo, moreArgs) {
 }
 
 function aggregateFatalErrors(currentTest) {
+  if (assertLines.length > 0) {
+    assertLines.forEach(line => {
+      rp.addFailRunsMessage(currentTest, line);
+    });
+    assertLines = [];
+  }
   if (serverCrashedLocal) {
     rp.addFailRunsMessage(currentTest, serverFailMessagesLocal);
     serverFailMessagesLocal = "";
@@ -2412,6 +2510,7 @@ exports.run = {
 exports.shutdownInstance = shutdownInstance;
 exports.getProcessStats = getProcessStats;
 exports.getDeltaProcessStats = getDeltaProcessStats;
+exports.checkServerFailurePoints = checkServerFailurePoints;
 exports.summarizeStats = summarizeStats;
 exports.getMemProfSnapshot = getMemProfSnapshot;
 exports.startArango = startArango;

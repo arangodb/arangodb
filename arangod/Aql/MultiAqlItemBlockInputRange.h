@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MULTIAQLITEMBLOCKINPUTRANGE_H
-#define ARANGOD_AQL_MULTIAQLITEMBLOCKINPUTRANGE_H
+#pragma once
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
@@ -131,4 +130,3 @@ class MultiAqlItemBlockInputRange {
 
 }  // namespace arangodb::aql
 
-#endif

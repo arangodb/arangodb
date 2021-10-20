@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGORITHM_H
-#define ARANGODB_PREGEL_ALGORITHM_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 #include <cstdint>
@@ -146,4 +145,3 @@ class SimpleAlgorithm : public Algorithm<V, E, M> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

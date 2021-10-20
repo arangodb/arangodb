@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_SHUTDOWN_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_SHUTDOWN_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestBaseHandler.h"
 
@@ -41,4 +40,3 @@ class RestShutdownHandler : public RestBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

@@ -1169,7 +1169,7 @@ size_t AqlItemBlock::maxModifiedEntries() const noexcept { return _numRegisters 
 
 size_t AqlItemBlock::capacity() const noexcept { return _data.capacity(); }
 
-bool AqlItemBlock::isShadowRow(size_t row) const {
+bool AqlItemBlock::isShadowRow(size_t row) const noexcept {
   return _shadowRows.is(row);
 }
 
@@ -1212,9 +1212,17 @@ AqlItemBlockManager& AqlItemBlock::aqlItemBlockManager() noexcept {
 
 size_t AqlItemBlock::getRefCount() const noexcept { return _refCount; }
 
-void AqlItemBlock::incrRefCount() const noexcept { ++_refCount; }
+void AqlItemBlock::incrRefCount() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  OwnershipChecker g(_owner);
+#endif
+  ++_refCount;
+}
 
 size_t AqlItemBlock::decrRefCount() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  OwnershipChecker g(_owner);
+#endif
   TRI_ASSERT(_refCount > 0);
   return --_refCount;
 }

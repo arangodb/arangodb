@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_ASYNC_JOB_MANAGER_H
-#define ARANGOD_HTTP_SERVER_ASYNC_JOB_MANAGER_H 1
+#pragma once
 
 #include <unordered_map>
 #include <vector>
@@ -95,12 +94,24 @@ class AsyncJobManager {
   std::vector<AsyncJobResult::IdType> byStatus(AsyncJobResult::Status, size_t maxCount);
   void initAsyncJob(std::shared_ptr<RestHandler>);
   void finishAsyncJob(RestHandler*);
+  std::pair<uint64_t, uint64_t> getNrPendingAndDone();
+
+  void initiateSoftShutdown() {
+    _softShutdownOngoing.store(true, std::memory_order_relaxed);
+  }
 
  private:
   basics::ReadWriteLock _lock;
   JobList _jobs;
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief flag, if a soft shutdown is ongoing, this is used for the soft
+  /// shutdown feature in coordinators, it is initially `false` and is set
+  /// to true once a soft shutdown has begun.
+  ////////////////////////////////////////////////////////////////////////////
+
+  std::atomic<bool> _softShutdownOngoing;
 };
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

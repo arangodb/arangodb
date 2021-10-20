@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IMPORT_IMPORT_HELPER_H
-#define ARANGODB_IMPORT_IMPORT_HELPER_H 1
+#pragma once
 
 #include <atomic>
 #include <unordered_map>
@@ -165,12 +164,31 @@ class ImportHelper {
   void setTranslations(std::unordered_map<std::string, std::string> const& translations) {
     _translations = translations;
   }
+  
+  void setDatatypes(std::unordered_map<std::string, std::string> const& datatypes) {
+    _datatypes = datatypes;
+  }
 
   void setRemoveAttributes(std::vector<std::string> const& attr) {
     for (std::string const& str : attr) {
       _removeAttributes.insert(str);
     }
   }
+
+  struct Step {
+    Step(std::string value, bool isLiteral)
+        : value(std::move(value)), isLiteral(isLiteral) {}
+    std::string value;
+    bool isLiteral;
+  };
+
+  std::vector<Step> tokenizeInput(std::string const& input, std::string const& key) const;
+
+  void verifyNestedAttributes(std::string const& input, std::string const& key) const;
+
+  void verifyMergeAttributesSyntax(std::string const& input) const;
+
+  void parseMergeAttributes(std::vector<std::string> const& args);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not to overwrite existing data in the collection
@@ -344,14 +362,18 @@ class ImportHelper {
   std::vector<std::string> _columnNames;
 
   std::unordered_map<std::string, std::string> _translations;
+  std::unordered_map<std::string, std::string> _datatypes;
+
+  std::vector<std::pair<std::string, std::vector<Step>>> _mergeAttributesInstructions;
+  std::unordered_map<std::string, std::string> _fieldsLookUpTable;
   std::unordered_set<std::string> _removeAttributes;
 
   bool _hasError;
   bool _headersSeen;
+  bool _emittedField;
   std::vector<std::string> _errorMessages;
 
   static double const ProgressStep;
 };
 }  // namespace import
 }  // namespace arangodb
-#endif

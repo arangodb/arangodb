@@ -297,7 +297,7 @@ bool Node::lifetimeExpired() const {
 }
 
 /// @brief lh-value at path vector
-Node& Node::operator()(std::vector<std::string> const& pv) {
+Node& Node::getOrCreate(std::vector<std::string> const& pv) {
   Node* current = this;
 
   for (std::string const& key : pv) {
@@ -334,21 +334,21 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
 }
 
 /// @brief rh-value at path vector. Check if TTL has expired.
-Node const& Node::operator()(std::vector<std::string> const& pv) const {
+std::optional<std::reference_wrapper<Node const>> Node::get(std::vector<std::string> const& pv) const {
 
   Node const* current = this;
 
   for (std::string const& key : pv) {
 
     if (current->_children == nullptr) {
-      throw StoreException(std::string("Node ") + uri() + "/" + key + " not found!");
+      return std::nullopt;
     }
 
     auto const& children = *current->_children;
     auto const  child = children.find(key);
 
     if (child == children.end() || child->second->lifetimeExpired()) {
-      throw StoreException(std::string("Node ") + uri() + "/" + key + " not found!");
+      return std::nullopt;
     }  else {
       current = child->second.get();
     }
@@ -361,18 +361,13 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
 
 
 /// @brief lh-value at path
-Node& Node::operator()(std::string const& path) {
-  return this->operator()(Store::split(path));
+Node& Node::getOrCreate(std::string const& path) {
+  return getOrCreate(Store::split(path));
 }
 
 /// @brief rh-value at path
-Node const& Node::operator()(std::string const& path) const {
-  return this->operator()(Store::split(path));
-}
-
-// Get method which always throws when not found:
-Node const& Node::get(std::string const& path) const {
-  return this->operator()(path);
+std::optional<std::reference_wrapper<Node const>> Node::get(std::string const& path) const {
+  return get(Store::split(path));
 }
 
 // lh-store
@@ -907,7 +902,7 @@ bool Node::applies(VPackSlice const& slice) {
       //  which will remove all duplicate forward slashes.
       std::string key = i.key.copyString();
       if (key.find('/') != std::string::npos) {
-        (*this)(key).applies(i.value);
+        getOrCreate(key).applies(i.value);
       } else {
         if (_children == nullptr) {
           _children = std::make_unique<Children>();
@@ -939,7 +934,7 @@ void Node::toBuilder(Builder& builder, bool showHidden) const {
             continue;
           }
           builder.add(VPackValue(child.first));
-          cptr->toBuilder(builder);
+          cptr->toBuilder(builder, showHidden);
         }
       }
     } else {
@@ -1012,23 +1007,23 @@ bool Node::has(std::vector<std::string> const& rel) const {
 
 bool Node::has(std::string const& rel) const { return has(Store::split(rel)); }
 
-int64_t Node::getInt() const {
-  if (type() == NODE) {
-    throw StoreException("Must not convert NODE type to int");
+std::optional<int64_t> Node::getInt() const noexcept {
+  if (type() == NODE || !slice().isNumber<int64_t>()) {
+    return std::nullopt;
   }
   return slice().getNumber<int64_t>();
 }
 
-uint64_t Node::getUInt() const {
-  if (type() == NODE) {
-    throw StoreException("Must not convert NODE type to unsigned int");
+std::optional<uint64_t> Node::getUInt() const noexcept {
+  if (type() == NODE || !slice().isNumber<uint64_t>()) {
+    return std::nullopt;
   }
   return slice().getNumber<uint64_t>();
 }
 
-bool Node::getBool() const {
-  if (type() == NODE) {
-    throw StoreException("Must not convert NODE type to bool");
+std::optional<bool> Node::getBool() const noexcept {
+  if (type() == NODE || !slice().isBool()) {
+    return std::nullopt;
   }
   return slice().getBool();
 }
@@ -1075,194 +1070,112 @@ bool Node::isNumber() const {
   return slice().isNumber();
 }
 
-double Node::getDouble() const {
-  if (type() == NODE) {
-    throw StoreException("Must not convert NODE type to double");
+std::optional<double> Node::getDouble() const noexcept {
+  if (type() == NODE || !slice().isDouble()) {
+    return std::nullopt;
   }
   return slice().getNumber<double>();
 }
 
-std::pair<Node const&, bool> Node::hasAsNode(std::string const& url) const {
+std::optional<std::reference_wrapper<Node const>> Node::hasAsNode(std::string const& url) const noexcept {
   // retrieve node, throws if does not exist
-  try {
-    Node const& target(operator()(url));
-    return {target, true};
-  } catch (...) {
-    // *this is bogus initializer
-    return {*this, false};
-  }
+  return get(url);
 }  // hasAsNode
 
-std::pair<Node&, bool> Node::hasAsWritableNode(std::string const& url) {
+Node& Node::hasAsWritableNode(std::string const& url) {
   // retrieve node, throws if does not exist
-  try {
-    Node& target(operator()(url));
-    return {target, true};
-  } catch (...) {
-    // *this is bogus initializer
-    return {*this, false};
-  }
+  return getOrCreate(url);
 }  // hasAsWritableNode
 
-std::pair<NodeType, bool> Node::hasAsType(std::string const& url) const {
-  std::pair<NodeType, bool> ret_pair = {NODE, false};
+std::optional<NodeType> Node::hasAsType(std::string const& url) const noexcept {
+  if (auto node = get(url); node) {
+    return node->get().type();
+  }
 
-  // retrieve node, throws if does not exist
-  try {
-    Node const& target(operator()(url));
-    ret_pair.first = target.type();
-    ret_pair.second = true;
-  } catch (...) {
-    // do nothing, fail_pair second already false
-  }  // catch
-
-  return ret_pair;
+  return std::nullopt;
 }  // hasAsType
 
-std::pair<Slice, bool> Node::hasAsSlice(std::string const& url) const {
-  // *this is bogus initializer
-  std::pair<Slice, bool> ret_pair = {arangodb::velocypack::Slice::emptyObjectSlice(), false};
+std::optional<Slice> Node::hasAsSlice(std::string const& url) const noexcept {
+  if (auto node = get(url); node) {
+    return node->get().slice();
+  }
 
-  // retrieve node, throws if does not exist
-  try {
-    Node const& target(operator()(url));
-    ret_pair.first = target.slice();
-    ret_pair.second = true;
-  } catch (...) {
-    // do nothing, ret_pair second already false
-  }  // catch
-
-  return ret_pair;
+  return std::nullopt;
 }  // hasAsSlice
 
-std::pair<uint64_t, bool> Node::hasAsUInt(std::string const& url) const {
-  std::pair<uint64_t, bool> ret_pair(0, false);
+std::optional<uint64_t> Node::hasAsUInt(std::string const& url) const noexcept {
+  if (auto node = get(url); node) {
+    return node->get().getUInt();
+  }
 
-  // retrieve node, throws if does not exist
-  try {
-    Node const& target(operator()(url));
-    if (target.isNumber()) {
-      ret_pair.first = target.getUInt();
-      ret_pair.second = true;
-    }
-  } catch (...) {
-    // do nothing, ret_pair second already false
-  }  // catch
-
-  return ret_pair;
+  return std::nullopt;
 }  // hasAsUInt
 
-std::pair<bool, bool> Node::hasAsBool(std::string const& url) const {
-  std::pair<bool, bool> ret_pair(false, false);
+std::optional<bool> Node::hasAsBool(std::string const& url) const noexcept {
+  if (auto node = get(url); node) {
+    return node->get().getBool();
+  }
 
-  // retrieve node, throws if does not exist
-  try {
-    Node const& target(operator()(url));
-    if (target.isBool()) {
-      ret_pair.first = target.getBool();
-      ret_pair.second = true;
-    }
-  } catch (...) {
-    // do nothing, ret_pair second already false
-  }  // catch
-
-  return ret_pair;
+  return std::nullopt;
 }  // hasAsBool
 
-std::pair<std::string, bool> Node::hasAsString(std::string const& url) const {
-  std::pair<std::string, bool> ret_pair;
+std::optional<std::string> Node::hasAsString(std::string const& url) const {
+  if (auto node = get(url); node) {
+    return node->get().getString();
+  }
 
-  ret_pair.second = false;
-
-  // retrieve node, throws if does not exist
-  try {
-    Node const& target(operator()(url));
-    if (target.isString()) {
-      ret_pair.first = target.getString();
-      ret_pair.second = true;
-    }
-  } catch (...) {
-    // do nothing, ret_pair second already false
-  }  // catch
-
-  return ret_pair;
+  return std::nullopt;
 }  // hasAsString
 
-std::pair<Node::Children const&, bool> Node::hasAsChildren(std::string const& url) const {
+std::optional<std::reference_wrapper<Node::Children const>> Node::hasAsChildren(std::string const& url) const {
+  if (auto node = get(url); node) {
+    return node->get().children();
+  }
 
-  // retrieve node, throws if does not exist
-  try {
-    Node const& target(operator()(url));
-    return std::pair<Children const&, bool> {target.children(), true};
-  } catch (...) {
-  }  // catch
-
-  return std::pair<Children const&, bool> {dummyChildren, false};
-
+  return std::nullopt;
 }  // hasAsChildren
 
-std::pair<void*, bool> Node::hasAsBuilder(std::string const& url, Builder& builder,
+bool Node::hasAsBuilder(std::string const& url, Builder& builder,
                                           bool showHidden) const {
-  std::pair<void*, bool> ret_pair(nullptr, false);
+  if (auto node = get(url); node) {
+    node->get().toBuilder(builder, showHidden);
+    return true;
+  }
 
-  // retrieve node, throws if does not exist
-  try {
-    Node const& target(operator()(url));
-    target.toBuilder(builder, showHidden);
-    ret_pair.second = true;
-  } catch (...) {
-    // do nothing, ret_pair second already false
-  }  // catch
-
-  return ret_pair;
+  return false;
 }  // hasAsBuilder
 
-std::pair<Builder, bool> Node::hasAsBuilder(std::string const& url) const {
-  Builder builder;
-  std::pair<Builder, bool> ret_pair(builder, false);
+std::optional<Builder> Node::hasAsBuilder(std::string const& url) const {
+  if (auto node = get(url); node) {
+    Builder builder;
+    node->get().toBuilder(builder);
+    return builder;
+  }
 
-  // retrieve node, throws if does not exist
-  try {
-    Node const& target(operator()(url));
-    target.toBuilder(builder);
-    ret_pair.first = builder;  // update
-    ret_pair.second = true;
-  } catch (...) {
-    // do nothing, ret_pair second already false
-  }  // catch
-
-  return ret_pair;
+  return std::nullopt;
 }  // hasAsBuilder
 
-std::pair<Slice, bool> Node::hasAsArray(std::string const& url) const {
-  // *this is bogus initializer
-  std::pair<Slice, bool> ret_pair = {arangodb::velocypack::Slice::emptyObjectSlice(), false};
+std::optional<Slice> Node::hasAsArray(std::string const& url) const {
+  if (auto node = get(url); node) {
+    return node->get().getArray();
+  }
 
-  // retrieve node, throws if does not exist
-  try {
-    Node const& target(operator()(url));
-    ret_pair.first = target.getArray();
-    ret_pair.second = true;
-  } catch (...) {
-    // do nothing, ret_pair second already false
-  }  // catch
-
-  return ret_pair;
+  return std::nullopt;
 }  // hasAsArray
 
-std::string Node::getString() const {
-  if (type() == NODE) {
-    throw StoreException("Must not convert NODE type to string");
+std::optional<std::string> Node::getString() const {
+  if (type() == NODE || !slice().isString()) {
+    return std::nullopt;
   }
   return slice().copyString();
 }
 
-Slice Node::getArray() const {
+std::optional<Slice> Node::getArray() const {
   if (type() == NODE) {
-    throw StoreException("Must not convert NODE type to array");
+    return std::nullopt;
   }
   if (!_isArray) {
-    throw StoreException("Not an array type");
+    return std::nullopt;
   }
   rebuildVecBuf();
   return Slice(_vecBuf->data());

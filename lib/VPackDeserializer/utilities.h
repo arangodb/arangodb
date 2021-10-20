@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_UTILITIES_H
-#define VELOCYPACK_UTILITIES_H
+
+#pragma once
 #include <memory>
 #include "gadgets.h"
 
@@ -105,4 +105,3 @@ constexpr bool always_false_v = always_false<T>::value;
 }  // namespace deserializer::utilities
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_UTILITIES_H

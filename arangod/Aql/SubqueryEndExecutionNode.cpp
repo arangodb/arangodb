@@ -65,10 +65,7 @@ SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id,
   TRI_ASSERT(_outVariable != nullptr);
 }
 
-void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                         std::unordered_set<ExecutionNode const*>& seen) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+void SubqueryEndNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
 
@@ -76,8 +73,6 @@ void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     nodes.add(VPackValue("inVariable"));
     _inVariable->toVelocyPack(nodes);
   }
-
-  nodes.close();
 }
 
 std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(

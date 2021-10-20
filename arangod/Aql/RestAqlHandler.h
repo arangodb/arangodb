@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REST_AQL_HANDLER_H
-#define ARANGOD_AQL_REST_AQL_HANDLER_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -34,7 +33,6 @@ namespace arangodb {
 namespace aql {
 class Query;
 class QueryRegistry;
-enum class SerializationFormat;
 
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
@@ -44,7 +42,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestAqlHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLUSTER_AQL; }
+  RequestLane lane() const override final;
   RestStatus execute() override;
   RestStatus continueExecute() override;
   void shutdownExecute(bool isFinalized) noexcept override;
@@ -139,11 +137,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   QueryRegistry* _queryRegistry;
 
   aql::ExecutionEngine* _engine;
-
-  // id of current query
-  QueryId _qId;
 };
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE */
+/*global assertEqual, assertTrue, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, simple queries
@@ -1335,14 +1335,110 @@ function ahuacatlQuerySimpleTestSuite () {
       });
     },
 
+    testLargeQuery : function() {
+      let q = "LET v0 = NOOPT(1)";
+      const cnt = 2000;
+      for (let i = 1; i < cnt; ++i) {
+        q += `LET v${i} = NOOPT(v${i- 1} + 1)\n`;
+      }
+      q += `RETURN v${cnt - 1}`;
+      assertEqual([cnt], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
+    },
+    
+    testLargeSubQuery : function() {
+      const _ = require('lodash');
+      let q = "FOR i IN 0..9 LET x = (\n";
+      q += "LET v0 = NOOPT(1)\n";
+      const cnt = 2000;
+      for (let i = 1; i < cnt; ++i) {
+        q += `LET v${i} = NOOPT(v${i- 1} + 1)\n`;
+      }
+      q += `RETURN v${cnt - 1})[0]\n`;
+      q += "RETURN i + x";
+      const expected = _.range(cnt, cnt + 10);
+      assertEqual(expected, AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
+    },
+    
+    testQueryWithManyInitializeCursors : function() {
+      let q = "LET x = NOOPT([1])\n";
+      const cnt = 999;
+      for (let i = 0; i < cnt; ++i) {
+        q += `FOR s${i} IN x\n `;
+      }
+      q += "RETURN 1";
+      assertEqual([1], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
+    },
+    
+    testQueryWithManyNodes : function() {
+      let q = "LET x = NOOPT('testi')\n";
+      const cnt = 4000 - 4; // singleton + calculation + calculation + return
+      for (let i = 0; i < cnt; ++i) {
+        q += `FILTER x\n `;
+      }
+      q += "RETURN 1";
+      assertEqual([1], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
+    },
+    
+    testQueryWithTooManyNodes : function() {
+      let q = "LET x = NOOPT('testi')\n";
+      const cnt = 4000; // plus singleton + calculation + calculation + return
+      for (let i = 0; i < cnt; ++i) {
+        q += `FILTER x\n `;
+      }
+      q += "RETURN 1";
+      assertQueryError(errors.ERROR_QUERY_TOO_MUCH_NESTING.code, q);
+    },
+    
+    testQueryWithDeepExpression : function() {
+      let q = "RETURN 0";
+      const cnt = 500 - 2; 
+      for (let i = 1; i <= cnt; ++i) {
+        q += " + " + i;
+      }
+      assertEqual([124251], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
+    },
+    
+    testQueryWithTooDeepExpression : function() {
+      let q = "RETURN 0";
+      const cnt = 500; 
+      for (let i = 0; i < cnt; ++i) {
+        q += " + " + i;
+      }
+      assertQueryError(errors.ERROR_QUERY_TOO_MUCH_NESTING.code, q);
+    },
+
+    testIsNullConversion : function() {
+      let q = `RETURN IS_NULL(42)`; 
+      let nodes = AQL_EXPLAIN(q).plan.nodes.filter((n) => n.type === 'CalculationNode');
+      assertEqual(1, nodes.length);
+      let expr = nodes[0].expression;
+      assertEqual("value", expr.type);
+      assertFalse(expr.value);
+      
+      q = `RETURN IS_NULL(null)`; 
+      nodes = AQL_EXPLAIN(q).plan.nodes.filter((n) => n.type === 'CalculationNode');
+      assertEqual(1, nodes.length);
+      expr = nodes[0].expression;
+      assertEqual("value", expr.type);
+      assertTrue(expr.value);
+      
+      q = `RETURN IS_NULL(@value)`; 
+      nodes = AQL_EXPLAIN(q, {value: 42}).plan.nodes.filter((n) => n.type === 'CalculationNode');
+      assertEqual(1, nodes.length);
+      expr = nodes[0].expression;
+      assertEqual("value", expr.type);
+      assertFalse(expr.value);
+      
+      nodes = AQL_EXPLAIN(q, {value: null}).plan.nodes.filter((n) => n.type === 'CalculationNode');
+      assertEqual(1, nodes.length);
+      expr = nodes[0].expression;
+      assertEqual("value", expr.type);
+      assertTrue(expr.value);
+    },
+
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQuerySimpleTestSuite);
 
 return jsunity.done();
-

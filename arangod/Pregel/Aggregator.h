@@ -21,15 +21,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include <cstdint>
 #include <string>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
-
-#ifndef ARANGODB_PREGEL_AGGREGATOR_H
-#define ARANGODB_PREGEL_AGGREGATOR_H 1
 
 namespace arangodb {
 namespace pregel {
@@ -184,4 +183,3 @@ struct BoolOrAggregator : public IAggregator {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

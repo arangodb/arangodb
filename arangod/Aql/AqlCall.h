@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_CALL_H
-#define ARANGOD_AQL_AQL_CALL_H 1
+#pragma once
 
 #include "Aql/ExecutionBlock.h"
 #include "Basics/Common.h"
@@ -192,7 +191,7 @@ struct AqlCall {
           TRI_ASSERT(n <= i);
           i -= n;
         },
-        [](auto) {},
+        [](Infinity) {},
     };
     std::visit(minus, softLimit);
     std::visit(minus, hardLimit);
@@ -308,5 +307,3 @@ auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::LimitPrinter& l
 auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) -> std::ostream&;
 
 }  // namespace arangodb::aql
-
-#endif

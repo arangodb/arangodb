@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOGGER_FEATURE_H
-#define ARANGODB_LOGGER_LOGGER_FEATURE_H 1
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -71,7 +70,8 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _useJson = false;
   bool _useLocalTime = false;
   bool _useColor = true;
-  bool _useEscaped = true;
+  bool _useControlEscaped = true;
+  bool _useUnicodeEscaped = false;
   bool _lineNumber = false;
   bool _shortenFilenames = true;
   bool _processId = true;
@@ -94,4 +94,3 @@ class LoggerFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

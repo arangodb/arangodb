@@ -22,8 +22,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_REFACTORED_CLUSTER_TRAVERSER_CACHE_H
-#define ARANGOD_GRAPH_REFACTORED_CLUSTER_TRAVERSER_CACHE_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/StringHeap.h"
@@ -96,4 +95,3 @@ class RefactoredClusterTraverserCache {
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

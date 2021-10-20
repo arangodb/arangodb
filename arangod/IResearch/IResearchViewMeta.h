@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_META_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VIEW_META_H 1
+#pragma once
 
 #include <locale>
 #include <unordered_set>
@@ -62,20 +61,20 @@ struct IResearchViewMeta {
    public:
     ConsolidationPolicy() = default;
     ConsolidationPolicy(irs::index_writer::consolidation_policy_t&& policy,
-                        arangodb::velocypack::Builder&& properties) noexcept
+                        VPackBuilder&& properties) noexcept
         : _policy(std::move(policy)), _properties(std::move(properties)) {}
 
     irs::index_writer::consolidation_policy_t const& policy() const noexcept {
       return _policy;
     }
 
-    arangodb::velocypack::Slice properties() const noexcept {
+    VPackSlice properties() const noexcept {
       return _properties.slice();
     }
 
    private:
     irs::index_writer::consolidation_policy_t _policy;  // policy instance (false == disable)
-    arangodb::velocypack::Builder _properties;  // normalized policy definition
+    VPackBuilder _properties;  // normalized policy definition
   };
 
   struct Mask {
@@ -83,7 +82,6 @@ struct IResearchViewMeta {
     bool _commitIntervalMsec;
     bool _consolidationIntervalMsec;
     bool _consolidationPolicy;
-    bool _locale;
     bool _version;
     bool _writebufferActive;
     bool _writebufferIdle;
@@ -98,7 +96,6 @@ struct IResearchViewMeta {
   size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
   size_t _consolidationIntervalMsec; // issue consolidation after <interval> milliseconds (0 == disable)
   ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
-  std::locale _locale; // locale used for ordering processed attribute names
   uint32_t _version; // the version of the iresearch interface e.g. which how data is stored in iresearch (default == latest)
   size_t _writebufferActive; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
   size_t _writebufferIdle; // maximum number of segments cached in the pool
@@ -180,7 +177,7 @@ struct IResearchViewMetaState {
   // forget to modify the json(...) function !!! NOTE: if adding fields don't
   // forget to modify the memory() function !!!
 
-  IResearchViewMetaState();
+  IResearchViewMetaState() = default;
   IResearchViewMetaState(IResearchViewMetaState const& other);
   IResearchViewMetaState(IResearchViewMetaState&& other) noexcept;
 
@@ -201,8 +198,9 @@ struct IResearchViewMetaState {
   ///        on failure state is undefined
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(arangodb::velocypack::Slice const& slice, std::string& errorField,
-            IResearchViewMetaState const& defaults = DEFAULT(), Mask* mask = nullptr);
+  bool init(VPackSlice slice, std::string& errorField,
+            IResearchViewMetaState const& defaults = DEFAULT(),
+            Mask* mask = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchViewMeta object
@@ -211,7 +209,7 @@ struct IResearchViewMetaState {
   ///        elements are appended to an existing object
   ///        return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::Builder& builder,
+  bool json(VPackBuilder& builder,
             IResearchViewMetaState const* ignoreEqual = nullptr,
             Mask const* mask = nullptr) const;
 
@@ -224,4 +222,3 @@ struct IResearchViewMetaState {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

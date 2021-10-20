@@ -33,8 +33,7 @@
 //   http://www.apache.org/licenses/LICENSE-2.0
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_THROTTLE_H
-#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_THROTTLE_H 1
+#pragma once
 
 #include <chrono>
 #include <future>
@@ -52,7 +51,6 @@
 // write_controller.
 //  need either ROCKSDB_PLATFORM_POSIX or OS_WIN set before the <db/...>
 //  includes
-using namespace rocksdb;
 #ifndef _WIN32
 #define ROCKSDB_PLATFORM_POSIX 1
 #else
@@ -65,10 +63,6 @@ using namespace rocksdb;
 
 namespace arangodb {
 
-////////////////////////////////////////////////////////////////////////////////
-/// If these values change, make sure to reflect the changes in
-/// RocksDBPrefixExtractor as well.
-////////////////////////////////////////////////////////////////////////////////
 class RocksDBThrottle : public rocksdb::EventListener {
  public:
   RocksDBThrottle();
@@ -86,12 +80,12 @@ class RocksDBThrottle : public rocksdb::EventListener {
 
   static void AdjustThreadPriority(int Adjustment);
 
-  void StopThread();
+  void stopThread();
 
   uint64_t GetThrottle() const { return _throttleBps; }
 
  protected:
-  void Startup(rocksdb::DB* db);
+  void startup(rocksdb::DB* db);
 
   void SetThrottleWriteRate(std::chrono::microseconds Micros, uint64_t Keys,
                             uint64_t Bytes, bool IsLevel0);
@@ -109,7 +103,7 @@ class RocksDBThrottle : public rocksdb::EventListener {
   static constexpr unsigned THROTTLE_SECONDS = 60;
   static constexpr unsigned THROTTLE_INTERVALS = 63;
 
-  // following is a heristic value, determined by trial and error.
+  // following is a heuristic value, determined by trial and error.
   //  its job is slow down the rate of change in the current throttle.
   //  do not want sudden changes in one or two intervals to swing
   //  the throttle value wildly.  Goal is a nice, even throttle value.
@@ -127,9 +121,21 @@ class RocksDBThrottle : public rocksdb::EventListener {
   };
 
   rocksdb::DBImpl* _internalRocksDB;
-  std::once_flag _initFlag;
-  std::atomic<bool> _threadRunning;
   std::future<void> _threadFuture;
+
+  /// state of the throttle. the state will always be advanced from a 
+  /// lower to a higher number (e.g. from NotStarted to Starting, 
+  /// from Starting to Running etc.) but never vice versa. It is possible
+  /// jump from NotStarted to Done directly, but otherwise the sequence
+  /// is NotStarted => Starting => Running => ShuttingDown => Done
+  enum class ThrottleState {
+    NotStarted    = 1, // not started, this is the state at the beginning
+    Starting      = 2, // while background thread is started
+    Running       = 3, // throttle is operating normally
+    ShuttingDown  = 4, // throttle is in shutdown
+    Done          = 5, // throttle is shutdown
+  };
+  std::atomic<ThrottleState> _throttleState;
 
   Mutex _threadMutex;
   basics::ConditionVariable _threadCondvar;
@@ -145,11 +151,9 @@ class RocksDBThrottle : public rocksdb::EventListener {
   std::atomic<uint64_t> _throttleBps;
   bool _firstThrottle;
 
-  std::unique_ptr<WriteControllerToken> _delayToken;
+  std::unique_ptr<rocksdb::WriteControllerToken> _delayToken;
   std::vector<rocksdb::ColumnFamilyHandle*> _families;
 
 };  // class RocksDBThrottle
 
 }  // namespace arangodb
-
-#endif

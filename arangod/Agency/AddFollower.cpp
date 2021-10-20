@@ -49,17 +49,18 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
 
-  if (tmp_database.second && tmp_collection.second && tmp_shard.second &&
-      tmp_creator.second) {
-    _database = tmp_database.first;
-    _collection = tmp_collection.first;
-    _shard = tmp_shard.first;
-    _creator = tmp_creator.first;
+  if (tmp_database && tmp_collection && tmp_shard &&
+      tmp_creator) {
+    _database = tmp_database.value();
+    _collection = tmp_collection.value();
+    _shard = tmp_shard.value();
+    _creator = tmp_creator.value();
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
     LOG_TOPIC("4d260", ERR, Logger::SUPERVISION) << err.str();
-    finish("", tmp_shard.first, false, err.str());
+    // TODO this call to finish is invokes a virtual member function within a constructor
+    finish("", tmp_shard.value_or(""), false, err.str());
     _status = FAILED;
   }
 }
@@ -131,7 +132,7 @@ bool AddFollower::start(bool&) {
     return false;
   }
   Node const& collection =
-      _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection).first;
+      _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection)->get();
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");
@@ -142,7 +143,7 @@ bool AddFollower::start(bool&) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice planned = _snapshot.hasAsSlice(planPath).first;
+  Slice planned = _snapshot.hasAsSlice(planPath).value();
 
   TRI_ASSERT(planned.isArray());
 
@@ -150,11 +151,11 @@ bool AddFollower::start(bool&) {
   // `replicationFactor`:
   size_t desiredReplFactor = 1;
   auto replFact = collection.hasAsUInt(StaticStrings::ReplicationFactor);
-  if (replFact.second) {
-    desiredReplFactor = replFact.first;
+  if (replFact) {
+    desiredReplFactor = replFact.value();
   } else {
     auto replFact2 = collection.hasAsString(StaticStrings::ReplicationFactor);
-    if (replFact2.second && replFact2.first == StaticStrings::Satellite) {
+    if (replFact2 && replFact2.value() == StaticStrings::Satellite) {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
       desiredReplFactor = Job::countGoodOrBadServersInList(_snapshot, available);
@@ -251,7 +252,7 @@ bool AddFollower::start(bool&) {
     // in _jb:
     if (_jb == nullptr) {
       auto tmp_todo = _snapshot.hasAsBuilder(toDoPrefix + _jobId, todo);
-      if (!tmp_todo.second) {
+      if (!tmp_todo) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("24c50", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
@@ -313,8 +314,8 @@ bool AddFollower::start(bool&) {
             std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
             foCandsPath += StaticStrings::FailoverCandidates;
             auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
-            if (foCands.second) {
-              addPreconditionUnchanged(trx, foCandsPath, foCands.first);
+            if (foCands) {
+              addPreconditionUnchanged(trx, foCandsPath, foCands.value());
             }
           });
       addPreconditionShardNotBlocked(trx, _shard);

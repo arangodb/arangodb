@@ -30,7 +30,6 @@
 #include "Graph/GraphOperations.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Collection.h>
 #include <utility>
@@ -683,9 +682,17 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph, EdgeDefinitio
   OperationResult result(Result(), options);
 
   if (action == EdgeDefinitionAction::CREATE) {
-    result = gops.addEdgeDefinition(body, waitForSync);
+    VPackSlice editOptions = body.get(StaticStrings::GraphOptions);
+    if (!editOptions.isObject()) {
+      editOptions = VPackSlice::emptyObjectSlice();
+    }
+    result = gops.addEdgeDefinition(body, editOptions, waitForSync);
   } else if (action == EdgeDefinitionAction::EDIT) {
-    result = gops.editEdgeDefinition(body, waitForSync, edgeDefinitionName);
+    VPackSlice editOptions = body.get(StaticStrings::GraphOptions);
+    if (!editOptions.isObject()) {
+      editOptions = VPackSlice::emptyObjectSlice();
+    }
+    result = gops.editEdgeDefinition(body, editOptions, waitForSync, edgeDefinitionName);
   } else if (action == EdgeDefinitionAction::REMOVE) {
     // TODO Does this get waitForSync? Not according to the documentation.
     // if not, remove the parameter from eraseEdgeDefinition. What about
@@ -908,12 +915,12 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
 }
 
 Result RestGraphHandler::graphActionReadGraphConfig(graph::Graph const& graph) {
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  transaction::StandaloneContext ctx(_vocbase);
   VPackBuilder builder;
   builder.openObject();
   graph.graphForClient(builder);
   builder.close();
-  generateGraphConfig(builder.slice(), *ctx->getVPackOptions());
+  generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 
   return Result();
 }
@@ -929,8 +936,8 @@ Result RestGraphHandler::graphActionRemoveGraph(graph::Graph const& graph) {
     return result.result;
   }
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  generateGraphRemoved(true, result.options.waitForSync, *ctx->getVPackOptions());
+  transaction::StandaloneContext ctx(_vocbase);
+  generateGraphRemoved(true, result.options.waitForSync, *ctx.getVPackOptions());
 
   return Result();
 }
@@ -954,7 +961,7 @@ Result RestGraphHandler::graphActionCreateGraph() {
 
   std::string graphName = body.get(StaticStrings::DataSourceName).copyString();
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  transaction::StandaloneContext ctx(_vocbase);
   std::unique_ptr<Graph const> graph = getGraph(graphName);
   TRI_ASSERT(graph != nullptr);
 
@@ -963,18 +970,18 @@ Result RestGraphHandler::graphActionCreateGraph() {
   graph->graphForClient(builder);
   builder.close();
 
-  generateCreatedGraphConfig(waitForSync, builder.slice(), *ctx->getVPackOptions());
+  generateCreatedGraphConfig(waitForSync, builder.slice(), *ctx.getVPackOptions());
 
   return Result();
 }
 
 Result RestGraphHandler::graphActionReadGraphs() {
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  transaction::StandaloneContext ctx(_vocbase);
 
   VPackBuilder builder;
   _gmngr.readGraphs(builder);
 
-  generateGraphConfig(builder.slice(), *ctx->getVPackOptions());
+  generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 
   return Result();
 }
@@ -991,9 +998,9 @@ Result RestGraphHandler::graphActionReadConfig(graph::Graph const& graph, TRI_co
     TRI_ASSERT(false);
   }
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  transaction::StandaloneContext ctx(_vocbase);
 
-  generateGraphConfig(builder.slice(), *ctx->getVPackOptions());
+  generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 
   return Result();
 }

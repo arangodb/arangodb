@@ -159,8 +159,10 @@ function runArangodRecovery (params) {
       argv.unshift(pu.ARANGOD_BIN);
     }
   }
-    
+  
+  process.env["state-file"] = params.stateFile;
   process.env["crash-log"] = crashLog;
+  process.env["isAsan"] = params.options.isAsan;
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
     argv,
@@ -203,49 +205,68 @@ function recovery (options) {
 
     if (tu.filterTestcaseByOptions(test, options, filtered)) {
       count += 1;
-      ////////////////////////////////////////////////////////////////////////
-      print(BLUE + "running setup of test " + count + " - " + test + RESET);
-      let params = {
-        tempDir: tempDir,
-        instanceInfo: {
-          rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
-        },
-        options: _.cloneDeep(options),
-        script: test,
-        setup: true,
-        count: count,
-        testDir: ""
-      };
-      runArangodRecovery(params);
+      let iteration = 0;
+      let stateFile = fs.getTempFile();
 
-      ////////////////////////////////////////////////////////////////////////
-      print(BLUE + "running recovery of test " + count + " - " + test + RESET);
-      params.options.disableMonitor = options.disableMonitor;
-      params.setup = false;
-      try {
-        tu.writeTestResult(params.args['temp.path'], {
-          failed: 1,
-          status: false, 
-          message: "unable to run recovery test " + test,
-          duration: -1
-        });
-      } catch (er) {}
-      runArangodRecovery(params);
+      while (true) {
+        ++iteration;
+        print(BLUE + "running setup #" + iteration + " of test " + count + " - " + test + RESET);
+        let params = {
+          tempDir: tempDir,
+          instanceInfo: {
+            rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
+          },
+          options: _.cloneDeep(options),
+          script: test,
+          setup: true,
+          count: count,
+          testDir: "",
+          stateFile,
+        };
+        runArangodRecovery(params);
 
-      results[test] = tu.readTestResult(
-        params.args['temp.path'],
-        {
-          status: false
-        },
-        test
-      );
-      if (!results[test].status) {
-        print("Not cleaning up " + params.testDir);
-        results.status = false;
-      }
-      else {
+        ////////////////////////////////////////////////////////////////////////
+        print(BLUE + "running recovery #" + iteration + " of test " + count + " - " + test + RESET);
+        params.options.disableMonitor = options.disableMonitor;
+        params.setup = false;
+        try {
+          tu.writeTestResult(params.args['temp.path'], {
+            failed: 1,
+            status: false, 
+            message: "unable to run recovery test " + test,
+            duration: -1
+          });
+        } catch (er) {}
+        runArangodRecovery(params);
+
+        results[test] = tu.readTestResult(
+          params.args['temp.path'],
+          {
+            status: false
+          },
+          test
+        );
+        if (!results[test].status) {
+          print("Not cleaning up " + params.testDir);
+          results.status = false;
+          // end while loop
+          break;
+        } 
+
+        // check if the state file has been written by the test.
+        // if so, we will run another round of this test!
+        try {
+          if (String(fs.readFileSync(stateFile)).length) {
+            print('Going into next iteration of recovery test');
+            continue;
+          }
+        } catch (err) {
+        }
+        // last iteration. break out of while loop
         pu.cleanupLastDirectory(params.options);
+        break;
       }
+
     } else {
       if (options.extremeVerbosity) {
         print('Skipped ' + test + ' because of ' + filtered.filter);

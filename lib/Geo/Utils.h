@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GEO_GEO_COVER_H
-#define ARANGOD_GEO_GEO_COVER_H 1
+#pragma once
 
 #include <cstdint>
 #include <vector>
@@ -88,4 +87,3 @@ S2LatLng geodesicPointAtDist(S2LatLng const& p, double dist, double azimuth,
 }  // namespace geo
 }  // namespace arangodb
 
-#endif

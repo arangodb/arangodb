@@ -31,6 +31,7 @@
 
 (function () {
   let internal = require('internal');
+  let ArangoError = require('@arangodb').ArangoError;
 
   // check if --server.rest-server is disabled
   // in this case we do not (and should not) initialize and start Foxx
@@ -61,8 +62,12 @@
       try {
         require('@arangodb/foxx/queues/manager').run();
       } catch (err) {
-        require("console").warn("unable to start Foxx queues manager: " + String(err));
-        // continue with the startup!
+        // ignore any shutdown errors
+        if (!(err instanceof ArangoError) ||
+            err.errorNum !== internal.errors.ERROR_SHUTTING_DOWN.code) {
+          require("console").warn("unable to start Foxx queues manager: " + String(err));
+        }
+        // continue with the startup anyway!
       }
     }
 

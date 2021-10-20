@@ -35,7 +35,9 @@ using namespace arangodb::options;
 namespace arangodb {
 
 VersionFeature::VersionFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Version"), _printVersion(false) {
+    : ApplicationFeature(server, "Version"), 
+      _printVersion(false),
+      _printVersionJson(false) {
   setOptional(false);
 
   startsAfter<ShellColorsFeature>();
@@ -45,9 +47,27 @@ void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--version", "reports the version and exits",
                      new BooleanParameter(&_printVersion),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command));
+
+  options->addOption("--version-json", "reports the version as JSON and exits",
+                     new BooleanParameter(&_printVersionJson),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command))
+    .setIntroducedIn(30900);
 }
 
 void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+  if (_printVersionJson) {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder ob(&builder);
+      Version::getVPack(builder);
+
+      builder.add("version", VPackValue(Version::getServerVersion()));
+    }
+
+    std::cout << builder.slice().toJson() << std::endl;
+    exit(EXIT_SUCCESS);
+  }
+
   if (_printVersion) {
     std::cout << Version::getServerVersion() << std::endl
               << std::endl

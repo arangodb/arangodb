@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_VST_RESPONSE_H
-#define ARANGODB_REST_VST_RESPONSE_H 1
+#pragma once
 
 #include "Basics/StringBuffer.h"
 #include "Rest/GeneralResponse.h"
@@ -62,4 +61,3 @@ class VstResponse : public GeneralResponse {
 };
 }  // namespace arangodb
 
-#endif

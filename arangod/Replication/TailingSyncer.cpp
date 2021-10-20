@@ -922,7 +922,8 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   VPackSlice properties = data.get("properties");
 
   if (properties.isObject()) {
-    return view->properties(properties, false);  // always a full-update
+    // always a full-update
+    return view->properties(properties, false, false);
   }
 
   return {};
@@ -931,8 +932,8 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
 /// @brief apply a single marker from the continuous log
 Result TailingSyncer::applyLogMarker(VPackSlice const& slice, 
                                      ApplyStats& applyStats,
-                                     TRI_voc_tick_t firstRegularTick,
-                                     TRI_voc_tick_t markerTick, 
+                                     TRI_voc_tick_t /*firstRegularTick*/,
+                                     TRI_voc_tick_t /*markerTick*/,
                                      TRI_replication_operation_e type) {
   // handle marker type
   if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_REMOVE) {
@@ -1092,7 +1093,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
       _analyzersModified.clear();
     }
   };
-  TRI_DEFER(reloader());
+  auto sg = arangodb::scopeGuard([&]() noexcept { reloader(); });
 
   StringBuffer& data = response->getBody();
   char const* p = data.begin();
@@ -1208,8 +1209,12 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
 /// catches exceptions
 Result TailingSyncer::run() {
   try {
-    auto guard = scopeGuard([this]() {
-      abortOngoingTransactions();
+    auto guard = scopeGuard([this]() noexcept {
+      try {
+          abortOngoingTransactions();
+      } catch(std::exception const& ex) {
+          LOG_TOPIC("6f832", ERR, Logger::REPLICATION) << "Failed to abort ongoing transactions: " << ex.what();
+      }
     });
     return runInternal();
   } catch (arangodb::basics::Exception const& ex) {
@@ -1562,6 +1567,28 @@ Result TailingSyncer::runContinuousSync() {
               ", open transactions: " + StringUtils::itoa(_ongoingTransactions.size()) +
               ", parallel: yes");
 
+  // when we leave this method, we must unregister ourselves from the leader,
+  // otherwise the leader may keep WAL logs around for us for too long
+  auto unregister = scopeGuard([&]() noexcept {
+    if (ServerState::instance()->isRunningInCluster()) {
+      try {
+        _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+          std::unique_ptr<httpclient::SimpleHttpResult> response;
+          std::string const url = tailingBaseUrl("tail") +
+                                  "serverId=" + _state.localServerIdString +
+                                  "&syncerId=" + syncerId().toString();
+          // simply send the request, but don't care about the response. if it
+          // fails, there is not much we can do from here.
+          auto headers = replutils::createHeaders();
+          response.reset(client->request(rest::RequestType::DELETE_REQ, url, nullptr, 0, headers));
+        });
+      } catch (...) {
+        // this must be exception-safe, but if an exception occurs, there is not
+        // much we can do
+      }
+    }
+  });
+
   // the shared status will wait in its destructor until all posted
   // requests have been completed/canceled!
   auto self = shared_from_this();
@@ -1798,7 +1825,7 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
                                    TRI_voc_tick_t fetchTick, TRI_voc_tick_t lastScannedTick,
                                    TRI_voc_tick_t firstRegularTick) {
   try {
-    std::string const url =
+    std::string url =
         tailingBaseUrl("tail") +
         "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
         "&from=" + StringUtils::itoa(fetchTick) +
@@ -1808,7 +1835,13 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
         "&serverId=" + _state.localServerIdString +
         "&includeSystem=" + (_state.applier._includeSystem ? "true" : "false") +
         "&includeFoxxQueues=" + (_state.applier._includeFoxxQueues ? "true" : "false");
-    
+
+    if (syncerId().value > 0) {
+      // we must only send the syncerId along if it is != 0, otherwise we will
+      // trigger an error on the leader
+      url += "&syncerId=" + syncerId().toString();
+    }
+
     // send request
     setProgress(std::string("fetching leader log from tick ") + StringUtils::itoa(fetchTick) +
                 ", last scanned tick " + StringUtils::itoa(lastScannedTick) +
@@ -1823,6 +1856,13 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
     double time = TRI_microtime();
 
     _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      // set request timeout to a maximum of 10 seconds. we do this to be able
+      // to get out of stalled requests to failed/non-responsive leaders quicker.
+      double oldTimeout = client->params().getRequestTimeout();
+      client->params().setRequestTimeout(std::min(_state.applier._requestTimeout, 10.0));
+      auto guard = scopeGuard([&]() noexcept {
+        client->params().setRequestTimeout(oldTimeout);
+      });
       auto headers = replutils::createHeaders();
       response.reset(client->request(rest::RequestType::PUT, url, body.c_str(),
                                      body.size(), headers));
@@ -1982,8 +2022,7 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
     // do not fetch the same batch next time we enter processLeaderLog
     // (that would be duplicate work)
     mustFetchBatch = false;
-    auto self = shared_from_this();
-    sharedStatus->request([this, self, sharedStatus, fetchTick, lastScannedTick,
+    sharedStatus->request([this, self = shared_from_this(), sharedStatus, fetchTick, lastScannedTick,
                            firstRegularTick]() {
       fetchLeaderLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
     });

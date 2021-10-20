@@ -20,8 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_ERRORCODE_H
-#define LIB_BASICS_ERRORCODE_H
+#pragma once
 
 #include <iosfwd>
 #include <string>
@@ -73,4 +72,3 @@ struct hash<ErrorCode> {
 
 auto operator<<(std::ostream& out, ::ErrorCode const& res) -> std::ostream&;
 
-#endif  // LIB_BASICS_ERRORCODE_H

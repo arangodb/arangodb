@@ -38,6 +38,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Parser.h"
@@ -260,6 +261,10 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
   virtual arangodb::aql::QueryOptions const& queryOptions() const override {
     return _queryOptions;
   }
+  
+  virtual arangodb::aql::QueryOptions& queryOptions() noexcept override {
+    return _queryOptions;
+  }
 
   double getLockTimeout() const noexcept override {
     return _queryOptions.transactionOptions.lockTimeout;
@@ -458,12 +463,31 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
         validateQuery(options.queryString,
                       arangodb::DatabaseFeature::getCalculationVocbase());
     if (validationRes.ok()) {
-      return std::make_shared<arangodb::iresearch::AqlAnalyzer>(options);
+      return std::make_unique<arangodb::iresearch::AqlAnalyzer>(options);
     } else {
       LOG_TOPIC("f775e", WARN, arangodb::iresearch::TOPIC)
           << "error validating calculation query: " << validationRes.errorMessage();
     }
   }
+  return nullptr;
+}
+
+ExecutionNode* getCalcNode(ExecutionNode* node) {
+  // get calculation node which satisfy the requirements
+  if (node == nullptr || node->getType() != ExecutionNode::RETURN) {
+    return nullptr;
+  }
+
+  auto& deps = node->getDependencies();
+  if (deps.size() == 1 && deps[0]->getType() == ExecutionNode::NodeType::CALCULATION) {
+    auto calcNode = deps[0];
+
+    auto& deps2 = calcNode->getDependencies();
+    if (deps2.size() == 1 && deps2[0]->getType() == ExecutionNode::NodeType::SINGLETON) {
+      return calcNode;
+    }
+  }
+
   return nullptr;
 }
 }  // namespace
@@ -504,13 +528,64 @@ namespace iresearch {
   return make_slice(builder->slice());
 }
 
+bool tryOptimize(AqlAnalyzer* analyzer) {
+  ExecutionNode* execNode = getCalcNode(analyzer->_plan->root());
+  if (execNode != nullptr) {
+    TRI_ASSERT(execNode->getType() == ExecutionNode::NodeType::CALCULATION);
+    analyzer->_nodeToOptimize = static_cast<CalculationNode*>(execNode);
+    // allocate memory for result
+    analyzer->_queryResults = analyzer->_itemBlockManager.requestBlock(1,1);
+    return true;
+  }
+
+  return false;
+}
+
+void resetFromExpression(AqlAnalyzer* analyzer) {
+  auto e = analyzer->_nodeToOptimize->expression();
+
+  auto& trx = analyzer->_query->trxForOptimization();
+
+  auto& query = analyzer->_query->ast()->query();
+
+  // create context
+  // value is not needed since getting it from _bindedNodes
+  SingleVarExpressionContext ctx(trx, query, analyzer->_aqlFunctionsInternalCache);
+
+  analyzer->_executionState = ExecutionState::DONE; // already calculated
+
+  // put calculated value in _queryResults
+  analyzer->_queryResults->destroyValue(0,0);
+  bool mustDestroy = true;
+
+  analyzer->_queryResults->setValue(0,0, e->execute(&ctx, mustDestroy));
+
+  analyzer->_engineResultRegister = 0;
+}
+
+void resetFromQuery(AqlAnalyzer* analyzer) {
+  analyzer->_queryResults = nullptr;
+  analyzer->_plan->clearVarUsageComputed();
+  analyzer->_aqlFunctionsInternalCache.clear();
+  analyzer->_engine.initFromPlanForCalculation(*analyzer->_plan);
+  analyzer->_executionState = ExecutionState::HASMORE;
+  analyzer->_engineResultRegister = analyzer->_engine.resultRegister();
+}
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+bool AqlAnalyzer::isOptimized() const {
+  return _resetImpl == &resetFromExpression;
+}
+#endif
+
 AqlAnalyzer::AqlAnalyzer(Options const& options)
   : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
     _options(options),
     _query(new CalculationQueryContext(arangodb::DatabaseFeature::getCalculationVocbase())),
     _itemBlockManager(_query->resourceMonitor(), SerializationFormat::SHADOWROWS),
     _engine(0, *_query, _itemBlockManager,
-            SerializationFormat::SHADOWROWS, nullptr) {
+            SerializationFormat::SHADOWROWS, nullptr),
+    _resetImpl(&resetFromQuery) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   std::get<AnalyzerValueTypeAttribute>(_attrs).value = _options.returnType;
   TRI_ASSERT(validateQuery(_options.queryString,
@@ -522,8 +597,7 @@ bool AqlAnalyzer::next() {
   do {
     if (_queryResults != nullptr) {
       while (_queryResults->numRows() > _resultRowIdx) {
-        AqlValue const& value =
-            _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
+        AqlValue const& value =  _queryResults->getValueReference(_resultRowIdx++, _engineResultRegister) ;
         if (_options.keepNull || !value.isNull(true)) {
           switch (_options.returnType) {
             case AnalyzerValueType::String:
@@ -532,7 +606,7 @@ bool AqlAnalyzer::next() {
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
-                aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+                aql::SingleVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
                 _valueBuffer = aql::Functions::ToString(&ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isString());
                 std::get<2>(_attrs).value = irs::ref_cast<irs::byte_type>(_valueBuffer.slice().stringView());
@@ -544,7 +618,7 @@ bool AqlAnalyzer::next() {
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
-                aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+                aql::SingleVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
                 _valueBuffer = aql::Functions::ToNumber(&ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isNumber());
                 std::get<3>(_attrs).value = _valueBuffer.slice();
@@ -556,7 +630,7 @@ bool AqlAnalyzer::next() {
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
-                aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+                aql::SingleVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
                 _valueBuffer = aql::Functions::ToBool(&ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isBoolean());
                 std::get<3>(_attrs).value = _valueBuffer.slice();
@@ -648,20 +722,24 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
       optimizer.createPlans(std::move(plan), _query->queryOptions(), false);
 
       _plan = optimizer.stealBest();
-    } else {
-      for (auto node : _bindedNodes) {
-        node->setStringValue(field.c_str(), field.size());
+
+      // try to optimize
+      if (tryOptimize(this)) {
+        _resetImpl = &resetFromExpression;
       }
-      _engine.reset();
     }
-    _queryResults = nullptr;
-    _plan->clearVarUsageComputed();
-    _aqlFunctionsInternalCache.clear();
-    _engine.initFromPlanForCalculation(*_plan);
-    _executionState = ExecutionState::HASMORE;
+
+    for (auto node : _bindedNodes) {
+      node->setStringValue(field.c_str(), field.size());
+    }
+
     _resultRowIdx = 0;
     _nextIncVal = 1;  // first increment always 1 to move from -1 to 0
+    _engine.reset();
+
+    _resetImpl(this);
     return true;
+
   } catch (std::exception const& e) {
     LOG_TOPIC("d2223", WARN, iresearch::TOPIC)
         << "error creating calculation query: " << e.what()

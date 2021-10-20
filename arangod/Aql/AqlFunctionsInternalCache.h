@@ -21,17 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REGEX_CACHE_H
-#define ARANGOD_AQL_REGEX_CACHE_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Basics/Common.h"
-#include <VocBase/Validators.h>
+#include "VocBase/Validators.h"
 
 #include <unicode/regex.h>
 #include <memory>
-
-
 
 namespace arangodb {
 
@@ -49,6 +46,8 @@ class AqlFunctionsInternalCache final {
 
   AqlFunctionsInternalCache() = default;
   ~AqlFunctionsInternalCache();
+
+  AqlFunctionsInternalCache(AqlFunctionsInternalCache&&) = default;
 
   void clear() noexcept;
 
@@ -98,5 +97,3 @@ class AqlFunctionsInternalCache final {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

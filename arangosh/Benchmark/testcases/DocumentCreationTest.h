@@ -21,72 +21,53 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_DOCUMENT_CREATION_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_DOCUMENT_CREATION_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 #include "helpers.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
+#include <string_view>
 
 namespace arangodb::arangobench {
 
 struct DocumentCreationTest : public Benchmark<DocumentCreationTest> {
   static std::string name() { return "document"; }
-
   DocumentCreationTest(BenchFeature& arangobench)
-      : Benchmark<DocumentCreationTest>(arangobench),
-        _url("/_api/document?collection=" + _arangobench.collection()),
-        _buffer(nullptr) {
-    uint64_t const n = _arangobench.complexity();
-
-    _buffer = TRI_CreateSizedStringBuffer(4096);
-    TRI_AppendCharStringBuffer(_buffer, '{');
-
-    for (uint64_t i = 1; i <= n; ++i) {
-      TRI_AppendStringStringBuffer(_buffer, "\"test");
-      TRI_AppendUInt64StringBuffer(_buffer, i);
-      TRI_AppendStringStringBuffer(_buffer, "\":\"some test value\"");
-      if (i != n) {
-        TRI_AppendCharStringBuffer(_buffer, ',');
-      }
-    }
-
-    TRI_AppendCharStringBuffer(_buffer, '}');
-
-    _length = TRI_LengthStringBuffer(_buffer);
-  }
-
-  ~DocumentCreationTest() { TRI_FreeStringBuffer(_buffer); }
+    : Benchmark<DocumentCreationTest>(arangobench),
+      _url(std::string("/_api/document?collection=") + _arangobench.collection() + "&silent=true") {}
 
   bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
     return DeleteCollection(client, _arangobench.collection()) &&
-           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
+      CreateCollection(client, _arangobench.collection(), 2, _arangobench);
   }
 
   void tearDown() override {}
 
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return _url;
+  void buildRequest(size_t threadNumber, size_t threadCounter,
+                    size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+    requestData.url = _url;
+    requestData.type = rest::RequestType::POST;
+    using namespace arangodb::velocypack;
+    requestData.payload.openObject();
+    uint64_t const n = _arangobench.complexity();
+    for (uint64_t i = 1; i <= n; ++i) {
+      requestData.payload.add(std::string("test") + std::to_string(i), Value(std::string_view("some test value")));
+    }
+    requestData.payload.close();
   }
 
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
+  char const* getDescription() const noexcept override {
+    return "performs single-document insert operations via the specialized insert API (in contrast to performing inserts via generic AQL). The --complexity parameter controls the number of attributes per document. The attribute values for the inserted documents will be hard-coded. The total number of documents to be inserted is equal to the value of --requests.";
   }
 
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    *mustFree = false;
-    *length = _length;
-    return (char const*)_buffer->_buffer;
+  bool isDeprecated() const noexcept override {
+    return false;
   }
-
-  std::string _url;
-
-  TRI_string_buffer_t* _buffer;
-
-  size_t _length;
+ 
+ private:
+  std::string const _url;
 };
 
 }  // namespace arangodb::arangobench
-#endif

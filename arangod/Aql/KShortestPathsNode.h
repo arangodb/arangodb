@@ -22,8 +22,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_KSHORTEST_PATHS_NODE_H
-#define ARANGOD_AQL_KSHORTEST_PATHS_NODE_H 1
+#pragma once
 
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
@@ -45,7 +44,6 @@ namespace aql {
 /// @brief class KShortestPathsNode
 class KShortestPathsNode : public virtual GraphNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
  protected:
@@ -81,10 +79,6 @@ class KShortestPathsNode : public virtual GraphNode {
  public:
   /// @brief return the type of the node
   NodeType getType() const override final { return K_SHORTEST_PATHS; }
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -126,24 +120,14 @@ class KShortestPathsNode : public virtual GraphNode {
   }
 
   std::string const getTargetVertex() const { return _targetVertexId; }
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final {
-    std::vector<Variable const*> vars;
-    TRI_ASSERT(_pathOutVariable != nullptr);
-    vars.emplace_back(_pathOutVariable);
-    return vars;
-  }
+  std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const override {
-    if (_inStartVariable != nullptr) {
-      vars.emplace(_inStartVariable);
-    }
-    if (_inTargetVariable != nullptr) {
-      vars.emplace(_inTargetVariable);
-    }
-  }
+  void getVariablesUsedHere(VarSet& vars) const override;
 
   /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)
   arangodb::graph::ShortestPathType::Type shortestPathType() const {
@@ -162,6 +146,10 @@ class KShortestPathsNode : public virtual GraphNode {
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into graph::ShortestPathOptions*)
   auto options() const -> graph::ShortestPathOptions*;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
   void kShortestPathsCloneHelper(ExecutionPlan& plan, KShortestPathsNode& c,
@@ -196,4 +184,3 @@ class KShortestPathsNode : public virtual GraphNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

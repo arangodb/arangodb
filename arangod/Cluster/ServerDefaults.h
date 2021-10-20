@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_SERVERDEFAULTS_H
-#define ARANGOD_CLUSTER_SERVERDEFAULTS_H
+#pragma once
 
 #include <cstdint>
 
@@ -41,4 +40,3 @@ struct ServerDefaults {
 
 }  // namespace arangodb
 
-#endif  // ARANGOD_CLUSTER_SERVERDEFAULTS_H

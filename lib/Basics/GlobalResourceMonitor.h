@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_BASICS_GLOBAL_RESOURCE_MONITOR_H
-#define ARANGOD_BASICS_GLOBAL_RESOURCE_MONITOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -105,4 +104,3 @@ class alignas(64) GlobalResourceMonitor final {
 
 }  // namespace arangodb
 
-#endif

@@ -561,15 +561,14 @@ StatisticsFeature::~StatisticsFeature() = default;
 void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.disable-statistics", "server.statistics");
 
-  options->addSection("server", "Server features");
-
   options->addOption("--server.statistics",
-                     "turn statistics gathering on or off",
+                     "turn statistics gathering and APIs on or off",
                      new BooleanParameter(&_statistics));
 
   options->addOption("--server.statistics-history",
                      "turn storing statistics in database on or off",
-                     new BooleanParameter(&_statisticsHistory))
+                     new BooleanParameter(&_statisticsHistory),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic))
                      .setIntroducedIn(30409)
                      .setIntroducedIn(30501);
 
@@ -616,7 +615,7 @@ void StatisticsFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  _statisticsThread.reset(new StatisticsThread(server()));
+  _statisticsThread = std::make_unique<StatisticsThread>(server());
 
   if (!_statisticsThread->start()) {
     LOG_TOPIC("46b0c", FATAL, arangodb::Logger::STATISTICS)
@@ -636,16 +635,14 @@ void StatisticsFeature::start() {
   }
 
   if (_statisticsHistory) {
-    TRI_ASSERT(!ServerState::instance()->isDBServer());
-
-    _statisticsWorker.reset(new StatisticsWorker(*vocbase));
+    _statisticsWorker = std::make_unique<StatisticsWorker>(*vocbase);
 
     if (!_statisticsWorker->start()) {
       LOG_TOPIC("6ecdc", FATAL, arangodb::Logger::STATISTICS)
         << "could not start statistics worker";
       FATAL_ERROR_EXIT();
     }
-  } // if
+  } 
 }
 
 void StatisticsFeature::stop() {
@@ -787,18 +784,18 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now, boo
     // _clientStatistics()
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "clientHttpConnections", v2);
     appendHistogram(result, connectionStats.connectionTime, "connectionTime", {"0.01", "1.0", "60.0", "+Inf"}, v2);
-  appendHistogram(result, requestStats.totalTime, "totalTime",
-                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                   "30.0", "+Inf"}, v2);
-  appendHistogram(result, requestStats.requestTime, "requestTime",
-                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                   "30.0", "+Inf"}, v2);
-  appendHistogram(result, requestStats.queueTime, "queueTime",
-                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                   "30.0", "+Inf"}, v2);
-  appendHistogram(result, requestStats.ioTime, "ioTime",
-                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                   "30.0", "+Inf"}, v2);
+    appendHistogram(result, requestStats.totalTime, "totalTime",
+                    {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                     "30.0", "+Inf"}, v2);
+    appendHistogram(result, requestStats.requestTime, "requestTime",
+                    {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                     "30.0", "+Inf"}, v2);
+    appendHistogram(result, requestStats.queueTime, "queueTime",
+                    {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                     "30.0", "+Inf"}, v2);
+    appendHistogram(result, requestStats.ioTime, "ioTime",
+                    {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                     "30.0", "+Inf"}, v2);
     appendHistogram(result, requestStats.bytesSent, "bytesSent", {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2);
     appendHistogram(result, requestStats.bytesReceived, "bytesReceived", {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2);
 
@@ -876,14 +873,14 @@ Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
   result.openObject();
   {
     buildBindVars(StaticStrings::Statistics15Collection);
-    arangodb::aql::Query query(transaction::StandaloneContext::Create(*sysVocbase),
-                               arangodb::aql::QueryString(stats15Query),
-                               bindVars);
+    auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*sysVocbase),
+                                              arangodb::aql::QueryString(stats15Query),
+                                              bindVars);
 
-    query.queryOptions().cache = false;
-    query.queryOptions().skipAudit = true;
+    query->queryOptions().cache = false;
+    query->queryOptions().skipAudit = true;
 
-    aql::QueryResult queryResult = query.executeSync();
+    aql::QueryResult queryResult = query->executeSync();
 
     if (queryResult.result.fail()) {
       return queryResult.result;
@@ -894,14 +891,14 @@ Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
 
   {
     buildBindVars(StaticStrings::StatisticsCollection);
-    arangodb::aql::Query query(transaction::StandaloneContext::Create(*sysVocbase),
-                               arangodb::aql::QueryString(statsSamplesQuery),
-                               bindVars);
+    auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*sysVocbase),
+                                              arangodb::aql::QueryString(statsSamplesQuery),
+                                              bindVars);
 
-    query.queryOptions().cache = false;
-    query.queryOptions().skipAudit = true;
+    query->queryOptions().cache = false;
+    query->queryOptions().skipAudit = true;
 
-    aql::QueryResult queryResult = query.executeSync();
+    aql::QueryResult queryResult = query->executeSync();
 
     if (queryResult.result.fail()) {
       return queryResult.result;

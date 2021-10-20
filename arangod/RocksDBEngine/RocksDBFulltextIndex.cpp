@@ -34,7 +34,7 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
@@ -56,7 +56,10 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
  public:
   RocksDBFulltextIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                                std::set<LocalDocumentId>&& docs)
-      : IndexIterator(collection, trx), _docs(std::move(docs)), _pos(_docs.begin()) {}
+      : IndexIterator(collection, trx, ReadOwnWrites::no),
+        // fulltext index never needs to observe own writes since they cannot be used for an UPSERT subquery
+        _docs(std::move(docs)),
+        _pos(_docs.begin()) {}
 
   char const* typeName() const override { return "fulltext-index-iterator"; }
 
@@ -216,7 +219,8 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 Result RocksDBFulltextIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                     LocalDocumentId const& documentId,
                                     velocypack::Slice doc,
-                                    OperationOptions const& /*options*/) {
+                                    OperationOptions const& /*options*/,
+                                    bool /*performChecks*/) {
   Result res;
   std::set<std::string> words = wordlist(doc);
 
@@ -402,7 +406,7 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr, FulltextQ
       return Result(TRI_ERROR_OUT_OF_MEMORY);
     }
     // emplace_back below may throw
-    TRI_DEFER(TRI_Free(lowered));
+    auto sg = arangodb::scopeGuard([&]() noexcept { TRI_Free(lowered); });
 
     // calculate the proper prefix
     char* prefixEnd = TRI_PrefixUtf8String(lowered, FulltextIndexLimits::maxWordLength);
@@ -459,9 +463,10 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
   rocksdb::Slice end = bounds.end();
   rocksdb::Comparator const* cmp = this->comparator();
 
-  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
-  ro.iterate_upper_bound = &end;
-  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(ro, _cf);
+  std::unique_ptr<rocksdb::Iterator> iter =
+      mthds->NewIterator(_cf, [&](rocksdb::ReadOptions& ro) {
+        ro.iterate_upper_bound = &end;
+      });
 
   // set is used to perform an intersection with the result set
   std::set<LocalDocumentId> intersect;
@@ -500,10 +505,11 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
 
 std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
     transaction::Methods* trx, aql::AstNode const* condNode,
-    aql::Variable const* var, IndexIteratorOptions const& opts) {
+    aql::Variable const* var, IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(condNode != nullptr);
   TRI_ASSERT(condNode->numMembers() == 1);  // should only be an FCALL
+  TRI_ASSERT(readOwnWrites == ReadOwnWrites::no); // fulltext index never needs to observe own writes
 
   aql::AstNode const* fcall = condNode->getMember(0);
   TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);

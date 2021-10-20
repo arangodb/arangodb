@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_CONTEXT_H
-#define ARANGOD_AQL_QUERY_CONTEXT_H 1
+#pragma once
 
 #include "Aql/Collections.h"
 #include "Aql/Graphs.h"
@@ -67,8 +66,8 @@ class QueryContext {
   QueryContext& operator=(QueryContext const&) = delete;
 
  public:
-  explicit QueryContext(TRI_vocbase_t& vocbase);
-
+  explicit QueryContext(TRI_vocbase_t& vocbase, QueryId id = 0);
+  
   virtual ~QueryContext();
 
   arangodb::ResourceMonitor& resourceMonitor() noexcept { return _resourceMonitor; }
@@ -105,6 +104,8 @@ class QueryContext {
   }
       
   virtual QueryOptions const& queryOptions() const = 0;
+  
+  virtual QueryOptions& queryOptions() noexcept = 0;
   
   /// @brief pass-thru a resolver object from the transaction context
   virtual CollectionNameResolver const& resolver() const = 0;
@@ -147,9 +148,6 @@ class QueryContext {
   /// @brief current resources and limits used by query
   arangodb::ResourceMonitor _resourceMonitor;
 
-  /// @brief registers/unregisters query base ovehead
-  arangodb::ResourceUsageScope _baseOverHeadTracker;
-  
   TRI_voc_tick_t const _queryId;
   
   /// @brief thread-safe query warnings collector
@@ -169,7 +167,7 @@ class QueryContext {
   std::unordered_map<std::string, std::string> _queryDataSources;
   
   /// @brief current state the query is in (used for profiling and error messages)
-  QueryExecutionState::ValueType _execState;
+  std::atomic<QueryExecutionState::ValueType> _execState;
   
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines
@@ -181,4 +179,3 @@ class QueryContext {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

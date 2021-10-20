@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_TRAVERSER_ENGINE_H
-#define ARANGOD_CLUSTER_TRAVERSER_ENGINE_H 1
+#pragma once
 
 #include <memory>
 #include <unordered_map>
@@ -116,13 +115,8 @@ class BaseTraverserEngine : public BaseEngine {
 
   graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
 
-  virtual void smartSearch(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) = 0;
-
-  virtual void smartSearchBFS(arangodb::velocypack::Slice,
-                              arangodb::velocypack::Builder&) = 0;
-
-  virtual void smartSearchWeighted(arangodb::velocypack::Slice,
-                                   arangodb::velocypack::Builder&) = 0;
+  virtual void smartSearch(arangodb::velocypack::Slice,
+                           arangodb::velocypack::Builder&) = 0;
 
   EngineType getType() const override { return TRAVERSER; }
 
@@ -180,13 +174,8 @@ class TraverserEngine : public BaseTraverserEngine {
   ~TraverserEngine();
 
   void smartSearch(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
-
-  void smartSearchBFS(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
-
-  void smartSearchWeighted(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
 };
 
 }  // namespace traverser
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_STRING_H
-#define ARANGOD_AQL_QUERY_STRING_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include <velocypack/StringRef.h>
@@ -77,4 +76,3 @@ std::ostream& operator<<(std::ostream&, QueryString const&);
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

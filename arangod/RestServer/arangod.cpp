@@ -32,20 +32,16 @@
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/CpuUsageFeature.h"
-#include "ApplicationFeatures/DaemonFeature.h"
-#include "ApplicationFeatures/EnvironmentFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
-#include "ApplicationFeatures/TimeZoneFeature.h"
-#include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
+#include "ApplicationFeatures/TimeZoneFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
@@ -73,7 +69,6 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "GeneralServer/SslServerFeature.h"
-#include "Logger/LogBufferFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/PregelFeature.h"
@@ -81,13 +76,16 @@
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/ReplicationMetricsFeature.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
+#include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EndpointFeature.h"
+#include "RestServer/EnvironmentFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/FortuneFeature.h"
@@ -95,11 +93,16 @@
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/LockfileFeature.h"
+#include "RestServer/LogBufferFeature.h"
+#include "RestServer/MaxMapCountFeature.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/RestartAction.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestServer/SoftShutdownFeature.h"
+#include "RestServer/SupervisorFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -223,6 +226,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<QueryRegistryFeature>();
     server.addFeature<RandomFeature>();
     server.addFeature<ReplicationFeature>();
+    server.addFeature<ReplicatedLogFeature>();
     server.addFeature<ReplicationMetricsFeature>();
     server.addFeature<ReplicationTimeoutFeature>();
     server.addFeature<SchedulerFeature>();
@@ -235,6 +239,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<ShellColorsFeature>();
     server.addFeature<ShutdownFeature>(
         std::vector<std::type_index>{std::type_index(typeid(ScriptFeature))});
+    server.addFeature<SoftShutdownFeature>();
     server.addFeature<SslFeature>();
     server.addFeature<StatisticsFeature>();
     server.addFeature<StorageEngineFeature>();
@@ -328,29 +333,6 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 
 #endif
 
-// The following is a global pointer which can be set from within the process
-// to configure a restart action which happens directly before main()
-// terminates. This is used for our hotbackup restore functionality.
-// See below in main() for details.
-
-namespace arangodb {
-  std::function<int()>* restartAction = nullptr;
-}
-
-// Here is a sample of how to use this:
-//
-// extern std::function<int()>* restartAction;
-//
-// static int myRestartAction() {
-//   std::cout << "Executing restart action..." << std::endl;
-//   return 0;
-// }
-//
-// And then in some function:
-//
-// restartAction = new std::function<int()>();
-// *restartAction = myRestartAction;
-// arangodb::ApplicationServer::server->beginShutdown();
 
 #ifdef __linux__
 

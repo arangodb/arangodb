@@ -31,6 +31,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Mutex.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -38,6 +39,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
@@ -172,29 +174,29 @@ Connection::Connection(Syncer* syncer, ReplicationApplierConfiguration const& ap
     : _endpointString{applierConfig._endpoint},
       _localServerId{basics::StringUtils::itoa(ServerIdFeature::getId().id())},
       _clientInfo{applierConfig._clientInfoString} {
-  std::unique_ptr<httpclient::GeneralClientConnection> connection;
-  std::unique_ptr<Endpoint> endpoint{Endpoint::clientFactory(_endpointString)};
-  if (endpoint != nullptr) {
-    connection.reset(httpclient::GeneralClientConnection::factory(
-        applierConfig._server, endpoint, applierConfig._requestTimeout,
-        applierConfig._connectTimeout, static_cast<size_t>(applierConfig._maxConnectRetries),
-        static_cast<uint32_t>(applierConfig._sslProtocol)));
-  }
 
-  if (connection != nullptr) {
+  _connectionLease = applierConfig._server.getFeature<ReplicationFeature>().connectionCache().acquire(
+      _endpointString, 
+      applierConfig._connectTimeout, 
+      applierConfig._requestTimeout, 
+      static_cast<size_t>(applierConfig._maxConnectRetries),
+      static_cast<uint64_t>(applierConfig._sslProtocol));
+
+  if (_connectionLease._connection != nullptr) {
     std::string retryMsg =
         std::string("retrying failed HTTP request for endpoint '") +
-        applierConfig._endpoint + std::string("' for replication applier");
+        applierConfig._endpoint + "' for replication applier";
     std::string databaseName = applierConfig._database;
     if (!databaseName.empty()) {
       retryMsg +=
-          std::string(" in database '") + databaseName + std::string("'");
+          std::string(" in database '") + databaseName + "'";
     }
 
     httpclient::SimpleHttpClientParams params(applierConfig._requestTimeout, false);
     params.setMaxRetries(2);
     params.setRetryWaitTime(2 * 1000 * 1000);  // 2s
     params.setRetryMessage(retryMsg);
+    params.keepConnectionOnDestruction(true);
 
     std::string username = applierConfig._username;
     std::string password = applierConfig._password;
@@ -205,7 +207,7 @@ Connection::Connection(Syncer* syncer, ReplicationApplierConfiguration const& ap
     }
     params.setMaxPacketSize(applierConfig._maxPacketSize);
     params.setLocationRewriter(syncer, &(syncer->rewriteLocation));
-    _client.reset(new httpclient::SimpleHttpClient(connection, params));
+    _client = std::make_unique<httpclient::SimpleHttpClient>(_connectionLease._connection.get(), params);
   }
 }
 
@@ -219,6 +221,21 @@ std::string const& Connection::clientInfo() const { return _clientInfo; }
 
 void Connection::setAborted(bool value) {
   if (_client) {
+    // fetch the state of the SimpleHttpClient
+    httpclient::SimpleHttpClient::request_state st;
+    {
+      std::lock_guard<std::mutex> guard(_mutex);
+      st = _client->state();
+    }
+
+    if (st != httpclient::SimpleHttpClient::request_state::IN_CONNECT && 
+        st != httpclient::SimpleHttpClient::request_state::FINISHED) {
+      // other states: IN_WRITE, IN_READ_HEADER, IN_READ_BODY, IN_READ_CHUNKED_HEADER, IN_READ_CHUNKED_BODY, DEAD
+      // if we have a SimpleHttpClient in such state, it will probably mean the connection has pending data or
+      // is broken. thus we mark it as non-recyclable. the side-effect that the connection will not be inserted
+      // back into the connection cache.
+      preventRecycling();
+    }
     _client->setAborted(value);
   }
 }
@@ -228,6 +245,10 @@ bool Connection::isAborted() const {
     return _client->isAborted();
   }
   return true;
+}
+
+void Connection::preventRecycling() {
+  _connectionLease.preventRecycling();
 }
 
 ProgressInfo::ProgressInfo(Setter s) : _setter{s} {}
@@ -242,7 +263,7 @@ constexpr double BatchInfo::DefaultTimeout;
 /// @brief send a "start batch" command
 /// @param patchCount try to patch count of this collection
 ///        only effective with the incremental sync (optional)
-Result BatchInfo::start(replutils::Connection const& connection,
+Result BatchInfo::start(replutils::Connection& connection,
                         replutils::ProgressInfo& progress, replutils::LeaderInfo& leader,
                         SyncerId const& syncerId, char const* context,
                         std::string const& patchCount) {
@@ -343,7 +364,7 @@ Result BatchInfo::start(replutils::Connection const& connection,
 }
 
 /// @brief send an "extend batch" command
-Result BatchInfo::extend(replutils::Connection const& connection,
+Result BatchInfo::extend(replutils::Connection& connection,
                          replutils::ProgressInfo& progress, SyncerId const syncerId) {
   if (id == 0) {
     return Result();
@@ -395,8 +416,8 @@ Result BatchInfo::extend(replutils::Connection const& connection,
 }
 
 /// @brief send a "finish batch" command
-Result BatchInfo::finish(replutils::Connection const& connection,
-                         replutils::ProgressInfo& progress, SyncerId const syncerId) {
+Result BatchInfo::finish(replutils::Connection& connection,
+                         replutils::ProgressInfo& progress, SyncerId const syncerId) noexcept {
   if (id == 0) {
     return Result();
   } else if (!connection.valid()) {
@@ -507,10 +528,11 @@ bool hasFailed(httpclient::SimpleHttpResult* response) {
 }
 
 Result buildHttpError(httpclient::SimpleHttpResult* response,
-                      std::string const& url, Connection const& connection) {
+                      std::string const& url, Connection& connection) {
   TRI_ASSERT(hasFailed(response));
 
   if (response == nullptr || !response->isComplete()) {
+    connection.preventRecycling();
     std::string errorMsg;
     connection.lease([&errorMsg](httpclient::SimpleHttpClient* client) {
       errorMsg = client->getErrorMessage();

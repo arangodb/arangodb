@@ -34,6 +34,7 @@
 #include "Basics/Thread.h"
 #include "Basics/icu-helper.h"
 #include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
@@ -77,11 +78,6 @@ class TestThread : public arangodb::Thread {
 };
 
 char const* ARGV0 = "";
-
-namespace arangodb {
-  // Only to please the linker, this is not used in the tests.
-  std::function<int()>* restartAction;
-}
 
 int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
@@ -137,6 +133,10 @@ int main(int argc, char* argv[]) {
   // so we do it here in a central place
   arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1}); 
   IcuInitializer::setup(ARGV0);
+
+  // enable mocking globally - not awesome, but helps to prevent runtime
+  // assertions in queries
+  arangodb::ClusterEngine::Mocking = true;
 
   // Run tests in subthread such that it has a larger stack size in libmusl,
   // the stack size for subthreads has been reconfigured in the

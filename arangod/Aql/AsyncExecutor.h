@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ASYNC_EXECUTOR_H
-#define ARANGOD_AQL_ASYNC_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
@@ -88,4 +87,3 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

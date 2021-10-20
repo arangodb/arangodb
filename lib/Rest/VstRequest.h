@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_VST_REQUEST_H
-#define ARANGODB_REST_VST_REQUEST_H 1
+#pragma once
 
 #include <stddef.h>
 #include <cstdint>
@@ -80,4 +79,3 @@ class VstRequest final : public GeneralRequest {
   bool _validatedPayload;
 };
 }  // namespace arangodb
-#endif

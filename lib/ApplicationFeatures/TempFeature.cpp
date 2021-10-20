@@ -45,7 +45,7 @@ TempFeature::TempFeature(application_features::ApplicationServer& server,
 void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("temp-path", "temp.path");
 
-  options->addSection("temp", "Configure temporary files");
+  options->addSection("temp", "temporary files");
 
   options->addOption("--temp.path", "path for temporary files",
                      new StringParameter(&_path));

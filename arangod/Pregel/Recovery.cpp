@@ -82,7 +82,7 @@ void RecoveryManager::monitorCollections(DatabaseID const& database,
       conductors.insert(listener);
       //_monitorShard(coll->dbName(), cid, shard);
 
-      std::shared_ptr<std::vector<ServerID>> servers = _ci.getResponsibleServer(shard);
+      std::shared_ptr<std::vector<ServerID> const> servers = _ci.getResponsibleServer(shard);
       if (servers->size() > 0) {
         // _lock is already held
         _primaryServers[shard] = servers->at(0);
@@ -133,13 +133,9 @@ void RecoveryManager::updatedFailedServers(std::vector<ServerID> const& failed) 
 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, shard] {
+      scheduler->queue(RequestLane::INTERNAL_LOW, [this, shard] {
         _renewPrimaryServer(shard);
       });
-      if (!queued) {
-        LOG_TOPIC("038de", ERR, Logger::PREGEL)
-            << "No thread available to queue pregel recovery manager request";
-      }
     }
   }
 }
@@ -160,7 +156,7 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
 
   int tries = 0;
   do {
-    std::shared_ptr<std::vector<ServerID>> servers = _ci.getResponsibleServer(shard);
+    std::shared_ptr<std::vector<ServerID> const> servers = _ci.getResponsibleServer(shard);
     if (servers && !servers->empty()) {
       ServerID const& nextPrimary = servers->front();
       if (currentPrimary->second != nextPrimary) {

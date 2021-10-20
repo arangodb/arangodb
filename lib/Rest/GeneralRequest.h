@@ -22,14 +22,14 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_GENERAL_REQUEST_H
-#define ARANGODB_REST_GENERAL_REQUEST_H 1
+#pragma once
 
-#include <stddef.h>
+#include <cstddef>
+#include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
-#include <map>
 #include <utility>
 #include <vector>
 
@@ -66,7 +66,7 @@ class GeneralRequest {
   GeneralRequest(GeneralRequest&&) = default;
 
   // translate an RequestType enum value into an "HTTP method string"
-  static std::string translateMethod(RequestType);
+  static std::string_view translateMethod(RequestType);
 
   // translate "HTTP method string" into RequestType enum value
   static RequestType translateMethod(std::string const& method) {
@@ -92,6 +92,7 @@ class GeneralRequest {
       : _connectionInfo(connectionInfo),
         _messageId(mid),
         _requestContext(nullptr),
+        _tokenExpiry(0.0),
         _authenticationMethod(rest::AuthenticationMethod::NONE),
         _type(RequestType::ILLEGAL),
         _contentType(ContentType::UNSET),
@@ -116,6 +117,9 @@ class GeneralRequest {
   ///  to any specific resource.
   bool authenticated() const { return _authenticated; }
   void setAuthenticated(bool a) { _authenticated = a; }
+
+  double tokenExpiry() const { return _tokenExpiry; }
+  void setTokenExpiry(double value) { _tokenExpiry = value; }
 
   // @brief User sending this request
   std::string const& user() const { return _user; }
@@ -252,6 +256,8 @@ class GeneralRequest {
   
   // request context (might contain vocbase)
   RequestContext* _requestContext;
+
+  double _tokenExpiry;
   
   rest::AuthenticationMethod _authenticationMethod;
 
@@ -265,4 +271,3 @@ class GeneralRequest {
 };
 }  // namespace arangodb
 
-#endif

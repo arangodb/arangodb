@@ -22,8 +22,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_FLUSH_FEATURE_H
-#define ARANGODB_REST_SERVER_FLUSH_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ReadWriteLock.h"
@@ -91,4 +90,3 @@ class FlushFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

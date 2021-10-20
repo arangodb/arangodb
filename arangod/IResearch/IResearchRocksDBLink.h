@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_ROCKSDB_LINK_H
-#define ARANGOD_IRESEARCH__IRESEARCH_ROCKSDB_LINK_H 1
+#pragma once
 
 #include "IResearchLink.h"
 
@@ -62,7 +61,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
                 RocksDBMethods* /*methods*/,
                 LocalDocumentId const& documentId,
                 VPackSlice doc,
-                OperationOptions const& /*options*/) override {
+                OperationOptions const& /*options*/,
+                bool /*performChecks*/) override {
     return IResearchLink::insert(trx, documentId, doc);
   }
 
@@ -126,12 +126,12 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
     IndexFactory(application_features::ApplicationServer& server);
 
    public:
-    bool equal(VPackSlice const& lhs,
-               VPackSlice const& rhs,
+    bool equal(VPackSlice lhs,
+               VPackSlice rhs,
                std::string const& dbname) const override;
 
     std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                       VPackSlice const& definition,
+                                       VPackSlice definition,
                                        IndexId id,
                                        bool /*isClusterConstructor*/) const override;
 
@@ -147,4 +147,3 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

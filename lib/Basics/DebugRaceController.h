@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef BASICS_DEBUG_RACE_CONTROLLER_H
-#define BASICS_DEBUG_RACE_CONTROLLER_H 1
+#pragma once
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
@@ -75,4 +74,3 @@ class DebugRaceController {
 
 #endif
 
-#endif

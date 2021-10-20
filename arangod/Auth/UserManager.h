@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AUTHENTICATION_USER_MANAGER_H
-#define ARANGOD_AUTHENTICATION_USER_MANAGER_H 1
+#pragma once
 
 #include "Auth/Common.h"
 #include "Auth/User.h"
@@ -80,7 +79,7 @@ class UserManager {
 
   /// @brief reload user cache and token caches
   void triggerLocalReload() {
-    _globalVersion.fetch_add(1, std::memory_order_release);
+    _internalVersion.store(0, std::memory_order_release);
   }
 
   /// @brief used for caching
@@ -104,8 +103,7 @@ class UserManager {
                    bool active, velocypack::Slice extras);
 
   /// Enumerate list of all users
-  Result enumerateUsers(std::function<bool(auth::User&)>&&,
-                        bool retryOnConflict);
+  Result enumerateUsers(std::function<bool(auth::User&)>&&, bool retryOnConflict);
   /// Update specific user
   Result updateUser(std::string const& user, UserCallback&&);
   /// Access user without modifying it
@@ -134,7 +132,7 @@ class UserManager {
                                 std::string const& dbname, bool configured = false);
   auth::Level collectionAuthLevel(std::string const& username, std::string const& dbname,
                                   std::string const& coll, bool configured = false);
-  
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   /// Overwrite internally cached permissions, only use
   /// for testing purposes
@@ -186,5 +184,3 @@ class UserManager {
 };
 }  // namespace auth
 }  // namespace arangodb
-
-#endif

@@ -1,4 +1,12 @@
 
+v1.17.7 / 2016-12-31
+==================
+
+  * Fix #1026: stub watch method on object
+  * Fix invalid test for "does not walk the same property twice"
+  * Fix spying/stubbing on *etter methods
+  * restoring *etters does not invoke the getter #1124
+
 v1.17.6 / 2016-09-19
 ==================
 

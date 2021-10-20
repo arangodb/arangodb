@@ -1,7 +1,7 @@
 name: rocksdb_cache_allocated
 introducedIn: "3.6.1"
 help: |
-  Global current allocation of ArangoDB cache
+  Global current allocation of ArangoDB cache.
 unit: bytes
 type: gauge
 category: RocksDB
@@ -13,6 +13,5 @@ exposedBy:
 description: |
   This metric reflects the current global allocation for the ArangoDB
   cache which sits in front of RocksDB. For example, the edge cache
-  counts towards this allocation. All these caches together have a 
-  global limit which can be controlled with the `--cache.size` option.
-  See [the manual for details](https://www.arangodb.com/docs/stable/programs-arangod-options.html#cache).
+  counts towards this allocation. All these caches together have a
+  global limit which can be controlled with the `--cache.size` startup option.

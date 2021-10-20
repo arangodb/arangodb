@@ -35,6 +35,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
@@ -530,6 +531,25 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       return RestStatus::DONE;
     }
 
+    if (ServerState::instance()->isDBServer() &&
+        (_activeTrx->state()->collection(coll->name(), AccessMode::Type::EXCLUSIVE) == nullptr ||
+         _activeTrx->state()->isReadOnlyTransaction())) {
+      // make sure that the current transaction includes the collection that we want to
+      // write into. this is not necessarily the case for follower transactions that
+      // are started lazily. in this case, we must reject the request.
+      // we _cannot_ do this for follower transactions, where shards may lazily be
+      // added (e.g. if servers A and B both replicate their own write ops to follower
+      // C one after the after, then C will first see only shards from A and then only
+      // from B).
+      res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+          std::string("Transaction with id '") + std::to_string(_activeTrx->tid().id())
+          + "' does not contain collection '" + coll->name()
+          + "' with the required access mode.");
+      generateError(res);
+      _activeTrx.reset();
+      return RestStatus::DONE;
+    }
+  
     return waitForFuture(
       _activeTrx->truncateAsync(coll->name(), opts).thenValue([this, coll, opts](OperationResult&& opres) {
           // Will commit if no error occured.
@@ -805,7 +825,7 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
 
 RestStatus RestCollectionHandler::standardResponse() {
   generateOk(rest::ResponseCode::OK, _builder);
-  _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
+  _response->setHeaderNC(StaticStrings::Location, "/_db/" + StringUtils::urlEncode(_vocbase.name()) + _request->requestPath());
   return RestStatus::DONE;
 }
 

@@ -21,13 +21,11 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_STATE_H
-#define ARANGOD_AQL_EXECUTION_STATE_H 1
+#pragma once
 
 #include <iosfwd>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 enum class ExecutionState {
   // done with this block, definitely no more results
@@ -58,6 +56,4 @@ std::ostream& operator<<(std::ostream& ostream, ExecutionState state);
 
 std::ostream& operator<<(std::ostream& ostream, ExecutorState state);
 
-}  // namespace aql
-}  // namespace arangodb
-#endif
+}  // namespace arangodb::aql

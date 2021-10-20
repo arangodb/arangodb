@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_DISTRIBUTE_CLIENT_BLOCK_H
-#define ARANGOD_AQL_DISTRIBUTE_CLIENT_BLOCK_H
+#pragma once
 
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/SkipResult.h"
@@ -102,4 +101,3 @@ class DistributeClientBlock {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_DISTRIBUTE_CLIENT_BLOCK_H

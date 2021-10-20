@@ -21,12 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TYPES_H
-#define ARANGOD_AQL_TYPES_H 1
+#pragma once
 
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/RegisterId.h"
 #include "Basics/debugging.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <Containers/HashSetFwd.h>
 
@@ -73,9 +73,17 @@ using MapRemoteToSnippet =
 enum class BlockPassthrough { Disable, Enable };
 
 class ExecutionEngine;
+
 // list of snippets on coordinators
 using SnippetList = std::vector<std::unique_ptr<ExecutionEngine>>;
-using ServerQueryIdList = std::vector<std::pair<std::string, QueryId>>;
+
+struct ServerQueryIdEntry {
+  std::string server;
+  QueryId queryId;
+  RebootId rebootId;
+};
+
+using ServerQueryIdList = std::vector<ServerQueryIdEntry>;
 
 using AqlCollectionMap = std::map<std::string, aql::Collection*, std::less<>>;
 
@@ -106,4 +114,3 @@ enum class ExplainRegisterPlan {
 
 }  // namespace arangodb
 
-#endif

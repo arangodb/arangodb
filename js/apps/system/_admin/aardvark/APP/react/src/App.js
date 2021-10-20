@@ -1,22 +1,22 @@
+import 'jsoneditor-react/es/editor.min.css';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 
-// import Overview from './views/shards/overview';
 const jsoneditor = require('jsoneditor');
 const d3 = require('d3');
-const nvd3 = require('nvd3');
+require('nvd3');
 
 // parse prometheus
 const parsePrometheusTextFormat = require('parse-prometheus-text-format');
-window.parsePrometheusTextFormat = parsePrometheusTextFormat;
 
 // import new react views
-require('./views/shards/ShardsReactView');
+// require('./views/shards/ShardsReactView');
+require('./views/analyzers/AnalyzersReactView');
 
 // old libraries
 const jQuery = require('jquery');
 
-const Backbone = require('backbone');
+require('backbone');
 const _ = require('underscore');
 const Sigma = require('sigma');
 const Noty = require('noty');
@@ -27,7 +27,7 @@ const CryptoJS = require('crypto-js');
 const hljs = require('highlight.js/lib/highlight');
 const json = require('highlight.js/lib/languages/json');
 
-const env = process.env.NODE_ENV
+const env = process.env.NODE_ENV;
 
 // import old based css files
 require('../../frontend/css/pure-min.css');
@@ -48,20 +48,21 @@ require('../../frontend/scss/style.scss');
 require('highlight.js/styles/github.css');
 
 // noty css
-require("../node_modules/noty/lib/noty.css");
-require("../node_modules/noty/lib/themes/sunset.css");
+require('../node_modules/noty/lib/noty.css');
+require('../node_modules/noty/lib/themes/sunset.css');
 
 window.JST = {};
 
-function requireAll(context) {
+function requireAll (context) {
   context.keys().forEach(context);
-  _.each(context.keys(), function(key) {
+  _.each(context.keys(), function (key) {
     // detect and store ejs templates
     if (key.substring(key.length - 4, key.length) === '.ejs') {
       let filename = key.substring(2, key.length);
       let name = key.substring(2, key.length - 4);
       if (env === 'development') {
-        window.JST['templates/' + name] = _.template(require('../../frontend/js/templates/' + filename).default);
+        window.JST['templates/' + name] = _.template(
+          require('../../frontend/js/templates/' + filename).default);
       } else {
         // production - precompiled templates
         window.JST['templates/' + name] = require('../../frontend/js/templates/' + filename);
@@ -84,6 +85,7 @@ window.hljs = hljs;
 
 window.Noty = Noty;
 
+window.React = React;
 window.ReactDOM = ReactDOM;
 window.Joi = require('../../frontend/js/lib/joi-browser.min.js');
 window.jQuery = window.$ = jQuery;
@@ -106,8 +108,8 @@ require('../../frontend/js/lib/jquery.uploadfile.min.js');
 require('../../frontend/js/lib/bootstrap-min.js');
 
 // typeahead
-require("typeahead.js/dist/typeahead.jquery.min.js")
-require("typeahead.js/dist/bloodhound.min.js")
+require('typeahead.js/dist/typeahead.jquery.min.js');
+require('typeahead.js/dist/bloodhound.min.js');
 
 // Collect all Backbone.js related
 require('../../frontend/js/routers/router.js');
@@ -138,8 +140,8 @@ window.define = window.ace.define;
 window.aqltemplates = require('../public/assets/aqltemplates.json');
 
 window.d3 = d3;
-require('../../frontend/js/lib/leaflet.js')
-require('../../frontend/js/lib/tile.stamen.js')
+require('../../frontend/js/lib/leaflet.js');
+require('../../frontend/js/lib/tile.stamen.js');
 
 window.prettyBytes = require('../../frontend/js/lib/pretty-bytes.js');
 window.Dygraph = require('../../frontend/js/lib/dygraph-combined.min.js');
@@ -180,16 +182,16 @@ window.Raphael = require('../../frontend/js/lib/raphael.min.js');
 window.icon = require('../../frontend/js/lib/raphael.icons.min.js');
 
 window.randomColor = require('../../frontend/js/lib/randomColor.js');
-//require('../../frontend/src/ace.js');
-//require('../../frontend/src/theme-textmate.js');
-//require('../../frontend/src/mode-json.js');
-//require('../../frontend/src/mode-aql.js');
+// require('../../frontend/src/ace.js');
+// require('../../frontend/src/theme-textmate.js');
+// require('../../frontend/src/mode-json.js');
+// require('../../frontend/src/mode-aql.js');
 
 class App extends Component {
   // <Overview />
-  render() {
+  render () {
     return (
-      <div className="App"></div>
+      <div className="App"/>
     );
   }
 }

@@ -30,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/Action.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -93,12 +94,12 @@ class TestActionBasic : public ActionBase {
       createPreAction(_preDesc);
     } else if (0 == _iteration) {
       // time to set result?
-      _result.reset(_resultCode);
+      result(_resultCode);
     }  // if
 
     // verify first() called once
     if (0 != getProgress()) {
-      _result.reset(TRI_ERROR_INTERNAL);
+      result(TRI_ERROR_INTERNAL);
     }  // if
 
     return (iteratorEndTest());
@@ -107,12 +108,12 @@ class TestActionBasic : public ActionBase {
   bool next() override {
     // time to set result?
     if (0 == _iteration) {
-      _result.reset(_resultCode);
+      result(_resultCode);
     }  // if
 
     // verify next() called properly
     if (0 == getProgress()) {
-      _result.reset(TRI_ERROR_INTERNAL);
+      result(TRI_ERROR_INTERNAL);
     }  // if
 
     return (iteratorEndTest());
@@ -123,7 +124,7 @@ class TestActionBasic : public ActionBase {
     bool more;
 
     //
-    if (_result.ok()) {
+    if (result().ok()) {
       more = 0 < _iteration--;
 
       // if going to stop, see if a postAction is needed
@@ -417,7 +418,13 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
+  
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
+  
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
 
   //
   // 1. load up the queue without threads running
@@ -481,12 +488,6 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
 #if 0  // for debugging
     std::cout << tf.toVelocyPack().toJson() << std::endl;
 #endif
-
-  //
-  // 6. bring down the ApplicationServer, i.e. clean up
-  as.beginShutdown();
-
-  th.join();
 }
 
 TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
@@ -501,7 +502,13 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
+  
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
 
   //
   // 1. load up the queue without threads running
@@ -541,11 +548,6 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
 #if 0  // for debugging
     std::cout << tf.toVelocyPack().toJson() << std::endl;
 #endif
-
-  //
-  // 6. bring down the ApplicationServer, i.e. clean up
-  as.beginShutdown();
-  th.join();
 }
 
 TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
@@ -560,7 +562,13 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
+  
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
+  
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
 
   //
   // 1. load up the queue without threads running
@@ -601,11 +609,6 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
 #if 0  // for debugging
     std::cout << tf.toVelocyPack().toJson() << std::endl;
 #endif
-
-  //
-  // 6. bring down the ApplicationServer, i.e. clean up
-  as.beginShutdown();
-  th.join();
 }
 
 TEST(MaintenanceFeatureTestThreaded, priority_queue_should_be_able_to_process_fast_tracked_action) {
@@ -621,7 +624,13 @@ TEST(MaintenanceFeatureTestThreaded, priority_queue_should_be_able_to_process_fa
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
+  
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
+  
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
 
   //
   // 1. load up the queue without threads running
@@ -651,11 +660,6 @@ TEST(MaintenanceFeatureTestThreaded, priority_queue_should_be_able_to_process_fa
 #if 0  // for debugging
     std::cout << tf.toVelocyPack().toJson() << std::endl;
 #endif
-
-  //
-  // 4. bring down the ApplicationServer, i.e. clean up
-  as.beginShutdown();
-  th.join();
 }
 
 TEST(MaintenanceFeatureTestThreaded, action_delete) {
@@ -670,7 +674,13 @@ TEST(MaintenanceFeatureTestThreaded, action_delete) {
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
+  
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
+  
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
 
   //
   // 1. load up the queue without threads running
@@ -711,9 +721,4 @@ TEST(MaintenanceFeatureTestThreaded, action_delete) {
 #if 0  // for debugging
     std::cout << tf.toVelocyPack().toJson() << std::endl;
 #endif
-
-  //
-  // 6. bring down the ApplicationServer, i.e. clean up
-  as.beginShutdown();
-  th.join();
 }

@@ -34,6 +34,7 @@
 #include "FileUtils.h"
 
 #include "Basics/operating-system.h"
+#include "Basics/process-utils.h"
 
 #ifdef TRI_HAVE_DIRENT_H
 #include <dirent.h>
@@ -64,7 +65,49 @@
 namespace {
 std::function<bool(std::string const&)> const passAllFilter =
     [](std::string const&) { return false; };
+
+enum class StatResultType {
+  Error, // in case it cannot be determined
+  Directory,
+  SymLink,
+  File,
+  Other // potentially file
+};
+
+StatResultType statResultType(TRI_stat_t const& stbuf) {
+#ifdef _WIN32
+  if ((stbuf.st_mode & S_IFMT) == S_IFDIR) {
+    return StatResultType::Directory;
+  }
+#else
+  if (S_ISDIR(stbuf.st_mode)) {
+    return StatResultType::Directory;
+  }
+#endif
+
+#ifndef TRI_HAVE_WIN32_SYMBOLIC_LINK
+  if (S_ISLNK(stbuf.st_mode)) {
+    return StatResultType::SymLink;
+  }
+#endif
+  
+  if ((stbuf.st_mode & S_IFMT) == S_IFREG) {
+    return StatResultType::File;
+  }
+    
+  return StatResultType::Other;
 }
+
+StatResultType statResultType(std::string const& path) {
+  TRI_stat_t stbuf;
+  int res = TRI_STAT(path.c_str(), &stbuf);
+  if (res != 0) {
+    return StatResultType::Error;
+  }
+  return statResultType(stbuf);
+}
+
+} // namespace
 
 namespace arangodb {
 namespace basics {
@@ -206,7 +249,7 @@ std::string slurp(std::string const& filename) {
     throwFileReadError(filename);
   }
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   constexpr size_t chunkSize = 8192;
   StringBuffer buffer(chunkSize, false);
@@ -223,7 +266,7 @@ void slurp(std::string const& filename, StringBuffer& result) {
     throwFileReadError(filename);
   }
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   result.reset();
   constexpr size_t chunkSize = 8192;
@@ -242,7 +285,7 @@ Result slurpNoEx(std::string const& filename, StringBuffer& result) {
     return {res, message};
   }
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   result.reset();
   constexpr size_t chunkSize = 8192;
@@ -278,7 +321,7 @@ void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
     throwFileWriteError(filename);
   }
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   while (0 < len) {
     ssize_t n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(len));
@@ -401,12 +444,15 @@ bool copyRecursive(std::string const& source, std::string const& target,
 bool copyDirectoryRecursive(std::string const& source, std::string const& target,
                             std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
                             std::string& error) {
-  char* fn = nullptr;
   bool rc_bool = true;
+  
+  // these strings will be recycled over and over
+  std::string dst = target + TRI_DIR_SEPARATOR_STR;
+  size_t const dstPrefixLength = dst.size();
+  std::string src = source + TRI_DIR_SEPARATOR_STR;
+  size_t const srcPrefixLength = src.size();
 
-  auto isSubDirectory = [](std::string const& name) -> bool {
-    return isDirectory(name);
-  };
+
 #ifdef TRI_HAVE_WIN32_LIST_FILES
   struct _wfinddata_t oneItem;
   intptr_t handle;
@@ -427,7 +473,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
     rcs.clear();
     icu::UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
-    fn = (char*)rcs.c_str();
+    char const* fn = (char*)rcs.c_str();
 #else
   DIR* filedir = opendir(source.c_str());
 
@@ -445,7 +491,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
   // to be thread-safe in reality, and newer versions of POSIX may require its
   // thread-safety formally, and in addition obsolete readdir_r() altogether
   while ((oneItem = (readdir(filedir))) != nullptr && rc_bool) {
-    fn = oneItem->d_name;
+    char const* fn = oneItem->d_name;
 #endif
 
     // Now iterate over the items.
@@ -453,49 +499,71 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
     if (!strcmp(fn, ".") || !strcmp(fn, "..")) {
       continue;
     }
-    std::string dst = target + TRI_DIR_SEPARATOR_STR + fn;
-    std::string src = source + TRI_DIR_SEPARATOR_STR + fn;
 
-    switch (filter(src)) {
-      case TRI_COPY_IGNORE:
-        break;
+    // add current filename to prefix
+    src.resize(srcPrefixLength);
+    TRI_ASSERT(src.back() == TRI_DIR_SEPARATOR_CHAR);
+    src.append(fn);
+    
+    auto filterResult = filter(src);
 
-      case TRI_COPY_COPY:
-        // Handle subdirectories:
-        if (isSubDirectory(src)) {
-          long systemError;
-          auto rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
-          if (rc != TRI_ERROR_NO_ERROR && rc != TRI_ERROR_FILE_EXISTS) {
-            rc_bool = false;
-            break;
-          }
-          if (!copyDirectoryRecursive(src, dst, filter, error)) {
-            rc_bool = false;
-            break;
-          }
-          if (!TRI_CopyAttributes(src, dst, error)) {
-            rc_bool = false;
-            break;
-          }
-#ifndef _WIN32
-        } else if (isSymbolicLink(src)) {
-          if (!TRI_CopySymlink(src, dst, error)) {
-            rc_bool = false;
-          }
+    if (filterResult != TRI_COPY_IGNORE) {
+      // prepare dst filename
+      dst.resize(dstPrefixLength);
+      TRI_ASSERT(dst.back() == TRI_DIR_SEPARATOR_CHAR);
+      dst.append(fn);
+ 
+      // figure out the type of the directory entry.
+      StatResultType type = StatResultType::Error;
+      TRI_stat_t stbuf;
+      int res = TRI_STAT(src.c_str(), &stbuf);
+      if (res == 0) {
+        type = ::statResultType(stbuf);
+      }
+
+      switch (filterResult) {
+        case TRI_COPY_IGNORE:
+          TRI_ASSERT(false);
+          break;
+
+        case TRI_COPY_COPY:
+          // Handle subdirectories:
+          if (type == StatResultType::Directory) {
+            long systemError;
+            auto rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
+            if (rc != TRI_ERROR_NO_ERROR && rc != TRI_ERROR_FILE_EXISTS) {
+              rc_bool = false;
+              break;
+            }
+            if (!copyDirectoryRecursive(src, dst, filter, error)) {
+              rc_bool = false;
+              break;
+            }
+            if (!TRI_CopyAttributes(src, dst, error)) {
+              rc_bool = false;
+              break;
+            }
+          } else if (type == StatResultType::SymLink) {
+            if (!TRI_CopySymlink(src, dst, error)) {
+              rc_bool = false;
+            }
+          } else {
+#ifdef _WIN32
+            rc_bool = TRI_CopyFile(src, dst, error);
+#else
+            // optimized version that reuses the already retrieved stat data
+            rc_bool = TRI_CopyFile(src, dst, error, &stbuf);
 #endif
-        } else {
-          if (!TRI_CopyFile(src, dst, error)) {
-            rc_bool = false;
           }
-        }
-        break;
+          break;
 
-      case TRI_COPY_LINK:
-        if (!TRI_CreateHardlink(src, dst, error)) {
-          rc_bool = false;
-        } // if
-        break;
-    } // switch
+        case TRI_COPY_LINK:
+          if (!TRI_CreateHardlink(src, dst, error)) {
+            rc_bool = false;
+          } // if
+          break;
+      } // switch
+    }
 #ifdef TRI_HAVE_WIN32_LIST_FILES
   } while (_wfindnext(handle, &oneItem) != -1 && rc_bool);
 
@@ -578,48 +646,19 @@ std::vector<std::string> listFiles(std::string const& directory) {
 }
 
 bool isDirectory(std::string const& path) {
-  TRI_stat_t stbuf;
-  int res = TRI_STAT(path.c_str(), &stbuf);
-
-#ifdef _WIN32
-  return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFDIR);
-#else
-  return (res == 0) && S_ISDIR(stbuf.st_mode);
-#endif
+  return ::statResultType(path) == ::StatResultType::Directory;
 }
 
 bool isSymbolicLink(std::string const& path) {
-#ifdef TRI_HAVE_WIN32_SYMBOLIC_LINK
-
-  // .....................................................................
-  // TODO: On the NTFS file system, there are the following file links:
-  // hard links -
-  // junctions -
-  // symbolic links -
-  // .....................................................................
-  return false;
-
-#else
-
-  struct stat stbuf;
-  int res = TRI_STAT(path.c_str(), &stbuf);
-
-  return (res == 0) && S_ISLNK(stbuf.st_mode);
-
-#endif
+  return ::statResultType(path) == ::StatResultType::SymLink;
 }
 
 bool isRegularFile(std::string const& path) {
-  TRI_stat_t stbuf;
-  int res = TRI_STAT(path.c_str(), &stbuf);
-  return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFREG);
+  return ::statResultType(path) == ::StatResultType::File;
 }
 
 bool exists(std::string const& path) {
-  TRI_stat_t stbuf;
-  int res = TRI_STAT(path.c_str(), &stbuf);
-
-  return res == 0;
+  return ::statResultType(path) != ::StatResultType::Error;
 }
 
 off_t size(std::string const& path) {
@@ -701,80 +740,51 @@ void makePathAbsolute(std::string& path) {
   }
 }
 
-static void throwProgramError(std::string const& filename) {
-  auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-
-  LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME)
-      << StringUtils::concatT("open failed for file '", filename, "': ", TRI_last_error());
-
-  THROW_ARANGO_EXCEPTION(res);
-}
-
 std::string slurpProgram(std::string const& program) {
-#ifdef _WIN32
-  icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen(reinterpret_cast<wchar_t const*>(uprog.getTerminatedBuffer()), L"r");
-#else
-  FILE* fp = popen(program.c_str(), "r");
-#endif
+  ExternalProcess const* process;
+  ExternalId external;
+  ExternalProcessStatus res;
+  std::string output;
+  std::vector<std::string> moreArgs;
+  std::vector<std::string> additionalEnv;
+  char buf[1024];
 
-  constexpr size_t chunkSize = 8192;
-  StringBuffer buffer(chunkSize, false);
+  moreArgs.push_back(std::string("version"));
 
-  if (fp) {
-    int c;
+  TRI_CreateExternalProcess(program.c_str(),
+                            moreArgs,
+                            additionalEnv,
+                            true,
+                            &external);
+  if (external._pid == TRI_INVALID_PROCESS_ID) {
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    while ((c = getc(fp)) != EOF) {
-      buffer.appendChar((char)c);
-    }
-
-#ifdef _WIN32
-    int res = _pclose(fp);
-#else
-    int res = pclose(fp);
-#endif
-
-    if (res != 0) {
-      throwProgramError(program);
-    }
-  } else {
-    throwProgramError(program);
+    LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME)
+      << StringUtils::concatT("open failed for file '",
+                              program, "': ",
+                              TRI_last_error());
+    THROW_ARANGO_EXCEPTION(res);
   }
+  process = TRI_LookupSpawnedProcess(external._pid);
+  if (process == nullptr) {
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-  return std::string(buffer.data(), buffer.length());
+    LOG_TOPIC("a557c", TRACE, arangodb::Logger::FIXME)
+      << StringUtils::concatT("process gone? '",
+                              program, "': ",
+                              TRI_last_error());
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  while (res = TRI_CheckExternalProcess(external, false, 0),
+         (res._status == TRI_EXT_RUNNING)) {
+    auto nRead = TRI_ReadPipe(process, buf, sizeof(buf) - 1);
+    if (nRead > 0) {
+      output.append(buf, nRead);
+    }
+  }
+  return output;
 }
 
-int slurpProgramWithExitcode(std::string const& program, std::string& output) {
-#ifdef _WIN32
-  icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen(reinterpret_cast<wchar_t const*>(uprog.getTerminatedBuffer()), L"r");
-#else
-  FILE* fp = popen(program.c_str(), "r");
-#endif
-
-  constexpr size_t chunkSize = 8192;
-  StringBuffer buffer(chunkSize, false);
-
-  if (fp) {
-    int c;
-
-    while ((c = getc(fp)) != EOF) {
-      buffer.appendChar((char)c);
-    }
-
-#ifdef _WIN32
-    int res = _pclose(fp);
-#else
-    int res = pclose(fp);
-#endif
-
-    output = std::string(buffer.data(), buffer.length());
-    return res;
-  }
-
-  throwProgramError(program);
-  return 1;   // Just to please the compiler.
-};
 
 }  // namespace FileUtils
 }  // namespace basics

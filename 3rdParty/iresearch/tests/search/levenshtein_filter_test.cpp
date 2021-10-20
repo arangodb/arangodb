@@ -22,10 +22,12 @@
 
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
+#include "index/norm.hpp"
 #include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/term_filter.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
+#include "utils/misc.hpp"
 
 namespace {
 
@@ -43,13 +45,15 @@ irs::by_edit_distance make_filter(
     const irs::string_ref term,
     irs::byte_type max_distance = 0,
     size_t max_terms = 0,
-    bool with_transpositions = false) {
+    bool with_transpositions = false,
+    const irs::string_ref prefix = irs::string_ref::EMPTY) {
   irs::by_edit_distance q;
   *q.mutable_field() = field;
   q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
   q.mutable_options()->max_distance = max_distance;
   q.mutable_options()->max_terms = max_terms;
   q.mutable_options()->with_transpositions = with_transpositions;
+  q.mutable_options()->prefix = irs::ref_cast<irs::byte_type>(prefix);
   return q;
 }
 
@@ -117,6 +121,11 @@ TEST(by_edit_distance_test, boost) {
 
 #ifndef IRESEARCH_DLL
 
+#ifdef __clang__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpotentially-evaluated-expression"
+#endif // __clang__
+
 TEST(by_edit_distance_test, test_type_of_prepared_query) {
   // term query
   {
@@ -125,6 +134,10 @@ TEST(by_edit_distance_test, test_type_of_prepared_query) {
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 }
+
+#ifdef __clang__
+#pragma GCC diagnostic pop
+#endif // __clang__
 
 #endif
 
@@ -301,6 +314,24 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   check_query(make_filter("title", "", 0, 0, false), docs_t{}, costs_t{0}, rdr);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// Levenshtein and Damerau-Levenshtein with prefix
+  //////////////////////////////////////////////////////////////////////////////
+  // distance 0 (term query)
+  check_query(make_filter("title", "", 0, 1024, false, "aaaw"), docs_t{32}, costs_t{1}, rdr);
+  check_query(make_filter("title", "w", 0, 1024, false, "aaa"), docs_t{32}, costs_t{1}, rdr);
+  check_query(make_filter("title", "w", 0, 1024, true, "aaa"), docs_t{32}, costs_t{1}, rdr);
+  check_query(make_filter("title", "", 0, 1024, false, ""), docs_t{}, costs_t{0}, rdr);
+  // distance 1
+  check_query(make_filter("title", "aa", 1, 1024, false, "aaabbba"), docs_t{9, 10}, costs_t{2}, rdr);
+  check_query(make_filter("title", "", 1, 1024, false, ""), docs_t{28,29}, costs_t{2}, rdr);
+  // distance 2
+  check_query(make_filter("title", "ca", 2, 1024, false, "b"), docs_t{29,30}, costs_t{2}, rdr);
+  check_query(make_filter("title", "aa", 2, 1024, false, "aa"), docs_t{5,7,13,16,19,27,32}, costs_t{7}, rdr);
+  // distance 3
+  check_query(make_filter("title", "", 3, 1024, false, "aaa"), docs_t{5,7,13,16,19,32}, costs_t{6}, rdr);
+  check_query(make_filter("title", "", 3, 1024, true, "aaa"), docs_t{5,7,13,16,19,32}, costs_t{6}, rdr);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// Levenshtein
   //////////////////////////////////////////////////////////////////////////////
 
@@ -388,6 +419,371 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   check_query(make_filter("title", "", 5, 0, true), docs_t{}, costs_t{0}, rdr);
 }
 
+TEST_P(by_edit_distance_test_case, bm25) {
+  using tests::json_doc_generator;
+  using tests::field_base;
+
+  auto analyzer = irs::analysis::analyzers::get(
+    "text", irs::type<irs::text_format::json>::get(),
+    R"({"locale":"en.UTF-8", "stem":false, "accent":false, "case":"lower", "stopwords":[]})");
+  ASSERT_NE(nullptr, analyzer);
+
+  struct text_field : field_base {
+   public:
+    text_field(irs::analysis::analyzer& analyzer, std::string value)
+      : value_(std::move(value)), analyzer_(&analyzer) {
+      this->name("id");
+      this->index_features_ = irs::IndexFeatures::FREQ;
+      this->features_.emplace_back(irs::type<irs::norm>::id());
+    }
+
+    bool write(data_output&) const noexcept {
+      return true;
+    }
+
+    irs::token_stream& get_tokens() const {
+      const bool res = analyzer_->reset(value_);
+      EXPECT_TRUE(res);
+      return *analyzer_;
+    }
+
+   private:
+    std::string value_;
+    irs::analysis::analyzer* analyzer_;
+  };
+
+  {
+    json_doc_generator gen(
+      resource("v_DSS_Entity_id.json"),
+      [&analyzer](tests::document& doc,
+         const std::string& name,
+         const json_doc_generator::json_value& data) {
+        if (json_doc_generator::ValueType::STRING == data.vt && name == "id") {
+          auto field = std::make_shared<text_field>(
+            *analyzer, std::string{data.str.data, data.str.size});
+          doc.insert(field);
+        }
+      });
+
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+
+    add_segment(gen, irs::OM_CREATE, opts);
+  }
+
+  irs::order ord;
+  auto scorer = irs::scorers::get(
+    "bm25",
+    irs::type<irs::text_format::json>::get(),
+    irs::string_ref::NIL);
+  ASSERT_NE(nullptr, scorer);
+  ord.add(false, std::move(scorer));
+  auto prepared_order = ord.prepare();
+
+  auto index = open_reader();
+  ASSERT_NE(nullptr, index);
+  ASSERT_EQ(1, index->size());
+
+  {
+    irs::by_edit_distance filter;
+    *filter.mutable_field() = "id";
+    auto& opts = *filter.mutable_options();
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("end202"));
+    opts.max_distance = 2;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = true;
+
+    auto prepared = filter.prepare(*index, prepared_order);
+    ASSERT_NE(nullptr, prepared);
+
+    auto docs = prepared->execute(index[0], prepared_order);
+    ASSERT_NE(nullptr, docs);
+
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->is_default());
+
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
+      { 6.21361256f, 261 },
+      { 9.32042027f, 272 },
+      { 7.76701689f, 273 },
+      { 6.21361256f, 289 },
+    };
+
+    auto expected_doc = std::begin(expected_docs);
+    while (docs->next()) {
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      ASSERT_FLOAT_EQ(expected_doc->first, *value);
+      ASSERT_EQ(expected_doc->second, docs->value());
+      ++expected_doc;
+    }
+
+    ASSERT_FALSE(docs->next());
+  }
+
+  {
+    irs::by_edit_distance filter;
+    *filter.mutable_field() = "id";
+    auto& opts = *filter.mutable_options();
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("end202"));
+    opts.max_distance = 1;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = true;
+
+    auto prepared = filter.prepare(*index, prepared_order);
+    ASSERT_NE(nullptr, prepared);
+
+    auto docs = prepared->execute(index[0], prepared_order);
+    ASSERT_NE(nullptr, docs);
+
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->is_default());
+
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
+      { 9.9112005f, 272 },
+      { 8.2593336f, 273 },
+    };
+
+    auto expected_doc = std::begin(expected_docs);
+    while (docs->next()) {
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      ASSERT_FLOAT_EQ(expected_doc->first, *value);
+      ASSERT_EQ(expected_doc->second, docs->value());
+      ++expected_doc;
+    }
+  }
+
+  // with prefix
+  {
+    irs::by_edit_distance filter;
+    *filter.mutable_field() = "id";
+    auto& opts = *filter.mutable_options();
+    opts.prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("end"));
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("202"));
+    opts.max_distance = 1;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = true;
+
+    auto prepared = filter.prepare(*index, prepared_order);
+    ASSERT_NE(nullptr, prepared);
+
+    auto docs = prepared->execute(index[0], prepared_order);
+    ASSERT_NE(nullptr, docs);
+
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->is_default());
+
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
+      { 9.9112005f, 272 },
+      { 8.2593336f, 273 },
+    };
+
+    auto expected_doc = std::begin(expected_docs);
+    while (docs->next()) {
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      ASSERT_FLOAT_EQ(expected_doc->first, *value);
+      ASSERT_EQ(expected_doc->second, docs->value());
+      ++expected_doc;
+    }
+
+    ASSERT_FALSE(docs->next());
+  }
+
+  {
+    irs::by_edit_distance filter;
+    *filter.mutable_field() = "id";
+    auto& opts = *filter.mutable_options();
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("asm212"));
+    opts.max_distance = 2;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = true;
+
+    auto prepared = filter.prepare(*index, prepared_order);
+    ASSERT_NE(nullptr, prepared);
+
+    auto docs = prepared->execute(index[0], prepared_order);
+    ASSERT_NE(nullptr, docs);
+
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->is_default());
+
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
+      { 8.1443901f, 265   },
+      { 6.9717164f, 46355 },
+      { 6.9717164f, 46356 },
+      { 6.9717164f, 46357 },
+      { 6.7869916f, 264   },
+      { 6.7869916f, 3054  },
+      { 6.7869916f, 3069  },
+      { 5.8097634f, 46353 },
+      { 5.8097634f, 46354 },
+      { 5.4295926f, 263   },
+      { 5.4295926f, 3062  },
+      { 4.6478105f, 46350 },
+      { 4.6478105f, 46351 },
+      { 4.6478105f, 46352 },
+    };
+
+    std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
+    while (docs->next()) {
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      actual_docs.emplace_back(*value, docs->value());
+    }
+    ASSERT_FALSE(docs->next());
+    ASSERT_EQ(IRESEARCH_COUNTOF(expected_docs), actual_docs.size());
+
+    std::sort(
+      std::begin(actual_docs), std::end(actual_docs),
+      [](const auto& lhs, const auto& rhs) {
+        if (lhs.first < rhs.first) {
+          return false;
+        }
+
+        if (lhs.first > rhs.first) {
+          return true;
+        }
+
+        return lhs.second < rhs.second;
+    });
+
+    auto expected_doc = std::begin(expected_docs);
+    for (auto& actual_doc : actual_docs) {
+      ASSERT_FLOAT_EQ(expected_doc->first, actual_doc.first);
+      ASSERT_EQ(expected_doc->second, actual_doc.second);
+      ++expected_doc;
+    }
+  }
+
+  {
+    irs::by_edit_distance filter;
+    *filter.mutable_field() = "id";
+    auto& opts = *filter.mutable_options();
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("et038-pm"));
+    opts.max_distance = 3;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = true;
+
+    auto prepared = filter.prepare(*index, prepared_order);
+    ASSERT_NE(nullptr, prepared);
+
+    auto docs = prepared->execute(index[0], prepared_order);
+    ASSERT_NE(nullptr, docs);
+
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->is_default());
+
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
+        { 3.8292058f, 275 },
+        { 3.2778559f, 46376 },
+        { 3.2778559f, 46377 },
+    };
+
+    std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
+    while (docs->next()) {
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      actual_docs.emplace_back(*value, docs->value());
+    }
+
+    ASSERT_FALSE(docs->next());
+    ASSERT_EQ(IRESEARCH_COUNTOF(expected_docs), actual_docs.size());
+
+    std::sort(
+      std::begin(actual_docs), std::end(actual_docs),
+      [](const auto& lhs, const auto& rhs) {
+        if (lhs.first < rhs.first) {
+          return false;
+        }
+
+        if (lhs.first > rhs.first) {
+          return true;
+        }
+
+        return lhs.second < rhs.second;
+    });
+
+    auto expected_doc = std::begin(expected_docs);
+    for (auto& actual_doc : actual_docs) {
+      ASSERT_EQ(expected_doc->second, actual_doc.second);
+      ASSERT_FLOAT_EQ(expected_doc->first, actual_doc.first);
+      ++expected_doc;
+    }
+  }
+
+  // with prefix
+  {
+    irs::by_edit_distance filter;
+    *filter.mutable_field() = "id";
+    auto& opts = *filter.mutable_options();
+    opts.prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("et038"));
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("-pm"));
+    opts.max_distance = 3;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = true;
+
+    auto prepared = filter.prepare(*index, prepared_order);
+    ASSERT_NE(nullptr, prepared);
+
+    auto docs = prepared->execute(index[0], prepared_order);
+    ASSERT_NE(nullptr, docs);
+
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->is_default());
+
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
+      { 3.8292058f, 275 },
+      { 3.2778559f, 46376 },
+      { 3.2778559f, 46377 },
+    };
+
+    std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
+    while (docs->next()) {
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      actual_docs.emplace_back(*value, docs->value());
+    }
+
+    ASSERT_FALSE(docs->next());
+    ASSERT_EQ(IRESEARCH_COUNTOF(expected_docs), actual_docs.size());
+
+    std::sort(
+      std::begin(actual_docs), std::end(actual_docs),
+      [](const auto& lhs, const auto& rhs) {
+        if (lhs.first < rhs.first) {
+          return false;
+        }
+
+        if (lhs.first > rhs.first) {
+          return true;
+        }
+
+        return lhs.second < rhs.second;
+    });
+
+    auto expected_doc = std::begin(expected_docs);
+    for (auto& actual_doc : actual_docs) {
+      ASSERT_EQ(expected_doc->second, actual_doc.second);
+      ASSERT_FLOAT_EQ(expected_doc->first, actual_doc.first);
+      ++expected_doc;
+    }
+  }
+}
+
 TEST_P(by_edit_distance_test_case, visit) {
   // add segment
   {
@@ -456,20 +852,55 @@ TEST_P(by_edit_distance_test_case, visit) {
 
     visitor.reset();
   }
+
+  // with prefix
+  {
+    irs::by_edit_distance_filter_options opts;
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts.max_distance = 2;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = false;
+    opts.prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("ab"));
+
+    tests::empty_filter_visitor visitor;
+    auto field_visitor = irs::by_edit_distance::visitor(opts);
+    ASSERT_TRUE(field_visitor);
+    field_visitor(segment, *reader, visitor);
+    ASSERT_EQ(1, visitor.prepare_calls_counter());
+    ASSERT_EQ(5, visitor.visit_calls_counter());
+
+    const auto actual_terms = visitor.term_refs<char>();
+    std::vector<std::pair<irs::string_ref, irs::boost_t>> expected_terms{
+      {"abc",  irs::no_boost()},
+      {"abcd", 2.f/3},
+      {"abcde", 1.f/3},
+      {"abcy", 2.f/3},
+      {"abde", 1.f/3},
+    };
+    ASSERT_EQ(expected_terms.size(), actual_terms.size());
+
+    auto actual_term = actual_terms.begin();
+    for (auto& expected_term : expected_terms) {
+      ASSERT_EQ(expected_term.first, actual_term->first);
+      ASSERT_FLOAT_EQ(expected_term.second, actual_term->second);
+      ++actual_term;
+    }
+
+    visitor.reset();
+  }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   by_edit_distance_test,
   by_edit_distance_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_1", "1_0"},
-                      tests::format_info{"1_2", "1_0"})
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      tests::format_info{"1_0"},
+      tests::format_info{"1_1", "1_0"},
+      tests::format_info{"1_2", "1_0"})),
+  by_edit_distance_test_case::to_string
 );

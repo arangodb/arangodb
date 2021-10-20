@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_COLLECTION_GUARD_H
-#define ARANGOD_UTILS_COLLECTION_GUARD_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -95,4 +94,3 @@ class CollectionGuard {
 };
 }  // namespace arangodb
 
-#endif

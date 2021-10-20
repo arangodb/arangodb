@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -149,6 +148,9 @@ class ApplicationFeature {
   // start the feature
   virtual void start();
 
+  // notify the feature about a soft shutdown request
+  virtual void initiateSoftShutdown();
+
   // notify the feature about a shutdown request
   virtual void beginShutdown();
 
@@ -268,4 +270,3 @@ class ApplicationFeature {
 }  // namespace application_features
 }  // namespace arangodb
 
-#endif

@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -246,12 +245,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandHoldReadLockCollection();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief check if we are holding a read lock on a collection
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandCheckHoldReadLockCollection();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief cancel holding a read lock on a collection
   //////////////////////////////////////////////////////////////////////////////
 
@@ -297,13 +290,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandLoggerTickRanges();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the revision tree for a given collection, if available
-  /// @response serialized revision tree, binary
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandRevisionTree();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief rebuild the revision tree for a given collection, if allowed
   /// @response 204 No Content if all goes well
   //////////////////////////////////////////////////////////////////////////////
@@ -341,7 +327,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   ReplicationApplier* getApplier(bool& global);
 
- private:
+ protected:
   struct RevisionOperationContext {
     uint64_t batchId;
     RevisionId resume;
@@ -349,8 +335,10 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
     std::shared_ptr<LogicalCollection> collection;
     std::unique_ptr<ReplicationIterator> iter;
   };
-
+  
   bool prepareRevisionOperation(RevisionOperationContext&);
+
+ private:
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection
@@ -417,7 +405,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief creates a collection, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  ErrorCode createCollection(VPackSlice slice, arangodb::LogicalCollection** dst);
+  ErrorCode createCollection(VPackSlice slice);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -520,6 +508,12 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void handleCommandDump() = 0;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the revision tree for a given collection, if available
+  //////////////////////////////////////////////////////////////////////////////
+  
+  virtual void handleCommandRevisionTree() = 0;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -547,7 +541,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error, if the lock has expired.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<bool> isLockHeld(TransactionId tid) const;
+  Result isLockHeld(TransactionId tid) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compute a local checksum for the given collection
@@ -574,4 +568,3 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result testPermissions();
 };
 }  // namespace arangodb
-#endif

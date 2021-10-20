@@ -66,7 +66,7 @@ struct sort : irs::sort {
       uint64_t total_term_freq = 0; // number of terms for processed field
 
       virtual void collect(const irs::sub_reader& segment,
-                           const irs::term_reader& field) {
+                           const irs::term_reader& field) override {
         docs_with_field += field.docs_count();
 
         auto* freq = irs::get<irs::frequency>(field);
@@ -81,7 +81,7 @@ struct sort : irs::sort {
         total_term_freq = 0;
       }
 
-      virtual void collect(const irs::bytes_ref& in) { }
+      virtual void collect(const irs::bytes_ref& in) override { }
       virtual void write(irs::data_output& out) const override { }
     };
 
@@ -110,18 +110,18 @@ struct sort : irs::sort {
         irs::byte_type* stats,
         const irs::index_reader& index,
         const irs::sort::field_collector* field,
-        const irs::sort::term_collector* term) const {
+        const irs::sort::term_collector* term) const override {
     }
 
-    virtual const irs::flags& features() const {
-      return irs::flags::empty_instance();
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::NONE;
     }
 
-    virtual irs::sort::field_collector::ptr prepare_field_collector() const {
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
       return irs::memory::make_unique<field_collector>();
     }
 
-    virtual irs::sort::term_collector::ptr prepare_term_collector() const {
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
       return irs::memory::make_unique<term_collector>();
     }
 
@@ -131,25 +131,25 @@ struct sort : irs::sort {
         const irs::byte_type* /*stats*/,
         irs::byte_type* /*score_buf*/,
         const irs::attribute_provider& /*doc_attrs*/,
-        irs::boost_t /*boost*/) const {
+        irs::boost_t /*boost*/) const override {
       return { nullptr, nullptr };
     }
 
     virtual bool less(const irs::byte_type* lhs,
-                      const irs::byte_type* rhs) const {
+                      const irs::byte_type* rhs) const override {
       return false;
     }
 
-    virtual std::pair<size_t, size_t> score_size() const {
+    virtual std::pair<size_t, size_t> score_size() const override {
       return { 0, 0 };
     }
 
-    virtual std::pair<size_t, size_t> stats_size() const {
+    virtual std::pair<size_t, size_t> stats_size() const override {
       return { 0, 0 };
     }
   };
 
-  irs::sort::prepared::ptr prepare() const {
+  virtual irs::sort::prepared::ptr prepare() const override {
     return irs::memory::make_unique<prepared>();
   }
 };
@@ -162,22 +162,22 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     : begin_(begin), end_(end), cookie_ptr_(begin) {
   }
 
-  virtual irs::SeekResult seek_ge(const irs::bytes_ref& value) {
+  virtual irs::SeekResult seek_ge(const irs::bytes_ref& value) override {
     return irs::SeekResult::NOT_FOUND;
   }
 
-  virtual bool seek(const irs::bytes_ref& value) {
+  virtual bool seek(const irs::bytes_ref& value) override {
     return false;
   }
 
   virtual bool seek(
       const irs::bytes_ref& term,
-      const seek_cookie& cookie) {
+      const irs::seek_cookie& cookie) override {
 
     return true;
   }
 
-  virtual seek_cookie::ptr cookie() const override {
+  virtual irs::seek_cookie::ptr cookie() const override {
     return irs::memory::make_unique<struct seek_ptr>(cookie_ptr_);
   }
 
@@ -206,13 +206,17 @@ class seek_term_iterator final : public irs::seek_term_iterator {
 
   virtual void read() override { }
 
-  virtual irs::doc_iterator::ptr postings(const irs::flags& /*features*/) const override {
+  virtual irs::doc_iterator::ptr postings(irs::IndexFeatures /*features*/) const override {
     return irs::doc_iterator::empty();
   }
 
-  struct seek_ptr : seek_cookie {
+  struct seek_ptr final : irs::seek_cookie {
     explicit seek_ptr(iterator_type ptr) noexcept
       : ptr(ptr) {
+    }
+
+    virtual irs::attribute* get_mutable(irs::type_info::type_id) override {
+      return nullptr;
     }
 
     iterator_type  ptr;

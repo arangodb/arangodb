@@ -20,6 +20,7 @@ build
 
 *.deb
 *.rpm
+*.user
 
 .DS_Store
 *.swp
@@ -83,6 +84,8 @@ Installation/MacOSX/Bundle/Info.plist
 nbproject/
 .idea
 .vscode
+*.sublime-workspace
+*.sublime-project
 
 test.cpp.txt
 

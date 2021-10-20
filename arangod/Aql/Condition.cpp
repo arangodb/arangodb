@@ -997,7 +997,7 @@ bool Condition::removeInvalidVariables(VarSet const& validVars) {
 
   auto oldRoot = _root;
   _root = _ast->shallowCopyForModify(oldRoot);
-  TRI_DEFER(FINALIZE_SUBTREE(_root));
+  auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(_root); });
 
   bool isEmpty = false;
 
@@ -1008,7 +1008,7 @@ bool Condition::removeInvalidVariables(VarSet const& validVars) {
   for (size_t i = 0; i < n; ++i) {
     auto oldAndNode = _root->getMemberUnchecked(i);
     auto andNode = _ast->shallowCopyForModify(oldAndNode);
-    TRI_DEFER(FINALIZE_SUBTREE(andNode));
+    auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(andNode); });
     _root->changeMember(i, andNode);
 
     TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
@@ -1054,7 +1054,7 @@ void Condition::deduplicateComparisonsRecursive(AstNode* p) {
     auto op = p->getMemberUnchecked(j);
     auto newNode = _ast->shallowCopyForModify(op);
     p->changeMember(j, newNode);
-    TRI_DEFER(FINALIZE_SUBTREE(newNode));
+    auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(newNode); });
     if (newNode->type == NODE_TYPE_OPERATOR_BINARY_IN) {
       auto deduplicated = deduplicateInOperation(newNode);
       p->changeMember(j, deduplicated);
@@ -1074,7 +1074,7 @@ void Condition::deduplicateComparisonsRecursive(AstNode* p) {
 void Condition::optimizeNonDnf() {
   auto oldRoot = _root;
   _root = _ast->shallowCopyForModify(oldRoot);
-  TRI_DEFER(FINALIZE_SUBTREE(_root));
+  auto sg = arangodb::scopeGuard([&, this]() noexcept { FINALIZE_SUBTREE(_root); });
   // Sorting and deduplicating all IN/AND/OR nodes
   deduplicateComparisonsRecursive(_root);
 }
@@ -1174,7 +1174,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
 
   auto oldRoot = _root;
   _root = _ast->shallowCopyForModify(oldRoot);
-  TRI_DEFER(FINALIZE_SUBTREE(_root));
+  auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(_root); });
 
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> varAccess;
 
@@ -1190,7 +1190,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
     TRI_ASSERT(oldAnd->type == NODE_TYPE_OPERATOR_NARY_AND);
     auto andNode = _ast->shallowCopyForModify(oldAnd);
     _root->changeMember(r, andNode);
-    TRI_DEFER(FINALIZE_SUBTREE(andNode));
+    auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(andNode); });
 
   restartThisOrItem:
     size_t andNumMembers = andNode->numMembers();
@@ -1322,7 +1322,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
         // copy & modify leftNode
         auto oldLeft = andNode->getMemberUnchecked(leftPos);
         auto leftNode = _ast->shallowCopyForModify(oldLeft);
-        TRI_DEFER(FINALIZE_SUBTREE(leftNode));
+        auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(leftNode); });
         andNode->changeMember(leftPos, leftNode);
 
         ConditionPart current(variable, attributeName, leftNode, positions[0].second, nullptr);
@@ -1436,7 +1436,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
               for (size_t iMemb = 0; iMemb < origNode->numMembers(); iMemb++) {
                 newNode->addMember(origNode->getMemberUnchecked(iMemb));
               }
-              TRI_DEFER(FINALIZE_SUBTREE(newNode));
+              auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(newNode); });
 
               andNode->changeMember(positions.at(0).first, newNode);
               goto restartThisOrItem;
@@ -1555,7 +1555,8 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
             (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
           clearAttributeAccess(result);
 
-          if (lhs->isAttributeAccessForVariable(result, isFromTraverser)) {
+          if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+              result.first == me.variable) {
             temp.clear();
             TRI_AttributeNamesToString(result.second, temp);
             if (temp == me.attributeName) {
@@ -1579,7 +1580,8 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || rhs->type == NODE_TYPE_EXPANSION) {
           clearAttributeAccess(result);
 
-          if (rhs->isAttributeAccessForVariable(result, isFromTraverser)) {
+          if (rhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+              result.first == me.variable) {
             temp.clear();
             TRI_AttributeNamesToString(result.second, temp);
             if (temp == me.attributeName) {
@@ -1592,9 +1594,15 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
                 }
               }
               // non-constant condition
-              else if (me.operatorType == operand->type &&
-                       normalize(me.valueNode) == normalize(lhs)) {
-                return true;
+              else {
+                auto opType = operand->type;
+                if (arangodb::aql::Ast::IsReversibleOperator(opType)) {
+                  opType = arangodb::aql::Ast::ReverseOperator(opType);
+                }
+                if (me.operatorType == opType &&
+                    normalize(me.valueNode) == normalize(lhs)) {
+                  return true;
+                }
               }
             }
           }
@@ -1622,7 +1630,7 @@ AstNode* Condition::deduplicateInOperation(AstNode* operation) {
   if (deduplicated != rhs) {
     // there were duplicates
     auto newOperation = _ast->shallowCopyForModify(operation);
-    TRI_DEFER(FINALIZE_SUBTREE(newOperation));
+    auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(newOperation); });
 
     newOperation->changeMember(1, const_cast<AstNode*>(deduplicated));
     return newOperation;
@@ -1683,7 +1691,7 @@ AstNode* switchSidesInCompare(Ast* ast, AstNode* node) {
   auto second = node->getMemberUnchecked(1);
 
   auto newOperator = ast->shallowCopyForModify(node);
-  TRI_DEFER(FINALIZE_SUBTREE(newOperator));
+  auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(newOperator); });
 
   newOperator->changeMember(0, second);
   newOperator->changeMember(1, first);
@@ -1816,7 +1824,7 @@ AstNode* Condition::transformNodePostorder(
   if (node->type == NODE_TYPE_OPERATOR_NARY_AND) {
     auto old = node;
     node = _ast->shallowCopyForModify(old);
-    TRI_DEFER(FINALIZE_SUBTREE(node));
+    auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(node); });
 
     bool distributeOverChildren = false;
     bool mustCollapse = false;
@@ -1923,7 +1931,7 @@ AstNode* Condition::transformNodePostorder(
   if (node->type == NODE_TYPE_OPERATOR_NARY_OR) {
     auto old = node;
     node = _ast->shallowCopyForModify(old);
-    TRI_DEFER(FINALIZE_SUBTREE(node));
+    auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(node); });
 
     size_t const n = node->numMembers();
     bool mustCollapse = false;
@@ -1973,7 +1981,7 @@ AstNode* Condition::fixRoot(AstNode* node, int level) {
 
   auto old = node;
   node = _ast->shallowCopyForModify(old);
-  TRI_DEFER(FINALIZE_SUBTREE(node));
+  auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(node); });
 
   for (size_t i = 0; i < n; ++i) {
     auto sub = node->getMemberUnchecked(i);

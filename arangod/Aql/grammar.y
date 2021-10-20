@@ -32,6 +32,8 @@
 #include "Graph/ShortestPathType.h"
 #include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
+
+
 %}
 
 %union {
@@ -201,6 +203,49 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates,
   return true;
 }
 
+
+/// @brief validate the WINDOW specification
+bool validateWindowSpec(Parser* parser, AstNode const* spec,
+                        int line, int column) {
+  bool preceding = false;
+  bool following = false;
+  
+  size_t const n = spec->numMembers();
+  if (n == 0) {
+    parser->registerParseError(TRI_ERROR_QUERY_PARSE, "At least one WINDOW bound must be specified ('preceding'/'following')", line, column);
+    return false;
+  }
+  
+  for (size_t i = 0; i < n; ++i) {
+    auto member = spec->getMemberUnchecked(i);
+
+    if (member != nullptr) {
+      TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
+      bool* attr{};
+      auto name = member->getString();
+      if (name == "preceding") {
+        attr = &preceding;
+      } else if (name == "following") {
+        attr = &following;
+      } else  {
+        char const* error = "Invalid WINDOW attribute '%s'; only \"preceding\" and \"following\" are supported";
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, error, name.c_str(), line, column);
+        return false;
+      }
+      
+      if (*attr) {
+        char const* error = "WINDOW attribute '%s' is specified multiple times";
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, error, name.c_str(), line, column);
+        return false;
+      }
+      
+      // mark this attribute as "seen"
+      *attr = true;
+    }
+  }
+  return true;
+}
+
 /// @brief start a new scope for the collect
 bool startCollectScope(arangodb::aql::Scopes* scopes) {
   // check if we are in the main scope
@@ -208,6 +253,7 @@ bool startCollectScope(arangodb::aql::Scopes* scopes) {
       scopes->type() == arangodb::aql::AQL_SCOPE_SUBQUERY) {
     return false;
   }
+
 
   // end the active scopes
   scopes->endNested();
@@ -415,6 +461,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> array_element;
 %type <node> for_options;
 %type <node> object;
+%type <node> optional_prune_variable;
 %type <node> options;
 %type <node> optional_object_elements;
 %type <node> object_elements_list;
@@ -445,6 +492,22 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %start queryStart
 
 %%
+
+optional_prune_variable:
+    expression {
+      AstNode* node = parser->ast()->createNodeArray();
+      node->addMember(parser->ast()->createNodeNop());
+      node->addMember($1);
+      $$ = node;
+    }
+  | variable_name T_ASSIGN expression {
+      AstNode* node = parser->ast()->createNodeArray();
+      AstNode* variableNode = parser->ast()->createNodeLet($1.value, $1.length, $3, true);
+      node->addMember(variableNode);
+      node->addMember($3);
+      $$ = node;    
+  }
+;
 
 with_collection:
     T_STRING {
@@ -576,7 +639,7 @@ prune_and_options:
       // Options
       node->addMember(parser->ast()->createNodeNop());
     }
-    | T_STRING expression {
+    | T_STRING optional_prune_variable {
       auto node = static_cast<AstNode*>(parser->peekStack());
       if (TRI_CaseEqualString($1.value, "PRUNE")) {
         /* Only Prune */
@@ -586,18 +649,19 @@ prune_and_options:
         // Options
         node->addMember(parser->ast()->createNodeNop());
       } else if (TRI_CaseEqualString($1.value, "OPTIONS")) {
+        const auto* optionsArgument = $2->getMember(1);
         /* Only Options */
-        TRI_ASSERT($2 != nullptr);
-        ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
+        TRI_ASSERT(optionsArgument != nullptr);
+        ::validateOptions(parser, optionsArgument, yylloc.first_line, yylloc.first_column);
         // Prune
         node->addMember(parser->ast()->createNodeNop());
         // Options
-        node->addMember($2);
+        node->addMember(optionsArgument);
       } else {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE' or 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
     }
-    | T_STRING expression T_STRING object {
+    | T_STRING optional_prune_variable T_STRING object {
       /* prune and options */
       auto node = static_cast<AstNode*>(parser->peekStack());
       if (!TRI_CaseEqualString($1.value, "PRUNE")) {
@@ -651,7 +715,7 @@ k_paths_graph_info:
 for_statement:
     T_FOR for_output_variables T_IN expression {
       AstNode* variablesNode = static_cast<AstNode*>($2);
-      ::checkOutVariables(parser, variablesNode, 1, 1, "Collections and Views only have return variable", yyloc);
+      ::checkOutVariables(parser, variablesNode, 1, 1, "Collections and views FOR loops only allow a single return variable", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       // now create an out variable for the FOR statement
       // this prepares us to handle the optional SEARCH condition, which may
@@ -717,15 +781,22 @@ for_statement:
       auto variablesNode = static_cast<AstNode*>(parser->popStack());
 
       auto prune = graphInfoNode->getMember(3);
-      if (prune != nullptr) {
-        Ast::traverseReadOnly(prune, [&](AstNode const* node) {
+      TRI_ASSERT(prune != nullptr);
+      if (prune->type == NODE_TYPE_ARRAY) {
+        TRI_ASSERT(prune->numMembers() == 2);
+        Ast::traverseReadOnly(prune->getMember(1), [&](AstNode const* node) {
           if (node->type == NODE_TYPE_REFERENCE && node->hasFlag(AstNodeFlagType::FLAG_SUBQUERY_REFERENCE)) {
             parser->registerParseError(TRI_ERROR_QUERY_PARSE, "prune condition must not use a subquery", yylloc.first_line, yylloc.first_column);
           }
         });
+        graphInfoNode->changeMember(3, prune->getMember(1));
       }
       auto node = parser->ast()->createNodeTraversal(variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
+      if(prune->type == NODE_TYPE_ARRAY && prune->getMember(0)->type != NODE_TYPE_NOP) {
+        auto pruneLetVariableName = prune->getMember(0);
+        parser->ast()->addOperation(pruneLetVariableName);
+      }
     }
   | T_FOR for_output_variables T_IN shortest_path_graph_info {
       // Shortest Path
@@ -1129,6 +1200,10 @@ window_statement:
         YYABORT;
       }
       
+      if (!::validateWindowSpec(parser, $2, yylloc.first_line, yylloc.first_column)) {
+        YYABORT;
+      }
+      
       auto node = parser->ast()->createNodeWindow(/*spec*/$2, /*range*/nullptr, /*aggrs*/$3);
       parser->ast()->addOperation(node);
     }
@@ -1137,6 +1212,10 @@ window_statement:
     
     // validate aggregates
     if (!::validateAggregates(parser, $5, yylloc.first_line, yylloc.first_column)) {
+      YYABORT;
+    }
+    
+    if (!::validateWindowSpec(parser, $4, yylloc.first_line, yylloc.first_column)) {
       YYABORT;
     }
     
@@ -1285,12 +1364,27 @@ upsert_statement:
     } T_INSERT expression update_or_replace expression in_or_into_collection options {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       forNode->changeMember(1, $9);
-
+      auto* forOptionsNode = parser->ast()->createNodeObject();
+      auto* upsertOptionsNode = parser->ast()->createNodeObject();
+      if ($10 != nullptr && $10->type == NODE_TYPE_OBJECT) {
+        for (size_t i = 0; i < $10->numMembers(); ++i) {
+          auto nodeMember = $10->getMember(i);
+          if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
+            std::string nodeMemberName = nodeMember->getString();
+            if (nodeMemberName == "indexHint" || nodeMemberName == "forceIndexHint") {
+              forOptionsNode->addMember(nodeMember);
+            } else {
+              upsertOptionsNode->addMember(nodeMember);
+            }
+          }
+        }
+        forNode->changeMember(2, forOptionsNode);
+      }
       if (!parser->configureWriteQuery($9, $10)) {
         YYABORT;
       }
 
-      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($7), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), $6, $8, $9, $10);
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($7), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), $6, $8, $9, upsertOptionsNode);
       parser->ast()->addOperation(node);
     }
   ;
@@ -1381,10 +1475,10 @@ function_call:
 
 operator_unary:
     T_PLUS expression %prec UPLUS {
-      $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS, $2);
+      $$ = parser->ast()->optimizeUnaryOperatorArithmetic(parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS, $2));
     }
   | T_MINUS expression %prec UMINUS {
-      $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, $2);
+      $$ = parser->ast()->optimizeUnaryOperatorArithmetic(parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, $2));
     }
   | T_NOT expression %prec UNEGATION {
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, $2);
@@ -1615,7 +1709,6 @@ for_options:
         if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
         }
-      
         ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
 
         node->addMember(parser->ast()->createNodeNop());
@@ -1632,7 +1725,7 @@ for_options:
           !TRI_CaseEqualString($3.value, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
-      
+     
       ::validateOptions(parser, $4, yylloc.first_line, yylloc.first_column);
 
       auto node = parser->ast()->createNodeArray(2);
@@ -1652,7 +1745,7 @@ options:
       if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
-      
+     
       ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
 
       $$ = $2;

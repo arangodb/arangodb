@@ -29,9 +29,9 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const Module = require('module');
-const chalk = require('chalk');
 const runTests = require('@arangodb/mocha').run;
 const indent = require('@arangodb/util').indentation;
+const COLORS = require('internal').COLORS;
 
 const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
 
@@ -50,18 +50,14 @@ module.exports = function (files, returnJson, grep) {
 function logStats (stats) {
   print(`${
     stats.failures
-    ? chalk.red('[FAIL]')
-    : chalk.green('[PASS]')
+    ? `${COLORS.COLOR_RED}[FAIL]${COLORS.COLOR_RESET}`
+    : `${COLORS.COLOR_GREEN}[PASS]${COLORS.COLOR_RESET}`
   } Completed ${
-    chalk.bold(stats.tests)
-  } tests in ${
-    chalk.bold(stats.duration + 'ms')
-  } (${
-    chalk.green(stats.passes)
-  }|${
-    chalk.red(stats.failures)
-  }|${
-    chalk.cyan(stats.pending)
+    COLORS.COLOR_BOLD_WHITE}${stats.tests}${COLORS.COLOR_RESET} tests in ${
+    COLORS.COLOR_BOLD_WHITE}${stats.duration + 'ms'}${COLORS.COLOR_RESET} (${
+    COLORS.COLOR_GREEN}${stats.passes}${COLORS.COLOR_RESET}|${
+    COLORS.COLOR_RED}${stats.failures}${COLORS.COLOR_RESET}|${
+    COLORS.COLOR_CYAN}${stats.pending}${COLORS.COLOR_RESET
   })`);
 }
 
@@ -70,32 +66,27 @@ function logSuite (suite, indentLevel) {
     indentLevel = 0;
   }
   if (suite.title) {
-    print(
-      indent(indentLevel - 1) +
-      chalk.bold(suite.title)
-    );
+    print(`${indent(indentLevel - 1)}${
+      COLORS.COLOR_BOLD_WHITE}${suite.title}${COLORS.COLOR_RESET
+    }`);
   }
   for (let test of suite.tests) {
     if (test.result === 'pass') {
-      print(
-        indent(indentLevel) +
-        chalk.green('[PASS] ' + test.title)
-      );
+      print(`${indent(indentLevel)}${
+        COLORS.COLOR_GREEN}[PASS] ${test.title}${COLORS.COLOR_RESET
+      }`);
     } else if (test.result === 'pending') {
-      print(
-        indent(indentLevel) +
-        chalk.cyan('[SKIP] ' + test.title)
-      );
+      print(`${indent(indentLevel)}${
+        COLORS.COLOR_CYAN}[SKIP] ${test.title}${COLORS.COLOR_RESET
+      }`);
     } else {
-      print(
-        indent(indentLevel) +
-        chalk.red('[' + test.result.toUpperCase() + '] ' + test.title)
-      );
+      print(`${indent(indentLevel)}${
+        COLORS.COLOR_RED}[${test.result.toUpperCase()}] ${test.title}${COLORS.COLOR_RESET
+      }`);
       for (let line of test.err.stack.split(/\n/)) {
-        print(
-          indent(indentLevel + 1) +
-          chalk.red(line)
-        );
+        print(`${indent(indentLevel + 1)}${
+          COLORS.COLOR_RED}${line}${COLORS.COLOR_RESET
+        }`);
       }
     }
   }

@@ -21,8 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_SPLITMIX64_H
-#define ARANGO_SPLITMIX64_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -70,4 +69,3 @@ struct splitmix64 {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

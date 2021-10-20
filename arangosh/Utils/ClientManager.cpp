@@ -25,6 +25,8 @@
 #include "ClientManager.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Logger/Logger.h"
@@ -56,9 +58,11 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
     std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
     VPackSlice const body = parsedBody->slice();
 
-    auto serverCode = VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
-    std::string const& serverMessage =
-        VelocyPackHelper::getStringValue(body, "errorMessage", "");
+    auto serverCode =
+        VelocyPackHelper::getNumericValue<int>(body, arangodb::StaticStrings::ErrorNum, 0);
+    auto serverMessage =
+        VelocyPackHelper::getStringValue(body, arangodb::StaticStrings::ErrorMessage,
+                                         "");
 
     if (serverCode > 0) {
       code = ErrorCode{serverCode};
@@ -81,12 +85,12 @@ ClientManager::~ClientManager() = default;
 
 Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
                                          bool force, bool logServerVersion,
-                                         bool logDatabaseNotFound, bool quiet) {
+                                         bool logDatabaseNotFound, bool quiet, size_t threadNumber) {
   TRI_ASSERT(_server.hasFeature<HttpEndpointProvider>());
   ClientFeature& client = _server.getFeature<HttpEndpointProvider, ClientFeature>();
 
   try {
-    httpClient = client.createHttpClient();
+    httpClient = client.createHttpClient(threadNumber);
   } catch (...) {
     LOG_TOPIC("2b5fd", FATAL, _topic) << "cannot create server connection, giving up!";
     return {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT};
@@ -143,11 +147,11 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
 }
 
 std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
-    bool force, bool logServerVersion, bool logDatabaseNotFound) {
+    bool force, bool logServerVersion, bool logDatabaseNotFound, size_t threadNumber) {
   std::unique_ptr<httpclient::SimpleHttpClient> httpClient;
 
   Result result = getConnectedClient(httpClient, force, logServerVersion,
-                                     logDatabaseNotFound, false);
+                                     logDatabaseNotFound, false, threadNumber);
   if (result.fail() && !(force && result.is(TRI_ERROR_INCOMPATIBLE_VERSION))) {
     FATAL_ERROR_EXIT();
   }
@@ -168,9 +172,9 @@ std::string ClientManager::rewriteLocation(void* data, std::string const& locati
   // prefix with `/_db/${dbname}/`
   if (location[0] == '/') {
     // already have leading "/", leave it off
-    return "/_db/" + dbname + location;
+    return "/_db/" + basics::StringUtils::urlEncode(dbname) + location;
   }
-  return "/_db/" + dbname + "/" + location;
+  return "/_db/" + basics::StringUtils::urlEncode(dbname) + "/" + location;
 }
 
 std::pair<Result, std::string> ClientManager::getArangoIsCluster(httpclient::SimpleHttpClient& client) {

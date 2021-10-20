@@ -22,9 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
-#include "field_data.hpp"
-#include "field_meta.hpp"
-#include "comparer.hpp"
+
+#include <set>
+#include <algorithm>
+#include <cassert>
+
+#include "index/comparer.hpp"
+#include "index/field_data.hpp"
+#include "index/field_meta.hpp"
+#include "index/norm.hpp"
 
 #include "formats/formats.hpp"
 
@@ -46,25 +52,21 @@
 #include "utils/type_limits.hpp"
 #include "utils/bytes_utils.hpp"
 
-#include <set>
-#include <algorithm>
-#include <cassert>
-
 namespace {
 
 using namespace irs;
 
 const byte_block_pool EMPTY_POOL;
 
-const column_info NORM_COLUMN{
-  type<compression::lz4>::get(),
-  compression::options(),
-  false
-};
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
 // -----------------------------------------------------------------------------
+
+void accumulate_features(feature_set_t& accum, const feature_map_t& features) {
+  for (auto& entry : features) {
+    accum.emplace(entry.first);
+  }
+}
 
 template<typename Stream>
 void write_offset(
@@ -88,8 +90,7 @@ void write_prox(
     Stream& out,
     uint32_t prox,
     const irs::payload* pay,
-    flags& features
-) {
+    IndexFeatures& features) {
   if (!pay || pay->value.empty()) {
     irs::vwrite<uint32_t>(out, shift_pack_32(prox, false));
   } else {
@@ -98,7 +99,7 @@ void write_prox(
     out.write(pay->value.c_str(), pay->value.size());
 
     // saw payloads
-    features.add<payload>();
+    features |= IndexFeatures::PAY;
   }
 }
 
@@ -128,8 +129,7 @@ FORCE_INLINE uint64_t cookie(const byte_block_pool::sliced_greedy_inserter& stre
 
 FORCE_INLINE byte_block_pool::sliced_greedy_reader greedy_reader(
     const byte_block_pool& pool,
-    uint64_t cookie
-) noexcept {
+    uint64_t cookie) noexcept {
   return byte_block_pool::sliced_greedy_reader(
     pool,
     static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
@@ -139,8 +139,7 @@ FORCE_INLINE byte_block_pool::sliced_greedy_reader greedy_reader(
 
 FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
     byte_block_pool::inserter& writer,
-    uint64_t cookie
-) noexcept {
+    uint64_t cookie) noexcept {
   return byte_block_pool::sliced_greedy_inserter(
     writer,
     static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
@@ -166,18 +165,16 @@ class pos_iterator final : public irs::position {
   }
 
   // reset field
-  void reset(const flags& features, const frequency& freq) {
-    assert(features.check<frequency>());
+  void reset(IndexFeatures features, const frequency& freq) {
+    assert(IndexFeatures::FREQ == (features & IndexFeatures::FREQ));
 
     freq_ = &freq;
 
-    std::get<attribute_ptr<offset>>(attrs_) = features.check<offset>()
-      ? &offs_
-      : nullptr;
+    std::get<attribute_ptr<offset>>(attrs_) =
+      IndexFeatures::NONE != (features & IndexFeatures::OFFS) ? &offs_ : nullptr;
 
-    std::get<attribute_ptr<payload>>(attrs_) = features.check<payload>()
-      ? &pay_
-      : nullptr;
+    std::get<attribute_ptr<payload>>(attrs_) =
+      IndexFeatures::NONE != (features & IndexFeatures::PAY) ? &pay_ : nullptr;
   }
 
   // reset value
@@ -260,11 +257,11 @@ class doc_iterator final : public irs::doc_iterator {
     pos = nullptr;
     has_cookie_ = false;
 
-    auto& features = field.meta().features;
-    if (features.check<frequency>()) {
+    const auto features = field.meta().index_features;
+    if (IndexFeatures::NONE != (features & IndexFeatures::FREQ)) {
       freq = &freq_;
 
-      if (features.check<position>()) {
+      if (IndexFeatures::NONE != (features & IndexFeatures::POS)) {
         pos_.reset(features, freq_);
         pos = &pos_;
         has_cookie_ = field.prox_random_access();
@@ -283,7 +280,7 @@ class doc_iterator final : public irs::doc_iterator {
     freq_in_ = freq;
     posting_ = &posting;
 
-    auto& ppos = std::get<attribute_ptr<position>>(attrs_);
+    const auto& ppos = std::get<attribute_ptr<position>>(attrs_);
 
     if (ppos.ptr && prox) {
       // reset positions only once,
@@ -386,11 +383,11 @@ class sorting_doc_iterator final : public irs::doc_iterator {
     pfreq = nullptr;
     ppos = nullptr;
 
-    auto& features = field.meta().features;
-    if (features.check<frequency>()) {
+    const auto features = field.meta().index_features;
+    if (IndexFeatures::NONE != (features & IndexFeatures::FREQ)) {
       pfreq = &freq_;
 
-      if (features.check<position>()) {
+      if (IndexFeatures::NONE != (features & IndexFeatures::POS)) {
         pos_.reset(features, freq_);
         ppos = &pos_;
       }
@@ -438,6 +435,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
   }
 
   virtual bool next() noexcept override {
+    // cppcheck-suppress shadowFunction
     auto& value = std::get<document>(attrs_);
 
     while (it_ != docs_.end()) {
@@ -594,7 +592,7 @@ class term_iterator : public irs::term_iterator {
     // Does nothing now
   }
 
-  virtual irs::doc_iterator::ptr postings(const flags& /*features*/) const override {
+  virtual irs::doc_iterator::ptr postings(IndexFeatures /*features*/) const override {
     REGISTER_TIMER_DETAILED();
     assert(it_ != end_);
 
@@ -732,15 +730,39 @@ class term_reader final : public irs::basic_term_reader,
 
 field_data::field_data(
     const string_ref& name,
+    const features_t& features,
+    const field_features_t& field_features,
+    const feature_column_info_provider_t& feature_columns,
+    columnstore_writer& columns,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
+    IndexFeatures index_features,
     bool random_access)
-  : meta_(name, flags::empty_instance()),
+  : meta_(name, index_features),
     terms_(*byte_writer),
     byte_writer_(&byte_writer),
     int_writer_(&int_writer),
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
     last_doc_(doc_limits::invalid()) {
+  features_.reserve(field_features.size());
+  for (type_info::type_id feature : features) {
+    const auto it = field_features.find(feature);
+
+    if (IRS_UNLIKELY(it == field_features.end())) {
+      assert(false);
+      continue;
+    }
+
+    if (it->second) {
+      assert(feature_columns);
+      auto [id, handler] = columns.push_column(feature_columns(feature));
+      features_.emplace_back(feature, it->second, std::move(handler));
+
+      meta_.features[feature] = id;
+    } else {
+      meta_.features[feature] = field_limits::invalid();
+    }
+  }
 }
 
 void field_data::reset(doc_id_t doc_id) {
@@ -752,33 +774,18 @@ void field_data::reset(doc_id_t doc_id) {
 
   pos_ = pos_limits::invalid();
   last_pos_ = 0;
-  len_ = 0;
-  num_overlap_ = 0;
+  stats_ = {};
   offs_ = 0;
   last_start_offs_ = 0;
-  max_term_freq_ = 0;
-  unq_term_cnt_ = 0;
   last_doc_ = doc_id;
-}
-
-data_output& field_data::norms(columnstore_writer& writer) const {
-  if (!norms_) {
-    // FIXME encoder for norms???
-    // do not encrypt norms
-    auto handle = writer.push_column(NORM_COLUMN);
-    norms_ = std::move(handle.second);
-    meta_.norm = handle.first;
-  }
-
-  return norms_(doc());
+  seen_ = false;
 }
 
 void field_data::new_term(
     posting& p,
     doc_id_t did,
     const payload* pay,
-    const offset* offs
-) {
+    const offset* offs) {
   // where pointers to data starts
   p.int_start = int_writer_->pool_offset();
 
@@ -789,22 +796,20 @@ void field_data::new_term(
   *int_writer_ = freq_start; // freq stream start
   *int_writer_ = prox_start; // prox stream start
 
-  auto& features = meta_.features;
-
   p.doc = did;
-  if (!features.check<frequency>()) {
+  if (IndexFeatures::NONE == (meta_.index_features & IndexFeatures::FREQ)) {
     p.doc_code = did;
   } else {
     p.doc_code = uint64_t(did) << 1;
     p.freq = 1;
 
-    if (features.check<position>()) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start + 1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(prox_out, pos_, pay, meta_.features);
+      write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (features.check<offset>()) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -814,18 +819,16 @@ void field_data::new_term(
     }
   }
 
-  max_term_freq_ = std::max(1U, max_term_freq_);
-  ++unq_term_cnt_;
+  stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
+  ++stats_.num_unique;
 }
 
 void field_data::add_term(
     posting& p,
     doc_id_t did,
     const payload* pay,
-    const offset* offs
-) {
-  auto& features = meta_.features;
-  if (!features.check<frequency>()) {
+    const offset* offs) {
+  if (IndexFeatures::NONE == (meta_.index_features & IndexFeatures::FREQ)) {
     if (p.doc != did) {
       assert(did > p.doc);
 
@@ -836,7 +839,7 @@ void field_data::add_term(
 
       p.doc_code = did - p.doc;
       p.doc = did;
-      ++unq_term_cnt_;
+      ++stats_.num_unique;
     }
   } else if (p.doc != did) {
     assert(did > p.doc);
@@ -855,16 +858,16 @@ void field_data::add_term(
     p.freq = 1;
 
     p.doc = did;
-    max_term_freq_ = std::max(1U, max_term_freq_);
-    ++unq_term_cnt_;
+    stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
+    ++stats_.num_unique;
 
-    if (features.check<position>()) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(prox_out, pos_, pay, meta_.features);
+      write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (features.check<offset>()) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         p.offs = 0; // reset base offset
         write_offset(p, prox_out, offs_, *offs);
@@ -876,14 +879,14 @@ void field_data::add_term(
 
     doc_stream_end = doc_out.pool_offset();
   } else { // exists in current doc
-    max_term_freq_ = std::max(++p.freq, max_term_freq_);
-    if (features.check<position>() ) {
+    stats_.max_term_freq = std::max(++p.freq, stats_.max_term_freq);
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(prox_out, pos_ - p.pos, pay, meta_.features);
+      write_prox(prox_out, pos_ - p.pos, pay, meta_.index_features);
 
-      if (features.check<offset>()) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -898,8 +901,7 @@ void field_data::new_term_random_access(
     posting& p,
     doc_id_t did,
     const payload* pay,
-    const offset* offs
-) {
+    const offset* offs) {
   // where pointers to data starts
   p.int_start = int_writer_->pool_offset();
 
@@ -913,21 +915,19 @@ void field_data::new_term_random_access(
   *int_writer_ = cookie; // start cookie
   *int_writer_ = 0;      // last start cookie
 
-  auto& features = meta_.features;
-
   p.doc = did;
-  if (!features.check<frequency>()) {
+  if (IndexFeatures::NONE == (meta_.index_features & IndexFeatures::FREQ)) {
     p.doc_code = did;
   } else {
     p.doc_code = uint64_t(did) << 1;
     p.freq = 1;
 
-    if (features.check<position>()) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       byte_block_pool::sliced_greedy_inserter prox_out(*byte_writer_, prox_start, 1);
 
-      write_prox(prox_out, pos_, pay, meta_.features);
+      write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (features.check<offset>()) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -939,18 +939,16 @@ void field_data::new_term_random_access(
     }
   }
 
-  max_term_freq_ = std::max(1U, max_term_freq_);
-  ++unq_term_cnt_;
+  stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
+  ++stats_.num_unique;
 }
 
 void field_data::add_term_random_access(
     posting& p,
     doc_id_t did,
     const payload* pay,
-    const offset* offs
-) {
-  auto& features = meta_.features;
-  if (!features.check<frequency>()) {
+    const offset* offs) {
+  if (IndexFeatures::NONE == (meta_.index_features & IndexFeatures::FREQ)) {
     if (p.doc != did) {
       assert(did > p.doc);
 
@@ -962,7 +960,7 @@ void field_data::add_term_random_access(
       ++p.size;
       p.doc_code = did - p.doc;
       p.doc = did;
-      ++unq_term_cnt_;
+      ++stats_.num_unique;
     }
   } else if (p.doc != did) {
     assert(did > p.doc);
@@ -982,10 +980,10 @@ void field_data::add_term_random_access(
     p.freq = 1;
 
     p.doc = did;
-    max_term_freq_ = std::max(1U, max_term_freq_);
-    ++unq_term_cnt_;
+    stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
+    ++stats_.num_unique;
 
-    if (features.check<position>()) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       auto prox_stream_cookie = int_writer_->parent().seek(p.int_start+2);
 
       auto& end_cookie = *prox_stream_cookie; ++prox_stream_cookie;
@@ -993,14 +991,16 @@ void field_data::add_term_random_access(
       auto& last_start_cookie = *prox_stream_cookie;
 
       write_cookie(doc_out, start_cookie - last_start_cookie);
+      // cppcheck-suppress selfAssignment
       last_start_cookie = start_cookie; // update previous cookie
+      // cppcheck-suppress selfAssignment
       start_cookie = end_cookie; // update start cookie
 
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);
 
-      write_prox(prox_out, pos_, pay, meta_.features);
+      write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (features.check<offset>()) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         p.offs = 0; // reset base offset
         write_offset(p, prox_out, offs_, *offs);
@@ -1012,15 +1012,15 @@ void field_data::add_term_random_access(
 
     doc_stream_end = doc_out.pool_offset();
   } else { // exists in current doc
-    max_term_freq_ = std::max(++p.freq, max_term_freq_);
-    if (features.check<position>() ) {
+    stats_.max_term_freq = std::max(++p.freq, stats_.max_term_freq);
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       // update end cookie
       auto& end_cookie = *int_writer_->parent().seek(p.int_start+2);
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);
 
-      write_prox(prox_out, pos_ - p.pos, pay, meta_.features);
+      write_prox(prox_out, pos_ - p.pos, pay, meta_.index_features);
 
-      if (features.check<offset>()) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -1031,14 +1031,9 @@ void field_data::add_term_random_access(
   }
 }
 
-bool field_data::invert(
-    token_stream& stream, 
-    const flags& features, 
-    doc_id_t id) {
-  assert(id < doc_limits::eof()); // 0-based document id
+bool field_data::invert(token_stream& stream, doc_id_t id) {
   REGISTER_TIMER_DETAILED();
-
-  meta_.features |= features; // accumulate field features
+  assert(id < doc_limits::eof()); // 0-based document id
 
   const auto* term = get<term_attribute>(stream);
   const auto* inc = get<increment>(stream);
@@ -1048,20 +1043,18 @@ bool field_data::invert(
   if (!inc) {
     IR_FRMT_ERROR(
       "field '%s' missing required token_stream attribute '%s'",
-      meta_.name.c_str(), type<increment>::name().c_str()
-    );
+      meta_.name.c_str(), type<increment>::name().c_str());
     return false;
   }
 
   if (!term) {
     IR_FRMT_ERROR(
       "field '%s' missing required token_stream attribute '%s'",
-      meta_.name.c_str(), type<term_attribute>::name().c_str()
-    );
+      meta_.name.c_str(), type<term_attribute>::name().c_str());
     return false;
   }
 
-  if (meta_.features.check<offset>()) {
+  if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
     offs = get<offset>(stream);
 
     if (offs) {
@@ -1075,17 +1068,19 @@ bool field_data::invert(
     pos_ += inc->value;
 
     if (pos_ < last_pos_) {
-      IR_FRMT_ERROR("invalid position %u < %u in field '%s'", pos_, last_pos_, meta_.name.c_str());
+      IR_FRMT_ERROR("invalid position %u < %u in field '%s'",
+                    pos_, last_pos_, meta_.name.c_str());
       return false;
     }
 
     if (pos_ >= pos_limits::eof()) {
-      IR_FRMT_ERROR("invalid position %u >= %u in field '%s'", pos_, pos_limits::eof(), meta_.name.c_str());
+      IR_FRMT_ERROR("invalid position %u >= %u in field '%s'",
+                    pos_, pos_limits::eof(), meta_.name.c_str());
       return false;
     }
 
     if (0 == inc->value) {
-      ++num_overlap_;
+      ++stats_.num_overlap;
     }
 
     if (offs) {
@@ -1093,7 +1088,8 @@ bool field_data::invert(
       const uint32_t end_offset = offs_ + offs->end;
 
       if (start_offset < last_start_offs_ || end_offset < start_offset) {
-        IR_FRMT_ERROR("invalid offset start=%u end=%u in field '%s'", start_offset, end_offset, meta_.name.c_str());
+        IR_FRMT_ERROR("invalid offset start=%u end=%u in field '%s'",
+                      start_offset, end_offset, meta_.name.c_str());
         return false;
       }
 
@@ -1112,11 +1108,10 @@ bool field_data::invert(
 
     (this->*proc_table_[size_t(res.second)])(*res.first, id, pay, offs);
 
-    if (0 == ++len_) {
+    if (0 == ++stats_.len) {
       IR_FRMT_ERROR(
         "too many tokens in field '%s', document '" IR_UINT32_T_SPECIFIER "'",
-         meta_.name.c_str(), id
-      );
+         meta_.name.c_str(), id);
       return false;
     }
 
@@ -1134,13 +1129,22 @@ bool field_data::invert(
 // --SECTION--                                        fields_data implementation
 // -----------------------------------------------------------------------------
 
-fields_data::fields_data(const comparer* comparator /*= nullptr*/)
+fields_data::fields_data(
+    const field_features_t& field_features,
+    const feature_column_info_provider_t& feature_columns,
+    const comparer* comparator /*= nullptr*/)
   : comparator_(comparator),
+    field_features_(&field_features),
+    feature_columns_(&feature_columns),
     byte_writer_(byte_pool_.begin()),
     int_writer_(int_pool_.begin()) {
 }
 
-field_data* fields_data::emplace(const hashed_string_ref& name) {
+field_data* fields_data::emplace(
+    const hashed_string_ref& name,
+    IndexFeatures index_features,
+    const features_t& features,
+    columnstore_writer& columns) {
   assert(fields_map_.size() == fields_.size());
 
   auto it = fields_map_.lazy_emplace(
@@ -1151,7 +1155,11 @@ field_data* fields_data::emplace(const hashed_string_ref& name) {
 
   if (!it->second) {
     try {
-      fields_.emplace_back(name, byte_writer_, int_writer_, (nullptr != comparator_));
+      fields_.emplace_back(
+        name, features, *field_features_,
+        *feature_columns_, columns,
+        byte_writer_, int_writer_,
+        index_features, (nullptr != comparator_));
     } catch (...) {
       fields_map_.erase(it);
     }
@@ -1165,7 +1173,8 @@ field_data* fields_data::emplace(const hashed_string_ref& name) {
 void fields_data::flush(field_writer& fw, flush_state& state) {
   REGISTER_TIMER_DETAILED();
 
-  state.features = &features_;
+  IndexFeatures index_features{IndexFeatures::NONE};
+  feature_set_t features;
 
   // sort fields
   sorted_fields_.resize(fields_.size());
@@ -1173,7 +1182,14 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
   for (auto& entry : fields_) {
     *begin = &entry;
     ++begin;
+
+    const auto& meta = entry.meta();
+    index_features |= static_cast<IndexFeatures>(meta.index_features);
+    accumulate_features(features, meta.features);
   }
+
+  state.index_features = static_cast<IndexFeatures>(index_features);
+  state.features = &features;
 
   std::sort(
     sorted_fields_.begin(), sorted_fields_.end(),
@@ -1192,7 +1208,7 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
     // write inverted data
     auto it = terms.iterator();
-    fw.write(meta.name, meta.norm, meta.features, *it);
+    fw.write(meta.name, meta.index_features, meta.features, *it);
   }
 
   fw.end();
@@ -1200,7 +1216,6 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
 void fields_data::reset() noexcept {
   byte_writer_ = byte_pool_.begin(); // reset position pointer to start of pool
-  features_.clear();
   fields_.clear();
   fields_map_.clear();
   int_writer_ = int_pool_.begin(); // reset position pointer to start of pool

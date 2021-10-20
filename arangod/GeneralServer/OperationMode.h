@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_OPERATION_MODE_H
-#define ARANGOD_REST_OPERATION_MODE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -30,4 +29,3 @@ namespace arangodb {
 enum class OperationMode { MODE_CONSOLE, MODE_SCRIPT, MODE_SERVER };
 }
 
-#endif

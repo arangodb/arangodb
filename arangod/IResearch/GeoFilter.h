@@ -21,8 +21,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_GEO_FILTER
-#define ARANGODB_IRESEARCH__IRESEARCH_GEO_FILTER 1
+#pragma once
 
 #include "search/filter.hpp"
 #include "search/search_range.hpp"
@@ -100,7 +99,7 @@ class GeoFilter final
     return "arangodb::iresearch::GeoFilter";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   using filter::prepare;
 
@@ -144,7 +143,7 @@ class GeoDistanceFilter final
     return "arangodb::iresearch::GeoFilter";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   using filter::prepare;
 
@@ -158,4 +157,3 @@ class GeoDistanceFilter final
 } // iresearch
 } // arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_GEO_FILTER

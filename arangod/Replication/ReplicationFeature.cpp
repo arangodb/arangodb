@@ -91,6 +91,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false),
       _syncByRevision(true),
+      _connectionCache{server, httpclient::ConnectionCache::Options{5}},
       _parallelTailingInvocations(0),
       _maxParallelTailingInvocations(0),
       _quickKeysLimit(1000000),
@@ -110,7 +111,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
 ReplicationFeature::~ReplicationFeature() = default;
 
 void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("replication", "Configure the replication");
+  options->addSection("replication", "replication");
   options->addOption("--replication.auto-start",
                      "switch to enable or disable the automatic start "
                      "of replication appliers",
@@ -236,6 +237,10 @@ void ReplicationFeature::unprepare() {
     _globalReplicationApplier->stopAndJoin();
   }
   _globalReplicationApplier.reset();
+}
+
+httpclient::ConnectionCache& ReplicationFeature::connectionCache() {
+  return _connectionCache;
 }
   
 /// @brief track the number of (parallel) tailing operations

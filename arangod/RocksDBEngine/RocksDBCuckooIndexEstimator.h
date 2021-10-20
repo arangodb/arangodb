@@ -22,8 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_INDEX_ESTIMATOR_H
-#define ARANGOD_ROCKSDB_ROCKSDB_INDEX_ESTIMATOR_H 1
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -523,4 +522,3 @@ using RocksDBCuckooIndexEstimatorType = RocksDBCuckooIndexEstimator<uint64_t>;
 
 }  // namespace arangodb
 
-#endif

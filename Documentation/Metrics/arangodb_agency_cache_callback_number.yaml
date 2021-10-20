@@ -2,7 +2,7 @@ name: arangodb_agency_cache_callback_number
 renamedFrom: arangodb_agency_cache_callback_count
 introducedIn: "3.8.0"
 help: |
-  Current number of entries in agency cache callbacks table.
+  Current number of entries in Agency cache callbacks table.
 unit: number
 type: gauge
 category: Agency

@@ -156,8 +156,7 @@ skip_reader::level::level(
     uint64_t end,
     uint64_t child /*= 0*/,
     size_t skipped /*= 0*/,
-    doc_id_t doc /*= doc_limits::invalid()*/
-) noexcept
+    doc_id_t doc /*= doc_limits::invalid()*/) noexcept
   : stream(std::move(stream)), // thread-safe input
     begin(begin), 
     end(end),
@@ -165,66 +164,6 @@ skip_reader::level::level(
     step(step),
     skipped(skipped),
     doc(doc) {
-}
-
-index_input::ptr skip_reader::level::dup() const {
-  auto clone = stream->dup(); // non thread-safe clone
-
-  if (!clone) {
-    // implementation returned wrong pointer
-    IR_FRMT_ERROR("Failed to duplicate document input in: %s", __FUNCTION__);
-
-    throw io_error("failed to duplicate document input");
-  }
-
-  return memory::make_unique<skip_reader::level>(
-    std::move(clone), step, begin, end, child, skipped, doc);
-}
-
-byte_type skip_reader::level::read_byte() {
-  return stream->read_byte();
-}
-
-size_t skip_reader::level::read_bytes(byte_type* b, size_t count) {
-  static_assert(sizeof(size_t) >= sizeof(uint64_t), "sizeof(size_t) < sizeof(uint64_t)");
-  return stream->read_bytes(b, std::min(size_t(end) - file_pointer(), count));
-}
-
-index_input::ptr skip_reader::level::reopen() const {
-  auto clone = stream->reopen(); // tread-safe clone
-
-  if (!clone) {
-    // implementation returned wrong pointer
-    IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
-
-    throw io_error("failed to reopen document input");
-  }
-
-  return memory::make_unique<skip_reader::level>(
-    std::move(clone), step, begin, end, child, skipped, doc);
-}
-
-size_t skip_reader::level::file_pointer() const {
-  return stream->file_pointer() - begin;
-}
-
-size_t skip_reader::level::length() const {
-  return end - begin;
-}
-
-bool skip_reader::level::eof() const {
-  return stream->file_pointer() >= end;
-}
-
-void skip_reader::level::seek(size_t pos) {
-  return stream->seek(begin + pos);
-}
-
-int64_t skip_reader::level::checksum(size_t offset) const {
-  static_assert(sizeof(decltype(end)) == sizeof(size_t), "sizeof(decltype(end)) != sizeof(size_t)");
-  return stream->checksum(
-    std::min(offset, size_t(end) - stream->file_pointer())
-  );
 }
 
 skip_reader::skip_reader(
@@ -265,7 +204,7 @@ void skip_reader::read_skip(skip_reader::level& level) {
 skip_reader::levels_t::iterator skip_reader::find_level(doc_id_t target) {
   assert(std::is_sorted(
     levels_.rbegin(), levels_.rend(),
-    [](level& lhs, level& rhs) { return lhs.doc < rhs.doc; }
+    [](const level& lhs, const level& rhs) { return lhs.doc < rhs.doc; }
   ));
 
   auto level = std::upper_bound(

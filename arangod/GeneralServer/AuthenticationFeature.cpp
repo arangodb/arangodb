@@ -57,7 +57,8 @@ AuthenticationFeature::AuthenticationFeature(application_features::ApplicationSe
       _authenticationSystemOnly(true),
       _localAuthentication(true),
       _active(true),
-      _authenticationTimeout(0.0) {
+      _authenticationTimeout(0.0),
+      _sessionTimeout(static_cast<double>(1 * std::chrono::hours(1) / std::chrono::seconds(1))) { // 1 hour
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
@@ -67,8 +68,6 @@ AuthenticationFeature::AuthenticationFeature(application_features::ApplicationSe
 }
 
 void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-
   options->addOldOption("server.disable-authentication",
                         "server.authentication");
   options->addOldOption("server.disable-authentication-unix-sockets",
@@ -91,10 +90,23 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
       "--server.authentication-timeout",
       "timeout for the authentication cache in seconds (0 = indefinitely)",
       new DoubleParameter(&_authenticationTimeout));
+  
+  options->addOption("--server.session-timeout",
+                     "timeout in seconds for web interface JWT sessions",
+                     new DoubleParameter(&_sessionTimeout),
+                     arangodb::options::makeFlags(
+                       arangodb::options::Flags::DefaultNoComponents,
+                       arangodb::options::Flags::OnCoordinator,
+                       arangodb::options::Flags::OnSingle))
+                     .setIntroducedIn(30900);
 
   options->addOption("--server.local-authentication",
                      "enable authentication using the local user database",
-                     new BooleanParameter(&_localAuthentication));
+                     new BooleanParameter(&_localAuthentication),
+                     arangodb::options::makeFlags(
+                       arangodb::options::Flags::DefaultNoComponents,
+                       arangodb::options::Flags::OnCoordinator,
+                       arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--server.authentication-system-only",
@@ -104,10 +116,13 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   options->addOption("--server.authentication-unix-sockets",
                      "authentication for requests via UNIX domain sockets",
-                     new BooleanParameter(&_authenticationUnixSockets));
+                     new BooleanParameter(&_authenticationUnixSockets),
+                     arangodb::options::makeFlags(
+                       arangodb::options::Flags::DefaultNoOs,
+                       arangodb::options::Flags::OsLinux,
+                       arangodb::options::Flags::OsMac));
 #endif
 
-  // Maybe deprecate this option in devel
   options
       ->addOption("--server.jwt-secret",
                   "secret to use when doing jwt authentication",
@@ -153,6 +168,12 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
       FATAL_ERROR_EXIT();
     }
   }
+  
+  if (_sessionTimeout <= 1.0) {
+    LOG_TOPIC("85046", FATAL, arangodb::Logger::AUTHENTICATION)
+        << "--server.session-timeout has an invalid value: " << _sessionTimeout;
+    FATAL_ERROR_EXIT();
+  }
 
   if (options->processingResult().touched("server.jwt-secret")) {
     LOG_TOPIC("1aaae", WARN, arangodb::Logger::AUTHENTICATION)
@@ -170,22 +191,22 @@ void AuthenticationFeature::prepare() {
   if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
 #if USE_ENTERPRISE
     if (server().getFeature<LdapFeature>().isEnabled()) {
-      _userManager.reset(
-          new auth::UserManager(server(), std::make_unique<LdapAuthenticationHandler>(
-                                              server().getFeature<LdapFeature>())));
-    } else {
-      _userManager.reset(new auth::UserManager(server()));
+      _userManager = std::make_unique<auth::UserManager>(
+          server(), std::make_unique<LdapAuthenticationHandler>(server().getFeature<LdapFeature>()));
     }
-#else
-    _userManager.reset(new auth::UserManager(server()));
 #endif
+    if (_userManager == nullptr) {
+      _userManager = std::make_unique<auth::UserManager>(server());
+    }
+
+    TRI_ASSERT(_userManager != nullptr);
   } else {
     LOG_TOPIC("713c0", DEBUG, Logger::AUTHENTICATION)
         << "Not creating user manager";
   }
 
   TRI_ASSERT(_authCache == nullptr);
-  _authCache.reset(new auth::TokenCache(_userManager.get(), _authenticationTimeout));
+  _authCache = std::make_unique<auth::TokenCache>(_userManager.get(), _authenticationTimeout);
 
   if (_jwtSecretProgramOption.empty()) {
     LOG_TOPIC("43396", INFO, Logger::AUTHENTICATION)
@@ -228,12 +249,6 @@ void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }
 bool AuthenticationFeature::hasUserdefinedJwt() const {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
   return !_jwtSecretProgramOption.empty();
-}
-
-/// secret used for signing & verification of secrets
-std::string AuthenticationFeature::jwtActiveSecret() const {
-  std::lock_guard<std::mutex> guard(_jwtSecretsLock);
-  return _jwtSecretProgramOption;
 }
 
 #ifdef USE_ENTERPRISE

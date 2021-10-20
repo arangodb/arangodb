@@ -114,12 +114,12 @@ add_custom_target(check
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMENT "Build and run all the tests and examples.")
 
-add_subdirectory(test)
-add_subdirectory(benchmark)
+#add_subdirectory(test)
+#add_subdirectory(benchmark)
 # [2020-05-07, Tobias Gödderz] Commented out so the custom target "examples"
 # doesn't clash with ours
 # add_subdirectory(example)
-add_subdirectory(doc)
-add_subdirectory(extra/fuzzer)
-add_subdirectory(extra/python)
-add_subdirectory(extra/guile)
+#add_subdirectory(doc)
+#ädd_subdirectory(extra/fuzzer)
+#add_subdirectory(extra/python)
+#add_subdirectory(extra/guile)

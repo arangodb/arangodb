@@ -15,7 +15,7 @@
 
       // rerender
       self.interval = window.setInterval(function () {
-        if (window.location.hash.indexOf('cIndices/' + self.collectionName) !== -1 && window.VISIBLE) {
+        if (window.location.hash.indexOf('cIndices/' + encodeURIComponent(self.collectionName)) !== -1 && window.VISIBLE) {
           if ($('#collectionEditIndexTable').is(':visible') && !$('#indexDeleteModal').is(':visible')) {
             self.rerender();
           }
@@ -103,7 +103,7 @@
 
     breadcrumb: function () {
       $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + (this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
+        'Collection: ' + _.escape(this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
       );
     },
 
@@ -133,6 +133,19 @@
       var name;
 
       switch (indexType) {
+        case 'Zkd':
+          fields = $('#newZkdFields').val();
+          const fieldValueTypes = $('#newZkdFieldValueTypes').val();
+          background = self.checkboxToValue('#newZkdBackground');
+          name = $('#newZkdName').val();
+          postParameter = {
+            type: 'zkd',
+            fields: self.stringToArray(fields),
+            fieldValueTypes,
+            inBackground: background,
+            name
+          };
+          break;
         case 'Ttl':
           fields = $('#newTtlFields').val();
           var expireAfter = parseInt($('#newTtlExpireAfter').val(), 10) || 0;
@@ -394,7 +407,7 @@
               $.ajax({
                 type: 'PUT',
                 cache: false,
-                url: arangoHelper.databaseUrl('/_api/job/' + job.id),
+                url: arangoHelper.databaseUrl('/_api/job/' + encodeURIComponent(job.id)),
                 contentType: 'application/json',
                 success: function (data, a, b) {
                   readJob(false, data, job.id);
@@ -442,9 +455,9 @@
           );
           var sparse = (v.hasOwnProperty('sparse') ? v.sparse : 'n/a');
           var extras = [];
-          ["deduplicate", "expireAfter", "minLength", "geoJson", "estimates"].forEach(function(k) {
+          ['deduplicate', 'expireAfter', 'minLength', 'geoJson', 'estimates'].forEach(function (k) {
             if (v.hasOwnProperty(k)) {
-              extras.push(k + ": " + v[k]);
+              extras.push(k + ': ' + v[k]);
             }
           });
 
@@ -475,7 +488,10 @@
       }
       $('#newIndexType' + type).show();
       if (type) {
+        // select "maintain index selectivity estimates" by default
         $('#new' + type + 'Estimates').prop('checked', true);
+        // select "create in background" by default
+        $('#new' + type + 'Background').prop('checked', true);
       }
     },
 

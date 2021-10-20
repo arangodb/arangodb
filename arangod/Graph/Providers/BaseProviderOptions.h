@@ -21,9 +21,9 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PROVIDER_BASEPROVIDEROPTIONS_H
-#define ARANGOD_GRAPH_PROVIDER_BASEPROVIDEROPTIONS_H 1
+#pragma once
 
+#include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
@@ -42,37 +42,72 @@ namespace graph {
 
 struct IndexAccessor {
   IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-                std::optional<size_t> memberToUpdate);
+                std::optional<size_t> memberToUpdate,
+                std::unique_ptr<arangodb::aql::Expression> expression, size_t cursorId);
+  IndexAccessor(IndexAccessor const&) = delete;
+  IndexAccessor(IndexAccessor&&) = default;
 
   aql::AstNode* getCondition() const;
+  aql::Expression* getExpression() const;
   transaction::Methods::IndexHandle indexHandle() const;
   std::optional<size_t> getMemberToUpdate() const;
+  size_t cursorId() const;
 
  private:
   transaction::Methods::IndexHandle _idx;
   aql::AstNode* _indexCondition;
   std::optional<size_t> _memberToUpdate;
+
+  // Note: We would prefer to have this a unique_ptr here.
+  // However the IndexAccessor is used in std::vector<IndexAccessor>
+  // which then refuses to compile (deleted copy constructor)
+  std::unique_ptr<arangodb::aql::Expression> _expression;
+  size_t _cursorId;
 };
 
 struct BaseProviderOptions {
+  using WeightCallback =
+      std::function<double(double originalWeight, arangodb::velocypack::Slice edge)>;
+
  public:
-  BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo,
-                      std::map<std::string, std::string> const& collectionToShardMap);
+  BaseProviderOptions(
+      aql::Variable const* tmpVar,
+      std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&& indexInfo,
+      aql::FixedVarExpressionContext& expressionContext,
+      std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap);
+
+  BaseProviderOptions(BaseProviderOptions const&) = delete;
+  BaseProviderOptions(BaseProviderOptions&&) = default;
 
   aql::Variable const* tmpVar() const;
-  std::vector<IndexAccessor> const& indexInformations() const;
+  std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> const& indexInformations() const;
 
-  std::map<std::string, std::string> const& collectionToShardMap() const;
+  std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap() const;
+
+  aql::FixedVarExpressionContext& expressionContext() const;
+
+  bool hasWeightMethod() const;
+
+  double weightEdge(double prefixWeight, arangodb::velocypack::Slice edge) const;
+
+  void setWeightEdgeCallback(WeightCallback callback);
 
  private:
   // The temporary Variable used in the Indexes
   aql::Variable const* _temporaryVariable;
   // One entry per collection, ShardTranslation needs
   // to be done by Provider
-  std::vector<IndexAccessor> _indexInformation;
+  std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> _indexInformation;
+
+  // The context of AQL variables. These variables are set from the outside.
+  // and the caller needs to make sure the reference stays valid
+  aql::FixedVarExpressionContext& _expressionContext;
 
   // CollectionName to ShardMap, used if the Traversal is pushed down to DBServer
-  std::map<std::string, std::string> const& _collectionToShardMap;
+  std::unordered_map<std::string, std::vector<std::string>> const& _collectionToShardMap;
+
+  // Optional callback to compute the weight of an edge.
+  std::optional<WeightCallback> _weightCallback;
 };
 
 struct ClusterBaseProviderOptions {
@@ -97,5 +132,3 @@ struct ClusterBaseProviderOptions {
 
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

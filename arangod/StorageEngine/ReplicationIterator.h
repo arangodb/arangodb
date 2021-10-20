@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_REPLICATION_ITERATOR_H
-#define ARANGOD_STORAGE_ENGINE_REPLICATION_ITERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -77,4 +76,3 @@ class RevisionReplicationIterator : public ReplicationIterator {
 };
 
 }  // namespace arangodb
-#endif

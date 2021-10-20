@@ -240,9 +240,9 @@ function GeneralGraphCreationSuite() {
         )
       );
 
-      graph._renameCollection("UnitTestRelationName1", "UnitTestsGraphRenamed1");
-      graph._renameCollection("UnitTestVertices1", "UnitTestsGraphRenamed2");
-      graph._renameCollection("UnitTestVertices4", "UnitTestsGraphRenamed3");
+      db._collection("UnitTestRelationName1").rename("UnitTestsGraphRenamed1");
+      db._collection("UnitTestVertices1").rename("UnitTestsGraphRenamed2");
+      db._collection("UnitTestVertices4").rename("UnitTestsGraphRenamed3");
 
       var doc = db._graphs.document(gN1);
       assertEqual(1, doc.edgeDefinitions.length);
@@ -278,7 +278,7 @@ function GeneralGraphCreationSuite() {
       var g2 = graph._graph(gN2);
       g2._addVertexCollection("mj7");
 
-      graph._renameCollection("mj7", "MarcelJansen");
+      db._collection("mj7").rename("MarcelJansen");
 
       var doc = db._graphs.document(gN1);
       assertEqual(1, doc.orphanCollections.length);

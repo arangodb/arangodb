@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -148,8 +149,8 @@ Result RocksDBSettingsManager::sync(bool force) {
   // only one thread can enter here at a time
 
   // make sure we give up our lock when we exit this function
-  auto guard =
-      scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
+  auto guard = scopeGuard(
+      [this]() noexcept { _syncing.store(false, std::memory_order_release); });
 
   // need superuser scope to ensure we can sync all collections and keep seq
   // numbers in sync; background index creation will call this function as user,
@@ -160,6 +161,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto const maxSeqNr = _db->GetLatestSequenceNumber();
   auto minSeqNr = maxSeqNr;
+  TRI_ASSERT(minSeqNr > 0);
 
   rocksdb::TransactionOptions opts;
   opts.lock_timeout = 50;  // do not wait for locking keys
@@ -173,8 +175,10 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   bool didWork = false;
   auto mappings = _engine.collectionMappings();
-  std::string scratch;
-  scratch.reserve(10485760);  // reserve 10MB of scratch space to work with
+
+  // reserve 1MB of scratch space to work with
+  _scratch.reserve(10485760);  
+
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
     DataSourceId cid = pair.second;
@@ -183,7 +187,7 @@ Result RocksDBSettingsManager::sync(bool force) {
       continue;
     }
     TRI_ASSERT(!vocbase->isDangling());
-    TRI_DEFER(vocbase->release());
+    auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
 
     std::shared_ptr<LogicalCollection> coll;
     try {
@@ -194,15 +198,18 @@ Result RocksDBSettingsManager::sync(bool force) {
     if (!coll) {
       continue;
     }
-    TRI_DEFER(vocbase->releaseCollection(coll.get()));
+    auto sg2 = arangodb::scopeGuard([&]() noexcept { vocbase->releaseCollection(coll.get()); });
 
     LOG_TOPIC("afb17", TRACE, Logger::ENGINES)
         << "syncing metadata for collection '" << coll->name() << "'";
+  
+    // clear our scratch buffer for this round
+    _scratch.clear();
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = maxSeqNr;
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder,
-                                             appliedSeq, scratch);
+                                             appliedSeq, _scratch);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 
     const std::string err = "could not sync metadata for collection '";
@@ -222,10 +229,23 @@ Result RocksDBSettingsManager::sync(bool force) {
     batch.Clear();
   }
 
+  if (_scratch.capacity() >= 32 * 1024 * 1024) {
+    // much data in _scratch, let's shrink it to save memory
+    _scratch.clear();
+    _scratch.shrink_to_fit();
+  }
+
   auto const lastSync = _lastSync.load();
+  
+  LOG_TOPIC("53e4c", TRACE, Logger::ENGINES) 
+      << "about to store lastSync. previous value: " << lastSync << ", current value: " << minSeqNr;
+
   if (minSeqNr < lastSync) {
-    LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
-    "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
+    if (minSeqNr != 0) {
+      LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
+        "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
+      TRI_ASSERT(false);
+    }
     return Result(); // do not move backwards in time
   }
   TRI_ASSERT(lastSync <= minSeqNr);
@@ -234,6 +254,10 @@ Result RocksDBSettingsManager::sync(bool force) {
         << "no collection data to serialize, updating lastSync to " << minSeqNr;
     _lastSync.store(minSeqNr);
     return Result();  // nothing was written
+  }
+  
+  TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+    std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
   }
 
   _tmpBuilder.clear();

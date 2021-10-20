@@ -76,11 +76,12 @@ GeneralClientConnection::GeneralClientConnection(application_features::Applicati
                                                  double connectTimeout, size_t connectRetries)
     : _server(server),
       _endpoint(endpoint),
-      _freeEndpointOnDestruction(false),
+      _comm(_server.getFeature<application_features::CommunicationFeaturePhase>()),
       _requestTimeout(requestTimeout),
       _connectTimeout(connectTimeout),
       _connectRetries(connectRetries),
       _numConnectRetries(0),
+      _freeEndpointOnDestruction(false),
       _isConnected(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _read(0),
@@ -96,11 +97,12 @@ GeneralClientConnection::GeneralClientConnection(application_features::Applicati
                                                  double connectTimeout, size_t connectRetries)
     : _server(server),
       _endpoint(endpoint.release()),
-      _freeEndpointOnDestruction(true),
+      _comm(_server.getFeature<application_features::CommunicationFeaturePhase>()),
       _requestTimeout(requestTimeout),
       _connectTimeout(connectTimeout),
       _connectRetries(connectRetries),
       _numConnectRetries(0),
+      _freeEndpointOnDestruction(true),
       _isConnected(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _read(0),
@@ -149,6 +151,15 @@ GeneralClientConnection* GeneralClientConnection::factory(
   }
 
   return nullptr;
+}
+  
+void GeneralClientConnection::repurpose(double connectTimeout, double requestTimeout,
+                                        size_t connectRetries) {
+  _requestTimeout = requestTimeout;
+  _connectTimeout = connectTimeout;
+  _connectRetries = connectRetries;
+  _numConnectRetries = 0;
+  setInterrupted(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,8 +211,6 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
   double start = TRI_microtime();
   int res;
 
-  auto& comm = server().getFeature<application_features::CommunicationFeaturePhase>();
-
 #ifdef TRI_HAVE_POLL_H
   // Here we have poll, on all other platforms we use select
   double sinceLastSocketCheck = start;
@@ -239,7 +248,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
     }
 
     if (res == 0) {
-      if (isInterrupted() || !comm.getCommAllowed()) {
+      if (isInterrupted() || !_comm.getCommAllowed()) {
         _errorDetails = std::string("command locally aborted");
         TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
         return false;
@@ -321,7 +330,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
       timeout = timeout - (end - start);
       start = end;
     } else if (res == 0) {
-      if (isInterrupted() || !comm.getCommAllowed()) {
+      if (isInterrupted() || !_comm.getCommAllowed()) {
         _errorDetails = std::string("command locally aborted");
         TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
         return false;
@@ -338,7 +347,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
 #endif
 
   if (res > 0) {
-    if (isInterrupted() || !comm.getCommAllowed()) {
+    if (isInterrupted() || !_comm.getCommAllowed()) {
       _errorDetails = std::string("command locally aborted");
       TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
       return false;

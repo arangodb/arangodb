@@ -21,8 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_HELPERS_H
-#define ARANGOD_CLUSTER_CLUSTER_HELPERS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterTypes.h"
@@ -54,4 +53,3 @@ class ClusterHelpers {
 
 }  // namespace arangodb
 
-#endif

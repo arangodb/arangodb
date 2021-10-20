@@ -23,8 +23,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H
-#define ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H 1
+#pragma once
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/iterator.h>
@@ -97,7 +96,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   /// @brief attempts to locate an entry in the index
   std::unique_ptr<IndexIterator> lookup(transaction::Methods*,
-                                        arangodb::velocypack::Slice const, bool reverse) const;
+                                        arangodb::velocypack::Slice const, bool reverse, ReadOwnWrites readOwnWrites) const;
 
   Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                                              arangodb::aql::AstNode const* node,
@@ -114,7 +113,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
                                                       arangodb::aql::AstNode const* node,
                                                       arangodb::aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts) override;
+                                                      IndexIteratorOptions const& opts,
+                                                      ReadOwnWrites readOwnWrites) override;
 
   void afterTruncate(TRI_voc_tick_t tick,
                      arangodb::transaction::Methods* trx) override;
@@ -122,7 +122,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& options) override;
+                OperationOptions const& options, 
+                bool performChecks) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
@@ -132,20 +133,25 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 LocalDocumentId const& oldDocumentId,
                 velocypack::Slice oldDoc, LocalDocumentId const& newDocumentId,
                 velocypack::Slice newDoc,
-                OperationOptions const& options) override;
+                OperationOptions const& options,
+                bool performChecks) override;
 
  private:
   /// @brief returns whether the document can be inserted into the index
   /// (or if there will be a conflict)
-  Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
-                     LocalDocumentId const& documentId, velocypack::Slice doc,
-                     OperationOptions const& options) override;
+  [[nodiscard]] Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
+                                   LocalDocumentId const& documentId, velocypack::Slice doc,
+                                   OperationOptions const& options) override;
   
   /// @brief returns whether the document can be updated/replaced in the index
   /// (or if there will be a conflict)
-  Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
-                      LocalDocumentId const& documentId, velocypack::Slice doc,
-                      OperationOptions const& options) override;
+  [[nodiscard]] Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
+                                    LocalDocumentId const& documentId, velocypack::Slice doc,
+                                    OperationOptions const& options) override;
+                      
+  [[nodiscard]] Result checkOperation(transaction::Methods& trx, RocksDBMethods* methods,
+                                      LocalDocumentId const& documentId, velocypack::Slice doc,
+                                      OperationOptions const& options, bool ignoreExisting);
 
   /// @brief return the number of paths
   inline size_t numPaths() const { return _paths.size(); }
@@ -202,4 +208,3 @@ class RocksDBVPackIndex : public RocksDBIndex {
 };
 }  // namespace arangodb
 
-#endif

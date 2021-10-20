@@ -50,6 +50,7 @@
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -58,6 +59,7 @@
 #include "Transaction/ClusterUtils.h"
 #include "Utils/Events.h"
 #include "VocBase/vocbase.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -219,6 +221,7 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _lastPlanVersionNoticed(0),
       _lastCurrentVersionNoticed(0),
       _updateCounter(0),
+      _updateDBServers(false),
       _lastUnhealthyTimestamp(std::chrono::steady_clock::time_point()),
       _agencySync(_server, this),
       _heartbeat_send_time_ms(
@@ -249,6 +252,50 @@ HeartbeatThread::~HeartbeatThread() {
 void HeartbeatThread::run() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
+  std::unordered_map<std::string, std::shared_ptr<AgencyCallback>> serverCallbacks{};
+  if (ServerState::instance()->isCoordinator(role) ||
+      ServerState::instance()->isDBServer(role) ||
+      (ServerState::instance()->isSingleServer(role) &&
+       _server.getFeature<ReplicationFeature>().isActiveFailoverEnabled())) {
+    std::function<bool(VPackSlice const& result)> updbs = [self = shared_from_this()] (VPackSlice const& result) {
+      LOG_TOPIC("fe092", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current db servers";
+      self->updateDBServers();
+      return true;
+    };
+    std::vector<std::string> const dbServerAgencyPaths{
+      "Current/DBServers", "Target/FailedServers", "Target/CleanedServers", "Target/ToBeCleanedServers"};
+    for (auto const& path : dbServerAgencyPaths) {
+      serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, updbs, true, false));
+    }
+    std::function<bool(VPackSlice const& result)> upsrv = [self = shared_from_this()] (VPackSlice const& result) {
+      LOG_TOPIC("2e09f", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current servers and rebootIds";
+      self->server().getFeature<ClusterFeature>().clusterInfo().loadServers();
+      return true;
+    };
+    std::vector<std::string> const serverAgencyPaths{
+      "Current/ServersRegistered", "Target/MapUniqueToShortID", "Current/ServersKnown", "Supervision/Health",
+      "Current/ServersKnown/" + ServerState::instance()->getId()};
+    for (auto const& path : serverAgencyPaths) {
+      serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, upsrv, true, false));
+    }
+    std::function<bool(VPackSlice const& result)> upcrd = [self = shared_from_this()] (VPackSlice const& result) {
+      LOG_TOPIC("2f09e", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current coordinators";
+      self->server().getFeature<ClusterFeature>().clusterInfo().loadCurrentCoordinators();
+      self->server().getFeature<ClusterFeature>().clusterInfo().loadCurrentDBServers();
+      return true;
+    };
+    std::string const path = "Current/Coordinators";
+    serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, upcrd, true, false));
+
+    for (auto const& cb : serverCallbacks) {
+      auto res = _agencyCallbackRegistry->registerCallback(cb.second);
+      if (!res.ok()) {
+        LOG_TOPIC("97aa8", WARN, Logger::HEARTBEAT)
+          << "Failed to register agency cache callback to " << cb.first << " degrading performance";
+      }
+    }
+  }
+
   // mop: the heartbeat thread itself is now ready
   setReady();
   // mop: however we need to wait for the rest server here to come up
@@ -267,7 +314,7 @@ void HeartbeatThread::run() {
     }
   }
 
-  LOG_TOPIC("9788a", TRACE, Logger::HEARTBEAT)
+  LOG_TOPIC("978a8", TRACE, Logger::HEARTBEAT)
       << "starting heartbeat thread (" << role << ")";
 
   if (ServerState::instance()->isCoordinator(role)) {
@@ -284,6 +331,10 @@ void HeartbeatThread::run() {
     LOG_TOPIC("8291e", ERR, Logger::HEARTBEAT)
         << "invalid role setup found when starting HeartbeatThread";
     TRI_ASSERT(false);
+  }
+
+  for (auto const& acb : serverCallbacks) {
+    _agencyCallbackRegistry->unregisterCallback(acb.second);
   }
 
   LOG_TOPIC("eab40", TRACE, Logger::HEARTBEAT)
@@ -374,15 +425,20 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
     }
   }
 
-  // Periodically update the list of DBServers and prune agency comm
-  // connection pool:
-  if (++_updateCounter >= 60) {
+  // Periodical or event-based update of DBServers and pruning of
+  // agency comm connection pool:
+  auto updateDBServers = _updateDBServers.exchange(false);
+  if (updateDBServers || ++_updateCounter >= 60) {
     auto& clusterFeature = server().getFeature<ClusterFeature>();
     auto& ci = clusterFeature.clusterInfo();
     ci.loadCurrentDBServers();
     _updateCounter = 0;
     clusterFeature.pruneAsyncAgencyConnectionPool();
   }
+}
+
+void HeartbeatThread::updateDBServers() {
+  _updateDBServers.store(true);
 }
 
 DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
@@ -394,8 +450,6 @@ DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
 void HeartbeatThread::runDBServer() {
 
   using namespace std::chrono_literals;
-
-  _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
 
   while (!isStopping() && !server().getFeature<DatabaseFeature>().started()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -441,19 +495,12 @@ void HeartbeatThread::runDBServer() {
         auto self = shared_from_this();
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         *getNewsRunning = 1;
-        bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
+        scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
           self->getNewsFromAgencyForDBServer();
           *getNewsRunning = 0;  // indicate completion to trigger a new schedule
         });
-        if (!queued && !isStopping()) {
-          LOG_TOPIC("aacce", WARN, Logger::HEARTBEAT)
-              << "Could not schedule getNewsFromAgency job in scheduler. Don't "
-                 "worry, this will be tried again later.";
-          *getNewsRunning = 0;
-        } else {
-          LOG_TOPIC("aaccf", DEBUG, Logger::HEARTBEAT)
-              << "Have scheduled getNewsFromAgency job.";
-        }
+        LOG_TOPIC("aaccf", DEBUG, Logger::HEARTBEAT)
+            << "Have scheduled getNewsFromAgency job.";
       }
 
       if (isStopping()) {
@@ -630,14 +677,13 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       ci.setFailedServers(failedServers);
       transaction::cluster::abortTransactionsWithFailedServers(ci);
 
-      std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
-      if (prgl) {
-        pregel::RecoveryManager* mngr = prgl->recoveryManager();
+      if (_server.hasFeature<pregel::PregelFeature>()) {
+        auto& pregel = _server.getFeature<pregel::PregelFeature>();
+        pregel::RecoveryManager* mngr = pregel.recoveryManager();
         if (mngr != nullptr) {
           mngr->updatedFailedServers(failedServers);
         }
       }
-
     } else {
       LOG_TOPIC("cd95f", WARN, Logger::HEARTBEAT)
           << "FailedServers is not an object. ignoring for now";
@@ -827,7 +873,14 @@ void HeartbeatThread::runSingleServer() {
         }
         _agency.setTransient(transientPath, builder.slice(), static_cast<uint64_t>(ttl), timeout);
       };
-      TRI_DEFER(sendTransient());
+      auto sg = arangodb::scopeGuard([&]() noexcept {
+        try {
+          sendTransient();
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("1b5a3", WARN, Logger::HEARTBEAT)
+              << "Best effort heart beat failed: " << ex.what();
+        }
+      });
 
       // Case 2: Current server is leader
       if (leader.compareString(_myId) == 0) {
@@ -847,6 +900,10 @@ void HeartbeatThread::runSingleServer() {
         ServerState::instance()->setFoxxmaster(_myId);
         auto prv = ServerState::setServerMode(ServerState::Mode::DEFAULT);
         if (prv == ServerState::Mode::REDIRECT) {
+          auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+          auto database = sysDbFeature.use();
+          server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
+            database.get(), "server/leader.js", nullptr);
           LOG_TOPIC("98325", INFO, Logger::HEARTBEAT)
               << "Successful leadership takeover: "
               << "All your base are belong to us";
@@ -866,7 +923,7 @@ void HeartbeatThread::runSingleServer() {
       ttlFeature.allowRunning(false);
 
       ServerState::instance()->setFoxxmaster(leaderStr);  // leader is foxxmater
-      ServerState::instance()->setReadOnly(true);  // Disable writes with dirty-read header
+      ServerState::instance()->setReadOnly(ServerState::API_TRUE);  // Disable writes with dirty-read header
 
       std::string endpoint = ci.getServerEndpoint(leaderStr);
       if (endpoint.empty()) {
@@ -995,7 +1052,7 @@ void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
     readOnly = readOnlySlice.getBool();
   }
 
-  ServerState::instance()->setReadOnly(readOnly);
+  ServerState::instance()->setReadOnly(readOnly ? ServerState::API_TRUE : ServerState::API_FALSE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1024,19 +1081,11 @@ void HeartbeatThread::runCoordinator() {
         auto self = shared_from_this();
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         *getNewsRunning = 1;
-        bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
+        scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
           self->getNewsFromAgencyForCoordinator();
           *getNewsRunning = 0;  // indicate completion to trigger a new schedule
         });
-        if (!queued) {
-          LOG_TOPIC("aacc2", WARN, Logger::HEARTBEAT)
-              << "Could not schedule getNewsFromAgency job in scheduler. Don't "
-                 "worry, this will be tried again later.";
-          *getNewsRunning = 0;
-        } else {
-          LOG_TOPIC("aacc3", DEBUG, Logger::HEARTBEAT)
-              << "Have scheduled getNewsFromAgency job.";
-        }
+        LOG_TOPIC("aacc3", DEBUG, Logger::HEARTBEAT) << "Have scheduled getNewsFromAgency job.";
       }
 
       CONDITION_LOCKER(locker, _condition);
@@ -1088,7 +1137,14 @@ bool HeartbeatThread::init() {
   if (ServerState::instance()->isClusterRole() && !sendServerState()) {
     return false;
   }
-
+  if (ServerState::instance()->isDBServer()) {
+    // the maintenanceThread is only required by DB server instances, but we deliberately
+    // initialize it here instead of in runDBServer because the ClusterInfo::SyncerThread
+    // uses HeartbeatThread::notify to notify this thread, but that SyncerThread is started
+    // before runDBServer is called. So in order to prevent a data race we should initialize
+    // _maintenanceThread before that SyncerThread is started.
+    _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
+  }
   return true;
 }
 
@@ -1162,14 +1218,55 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     std::vector<TRI_voc_tick_t> ids;
     velocypack::Slice databases = result[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Plan", "Databases"}));
-
     if (!databases.isObject()) {
       return false;
     }
 
+    for (VPackObjectIterator::ObjectPair options : VPackObjectIterator(databases)) {
+      try {
+        ids.push_back(std::stoul(options.value.get("id").copyString()));
+      } catch (std::invalid_argument& e) {
+        LOG_TOPIC("a9233", ERR, Logger::CLUSTER)
+          << "Number conversion for planned database id for " << options.key.stringView() << " failed: " << e.what();
+      } catch (std::out_of_range const& e) {
+        LOG_TOPIC("a9243", ERR, Logger::CLUSTER)
+          << "Number conversion for planned database id for " << options.key.stringView() << " failed: " << e.what();
+      } catch (std::bad_alloc const&) {
+        LOG_TOPIC("a9234", FATAL, Logger::CLUSTER)
+          << "Failed to allocate memory to enumerate planned databases from agency";
+        FATAL_ERROR_EXIT();
+      } catch (std::exception const& e) {
+        LOG_TOPIC("a9235", FATAL, Logger::CLUSTER)
+          << "Failed to read planned databases " << options.key.stringView() << " from agency: " << e.what();
+      }
+    }
+
+    // get the list of databases that we know about locally
+    std::vector<TRI_voc_tick_t> localIds = databaseFeature.getDatabaseIds(false);
+    for (auto id : localIds) {
+      auto r = std::find(ids.begin(), ids.end(), id);
+
+      if (r == ids.end()) {
+        // local database not found in the plan...
+        std::string dbName = "n/a";
+        TRI_vocbase_t* db = databaseFeature.useDatabase(id);
+        TRI_ASSERT(db);
+        if (db) {
+          try {
+            dbName = db->name();
+          } catch (...) {
+            db->release();
+            throw;
+          }
+          db->release();
+        }
+        Result res = databaseFeature.dropDatabase(id, true);
+        events::DropDatabase(dbName, res, ExecContext::current());
+      }
+    }
+
     // loop over all database names we got and create a local database
     // instance if not yet present:
-
     for (VPackObjectIterator::ObjectPair options : VPackObjectIterator(databases)) {
       if (!options.value.isObject()) {
         continue;
@@ -1184,9 +1281,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
             << "In agency database plan" << infoResult.errorMessage();
         TRI_ASSERT(false);
       }
-
-      // known plan IDs
-      ids.push_back(info.getId());
 
       auto dbName = info.getName();
       TRI_vocbase_t* vocbase = databaseFeature.useDatabase(dbName);
@@ -1215,24 +1309,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       }
     }
 
-    // get the list of databases that we know about locally
-    std::vector<TRI_voc_tick_t> localIds = databaseFeature.getDatabaseIds(false);
-
-    for (auto id : localIds) {
-      auto r = std::find(ids.begin(), ids.end(), id);
-
-      if (r == ids.end()) {
-        // local database not found in the plan...
-        TRI_vocbase_t* db = databaseFeature.useDatabase(id);
-        TRI_ASSERT(db);
-        std::string dbName = db ? db->name() : "n/a";
-        if (db) {
-          db->release();
-        }
-        Result res = databaseFeature.dropDatabase(id, true);
-        events::DropDatabase(dbName, res, ExecContext::current());
-      }
-    }
 
   } else {
     return false;
@@ -1267,7 +1343,7 @@ bool HeartbeatThread::sendServerState() {
   LOG_TOPIC("3369a", TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
   auto const start = std::chrono::steady_clock::now();
-  TRI_DEFER({
+  ScopeGuard sg([&]() noexcept {
     auto timeDiff = std::chrono::steady_clock::now() - start;
     _heartbeat_send_time_ms.count(
         std::chrono::duration_cast<std::chrono::milliseconds>(timeDiff).count());

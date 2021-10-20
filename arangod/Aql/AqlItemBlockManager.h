@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H
-#define ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H 1
+#pragma once
 
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/types.h"
@@ -125,4 +124,3 @@ class AqlItemBlockManager {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

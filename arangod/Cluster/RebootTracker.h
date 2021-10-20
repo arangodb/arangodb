@@ -21,11 +21,11 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_REBOOTTRACKER_H
-#define ARANGOD_CLUSTER_REBOOTTRACKER_H
+#pragma once
 
 #include "Basics/Mutex.h"
 #include "Cluster/CallbackGuard.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <map>
 #include <memory>
@@ -97,9 +97,9 @@ class RebootTracker {
 
   void queueCallbacks(std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
   void queueCallback(DescriptedCallback callback);
-
+ 
  private:
-  Mutex _mutex;
+  mutable Mutex _mutex;
 
   CallbackId _nextCallbackId{1};
 
@@ -128,4 +128,3 @@ class RebootTracker {
 }  // namespace cluster
 }  // namespace arangodb
 
-#endif  // ARANGOD_CLUSTER_REBOOTTRACKER_H

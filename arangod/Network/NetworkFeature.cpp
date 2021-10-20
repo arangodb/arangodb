@@ -43,24 +43,9 @@
 namespace {
 void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
                             std::function<void(bool)>& gcfunc, std::chrono::seconds offset) {
-  bool queued = false;
-  {
-    std::lock_guard<std::mutex> guard(mutex);
-    std::tie(queued, workItem) =
-        arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
-            [&gcfunc, offset]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
-              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
-                                                                       offset, gcfunc);
-            },
-            arangodb::Logger::COMMUNICATION,
-            "queue transaction garbage collection");
-  }
-  if (!queued) {
-    LOG_TOPIC("c8b3d", FATAL, arangodb::Logger::COMMUNICATION)
-        << "Failed to queue transaction garbage collection, for 5 minutes, "
-           "exiting.";
-    FATAL_ERROR_EXIT();
-  }
+  std::lock_guard<std::mutex> guard(mutex);
+  workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
+    arangodb::RequestLane::INTERNAL_LOW, offset, gcfunc);
 }
 
 constexpr double CongestionRatio = 0.5;
@@ -113,7 +98,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("network", "Configure cluster-internal networking");
+  options->addSection("network", "cluster-internal networking");
 
   options->addOption("--network.io-threads", "number of network IO threads for cluster-internal communication",
                      new UInt32Parameter(&_numIOThreads))
@@ -133,9 +118,12 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   std::unordered_set<std::string> protos = {
       "", "http", "http2", "h2", "vst"};
 
+  // starting with 3.9, we will hard-code the protocol for cluster-internal communication
   options->addOption("--network.protocol", "network protocol to use for cluster-internal communication",
-                     new DiscreteValuesParameter<StringParameter>(&_protocol, protos))
-                     .setIntroducedIn(30700);
+                     new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
+                     options::makeDefaultFlags(options::Flags::Hidden))
+                     .setIntroducedIn(30700)
+                     .setDeprecatedIn(30900);
 
   options
       ->addOption("--network.max-requests-in-flight",
@@ -182,6 +170,11 @@ void NetworkFeature::prepare() {
   config.clusterInfo = ci;
   config.name = "ClusterComm";
 
+  // using an internal network protocol other than HTTP/1 is
+  // not supported since 3.9. the protocol is always hard-coded
+  // to HTTP/1 from now on. 
+  // note: we plan to upgrade the internal protocol to HTTP/2 at 
+  // some point in the future
   config.protocol = fuerte::ProtocolType::Http;
   if (_protocol == "http" || _protocol == "h1") {
     config.protocol = fuerte::ProtocolType::Http;
@@ -189,6 +182,13 @@ void NetworkFeature::prepare() {
     config.protocol = fuerte::ProtocolType::Http2;
   } else if (_protocol == "vst") {
     config.protocol = fuerte::ProtocolType::Vst;
+  }
+
+  if (config.protocol != fuerte::ProtocolType::Http) {
+    LOG_TOPIC("6d221", WARN, Logger::CONFIG)
+        << "using `--network.protocol` is deprecated. "
+        << "the network protocol for cluster-internal requests is hard-coded to HTTP/1 in this version";
+    config.protocol = fuerte::ProtocolType::Http;
   }
 
   _pool = std::make_unique<network::ConnectionPool>(config);

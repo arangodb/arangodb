@@ -48,12 +48,12 @@ class format_test_case : public index_test_base {
 
   class position final : public irs::position {
    public:
-    explicit position(const irs::flags& features) {
-      if (features.check<irs::offset>()) {
+    explicit position(irs::IndexFeatures features) {
+      if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::OFFS)) {
         poffs_ = &offs_;
       }
 
-      if (features.check<irs::payload>()) {
+      if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::PAY)) {
         ppay_ = &pay_;
       }
     }
@@ -115,13 +115,13 @@ class format_test_case : public index_test_base {
     postings(
         const docs_t::const_iterator& begin,
         const docs_t::const_iterator& end,
-        const irs::flags& features = irs::flags::empty_instance())
+        irs::IndexFeatures features = irs::IndexFeatures::NONE)
       : next_(begin), end_(end), pos_(features) {
       attrs_[irs::type<irs::attribute_provider_change>::id()] = &callback_;
-      if (features.check<irs::frequency>()) {
+      if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ)) {
         freq_.value = 10;
         attrs_[irs::type<irs::frequency>::id()] = &freq_;
-        if (features.check<irs::position>()) {
+        if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::POS)) {
           attrs_[irs::type<irs::position>::id()] = &pos_;
         }
       }
@@ -198,7 +198,7 @@ class format_test_case : public index_test_base {
       return val_;
     }
 
-    irs::doc_iterator::ptr postings(const irs::flags& /*features*/) const {
+    irs::doc_iterator::ptr postings(irs::IndexFeatures /*features*/) const {
       return irs::memory::make_managed<format_test_case::postings>(
         docs_.begin(), docs_.end());
     }

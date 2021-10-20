@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_BASICS_RESOURCE_USAGE_H
-#define ARANGOD_BASICS_RESOURCE_USAGE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/NumberUtils.h"
@@ -128,4 +127,3 @@ class ResourceUsageScope {
 
 }  // namespace arangodb
 
-#endif

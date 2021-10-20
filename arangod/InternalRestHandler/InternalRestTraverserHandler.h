@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INTERNAL_REST_HANDLER_INTERNAL_TRAVERSER_HANDLER_H
-#define ARANGOD_INTERNAL_REST_HANDLER_INTERNAL_TRAVERSER_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -58,4 +57,3 @@ class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
   aql::QueryRegistry* _registry;
 };
 }  // namespace arangodb
-#endif

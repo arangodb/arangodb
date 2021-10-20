@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_UPGRADE_H
-#define ARANGOD_VOC_BASE_API_UPGRADE_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -114,6 +113,13 @@ struct Upgrade {
  private:
   /// @brief register tasks, only run once on startup
   static void registerTasks(UpgradeFeature&);
+
+#ifdef USE_ENTERPRISE
+  // Like RegisterTasks, but only dedicated to enterprise based
+  // upgrade tasks. Implementation in closed Enterprise Source
+  static void registerTasksEE(UpgradeFeature&);
+#endif
+
   static UpgradeResult runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,
                                 arangodb::velocypack::Slice const& params,
                                 uint32_t clusterFlag, uint32_t dbFlag);
@@ -144,4 +150,3 @@ struct Upgrade {
 }  // namespace methods
 }  // namespace arangodb
 
-#endif

@@ -36,15 +36,12 @@ const foxxManager = require('@arangodb/foxx/manager');
 const fs = require('fs');
 const internal = require('internal');
 const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
-const download = internal.download;
 const request = require('@arangodb/request');
 
 const arangodb = require('@arangodb');
 const arango = require('@arangodb').arango;
 const aql = arangodb.aql;
 const db = internal.db;
-
-require("@arangodb/test-helper").waitForFoxxInitialized();
 
 describe('Foxx service', () => {
 
@@ -61,9 +58,7 @@ describe('Foxx service', () => {
 
   afterEach(() => {
     waitForJob();
-    download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
-      method: 'delete'
-    });
+    arango.DELETE_RAW(mount, '');
     // the job will create documents
     let cc = db._collection('foxx_queue_test');
     if (cc) {
@@ -77,9 +72,7 @@ describe('Foxx service', () => {
       FILTER queue._key != 'default'
       RETURN queue
     `).toArray();
-    const res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
-      method: 'post'
-    });
+    const res = arango.POST_RAW(mount, '');
     expect(res.code).to.equal(204);
     const queuesAfter = db._query(aql`
       FOR queue IN _queues
@@ -91,23 +84,17 @@ describe('Foxx service', () => {
 
   it('should not register a queue two times', () => {
     const queuesBefore = db._queues.all().toArray();
-    let res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
-      method: 'post'
-    });
+    let res = arango.POST_RAW(mount, '');
     expect(res.code).to.equal(204);
     waitForJob();
-    res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
-      method: 'post'
-    });
+    res = arango.POST_RAW(mount, '');
     expect(res.code).to.equal(204);
     const queuesAfter = db._queues.all().toArray();
     expect(queuesAfter.length - queuesBefore.length).to.equal(1);
   });
 
   it('should support jobs running in the queue', () => {
-    let res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
-      method: 'post'
-    });
+    let res = arango.POST(mount, '');
     expect(res.code).to.equal(204);
     expect(waitForJob()).to.equal(true, 'job from Foxx queue did not run!');
     const jobResult = db._query(aql`
@@ -133,7 +120,7 @@ describe('Foxx service', () => {
   });
 
   it('should ignore the arango user', () => {
-    let res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
+    let res = internal.download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
       method: 'post',
       username: 'root',
       password: ''

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_V8_CONTEXT_H
-#define ARANGOD_TRANSACTION_V8_CONTEXT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Context.h"
@@ -52,10 +51,7 @@ class V8Context final : public Context {
                                                  bool& responsibleForCommit) override;
   
   void enterV8Context();
-  void exitV8Context();
-
-  /// @brief return the resolver
-  CollectionNameResolver const& resolver() override final;
+  void exitV8Context() noexcept;
 
   /// @brief unregister the transaction from the context
   void unregisterTransaction() noexcept override;
@@ -82,8 +78,9 @@ class V8Context final : public Context {
                                                                   bool embeddable);
 
  private:
-  TRI_v8_global_t* _v8g;
- 
+  static TRI_v8_global_t* getV8State() noexcept;
+
+ private:
   /// @brief the currently ongoing transaction
   std::shared_ptr<TransactionState> _currentTransaction;
 
@@ -94,4 +91,3 @@ class V8Context final : public Context {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

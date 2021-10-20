@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_EVENTS_H
-#define ARANGOD_UTILS_EVENTS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -58,8 +57,10 @@ void TruncateCollection(std::string const& db, std::string const& name,
                         OperationResult const& result);
 void CreateDatabase(std::string const& name, Result const& result, ExecContext const& context);
 void DropDatabase(std::string const& name, Result const& result, ExecContext const& context);
-void CreateIndex(std::string const& db, std::string const& col,
-                 VPackSlice const& slice, ErrorCode result);
+// index creation start
+void CreateIndexStart(std::string const& db, std::string const& col, VPackSlice slice);
+// index creation result
+void CreateIndexEnd(std::string const& db, std::string const& col, VPackSlice slice, ErrorCode result);
 void DropIndex(std::string const& db, std::string const& col,
                std::string const& idx, ErrorCode result);
 void CreateView(std::string const& db, std::string const& name, ErrorCode result);
@@ -87,4 +88,3 @@ void DeleteHotbackup(std::string const& id, ErrorCode result);
 }  // namespace events
 }  // namespace arangodb
 
-#endif

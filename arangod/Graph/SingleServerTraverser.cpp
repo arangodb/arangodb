@@ -72,7 +72,13 @@ void SingleServerTraverser::setStartVertex(std::string const& vid) {
   _done = false;
 }
 
-void SingleServerTraverser::clear() { traverserCache()->clear(); }
+void SingleServerTraverser::clear() {
+  _vertexGetter->clear();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(!_vertexGetter->pointsIntoTraverserCache());
+#endif
+  traverserCache()->clear();
+}
 
 bool SingleServerTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
   return _vertexGetter->getVertex(edge, path);

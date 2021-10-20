@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_GRAPH_H
-#define ARANGOD_GRAPH_GRAPH_H
+#pragma once
 
 #include <velocypack/Buffer.h>
 #include <chrono>
@@ -47,8 +46,17 @@ namespace graph {
 
 class EdgeDefinition {
  public:
+  enum EdgeDefinitionType {
+    DEFAULT,
+    SMART_TO_SMART,
+    SAT_TO_SAT,
+    SMART_TO_SAT,
+    SAT_TO_SMART
+  };
+
+ public:
   EdgeDefinition(std::string edgeCollection_, std::set<std::string>&& from_,
-                 std::set<std::string>&& to_)
+                 std::set<std::string>&& to_) 
       : _edgeCollection(std::move(edgeCollection_)),
         _from(std::move(from_)),
         _to(std::move(to_)) {}
@@ -81,6 +89,16 @@ class EdgeDefinition {
   bool isToVertexCollectionUsed(std::string const& collectionName) const;
 
   bool renameCollection(std::string const& oldName, std::string const& newName);
+
+  /* @brief
+   * Set type of the EdgeDefinition. Only allowed to be called once and only if
+   * type is DEFAULT. If type has been set, it is not changeable anymore.
+   *
+   * @param type Type to be set
+   *
+   * @return True if type has been set, returns false in case type has not been set.
+   */
+  auto setType(EdgeDefinitionType type) -> bool;
 
  private:
   std::string _edgeCollection;
@@ -151,12 +169,17 @@ class Graph {
 
   virtual void createCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
 
+  virtual void createSatelliteCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
+
  public:
   /// @brief get the cids of all vertexCollections
   std::set<std::string> const& vertexCollections() const;
 
   /// @brief get the cids of all orphanCollections
   std::set<std::string> const& orphanCollections() const;
+
+  /// @brief get the cids of all satelliteCollections
+  std::unordered_set<std::string> const& satelliteCollections() const;
 
   /// @brief get the cids of all edgeCollections
   std::set<std::string> const& edgeCollections() const;
@@ -251,6 +274,8 @@ class Graph {
   /// @brief Add an orphan vertex collection to this graphs definition
   Result addOrphanCollection(std::string&&);
 
+  virtual auto addSatellites(VPackSlice const& satellites) -> Result;
+
   std::ostream& operator<<(std::ostream& ostream);
 
  private:
@@ -291,6 +316,9 @@ class Graph {
   /// @brief the names of all orphanCollections
   std::set<std::string> _orphanColls;
 
+  /// @brief the names of all satelliteCollections
+  std::unordered_set<std::string> _satelliteColls;
+
   /// @brief the names of all edgeCollections
   std::set<std::string> _edgeColls;
 
@@ -324,4 +352,3 @@ void setUnion(std::set<T>& set, C const& container) {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif  // ARANGOD_GRAPH_GRAPH_H

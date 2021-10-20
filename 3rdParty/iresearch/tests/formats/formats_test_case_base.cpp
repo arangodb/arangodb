@@ -23,22 +23,23 @@
 
 #include "formats_test_case_base.hpp"
 #include "formats/format_utils.hpp"
+#include "index/norm.hpp"
 #include "utils/lz4compression.hpp"
 
 namespace tests {
 
 TEST_P(format_test_case, directory_artifact_cleaner) {
-  tests::json_doc_generator gen(
+  tests::json_doc_generator gen{
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory);
+    &tests::generic_json_field_factory};
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
   tests::document const* doc3 = gen.next();
   tests::document const* doc4 = gen.next();
-  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
-  auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
-  auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+  auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
+  auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
 
   std::vector<std::string> files;
   auto list_files = [&files] (std::string& name) {
@@ -50,9 +51,6 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
   files.clear();
   ASSERT_TRUE(dir->visit(list_files));
   ASSERT_TRUE(files.empty());
-
-  // register ref counter
-  irs::directory_cleaner::init(*dir);
 
   // cleanup on refcount decrement (old files not in use)
   {
@@ -294,9 +292,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
 TEST_P(format_test_case, fields_seek_ge) {
   class granular_double_field: public tests::double_field {
    public:
-    const irs::flags& features() const {
-      static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
-      return features;
+    granular_double_field() {
+      features_.emplace_back(irs::type<irs::granularity_prefix>::id());
     }
   };
 
@@ -334,8 +331,11 @@ TEST_P(format_test_case, fields_seek_ge) {
 
   // add segment
   {
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
+
     numeric_field_generator gen(75, 7000, 2);
-    add_segment(gen);
+    add_segment(gen, irs::OM_CREATE, opts);
   }
 
   auto reader = open_reader();
@@ -349,7 +349,7 @@ TEST_P(format_test_case, fields_seek_ge) {
 
   // extract all terms
   {
-    auto it = field->iterator();
+    auto it = field->iterator(irs::SeekMode::NORMAL);
     ASSERT_NE(nullptr, it);
 
     size_t i = 0;
@@ -363,7 +363,7 @@ TEST_P(format_test_case, fields_seek_ge) {
 
   // seek_ge to every term
   {
-    auto it = field->iterator();
+    auto it = field->iterator(irs::SeekMode::NORMAL);
     ASSERT_NE(nullptr, it);
     for (auto& term : all_terms) {
       ASSERT_EQ(irs::SeekResult::FOUND, it->seek_ge(term));
@@ -377,7 +377,7 @@ TEST_P(format_test_case, fields_seek_ge) {
     auto* term = irs::get<irs::term_attribute>(stream);
     ASSERT_NE(nullptr, term);
 
-    auto it = field->iterator();
+    auto it = field->iterator(irs::SeekMode::NORMAL);
     ASSERT_NE(nullptr, it);
 
     for (size_t begin = 74, end = 7000, step = 2; begin < end; begin += step) {
@@ -413,7 +413,7 @@ TEST_P(format_test_case, fields_seek_ge) {
       { 192, 192, 187, 88, 0 }
     };
 
-    auto it = field->iterator();
+    auto it = field->iterator(irs::SeekMode::NORMAL);
 
     for (auto& term : terms) {
       const irs::bytes_ref target(term.data(), term.size());
@@ -448,7 +448,7 @@ TEST_P(format_test_case, fields_seek_ge) {
       { 208, 192, 188 },
     };
 
-    auto it = field->iterator();
+    auto it = field->iterator(irs::SeekMode::NORMAL);
 
     for (auto& term : terms) {
       const irs::bytes_ref target(term.data(), term.size());
@@ -590,7 +590,12 @@ TEST_P(format_test_case, fields_read_write) {
   // define field
   irs::field_meta field;
   field.name = "field";
-  field.norm = 5;
+  field.features[irs::type<irs::norm>::id()] = 5;
+
+  irs::feature_set_t features;
+  for (auto& feature : field.features) {
+    features.emplace(feature.first);
+  }
 
   // write fields
   {
@@ -598,14 +603,15 @@ TEST_P(format_test_case, fields_read_write) {
     state.dir = &dir();
     state.doc_count = 100;
     state.name = "segment_name";
-    state.features = &field.features;
+    state.features = &features;
+    state.index_features = field.index_features;
 
     // should use sorted terms on write
     terms<sorted_terms_t::iterator> terms(sorted_terms.begin(), sorted_terms.end());
 
     auto writer = codec()->get_field_writer(false);
     writer->prepare(state);
-    writer->write(field.name, field.norm, field.features, terms);
+    writer->write(field.name, field.index_features, field.features, terms);
     writer->end();
   }
 
@@ -624,7 +630,7 @@ TEST_P(format_test_case, fields_read_write) {
     auto term_reader = reader->field(field.name);
     ASSERT_NE(nullptr, term_reader);
     ASSERT_EQ(field.name, term_reader->meta().name);
-    ASSERT_EQ(field.norm, term_reader->meta().norm);
+    ASSERT_EQ(field.index_features, term_reader->meta().index_features);
     ASSERT_EQ(field.features, term_reader->meta().features);
 
     ASSERT_EQ(sorted_terms.size(), term_reader->size());
@@ -634,7 +640,7 @@ TEST_P(format_test_case, fields_read_write) {
     // check terms using "next"
     {
       auto expected_term = sorted_terms.begin();
-      auto term = term_reader->iterator();
+      auto term = term_reader->iterator(irs::SeekMode::NORMAL);
       for (; term->next(); ++expected_term) {
         ASSERT_EQ(*expected_term, term->value());
       }
@@ -646,7 +652,41 @@ TEST_P(format_test_case, fields_read_write) {
      {
        auto expected_sorted_term = sorted_terms.begin();
        for (auto end = sorted_terms.end(); expected_sorted_term != end; ++expected_sorted_term) {
-         auto term = term_reader->iterator();
+         auto term = term_reader->iterator(irs::SeekMode::RANDOM_ONLY);
+         ASSERT_NE(nullptr, term);
+         auto* meta = irs::get<irs::term_meta>(*term);
+         ASSERT_NE(nullptr, meta);
+         ASSERT_TRUE(term->seek(*expected_sorted_term));
+         ASSERT_EQ(*expected_sorted_term, term->value());
+         ASSERT_NO_THROW(term->read());
+         ASSERT_THROW(term->next(), irs::not_supported);
+         ASSERT_THROW(term->seek_ge(*expected_sorted_term), irs::not_supported);
+         auto cookie = term->cookie();
+         ASSERT_NE(nullptr, cookie);
+         {
+           auto* meta_from_cookie = irs::get<irs::term_meta>(*cookie);
+           ASSERT_NE(nullptr, meta_from_cookie);
+           ASSERT_EQ(meta->docs_count, meta_from_cookie->docs_count);
+           ASSERT_EQ(meta->freq, meta_from_cookie->freq);
+         }
+
+         auto cookie_term = term_reader->iterator(irs::SeekMode::RANDOM_ONLY);
+         ASSERT_TRUE(cookie_term->seek(term->value(), *cookie));
+         ASSERT_EQ(term->value(), cookie_term->value());
+         {
+           auto* meta_from_cookie = irs::get<irs::term_meta>(*cookie_term);
+           ASSERT_NE(nullptr, meta_from_cookie);
+           ASSERT_EQ(meta->docs_count, meta_from_cookie->docs_count);
+           ASSERT_EQ(meta->freq, meta_from_cookie->freq);
+         }
+       }
+     }
+
+    // check terms using single "seek"
+     {
+       auto expected_sorted_term = sorted_terms.begin();
+       for (auto end = sorted_terms.end(); expected_sorted_term != end; ++expected_sorted_term) {
+         auto term = term_reader->iterator(irs::SeekMode::NORMAL);
          ASSERT_TRUE(term->seek(*expected_sorted_term));
          ASSERT_EQ(*expected_sorted_term, term->value());
        }
@@ -655,15 +695,15 @@ TEST_P(format_test_case, fields_read_write) {
      // check sorted terms using "seek to cookie"
      {
        auto expected_sorted_term = sorted_terms.begin();
-       auto term = term_reader->iterator();
-       for (auto end = sorted_terms.end(); term->next(); ++expected_sorted_term) {
+       auto term = term_reader->iterator(irs::SeekMode::NORMAL);
+       for (; term->next(); ++expected_sorted_term) {
          ASSERT_EQ(*expected_sorted_term, term->value());
 
          // get cookie
          auto cookie = term->cookie();
          ASSERT_NE(nullptr, cookie);
          {
-           auto sought_term = term_reader->iterator();
+           auto sought_term = term_reader->iterator(irs::SeekMode::NORMAL);
            ASSERT_TRUE(sought_term->seek(*expected_sorted_term, *cookie));
            ASSERT_EQ(*expected_sorted_term, sought_term->value());
 
@@ -683,8 +723,8 @@ TEST_P(format_test_case, fields_read_write) {
      // check unsorted terms using "seek to cookie"
      {
        auto expected_term = unsorted_terms.begin();
-       auto term = term_reader->iterator();
-       for (auto end = unsorted_terms.end(); term->next(); ++expected_term) {
+       auto term = term_reader->iterator(irs::SeekMode::NORMAL);
+       for (; term->next(); ++expected_term) {
          auto sorted_term = sorted_terms.find(*expected_term);
          ASSERT_NE(sorted_terms.end(), sorted_term);
 
@@ -692,7 +732,7 @@ TEST_P(format_test_case, fields_read_write) {
          auto cookie = term->cookie();
          ASSERT_NE(nullptr, cookie);
          {
-           auto sought_term = term_reader->iterator();
+           auto sought_term = term_reader->iterator(irs::SeekMode::NORMAL);
            ASSERT_TRUE(sought_term->seek(*sorted_term, *cookie));
            ASSERT_EQ(*sorted_term, sought_term->value());
 
@@ -712,7 +752,7 @@ TEST_P(format_test_case, fields_read_write) {
      // check sorted terms using multiple "seek"s on single iterator
      {
        auto expected_term = sorted_terms.begin();
-       auto term = term_reader->iterator();
+       auto term = term_reader->iterator(irs::SeekMode::NORMAL);
        for (auto end = sorted_terms.end(); expected_term != end; ++expected_term) {
          ASSERT_TRUE(term->seek(*expected_term));
 
@@ -725,7 +765,7 @@ TEST_P(format_test_case, fields_read_write) {
      // check sorted terms in reverse order using multiple "seek"s on single iterator
      {
        auto expected_term = sorted_terms.rbegin();
-       auto term = term_reader->iterator();
+       auto term = term_reader->iterator(irs::SeekMode::NORMAL);
        for (auto end = sorted_terms.rend(); expected_term != end; ++expected_term) {
          ASSERT_TRUE(term->seek(*expected_term));
 
@@ -738,7 +778,7 @@ TEST_P(format_test_case, fields_read_write) {
      // check unsorted terms using multiple "seek"s on single iterator
      {
        auto expected_term = unsorted_terms.begin();
-       auto term = term_reader->iterator();
+       auto term = term_reader->iterator(irs::SeekMode::NORMAL);
        for (auto end = unsorted_terms.end(); expected_term != end; ++expected_term) {
          ASSERT_TRUE(term->seek(*expected_term));
 
@@ -757,7 +797,7 @@ TEST_P(format_test_case, fields_read_write) {
           { "abcabelit", "abcabelit" }
         };
 
-       auto term = term_reader->iterator();
+       auto term = term_reader->iterator(irs::SeekMode::NORMAL);
        for (const auto& [seek_term, expected_term] : TERMS) {
          ASSERT_EQ(seek_term == expected_term,
                    term->seek(irs::ref_cast<irs::byte_type>(seek_term)));
@@ -769,7 +809,7 @@ TEST_P(format_test_case, fields_read_write) {
      {
        // with state
        {
-         auto term = term_reader->iterator();
+         auto term = term_reader->iterator(irs::SeekMode::NORMAL);
          ASSERT_FALSE(term->seek(irs::bytes_ref::NIL));
          ASSERT_EQ((term_reader->min)(), term->value());
          ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_ref::NIL));
@@ -778,13 +818,13 @@ TEST_P(format_test_case, fields_read_write) {
 
        // without state
        {
-         auto term = term_reader->iterator();
+         auto term = term_reader->iterator(irs::SeekMode::NORMAL);
          ASSERT_FALSE(term->seek(irs::bytes_ref::NIL));
          ASSERT_EQ((term_reader->min)(), term->value());
        }
 
        {
-         auto term = term_reader->iterator();
+         auto term = term_reader->iterator(irs::SeekMode::NORMAL);
          ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_ref::NIL));
          ASSERT_EQ((term_reader->min)(), term->value());
        }
@@ -813,7 +853,7 @@ TEST_P(format_test_case, fields_read_write) {
 
        /* seek exactly to term */
        {
-         auto term = term_reader->iterator();
+         auto term = term_reader->iterator(irs::SeekMode::NORMAL);
          ASSERT_FALSE(term->seek(seek_term));
          /* we on the BLOCK "abab" */
          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abab")), term->value());
@@ -823,7 +863,7 @@ TEST_P(format_test_case, fields_read_write) {
 
        /* seek to term which is equal or greater than current */
        {
-         auto term = term_reader->iterator();
+         auto term = term_reader->iterator(irs::SeekMode::NORMAL);
          ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(seek_term));
          ASSERT_EQ(seek_result, term->value());
 
@@ -926,7 +966,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
 
       using directory::attributes;
 
-      virtual irs::attribute_store& attributes() noexcept override {
+      virtual irs::directory_attributes& attributes() noexcept override {
         return dir_.attributes();
       }
 
@@ -1022,12 +1062,12 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
 
   // write docs
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), seg);
     auto column = writer->push_column({
       irs::type<irs::compression::lz4>::get(),
       irs::compression::options(),
-      bool(irs::get_encryption(dir().attributes()))
+      bool(dir().attributes().encryption())
     });
     column_id = column.first;
     auto& column_handler = column.second;
@@ -1046,7 +1086,12 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
       stream.write_bytes(payload.c_str(), payload.size());
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = id - 1;
+    state.name = seg.name;
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // read documents
@@ -1086,12 +1131,12 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
 
   // write docs
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), seg);
     auto column = writer->push_column({
       irs::type<irs::compression::lz4>::get(),
       irs::compression::options(),
-      bool(irs::get_encryption(dir().attributes()))
+      bool(dir().attributes().encryption())
     });
     column_id = column.first;
     auto& column_handler = column.second;
@@ -1100,7 +1145,12 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
       column_handler(id);
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = MAX_DOC;
+    state.name = seg.name;
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // read documents
@@ -1132,13 +1182,13 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
 
   // write bit mask into the column without actual data
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column({
       irs::type<irs::compression::lz4>::get(),
       irs::compression::options(),
-      bool(irs::get_encryption(dir().attributes()))
+      bool(dir().attributes().encryption())
     });
 
     id = column.first;
@@ -1150,7 +1200,12 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     handle(9); ++segment.docs_count;
     // we don't support irs::type_limits<<irs::type_t::doc_id_t>::eof() key value
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = segment.docs_count;
+    state.name = segment.name;
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // check previously written mask
@@ -1194,12 +1249,15 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
 
       std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> expected_values = {
-        { 0, 2 }, { 2, 2 },
+        { 1, 2 }, { 2, 2 },
         { 3, 4 }, { 4, 4 },
         { 5, 8 },
         { 9, 9 },
@@ -1213,12 +1271,20 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         const auto expected_value = pair.second;
 
         ASSERT_EQ(expected_value, it->seek(value_to_find));
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        if (payload) {
+          // if attribute is present, payload value has
+          // to be always empty for mask column
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        }
       }
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
     }
 
     // iterate over field values (cached)
@@ -1229,9 +1295,12 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
 
       std::vector<irs::doc_id_t> expected_values = {
         2, 4, 8, 9
@@ -1240,13 +1309,21 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       size_t i = 0;
       for (; it->next(); ++i) {
         ASSERT_EQ(expected_values[i], it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        if (payload) {
+          // if attribute is present, payload value has
+          // to be always empty for mask column
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        }
       }
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
     }
   }
 
@@ -1267,9 +1344,12 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
 
       std::vector<irs::doc_id_t> expected_values = {
         2, 4, 8, 9
@@ -1278,13 +1358,21 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       size_t i = 0;
       for (; it->next(); ++i) {
         ASSERT_EQ(expected_values[i], it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        if (payload) {
+          // if attribute is present, payload value has
+          // to be always empty for mask column
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        }
       }
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
     }
 
     // read field values (cached)
@@ -1304,9 +1392,9 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
       ASSERT_TRUE(mask(8, actual_value));
       ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(2, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
       ASSERT_TRUE(mask(9, actual_value));
+      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+      ASSERT_TRUE(mask(2, actual_value));
       ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
     }
 
@@ -1318,9 +1406,12 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
 
       std::vector<irs::doc_id_t> expected_values = {
         2, 4, 8, 9
@@ -1329,13 +1420,21 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       size_t i = 0;
       for (; it->next(); ++i) {
         ASSERT_EQ(expected_values[i], it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        if (payload) {
+          // if attribute is present, payload value has
+          // to be always empty for mask column
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        }
       }
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
     }
   }
 }
@@ -1360,14 +1459,20 @@ TEST_P(format_test_case, columns_rw_empty) {
 
   // add columns
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), meta0);
 
-    column0_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) }).first;
+    column0_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) }).first;
     ASSERT_EQ(0, column0_id);
-    column1_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) }).first;
+    column1_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) }).first;
     ASSERT_EQ(1, column1_id);
-    ASSERT_FALSE(writer->commit()); // flush empty columns
+
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = meta0.docs_count;
+    state.name = meta0.name;
+
+    ASSERT_FALSE(writer->commit(state)); // flush empty columns
   }
 
   files.clear();
@@ -1377,8 +1482,6 @@ TEST_P(format_test_case, columns_rw_empty) {
   {
     auto reader = codec()->get_columnstore_reader();
     ASSERT_FALSE(reader->prepare(dir(), meta0)); // no columns found
-
-    irs::bytes_ref actual_value;
 
     // check empty column 0
     ASSERT_EQ(nullptr, reader->column(column0_id));
@@ -1396,7 +1499,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
       insert(std::make_shared<tests::templates::string_field>("name"));
     }
 
-    virtual void value(size_t idx, const irs::string_ref& value) {
+    virtual void value(size_t idx, const irs::string_ref& /*value*/) {
       auto& field = indexed.get<tests::templates::string_field>(idx);
 
       // amount of data written per doc_id is < sizeof(doc_id)
@@ -1406,7 +1509,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
     virtual void reset() {}
   } doc_template; // two_columns_doc_template
 
-  tests::csv_doc_generator gen(resource("simple_two_column.csv"), doc_template);
+  tests::csv_doc_generator gen{resource("simple_two_column.csv"), doc_template};
   irs::segment_meta seg("_1", nullptr);
 
   seg.codec = codec();
@@ -1415,7 +1518,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
 
   // write documents
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     irs::doc_id_t id = 0;
     writer->prepare(dir(), seg);
 
@@ -1433,7 +1536,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
           res.first->second = writer->push_column({
             irs::type<irs::compression::lz4>::get(),
             irs::compression::options(),
-            bool(irs::get_encryption(dir().attributes()))
+            bool(dir().attributes().encryption())
           });
         }
 
@@ -1451,7 +1554,12 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
       ++seg.docs_count;
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = seg.docs_count;
+    state.name = seg.name;
+
+    ASSERT_TRUE(writer->commit(state));
 
     gen.reset();
   }
@@ -1496,7 +1604,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
     char buf[65536];
   } field;
 
-  std::fstream stream(resource("simple_two_column.csv"));
+  std::fstream stream(resource("simple_two_column.csv").c_str());
   ASSERT_FALSE(!stream);
 
   irs::field_id id;
@@ -1507,13 +1615,13 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
   // write big document
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column({
       irs::type<irs::compression::lz4>::get(),
       irs::compression::options(),
-      bool(irs::get_encryption(dir().attributes()))
+      bool(dir().attributes().encryption())
     });
     id = column.first;
 
@@ -1533,7 +1641,12 @@ TEST_P(format_test_case, columns_rw_big_document) {
       ++segment.docs_count;
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = segment.docs_count;
+    state.name = segment.name;
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // read big document
@@ -1612,7 +1725,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(1, it->seek(0));
+      ASSERT_EQ(1, it->seek(1));
       std::memset(field.buf, 0, sizeof field.buf); // clear buffer
       stream.read(field.buf, sizeof field.buf);
       ASSERT_TRUE(bool(stream));
@@ -1662,7 +1775,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
   // write documents
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
 
     // write 1st segment
     irs::doc_id_t id = 0;
@@ -1678,7 +1791,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
         }
 
         auto& column = res.first->second.second;
@@ -1689,7 +1802,14 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
       ++seg_1.docs_count;
     }
 
-    ASSERT_TRUE(writer->commit());
+    {
+      irs::flush_state state;
+      state.dir = &dir();
+      state.doc_count = seg_1.docs_count;
+      state.name = seg_1.name;
+
+      ASSERT_TRUE(writer->commit(state));
+    }
 
     gen.reset();
 
@@ -1707,7 +1827,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
         }
 
         auto& column = res.first->second.second;
@@ -1718,7 +1838,14 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
       ++seg_2.docs_count;
     }
 
-    ASSERT_TRUE(writer->commit());
+    {
+      irs::flush_state state;
+      state.dir = &dir();
+      state.doc_count = seg_2.docs_count;
+      state.name = seg_2.name;
+
+      ASSERT_TRUE(writer->commit(state));
+    }
 
     // write 3rd segment
     id = 0;
@@ -1734,7 +1861,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
         }
 
         auto& column = res.first->second.second;
@@ -1745,7 +1872,14 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
       ++seg_3.docs_count;
     }
 
-    ASSERT_TRUE(writer->commit());
+    {
+      irs::flush_state state;
+      state.dir = &dir();
+      state.doc_count = seg_3.docs_count;
+      state.name = seg_3.name;
+
+      ASSERT_TRUE(writer->commit(state));
+    }
   }
 
   // read documents
@@ -1907,7 +2041,7 @@ TEST_P(format_test_case, columns_rw_typed) {
 
   // write stored documents
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), meta);
 
     irs::doc_id_t id = 0;
@@ -1923,7 +2057,7 @@ TEST_P(format_test_case, columns_rw_typed) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
         }
 
         auto& column = res.first->second.second;
@@ -1934,7 +2068,12 @@ TEST_P(format_test_case, columns_rw_typed) {
       ++meta.docs_count;
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = meta.docs_count;
+    state.name = meta.name;
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // read stored documents
@@ -1999,7 +2138,6 @@ TEST_P(format_test_case, columns_rw_typed) {
 
     std::unordered_map<std::string, irs::doc_iterator::ptr> readers;
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     irs::doc_id_t i = 0;
     size_t value_id = 0;
@@ -2074,7 +2212,6 @@ TEST_P(format_test_case, columns_rw_typed) {
 
     std::unordered_map<std::string, irs::doc_iterator::ptr> readers;
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     irs::doc_id_t i = 0;
     size_t value_id = 0;
@@ -2140,6 +2277,60 @@ TEST_P(format_test_case, columns_rw_typed) {
   }
 }
 
+TEST_P(format_test_case, columns_issue700) {
+  std::vector<std::pair<irs::doc_id_t, size_t>> docs;
+  irs::doc_id_t doc = irs::doc_limits::min();
+  for (; doc < 1265; ++doc) {
+    docs.emplace_back(doc, 26);
+  }
+  for (; doc < 17761; ++doc) {
+    docs.emplace_back(doc, 25);
+  }
+
+  irs::segment_meta meta("issue-#700", nullptr);
+  meta.version = 0;
+  meta.docs_count = docs.size();
+  meta.live_docs_count = docs.size();
+  meta.codec = codec();
+
+  {
+    auto writer = codec()->get_columnstore_writer(false);
+    ASSERT_NE(nullptr, writer);
+    writer->prepare(dir(), meta);
+
+    auto dense_fixed_offset_column = writer->push_column({
+      irs::type<irs::compression::none>::get(),
+      {}, false });
+
+    ASSERT_EQ(0, dense_fixed_offset_column.first);
+    ASSERT_TRUE(dense_fixed_offset_column.second);
+
+    std::string str;
+    for (auto& doc : docs) {
+      auto& stream = dense_fixed_offset_column.second(doc.first);
+      str.resize(doc.second, 'c');
+      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()), str.size());
+    }
+
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = meta.docs_count;
+    state.name = meta.name;
+
+    ASSERT_TRUE(writer->commit(state));
+  }
+
+  {
+    auto reader = codec()->get_columnstore_reader();
+    ASSERT_NE(nullptr, reader);
+    ASSERT_TRUE(reader->prepare(dir(), meta));
+    ASSERT_EQ(1, reader->size());
+    auto* column = reader->column(0);
+    ASSERT_NE(nullptr, column);
+    ASSERT_EQ(docs.size(), column->size());
+  }
+}
+
 TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
   // border case for dense/sparse fixed offset columns, e.g.
   // |-----|------------|  |-----|------------|
@@ -2166,11 +2357,11 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
 
   {
     // write columns values
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), meta0);
 
-    dense_fixed_offset_column = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
-    sparse_fixed_offset_column = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    dense_fixed_offset_column = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+    sparse_fixed_offset_column = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
 
     irs::doc_id_t doc = irs::doc_limits::min();
 
@@ -2201,7 +2392,12 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
       }
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = meta0.docs_count;
+    state.name = meta0.name;
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // dense fixed offset column
@@ -2360,32 +2556,32 @@ TEST_P(format_test_case, columns_rw) {
   }
 
   // write columns values
-  auto writer = codec()->get_columnstore_writer();
+  auto writer = codec()->get_columnstore_writer(false);
 
   // write _1 segment
   {
     writer->prepare(dir(), meta0);
 
-    auto field0 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field0 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment0_field0_id = field0.first;
     auto& field0_writer = field0.second;
     ASSERT_EQ(0, segment0_field0_id);
-    auto field1 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field1 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment0_field1_id = field1.first;
     auto& field1_writer = field1.second;
     ASSERT_EQ(1, segment0_field1_id);
-    auto empty_field = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) }); // gap between filled columns
+    auto empty_field = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) }); // gap between filled columns
     segment0_empty_column_id = empty_field.first;
     ASSERT_EQ(2, segment0_empty_column_id);
-    auto field2 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field2 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment0_field2_id = field2.first;
     auto& field2_writer = field2.second;
     ASSERT_EQ(3, segment0_field2_id);
-    auto field3 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field3 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment0_field3_id = field3.first;
-    auto& field3_writer = field3.second;
+    [[maybe_unused]] auto& field3_writer = field3.second;
     ASSERT_EQ(4, segment0_field3_id);
-    auto field4 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field4 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment0_field4_id = field4.first;
     auto& field4_writer = field4.second;
     ASSERT_EQ(5, segment0_field4_id);
@@ -2458,22 +2654,27 @@ TEST_P(format_test_case, columns_rw) {
       }
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = meta0.docs_count;
+    state.name = meta0.name;
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // write _2 segment, reuse writer
   {
     writer->prepare(dir(), meta1);
 
-    auto field0 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field0 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment1_field0_id = field0.first;
     auto& field0_writer = field0.second;
     ASSERT_EQ(0, segment1_field0_id);
-    auto field1 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field1 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment1_field1_id = field1.first;
     auto& field1_writer = field1.second;
     ASSERT_EQ(1, segment1_field1_id);
-    auto field2 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field2 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
     segment1_field2_id = field2.first;
     auto& field2_writer = field2.second;
     ASSERT_EQ(2, segment1_field2_id);
@@ -2517,7 +2718,12 @@ TEST_P(format_test_case, columns_rw) {
       stream.reset(); // rollback
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = meta1.docs_count;
+    state.name = meta1.name;
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // read columns values from segment _1
@@ -2626,7 +2832,6 @@ TEST_P(format_test_case, columns_rw) {
         ASSERT_TRUE(column(1, actual_value)); // check doc==1, column==field0
         ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_FALSE(column(5, actual_value)); // doc without value in field0
-        ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_TRUE(column(33, actual_value)); // check doc==33, column==field0
         ASSERT_EQ("field0_doc33", irs::to_string<irs::string_ref>(actual_value.c_str()));
       }
@@ -2636,7 +2841,6 @@ TEST_P(format_test_case, columns_rw) {
         ASSERT_TRUE(column(1, actual_value)); // check doc==0, column==field0
         ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_FALSE(column(5, actual_value)); // doc without value in field0
-        ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_TRUE(column(33, actual_value)); // check doc==33, column==field0
         ASSERT_EQ("field0_doc33", irs::to_string<irs::string_ref>(actual_value.c_str()));
       }
@@ -2726,7 +2930,6 @@ TEST_P(format_test_case, columns_rw) {
       };
 
       for (auto& expected : expected_values) {
-        const auto target = expected.second.first;
         const auto expected_doc = expected.second.second;
         const auto expected_value = expected.first;
 
@@ -2843,7 +3046,7 @@ TEST_P(format_test_case, columns_rw) {
     // visit empty column
     {
       size_t calls_count = 0;
-      auto visitor = [&calls_count] (irs::doc_id_t doc, const irs::bytes_ref& in) {
+      auto visitor = [&calls_count](irs::doc_id_t /*doc*/, const irs::bytes_ref& /*in*/) {
         ++calls_count;
         return true;
       };
@@ -3024,7 +3227,6 @@ TEST_P(format_test_case, columns_rw) {
       };
 
       for (auto& expected : expected_values) {
-        const auto target = expected.second.first;
         const auto expected_doc = expected.second.second;
         const auto expected_value = expected.first;
 

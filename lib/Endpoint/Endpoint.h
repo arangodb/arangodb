@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_H
-#define ARANGODB_ENDPOINT_ENDPOINT_H 1
+#pragma once
 
 #include <ostream>
 #include <string>
@@ -105,4 +104,3 @@ std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EndpointType);
 std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EncryptionType);
 std::ostream& operator<<(std::ostream&, arangodb::Endpoint::DomainType);
 
-#endif

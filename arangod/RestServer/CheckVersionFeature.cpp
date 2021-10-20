@@ -24,7 +24,6 @@
 #include "CheckVersionFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/EnvironmentFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
@@ -39,6 +38,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/EnvironmentFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -69,8 +69,6 @@ CheckVersionFeature::CheckVersionFeature(application_features::ApplicationServer
 }
 
 void CheckVersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("database", "Configure the database");
-
   options->addOldOption("check-version", "database.check-version");
 
   options->addOption("--database.check-version",

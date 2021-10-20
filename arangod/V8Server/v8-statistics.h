@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_STATISTICS_H
-#define ARANGOD_V8_SERVER_V8_STATISTICS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -30,4 +29,3 @@
 
 void TRI_InitV8Statistics(v8::Isolate* isolate, v8::Handle<v8::Context>);
 
-#endif

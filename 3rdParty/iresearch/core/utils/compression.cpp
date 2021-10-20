@@ -82,6 +82,19 @@ class compression_register
   }
 };
 
+struct identity_compressor final : irs::compression::compressor {
+  virtual irs::bytes_ref compress(
+      irs::byte_type* in,
+      size_t size,
+      irs::bstring& /*buf*/) override {
+    return { in, size };
+  }
+
+  virtual void flush(irs::data_output& /*out*/) override { }
+}; // identity_compressor
+
+identity_compressor IDENTITY_COMPRESSOR;
+
 }
 
 namespace iresearch {
@@ -146,7 +159,7 @@ compressor::ptr get_compressor(
 
     return factory ? factory(opts) : nullptr;
   } catch (...) {
-    IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
+    IR_FRMT_ERROR("Caught exception while getting an analyzer instance"); // cppcheck-suppress syntaxError
   }
 
   return nullptr;
@@ -196,6 +209,10 @@ bool visit(const std::function<bool(const string_ref&)>& visitor) {
 }
 
 REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
+
+compressor::ptr compressor::identity() noexcept {
+  return memory::to_managed<compressor, false>(&IDENTITY_COMPRESSOR);
+}
 
 } // compression
 }

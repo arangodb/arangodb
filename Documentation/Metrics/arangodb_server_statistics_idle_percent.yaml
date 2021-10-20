@@ -1,7 +1,7 @@
 name: arangodb_server_statistics_idle_percent
 introducedIn: "3.8.0"
 help: |
-  Percentage of time that the system CPUs have been idle
+  Percentage of time that the system CPUs have been idle.
 unit: percentage
 type: gauge
 category: Statistics
@@ -12,6 +12,6 @@ exposedBy:
   - agent
   - single
 description: |
-  Percentage of time that the system CPUs have been idle, as 
+  Percentage of time that the system CPUs have been idle, as
   a value between 0 and 100, and as reported by the operating system.
   This metric is only reported on some operating systems.

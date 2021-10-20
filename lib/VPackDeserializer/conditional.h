@@ -20,8 +20,9 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_CONDITIONAL_H
-#define VELOCYPACK_CONDITIONAL_H
+
+#pragma once
+
 #include "plan-executor.h"
 #include "values.h"
 
@@ -231,4 +232,3 @@ struct deserialize_plan_executor<conditional<CSs...>, H> {
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_CONDITIONAL_H

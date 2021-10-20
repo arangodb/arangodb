@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_LIST_H
-#define ARANGOD_AQL_QUERY_LIST_H 1
+#pragma once
 
 #include <cmath>
 #include <list>
@@ -277,4 +276,3 @@ class QueryList {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

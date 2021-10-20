@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TRANSACTION_MANAGER_FEATURE_H
-#define ARANGODB_TRANSACTION_MANAGER_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/debugging.h"
@@ -45,6 +44,7 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   void prepare() override;
   void start() override;
   void stop() override;
+  void initiateSoftShutdown() override;
   void beginShutdown() override;
   void unprepare() override;
 
@@ -52,7 +52,7 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   
   double streamingIdleTimeout() const { return _streamingIdleTimeout; }
 
-  static transaction::Manager* manager() {
+  static transaction::Manager* manager() noexcept {
     return MANAGER.get();
   }
 
@@ -60,6 +60,8 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   void trackExpired(uint64_t numExpired);
 
  private:
+  void queueGarbageCollection();
+
   static constexpr double defaultStreamingIdleTimeout = 60.0;
   static constexpr double maxStreamingIdleTimeout = 120.0;
 
@@ -85,4 +87,3 @@ class ManagerFeature final : public application_features::ApplicationFeature {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

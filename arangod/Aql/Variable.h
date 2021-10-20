@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_VARIABLE_H
-#define ARANGOD_AQL_VARIABLE_H 1
+#pragma once
 
 #include <string>
 
@@ -132,4 +131,3 @@ private:
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

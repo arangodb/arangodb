@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_DEADLOCK_DETECTOR_H
-#define ARANGODB_BASICS_DEADLOCK_DETECTOR_H 1
+#pragma once
 
 #include <unordered_map>
 #include <unordered_set>
@@ -328,4 +327,3 @@ class DeadlockDetector {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

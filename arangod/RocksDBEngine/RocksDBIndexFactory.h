@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_INDEX_FACTORY_H
-#define ARANGOD_ROCKSDB_ROCKSDB_INDEX_FACTORY_H 1
+#pragma once
 
 #include "Indexes/IndexFactory.h"
 
@@ -38,14 +37,13 @@ class RocksDBIndexFactory final : public IndexFactory {
   std::unordered_map<std::string, std::string> indexAliases() const override;
 
   /// @brief create initial system indexes
-  void fillSystemIndexes(arangodb::LogicalCollection& col,
-                         std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const override;
+  void fillSystemIndexes(LogicalCollection& col,
+                         std::vector<std::shared_ptr<Index>>& systemIndexes) const override;
 
   /// @brief create indexes from a list of index definitions
-  void prepareIndexes(LogicalCollection& col, arangodb::velocypack::Slice const& indexesSlice,
-                      std::vector<std::shared_ptr<arangodb::Index>>& indexes) const override;
+  void prepareIndexes(LogicalCollection& col, velocypack::Slice indexesSlice,
+                      std::vector<std::shared_ptr<Index>>& indexes) const override;
 };
 
 }  // namespace arangodb
 
-#endif

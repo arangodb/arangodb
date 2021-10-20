@@ -300,11 +300,16 @@ void RestTransactionHandler::executeJSTransaction() {
   }
 
   // register a function to release the V8Context whenever we exit from this scope
-  auto guard = scopeGuard([this]() {
-    WRITE_LOCKER(lock, _lock);
-    if (_v8Context != nullptr) {
-      server().getFeature<V8DealerFeature>().exitContext(_v8Context);
-      _v8Context = nullptr;
+  auto guard = scopeGuard([this]() noexcept {
+    try {
+        WRITE_LOCKER(lock, _lock);
+        if (_v8Context != nullptr) {
+          server().getFeature<V8DealerFeature>().exitContext(_v8Context);
+          _v8Context = nullptr;
+        }
+    } catch(std::exception const& ex) {
+      LOG_TOPIC("1b20f", ERR, Logger::V8)
+          << "Failed to exit V8 context while executing JS transaction: " << ex.what();
     }
   });
      

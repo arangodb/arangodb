@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8CLIENT_ARANGO_CLIENT_HELPER_H
-#define ARANGODB_V8CLIENT_ARANGO_CLIENT_HELPER_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -52,4 +51,3 @@ class ArangoClientHelper {
 };
 }  // namespace arangodb
 
-#endif

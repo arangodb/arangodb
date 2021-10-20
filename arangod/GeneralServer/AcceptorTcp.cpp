@@ -126,15 +126,11 @@ void AcceptorTcp<T>::open() {
 
 template <SocketType T>
 void AcceptorTcp<T>::close() {
-  if (_asioSocket) {
-    _asioSocket->timer.cancel();
-  }
   if (_open) {
     _open = false;  // make sure the _open flag is `false` before we
                     // cancel/close the acceptor, since otherwise the
                     // handleError method will restart async_accept.
     _acceptor.close();
-    _asioSocket.reset();
   }
 }
 
@@ -145,14 +141,12 @@ void AcceptorTcp<T>::cancel() {
 
 template <>
 void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
-  // In most cases _asioSocket will be nullptr here, however, if
-  // the async_accept returns with an error, then an old _asioSocket
-  // is already set. Therefore, we do no longer assert here that
-  // _asioSocket is nullptr.
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::NONE);
 
-  _asioSocket.reset(new AsioSocket<SocketType::Tcp>(_server.selectIoContext()));
-  auto handler = [this](asio_ns::error_code const& ec) {
+  auto asioSocket = std::make_unique<AsioSocket<SocketType::Tcp>>(_server.selectIoContext());
+  auto& socket = asioSocket->socket;
+  auto& peer = asioSocket->peer;
+  auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) mutable {
     if (ec) {
       handleError(ec);
       return;
@@ -166,22 +160,21 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
     info.serverAddress = _endpoint->host();
     info.serverPort = _endpoint->port();
 
-    std::unique_ptr<AsioSocket<SocketType::Tcp>> as = std::move(_asioSocket);
-    info.clientAddress = as->peer.address().to_string();
-    info.clientPort = as->peer.port();
+    info.clientAddress = asioSocket->peer.address().to_string();
+    info.clientPort = asioSocket->peer.port();
 
     LOG_TOPIC("853aa", DEBUG, arangodb::Logger::COMMUNICATION)
         << "accepted connection from " << info.clientAddress << ":" << info.clientPort;
 
     auto commTask =
         std::make_shared<HttpCommTask<SocketType::Tcp>>(_server, std::move(info),
-                                                        std::move(as));
+                                                        std::move(asioSocket));
     _server.registerTask(std::move(commTask));
     this->asyncAccept();
   };
 
   // cppcheck-suppress accessMoved
-  _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, std::move(handler));
+  _acceptor.async_accept(socket, peer, std::move(handler));
 }
 
 template <>
@@ -256,29 +249,26 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
 
 template <>
 void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
-  // In most cases _asioSocket will be nullptr here, however, if
-  // the async_accept returns with an error, then an old _asioSocket
-  // is already set. Therefore, we do no longer assert here that
-  // _asioSocket is nullptr.
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::SSL);
 
   // select the io context for this socket
   auto& ctx = _server.selectIoContext();
 
-  _asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
-  auto handler = [this](asio_ns::error_code const& ec) {
+  auto asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
+  auto& socket = asioSocket->socket.lowest_layer();
+  auto& peer =  asioSocket->peer;
+  auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) mutable {
     if (ec) {
       handleError(ec);
       return;
     }
 
-    performHandshake(std::move(_asioSocket));
+    performHandshake(std::move(asioSocket));
     this->asyncAccept();
   };
 
   // cppcheck-suppress accessMoved
-  _acceptor.async_accept(_asioSocket->socket.lowest_layer(), _asioSocket->peer,
-                         std::move(handler));
+  _acceptor.async_accept(socket, peer, std::move(handler));
 }
 }  // namespace rest
 }  // namespace arangodb

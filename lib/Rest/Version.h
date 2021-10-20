@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_VERSION_H
-#define ARANGODB_REST_VERSION_H 1
+#pragma once
 
 #include <map>
 #include <string>
@@ -131,6 +130,9 @@ class Version {
   // get endianness
   static std::string getEndianness();
 
+  // get plaform
+  static std::string getPlatform();
+
   // get build date
   static std::string getBuildDate();
 
@@ -154,4 +156,3 @@ class Version {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

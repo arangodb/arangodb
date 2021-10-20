@@ -628,8 +628,8 @@ bool RestImportHandler::createFromKeyValueList() {
   bool const complete = _request->parsedValue("complete", false);
   bool const overwrite = _request->parsedValue("overwrite", false);
   _ignoreMissing = _request->parsedValue("ignoreMissing", false);
-  OperationOptions opOptions(_context);
-  opOptions.waitForSync = _request->parsedValue("waitForSync", false);
+  OperationOptions opOptions = buildOperationOptions();
+  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
   // extract the collection name
   bool found;
@@ -849,7 +849,8 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
     if (part.size() > 255) {
       // UTF-8 chars in string will be escaped so we can truncate it at any
       // point
-      part = part.substr(0, 255) + "...";
+      part.resize(255);
+      part.append("...");
     }
 
     auto errorMsg =
@@ -866,8 +867,9 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
     VPackSlice resultSlice = opResult.slice();
 
     if (resultSlice.isArray()) {
-      size_t pos = 0;
+      VPackArrayIterator babiesIterator(babies.slice());
 
+      TRI_ASSERT(resultSlice.length() == babies.slice().length());
       for (VPackSlice it : VPackArrayIterator(resultSlice)) {
         VPackSlice s = it.get(StaticStrings::Error);
         if (!s.isBool() || !s.getBool()) {
@@ -883,7 +885,6 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
         } else {
           // got an error, now handle it
           auto errorCode = ErrorCode{it.get(StaticStrings::ErrorNum).getNumber<int>()};
-          VPackSlice const which = babies.slice().at(pos);
           // special behavior in case of unique constraint violation . . .
           if (errorCode == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
               _onDuplicateAction == DUPLICATE_IGNORE) {
@@ -892,7 +893,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
             res = TRI_ERROR_NO_ERROR;
             ++result._numIgnored;
           } else { 
-            makeError(pos, errorCode, which, result);
+            makeError(babiesIterator.index(), errorCode, babiesIterator.value(), result);
             if (complete) {
               res = errorCode;
               break;
@@ -900,7 +901,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
           }
         }
 
-        ++pos;
+        babiesIterator.next();
       }
     }
   }

@@ -22,18 +22,15 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_DROP_COLLECTION_H
-#define ARANGODB_MAINTENANCE_DROP_COLLECTION_H
+#pragma once
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
 
-#include <chrono>
-
 namespace arangodb {
 namespace maintenance {
 
-class DropCollection : public ActionBase {
+class DropCollection : public ActionBase, ShardDefinition {
  public:
   DropCollection(MaintenanceFeature&, ActionDescription const&);
 
@@ -46,4 +43,3 @@ class DropCollection : public ActionBase {
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

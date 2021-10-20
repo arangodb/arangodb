@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AGENCY_AGENCY_FEATURE_H
-#define ARANGOD_AGENCY_AGENCY_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -74,4 +73,3 @@ class AgencyFeature : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

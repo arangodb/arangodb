@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_ADDFOLLOWER_H
-#define ARANGOD_CONSENSUS_ADDFOLLOWER_H 1
+#pragma once
 
 #include "Job.h"
 #include "Supervision.h"
@@ -54,4 +53,3 @@ struct AddFollower : public Job {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

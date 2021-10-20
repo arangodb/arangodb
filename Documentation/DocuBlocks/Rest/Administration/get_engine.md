@@ -20,7 +20,7 @@ will be *rocksdb*
 
 Return the active storage engine with the RocksDB storage engine in use:
 
-@EXAMPLE_ARANGOSH_RUN{RestEngine_rocksdb}
+@EXAMPLE_ARANGOSH_RUN{RestEngine}
     var response = logCurlRequest('GET', '/_api/engine');
 
     assert(response.code === 200);

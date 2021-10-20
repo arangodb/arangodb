@@ -26,6 +26,7 @@
 
 #include <vector>
 
+#include "index/index_features.hpp"
 #include "utils/attributes.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/math_utils.hpp"
@@ -106,6 +107,7 @@ class score_function : util::noncopyable {
   score_function(score_function&& rhs) noexcept;
   score_function& operator=(score_function&& rhs) noexcept;
 
+  // cppcheck-suppress CastIntegerToAddressAtReturn
   const byte_type* operator()() const {
     assert(func_);
     return func_(ctx_.get());
@@ -362,9 +364,9 @@ class IRESEARCH_API sort {
       const term_collector* term) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief the features required for proper operation of this sort::prepared
+    /// @brief the index features required for proper operation of this sort::prepared
     ////////////////////////////////////////////////////////////////////////////////
-    virtual const flags& features() const = 0;
+    virtual IndexFeatures features() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief create an object to be used for collecting index statistics, one
@@ -570,6 +572,7 @@ struct score_traits {
                   const byte_type* RESTRICT src) noexcept {
     const auto offset = ctx->score_offset;
     auto& casted_dst = score_cast(dst + offset);
+    // cppcheck-suppress constVariable
     auto& casted_src = score_cast(src + offset);
 
     if (casted_dst < casted_src) {
@@ -930,19 +933,19 @@ class IRESEARCH_API order final {
         (*merge_func_)(bucket_, dst, src);
       }
 
-      FORCE_INLINE bool operator==(bulk_merge_f merge_func) const noexcept {
+      FORCE_INLINE bool operator==(const bulk_merge_f merge_func) const noexcept {
         return merge_func == bulk_merge_func_;
       }
 
-      FORCE_INLINE bool operator!=(bulk_merge_f merge_func) const noexcept {
+      FORCE_INLINE bool operator!=(const bulk_merge_f merge_func) const noexcept {
         return merge_func != bulk_merge_func_;
       }
 
-      FORCE_INLINE bool operator==(merge_f merge_func) const noexcept {
+      FORCE_INLINE bool operator==(const merge_f merge_func) const noexcept {
         return merge_func == merge_func_;
       }
 
-      FORCE_INLINE bool operator!=(merge_f merge_func) const noexcept {
+      FORCE_INLINE bool operator!=(const merge_f merge_func) const noexcept {
         return merge_func != merge_func_;
       }
 
@@ -972,7 +975,7 @@ class IRESEARCH_API order final {
     prepared(prepared&&) = default;
     prepared& operator=(prepared&&) = default;
 
-    const flags& features() const noexcept { return features_; }
+    IndexFeatures features() const noexcept { return index_features_; }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store the score types of all buckets
@@ -1116,9 +1119,9 @@ class IRESEARCH_API order final {
 
     IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     prepared_order_t order_;
-    flags features_;
     size_t score_size_{ 0 };
     size_t stats_size_{ 0 };
+    IndexFeatures index_features_{ IndexFeatures::NONE };
     IRESEARCH_API_PRIVATE_VARIABLES_END
   }; // prepared
 

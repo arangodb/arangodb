@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AST_NODE_H
-#define ARANGOD_AQL_AST_NODE_H 1
+#pragma once
 
 #include "Basics/ScopeGuard.h"
 
@@ -563,7 +562,7 @@ struct AstNode {
   /// If it runs into a finalized node, it assumes the whole subtree beneath
   /// it is marked already and exits early; otherwise it will finalize the node
   /// and recurse on its subtree.
-  static void markFinalized(AstNode* subtreeRoot);
+  static void markFinalized(AstNode* subtreeRoot) noexcept;
 
   /// @brief sets the computed value pointer.
   void setComputedValue(uint8_t* data);
@@ -656,7 +655,7 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
   if (wasFinalizedAlready) {                                                               \
     (n)->flags = ((n)->flags & ~arangodb::aql::AstNodeFlagType::FLAG_FINALIZED);           \
   }                                                                                        \
-  TRI_DEFER(FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready));
+  auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready); });
 #else
 #define FINALIZE_SUBTREE(n) \
   while (0) {               \
@@ -678,4 +677,3 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
   } while (0)
 #endif
 
-#endif

@@ -1,7 +1,7 @@
 name: arangodb_metric
 introducedIn: "3.8.0"
 help: |
-  Put the help string here.
+  Put the help string here, encoding with a period.
 unit: number
 type: gauge
 category: Health
@@ -37,17 +37,16 @@ exposedBy:
   - agent
   - single
 description: |
-  Description here. Can be multiline and use markdown.
+  Description here. Can be multi-line and use Markdown.
 threshold: |
   # optional
   Optional text to describe thresholds and normal ranges for the metrics.
-  Can be multiline markdown.
+  Can be multi-line Markdown.
 troubleshoot: |
   # optional
   If at all possible describe hints for troubleshooting and how to get
   metrics in allowable range again.
 grafana:
-  # optional, whatever information might be useful for grafana
+  # optional, whatever information might be useful for Grafana
   json: "{}"
   query: "rate(arangodb_metric[1m]) by (instance)"
-  

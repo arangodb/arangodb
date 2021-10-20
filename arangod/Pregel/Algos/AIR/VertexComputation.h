@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXCOMPUTATION_H
-#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXCOMPUTATION_H 1
+#pragma once
 
 #include "AIR.h"
 
@@ -109,4 +108,3 @@ class VertexComputation : public vertex_computation {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

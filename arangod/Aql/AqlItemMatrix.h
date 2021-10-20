@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_ITEM_MATRIX_H
-#define ARANGOD_AQL_AQL_ITEM_MATRIX_H 1
+#pragma once
 
 #include "Aql/ShadowAqlItemRow.h"
 
@@ -30,8 +29,7 @@
 #include <utility>
 #include <vector>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class InputAqlItemRow;
 class SharedAqlItemBlockPtr;
@@ -120,6 +118,49 @@ class AqlItemMatrix {
   [[nodiscard]] auto skipAllShadowRowsOfDepth(size_t depth)
       -> std::tuple<size_t, ShadowAqlItemRow>;
 
+  class RowIterator {
+   public:
+    using value_type        = InputAqlItemRow;
+
+    RowIterator() = default;
+    RowIterator(AqlItemMatrix const* matrix, size_t blockIndex, size_t rowIndex);
+
+    // Returns the current value, and move the iterator to the next value
+    value_type next() noexcept;
+
+    auto isInitialized() const noexcept -> bool;
+
+    // Returns whether the current value is valid, i.e. whether next() may be
+    // called
+    auto hasMore() const noexcept -> bool;
+
+    value_type operator*() const noexcept;
+
+    // This can't be implemented, as we can only create the InputAqlItemRow
+    // on-the-fly.
+    // pointer operator->();
+
+    // Prefix increment
+    RowIterator& operator++() noexcept;
+
+    // Postfix increment.
+    auto operator++(int) & noexcept -> RowIterator;
+
+    explicit operator bool() const noexcept;
+
+    friend bool operator==(RowIterator const& a, RowIterator const& b);
+    friend bool operator!=(RowIterator const& a, RowIterator const& b);
+
+   private:
+    AqlItemMatrix const* _matrix{};
+    std::size_t _blockIndex{};
+    // Invariant: _rowIndex is valid iff _blockIndex is valid.
+    std::size_t _rowIndex{};
+  };
+
+  [[nodiscard]] RowIterator begin() const;
+  [[nodiscard]] RowIterator end() const;
+
  private:
   std::vector<SharedAqlItemBlockPtr> _blocks;
 
@@ -130,7 +171,7 @@ class AqlItemMatrix {
   size_t _stopIndexInLastBlock;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+bool operator==(AqlItemMatrix::RowIterator const& a, AqlItemMatrix::RowIterator const& b);
+bool operator!=(AqlItemMatrix::RowIterator const& a, AqlItemMatrix::RowIterator const& b);
 
-#endif
+}  // namespace arangodb::aql

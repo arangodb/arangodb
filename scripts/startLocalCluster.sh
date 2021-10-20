@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 params=("$@")
 
-ulimit -H -n 131072 || true
-ulimit -S -n 131072 || true
+if [ $(ulimit -S -n) -lt 131072 ]; then
+    if [ $(ulimit -H -n) -lt 131072 ]; then
+        ulimit -H -n 131072 || true
+    fi
+    ulimit -S -n 131072 || true
+fi
 
 rm -rf cluster
 if [ -d cluster-init ];then
@@ -221,7 +225,7 @@ start() {
 
     TYPE=$1
     PORT=$2
-    mkdir -p cluster/data$PORT cluster/apps$PORT
+    mkdir -p cluster/data$PORT
     echo == Starting $TYPE on port $PORT
     [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     if [ "$AUTOUPGRADE" == "1" ];then
@@ -235,7 +239,6 @@ start() {
           --log.role true \
           --log.file cluster/$PORT.log \
           --log.level $LOG_LEVEL \
-          --server.statistics true \
           --javascript.startup-directory $SRC_DIR/js \
           --javascript.module-directory $SRC_DIR/enterprise/js \
           --javascript.app-path cluster/apps$PORT \
@@ -261,7 +264,6 @@ start() {
         --log.role true \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
-        --server.statistics true \
         --javascript.startup-directory $SRC_DIR/js \
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path cluster/apps$PORT \

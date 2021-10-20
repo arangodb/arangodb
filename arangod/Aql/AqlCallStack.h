@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_CALLSTACK_H
-#define ARANGOD_AQL_AQL_CALLSTACK_H 1
+#pragma once
 
 #include "Aql/AqlCallList.h"
 #include "Basics/ResultT.h"
@@ -189,4 +188,3 @@ class AqlCallStack {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

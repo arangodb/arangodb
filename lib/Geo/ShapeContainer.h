@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GEO_SHAPE_CONTAINER_H
-#define ARANGOD_GEO_SHAPE_CONTAINER_H 1
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -148,4 +147,3 @@ class ShapeContainer final {
 }  // namespace geo
 }  // namespace arangodb
 
-#endif

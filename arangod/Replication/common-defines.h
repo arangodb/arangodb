@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_COMMON_DEFINES_H
-#define ARANGOD_REPLICATION_COMMON_DEFINES_H 1
+#pragma once
 
 #include <cstdlib>
 #include <string>
@@ -78,4 +77,3 @@ bool TRI_ExcludeCollectionReplication(std::string const& name,
 
 }  // namespace arangodb
 
-#endif

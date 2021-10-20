@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_CURSOR_REPOSITORY_H
-#define ARANGOD_UTILS_CURSOR_REPOSITORY_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -61,6 +60,7 @@ class CursorRepository {
   /// the repository will take ownership of the cursor
   ////////////////////////////////////////////////////////////////////////////////
 
+ private:   // currently only used from the create... methods below
   Cursor* addCursor(std::unique_ptr<Cursor> cursor);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -70,6 +70,7 @@ class CursorRepository {
   /// the cursor will take ownership and retain the entire QueryResult object
   //////////////////////////////////////////////////////////////////////////////
 
+ public:
   Cursor* createFromQueryResult(aql::QueryResult&&, size_t, double, bool);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -79,7 +80,7 @@ class CursorRepository {
   /// the cursor will create a query internally and retain it until deleted
   //////////////////////////////////////////////////////////////////////////////
 
-  Cursor* createQueryStream(std::unique_ptr<arangodb::aql::Query> q,
+  Cursor* createQueryStream(std::shared_ptr<arangodb::aql::Query> q,
                             size_t batchSize, double ttl);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -141,8 +142,15 @@ class CursorRepository {
   //////////////////////////////////////////////////////////////////////////////
 
   static size_t const MaxCollectCount;
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief flag, if a soft shutdown is ongoing, this is used for the soft
+  /// shutdown feature in coordinators, in all other instance types
+  /// this pointer is a nullptr and not used.
+  ////////////////////////////////////////////////////////////////////////////
+
+  std::atomic<bool> const* _softShutdownOngoing;
 };
 
 }  // namespace arangodb
 
-#endif

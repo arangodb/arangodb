@@ -357,48 +357,28 @@ static inline T readIntegerFixed(uint8_t const* start) noexcept {
   static_assert(length > 0, "length must be > 0");
   static_assert(length <= sizeof(T), "length must be <= sizeof(T)");
   static_assert(length <=8);
-  switch (length) {
-    case 1:
-      return *start;
-    case 2:
-      return readIntFixedHelper<T, 2>(start);
-    case 3:
-      return readIntFixedHelper<T, 3>(start);
-    case 4:
-      return readIntFixedHelper<T, 4>(start);
-    case 5: // starting with 5 bytes memcpy shows better results than shifts. But
-            // for big-endian we leave shifts as this saves some cpu cyles on byteswapping
-      if constexpr (!isLittleEndian()) {
-        return readIntFixedHelper<T, 5>(start);
-      } else {
-        T v{};
-        memcpy(&v, start, 5);
-        return v;
-      }
-    case 6:
-      if constexpr (!isLittleEndian()) {
-        return readIntFixedHelper<T, 6>(start);
-      } else {
-        T v{};
-        memcpy(&v, start, 6);
-        return v;
-      }
-    case 7:
-      if constexpr (!isLittleEndian()) {
-        return readIntFixedHelper<T, 7>(start);
-      } else {
-        T v{};
-        memcpy(&v, start, 7);
-        return v;
-      }
-    case 8: {
-      T v;
-      memcpy(&v, start, 8);
-      if constexpr (!isLittleEndian()) {
-        v = littleToHost(v);
-      }
+  if constexpr (1 == length) {
+     return *start;
+  }
+  if constexpr(length > 1 && length < 5 ) {      // starting with 5 bytes memcpy shows better results than shifts. But
+    return readIntFixedHelper<T, length>(start); // for big-endian we leave shifts as this saves some cpu cyles on byteswapping
+  }
+  if constexpr(length >= 5 && length < 8) {
+    if constexpr (!isLittleEndian()) {
+      return readIntFixedHelper<T, length>(start);
+    } else {
+      T v{};
+      memcpy(&v, start, length);
       return v;
     }
+  }
+  if constexpr (length == 8) {
+    T v;
+    memcpy(&v, start, 8);
+    if constexpr (!isLittleEndian()) {
+      v = littleToHost(v);
+    }
+    return v;
   }
   return 0;
 }

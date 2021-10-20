@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_SERVER_SECURITY_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_SERVER_SECURITY_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -47,4 +46,3 @@ class ServerSecurityFeature final : public application_features::ApplicationFeat
 
 }  // namespace arangodb
 
-#endif

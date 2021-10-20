@@ -21,8 +21,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_IDENTITY_ANALYZER
-#define ARANGODB_IRESEARCH__IRESEARCH_IDENTITY_ANALYZER 1
+#pragma once
 
 #include "analysis/analyzer.hpp"
 #include "analysis/token_attributes.hpp"
@@ -41,6 +40,10 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
   static bool normalize(const irs::string_ref& /*args*/, std::string& out);
 
   static ptr make(irs::string_ref const& /*args*/);
+  
+  static bool normalize_json(const irs::string_ref& /*args*/, std::string& out);
+
+  static ptr make_json(irs::string_ref const& /*args*/);
 
   IdentityAnalyzer() noexcept;
 
@@ -70,5 +73,4 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
 } // iresearch
 } // arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_IDENTITY_ANALYZER
 

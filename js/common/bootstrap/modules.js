@@ -551,19 +551,15 @@
       Module._extensions[extension](this, filename);
     } catch (e) {
       if (e.errorNum !== internal.errors.ERROR_MODULE_FAILURE.code) {
-        let msg = `${internal.errors.ERROR_MODULE_FAILURE.message}\nReason: ${e}`;
-
-        if (e.fileName !== undefined) {
-          msg += `\nFile: ${e.fileName}`;
-        } else {
-          msg += `\nFile: ${filename}`;
-        }
+        let msg = internal.errors.ERROR_MODULE_FAILURE.message;
+        msg += `\nFile: ${e.fileName || filename}`;
         if (e.lineNumber !== undefined) {
           msg += `\nLine: ${e.lineNumber}`;
         }
         if (e.columnNumber !== undefined) {
           msg += `\nColumn: ${e.columnNumber}`;
         }
+        msg += `\nReason: ${e.stack || e}`;
         throw Object.assign(
           new internal.ArangoError({
             errorNum: internal.errors.ERROR_MODULE_FAILURE.code,

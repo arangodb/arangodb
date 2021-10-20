@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_AGENCY_CACHE
-#define ARANGOD_CLUSTER_AGENCY_CACHE 1
+#pragma once
 
 #include "Agency/Store.h"
 #include "Basics/Result.h"
@@ -207,4 +206,3 @@ ostream& operator<<(ostream& o, arangodb::AgencyCache::databases_t const& d);
 }
 
 
-#endif

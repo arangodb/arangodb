@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_HEARTBEAT_THREAD_H
-#define ARANGOD_CLUSTER_HEARTBEAT_THREAD_H 1
+#pragma once
 
 #include "Basics/Thread.h"
 
@@ -171,17 +170,23 @@ class HeartbeatThread : public Thread,
   void getNewsFromAgencyForCoordinator();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief force update of db servers
+  //////////////////////////////////////////////////////////////////////////////
+
+  void updateDBServers();
+
+ public:
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief bring the db server in sync with the desired state
   //////////////////////////////////////////////////////////////////////////////
 
- public:
   void notify();
 
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update the local agent pool from the slice
   //////////////////////////////////////////////////////////////////////////////
 
- private:
   void updateAgentPool(arangodb::velocypack::Slice const& agentPool);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -309,7 +314,9 @@ class HeartbeatThread : public Thread,
   std::atomic<uint64_t> _lastCurrentVersionNoticed;
   // For periodic update of the current DBServer list:
   std::atomic<int> _updateCounter;
-      
+  // For event-based update of the current DBServer list:
+  std::atomic<bool> _updateDBServers;
+
   /// @brief point in time the server last reported itself as unhealthy (used
   /// to prevent log spamming on every occurrence of unhealthiness)
   std::chrono::steady_clock::time_point _lastUnhealthyTimestamp;
@@ -322,4 +329,3 @@ class HeartbeatThread : public Thread,
 };
 }  // namespace arangodb
 
-#endif

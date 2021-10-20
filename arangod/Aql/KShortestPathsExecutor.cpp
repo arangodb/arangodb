@@ -40,6 +40,7 @@
 #include "Graph/Queues/QueueTracer.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 #include "Transaction/Helpers.h"
 
 #include "Graph/algorithm-aliases.h"
@@ -143,8 +144,8 @@ auto KShortestPathsExecutorInfos<FinderType>::getTargetVertex() const noexcept
 
 template <class FinderType>
 auto KShortestPathsExecutorInfos<FinderType>::cache() const -> graph::TraverserCache* {
-  if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider>> ||
-                std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider>> ||
+  if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
+                std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
                 std::is_same_v<FinderType, KPathEnumerator<ClusterProvider>> ||
                 std::is_same_v<FinderType, TracedKPathEnumerator<ClusterProvider>>
 
@@ -267,8 +268,8 @@ template <class FinderType>
 auto KShortestPathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output) -> void {
   transaction::BuilderLeaser tmp{&_trx};
   tmp->clear();
-  if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider>> ||
-                std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider>> ||
+  if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
+                std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
                 std::is_same_v<FinderType, KPathEnumerator<ClusterProvider>> ||
                 std::is_same_v<FinderType, TracedKPathEnumerator<ClusterProvider>>) {
     if (_finder.getNextPath(*tmp.builder())) {
@@ -306,8 +307,8 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
         try {
           std::string idString;
           // TODO:  calculate expression once e.g. header constexpr bool and check then here
-          if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider>> ||
-                        std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider>> ||
+          if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
+                        std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
                         std::is_same_v<FinderType, KPathEnumerator<ClusterProvider>> ||
                         std::is_same_v<FinderType, TracedKPathEnumerator<ClusterProvider>>) {
             idString = _trx.extractIdString(in.slice());
@@ -378,11 +379,11 @@ template class ::arangodb::aql::KShortestPathsExecutorInfos<arangodb::graph::KSh
 
 /* SingleServerProvider Section */
 
-template class ::arangodb::aql::KShortestPathsExecutorInfos<KPathEnumerator<SingleServerProvider>>;
-template class ::arangodb::aql::KShortestPathsExecutorInfos<TracedKPathEnumerator<SingleServerProvider>>;
+template class ::arangodb::aql::KShortestPathsExecutorInfos<KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
+template class ::arangodb::aql::KShortestPathsExecutorInfos<TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
 
-template class ::arangodb::aql::KShortestPathsExecutor<KPathEnumerator<SingleServerProvider>>;
-template class ::arangodb::aql::KShortestPathsExecutor<TracedKPathEnumerator<SingleServerProvider>>;
+template class ::arangodb::aql::KShortestPathsExecutor<KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
+template class ::arangodb::aql::KShortestPathsExecutor<TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
 
 /* ClusterProvider Section */
 

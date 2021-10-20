@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_LANE_H
-#define ARANGOD_GENERAL_SERVER_LANE_H 1
+#pragma once
 
 namespace arangodb {
 enum class RequestLane {
@@ -62,15 +61,16 @@ enum class RequestLane {
   // V8 or having high priority.
   CLUSTER_INTERNAL,
 
-  // For requests from the DBserver to the Coordinator or
-  // from the Coordinator to the DBserver. Using AQL
-  // these have Medium priority.
+  // Internal AQL requests, or continuations. Low priority.
   CLUSTER_AQL,
 
-  // For future continuations initiated as part of an AQL request from the
-  // DBserver to the Coordinator or from the Coordinator to the DBserver.
-  // These have High priority.
-  CLUSTER_AQL_CONTINUATION,
+  // For requests from the DBserver to the Coordinator, and continuations on the
+  // Coordinator.
+  // These have medium priority. Because client requests made against the
+  // RestCursorHandler (with lane CLIENT_AQL) might block and need these to
+  // finish. Ongoing low priority requests can also prevent low priority lanes
+  // from being worked on, having the same effect.
+  CLUSTER_AQL_INTERNAL_COORDINATOR,
 
   // For requests from the from the Coordinator to the
   // DBserver using V8.
@@ -142,9 +142,9 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
     case RequestLane::CLUSTER_INTERNAL:
       return RequestPriority::HIGH;
     case RequestLane::CLUSTER_AQL:
+      return RequestPriority::LOW;
+    case RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR:
       return RequestPriority::MED;
-    case RequestLane::CLUSTER_AQL_CONTINUATION:
-      return RequestPriority::HIGH;
     case RequestLane::CLUSTER_V8:
       return RequestPriority::LOW;
     case RequestLane::CLUSTER_ADMIN:
@@ -174,4 +174,3 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
 
 }  // namespace arangodb
 
-#endif

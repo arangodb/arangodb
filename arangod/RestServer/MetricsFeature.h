@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_METRICS_FEATURE_H
-#define ARANGODB_REST_SERVER_METRICS_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
@@ -165,16 +164,22 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   template <typename MetricBuilder>
-  auto& add(MetricBuilder&& builder) {
-    return static_cast<typename MetricBuilder::metric_t&>(doAdd(builder));
+  auto add(MetricBuilder&& builder) -> typename MetricBuilder::metric_t& {
+    return static_cast<typename MetricBuilder::metric_t&>(*doAdd(builder));
+  }
+
+  template <typename MetricBuilder>
+  auto addShared(MetricBuilder&& builder)
+      -> std::shared_ptr<typename MetricBuilder::metric_t> {
+    return std::static_pointer_cast<typename MetricBuilder::metric_t>(doAdd(builder));
   }
 
   void toPrometheus(std::string& result, bool V2) const;
 
-  ServerStatistics& serverStatistics();
+  ServerStatistics& serverStatistics() noexcept;
 
  private:
-  Metric& doAdd(metrics::Builder& builder);
+  auto doAdd(metrics::Builder& builder) -> std::shared_ptr<::Metric>;
 
 
   registry_type _registry;
@@ -196,4 +201,3 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

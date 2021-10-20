@@ -27,9 +27,11 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
+#include "RestServer/SoftShutdownFeature.h"
 #include "Utils/ExecContext.h"
 
 namespace {
@@ -60,7 +62,8 @@ AsyncJobResult::AsyncJobResult(IdType jobId, Status status,
 
 AsyncJobResult::~AsyncJobResult() = default;
 
-AsyncJobManager::AsyncJobManager() : _lock(), _jobs() {}
+AsyncJobManager::AsyncJobManager()
+  : _lock(), _jobs(), _softShutdownOngoing(false) {}
 
 AsyncJobManager::~AsyncJobManager() {
   // remove all results that haven't been fetched
@@ -257,8 +260,29 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(AsyncJobResult::St
   return jobs;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get numbers of pending and done jobs.
+//////////////////////////////////////////////////////////////////////////////
+//
+std::pair<uint64_t, uint64_t> AsyncJobManager::getNrPendingAndDone() {
+  uint64_t pending{0};
+  uint64_t done{0};
+  {
+    READ_LOCKER(readLocker, _lock);
+    for (auto const& j : _jobs) {
+      if (j.second.second._status == AsyncJobResult::JOB_PENDING) {
+        ++pending;
+      } else if (j.second.second._status == AsyncJobResult::JOB_DONE) {
+        ++done;
+      }
+    }
+  }
+  return std::pair(pending, done);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes an async job
+/// @brief initializes an async job, throws if soft shutdown is already
+/// ongoing.
 ////////////////////////////////////////////////////////////////////////////////
 
 void AsyncJobManager::initAsyncJob(std::shared_ptr<RestHandler> handler) {
@@ -269,6 +293,11 @@ void AsyncJobManager::initAsyncJob(std::shared_ptr<RestHandler> handler) {
   AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, std::move(handler));
 
   WRITE_LOCKER(writeLocker, _lock);
+
+  if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+        "Soft shutdown ongoing.");
+  }
 
   _jobs.try_emplace(jobId, std::move(user), std::move(ajr));
 }

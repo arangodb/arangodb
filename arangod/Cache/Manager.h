@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_MANAGER_H
-#define ARANGODB_CACHE_MANAGER_H
+#pragma once
 
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/SharedCounter.h"
@@ -294,4 +293,3 @@ class Manager {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

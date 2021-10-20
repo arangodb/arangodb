@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_VALIDATION_RESULT_H
-#define ARANGOD_GRAPH_VALIDATION_RESULT_H 1
+#pragma once
 
 #include <iosfwd>
 
@@ -40,6 +39,8 @@ class ValidationResult {
   bool isPruned() const noexcept;
   bool isFiltered() const noexcept;
 
+  void combine(Type t) noexcept;
+
  private:
   Type _type;
 };
@@ -49,4 +50,3 @@ std::ostream& operator<<(std::ostream& stream, ValidationResult const& res);
 }  // namespace graph
 }  // namespace arangodb
 
-#endif
