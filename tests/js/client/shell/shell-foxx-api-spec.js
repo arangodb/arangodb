@@ -181,12 +181,6 @@ describe('FoxxApi commit', function () {
       expect(result).to.have.property('parsedBody');
     }      
 
-    result = arango.GET_RAW('/test/encode-object-base64encode');
-    print(result)
-
-    result = arango.GET_RAW('/test/encode-array-base64encode');
-    print(result)
-
 
     result = arango.GET_RAW('/test/encode-object-deflate', {'accept-encoding': 'deflate'});
     print(result)
@@ -205,6 +199,12 @@ describe('FoxxApi commit', function () {
     //} else {
     //  expect(result).to.have.property('parsedBody');
     //}      
+
+    //result = arango.GET_RAW('/test/encode-array-base64encode');
+    //print(result)
+
+    //result = arango.GET_RAW('/test/encode-object-base64encode');
+    //print(result)
 
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'deflate'});
