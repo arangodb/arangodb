@@ -52,6 +52,17 @@ replicated_log::ReplicatedLog::ReplicatedLog(std::unique_ptr<LogCore> core,
           std::make_shared<replicated_log::LogUnconfiguredParticipant>(std::move(core), metrics)),
       _metrics(metrics) {}
 
+replicated_log::ReplicatedLog::~ReplicatedLog() {
+  // If we have a participant, it must also hold a replicated log. The only way
+  // to remove the LogCore from the ReplicatedLog is via drop(), which also sets
+  // _participant to nullptr.
+  if (_participant != nullptr) {
+    // resign returns a LogCore and a DeferredAction, which can be destroyed
+    // immediately
+    std::ignore = std::move(*_participant).resign();
+  }
+}
+
 auto replicated_log::ReplicatedLog::becomeLeader(
     LogConfig config, ParticipantId id, LogTerm newTerm,
     std::vector<std::shared_ptr<AbstractFollower>> const& follower)
@@ -93,7 +104,7 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm ter
     LOG_CTX("1ed24", DEBUG, _logContext)
         << "becoming follower in term " << term << " with leader "
         << leaderId.value_or("<none>");
-    auto log = InMemoryLog{_logContext, *logCore};
+    auto log = InMemoryLog::loadFromLogCore(*logCore);
     auto follower = std::make_shared<LogFollower>(_logContext, _metrics,
                                                   std::move(id), std::move(logCore),
                                                   term, std::move(leaderId), log);

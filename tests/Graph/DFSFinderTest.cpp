@@ -57,21 +57,33 @@ namespace tests {
 namespace graph {
 
 class DFSFinderTest : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
-  // using DFSFinder = DFSEnumerator<MockGraphProvider>;
-  using DFSFinder = TracedDFSEnumeratorWOPT<MockGraphProvider>;
+  // using DFSFinder = DFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH>;
+  using DFSFinder = TracedDFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH>;
 
  protected:
   bool activateLogging{false};
   MockGraph mockGraph;
   mocks::MockAqlServer _server{true};
-  std::unique_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
+  std::shared_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor resourceMonitor{global};
+
+  // PathValidatorOptions parts (used for API not under test here)
+  arangodb::transaction::Methods _trx{_query->newTrxContext()};
+  aql::Variable _tmpVar{"tmp", 0, false};
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  arangodb::aql::FixedVarExpressionContext _expressionContext{_trx, *_query.get(),
+                                                              _functionsCache};
 
   DFSFinderTest() {
     if (activateLogging) {
       Logger::GRAPHS.setLogLevel(LogLevel::TRACE);
     }
+
+    // Important Note:
+    // Tests are using a LifoQueue. In those tests we do guarantee fetching in order
+    // e.g. (1) expands to (2), (3), (4)
+    // we will first traverse (4), then (3), then (2)
 
     /* a chain 1->2->3->4 */
     mockGraph.addEdge(1, 2);
@@ -158,8 +170,11 @@ class DFSFinderTest : public ::testing::TestWithParam<MockGraphProvider::LooseEn
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> DFSFinder {
     arangodb::graph::OneSidedEnumeratorOptions options{minDepth, maxDepth};
-    return DFSFinder{MockGraphProvider(mockGraph, *_query.get(), looseEndBehaviour(), false),
-                     std::move(options), resourceMonitor};
+    PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
+    return DFSFinder({*_query.get(),
+                      MockGraphProviderOptions{mockGraph, looseEndBehaviour(), false},
+                      resourceMonitor},
+                     std::move(options), std::move(validatorOpts), resourceMonitor);
   }
 
   auto vId(size_t nr) -> std::string {
@@ -248,8 +263,9 @@ TEST_P(DFSFinderTest, no_path_exists) {
   EXPECT_FALSE(finder.isDone());
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
     pathEquals(result.slice(), {91});
     pathStructureValid(result.slice(), 0);
     EXPECT_TRUE(finder.isDone());
@@ -258,9 +274,8 @@ TEST_P(DFSFinderTest, no_path_exists) {
   {
     result.clear();
     // Try again to make sure we stay at non-existing
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
   {
@@ -282,8 +297,10 @@ TEST_P(DFSFinderTest, path_depth_0) {
   EXPECT_FALSE(finder.isDone());
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
     pathEquals(result.slice(), {1});
     pathStructureValid(result.slice(), 0);
     EXPECT_TRUE(finder.isDone());
@@ -292,9 +309,8 @@ TEST_P(DFSFinderTest, path_depth_0) {
   {
     result.clear();
     // Try again to make sure we stay at non-existing
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
   {
@@ -315,8 +331,9 @@ TEST_P(DFSFinderTest, path_depth_1) {
   EXPECT_FALSE(finder.isDone());
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
 
     pathStructureValid(result.slice(), 1);
     pathEquals(result.slice(), {1, 2});
@@ -327,9 +344,8 @@ TEST_P(DFSFinderTest, path_depth_1) {
   {
     result.clear();
     // Try again to make sure we stay at non-existing
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
 
@@ -351,8 +367,10 @@ TEST_P(DFSFinderTest, path_depth_2) {
   EXPECT_FALSE(finder.isDone());
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
     pathStructureValid(result.slice(), 2);
     pathEquals(result.slice(), {1, 2, 3});
 
@@ -360,11 +378,9 @@ TEST_P(DFSFinderTest, path_depth_2) {
   }
 
   {
-    result.clear();
     // Try again to make sure we stay at non-existing
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
   {
@@ -385,8 +401,10 @@ TEST_P(DFSFinderTest, path_depth_3) {
   EXPECT_FALSE(finder.isDone());
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
     pathStructureValid(result.slice(), 3);
     pathEquals(result.slice(), {1, 2, 3, 4});
 
@@ -394,11 +412,9 @@ TEST_P(DFSFinderTest, path_depth_3) {
   }
 
   {
-    result.clear();
     // Try again to make sure we stay at non-existing
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
 
@@ -420,35 +436,39 @@ TEST_P(DFSFinderTest, path_diamond) {
   EXPECT_FALSE(finder.isDone());
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
     pathStructureValid(result.slice(), 2);
 
     EXPECT_FALSE(finder.isDone());
   }
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
     pathStructureValid(result.slice(), 2);
 
     EXPECT_FALSE(finder.isDone());
   }
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
     pathStructureValid(result.slice(), 2);
 
     EXPECT_TRUE(finder.isDone());
   }
 
   {
-    result.clear();
     // Try again to make sure we stay at non-existing
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
   {
@@ -469,8 +489,10 @@ TEST_P(DFSFinderTest, path_depth_1_to_2) {
   EXPECT_FALSE(finder.isDone());
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
     pathStructureValid(result.slice(), 1);
     pathEquals(result.slice(), {10, 12});
 
@@ -479,8 +501,10 @@ TEST_P(DFSFinderTest, path_depth_1_to_2) {
 
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
     pathStructureValid(result.slice(), 2);
     pathEquals(result.slice(), {10, 12, 13});
     EXPECT_FALSE(finder.isDone());
@@ -488,8 +512,10 @@ TEST_P(DFSFinderTest, path_depth_1_to_2) {
 
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
     pathStructureValid(result.slice(), 2);
     pathEquals(result.slice(), {10, 12, 11});
     EXPECT_FALSE(finder.isDone());
@@ -497,19 +523,19 @@ TEST_P(DFSFinderTest, path_depth_1_to_2) {
 
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
     pathStructureValid(result.slice(), 1);
     pathEquals(result.slice(), {10, 11});
     EXPECT_TRUE(finder.isDone());
   }
 
   {
-    result.clear();
     // Try again to make sure we stay at non-existing
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
 }
@@ -524,8 +550,10 @@ TEST_P(DFSFinderTest, path_depth_1_to_2_skip) {
   EXPECT_FALSE(finder.isDone());
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
     pathStructureValid(result.slice(), 1);
     pathEquals(result.slice(), {10, 12});
 
@@ -541,8 +569,10 @@ TEST_P(DFSFinderTest, path_depth_1_to_2_skip) {
 
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
     pathStructureValid(result.slice(), 2);
     pathEquals(result.slice(), {10, 12, 11});
     EXPECT_FALSE(finder.isDone());
@@ -550,17 +580,183 @@ TEST_P(DFSFinderTest, path_depth_1_to_2_skip) {
 
   {
     result.clear();
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
     pathStructureValid(result.slice(), 1);
     pathEquals(result.slice(), {10, 11});
     EXPECT_TRUE(finder.isDone());
   }
 
   {
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath();
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
+TEST_P(DFSFinderTest, path_loop) {
+  VPackBuilder result;
+  auto finder = pathFinder(1, 10);
+
+  // Source and target are direct neighbors, there is only one path between them
+  auto source = vId(20);
+
+  finder.reset(toHashedStringRef(source));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
+    pathStructureValid(result.slice(), 1);
+    pathEquals(result.slice(), {20, 21});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
+    pathStructureValid(result.slice(), 2);
+    pathEquals(result.slice(), {20, 21, 22});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    auto hasPath = finder.getNextPath();
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
+TEST_P(DFSFinderTest, triangle_loop) {
+  VPackBuilder result;
+  auto finder = pathFinder(1, 10);
+  auto source = vId(30);
+
+  finder.reset(toHashedStringRef(source));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
+    pathStructureValid(result.slice(), 1);
+    pathEquals(result.slice(), {30, 31});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
+    pathStructureValid(result.slice(), 2);
+    pathEquals(result.slice(), {30, 31, 32});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
+    pathStructureValid(result.slice(), 3);
+    pathEquals(result.slice(), {30, 31, 32, 34});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
+    pathStructureValid(result.slice(), 3);
+    pathEquals(result.slice(), {30, 31, 32, 33});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath();
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
+TEST_P(DFSFinderTest, triangle_loop_skip) {
+  VPackBuilder result;
+  auto finder = pathFinder(1, 10);
+  auto source = vId(30);
+
+  finder.reset(toHashedStringRef(source));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
+    pathStructureValid(result.slice(), 1);
+    pathEquals(result.slice(), {30, 31});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
+    pathStructureValid(result.slice(), 2);
+    pathEquals(result.slice(), {30, 31, 32});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    bool skipped = finder.skipPath();
+    EXPECT_TRUE(skipped);
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
+    pathStructureValid(result.slice(), 3);
+    pathEquals(result.slice(), {30, 31, 32, 33});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
     result.clear();
     // Try again to make sure we stay at non-existing
-    auto hasPath = finder.getNextPath(result);
+    auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
     EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
@@ -569,9 +765,6 @@ TEST_P(DFSFinderTest, path_depth_1_to_2_skip) {
 
 /* TODO: Add more tests
  * - path_depth_2_to_3
- * - path_loop
- * - triangle_loop
- * - triangle_loop_skip
  * - many_neighbours_source
  * - many_neighbours_target
  */

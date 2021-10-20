@@ -2172,6 +2172,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
       EXPECT_EQ(node.sort(), deserialized.sort());
       EXPECT_EQ(node.getCost(), deserialized.getCost());
       EXPECT_EQ(node.options().countApproximate, arangodb::iresearch::CountApproximate::Exact);
+      EXPECT_EQ(node.options().filterOptimization, arangodb::iresearch::FilterOptimization::MAX);
     }
 
     // factory method
@@ -2197,6 +2198,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
       EXPECT_EQ(node.sort(), deserialized.sort());
       EXPECT_EQ(node.getCost(), deserialized.getCost());
       EXPECT_EQ(node.options().countApproximate, arangodb::iresearch::CountApproximate::Exact);
+      EXPECT_EQ(node.options().filterOptimization, arangodb::iresearch::FilterOptimization::MAX);
     }
   }
 
@@ -2256,6 +2258,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
       EXPECT_EQ(node.sort(), deserialized.sort());
       EXPECT_EQ(node.getCost(), deserialized.getCost());
       EXPECT_EQ(node.options().countApproximate, arangodb::iresearch::CountApproximate::Exact);
+      EXPECT_EQ(node.options().filterOptimization, arangodb::iresearch::FilterOptimization::MAX);
     }
 
     // factory method
@@ -2281,6 +2284,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
       EXPECT_EQ(node.sort(), deserialized.sort());
       EXPECT_EQ(node.getCost(), deserialized.getCost());
       EXPECT_EQ(node.options().countApproximate, arangodb::iresearch::CountApproximate::Exact);
+      EXPECT_EQ(node.options().filterOptimization, arangodb::iresearch::FilterOptimization::MAX);
     }
   }
   // with late materialization
@@ -2335,6 +2339,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
       EXPECT_EQ(outNmDocId.id, varsSetHere[1]->id);
       EXPECT_EQ(outNmDocId.name, varsSetHere[1]->name);
       EXPECT_EQ(node.options().countApproximate, arangodb::iresearch::CountApproximate::Exact);
+      EXPECT_EQ(node.options().filterOptimization, arangodb::iresearch::FilterOptimization::MAX);
     }
 
     // factory method
@@ -2367,6 +2372,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
       EXPECT_EQ(outNmDocId.id, varsSetHere[1]->id);
       EXPECT_EQ(outNmDocId.name, varsSetHere[1]->name);
       EXPECT_EQ(node.options().countApproximate, arangodb::iresearch::CountApproximate::Exact);
+      EXPECT_EQ(node.options().filterOptimization, arangodb::iresearch::FilterOptimization::MAX);
     }
   }
   // with countApproximate cost
@@ -2419,7 +2425,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
       EXPECT_EQ(deserialized.options().countApproximate, arangodb::iresearch::CountApproximate::Cost);
     }
   }
-    // with countApproximate exact
+  // with countApproximate exact
   {
     std::string value{ "exact" };
     arangodb::aql::AstNode attributeValue(arangodb::aql::NODE_TYPE_VALUE);
@@ -2467,6 +2473,108 @@ TEST_F(IResearchViewNodeTest, serialize) {
       auto& deserialized =
           dynamic_cast<arangodb::iresearch::IResearchViewNode&>(*deserializedNode);
       EXPECT_EQ(deserialized.options().countApproximate, arangodb::iresearch::CountApproximate::Exact);
+    }
+  }
+  // with allowed merge filters
+  {
+    arangodb::aql::AstNode attributeValue(arangodb::aql::NODE_TYPE_VALUE);
+    attributeValue.setValueType(arangodb::aql::VALUE_TYPE_INT);
+    attributeValue.setIntValue(
+      static_cast<int64_t>(arangodb::iresearch::FilterOptimization::MAX));
+    arangodb::aql::AstNode attributeName(arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
+    attributeName.addMember(&attributeValue);
+    std::string name{ "filterOptimization" };
+    attributeName.setStringValue(name.c_str(), name.size());
+    arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
+    options.addMember(&attributeName);
+
+    arangodb::iresearch::IResearchViewNode node(*query.plan(),
+                                                arangodb::aql::ExecutionNodeId{42},
+                                                vocbase,      // database
+                                                logicalView,  // view
+                                                outVariable,
+                                                nullptr,  // no filter condition
+                                                &options,  // no options
+                                                {});        // no sort condition
+   
+
+    node.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
+    node.setVarsValid({{}});
+    node.setRegsToKeep({{}});
+    node.setVarUsageValid();
+
+    arangodb::velocypack::Builder builder;
+    unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
+    node.toVelocyPack(builder, flags);  // object with array of objects
+
+    auto nodeSlice = builder.slice();
+
+    // constructor
+    {
+      arangodb::iresearch::IResearchViewNode const deserialized(*query.plan(), nodeSlice);
+      EXPECT_EQ(node.empty(), deserialized.empty());
+      EXPECT_EQ(deserialized.options().filterOptimization, arangodb::iresearch::FilterOptimization::MAX);
+    }
+
+    // factory method
+    {
+      std::unique_ptr<arangodb::aql::ExecutionNode> deserializedNode(
+          arangodb::aql::ExecutionNode::fromVPackFactory(query.plan(), nodeSlice));
+      auto& deserialized =
+          dynamic_cast<arangodb::iresearch::IResearchViewNode&>(*deserializedNode);
+      EXPECT_EQ(deserialized.options().filterOptimization, arangodb::iresearch::FilterOptimization::MAX);
+    }
+  }
+  // with forbidden merge filters
+  {
+    arangodb::aql::AstNode attributeValue(arangodb::aql::NODE_TYPE_VALUE);
+    attributeValue.setValueType(arangodb::aql::VALUE_TYPE_INT);
+    attributeValue.setIntValue(
+      static_cast<int64_t>(arangodb::iresearch::FilterOptimization::NONE));
+    arangodb::aql::AstNode attributeName(arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
+    attributeName.addMember(&attributeValue);
+    std::string name{ "filterOptimization" };
+    attributeName.setStringValue(name.c_str(), name.size());
+    arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
+    options.addMember(&attributeName);
+
+    arangodb::iresearch::IResearchViewNode node(*query.plan(),
+                                                arangodb::aql::ExecutionNodeId{42},
+                                                vocbase,      // database
+                                                logicalView,  // view
+                                                outVariable,
+                                                nullptr,  // no filter condition
+                                                &options,  // no options
+                                                {});        // no sort condition
+   
+
+    node.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
+    node.setVarsValid({{}});
+    node.setRegsToKeep({{}});
+    node.setVarUsageValid();
+
+    arangodb::velocypack::Builder builder;
+    unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
+    node.toVelocyPack(builder, flags);  // object with array of objects
+
+    auto nodeSlice = builder.slice();
+
+    // constructor
+    {
+      arangodb::iresearch::IResearchViewNode const deserialized(*query.plan(), nodeSlice);
+      EXPECT_EQ(node.empty(), deserialized.empty());
+      EXPECT_EQ(deserialized.options().filterOptimization,
+                arangodb::iresearch::FilterOptimization::NONE);
+    }
+
+    // factory method
+    {
+      std::unique_ptr<arangodb::aql::ExecutionNode> deserializedNode(
+          arangodb::aql::ExecutionNode::fromVPackFactory(query.plan(), nodeSlice));
+      auto& deserialized =
+          dynamic_cast<arangodb::iresearch::IResearchViewNode&>(*deserializedNode);
+      EXPECT_EQ(deserialized.options().filterOptimization,
+                arangodb::iresearch::FilterOptimization::NONE);
     }
   }
 }
@@ -2782,7 +2890,7 @@ TEST_F(IResearchViewNodeTest, collections) {
       "\"testCollection1\": { \"includeAllFields\": true },"
       "\"testCollection2\": { \"includeAllFields\": true }"
       "}}");
-  EXPECT_TRUE(logicalView->properties(updateJson->slice(), true).ok());
+  EXPECT_TRUE(logicalView->properties(updateJson->slice(), true, true).ok());
 
   // dummy query
   MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2849,7 +2957,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
       "\"testCollection0\": { \"includeAllFields\": true, "
       "\"trackListPositions\": true }"
       "}}");
-  EXPECT_TRUE(logicalView->properties(updateJson->slice(), true).ok());
+  EXPECT_TRUE(logicalView->properties(updateJson->slice(), true, true).ok());
 
   // insert into collection
   {
@@ -2951,7 +3059,8 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
       auto block = node.createBlock(engine, EMPTY);
       EXPECT_NE(nullptr, block);
       EXPECT_NE(nullptr,
-                  (dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>>*>(
+                  (dynamic_cast<arangodb::aql::ExecutionBlockImpl<
+                    arangodb::aql::IResearchViewExecutor<false, false, arangodb::iresearch::MaterializeType::Materialize>>*>(
                       block.get())));
     }
   }
@@ -3105,7 +3214,7 @@ protected:
         "\"testCollection0\": { \"includeAllFields\": true, "
         "\"trackListPositions\": true }"
         "}}");
-      EXPECT_TRUE(logicalView0->properties(updateJson->slice(), true).ok());
+      EXPECT_TRUE(logicalView0->properties(updateJson->slice(), true, true).ok());
     }
     arangodb::LogicalView::ptr logicalView1;
     {
@@ -3118,7 +3227,7 @@ protected:
         "\"testCollection1\": { \"includeAllFields\": true, "
         "\"trackListPositions\": true }"
         "}}");
-      EXPECT_TRUE(logicalView1->properties(updateJson->slice(), true).ok());
+      EXPECT_TRUE(logicalView1->properties(updateJson->slice(), true, true).ok());
     }
 
     std::vector<std::string> EMPTY_VECTOR;
@@ -3499,7 +3608,7 @@ class IResearchViewBlockTest
         "\"testCollection0\": { \"includeAllFields\": true, "
         "\"trackListPositions\": true }"
         "}}");
-    EXPECT_TRUE(logicalView->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(logicalView->properties(updateJson->slice(), true, true).ok());
     std::vector<std::string> EMPTY_VECTOR;
     auto trx = std::make_shared<arangodb::transaction::Methods>(
         arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY_VECTOR,

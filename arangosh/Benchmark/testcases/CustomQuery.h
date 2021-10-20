@@ -47,7 +47,7 @@ namespace arangodb::arangobench {
         size_t length;
         auto* p = TRI_SlurpFile(file.c_str(), &length);
         if (p != nullptr) {
-          auto guard = scopeGuard([&p]() { TRI_Free(p); });
+          auto guard = scopeGuard([&p]() noexcept { TRI_Free(p); });
           _query = std::string(p, length);
         }
       }
@@ -63,7 +63,7 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    void buildRequest(int threadNumber, size_t threadCounter,
+    void buildRequest(size_t threadNumber, size_t threadCounter,
                       size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
       requestData.url = "/_api/cursor";
       requestData.type = rest::RequestType::POST;

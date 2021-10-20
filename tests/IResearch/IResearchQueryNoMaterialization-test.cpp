@@ -41,22 +41,21 @@ static const char* collectionName1 = "collection_1";
 static const char* collectionName2 = "collection_2";
 
 static const char* viewName = "view";
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
 
 class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
  protected:
   std::deque<arangodb::ManagedDocumentResult> insertedDocs;
 
   void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
+    auto versionStr = std::to_string(static_cast<uint32_t>(linkVersion()));
+
     auto updateJson = VPackParser::fromJson(
       std::string("{") +
         "\"links\": {"
-        "\"" + collectionName1 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"},"
-        "\"" + collectionName2 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"}"
+        "\"" + collectionName1 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\", \"version\": " + versionStr + "},"
+        "\"" + collectionName2 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\", \"version\": " + versionStr + "}"
       "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -200,9 +199,9 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
     EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), queryString,
       {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                arangodb::aql::QueryString(queryString), nullptr);
-    auto const res = query.explain();
+    auto const res = query->explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();
     arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
@@ -276,7 +275,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(IResearchQueryNoMaterializationTest, sortColumnPriority) {
+TEST_P(IResearchQueryNoMaterializationTest, sortColumnPriority) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value IN [1, 2, 11, 12] SORT d.value RETURN d.value";
 
@@ -290,7 +289,7 @@ TEST_F(IResearchQueryNoMaterializationTest, sortColumnPriority) {
   executeAndCheck(queryString, expectedValues, 1, {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 0}});
 }
 
-TEST_F(IResearchQueryNoMaterializationTest, sortColumnPriorityViewsSubquery) {
+TEST_P(IResearchQueryNoMaterializationTest, sortColumnPriorityViewsSubquery) {
   // this checks proper stored variables buffer resizing uring optimization
   auto const queryString = std::string("FOR c IN ") + viewName + "2 SEARCH c.value IN [1, 2, 11, 12] SORT c.value FOR d IN " + viewName +
       " SEARCH d.value == c.value SORT d.value RETURN d.value";
@@ -330,7 +329,7 @@ TEST_F(IResearchQueryNoMaterializationTest, sortColumnPriorityViewsSubquery) {
   EXPECT_EQ(expectedValue, expectedValues.end());
 }
 
-TEST_F(IResearchQueryNoMaterializationTest, maxMatchColumnPriority) {
+TEST_P(IResearchQueryNoMaterializationTest, maxMatchColumnPriority) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " FILTER d.str == 'cat' SORT d.value RETURN d.value";
 
@@ -348,7 +347,7 @@ TEST_F(IResearchQueryNoMaterializationTest, maxMatchColumnPriority) {
   executeAndCheck(queryString, expectedValues, 1, {{3, 0}, {3, 1}});
 }
 
-TEST_F(IResearchQueryNoMaterializationTest, sortAndStoredValues) {
+TEST_P(IResearchQueryNoMaterializationTest, sortAndStoredValues) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SORT d._id RETURN d.foo";
 
@@ -366,7 +365,7 @@ TEST_F(IResearchQueryNoMaterializationTest, sortAndStoredValues) {
   executeAndCheck(queryString, expectedValues, 2, {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 1}, {2, 0}});
 }
 
-TEST_F(IResearchQueryNoMaterializationTest, fieldExistence) {
+TEST_P(IResearchQueryNoMaterializationTest, fieldExistence) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH EXISTS(d.exist) SORT d.value RETURN d.value";
 
@@ -380,7 +379,7 @@ TEST_F(IResearchQueryNoMaterializationTest, fieldExistence) {
   executeAndCheck(queryString, expectedValues, 1, {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 0}});
 }
 
-TEST_F(IResearchQueryNoMaterializationTest, storedFieldExistence) {
+TEST_P(IResearchQueryNoMaterializationTest, storedFieldExistence) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH EXISTS(d.exist) SORT d.value RETURN d.exist";
 
@@ -394,7 +393,7 @@ TEST_F(IResearchQueryNoMaterializationTest, storedFieldExistence) {
   executeAndCheck(queryString, expectedValues, 2, {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 0}, {4, 0}});
 }
 
-TEST_F(IResearchQueryNoMaterializationTest, emptyField) {
+TEST_P(IResearchQueryNoMaterializationTest, emptyField) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SORT d.exist DESC LIMIT 1 RETURN d.exist";
 
@@ -405,7 +404,7 @@ TEST_F(IResearchQueryNoMaterializationTest, emptyField) {
   executeAndCheck(queryString, expectedValues, 1, {{4, 0}});
 }
 
-TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
+TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
   static std::vector<std::string> const EMPTY;
   auto doc = arangodb::velocypack::Parser::fromJson("{ \"str\": \"abc\", \"value\": 10 }");
   std::string collectionName("testCollection");
@@ -428,7 +427,7 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
 
   auto updateJson = VPackParser::fromJson(
     "{\"links\": {\"" + collectionName + "\": {\"includeAllFields\": true} }}");
-  EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+  EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
   arangodb::velocypack::Builder builder;
 
@@ -551,7 +550,7 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
   }
 }
 
-TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecordWithCompression) {
+TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecordWithCompression) {
   static std::vector<std::string> const EMPTY;
   auto doc = arangodb::velocypack::Parser::fromJson("{ \"str\": \"abc\", \"value\": 10 }");
   std::string collectionName("testCollection");
@@ -574,7 +573,7 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecordWithCompressio
 
   auto updateJson = VPackParser::fromJson(
     "{\"links\": {\"" + collectionName + "\": {\"includeAllFields\": true} }}");
-  EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+  EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
   arangodb::velocypack::Builder builder;
 
@@ -697,7 +696,7 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecordWithCompressio
   }
 }
 
-TEST_F(IResearchQueryNoMaterializationTest, matchSortButNotEnoughAttributes) {
+TEST_P(IResearchQueryNoMaterializationTest, matchSortButNotEnoughAttributes) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value IN [1, 2, 11, 12] FILTER d.boo == '12312' SORT d.boo ASC "
       " RETURN DISTINCT  {resource_type: d.foo, version: d.not_in_stored}";
@@ -706,9 +705,9 @@ TEST_F(IResearchQueryNoMaterializationTest, matchSortButNotEnoughAttributes) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), queryString,
              {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+  auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase()),
                              arangodb::aql::QueryString(queryString), nullptr);
-  auto const res = query.explain(); // this should not crash!
+  auto const res = query->explain(); // this should not crash!
   ASSERT_TRUE(res.data);
   auto const explanation = res.data->slice();
   arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
@@ -722,3 +721,8 @@ TEST_F(IResearchQueryNoMaterializationTest, matchSortButNotEnoughAttributes) {
   }
   EXPECT_TRUE(found);
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryNoMaterializationTest,
+  IResearchQueryNoMaterializationTest,
+  GetLinkVersions());

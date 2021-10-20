@@ -2244,8 +2244,8 @@ void Supervision::checkReplicatedLogs() {
   };
 
   // check if Plan has replicated logs
-  auto const& node = snapshot().hasAsNode(planRepLogPrefix);
-  if (!node) {
+  auto const& planNode = snapshot().hasAsNode(planRepLogPrefix);
+  if (!planNode) {
     return;
   }
 
@@ -2267,26 +2267,33 @@ void Supervision::checkReplicatedLogs() {
 
   auto builder = std::make_shared<Builder>();
   auto envelope = arangodb::agency::envelope::into_builder(*builder);
-  for (auto const& [dbName, db] : node->get().children()) {
+  for (auto const& [dbName, db] : planNode->get().children()) {
     for (auto const& [idString, node] : db->children()) {
       auto spec = readPlanSpecification(*node);
-      auto current = std::invoke([&, &dbName = dbName, &idString = idString]() -> LogCurrent {
-        using namespace cluster::paths;
-        auto currentPath =
-            aliases::current()
-                ->replicatedLogs()
-                ->database(dbName)
-                ->log(idString)
-                ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
-        return readLogCurrent(snapshot().get(currentPath)->get());
-      });
-      auto newTermSpec = checkReplicatedLog(dbName, spec, current, info);
+      auto current = std::invoke(
+          [&, &dbName = dbName, &idString = idString]() -> LogCurrent {
+            using namespace cluster::paths;
+            auto currentPath =
+                aliases::current()
+                    ->replicatedLogs()
+                    ->database(dbName)
+                    ->log(idString)
+                    ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
 
+            if (auto cnode = snapshot().get(currentPath); cnode.has_value()) {
+              return readLogCurrent(cnode->get());
+            }
+            return {};
+          });
+
+      auto checkResult = checkReplicatedLog(dbName, spec, current, info);
       envelope = std::visit(
           overload{[&, &dbName = dbName](LogPlanTermSpecification const& newSpec) {
                      return arangodb::replication2::agency::methods::updateTermSpecificationTrx(
                          std::move(envelope), dbName, spec.id, newSpec,
-                         spec.currentTerm->term);
+                         spec.currentTerm.has_value()
+                             ? std::optional{spec.currentTerm->term}
+                             : std::nullopt);
                    },
                    [&, &dbName = dbName](LogCurrentSupervisionElection const& newElection) {
                      return arangodb::replication2::agency::methods::updateElectionResult(
@@ -2295,7 +2302,7 @@ void Supervision::checkReplicatedLogs() {
                    [&](std::monostate const&) {
                      return std::move(envelope);  // do nothing
                    }},
-          newTermSpec);
+          checkResult);
     }
   }
 

@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "utils/index_utils.hpp"
-#include "utils/locale_utils.hpp"
 
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -202,7 +201,6 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
       _commitIntervalMsec(mask),
       _consolidationIntervalMsec(mask),
       _consolidationPolicy(mask),
-      _locale(mask),
       _version(mask),
       _writebufferActive(mask),
       _writebufferIdle(mask),
@@ -215,7 +213,6 @@ IResearchViewMeta::IResearchViewMeta()
     : _cleanupIntervalStep(2),
       _commitIntervalMsec(1000),
       _consolidationIntervalMsec(1000),
-      _locale(std::locale::classic()),
       _version(static_cast<uint32_t>(ViewVersion::MAX)),
       _writebufferActive(0),
       _writebufferIdle(64),
@@ -249,7 +246,6 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _commitIntervalMsec = std::move(other._commitIntervalMsec);
     _consolidationIntervalMsec = std::move(other._consolidationIntervalMsec);
     _consolidationPolicy = std::move(other._consolidationPolicy);
-    _locale = std::move(other._locale);
     _version = std::move(other._version);
     _writebufferActive = std::move(other._writebufferActive);
     _writebufferIdle = std::move(other._writebufferIdle);
@@ -268,7 +264,6 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _commitIntervalMsec = other._commitIntervalMsec;
     _consolidationIntervalMsec = other._consolidationIntervalMsec;
     _consolidationPolicy = other._consolidationPolicy;
-    _locale = other._locale;
     _version = other._version;
     _writebufferActive = other._writebufferActive;
     _writebufferIdle = other._writebufferIdle;
@@ -300,12 +295,6 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
     }
   } catch (...) {
     return false; // exception during match
-  }
-
-  if (irs::locale_utils::language(_locale) != irs::locale_utils::language(other._locale) ||
-      irs::locale_utils::country(_locale) != irs::locale_utils::country(other._locale) ||
-      irs::locale_utils::encoding(_locale) != irs::locale_utils::encoding(other._locale)) {
-    return false;
   }
 
   if (_version != other._version ||
@@ -480,39 +469,6 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
       }
     }
   }
-  /* FIXME TODO temporarily disable, eventually used for ordering internal data
-    structures
-    {
-      // optional locale name
-      static const std::string fieldName("locale");
-
-      mask->_locale = slice.hasKey(fieldName);
-
-      if (!mask->_locale) {
-        _locale = defaults._locale;
-      } else {
-        auto field = slice.get(fieldName);
-
-        if (!field.isString()) {
-          errorField = fieldName;
-
-          return false;
-        }
-
-        auto locale = field.copyString();
-
-        try {
-          // use UTF-8 encoding since that is what JSON objects use
-          _locale = std::locale::classic().name() == locale
-            ? std::locale::classic() : irs::locale_utils::locale(locale);
-        } catch(...) {
-          errorField = fieldName;
-
-          return false;
-        }
-      }
-    }
-  */
 
   {
     // optional size_t
@@ -573,7 +529,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional object
-    static VPackStringRef const fieldName("primarySort");
+    auto& fieldName = StaticStrings::PrimarySortField;
     std::string errorSubField;
 
     auto const field = slice.get(fieldName);
@@ -582,7 +538,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     if (!mask->_primarySort) {
       _primarySort = defaults._primarySort;
     } else if (!_primarySort.fromVelocyPack(field, errorSubField)) {
-      errorField = fieldName.toString();
+      errorField = fieldName;
       if (!errorSubField.empty()) {
         errorField += errorSubField;
       }
@@ -593,7 +549,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional object
-    static VPackStringRef const fieldName("storedValues");
+    auto& fieldName = StaticStrings::StoredValuesField;
     std::string errorSubField;
 
     auto const field = slice.get(fieldName);
@@ -602,7 +558,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     if (!mask->_storedValues) {
       _storedValues = defaults._storedValues;
     } else if (!_storedValues.fromVelocyPack(field, errorSubField)) {
-      errorField = fieldName.toString();
+      errorField = fieldName;
       if (!errorSubField.empty()) {
         errorField += errorSubField;
       }
@@ -612,8 +568,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
   }
   {
     // optional string (only if primarySort present)
-    static VPackStringRef const fieldName("primarySortCompression");
-    auto const field = slice.get(fieldName);
+    auto const field = slice.get(StaticStrings::PrimarySortCompressionField);
     mask->_primarySortCompression = !field.isNone();
     if (mask->_primarySortCompression) {
       _primarySortCompression = nullptr;
@@ -687,14 +642,14 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
   }
 
   if ((!ignoreEqual || _primarySort != ignoreEqual->_primarySort) && (!mask || mask->_primarySort)) {
-    velocypack::ArrayBuilder arrayScope(&builder, "primarySort");
+    velocypack::ArrayBuilder arrayScope(&builder, StaticStrings::PrimarySortField);
     if (!_primarySort.toVelocyPack(builder)) {
       return false;
     }
   }
 
   if ((!ignoreEqual || _storedValues != ignoreEqual->_storedValues) && (!mask || mask->_storedValues)) {
-    velocypack::ArrayBuilder arrayScope(&builder, "storedValues");
+    velocypack::ArrayBuilder arrayScope(&builder, StaticStrings::StoredValuesField);
     if (!_storedValues.toVelocyPack(builder)) {
       return false;
     }
@@ -703,7 +658,7 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
   if ((!ignoreEqual || _primarySortCompression != ignoreEqual->_primarySortCompression) && 
       (!mask || mask->_primarySortCompression)) {
     auto compression = columnCompressionToString(_primarySortCompression);
-    addStringRef(builder, "primarySortCompression", compression);
+    addStringRef(builder, StaticStrings::PrimarySortCompressionField, compression);
   }
 
   return true;

@@ -337,7 +337,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   }
   TRI_ASSERT(numOperations > 0);
 
-  _state->prepareCollections();
+  rocksdb::SequenceNumber previousSeqNo = _state->prepareCollections();
 
   TRI_IF_FAILURE("TransactionChaos::randomSync") {
     if (RandomGenerator::interval(uint32_t(1000)) > 950) {
@@ -351,7 +351,14 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   }
 
   // if we fail during commit, make sure we remove blockers, etc.
-  auto cleanupCollTrx = scopeGuard([this]() { _state->cleanupCollections(); });
+  auto cleanupCollTrx = scopeGuard([this]() noexcept {
+    try {
+      _state->cleanupCollections();
+    } catch (std::exception const& e) {
+      LOG_TOPIC("62772", ERR, Logger::ENGINES)
+          << "failed to cleanup collections: " << e.what();
+    }
+  });
 
   // total number of sequence ID consuming records
   uint64_t numOps = _rocksTransaction->GetNumPuts() +
@@ -368,6 +375,8 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   // first write operation in the WAL
   rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetId();
   TRI_ASSERT(postCommitSeq != 0);
+  TRI_ASSERT(postCommitSeq >= previousSeqNo);
+
   if (ADB_LIKELY(numOps > 0)) {
     // we now need to add 1 for each write operation carried out in the trx
     // to get to the transaction's last operation's seqno

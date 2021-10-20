@@ -115,7 +115,7 @@ struct custom_sort : public irs::sort {
       const irs::term_reader& term_reader_;
     };
 
-    DECLARE_FACTORY(prepared);
+    static ptr make(prepared);
 
     prepared(const custom_sort& sort) : sort_(sort) {}
 
@@ -199,7 +199,7 @@ struct custom_sort : public irs::sort {
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
   std::function<void(irs::doc_id_t&)> scorer_score;
 
-  DECLARE_FACTORY();
+  static ptr make();
   custom_sort() : sort(irs::type<custom_sort>::get()) {}
   virtual prepared::ptr prepare() const override {
     return std::make_unique<custom_sort::prepared>(*this);

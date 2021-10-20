@@ -55,7 +55,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::aql::AstNode ALL(arangodb::aql::AstNodeValue(true));
 
-using irs::async_utils::read_write_mutex;
+using arangodb::iresearch::kludge::read_write_mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index reader implementation over multiple irs::index_reader
@@ -130,7 +130,6 @@ void ViewTrxState::add(arangodb::DataSourceId cid,
 void ensureImmutableProperties(
     arangodb::iresearch::IResearchViewMeta& dst,
     arangodb::iresearch::IResearchViewMeta const& src) {
-  dst._locale = src._locale;
   dst._version = src._version;
   dst._writebufferActive = src._writebufferActive;
   dst._writebufferIdle = src._writebufferIdle;
@@ -150,17 +149,17 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchView::ViewFactory : public arangodb::ViewFactory {
   virtual Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                        velocypack::Slice const& definition) const override {
+                        VPackSlice definition, bool isUserRequest) const override {
     auto& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
-    auto& properties = definition.isObject()
-                           ? definition
-                           : velocypack::Slice::emptyObjectSlice();  // if no 'info' then assume defaults
+    auto properties = definition.isObject()
+      ? definition
+      : velocypack::Slice::emptyObjectSlice();  // if no 'info' then assume defaults
     auto links = properties.hasKey(StaticStrings::LinksField)
-                     ? properties.get(StaticStrings::LinksField)
-                     : velocypack::Slice::emptyObjectSlice();
+      ? properties.get(StaticStrings::LinksField)
+      : velocypack::Slice::emptyObjectSlice();
     auto res = engine.inRecovery()
-                   ? Result()  // do not validate if in recovery
-                   : IResearchLinkHelper::validateLinks(vocbase, links);
+      ? Result()  // do not validate if in recovery
+      : IResearchLinkHelper::validateLinks(vocbase, links);
 
     if (!res.ok()) {
       std::string name;
@@ -175,8 +174,8 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     LogicalView::ptr impl;
 
     res = ServerState::instance()->isSingleServer()
-              ? LogicalViewHelperStorageEngine::construct(impl, vocbase, definition)
-              : LogicalViewHelperClusterInfo::construct(impl, vocbase, definition);
+       ? LogicalViewHelperStorageEngine::construct(impl, vocbase, definition)
+       : LogicalViewHelperClusterInfo::construct(impl, vocbase, definition);
 
     if (!res.ok()) {
       std::string name;
@@ -207,7 +206,8 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     try {
       std::unordered_set<DataSourceId> collections;
 
-      res = IResearchLinkHelper::updateLinks(collections, *impl, links);
+      res = IResearchLinkHelper::updateLinks(
+        collections, *impl, links, getDefaultVersion(isUserRequest));
 
       if (!res.ok()) {
         LOG_TOPIC("d683b", WARN, arangodb::iresearch::TOPIC)
@@ -252,7 +252,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
 
   virtual Result instantiate(LogicalView::ptr& view,
                              TRI_vocbase_t& vocbase,
-                             velocypack::Slice const& definition) const override {
+                             VPackSlice definition) const override {
     std::string error;
     IResearchViewMeta meta;
     IResearchViewMetaState metaState;
@@ -270,7 +270,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     }
 
     auto impl = std::shared_ptr<IResearchView>(
-        new IResearchView(vocbase, definition, std::move(meta)));
+      new IResearchView(vocbase, definition, std::move(meta)));
 
     // NOTE: for single-server must have full list of collections to lock
     //       for cluster the shards to lock come from coordinator and are not in
@@ -296,19 +296,16 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
 IResearchView::IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice const& info,
                              IResearchViewMeta&& meta)
     : LogicalView(vocbase, info),
-      _asyncSelf(irs::memory::make_unique<AsyncViewPtr::element_type>(this)),
+      _asyncSelf(std::make_shared<AsyncViewPtr::element_type>(this)),
       _meta(std::move(meta)),
       _inRecovery(false) {
   // set up in-recovery insertion hooks
   if (vocbase.server().hasFeature<DatabaseFeature>()) {
     auto& databaseFeature = vocbase.server().getFeature<DatabaseFeature>();
-    auto view = _asyncSelf; // create copy for lambda
 
-    databaseFeature.registerPostRecoveryCallback([view]() -> Result {
-      auto& viewMutex = view->mutex();
+    databaseFeature.registerPostRecoveryCallback([view = _asyncSelf]() -> Result {
       // ensure view does not get deallocated before call back finishes
-      auto lock = irs::make_lock_guard(viewMutex);
-      auto* viewPtr = view->get();
+      auto viewPtr = view->lock();
 
       if (viewPtr) {
         viewPtr->verifyKnownCollections();
@@ -328,8 +325,7 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice const& in
       return; // NOOP
     }
 
-    auto lock = irs::make_lock_guard(self->mutex());
-    auto* view = self->get();
+    auto view = self->lock();
 
     // populate snapshot when view is registred with a transaction on single-server
     if (view && ServerState::instance()->isSingleServer()) {
@@ -590,6 +586,7 @@ Result IResearchView::dropImpl() {
       res = IResearchLinkHelper::updateLinks(
         collections, *this,
         velocypack::Slice::emptyObjectSlice(),
+        LinkVersion::MAX, // we don't care of link version due to removal only request
         stale);
     }
 
@@ -651,16 +648,14 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
   }
 
   // prevent the link from being deallocated
-  auto linkLock = link->lock();
+  auto linkPtr = link->lock();
 
-  if (!link->get()) {
+  if (!linkPtr) {
     return Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("failed to acquire link while emplacing collection into arangosearch View '") + name() + "'"
     );
   }
-
-  auto* linkPtr = link->get();
 
   auto const cid = linkPtr->collection().id();
   read_write_mutex::write_mutex mutex(_mutex); // '_meta'/'_links' can be asynchronously read
@@ -717,8 +712,7 @@ Result IResearchView::commit() {
     }
 
     // ensure link is not deallocated for the duration of the operation
-    auto lock = entry.second->lock();
-    auto* link = entry.second->get();
+    auto link = entry.second->lock();
 
     if (!link) {
       return Result(                // result
@@ -745,9 +739,10 @@ void IResearchView::open() {
 }
 
 Result IResearchView::properties(
-    velocypack::Slice const& properties,
+    velocypack::Slice properties,
+    bool isUserRequest,
     bool partialUpdate) {
-  auto res = updateProperties(properties, partialUpdate);
+  auto res = updateProperties(properties, isUserRequest, partialUpdate);
 
   if (!res.ok()) {
     return res;
@@ -867,9 +862,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 
       if (auto const itr = _links.find(cid);
           itr != _links.end() && itr->second) {
-        auto lock = itr->second->lock();
-
-        auto* link = itr->second->get();
+        auto link = itr->second->lock();
 
         if (!link) {
           LOG_TOPIC("d63ff", ERR, arangodb::iresearch::TOPIC)
@@ -969,7 +962,9 @@ Result IResearchView::unlink(DataSourceId cid) noexcept {
 }
 
 Result IResearchView::updateProperties(
-    velocypack::Slice slice, bool partialUpdate) {
+    velocypack::Slice slice,
+    bool isUserRequest,
+    bool partialUpdate) {
   try {
     auto links = slice.hasKey(StaticStrings::LinksField)
                      ? slice.get(StaticStrings::LinksField)
@@ -1025,12 +1020,11 @@ Result IResearchView::updateProperties(
 
     // update properties of links
     for (auto& entry: _links) {
-      auto& link = entry.second;
       // prevent the link from being deallocated
-      auto lock = link->lock();
+      auto link= entry.second->lock();
 
-      if (link->get()) {
-        auto result = link->get()->properties(_meta);
+      if (link) {
+        auto result = link->properties(_meta);
 
         if (!result.ok()) {
           res = result;
@@ -1055,7 +1049,8 @@ Result IResearchView::updateProperties(
 
       auto lock = irs::make_lock_guard(_updateLinksLock);
 
-      return IResearchLinkHelper::updateLinks(collections, *this, links);
+      return IResearchLinkHelper::updateLinks(
+        collections, *this, links, getDefaultVersion(isUserRequest));
     }
 
     std::unordered_set<DataSourceId> stale;
@@ -1068,7 +1063,8 @@ Result IResearchView::updateProperties(
 
     auto lock = irs::make_lock_guard(_updateLinksLock);
 
-    return IResearchLinkHelper::updateLinks(collections, *this, links, stale);
+    return IResearchLinkHelper::updateLinks(
+      collections, *this, links, getDefaultVersion(isUserRequest), stale);
   } catch (basics::Exception& e) {
     LOG_TOPIC("74705", WARN, iresearch::TOPIC)
       << "caught exception while updating properties for arangosearch view '" << name() << "': " << e.code() << " " << e.what();

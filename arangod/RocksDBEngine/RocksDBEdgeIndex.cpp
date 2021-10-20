@@ -34,7 +34,7 @@
 #include "Basics/cpu-relax.h"
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
-#include "Indexes/SortedIndexAttributeMatcher.h"
+#include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -112,7 +112,12 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   char const* typeName() const override { return "edge-index-iterator"; }
 
-  bool hasExtra() const override { return true; }
+  bool hasExtra() const override {
+    TRI_IF_FAILURE("RocksDBEdgeIndex::disableHasExtra") {
+      return false;
+    }
+    return true;
+  }
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
@@ -549,7 +554,8 @@ Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
-  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
+  SimpleAttributeEqualityMatcher matcher(this->_fields);
+  return matcher.matchOne(this, node, reference, itemsInIndex);
 }
 
 /// @brief creates an IndexIterator for the given Condition
@@ -565,10 +571,14 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
 
   TRI_ASSERT(aap.attribute->stringEquals(_directionAttr));
 
+  TRI_ASSERT(aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+             aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN);
+  
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
     return createEqIterator(trx, aap.attribute, aap.value, opts.enableCache, readOwnWrites);
-  } else if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+  } 
+  if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // "in"-checks never needs to observe own writes
     TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
     // a.b IN values
@@ -587,7 +597,8 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBEdgeIndex::specializeCondition(
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
-  return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
+  SimpleAttributeEqualityMatcher matcher(this->_fields);
+  return matcher.specializeOne(this, node, reference);
 }
 
 static std::string FindMedian(rocksdb::Iterator* it, std::string const& start,

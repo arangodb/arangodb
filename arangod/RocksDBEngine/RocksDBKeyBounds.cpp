@@ -52,12 +52,6 @@ RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(uint64_t collectionObject
   return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::CollectionDocumentRange(uint64_t collectionObjectId,
-                                                           std::size_t min,
-                                                           std::size_t max) {
-  return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId, min, max);
-}
-
 RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::PrimaryIndexValue, indexId);
 }
@@ -101,6 +95,10 @@ RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId, VPackSlice const
   return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, left, right);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::ZkdIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::ZkdIndexValue, indexId, false);
+}
+
 /// used for seeking lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice const& left,
                                                     VPackSlice const& right) {
@@ -119,18 +117,6 @@ RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice
 
 RocksDBKeyBounds RocksDBKeyBounds::DatabaseViews(TRI_voc_tick_t databaseId) {
   return RocksDBKeyBounds(RocksDBEntryType::View, databaseId);
-}
-
-RocksDBKeyBounds RocksDBKeyBounds::CounterValues() {
-  return RocksDBKeyBounds(RocksDBEntryType::CounterValue);
-}
-
-RocksDBKeyBounds RocksDBKeyBounds::IndexEstimateValues() {
-  return RocksDBKeyBounds(RocksDBEntryType::IndexEstimateValue);
-}
-
-RocksDBKeyBounds RocksDBKeyBounds::KeyGenerators() {
-  return RocksDBKeyBounds(RocksDBEntryType::KeyGeneratorValue);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,
@@ -228,7 +214,10 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::FulltextIndex);
     case RocksDBEntryType::LegacyGeoIndexValue:
     case RocksDBEntryType::GeoIndexValue:
+    case RocksDBEntryType::UniqueZkdIndexValue:
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex);
+    case RocksDBEntryType::ZkdIndexValue:
+      return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ZkdIndex);
     case RocksDBEntryType::LogEntry:
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
     case RocksDBEntryType::Database:
@@ -385,6 +374,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, bool second)
     : _type(type) {
   switch (_type) {
+    case RocksDBEntryType::ZkdIndexValue:
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue: {
       uint8_t const maxSlice[] = {0x02, 0x03, 0x1f};

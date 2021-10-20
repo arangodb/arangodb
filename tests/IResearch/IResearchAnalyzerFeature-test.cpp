@@ -30,6 +30,7 @@
 #include "index/norm.hpp"
 #include "utils/utf8_path.hpp"
 
+#include "IResearch/IResearchTestCommon.h"
 #include "IResearch/RestHandlerMock.h"
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
@@ -116,14 +117,6 @@ struct TestIndex : public arangodb::Index {
   void unload() override {}
 };
 
-struct TestAttribute : public irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "TestAttribute";
-  }
-};
-
-REGISTER_ATTRIBUTE(TestAttribute);  // required to open reader on segments with analized fields
-
 class ReNormalizingAnalyzer : public irs::analysis::analyzer {
  public:
   static constexpr irs::string_ref type_name() noexcept {
@@ -182,82 +175,6 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
 
 REGISTER_ANALYZER_VPACK(ReNormalizingAnalyzer, ReNormalizingAnalyzer::make,
                         ReNormalizingAnalyzer::normalize);
-
-class TestAnalyzer : public irs::analysis::analyzer {
- public:
-  static constexpr irs::string_ref type_name() noexcept {
-    return "TestAnalyzer";
-  }
-
-  TestAnalyzer() : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) { }
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    if (type == irs::type<TestAttribute>::id()) {
-      return &_attr;
-    }
-    if (type == irs::type<irs::increment>::id()) {
-      return &_increment;
-    }
-    if (type == irs::type<irs::term_attribute>::id()) {
-      return &_term;
-    }
-    return nullptr;
-  }
-
-  static ptr make(irs::string_ref const& args) {
-    auto slice = arangodb::iresearch::slice(args);
-    if (slice.isNull()) throw std::exception();
-    if (slice.isNone()) return nullptr;
-    PTR_NAMED(TestAnalyzer, ptr);
-    return ptr;
-  }
-
-  static bool normalize(irs::string_ref const& args, std::string& definition) {
-    // same validation as for make,
-    // as normalize usually called to sanitize data before make
-    auto slice = arangodb::iresearch::slice(args);
-    if (slice.isNull()) throw std::exception();
-    if (slice.isNone()) return false;
-
-    arangodb::velocypack::Builder builder;
-    if (slice.isString()) {
-      VPackObjectBuilder scope(&builder);
-      arangodb::iresearch::addStringRef(builder, "args",
-                                        arangodb::iresearch::getStringRef(slice));
-    } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
-      VPackObjectBuilder scope(&builder);
-      arangodb::iresearch::addStringRef(builder, "args",
-                                        arangodb::iresearch::getStringRef(slice.get("args")));
-    } else {
-      return false;
-    }
-
-    definition = builder.buffer()->toString();
-
-    return true;
-  }
-
-  virtual bool next() override {
-    if (_data.empty()) return false;
-
-    _term.value = irs::bytes_ref(_data.c_str(), 1);
-    _data = irs::bytes_ref(_data.c_str() + 1, _data.size() - 1);
-    return true;
-  }
-
-  virtual bool reset(irs::string_ref const& data) override {
-    _data = irs::ref_cast<irs::byte_type>(data);
-    return true;
-  }
-
- private:
-  irs::bytes_ref _data;
-  irs::increment _increment;
-  irs::term_attribute _term;
-  TestAttribute _attr;
-};
-
-REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normalize);
-
 
 class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
  public:
@@ -443,7 +360,7 @@ std::map<irs::string_ref, Analyzer> const& staticAnalyzers() {
         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_zh",
        {"text",
-        "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] "
+        "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ], \"stemming\": false "
         "}",
         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
   };
@@ -1364,14 +1281,14 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
       IndexTypeFactory(arangodb::application_features::ApplicationServer& server)
           : arangodb::IndexTypeFactory(server) {}
 
-      virtual bool equal(arangodb::velocypack::Slice const& lhs,
-                         arangodb::velocypack::Slice const& rhs,
+      virtual bool equal(arangodb::velocypack::Slice lhs,
+                         arangodb::velocypack::Slice rhs,
                          std::string const&) const override {
         return false;
       }
 
       std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
-                                                   arangodb::velocypack::Slice const& definition,
+                                                   arangodb::velocypack::Slice definition,
                                                    arangodb::IndexId id,
                                                    bool isClusterConstructor) const override {
         EXPECT_TRUE(collection.vocbase().server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>());
@@ -2001,7 +1918,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
           {"text_zh",
            {"text",
             "{ \"locale\": \"zh.UTF-8\", \"caseConvert\": \"lower\", "
-            "\"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+            "\"stopwords\": [ ], \"noAccent\": true, \"stemming\": false}"}},
           {"identity", {"identity", "{\n}"}},
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
@@ -2120,7 +2037,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
                     VPackParser::fromJson("\"abc\"")->slice(),
                     arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_NE(nullptr, pool);
     ASSERT_EQ(arangodb::iresearch::Features{}, pool->features());
     ASSERT_EQ(irs::IndexFeatures::NONE, pool->indexFeatures());
@@ -2134,7 +2052,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
                     VPackParser::fromJson("\"abc\"")->slice(),
                     arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{irs::IndexFeatures::FREQ},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_NE(nullptr, pool);
     ASSERT_EQ(arangodb::iresearch::Features{irs::IndexFeatures::FREQ}, pool->features());
     ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
@@ -2150,7 +2069,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
                     arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{arangodb::iresearch::FieldFeatures::NORM,
                                                   irs::IndexFeatures::FREQ},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_NE(nullptr, pool);
     ASSERT_EQ((arangodb::iresearch::Features{
                 arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ}),
@@ -2169,7 +2089,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
                     arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{arangodb::iresearch::FieldFeatures::NORM,
                                                   irs::IndexFeatures::FREQ},
-                    arangodb::iresearch::LinkVersion::MAX).ok());
+                    arangodb::iresearch::LinkVersion::MAX,
+                    false).ok());
     ASSERT_NE(nullptr, pool);
     ASSERT_EQ((arangodb::iresearch::Features{
                 arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ}),
@@ -2187,7 +2108,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
                     VPackParser::fromJson("\"abc\"")->slice(),
                     arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{irs::IndexFeatures::POS},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_EQ(nullptr, pool);
   }
 }
@@ -2198,7 +2120,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
                   lhs, "db::test", "TestAnalyzer",
                   VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN,
                   arangodb::iresearch::Features{},
-                  arangodb::iresearch::LinkVersion::MIN).ok());
+                  arangodb::iresearch::LinkVersion::MIN, 
+                  false).ok());
   ASSERT_NE(nullptr, lhs);
   ASSERT_EQ(*lhs, *lhs);
 
@@ -2209,7 +2132,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
                     rhs, "db::test1", "TestAnalyzer",
                     VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN, 
+                    false).ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
   }
@@ -2221,7 +2145,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
                     rhs, "db::test", "ReNormalizingAnalyzer",
                     VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
   }
@@ -2233,7 +2158,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
                     rhs, "db::test", "TestAnalyzer",
                     VPackParser::fromJson("\"abcd\"")->slice(), arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features{},
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
   }
@@ -2246,7 +2172,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
                     VPackParser::fromJson("\"abcd\"")->slice(),
                     arangodb::AnalyzersRevision::MIN,
                     arangodb::iresearch::Features(irs::IndexFeatures::FREQ),
-                    arangodb::iresearch::LinkVersion::MIN).ok());
+                    arangodb::iresearch::LinkVersion::MIN,
+                    false).ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
   }
@@ -2259,7 +2186,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
       VPackParser::fromJson("\"abc\"")->slice(),
       arangodb::AnalyzersRevision::MIN + 1,
       arangodb::iresearch::Features{},
-      arangodb::iresearch::LinkVersion::MIN)
+      arangodb::iresearch::LinkVersion::MIN,
+      false)
       .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_EQ(*lhs, *rhs);
@@ -2378,7 +2306,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     networkFeature.prepare();
     dbFeature.prepare();
 
-    auto cleanup = arangodb::scopeGuard([&, this]() {
+    auto cleanup = arangodb::scopeGuard([&, this]() noexcept {
       dbFeature.unprepare();
       networkFeature.unprepare();
       server.getFeature<arangodb::DatabaseFeature>().prepare(); // restore calculation vocbase
@@ -2448,7 +2376,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     networkFeature.prepare();
     dbFeature.prepare();
 
-    auto cleanup = arangodb::scopeGuard([&, this]() {
+    auto cleanup = arangodb::scopeGuard([&, this]() noexcept {
       dbFeature.unprepare();
       networkFeature.unprepare();
       cluster.unprepare();
@@ -2827,7 +2755,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   auto& systemdb = newServer.addFeature<arangodb::SystemDatabaseFeature>();
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
 
-  auto cleanup = arangodb::scopeGuard([&dbfeature, this]() {
+  auto cleanup = arangodb::scopeGuard([&dbfeature, this]() noexcept {
     dbfeature.unprepare();
     server.getFeature<arangodb::DatabaseFeature>().prepare(); // restore calculation vocbase
   });
@@ -3812,7 +3740,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
                                                  false, unused);
   }
 
-  auto cleanup = arangodb::scopeGuard([&dbFeature, this]() {
+  auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
     dbFeature.unprepare();
     server.getFeature<arangodb::DatabaseFeature>().prepare(); // restore calculation vocbase
   });
@@ -4049,7 +3977,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
          {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_zh",
-         "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] "
+         "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ], \"stemming\":false "
          "}",
          {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
@@ -4085,7 +4013,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
-  auto cleanup = arangodb::scopeGuard([&dbFeature, this]() {
+  auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
     dbFeature.unprepare();
     server.getFeature<arangodb::DatabaseFeature>().prepare(); // restore calculation vocbase
   });
@@ -4115,14 +4043,17 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
                            "norm", vpack->slice())
                   .ok());
   EXPECT_TRUE(result.first);
-  EXPECT_EQUAL_SLICES(vpack->slice(), result.first->properties());
+
+  EXPECT_EQUAL_SLICES(
+    VPackParser::fromJson(R"({"locale":"ru_RU","case":"upper","accent":true})")->slice(),
+    result.first->properties());
 
   // for persistence
   {
     auto expectedVpack = VPackParser::fromJson(
         "{ \"_key\": \"test_norm_analyzer4\", \"name\": "
         "\"test_norm_analyzer4\", \"type\": \"norm\", "
-        "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\","
+        "\"properties\":{\"locale\":\"ru_RU\",\"case\":\"upper\","
         "\"accent\":true}, "
         "\"features\": [], "
         "\"revision\": 0 } ");
@@ -4138,7 +4069,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
         VPackParser::fromJson("{ \"name\": \"" + arangodb::StaticStrings::SystemDatabase +
                               "::test_norm_analyzer4\", "
                               "\"type\": \"norm\", "
-                              "\"properties\":{\"locale\":\"ru_RU.utf-8\","
+                              "\"properties\":{\"locale\":\"ru_RU\","
                               "\"case\":\"upper\",\"accent\":true}, "
                               "\"features\": [] } ");
 
@@ -4152,7 +4083,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
     auto expectedVpack = VPackParser::fromJson(
         "{ \"name\": \"test_norm_analyzer4\", "
         "\"type\": \"norm\", "
-        "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\","
+        "\"properties\":{\"locale\":\"ru_RU\",\"case\":\"upper\","
         "\"accent\":true}, "
         "\"features\": [] } ");
 
@@ -4171,7 +4102,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
     auto expectedVpack = VPackParser::fromJson(
         "{ \"name\": \"::test_norm_analyzer4\", "
         "\"type\": \"norm\", "
-        "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\","
+        "\"properties\":{\"locale\":\"ru_RU\",\"case\":\"upper\","
         "\"accent\":true}, "
         "\"features\": []} ");
 
@@ -4186,7 +4117,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
         VPackParser::fromJson("{ \"name\": \"" + arangodb::StaticStrings::SystemDatabase +
                               "::test_norm_analyzer4\", "
                               "\"type\": \"norm\", "
-                              "\"properties\":{\"locale\":\"ru_RU.utf-8\","
+                              "\"properties\":{\"locale\":\"ru_RU\","
                               "\"case\":\"upper\",\"accent\":true}, "
                               "\"features\": []} ");
 
@@ -4209,7 +4140,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
-  auto cleanup = arangodb::scopeGuard([&dbFeature, this]() {
+  auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
     dbFeature.unprepare();
     server.getFeature<arangodb::DatabaseFeature>().prepare(); // restore calculation vocbase
   });
@@ -4305,7 +4236,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
             "{ "
-            "\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],"
+            "\"locale\":\"ru_RU\",\"case\":\"lower\",\"stopwords\":[],"
             "\"accent\":true,\"stemming\":false}")
             ->slice(),
         result.first->properties());
@@ -4324,7 +4255,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
-            "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],"
+            "{\"locale\":\"ru_RU\",\"case\":\"lower\",\"stopwords\":[],"
             "\"accent\":true,\"stemming\":false}")
             ->slice(),
         result.first->properties());
@@ -4343,7 +4274,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
-            "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],"
+            "{\"locale\":\"ru_RU\",\"case\":\"lower\",\"stopwords\":[],"
             "\"accent\":false,\"stemming\":false}")
             ->slice(),
         result.first->properties());
@@ -4362,7 +4293,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
-            "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],"
+            "{\"locale\":\"ru_RU\",\"case\":\"lower\",\"stopwords\":[],"
             "\"accent\":true,\"stemming\":true}")
             ->slice(),
         result.first->properties());
@@ -4379,7 +4310,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
                              "text", vpack->slice())
                     .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQUAL_SLICES(vpack->slice(), result.first->properties());
+    EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson(R"({"locale":"ru_RU","case":"upper","stopwords":[],"accent":true,"stemming":false})")->slice(),
+      result.first->properties());
   }
 
   // non-empty stopwords with duplicates
@@ -4427,7 +4360,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
                              "stem", vpack->slice())
                     .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\"}")->slice(),
+    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"locale\":\"ru\"}")->slice(),
                         result.first->properties());
   }
   // with invalid locale
@@ -4453,7 +4386,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
-            "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}")
+            "{\"locale\":\"ru_RU\",\"case\":\"lower\",\"accent\":true}")
             ->slice(),
         result.first->properties());
   }
@@ -4470,7 +4403,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
-            "{\"locale\":\"ru_RU.utf-8\",\"case\":\"none\",\"accent\":true}")
+            "{\"locale\":\"ru_RU\",\"case\":\"none\",\"accent\":true}")
             ->slice(),
         result.first->properties());
   }
@@ -4487,7 +4420,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson(
-            "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}")
+            "{\"locale\":\"ru_RU\",\"case\":\"lower\",\"accent\":true}")
             ->slice(),
         result.first->properties());
   }
@@ -4501,7 +4434,10 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
                              "norm", vpack->slice())
                     .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQUAL_SLICES(vpack->slice(), result.first->properties());
+
+    EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson(R"({"locale":"ru_RU","case":"upper","accent":true})")->slice(),
+      result.first->properties());
   }
   // with invalid locale
   {

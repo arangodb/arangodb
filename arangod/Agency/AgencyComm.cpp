@@ -1199,9 +1199,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   auto started = std::chrono::steady_clock::now();
 
-  TRI_DEFER({
+  auto sg = ScopeGuard([&]() noexcept {
     auto end = std::chrono::steady_clock::now();
-
     _agency_comm_request_time_ms.count(std::chrono::duration_cast<std::chrono::milliseconds>(end - started).count());
   });
 

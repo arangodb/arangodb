@@ -27,6 +27,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
@@ -142,10 +143,17 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "translate an attribute name (use as --translate "
                      "\"from=to\", for csv and tsv only)",
                      new VectorParameter<StringParameter>(&_translations));
+  
+  options->addOption("--datatype",
+                     "force a specific datatype for an attribute "
+                     "(null/boolean/number/string). Use as \"attribute=type\". "
+                     "For CSV and TSV only. Takes precendence over --convert",
+                     new VectorParameter<StringParameter>(&_datatypes))
+                     .setIntroducedIn(30900);
 
   options->addOption("--remove-attribute",
-                     "remove an attribute before inserting an attribute"
-                     " into a collection (for csv and tsv only)",
+                     "remove an attribute before inserting documents"
+                     " into collection (for CSV and TSV only)",
                      new VectorParameter<StringParameter>(&_removeAttributes));
 
   std::unordered_set<std::string> types = {"document", "edge"};
@@ -165,7 +173,7 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOption(
       "--overwrite",
-      "overwrite collection if it exist (WARNING: this will remove any data "
+      "overwrite collection if it exists (WARNING: this will remove any data "
       "from the collection)",
       new BooleanParameter(&_overwrite));
 
@@ -192,6 +200,10 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "violation occurs. Possible values: " +
                          actionsJoined,
                      new DiscreteValuesParameter<StringParameter>(&_onDuplicateAction, actions));
+
+  options->addOption("--merge-attributes",
+                     "merge attributes into new document attribute (e.g. mergedAttribute=[someAttribute]-[otherAttribute]) (CSV and TSV only)",
+                     new VectorParameter<StringParameter>(&_mergeAttributes)).setIntroducedIn(30901);
 
   options->addOption(
       "--latency", "show 10 second latency statistics (values in microseconds)",
@@ -246,15 +258,30 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
   for (auto const& it : _translations) {
     auto parts = StringUtils::split(it, '=');
-    if (parts.size() != 2) {
-      LOG_TOPIC("e322b", FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
-      FATAL_ERROR_EXIT();
+    if (parts.size() < 2) {
+      parts.push_back("");
     }
     StringUtils::trimInPlace(parts[0]);
     StringUtils::trimInPlace(parts[1]);
 
-    if (parts[0].empty() || parts[1].empty()) {
+    if (parts.size() != 2 || parts[0].empty() || parts[1].empty()) {
       LOG_TOPIC("83ae7", FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
+      FATAL_ERROR_EXIT();
+    }
+  }
+  for (auto const& it : _datatypes) {
+    auto parts = StringUtils::split(it, '=');
+    if (parts.size() < 2) {
+      parts.push_back("");
+    }
+    StringUtils::trimInPlace(parts[0]);
+    StringUtils::trimInPlace(parts[1]);
+
+    if (parts.size() != 2 || parts[0].empty() ||
+        (parts[1] != "boolean" && parts[1] != "number" && parts[1] != "null" && parts[1] != "string")) {
+      LOG_TOPIC("13e75", FATAL, arangodb::Logger::FIXME) 
+          << "invalid datatype '" << it << "'. valid types are: "
+          << "boolean, number, null, string";
       FATAL_ERROR_EXIT();
     }
   }
@@ -434,17 +461,29 @@ void ImportFeature::start() {
   ih.ignoreMissing(_ignoreMissing);
   ih.setSkipValidation(_skipValidation);
 
+  // translations (a.k.a. renaming of attributes)
   std::unordered_map<std::string, std::string> translations;
   for (auto const& it : _translations) {
     auto parts = StringUtils::split(it, '=');
     TRI_ASSERT(parts.size() == 2);  // already validated before
     StringUtils::trimInPlace(parts[0]);
     StringUtils::trimInPlace(parts[1]);
-
     translations.emplace(parts[0], parts[1]);
   }
-
   ih.setTranslations(translations);
+  
+  // datatypes (a.k.a. forcing an attribute to a specific type)
+  std::unordered_map<std::string, std::string> datatypes;
+  for (auto const& it : _datatypes) {
+    auto parts = StringUtils::split(it, '=');
+    TRI_ASSERT(parts.size() == 2);  // already validated before
+    StringUtils::trimInPlace(parts[0]);
+    StringUtils::trimInPlace(parts[1]);
+    datatypes.emplace(parts[0], parts[1]);
+  }
+  ih.setDatatypes(datatypes);
+
+  // attributes to remove
   ih.setRemoveAttributes(_removeAttributes);
 
   // quote
@@ -487,6 +526,10 @@ void ImportFeature::start() {
   // progress
   if (_latencyStats) {
     ih.startHistogram();
+  }
+
+  if (!_mergeAttributes.empty()) {
+    ih.parseMergeAttributes(_mergeAttributes);
   }
 
   if (_onDuplicateAction != "error" && _onDuplicateAction != "update" &&
@@ -557,7 +600,7 @@ void ImportFeature::start() {
 ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client, std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
-  builder.add("name", VPackValue(name));
+  builder.add("name", VPackValue(normalizeUtf8ToNFC(name)));
   builder.add("users", VPackValue(VPackValueType::Array));
   builder.openObject();
   builder.add("username", VPackValue(client.username()));

@@ -42,7 +42,7 @@
 
 namespace arangodb::replication2::replicated_log {
 
-class ReplicatedLogIterator : public LogIterator {
+class ReplicatedLogIterator : public LogRangeIterator {
  public:
   using log_type = ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
 
@@ -61,6 +61,14 @@ class ReplicatedLogIterator : public LogIterator {
       }
     }
     return std::nullopt;
+  }
+
+  auto range() const noexcept -> LogRange override {
+    if (_container.empty()) {
+      return {LogIndex{0}, LogIndex{0}};
+    } else {
+      return {_container.front().entry().logIndex(), _container.back().entry().logIndex() + 1};
+    }
   }
 
  private:
@@ -83,6 +91,30 @@ class InMemoryPersistedLogIterator : public PersistedLogIterator {
       auto const& it = *_begin;
       ++_begin;
       return it.entry();
+    }
+    return std::nullopt;
+  }
+
+ private:
+  log_type _container;
+  log_type::const_iterator _begin;
+  log_type::const_iterator _end;
+};
+
+class InMemoryLogIterator : public TypedLogIterator<InMemoryLogEntry> {
+ public:
+  using log_type = ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
+
+  explicit InMemoryLogIterator(log_type container)
+      : _container(std::move(container)),
+        _begin(_container.begin()),
+        _end(_container.end()) {}
+
+  auto next() -> std::optional<InMemoryLogEntry> override {
+    if (_begin != _end) {
+      auto const& it = *_begin;
+      ++_begin;
+      return it;
     }
     return std::nullopt;
   }

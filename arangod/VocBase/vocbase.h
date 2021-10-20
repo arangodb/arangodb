@@ -128,7 +128,7 @@ struct TRI_vocbase_t {
 
   TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
-
+  
  private:
   // explicitly document implicit behavior (due to presence of locks)
   TRI_vocbase_t(TRI_vocbase_t&&) = delete;
@@ -200,17 +200,7 @@ struct TRI_vocbase_t {
   // structures for volatile cache data (used from JavaScript)
   std::unique_ptr<arangodb::DatabaseJavaScriptCache> _cacheData;
 
- public:
-  /// @brief checks if a database name is allowed
-  /// returns true if the name is allowed and false otherwise
-  static bool IsAllowedName(arangodb::velocypack::Slice slice) noexcept;
-  static bool IsAllowedName(bool allowSystem,
-                            arangodb::velocypack::StringRef const& name) noexcept;
-
-  /// @brief determine whether a data-source name is a system data-source name
-  static bool IsSystemName(std::string const& name) noexcept;
-
-  arangodb::application_features::ApplicationServer& server() const {
+  arangodb::application_features::ApplicationServer& server() const noexcept {
     return _server;
   }
 
@@ -286,8 +276,9 @@ struct TRI_vocbase_t {
   /// @brief returns all known collections
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections(bool includeDeleted);
 
-  void processCollections(std::function<void(arangodb::LogicalCollection*)> const& cb,
-                          bool includeDeleted);
+  void processCollectionsOnShutdown(std::function<void(arangodb::LogicalCollection*)> const& cb);
+
+  void processCollections(std::function<void(arangodb::LogicalCollection*)> const& cb);
 
   /// @brief returns names of all known collections
   std::vector<std::string> collectionNames();
@@ -367,14 +358,14 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name, bool checkPermissions);
 
   /// @brief releases a collection from usage
-  void releaseCollection(arangodb::LogicalCollection* collection);
+  void releaseCollection(arangodb::LogicalCollection* collection) noexcept;
 
   /// @brief visit all DataSources registered with this vocbase
   /// @param visitor returns if visitation should continue
   /// @param lockWrite acquire write lock (if 'visitor' will modify vocbase)
   /// @return visitation compleated successfully
   typedef std::function<bool(arangodb::LogicalDataSource& dataSource)> dataSourceVisitor;
-  bool visitDataSources(dataSourceVisitor const& visitor, bool lockWrite = false);
+  bool visitDataSources(dataSourceVisitor const& visitor);
 
  private:
   /// @brief callback for collection dropping

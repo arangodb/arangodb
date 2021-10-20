@@ -5,22 +5,30 @@
 (function () {
   'use strict';
 
-  var createButtonStub = function (type, title, cb, confirm) {
-    return {
+  var createButtonStub = function (type, title, cb, confirm, style) {
+    const button = {
       type: type,
       title: title,
       callback: cb,
       confirm: confirm
     };
+    if (style) {
+      button.style = style;
+    }
+
+    return button;
   };
 
   var createTextStub = function (type, label, value, info, placeholder, mandatory, joiObj,
-    addDelete, addAdd, maxEntrySize, tags) {
+    addDelete, addAdd, maxEntrySize, tags, style) {
     var obj = {
       type: type,
       label: label
     };
-    if (value !== undefined) {
+    if (style) {
+      obj.style = style;
+    }
+    if (value) {
       obj.value = value;
     }
     if (info !== undefined) {
@@ -86,7 +94,8 @@
       SELECT: 'select',
       SELECT2: 'select2',
       JSONEDITOR: 'jsoneditor',
-      CHECKBOX: 'checkbox'
+      CHECKBOX: 'checkbox',
+      TABLE: 'table'
     },
 
     initialize: function () {
@@ -172,29 +181,29 @@
       return createButtonStub(this.buttons.NEUTRAL, title, cb);
     },
 
-    createDisabledButton: function (title) {
-      var disabledButton = createButtonStub(this.buttons.DISABLED, title);
+    createDisabledButton: function (title, style) {
+      var disabledButton = createButtonStub(this.buttons.DISABLED, title, style);
       disabledButton.disabled = true;
       return disabledButton;
     },
 
-    createReadOnlyEntry: function (id, label, value, info, addDelete, addAdd) {
+    createReadOnlyEntry: function (id, label, value, info, addDelete, addAdd, style) {
       var obj = createTextStub(this.tables.READONLY, label, value, info, undefined, undefined,
-        undefined, addDelete, addAdd);
+        undefined, addDelete, addAdd, undefined, undefined, style);
       obj.id = id;
       return obj;
     },
 
-    createTextEntry: function (id, label, value, info, placeholder, mandatory, regexp) {
+    createTextEntry: function (id, label, value, info, placeholder, mandatory, regexp, style) {
       var obj = createTextStub(this.tables.TEXT, label, value, info, placeholder, mandatory,
-        regexp);
+        regexp, undefined, undefined, undefined, undefined, style);
       obj.id = id;
       return obj;
     },
 
-    createBlobEntry: function (id, label, value, info, placeholder, mandatory, regexp) {
+    createBlobEntry: function (id, label, value, info, placeholder, mandatory, regexp, style) {
       var obj = createTextStub(this.tables.BLOB, label, value, info, placeholder, mandatory,
-        regexp);
+        regexp, undefined, undefined, undefined, undefined, style);
       obj.id = id;
       return obj;
     },
@@ -208,21 +217,24 @@
     },
 
     createJsonEditor: function (
-      id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags) {
+      id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags, style) {
       var obj = createTextStub(this.tables.JSONEDITOR, 'Document body', value, '', placeholder,
-        mandatory, undefined, addDelete, addAdd, maxEntrySize, tags);
+        mandatory, undefined, addDelete, addAdd, maxEntrySize, tags, style);
       obj.id = id;
       return obj;
     },
 
-    createPasswordEntry: function (id, label, value, info, placeholder, mandatory, regexp) {
-      var obj = createTextStub(this.tables.PASSWORD, label, value, info, placeholder, mandatory, regexp);
+    createPasswordEntry: function (id, label, value, info, placeholder, mandatory, regexp, style) {
+      var obj = createTextStub(this.tables.PASSWORD, label, value, info, placeholder, mandatory,
+        regexp, undefined, undefined, undefined, undefined, style);
       obj.id = id;
       return obj;
     },
 
-    createCheckboxEntry: function (id, label, value, info, checked) {
-      var obj = createTextStub(this.tables.CHECKBOX, label, value, info);
+    createCheckboxEntry: function (id, label, value, info, checked, style) {
+      var obj = createTextStub(this.tables.CHECKBOX, label, value, info, undefined,
+        undefined, undefined, undefined, undefined,
+        undefined, undefined, style);
       obj.id = id;
       if (checked) {
         obj.checked = checked;
@@ -234,8 +246,10 @@
       return obj;
     },
 
-    createSelectEntry: function (id, label, selected, info, options) {
-      var obj = createTextStub(this.tables.SELECT, label, null, info);
+    createSelectEntry: function (id, label, selected, info, options, style) {
+      var obj = createTextStub(this.tables.SELECT, label, null, info, undefined,
+        undefined, undefined, undefined, undefined,
+        undefined, undefined, style);
       obj.id = id;
       if (selected) {
         obj.selected = selected;
@@ -244,16 +258,45 @@
       return obj;
     },
 
-    createOptionEntry: function (label, value) {
+    createOptionEntry: function (label, value, style) {
       return {
         label: label,
-        value: value || label
+        value: value || label,
+        style
+      };
+    },
+
+    createTableEntry: function (id, label, head, rows, info, style) {
+      return {
+        id,
+        label,
+        info,
+        type: this.tables.TABLE,
+        head,
+        rows,
+        style: style + " ; display: table; "
       };
     },
 
     renameDangerButton: function (buttonID) {
       var buttonText = $(buttonID).text();
       $('#modal-delete-confirmation strong').html('Really ' + buttonText.toLowerCase() + '?');
+    },
+
+    handleSelect2Row: function (row) {
+      // handle select2
+      let options = {
+        tags: row.tags || [],
+        showSearchBox: false,
+        minimumResultsForSearch: -1,
+        width: row.width || '336px'
+      };
+
+      if (row.maxEntrySize) {
+        options.maximumSelectionSize = row.maxEntrySize;
+      }
+
+      $('#' + row.id).select2(options);
     },
 
     show: function (templateName, title, buttons, tableContent, advancedContent,
@@ -392,25 +435,31 @@
       var completeTableContent = tableContent || [];
       if (advancedContent && advancedContent.content) {
         completeTableContent = completeTableContent.concat(advancedContent.content);
+      } else if (Array.isArray(advancedContent)) {
+        _.each(advancedContent, function(arrEntry){
+          if (arrEntry.content) {
+            completeTableContent = completeTableContent.concat(arrEntry.content);
+          }
+        });
       }
 
       _.each(completeTableContent, function (row) {
         self.modalBindValidation(row);
         if (row.type === self.tables.SELECT2) {
-          // handle select2
+          self.handleSelect2Row(row);
+        }
 
-          var options = {
-            tags: row.tags || [],
-            showSearchBox: false,
-            minimumResultsForSearch: -1,
-            width: '336px'
-          };
+        if (row.type === self.tables.TABLE) {
+          row.rows.forEach(row => {
+            _.each(row, self.modalBindValidation, self);
 
-          if (row.maxEntrySize) {
-            options.maximumSelectionSize = row.maxEntrySize;
-          }
-
-          $('#' + row.id).select2(options);
+            _.each(row, function(innerRow) {
+              if (innerRow.type === self.tables.SELECT2) {
+                innerRow.width = "resolve";
+                self.handleSelect2Row(innerRow);
+              }
+            });
+          });
         }
       });
 
@@ -419,24 +468,37 @@
         this.delegateEvents();
       }
 
-      if ($('#accordion2')) {
-        $('#accordion2 .accordion-toggle').bind('click', function () {
-          if ($('#collapseOne').is(':visible')) {
-            $('#collapseOne').hide();
-            setTimeout(function () {
-              $('.accordion-toggle').addClass('collapsed');
-            }, 100);
-          } else {
-            $('#collapseOne').show();
-            setTimeout(function () {
-              $('.accordion-toggle').removeClass('collapsed');
-            }, 100);
-          }
+      let enableAccordion = function (counter) {
+        const timeoutDuration = 100;
+        if ($(`#accordion${counter}`)) {
+          $(`#accordion${counter} .accordion-toggle`).bind('click', function () {
+            if ($(`#collapseOne${counter}`).is(':visible')) {
+              $(`#collapseOne${counter}`).hide();
+              setTimeout(function () {
+                $(`#accordion${counter} .accordion-toggle`).addClass('collapsed');
+              }, timeoutDuration);
+            } else {
+              $(`#collapseOne${counter}`).show();
+              setTimeout(function () {
+                $(`#accordion${counter} .accordion-toggle`).removeClass('collapsed');
+              }, timeoutDuration);
+            }
+          });
+          $(`#collapseOne${counter}`).hide();
+          setTimeout(function () {
+            $(`#accordion${counter} .accordion-toggle`).addClass('collapsed');
+          }, timeoutDuration);
+        }
+      };
+
+      if (advancedContent && Array.isArray(advancedContent)) {
+        let c = 2;
+        _.each(advancedContent, function(entry) {
+          enableAccordion(c);
+          c++;
         });
-        $('#collapseOne').hide();
-        setTimeout(function () {
-          $('.accordion-toggle').addClass('collapsed');
-        }, 100);
+      } else if (advancedContent) {
+        enableAccordion(2);
       }
 
       if (!divID) {
@@ -479,40 +541,43 @@
     modalBindValidation: function (entry) {
       var self = this;
       if (entry.hasOwnProperty('id') &&
-          entry.hasOwnProperty('validateInput')) {
-        var validCheck = function () {
-          var $el = $('#' + entry.id);
-          var validation = entry.validateInput($el);
-          var error = false;
-          _.each(validation, function (validator) {
-            var value = $el.val();
-            if (!validator.rule) {
-              validator = {rule: validator};
-            }
-            if (typeof validator.rule === 'function') {
-              try {
-                validator.rule(value);
-              } catch (e) {
-                error = validator.msg || e.message;
+        entry.hasOwnProperty('validateInput')) {
+        var validCheck = function (e) {
+          if (e) {
+            var $el = $(e.target);
+            var validation = entry.validateInput($el);
+            var error = false;
+            _.each(validation, function (validator) {
+              var value = $el.val();
+              if (!validator.rule) {
+                validator = { rule: validator };
               }
-            } else {
-              var result = Joi.validate(value, validator.rule);
-              if (result.error) {
-                error = validator.msg || result.error.message;
+              if (typeof validator.rule === 'function') {
+                try {
+                  validator.rule(value);
+                } catch (e) {
+                  error = validator.msg || e.message;
+                }
+              } else {
+                var result = Joi.validate(value, validator.rule);
+                if (result.error) {
+                  error = validator.msg || result.error.message;
+                }
               }
-            }
+              if (error) {
+                return false;
+              }
+            });
             if (error) {
-              return false;
+              return error;
             }
-          });
-          if (error) {
-            return error;
           }
         };
         var $el = $('#' + entry.id);
         // catch result of validation and act
-        $el.on('keyup focusout', function () {
-          var msg = validCheck();
+        $el.on('keyup focusout', function (e) {
+          var $el = $(e.target);
+          var msg = validCheck(e);
           var errorElement = $el.next()[0];
           if (msg) {
             $el.addClass('invalid-input');

@@ -50,10 +50,14 @@ AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable, b
   return it->second;
 }
 
-void FixedVarExpressionContext::clearVariableValues() { _vars.clear(); }
+void FixedVarExpressionContext::clearVariableValues() noexcept { _vars.clear(); }
 
 void FixedVarExpressionContext::setVariableValue(Variable const* var, AqlValue const& value) {
   _vars.try_emplace(var, value);
+}
+
+void FixedVarExpressionContext::clearVariableValue(Variable const* var) {
+  _vars.erase(var);
 }
 
 void FixedVarExpressionContext::serializeAllVariables(velocypack::Options const& opts,
@@ -62,8 +66,8 @@ void FixedVarExpressionContext::serializeAllVariables(velocypack::Options const&
   for (auto const& it : _vars) {
     builder.openArray();
     it.first->toVelocyPack(builder);
-    it.second.toVelocyPack(&opts, builder, /*resolveExternals*/true,
-                           /*allowUnindexed*/false);
+    it.second.toVelocyPack(&opts, builder, /*resolveExternals*/ true,
+                           /*allowUnindexed*/ false);
     builder.close();
   }
 }

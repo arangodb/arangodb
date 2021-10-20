@@ -1526,9 +1526,9 @@ TEST(MerkleTreeTest, test_to_string) {
   // the exact size of the response is unclear here, due to the pseudo-random
   // inserts
   std::string s = t1.toString(false);
-  ASSERT_LE(1100, s.size());
+  ASSERT_LE(800, s.size());
   s = t1.toString(true);
-  ASSERT_LE(1250, s.size());
+  ASSERT_LE(950, s.size());
 }
 
 TEST(MerkleTreeTest, test_diff_one_side_empty_random_data_shifted) {

@@ -23,9 +23,9 @@
 
 #include "QueryExpressionContext.h"
 
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlValue.h"
 #include "Aql/QueryContext.h"
-#include "Aql/AqlFunctionsInternalCache.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb;
@@ -63,10 +63,8 @@ TRI_vocbase_t& QueryExpressionContext::vocbase() const {
   return _trx.vocbase();
 }
 
-transaction::Methods& QueryExpressionContext::trx() const {
-  return _trx;
-}
+transaction::Methods& QueryExpressionContext::trx() const { return _trx; }
 
-bool QueryExpressionContext::killed() const  {
-  return _query.killed();
-}
+bool QueryExpressionContext::killed() const { return _query.killed(); }
+
+QueryContext& QueryExpressionContext::query() { return _query; }

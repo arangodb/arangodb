@@ -61,10 +61,10 @@ class finally {
   // "FIXME make me noexcept as I'm begin called from within ~finally()"
   //static_assert(std::is_nothrow_invocable_v<Func>);
 
-  finally(Func&& func)
+  explicit finally(Func&& func)
     : func_(std::forward<Func>(func)) {
   }
-  ~finally() noexcept(std::is_nothrow_invocable_v<Func>) {
+  ~finally() {
     func_();
   }
 
@@ -84,7 +84,7 @@ finally<Func> make_finally(Func&& func) {
 template<typename T>
 class move_on_copy {
  public:
-  move_on_copy(T&& value) noexcept : value_(std::forward<T>(value)) {}
+  explicit move_on_copy(T&& value) noexcept : value_(std::forward<T>(value)) {}
   move_on_copy(const move_on_copy& rhs) noexcept : value_(std::move(rhs.value_)) {}
 
   T& value() noexcept { return value_; }

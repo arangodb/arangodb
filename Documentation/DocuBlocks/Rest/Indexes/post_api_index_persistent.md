@@ -43,6 +43,11 @@ The *estimates* attribute is optional and defaults to *true* if not set. It will
 have no effect on indexes other than *persistent* (with *hash* and *skiplist*
 being mere aliases for *persistent* nowadays).
 
+@RESTBODYPARAM{inBackground,boolean,optional,}
+The optional attribute **inBackground** can be set to *true* to create the index
+in the background, which will not write-lock the underlying collection for
+as long as if the index is built in the foreground. The default value is *false*.
+
 @RESTDESCRIPTION
 
 Creates a persistent index for the collection *collection-name*, if

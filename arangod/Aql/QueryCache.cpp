@@ -32,6 +32,7 @@
 #include "Basics/fasthash.h"
 #include "Basics/system-functions.h"
 #include "Utils/ExecContext.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/vocbase.h"
 
@@ -281,7 +282,7 @@ void QueryCacheDatabaseEntry::store(std::shared_ptr<QueryCacheResultEntry>&& ent
   try {
     for (auto const& it : e->_dataSources) {
       auto& ref = _entriesByDataSourceGuid[it.first];
-      ref.first = TRI_vocbase_t::IsSystemName(it.second);
+      ref.first = NameValidator::isSystemName(it.second);
       ref.second.emplace(hash);
     }
   } catch (...) {
@@ -635,7 +636,7 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
     // check if we need to exclude the entry because it refers to system
     // collections
     for (auto const& it : e->_dataSources) {
-      if (TRI_vocbase_t::IsSystemName(it.second)) {
+      if (NameValidator::isSystemName(it.second)) {
         // refers to a system collection...
         return;
       }

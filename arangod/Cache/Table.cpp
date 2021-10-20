@@ -296,7 +296,8 @@ void Table::setTypeSpecifics(BucketClearer clearer, std::size_t slotsPerBucket) 
 void Table::clear() {
   disable();
   if (_auxiliary.get() != nullptr) {
-    throw;
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "unexpected auxiliary state");
   }
   for (std::uint64_t i = 0; i < _size; i++) {
     _bucketClearer(&(_buckets[i]));

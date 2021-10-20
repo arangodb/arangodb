@@ -133,8 +133,8 @@ PersistingLogEntry::PersistingLogEntry(LogIndex index, velocypack::Slice persist
   }
 }
 
-InMemoryLogEntry::InMemoryLogEntry(PersistingLogEntry entry)
-    : _logEntry(std::move(entry)) {}
+InMemoryLogEntry::InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync)
+    : _waitForSync(waitForSync), _logEntry(std::move(entry)) {}
 
 void InMemoryLogEntry::setInsertTp(clock::time_point tp) noexcept {
   _insertTp = tp;
@@ -285,22 +285,98 @@ auto replication2::operator<<(std::ostream& os, TermIndexPair pair) -> std::ostr
 LogConfig::LogConfig(VPackSlice slice) {
   waitForSync = slice.get(StaticStrings::WaitForSyncString).extract<bool>();
   writeConcern = slice.get(StaticStrings::WriteConcern).extract<std::size_t>();
+  replicationFactor = slice.get(StaticStrings::ReplicationFactor).extract<std::size_t>();
 }
 
-LogConfig::LogConfig(std::size_t writeConcern, bool waitForSync) noexcept
-    : writeConcern(writeConcern), waitForSync(waitForSync) {}
+LogConfig::LogConfig(std::size_t writeConcern, std::size_t replicationFactor, bool waitForSync) noexcept
+    : writeConcern(writeConcern),
+      replicationFactor(replicationFactor),
+      waitForSync(waitForSync) {}
 
 auto LogConfig::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
+  builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
 }
 
 auto replication2::operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool {
   // TODO How can we make sure that we never forget a field here?
-  return left.waitForSync == right.waitForSync && left.writeConcern == right.writeConcern;
+  return left.waitForSync == right.waitForSync && left.writeConcern == right.writeConcern &&
+         left.replicationFactor == right.replicationFactor;
 }
 
 auto replication2::operator!=(const LogConfig& left, const LogConfig& right) noexcept -> bool {
   return !(left == right);
+}
+
+LogRange::LogRange(LogIndex from, LogIndex to) noexcept : from(from), to(to) {
+  TRI_ASSERT(from <= to);
+}
+
+auto LogRange::empty() const noexcept -> bool { return from == to; }
+
+auto LogRange::count() const noexcept -> std::size_t {
+  return to.value - from.value;
+}
+
+auto LogRange::contains(LogIndex idx) const noexcept -> bool {
+  return from <= idx && idx < to;
+}
+
+auto replication2::operator<<(std::ostream& os, LogRange const& r) -> std::ostream& {
+  return os << "[" << r.from << ", " << r.to << ")";
+}
+
+auto replication2::intersect(LogRange a, LogRange b) noexcept -> LogRange {
+  auto max_from = std::max(a.from, b.from);
+  auto min_to = std::min(a.to, b.to);
+  if (max_from > min_to) {
+    return {LogIndex{0}, LogIndex{0}};
+  } else {
+    return {max_from, min_to};
+  }
+}
+
+auto LogRange::end() const noexcept -> LogRange::Iterator {
+  return Iterator{to};
+}
+auto LogRange::begin() const noexcept -> LogRange::Iterator {
+  return Iterator{from};
+}
+
+auto LogRange::Iterator::operator++() noexcept -> LogRange::Iterator& {
+  current = current + 1;
+  return *this;
+}
+
+auto LogRange::Iterator::operator++(int) noexcept -> LogRange::Iterator {
+  auto idx = current;
+  current = current + 1;
+  return Iterator(idx);
+}
+
+auto LogRange::Iterator::operator*() const noexcept -> LogIndex {
+  return current;
+}
+auto LogRange::Iterator::operator->() const noexcept -> LogIndex const* {
+  return &current;
+}
+
+auto replication2::operator==(LogRange a, LogRange b) noexcept -> bool {
+  return a.from == b.from && a.to == b.to;
+}
+
+auto replication2::operator!=(LogRange a, LogRange b) noexcept -> bool {
+  return !(a == b);
+}
+
+auto replication2::operator==(LogRange::Iterator const& a,
+                              LogRange::Iterator const& b) noexcept -> bool {
+  return a.current == b.current;
+}
+
+auto replication2::operator!=(LogRange::Iterator const& a,
+                              LogRange::Iterator const& b) noexcept -> bool {
+  return !(a == b);
 }

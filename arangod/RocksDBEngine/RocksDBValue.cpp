@@ -59,6 +59,15 @@ RocksDBValue RocksDBValue::VPackIndexValue() {
   return RocksDBValue(RocksDBEntryType::VPackIndexValue);
 }
 
+
+RocksDBValue RocksDBValue::ZkdIndexValue() {
+  return RocksDBValue(RocksDBEntryType::ZkdIndexValue);
+}
+
+RocksDBValue RocksDBValue::UniqueZkdIndexValue(LocalDocumentId const& docId) {
+  return RocksDBValue(RocksDBEntryType::UniqueZkdIndexValue, docId, RevisionId::none());
+}
+
 RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId const& docId) {
   return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId, RevisionId::none());
 }
@@ -140,10 +149,6 @@ VPackSlice RocksDBValue::data(std::string const& s) {
   return data(s.data(), s.size());
 }
 
-uint64_t RocksDBValue::keyValue(rocksdb::Slice const& slice) {
-  return keyValue(slice.data(), slice.size());
-}
-
 S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
   TRI_ASSERT(s.size() == sizeof(double) * 3);
   return S2Point(intToDouble(uint64FromPersistent(s.data())),
@@ -170,6 +175,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, 
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::UniqueVPackIndexValue:
+    case RocksDBEntryType::UniqueZkdIndexValue:
     case RocksDBEntryType::PrimaryIndexValue: {
       if (!revision) {
         _buffer.reserve(sizeof(uint64_t));
@@ -256,19 +262,4 @@ VPackSlice RocksDBValue::data(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
   return VPackSlice(reinterpret_cast<uint8_t const*>(data));
-}
-
-uint64_t RocksDBValue::keyValue(char const* data, size_t size) {
-  TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(size >= sizeof(char));
-  VPackSlice key = transaction::helpers::extractKeyFromDocument(VPackSlice(reinterpret_cast<uint8_t const*>(data)));
-  if (key.isString()) {
-    VPackValueLength l;
-    char const* p = key.getStringUnchecked(l);
-    if (l > 0 && *p >= '0' && *p <= '9') {
-      return NumberUtils::atoi_zero<uint64_t>(p, p + l);
-    }
-  }
-
-  return 0;
 }

@@ -126,26 +126,6 @@ class SingleRowFetcherHelper
   arangodb::aql::InputAqlItemRow _lastReturnedRow{arangodb::aql::CreateInvalidInputRowHint{}};
 };
 
-/**
- * @brief Mock for AllRowsFetcher
- */
-class AllRowsFetcherHelper : public arangodb::aql::AllRowsFetcher {
- public:
-  AllRowsFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
-                       bool returnsWaiting);
-  ~AllRowsFetcherHelper();
-
- private:
-  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
-  arangodb::velocypack::Slice _data;
-  uint64_t _nrItems;
-  arangodb::aql::RegisterCount _nrRegs;
-  arangodb::GlobalResourceMonitor _global{};
-  arangodb::ResourceMonitor _resourceMonitor{_global};
-  arangodb::aql::AqlItemBlockManager _itemBlockManager;
-  std::unique_ptr<arangodb::aql::AqlItemMatrix> _matrix;
-};
-
 class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
  public:
   ConstFetcherHelper(arangodb::aql::AqlItemBlockManager& itemBlockManager,

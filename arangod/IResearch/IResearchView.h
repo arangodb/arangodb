@@ -26,6 +26,7 @@
 
 #include "Containers/HashSet.h"
 #include "IResearch/IResearchViewMeta.h"
+#include "IResearch/IResearchKludge.h"
 #include "Transaction/Status.h"
 #include "VocBase/LogicalView.h"
 
@@ -52,8 +53,7 @@ namespace iresearch {
 
 class IResearchFeature;
 class AsyncLinkHandle;
-template <typename T>
-class TypedResourceMutex;
+template <typename T> class AsyncValue;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                                   IResearchView
@@ -138,7 +138,8 @@ class IResearchView final: public arangodb::LogicalView {
   /// @brief updates properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
   using LogicalDataSource::properties;
-  virtual Result properties(velocypack::Slice const& properties,
+  virtual Result properties(velocypack::Slice properties,
+                            bool isUserRequest,
                             bool partialUpdate) override final;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -214,13 +215,13 @@ class IResearchView final: public arangodb::LogicalView {
   Result renameImpl(std::string const& oldName) override;
 
  private:
-  typedef std::shared_ptr<TypedResourceMutex<IResearchView>> AsyncViewPtr;
+  typedef std::shared_ptr<AsyncValue<IResearchView>> AsyncViewPtr;
   struct ViewFactory; // forward declaration
 
   AsyncViewPtr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
   std::unordered_map<DataSourceId, AsyncLinkPtr> _links;  // registered links (value may be nullptr on single-server if link did not come up yet) FIXME TODO maybe this should be asyncSelf?
   IResearchViewMeta _meta; // the view configuration
-  mutable irs::async_utils::read_write_mutex _mutex; // for use with member '_meta', '_links'
+  mutable arangodb::iresearch::kludge::read_write_mutex _mutex; // for use with member '_meta', '_links'
   std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback; // for snapshot(...)
   std::atomic<bool> _inRecovery;
@@ -240,6 +241,7 @@ class IResearchView final: public arangodb::LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result updateProperties(
     velocypack::Slice slice,
+    bool isUserRequest,
     bool partialUpdate);
 
   //////////////////////////////////////////////////////////////////////////////

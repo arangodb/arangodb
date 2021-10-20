@@ -31,15 +31,13 @@ const NGramInput = ({ formState, dispatch, disabled, basePath, required = true }
 
   return <Grid>
     <Cell size={'1-3'}>
-      <Textbox label={'Minimum N-Gram Length'} type={'number'} min={1} placeholder={disabled ? '' : '2'}
-               required={required} value={ngramBase.min || ''} onChange={getNumericFieldSetter('min')}
-               disabled={disabled}/>
+      <Textbox label={'Minimum N-Gram Length'} type={'number'} min={1} disabled={disabled}
+               required={required} value={ngramBase.min || ''} onChange={getNumericFieldSetter('min')}/>
     </Cell>
 
     <Cell size={'1-3'}>
-      <Textbox label={'Maximum N-Gram Length'} type={'number'} min={1} placeholder={disabled ? '' : '3'}
-               required={required} value={ngramBase.max || ''} onChange={getNumericFieldSetter('max')}
-               disabled={disabled}/>
+      <Textbox label={'Maximum N-Gram Length'} type={'number'} min={1} disabled={disabled}
+               required={required} value={ngramBase.max || ''} onChange={getNumericFieldSetter('max')}/>
     </Cell>
 
     <Cell size={'1-3'}>

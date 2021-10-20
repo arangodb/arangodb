@@ -260,7 +260,7 @@ void ApplicationServer::beginShutdown() {
   LOG_TOPIC("c7911", TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
   // make sure that we advance the state when we get out of here
-  auto waitAborter = scopeGuard([this]() {
+  auto waitAborter = scopeGuard([this]() noexcept {
     CONDITION_LOCKER(guard, _shutdownCondition);
 
     _abortWaiting = true;

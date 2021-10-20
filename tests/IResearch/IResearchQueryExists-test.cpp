@@ -32,28 +32,20 @@
 
 #include <velocypack/Iterator.h>
 
+#include "utils/string_utils.hpp"
+
 extern const char* ARGV0; // defined in main.cpp
 
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
 
 class IResearchQueryExistsTest : public IResearchQueryTest {};
+
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_F(IResearchQueryExistsTest, test) {
+TEST_P(IResearchQueryExistsTest, test) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
@@ -98,10 +90,10 @@ TEST_F(IResearchQueryExistsTest, test) {
     ASSERT_NE(nullptr, collection);
 
     irs::utf8_path resource;
-    resource/=irs::string_ref(arangodb::tests::testResourceDir);
-    resource/=irs::string_ref("simple_sequential.json");
+    resource /= std::string_view(arangodb::tests::testResourceDir);
+    resource /= std::string_view("simple_sequential.json");
 
-    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
@@ -133,13 +125,26 @@ TEST_F(IResearchQueryExistsTest, test) {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_FALSE(!impl);
 
-    auto updateJson = VPackParser::fromJson(
-      "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true, \"storeValues\": \"id\"},"
-        "\"testCollection1\": { \"includeAllFields\": true, \"storeValues\": \"id\" }"
-      "}}"
-    );
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    auto viewDefinitionTemplate = R"({ "links": {
+      "testCollection0": {
+        "includeAllFields": true,
+        "version": %u,
+        "trackListPositions": true,
+        "storeValues": "id" },
+      "testCollection1": {
+        "includeAllFields": true,
+        "version": %u,
+        "storeValues": "id" }
+    }})";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = VPackParser::fromJson(viewDefinition);
+
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
@@ -1311,7 +1316,7 @@ TEST_F(IResearchQueryExistsTest, test) {
   }
 }
 
-TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
+TEST_P(IResearchQueryExistsTest, StoreMaskPartially) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
@@ -1356,10 +1361,10 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_NE(nullptr, collection);
 
     irs::utf8_path resource;
-    resource/=irs::string_ref(arangodb::tests::testResourceDir);
-    resource/=irs::string_ref("simple_sequential.json");
+    resource /= std::string_view(arangodb::tests::testResourceDir);
+    resource /= std::string_view("simple_sequential.json");
 
-    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
@@ -1391,13 +1396,26 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_FALSE(!impl);
 
-    auto updateJson = VPackParser::fromJson(
-      "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
-        "\"testCollection1\": { \"includeAllFields\": true, \"storeValues\": \"id\" }"
-      "}}"
-    );
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+
+    auto viewDefinitionTemplate = R"({ "links": {
+      "testCollection0": {
+        "includeAllFields": true,
+        "trackListPositions": true,
+        "version": %u },
+      "testCollection1": {
+        "includeAllFields": true,
+        "storeValues": "id",
+        "version": %u }
+    }})";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = VPackParser::fromJson(viewDefinition);
+
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
@@ -2298,3 +2316,8 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     EXPECT_EQ(0, slice.length());
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryExistsTest,
+  IResearchQueryExistsTest,
+  GetLinkVersions());

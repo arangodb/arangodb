@@ -140,7 +140,7 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
       <i className="fa fa-plus-circle"/> Add Analyzer
     </button>
     <Modal show={state.show} setShow={(show) => dispatch({ type: show ? 'show' : 'reset' })}
-           key={`${analyzers.length}-${state.show}`}>
+           key={`${analyzers.length}-${state.show}`} cid={'modal-content-add-analyzer'}>
       <ModalHeader title={'Create Analyzer'}>
         <Grid>
           <Cell size={'2-3'}>
@@ -156,7 +156,7 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
           </Cell>
         </Grid>
       </ModalHeader>
-      <ModalBody maximize={true}>
+      <ModalBody maximize={true} show={state.show}>
         <Grid>
           {
             state.showJsonForm
@@ -199,7 +199,10 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
       </ModalBody>
       <ModalFooter>
         <button className="button-close" onClick={() => dispatch({ type: 'reset' })}>Close</button>
-        <button className="button-success" style={{ float: 'right' }} onClick={handleAdd}>Create</button>
+        <button className="button-success" style={{ float: 'right' }} onClick={handleAdd}
+                disabled={state.lockJsonForm}>
+          Create
+        </button>
       </ModalFooter>
     </Modal>
   </>

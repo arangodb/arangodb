@@ -146,18 +146,18 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   std::string const queryStr("FOR user IN _users RETURN user");
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(*vocbase),
-                             arangodb::aql::QueryString(queryStr), nullptr);
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*vocbase),
+                                            arangodb::aql::QueryString(queryStr), nullptr);
 
-  query.queryOptions().cache = false;
-  query.queryOptions().ttl = 30;
-  query.queryOptions().maxRuntime = 30;
-  query.queryOptions().skipAudit = true;
+  query->queryOptions().cache = false;
+  query->queryOptions().ttl = 30;
+  query->queryOptions().maxRuntime = 30;
+  query->queryOptions().skipAudit = true;
 
   LOG_TOPIC("f3eec", DEBUG, arangodb::Logger::AUTHENTICATION)
       << "starting to load authentication and authorization information";
 
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||

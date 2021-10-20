@@ -116,6 +116,18 @@ Graph::Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefault
   TRI_ASSERT(!_rev.empty());
 
   if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
+    if (slice.isObject()) {
+      if (slice.hasKey(StaticStrings::GraphSatellites) &&
+          slice.get(StaticStrings::GraphSatellites).isArray()) {
+
+        for (VPackSlice it : VPackArrayIterator(slice.get(StaticStrings::GraphSatellites))) {
+          if (!it.isString()) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_INVALID_PARAMETER);
+          }
+          _satelliteColls.emplace(it.copyString());
+        }
+      }
+    }
     parseEdgeDefinitions(slice.get(StaticStrings::GraphEdgeDefinitions));
   }
   if (slice.hasKey(StaticStrings::GraphOrphans)) {
@@ -146,6 +158,18 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
   TRI_ASSERT(_rev.empty());
 
   if (info.hasKey(StaticStrings::GraphEdgeDefinitions)) {
+    if (options.isObject()) {
+      if (options.hasKey(StaticStrings::GraphSatellites) &&
+          options.get(StaticStrings::GraphSatellites).isArray()) {
+
+        for (VPackSlice it : VPackArrayIterator(options.get(StaticStrings::GraphSatellites))) {
+          if (!it.isString()) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_INVALID_PARAMETER);
+          }
+          _satelliteColls.emplace(it.copyString());
+        }
+      }
+    }
     parseEdgeDefinitions(info.get(StaticStrings::GraphEdgeDefinitions));
   }
   if (info.hasKey(StaticStrings::GraphOrphans)) {
@@ -213,6 +237,10 @@ std::set<std::string> const& Graph::vertexCollections() const {
 
 std::set<std::string> const& Graph::orphanCollections() const {
   return _orphanColls;
+}
+
+std::unordered_set<std::string> const& Graph::satelliteCollections() const {
+  return _satelliteColls;
 }
 
 std::set<std::string> const& Graph::edgeCollections() const {
@@ -436,9 +464,11 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefi
 
   // duplicates in from and to shouldn't occur, but are safely ignored here
   for (VPackSlice it : VPackArrayIterator(from)) {
+    TRI_ASSERT(it.isString());
     fromSet.emplace(it.copyString());
   }
   for (VPackSlice it : VPackArrayIterator(to)) {
+    TRI_ASSERT(it.isString());
     toSet.emplace(it.copyString());
   }
 
@@ -746,6 +776,10 @@ void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) con
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
 }
 
+void Graph::createSatelliteCollectionOptions(VPackBuilder& builder, bool waitForSync) const {
+  TRI_ASSERT(false);
+}
+
 std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefinition(
     std::string const& collectionName) const {
   auto it = edgeDefinitions().find(collectionName);
@@ -756,4 +790,9 @@ std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefini
 
   TRI_ASSERT(hasEdgeCollection(collectionName));
   return {it->second};
+}
+
+auto Graph::addSatellites(VPackSlice const&) -> Result {
+  // Enterprise only
+  return TRI_ERROR_NO_ERROR;
 }

@@ -147,7 +147,8 @@ struct LeaderInfo {
 };
 
 struct BatchInfo {
-  static constexpr double DefaultTimeout = 7200.0;
+  static constexpr double DefaultTimeout = 3600.0;
+  static constexpr double DefaultTimeoutForTailing = 1800.0;
 
   /// @brief dump batch id
   uint64_t id{0};
@@ -168,7 +169,7 @@ struct BatchInfo {
 
   /// @brief send a "finish batch" command
   // TODO worker-safety
-  Result finish(Connection& connection, ProgressInfo& progress, SyncerId syncerId);
+  Result finish(Connection& connection, ProgressInfo& progress, SyncerId syncerId) noexcept;
 };
 
 /// @brief generates basic source headers for ClusterComm requests

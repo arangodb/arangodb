@@ -20,13 +20,28 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <chrono>
-
 #include "AgencyMethods.h"
 
-#include <Agency/AsyncAgencyComm.h>
-#include <Agency/TransactionBuilder.h>
-#include <Cluster/ClusterFeature.h>
+#include <cstdint>
+#include <chrono>
+#include <functional>
+#include <memory>
+#include <string>
+#include <utility>
+
+#include <velocypack/velocypack-aliases.h>
+#include <velocypack/velocypack-common.h>
+
+#include "Agency/AsyncAgencyComm.h"
+#include "Agency/TransactionBuilder.h"
+#include "Agency/AgencyPaths.h"
+#include "Cluster/ClusterTypes.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+
+namespace arangodb {
+class Result;
+}  // namespace arangodb
 
 using namespace std::chrono_literals;
 
@@ -136,10 +151,11 @@ auto methods::createReplicatedLog(DatabaseID const& database, LogPlanSpecificati
 }
 
 auto methods::updateElectionResult(arangodb::agency::envelope envelope,
-                                   const DatabaseID& database, LogId id,
-                                   const LogCurrentSupervisionElection& result)
+                                   DatabaseID const& database, LogId id,
+                                   LogCurrentSupervisionElection const& result)
     -> arangodb::agency::envelope {
   auto path = paths::current()->replicatedLogs()->database(database)->log(to_string(id))->str();
+
   return envelope.write()
       .emplace_object(path + "/supervision/election",
                       [&](VPackBuilder& builder) {

@@ -86,6 +86,15 @@ arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(VPackSlice 
   return arangodb::velocypack::StringRef();
 }
 
+/// @brief extract the _key attribute from a StringRef
+arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(velocypack::StringRef key) {
+  size_t pos = key.find('/');
+  if (pos == std::string::npos) {
+    return key;
+  }
+  return key.substr(pos + 1);
+}
+
 /// @brief extract the _id attribute from a slice, and convert it into a
 /// string, static method
 std::string transaction::helpers::extractIdString(CollectionNameResolver const* resolver,

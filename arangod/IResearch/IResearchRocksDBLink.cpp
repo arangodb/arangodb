@@ -156,27 +156,28 @@ IResearchRocksDBLink::IndexFactory::IndexFactory(application_features::Applicati
     : IndexTypeFactory(server) {}
 
 bool IResearchRocksDBLink::IndexFactory::equal(
-    VPackSlice const& lhs,
-    VPackSlice const& rhs,
+    VPackSlice lhs,
+    VPackSlice rhs,
     std::string const& dbname) const {
   return IResearchLinkHelper::equal(_server, lhs, rhs, dbname);
 }
 
 std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
-    LogicalCollection& collection, VPackSlice const& definition,
+    LogicalCollection& collection, VPackSlice definition,
     IndexId id, bool /*isClusterConstructor*/) const {
   uint64_t objectId = basics::VelocyPackHelper::stringUInt64(definition, arangodb::StaticStrings::ObjectId);
   auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);
 
-  auto const res = link->init(definition, [this](irs::directory& dir) {
+  auto const res = link->init(definition, [this]() -> irs::directory_attributes {
     auto& selector = _server.getFeature<EngineSelectorFeature>();
     TRI_ASSERT(selector.isRocksDB());
     auto& engine = selector.engine<RocksDBEngine>();
     auto* encryption = engine.encryptionProvider();
     if (encryption) {
-      dir.attributes().emplace<RocksDBEncryptionProvider>(*encryption,
-                                                          engine.rocksDBOptions());
+      return irs::directory_attributes{0, std::make_unique<RocksDBEncryptionProvider>(*encryption,
+                                                          engine.rocksDBOptions())};
     }
+    return irs::directory_attributes{};
   });
 
   if (!res.ok()) {
@@ -191,8 +192,11 @@ Result IResearchRocksDBLink::IndexFactory::normalize(
     VPackSlice definition,
     bool isCreation,
     TRI_vocbase_t const& vocbase) const {
+  // no attribute set in a definition -> old version
+  constexpr LinkVersion defaultVersion = LinkVersion::MIN;
+
   return IResearchLinkHelper::normalize(
-      normalized, definition, isCreation, vocbase);
+      normalized, definition, isCreation, vocbase, defaultVersion);
 }
 
 std::shared_ptr<IResearchRocksDBLink::IndexFactory> IResearchRocksDBLink::createFactory(

@@ -158,14 +158,14 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
   bindVars->add("start", VPackValue(start));
   bindVars->close();
 
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
-                             arangodb::aql::QueryString(::garbageCollectionQuery),
-                             _bindVars);
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
+                                            arangodb::aql::QueryString(::garbageCollectionQuery),
+                                            _bindVars);
 
-  query.queryOptions().cache = false;
-  query.queryOptions().skipAudit = true;
+  query->queryOptions().cache = false;
+  query->queryOptions().skipAudit = true;
 
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -280,14 +280,14 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 
   bindVars->close();
 
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
-                             arangodb::aql::QueryString(_clusterId.empty() ? ::lastEntryQuery : ::filteredLastEntryQuery),
-                             _bindVars);
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
+                                            arangodb::aql::QueryString(_clusterId.empty() ? ::lastEntryQuery : ::filteredLastEntryQuery),
+                                            _bindVars);
 
-  query.queryOptions().cache = false;
-  query.queryOptions().skipAudit = true;
+  query->queryOptions().cache = false;
+  query->queryOptions().skipAudit = true;
 
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -309,15 +309,15 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   bindVars->close();
 
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
-                             arangodb::aql::QueryString(
-                                 _clusterId.empty() ? ::fifteenMinuteQuery : ::filteredFifteenMinuteQuery),
-                             _bindVars);
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
+                                            arangodb::aql::QueryString(
+                                               _clusterId.empty() ? ::fifteenMinuteQuery : ::filteredFifteenMinuteQuery),
+                                            _bindVars);
 
-  query.queryOptions().cache = false;
-  query.queryOptions().skipAudit = true;
+  query->queryOptions().cache = false;
+  query->queryOptions().skipAudit = true;
 
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -920,6 +920,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("aborted", VPackValue(serverInfo._transactionsStatistics._transactionsAborted.load()));
   builder.add("committed", VPackValue(serverInfo._transactionsStatistics._transactionsCommitted.load()));
   builder.add("intermediateCommits", VPackValue(serverInfo._transactionsStatistics._intermediateCommits.load()));
+  builder.add("readOnly", VPackValue(serverInfo._transactionsStatistics._readTransactions.load()));
   builder.close();
 
   // export v8 statistics

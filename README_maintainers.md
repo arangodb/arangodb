@@ -16,7 +16,12 @@ Main sections:
   - [Linux Core Dumps](#linux-core-dumps)
   - [Windows Core Dumps](#windows-core-dumps)
 - [Unittests](#unittests)
-
+  - [invoking driver tests](#driver-tests) via scripts/unittests
+  - [capturing test HTTP communication](#running-tcpdump--windump-for-the-sut) but
+    [forcing communication to use plain-text JSON](#forcing-downgrade-from-vpack-to-json)
+  - [Evaluating previous testruns](#evaluating-json-test-reports-from-previous-testruns)
+    sorting by setup time etc. 
+- [what to test where and how](tests/README.md)
 ---
 
 ## Source Code
@@ -694,7 +699,6 @@ or skipped depending on parameters:
 | `-cluster`      | These tests will only run if clustering is tested (option 'cluster' needs to be true).
 | `-noncluster`   | These tests will only run if no cluster is used (option 'cluster' needs to be false)
 | `-timecritical` | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to *true*.
-| `-disabled`     | These tests are disabled. You may however want to run them by hand.
 | `-spec`         | These tests are run using the mocha framework instead of jsunity.
 | `-nightly`      | These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.
 | `-grey`         | These tests are currently listed as "grey", which means that they are known to be unstable or broken. These tests will not be executed by the testing framework if the option `--skipGrey` is given. If `--onlyGrey` option is given then non-"grey" tests are skipped. See `tests/Greylist.txt` for up-to-date information about greylisted tests. Please help to keep this file up to date.

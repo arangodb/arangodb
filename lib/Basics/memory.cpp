@@ -32,7 +32,7 @@
 #include "Basics/voc-errors.h"
 
 /// @brief basic memory management for allocate
-void* TRI_Allocate(size_t n) {
+void* TRI_Allocate(size_t n) noexcept {
   void* m = ::malloc(n);
 
   if (m == nullptr) {
@@ -49,7 +49,7 @@ void* TRI_Allocate(size_t n) {
 }
 
 /// @brief basic memory management for reallocate
-void* TRI_Reallocate(void* m, size_t n) {
+void* TRI_Reallocate(void* m, size_t n) noexcept {
   if (m == nullptr) {
     return TRI_Allocate(n);
   }
@@ -65,4 +65,4 @@ void* TRI_Reallocate(void* m, size_t n) {
 }
 
 /// @brief basic memory management for deallocate
-void TRI_Free(void* m) { ::free(m); }
+void TRI_Free(void* m) noexcept { ::free(m); }

@@ -34,6 +34,7 @@ const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
+const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
 
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -372,6 +373,7 @@ function setupBinaries (builddir, buildType, configDir) {
       throw new Error('unable to locate ' + checkFiles[b]);
     }
   }
+  global.ARANGOSH_BIN = ARANGOSH_BIN;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1086,9 +1088,19 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
   if (what.convert !== undefined) {
     args['convert'] = what.convert ? 'true' : 'false';
   }
+
   if (what.removeAttribute !== undefined) {
     args['remove-attribute'] = what.removeAttribute;
   }
+
+  if (what.datatype !== undefined) {
+    args['datatype'] = what.datatype;
+  }
+
+  if (what.mergeAttributes !== undefined) {
+    args['merge-attributes'] = what.mergeAttributes;
+  }
+
 
   return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
 }
@@ -1358,6 +1370,31 @@ function checkInstanceAlive (instanceInfo, options) {
     });
   }
   return rc;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks whether any instance has failure points set
+// //////////////////////////////////////////////////////////////////////////////
+
+function checkServerFailurePoints(instanceInfo) {
+  let failurePoints = [];
+  instanceInfo.arangods.forEach(arangod => {
+    // we don't have JWT success atm, so if, skip:
+    if ((arangod.role !== "agent") &&
+        !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&
+        !arangod.args.hasOwnProperty('server.jwt-secret')) {
+      let fp = debugGetFailurePoints(arangod.endpoint);
+      if (fp.length > 0) {
+        failurePoints.push({
+          "role": arangod.role,
+          "pid":  arangod.pid,
+          "database.directory": arangod['database.directory'],
+          "failurePoints": fp
+        });
+      }
+    }
+  });
+  return failurePoints;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1782,7 +1819,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       }
       print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.role);
       let url = arangod.url;
-      if (arangod.role === "coordinator") {
+      if (arangod.role === "coordinator" && arangod.args["javascript.enabled"] !== "false") {
         url += '/_admin/aardvark/index.html';
       } else {
         url += '/_api/version';
@@ -2057,7 +2094,10 @@ function launchFinalize(options, instanceInfo, startTime) {
     } else {
       ports.push('port ' + port);
     }
-    processInfo.push('  [' + arangod.role + '] up with pid ' + arangod.pid + ' on port ' + port);
+    processInfo.push('  [' + arangod.role +
+                     '] up with pid ' + arangod.pid +
+                     ' on port ' + port +
+                     ' - ' + arangod.args['database.directory']);
   });
 
   print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
@@ -2470,6 +2510,7 @@ exports.run = {
 exports.shutdownInstance = shutdownInstance;
 exports.getProcessStats = getProcessStats;
 exports.getDeltaProcessStats = getDeltaProcessStats;
+exports.checkServerFailurePoints = checkServerFailurePoints;
 exports.summarizeStats = summarizeStats;
 exports.getMemProfSnapshot = getMemProfSnapshot;
 exports.startArango = startArango;

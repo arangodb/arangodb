@@ -71,24 +71,24 @@ class ConditionVariable {
 
  public:
   /// @brief locks the condition variable
-  void lock();
+  void lock() noexcept;
 
   /// @brief releases the lock on the condition variable
-  void unlock();
+  void unlock() noexcept;
 
   /// @brief waits for an event
-  void wait();
+  void wait() noexcept;
 
   /// @brief waits for an event with timeout in micro seconds
   /// returns true when the condition was signaled, false on timeout
-  bool wait(uint64_t);
-  bool wait(std::chrono::microseconds);
+  bool wait(uint64_t) noexcept;
+  bool wait(std::chrono::microseconds) noexcept;
 
   /// @brief signals all waiting threads
-  void broadcast();
+  void broadcast() noexcept;
 
   /// @brief signals a waiting thread
-  void signal();
+  void signal() noexcept;
 
  private:
   /// @brief condition variable

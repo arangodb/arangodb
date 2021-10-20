@@ -157,7 +157,7 @@ class Thread {
   static void startThread(void* arg);
   void markAsStopped() noexcept;
   void runMe();
-  void releaseRef();
+  void releaseRef() noexcept;
  
  protected:
   application_features::ApplicationServer& _server;

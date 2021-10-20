@@ -406,7 +406,7 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr, FulltextQ
       return Result(TRI_ERROR_OUT_OF_MEMORY);
     }
     // emplace_back below may throw
-    TRI_DEFER(TRI_Free(lowered));
+    auto sg = arangodb::scopeGuard([&]() noexcept { TRI_Free(lowered); });
 
     // calculate the proper prefix
     char* prefixEnd = TRI_PrefixUtf8String(lowered, FulltextIndexLimits::maxWordLength);

@@ -135,6 +135,7 @@ LogTopic Logger::FLUSH("flush", LogLevel::INFO);
 LogTopic Logger::GRAPHS("graphs", LogLevel::INFO);
 LogTopic Logger::HEARTBEAT("heartbeat", LogLevel::INFO);
 LogTopic Logger::HTTPCLIENT("httpclient", LogLevel::WARN);
+LogTopic Logger::LICENSE("license", LogLevel::INFO);
 LogTopic Logger::MAINTENANCE("maintenance", LogLevel::WARN);
 LogTopic Logger::MEMORY("memory", LogLevel::INFO);
 LogTopic Logger::MMAP("mmap");

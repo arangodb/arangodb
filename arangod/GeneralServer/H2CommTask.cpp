@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
 #include "Basics/asio_ns.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
@@ -285,7 +286,7 @@ void H2CommTask<T>::initNgHttp2Session() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  auto cbScope = scopeGuard([&] { nghttp2_session_callbacks_del(callbacks); });
+  auto cbScope = scopeGuard([&]() noexcept { nghttp2_session_callbacks_del(callbacks); });
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, H2CommTask<T>::on_begin_headers);
   nghttp2_session_callbacks_set_on_header_callback(callbacks, H2CommTask<T>::on_header);
@@ -465,7 +466,7 @@ static void DTraceH2CommTaskProcessStream(size_t) {}
 template <SocketType T>
 std::string H2CommTask<T>::url(HttpRequest const* req) const {
   if (req != nullptr) {
-    return std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
+    return std::string((req->databaseName().empty() ? "" : "/_db/" + StringUtils::urlEncode(req->databaseName()))) +
       (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
   }
   return "";

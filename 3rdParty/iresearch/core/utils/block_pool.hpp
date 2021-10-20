@@ -1076,11 +1076,7 @@ class block_pool {
   }
 
   ~block_pool() {
-    proxy_allocator proxy_alloc(get_allocator());
-
-    for (auto* p : get_blocks()) {
-      proxy_alloc.deallocate(p, 1);
-    }
+    free();
   }
 
   void alloc_buffer(size_t count = 1) {
@@ -1170,7 +1166,10 @@ class block_pool {
     return where;
   }
 
-  void clear() { get_blocks().clear(); }
+  void clear() noexcept {
+    free();
+    get_blocks().clear();
+  }
 
   const_reference at(size_t offset) const noexcept {
     return const_cast<block_pool*>(this)->at(offset);
@@ -1230,9 +1229,19 @@ class block_pool {
   friend iterator;
   friend const_iterator;
 
+  void free() noexcept {
+    proxy_allocator proxy_alloc{get_allocator()};
+
+    for (auto* p : get_blocks()) {
+      proxy_alloc.deallocate(p, 1);
+    }
+  }
+
   typedef typename std::allocator_traits<allocator>::template rebind_alloc<block_type> proxy_allocator;
   typedef typename std::allocator_traits<allocator>::template rebind_alloc<block_type*> block_ptr_allocator;
   typedef std::vector<block_type*, block_ptr_allocator> blocks_t;
+
+  static_assert(std::is_nothrow_constructible_v<proxy_allocator, allocator>);
 
   const blocks_t& get_blocks() const noexcept { return rep_.first(); }
   blocks_t& get_blocks() noexcept { return rep_.first(); }
