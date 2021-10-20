@@ -618,12 +618,16 @@ function storeGraph(r, Vname, Ename, Gname) {
            graph };
 }
 
-let runTraversalRestrictEdgeCollectionTests = function (vn, en, gn, checkOptimizerRule) {
+let runTraversalRestrictEdgeCollectionTests = function (vn, en, gn, checkOptimizerRule = false, smartGraphAttribute = false) {
   let fillGraph = function () {
     let keys = [];
     let v = db._collection(vn);
     for (let i = 0; i < 10; ++i) {
-      keys.push(v.insert({ value: i })._key);
+      if (smartGraphAttribute) {
+        keys.push(v.insert({ value: i, [smartGraphAttribute]: JSON.stringify(i)})._key);
+      } else {
+        keys.push(v.insert({ value: i })._key);
+      }
     }
 
     let e1 = db._collection(en + "1");
@@ -713,7 +717,7 @@ let runTraversalRestrictEdgeCollectionTests = function (vn, en, gn, checkOptimiz
   ];
 
   queries.forEach(function(q) {
-    if (checkOptimizerRule !== undefined) {
+    if (checkOptimizerRule) {
       assertNotEqual(-1, AQL_EXPLAIN(q[0]).plan.rules.indexOf(checkOptimizerRule));
     }
     const actual = db._query(q[0]).toArray();

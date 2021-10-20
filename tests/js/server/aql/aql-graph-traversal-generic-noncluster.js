@@ -30,22 +30,26 @@ const {testsByGraph, metaTests} = require('@arangodb/testutils/aql-graph-travers
 const console = require('console');
 const jsunity = require("jsunity");
 const _ = require("lodash");
+const isEnterprise = require("internal").isEnterprise();
 
 function graphTraversalGenericGeneralGraphStandaloneSuite() {
   let testGraphs = _.fromPairs(_.keys(protoGraphs).map(x => [x, {}]));
   _.each(protoGraphs, function (protoGraph) {
     _.each(protoGraph.prepareSingleServerGraph(), function (testGraph) {
-      testGraphs[protoGraph.name()][`${testGraph.name()}-single`] = testGraph;
+      testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerGeneralGraph`] = testGraph;
     });
-    _.each(protoGraph.prepareSmartGraphs(TestVariants.SmartGraphSingleServer), function (testGraph) {
-      testGraphs[protoGraph.name()][`${testGraph.name()}-smart`] = testGraph;
-    });
-    _.each(protoGraph.prepareDisjointSmartGraphs(TestVariants.DisjointSmartGraphSingleServer), function (testGraph) {
-      testGraphs[protoGraph.name()][`${testGraph.name()}-disjointSmart`] = testGraph;
-    });
-    _.each(protoGraph.prepareSatelliteGraphs(TestVariants.SatelliteGraphSingleServer), function (testGraph) {
-      testGraphs[protoGraph.name()][`${testGraph.name()}-satellite`] = testGraph;
-    });
+
+    if (isEnterprise) {
+      _.each(protoGraph.prepareSmartGraphs(TestVariants.SmartGraphSingleServer), function (testGraph) {
+        testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerSmartGraph`] = testGraph;
+      });
+      _.each(protoGraph.prepareDisjointSmartGraphs(TestVariants.DisjointSmartGraphSingleServer), function (testGraph) {
+        testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerDisjointSmartGraph`] = testGraph;
+      });
+      _.each(protoGraph.prepareSatelliteGraphs(TestVariants.SatelliteGraphSingleServer), function (testGraph) {
+        testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerSatelliteGraph`] = testGraph;
+      });
+    }
   });
 
   const suite = {

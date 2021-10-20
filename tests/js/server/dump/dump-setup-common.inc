@@ -33,10 +33,16 @@ const analyzers = require("@arangodb/analyzers");
 const db = require("@arangodb").db;
 const isCluster = require('internal').isCluster();
 const isEnterprise = require("internal").isEnterprise();
-const sgm = require("@arangodb/smart-graph");
-const satgm = require("@arangodb/satellite-graph");
-const {createEmptySatellitegraph} = require("./dump-setup-common.inc");
 
+let sgm;
+if (isEnterprise) {
+  sgm = require("@arangodb/smart-graph");
+}
+
+let satgm;
+if (isEnterprise) {
+  satgm = require("@arangodb/satellite-graph");
+}
 function cleanup() {
   'use strict';
 

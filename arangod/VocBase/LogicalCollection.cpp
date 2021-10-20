@@ -409,7 +409,7 @@ std::string LogicalCollection::createKey(VPackSlice input) const {
 }
 
 #ifndef USE_ENTERPRISE
-std::string LogicalCollection::createSmartToSatKey(VPackSlice) {
+std::string LogicalCollection::createSmartToSatKey(VPackSlice) const {
   return keyGenerator()->generate();
 }
 #endif
@@ -934,7 +934,8 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice slice, bool) {
         return Result(TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern");
       }
 
-      if (ServerState::instance()->isCoordinator() &&
+      if ((ServerState::instance()->isCoordinator() ||
+           (ServerState::instance()->isSingleServer() && (isSatellite() || isSmart()))) &&
           writeConcern != _sharding->writeConcern()) {  // check if changed
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
@@ -1249,7 +1250,7 @@ bool LogicalCollection::isSmartToSatEdgeCollection() const noexcept {
 }
 
 #ifndef USE_ENTERPRISE
-void LogicalCollection::decorateWithInternalEEValidators() {
+void LogicalCollection::decorateWithInternalEEValidators(bool) {
   // Only available in Enterprise Mode
 }
 #endif

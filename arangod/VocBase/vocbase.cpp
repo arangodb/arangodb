@@ -729,6 +729,7 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* colle
                                         false);  // always a full-update
 
       if (!res.ok()) {
+        // TODO: Here we're only returning the errorNumber. The errorMessage is being ignored here. Needs refactor.
         events::DropCollection(dbName, colName, res.errorNumber());
         return res.errorNumber();
       }

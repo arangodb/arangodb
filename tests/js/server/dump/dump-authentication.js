@@ -47,7 +47,9 @@ jsunity.run(function dump_single_testsuite() {
     baseTests(),
     suite,
     "_authentication",
-    [
+    [ // <-- Blacklisted Tests
+      // Magic Hint: Those tests are tests which you need to additional blacklist in case they are not supported
+      // in that specific environment. Those blacklist is separately and manually maintained per test-suite.
       // not supported by auth testcase::
       "testRemoved",
       "testIndexes",
@@ -88,7 +90,12 @@ jsunity.run(function dump_single_testsuite() {
       "testAqlGraphQueryAny",
       "testSmartGraphSharding",
       "testViewOnSmartEdgeCollection",
-      "testSmartGraphAttribute"
+      "testSmartGraphAttribute",
+
+      // enterprise sharded graphs on single server tests
+      "testEmptySmartGraph",
+      "testSmartGraphWithoutData",
+      "testSmartGraphSingleServer",
     ]
   );
 

@@ -109,7 +109,12 @@ jsunity.run(function dump_single_testsuite() {
       "testAqlGraphQueryAny",
       "testSmartGraphSharding",
       "testViewOnSmartEdgeCollection",
-      "testSmartGraphAttribute"
+      "testSmartGraphAttribute",
+
+      // enterprise sharded graphs on single server tests
+      "testEmptySmartGraph",
+      "testSmartGraphWithoutData",
+      "testSmartGraphSingleServer"
     ].concat(clusterBlacklist)
   );
 

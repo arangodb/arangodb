@@ -78,6 +78,25 @@ using namespace arangodb::methods;
 using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
+
+bool checkIfDefinedAsSatellite(VPackSlice const& properties) {
+  if (properties.hasKey(StaticStrings::ReplicationFactor)) {
+    if (properties.get(StaticStrings::ReplicationFactor).isNumber()) {
+      auto replFactor =
+          properties.get(StaticStrings::ReplicationFactor).getNumber<size_t>();
+      if (replFactor == 0) {
+        return true;
+      }
+    } else if (properties.get(StaticStrings::ReplicationFactor).isString()) {
+      auto replFactor = properties.get(StaticStrings::ReplicationFactor).copyString();
+      if (replFactor == StaticStrings::Satellite) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 bool isLocalCollection(CollectionCreationInfo const& info) {
   return (!ServerState::instance()->isCoordinator() &&
           Helper::stringUInt64(info.properties.get(StaticStrings::DataSourcePlanId)) == 0);
@@ -132,7 +151,6 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
 
     // generate a rocksdb collection object id in case it does not exist
     if (isSingleServerEnterpriseCollection) {
-      // TODO: check if needed
       engine.addParametersForNewCollection(helper, info.properties);
     }
 
@@ -147,19 +165,18 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
     }
 
     if (!isLocalCollection(info) || isSingleServerEnterpriseCollection) {
+      auto const& cl = vocbase.server().getFeature<ClusterFeature>();
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
+
       if (replicationFactorSlice.isNone()) {
         auto factor = vocbase.replicationFactor();
         if (factor > 0 && isSystemName(info)) {
-          auto& cl = vocbase.server().getFeature<ClusterFeature>();
           factor = std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
         }
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
       };
 
-      auto const isSatellite =
-          Helper::getStringRef(info.properties, StaticStrings::ReplicationFactor,
-                               velocypack::StringRef{""}) == StaticStrings::Satellite;
+      bool isSatellite = checkIfDefinedAsSatellite(info.properties);
 
       if (!isSystemName(info)) {
         // system-collections will be sharded normally. only user collections
@@ -177,7 +194,7 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
         }
       }
 
-      if(!isSatellite) {
+      if (!isSatellite) {
         auto writeConcernSlice = info.properties.get(StaticStrings::WriteConcern);
         if (writeConcernSlice.isNone()) {  // "minReplicationFactor" deprecated in 3.6
           writeConcernSlice = info.properties.get(StaticStrings::MinReplicationFactor);
@@ -189,9 +206,40 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
           helper.add(StaticStrings::WriteConcern, VPackValue(vocbase.writeConcern()));
         }
       }
-    } else {  // single server
-      helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice());  // delete empty string from info slice
-      helper.add(StaticStrings::ReplicationFactor, VPackSlice::nullSlice());
+    } else {  // single server or agent
+      bool distributionSet = false;
+#ifdef USE_ENTERPRISE
+      TRI_ASSERT(ServerState::instance()->isSingleServer() ||
+                 ServerState::instance()->isAgent());
+      // Special case for sharded graphs with satellites
+      if (info.properties.hasKey(StaticStrings::DistributeShardsLike)) {
+        // 1.) Either we distribute like another satellite collection
+        auto distributeShardsLikeSlice =
+            info.properties.get(StaticStrings::DistributeShardsLike);
+        if (distributeShardsLikeSlice.isString()) {
+          auto distributeShardsLikeColName = distributeShardsLikeSlice.copyString();
+          auto coll = vocbase.lookupCollection(distributeShardsLikeColName);
+          if (coll != nullptr && coll->isSatellite()) {
+            helper.add(StaticStrings::DistributeShardsLike,
+                       VPackValue(distributeShardsLikeColName));
+            helper.add(StaticStrings::ReplicationFactor,
+                       VPackValue(coll->replicationFactor()));
+            distributionSet = true;
+          }
+        }
+      } else if (info.properties.hasKey(StaticStrings::ReplicationFactor)) {
+        // 2.) OR the collection itself is a satellite collection
+        if (info.properties.get(StaticStrings::ReplicationFactor).isString() &&
+            info.properties.get(StaticStrings::ReplicationFactor).copyString() ==
+                StaticStrings::Satellite) {
+            distributionSet = true;
+          }
+      }
+#endif
+      if (!distributionSet) {
+        helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice());  // delete empty string from info slice
+        helper.add(StaticStrings::ReplicationFactor, VPackSlice::nullSlice());
+      }
       helper.add(StaticStrings::MinReplicationFactor, VPackSlice::nullSlice());  // deprecated
       helper.add(StaticStrings::WriteConcern, VPackSlice::nullSlice());
     }
@@ -202,8 +250,8 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
         VPackCollection::merge(info.properties, helper.slice(), false, true);
 
     bool haveShardingFeature = (ServerState::instance()->isCoordinator() ||
-         isSingleServerEnterpriseCollection) &&
-        vocbase.server().hasFeature<ShardingFeature>();
+                                isSingleServerEnterpriseCollection) &&
+                               vocbase.server().hasFeature<ShardingFeature>();
     if (haveShardingFeature &&
         !info.properties.get(StaticStrings::ShardingStrategy).isString()) {
       // NOTE: We need to do this in a second merge as the feature call requires the
@@ -391,8 +439,8 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
   std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = create(vocbase, options, infos, createWaitsForSyncReplication,
-                      enforceReplicationFactor, isNewDatabase, nullptr,
-                      collections, allowSystem, isSingleServerEnterpriseCollection);
+                      enforceReplicationFactor, isNewDatabase, nullptr, collections,
+                      allowSystem, isSingleServerEnterpriseCollection);
   if (res.ok() && collections.size() > 0) {
     ret = std::move(collections[0]);
   }
@@ -475,8 +523,9 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
 #endif
     } else {
       TRI_ASSERT(ServerState::instance()->isSingleServer() ||
-                 ServerState::instance()->isDBServer());
-      // Here we do have a single server setup, or we're either on a DBServer.
+                 ServerState::instance()->isDBServer() ||
+                 ServerState::instance()->isAgent());
+      // Here we do have a single server setup, or we're either on a DBServer / Agency.
       // In that case, we're not batching collection creating.
       // Therefore, we need to iterate over the infoSlice and create each collection one by one.
       for (auto slice : VPackArrayIterator(infoSlice)) {
@@ -878,9 +927,10 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 
 // If we are a coordinator in a cluster, we have to behave differently:
 #ifdef USE_ENTERPRISE
+
   res = DropColEnterprise(&coll, allowDropSystem, timeout);
 #else
-  if (ServerState::isCoordinator(role)) {
+  if (ServerState::instance()->isCoordinator()) {
     res = DropVocbaseColCoordinator(&coll, allowDropSystem);
   } else {
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
