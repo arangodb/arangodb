@@ -36,26 +36,26 @@ using namespace arangodb::tests;
 //        regarding distributeShardsLike, due to a bug in the compare function.
 TEST(CollectionRestoreOrder, regression1) {
   auto const colsJson = {
-    R"json({"parameters":{"name":"Comment_hasTag_Tag_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
-    R"json({"parameters":{"name":"Comment_Smart","type":2,"distributeShardsLike":"Person_Smart"}})json",
-    R"json({"parameters":{"name":"Forum_hasMember_Person","type":3}})json",
-    R"json({"parameters":{"name":"Forum_hasTag_Tag","type":3}})json",
-    R"json({"parameters":{"name":"Forum","type":2}})json",
-    R"json({"parameters":{"name":"Organisation","type":2}})json",
-    R"json({"parameters":{"name":"Person_hasCreated_Comment_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
-    R"json({"parameters":{"name":"Person_hasCreated_Post_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
-    R"json({"parameters":{"name":"Person_hasInterest_Tag","type":3}})json",
-    R"json({"parameters":{"name":"Person_knows_Person_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
-    R"json({"parameters":{"name":"Person_likes_Comment_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
-    R"json({"parameters":{"name":"Person_likes_Post_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
-    R"json({"parameters":{"name":"Person_Smart","type":2}})json",
-    R"json({"parameters":{"name":"Person_studyAt_University","type":3}})json",
-    R"json({"parameters":{"name":"Person_workAt_Company","type":3}})json",
-    R"json({"parameters":{"name":"Place","type":2}})json",
-    R"json({"parameters":{"name":"Post_hasTag_Tag_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
-    R"json({"parameters":{"name":"Post_Smart","type":2,"distributeShardsLike":"Person_Smart"}})json",
-    R"json({"parameters":{"name":"TagClass","type":2}})json",
-    R"json({"parameters":{"name":"Tag","type":2}})json",
+      R"json({"parameters":{"name":"Comment_hasTag_Tag_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
+      R"json({"parameters":{"name":"Comment_Smart","type":2,"distributeShardsLike":"Person_Smart"}})json",
+      R"json({"parameters":{"name":"Forum_hasMember_Person","type":3}})json",
+      R"json({"parameters":{"name":"Forum_hasTag_Tag","type":3}})json",
+      R"json({"parameters":{"name":"Forum","type":2}})json",
+      R"json({"parameters":{"name":"Organisation","type":2}})json",
+      R"json({"parameters":{"name":"Person_hasCreated_Comment_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
+      R"json({"parameters":{"name":"Person_hasCreated_Post_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
+      R"json({"parameters":{"name":"Person_hasInterest_Tag","type":3}})json",
+      R"json({"parameters":{"name":"Person_knows_Person_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
+      R"json({"parameters":{"name":"Person_likes_Comment_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
+      R"json({"parameters":{"name":"Person_likes_Post_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
+      R"json({"parameters":{"name":"Person_Smart","type":2}})json",
+      R"json({"parameters":{"name":"Person_studyAt_University","type":3}})json",
+      R"json({"parameters":{"name":"Person_workAt_Company","type":3}})json",
+      R"json({"parameters":{"name":"Place","type":2}})json",
+      R"json({"parameters":{"name":"Post_hasTag_Tag_Smart","type":3,"distributeShardsLike":"Person_Smart"}})json",
+      R"json({"parameters":{"name":"Post_Smart","type":2,"distributeShardsLike":"Person_Smart"}})json",
+      R"json({"parameters":{"name":"TagClass","type":2}})json",
+      R"json({"parameters":{"name":"Tag","type":2}})json",
   };
   auto collections = std::vector<velocypack::Builder>();
   collections.reserve(colsJson.size());
@@ -108,7 +108,8 @@ TEST(CollectionRestoreOrder, regression1) {
 struct CollectionName {
   std::string value;
 };
-static auto operator<<(std::ostream& ostream, CollectionName const& colName) -> std::ostream& {
+static auto operator<<(std::ostream& ostream, CollectionName const& colName)
+    -> std::ostream& {
   return ostream << "\"" << colName.value << "\"";
 }
 struct Collection {
@@ -143,8 +144,6 @@ struct CollectionSet {
   // between them intact
   std::vector<std::unique_ptr<Collection>> collections;
 };
-
-namespace arangodb::tests::quick {
 static auto operator<<(std::ostream& ostream, CollectionSet const& colSet) -> std::ostream& {
   ostream << "[";
   bool first = true;
@@ -161,6 +160,7 @@ static auto operator<<(std::ostream& ostream, CollectionSet const& colSet) -> st
   return ostream;
 }
 
+namespace arangodb::tests::quick {
 template <>
 auto generate<CollectionName>() -> CollectionName {
   auto name = std::string();
@@ -220,6 +220,22 @@ auto generate<CollectionSet>(std::int32_t max) -> CollectionSet {
 }
 }  // namespace arangodb::tests::quick
 
+auto to_string(std::vector<velocypack::Builder> const& collections) -> std::string {
+  auto res = std::string();
+  res += "[";
+  bool first = true;
+  for (auto const& it : collections) {
+    if (first) {
+      first = false;
+    } else {
+      res += ", ";
+    }
+    res += it.slice().toJson();
+  }
+  res += "]";
+  return res;
+}
+
 // Only checks order regarding distributeShardsLike for now
 void testValidity(CollectionSet const& collectionSet) {
   auto const n = collectionSet.collections.size();
@@ -231,7 +247,7 @@ void testValidity(CollectionSet const& collectionSet) {
                    col->toVelocyPack(builder);
                    return builder;
                  });
-  ASSERT_EQ(n, collections.size());
+  ASSERT_EQ(n, collections.size()) << "input: " << collectionSet;
 
   RestoreFeature::sortCollectionsForCreation(collections);
 
@@ -244,19 +260,33 @@ void testValidity(CollectionSet const& collectionSet) {
                    auto const& [idx, builder] = it;
                    return {builder.slice().get("parameters").get("name").copyString(), idx};
                  });
-  ASSERT_EQ(n, colToIdx.size());
+  ASSERT_EQ(n, colToIdx.size())
+      << "input: " << collectionSet << "; result: " << to_string(collections);
 
   for (auto const& [idx, builder] : enumerate(collections)) {
     auto const parametersSlice = builder.slice().get("parameters");
-    if (auto const distributeShardsLikeSlice = parametersSlice.get("distributeShardsLike"); !distributeShardsLikeSlice.isNone()) {
+    if (auto const distributeShardsLikeSlice =
+            parametersSlice.get("distributeShardsLike");
+        !distributeShardsLikeSlice.isNone()) {
       auto const distributeShardsLike = distributeShardsLikeSlice.copyString();
       auto dslIdx = colToIdx.at(distributeShardsLike);
-      EXPECT_LT(dslIdx, idx);
+      EXPECT_LT(dslIdx, idx) << "input: " << collectionSet
+                             << "; result: " << to_string(collections);
     }
   }
 }
 
-TEST(CollectionRestoreOrder, random10) {
-  auto const collectionSet = quick::generate<CollectionSet>(10);
-  testValidity(collectionSet);
+void testRandomIterations(std::int32_t setSize, int iterations) {
+  for (auto i = 0; i < iterations; ++i) {
+    auto const collectionSet = quick::generate<CollectionSet>(setSize);
+    testValidity(collectionSet);
+  }
 }
+
+TEST(CollectionRestoreOrder, random10) { testRandomIterations(10, 1'000); }
+
+TEST(CollectionRestoreOrder, random100) { testRandomIterations(100, 100); }
+
+TEST(CollectionRestoreOrder, random1000) { testRandomIterations(1'000, 10); }
+
+TEST(CollectionRestoreOrder, random10000) { testRandomIterations(10'000, 1); }
