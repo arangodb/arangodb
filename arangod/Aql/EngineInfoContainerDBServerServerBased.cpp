@@ -117,8 +117,6 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node, bool p
       auto* const graphNode = ExecutionNode::castTo<GraphNode*>(node);
       graphNode->prepareOptions();
       injectVertexCollections(graphNode);
-      LOG_DEVEL << "LOCAL Adding node, to initialize conditions";
-      // graphNode->initializeIndexConditions();
       break;
     }
     default:
