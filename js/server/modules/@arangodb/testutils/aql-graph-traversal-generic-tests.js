@@ -1284,7 +1284,7 @@ function testOpenDiamondDfsLabelVariableForwarding(testGraph) {
   }
 }
 
-function testOpenDiamondDfsLabelVariableForwardingIndexed(testGraph) {
+function testOpenDiamondLabelVariableForwardingIndexed(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
 
   const ruleList = [["-all"], ["+all"], ["-all", "+optimize-traversals"], ["+all", "-optimize-traversals"]];
@@ -1292,28 +1292,42 @@ function testOpenDiamondDfsLabelVariableForwardingIndexed(testGraph) {
     const query = `
         LET label = NOOPT(100)
         FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
-          GRAPH "${testGraph.name()}"
+          GRAPH "${testGraph.name()}" OPTIONS {orderd: ${mode}}
           FILTER p.edges[0].${testGraph.indexedAttribute()} != label
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
-    const expectedPathsAsTree =
-      new Node("A", [
-        new Node("C", [
-          new Node("D", [
-            new Node("E"),
-            new Node("F"),
-          ]),
-        ])
-      ]);
     const res = db._query(query, {},  { optimizer: { rules } });
     const actualPaths = res.toArray();
-
-    checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+    if (mode === "dfs") { 
+      const expectedPathsAsTree =
+        new Node("A", [
+          new Node("C", [
+            new Node("D", [
+              new Node("E"),
+              new Node("F"),
+            ]),
+          ])
+        ]);
+      checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+    } else {
+      const expectedPaths = [
+        ["A"],
+        ["A", "C"],
+        ["A", "C", "D"],
+        ["A", "C", "D", "E"],
+        ["A", "C", "D", "F"]
+      ];
+      checkResIsValidBfsOf(expectedPaths, actualPaths);
+    }
   }
 }
 
-function testOpenDiamondDfsLabelVariableForwardingIndexedLowerBoundRange(testGraph) {
+const testOpenDiamondDfsLabelVariableForwardingIndexed = (testGraph) => testOpenDiamondLabelVariableForwardingIndexed(testGraph, "dfs");
+const testOpenDiamondBfsLabelVariableForwardingIndexed = (testGraph) => testOpenDiamondLabelVariableForwardingIndexed(testGraph, "bfs");
+const testOpenDiamondWeightedLabelVariableForwardingIndexed = (testGraph) => testOpenDiamondLabelVariableForwardingIndexed(testGraph, "weighted");
+
+function testOpenDiamondLabelVariableForwardingIndexedLowerBoundRange(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
 
   const ruleList = [["-all"], ["+all"], ["-all", "+optimize-traversals"], ["+all", "-optimize-traversals"]];
@@ -1321,35 +1335,52 @@ function testOpenDiamondDfsLabelVariableForwardingIndexedLowerBoundRange(testGra
     const query = `
         LET lower = NOOPT(0)
         FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
-          GRAPH "${testGraph.name()}"
+          GRAPH "${testGraph.name()}" OPTIONS {order: ${mode}}
           FILTER p.edges[*].${testGraph.indexedAttribute()} ALL >= lower
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
-    const expectedPathsAsTree =
-      new Node("A", [
-        new Node("C", [
-          new Node("D", [
-            new Node("E"),
-            new Node("F"),
-          ]),
-        ]),
-        new Node("B", [
-          new Node("D", [
-            new Node("E"),
-            new Node("F"),
-          ]),
-        ])
-      ]);
     const res = db._query(query, {},  { optimizer: { rules } });
     const actualPaths = res.toArray();
-
-    checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+    if (mode === "dfs") {
+      const expectedPathsAsTree =
+        new Node("A", [
+          new Node("C", [
+            new Node("D", [
+              new Node("E"),
+              new Node("F"),
+            ]),
+          ]),
+          new Node("B", [
+            new Node("D", [
+              new Node("E"),
+              new Node("F"),
+            ]),
+          ])
+        ]);
+      checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+    } else {
+      const expectedPaths = [
+        ["A"],
+        ["A", "B"],
+        ["A", "C"],
+        ["A", "C", "D"],
+        ["A", "B", "D"],
+        ["A", "C", "D", "E"],
+        ["A", "C", "D", "F"],
+        ["A", "B", "D", "E"],
+        ["A", "B", "D", "F"]
+      ];
+      checkResIsValidBfsOf(expectedPaths, actualPaths);
+    }
   }
 }
 
+const testOpenDiamondDfsLabelVariableForwardingIndexedLowerBoundRange = (testGraph) => testOpenDiamondLabelVariableForwardingIndexedLowerBoundRange(testGraph, "dfs");
+const testOpenDiamondBfsLabelVariableForwardingIndexedLowerBoundRange = (testGraph) => testOpenDiamondLabelVariableForwardingIndexedLowerBoundRange(testGraph, "bfs");
+const testOpenDiamondWeightedLabelVariableForwardingIndexedLowerBoundRange = (testGraph) => testOpenDiamondLabelVariableForwardingIndexedLowerBoundRange(testGraph, "weighted");
 
-function testOpenDiamondDfsLabelVariableForwardingIndexedUpperBoundRange(testGraph) {
+function testOpenDiamondLabelVariableForwardingIndexedUpperBoundRange(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
 
   const ruleList = [["-all"], ["+all"], ["-all", "+optimize-traversals"], ["+all", "-optimize-traversals"]];
@@ -1357,29 +1388,42 @@ function testOpenDiamondDfsLabelVariableForwardingIndexedUpperBoundRange(testGra
     const query = `
         LET upper = NOOPT(100)
         FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
-          GRAPH "${testGraph.name()}"
+          GRAPH "${testGraph.name()}" OPTIONS {orderd: ${mode}
           FILTER p.edges[*].${testGraph.indexedAttribute()} ALL < upper
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
-    const expectedPathsAsTree =
-      new Node("A", [
-        new Node("C", [
-          new Node("D", [
-            new Node("E"),
-            new Node("F"),
-          ]),
-        ])
-      ]);
     const res = db._query(query, {},  { optimizer: { rules } });
     const actualPaths = res.toArray();
-
-    checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+    if (mode === "dfs") { 
+      const expectedPathsAsTree =
+        new Node("A", [
+          new Node("C", [
+            new Node("D", [
+              new Node("E"),
+              new Node("F"),
+            ]),
+          ])
+        ]);
+      checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+    } else {
+      const expectedPaths = [
+        ["A"],
+        ["A", "C"],
+        ["A", "C", "D"],
+        ["A", "C", "D", "E"],
+        ["A", "C", "D", "F"]
+      ];
+      checkResIsValidBfsOf(expectedPaths, actualPaths);
+    }
   }
 }
 
+const testOpenDiamondDfsLabelVariableForwardingIndexedUpperBoundRange = (testGraph) => testOpenDiamondLabelVariableForwardingIndexedUpperBoundRange(testGraph, "dfs");
+const testOpenDiamondBfsLabelVariableForwardingIndexedUpperBoundRange = (testGraph) => testOpenDiamondLabelVariableForwardingIndexedUpperBoundRange(testGraph, "bfs");
+const testOpenDiamondWeightedLabelVariableForwardingIndexedUpperBoundRange = (testGraph) => testOpenDiamondLabelVariableForwardingIndexedUpperBoundRange(testGraph, "weighted");
 
-function testOpenDiamondDfsLabelVariableForwardingIndexedBothSideRange(testGraph) {
+function testOpenDiamondLabelVariableForwardingIndexedBothSideRange(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
 
   const ruleList = [["-all"], ["+all"], ["-all", "+optimize-traversals"], ["+all", "-optimize-traversals"]];
@@ -1388,28 +1432,41 @@ function testOpenDiamondDfsLabelVariableForwardingIndexedBothSideRange(testGraph
         LET lower = NOOPT(0)
         LET upper = NOOPT(100)
         FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
-          GRAPH "${testGraph.name()}"
+          GRAPH "${testGraph.name()}" OPTIONS {order: ${mode}}
           FILTER p.edges[*].${testGraph.indexedAttribute()} ALL >= lower
           FILTER p.edges[*].${testGraph.indexedAttribute()} ALL < upper
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
-    const expectedPathsAsTree =
-      new Node("A", [
-        new Node("C", [
-          new Node("D", [
-            new Node("E"),
-            new Node("F"),
-          ]),
-        ])
-      ]);
     const res = db._query(query, {},  { optimizer: { rules } });
     const actualPaths = res.toArray();
-
-    checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+    if (mode === "dfs") { 
+      const expectedPathsAsTree =
+        new Node("A", [
+          new Node("C", [
+            new Node("D", [
+              new Node("E"),
+              new Node("F"),
+            ]),
+          ])
+        ]);
+      checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+    } else {
+      const expectedPaths = [
+        ["A"],
+        ["A", "C"],
+        ["A", "C", "D"],
+        ["A", "C", "D", "E"],
+        ["A", "C", "D", "F"]
+      ];
+      checkResIsValidBfsOf(expectedPaths, actualPaths);
+    }
   }
 }
 
+const testOpenDiamondDfsLabelVariableForwardingIndexedBothSideRange = (testGraph) => testOpenDiamondLabelVariableForwardingIndexedBothSideRange(testGraph, "dfs");
+const testOpenDiamondBfsLabelVariableForwardingIndexedBothSideRange = (testGraph) => testOpenDiamondLabelVariableForwardingIndexedBothSideRange(testGraph, "bfs");
+const testOpenDiamondWeightedLabelVariableForwardingIndexedBothSideRange = (testGraph) => testOpenDiamondLabelVariableForwardingIndexedBothSideRange(testGraph, "weighted");
 
 function testOpenDiamondWeightedUniqueVerticesPathEnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
@@ -5982,6 +6039,10 @@ const testsByGraph = {
     testOpenDiamondBfsUniqueEdgesUniquePathVerticesGlobal,
     testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal,
     testOpenDiamondBfsLabelVariableForwarding,
+    testOpenDiamondBfsLabelVariableForwardingIndexed,
+    testOpenDiamondBfsLabelVariableForwardingIndexedLowerBoundRange,
+    testOpenDiamondBfsLabelVariableForwardingIndexedUpperBoundRange,
+    testOpenDiamondBfsLabelVariableForwardingIndexedBothSideRange,
     testOpenDiamondWeightedUniqueVerticesPath,
     testOpenDiamondWeightedUniqueVerticesNone,
     testOpenDiamondWeightedUniqueVerticesGlobal,
@@ -5992,6 +6053,10 @@ const testsByGraph = {
     testOpenDiamondWeightedUniqueEdgesUniquePathVerticesGlobal,
     testOpenDiamondWeightedUniqueEdgesUniqueNoneVerticesGlobal,
     testOpenDiamondWeightedLabelVariableForwarding,
+    testOpenDiamondWeightedLabelVariableForwardingIndexed,
+    testOpenDiamondWeightedLabelVariableForwardingIndexedLowerBoundRange,
+    testOpenDiamondWeightedLabelVariableForwardingIndexedUpperBoundRange,
+    testOpenDiamondWeightedLabelVariableForwardingIndexedBothSideRange,
     testOpenDiamondShortestPath,
     testOpenDiamondShortestPathWT,
     testOpenDiamondKPathsOutbound,
