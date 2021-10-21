@@ -676,13 +676,12 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
           << context << ": no revision tree found for collection, "
           << "rebuilding from collection data...";
     }
-    rcoll->rebuildRevisionTree(it);
   } else {
     LOG_TOPIC("ecdbe", DEBUG, Logger::ENGINES)
         << context << ": no revision tree found for collection, "
         << ", but collection appears empty";
-    rcoll->rebuildRevisionTree(it);
   }
+  rcoll->rebuildRevisionTree(it);
     
   auto [countInTree, treeSeq] = rcoll->revisionTreeInfo();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
