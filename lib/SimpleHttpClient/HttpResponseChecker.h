@@ -31,7 +31,7 @@ class HttpResponseChecker {
  public:
   HttpResponseChecker() = delete;
   static arangodb::Result check(std::string const& clientErrorMsg, arangodb::httpclient::SimpleHttpResult const* const response,
-                                                     std::string const& actionMsg = "", std::string const& requestPayload = "");
+                                std::string const& actionMsg = "", std::string const& requestPayload = "");
 };
 
 }
