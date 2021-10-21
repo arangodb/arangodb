@@ -736,6 +736,10 @@ bool AgencyComm::exists(std::string const& key) {
   return !slice.isNone();
 }
 
+AgencyCommResult AgencyComm::getValues(std::string const& key) {
+  return getValues(key, AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout);
+}
+
 AgencyCommResult AgencyComm::getValues(std::string const& key, double timeout) {
   std::string url = AgencyComm::AGENCY_URL_PREFIX + "/read";
 
@@ -749,9 +753,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, double timeout) {
   }
 
   AgencyCommResult result =
-      sendWithFailover(arangodb::rest::RequestType::POST,
-                       (timeout == 0.0) ? AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout
-                                        : timeout,
+      sendWithFailover(arangodb::rest::RequestType::POST, timeout,
                        url, builder.slice());
 
   if (!result.successful()) {
