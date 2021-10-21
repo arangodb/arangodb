@@ -1068,7 +1068,9 @@ function restoreIntegrationSuite () {
           assertInstanceOf(arangodb.ArangoCollection, col);
           assertEqual(colJson.parameters.name, col.name());
           assertEqual(colJson.parameters.type, col.type());
-          assertEqual(colJson.parameters.distributeShardsLike, col.properties().distributeShardsLike);
+          if (isCluster) {
+            assertEqual(colJson.parameters.distributeShardsLike, col.properties().distributeShardsLike);
+          }
         }
         fs.removeDirectoryRecursive(path, true);
       } finally {
