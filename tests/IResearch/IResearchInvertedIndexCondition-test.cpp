@@ -105,13 +105,14 @@ class IResearchInvertedIndexConditionTest
 
 
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
-    arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
-                               bindVars);
+    auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString),
+                                              bindVars);
 
-    auto const parseResult = query.parse();
+    ASSERT_NE(query.get(), nullptr);
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
