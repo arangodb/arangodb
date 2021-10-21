@@ -120,6 +120,7 @@ class StaticStrings {
   static std::string const DataSourcePlanId;   // data-source plan id
   static std::string const DataSourceSystem;   // data-source system marker
   static std::string const DataSourceType;     // data-source type
+  static std::string const DataSourceParameters;
 
   // Index definition fields
   static std::string const IndexExpireAfter;   // ttl index expire value

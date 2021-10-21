@@ -73,28 +73,31 @@ TEST(CollectionRestoreOrder, regression1) {
   using namespace std::string_view_literals;
 
   auto const expected = {
-      // The distributeShardsLike target comes first
-      "Person_Smart"sv,
-      // Then all (other) vertex collections, lexicographically sorted
-      "Comment_Smart"sv,
+      // 1) First all collections without distributeShardsLike
+      // 1.1) Vertex collections, lexicographically sorted
       "Forum"sv,
       "Organisation"sv,
+      "Person_Smart"sv,
       "Place"sv,
-      "Post_Smart"sv,
       "Tag"sv,
       "TagClass"sv,
-      // Finally all edge collections, lexicographically sorted
-      "Comment_hasTag_Tag_Smart"sv,
+      // 1.2) Edge collections, lexicographically sorted
       "Forum_hasMember_Person"sv,
       "Forum_hasTag_Tag"sv,
+      "Person_hasInterest_Tag"sv,
+      "Person_studyAt_University"sv,
+      "Person_workAt_Company"sv,
+      // 2) All collections with distributeShardsLike
+      // 1.1) Vertex collections, lexicographically sorted
+      "Comment_Smart"sv,
+      "Post_Smart"sv,
+      // 1.2) Edge collections, lexicographically sorted
+      "Comment_hasTag_Tag_Smart"sv,
       "Person_hasCreated_Comment_Smart"sv,
       "Person_hasCreated_Post_Smart"sv,
-      "Person_hasInterest_Tag"sv,
       "Person_knows_Person_Smart"sv,
       "Person_likes_Comment_Smart"sv,
       "Person_likes_Post_Smart"sv,
-      "Person_studyAt_University"sv,
-      "Person_workAt_Company"sv,
       "Post_hasTag_Tag_Smart"sv,
   };
 

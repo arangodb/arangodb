@@ -948,25 +948,6 @@ namespace arangodb {
 
 /// @brief Sort collections for proper recreation order
 void RestoreFeature::sortCollectionsForCreation(std::vector<VPackBuilder>& collections) {
-  // a set of all collections that are a distributeShardsLike prototype for some
-  // other collection.
-  auto const dslPrototypes = std::invoke([&collections] {
-    auto dslPrototypes = std::unordered_set<std::string>();
-    for (auto const& builder : collections) {
-      auto const parameters = builder.slice().get("parameters");
-
-      if (auto const distributeShardsLikeSlice =
-              parameters.get("distributeShardsLike");
-          !distributeShardsLikeSlice.isNone()) {
-        dslPrototypes.emplace(distributeShardsLikeSlice.copyString());
-      }
-    }
-    return dslPrototypes;
-  });
-  auto const isDslPrototype = [&dslPrototypes](auto const& name) {
-    return dslPrototypes.find(name) != dslPrototypes.end();
-  };
-
   enum class Rel {
     Less,
     Equal,
@@ -989,10 +970,10 @@ void RestoreFeature::sortCollectionsForCreation(std::vector<VPackBuilder>& colle
     return cmp(projection(left), projection(right));
   };
 
-  // Orders distributeShardsLike-prototypes before (all) other collections,
+  // Orders distributeShardsLike-followers after (all) other collections,
   // apart from that imposes no additional ordering.
-  auto const dslProtoToOrderedValue = [&isDslPrototype](auto const& name) {
-    return isDslPrototype(name) ? 0 : 1;
+  auto constexpr dslFollowerToOrderedValue = [](auto const& slice) {
+    return !slice.get(StaticStrings::DistributeShardsLike).isNone();
   };
 
   // Orders document collections before edge collections,
@@ -1000,7 +981,7 @@ void RestoreFeature::sortCollectionsForCreation(std::vector<VPackBuilder>& colle
   auto constexpr typeToOrderedValue = [](auto const& slice) {
     // If type is not set, default to document collection (2). Edge collections
     // are 3.
-    return basics::VelocyPackHelper::getNumericValue<int>(slice, "type", 2);
+    return basics::VelocyPackHelper::getNumericValue<int>(slice, StaticStrings::DataSourceType, 2);
   };
 
   // Orders system collections before other collections,
@@ -1011,9 +992,9 @@ void RestoreFeature::sortCollectionsForCreation(std::vector<VPackBuilder>& colle
   };
 
   auto const chainedComparison = [&](auto const& left, auto const& right) -> Rel {
-    auto const leftName = left.get("name").copyString();
-    auto const rightName = right.get("name").copyString();
-    if (auto cmpRes = cmpBy(dslProtoToOrderedValue, leftName, rightName); cmpRes != Rel::Equal) {
+    auto const leftName = left.get(StaticStrings::DataSourceName).copyString();
+    auto const rightName = right.get(StaticStrings::DataSourceName).copyString();
+    if (auto cmpRes = cmpBy(dslFollowerToOrderedValue, left, right); cmpRes != Rel::Equal) {
       return cmpRes;
     }
     if (auto cmpRes = cmpBy(typeToOrderedValue, left, right); cmpRes != Rel::Equal) {
@@ -1036,8 +1017,8 @@ void RestoreFeature::sortCollectionsForCreation(std::vector<VPackBuilder>& colle
   };
 
   auto const colLesserThan = [&](auto const& l, auto const& r) {
-    auto const left = l.slice().get("parameters");
-    auto const right = r.slice().get("parameters");
+    auto const left = l.slice().get(StaticStrings::DataSourceParameters);
+    auto const right = r.slice().get(StaticStrings::DataSourceParameters);
     return chainedComparison(left, right) == Rel::Less;
   };
 
