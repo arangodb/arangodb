@@ -1497,8 +1497,6 @@ Result RestoreFeature::RestoreMainJob::sendRestoreIndexes(arangodb::httpclient::
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
   return arangodb::HttpResponseChecker::check(client.getErrorMessage(), response.get(), "restoring indexes", body);
-
-//  return ::checkHttpResponse(client, response, "restoring indexes", body);
 }
 
 RestoreFeature::RestoreSendJob::RestoreSendJob(RestoreFeature& feature,
