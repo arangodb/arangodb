@@ -242,11 +242,6 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   
   ClientTaskQueue<RestoreJob>& taskQueue();
 
-#ifndef ARANGODB_USE_GOOGLE_TESTS
- private:
-#else
- public:
-#endif
   static void sortCollectionsForCreation(std::vector<VPackBuilder>& collections);
 
  private:
