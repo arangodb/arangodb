@@ -4,6 +4,7 @@ import Ajv2019 from "ajv/dist/2019";
 import { formSchema, FormState, linksSchema } from "../constants";
 import { FormProps, State } from "../../../utils/constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
+import { pick } from "lodash";
 
 const ajv = new Ajv2019({
   allErrors: true,
@@ -15,13 +16,21 @@ const validate = ajv.addSchema(linksSchema).compile(formSchema);
 
 type JsonFormProps =
   Pick<FormProps<FormState>, 'formState' | 'dispatch'>
-  & Pick<State<FormState>, 'renderKey'>;
+  & Pick<State<FormState>, 'renderKey'>
+  & {
+  isEdit?: boolean
+};
 
-const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
+const JsonForm = ({ formState, dispatch, renderKey, isEdit = false }: JsonFormProps) => {
   const [formErrors, setFormErrors] = useState<string[]>([]);
 
   const changeHandler = (json: FormState) => {
     if (validate(json)) {
+      if (isEdit) {
+        json = Object.assign({}, formState, pick(json, 'consolidationIntervalMsec', 'commitIntervalMsec',
+          'cleanupIntervalStep', 'links', 'consolidationPolicy'));
+      }
+
       dispatch({
         type: 'setFormState',
         formState: json

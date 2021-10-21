@@ -158,20 +158,20 @@ export function getNumericFieldSetter<FormState> (field: string, dispatch: Dispa
   return (event: ChangeEvent<HTMLInputElement>) => {
     const numValue = parseInt(event.target.value);
 
-    if (!Number.isNaN(numValue)) {
+    if (Number.isNaN(numValue)) {
       dispatch({
-        type: 'setField',
+        type: 'unsetField',
         field: {
-          path: field,
-          value: numValue
+          path: field
         },
         basePath
       });
     } else {
       dispatch({
-        type: 'unsetField',
+        type: 'setField',
         field: {
-          path: field
+          path: field,
+          value: numValue
         },
         basePath
       });
