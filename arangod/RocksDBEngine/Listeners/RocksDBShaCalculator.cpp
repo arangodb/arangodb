@@ -268,31 +268,22 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(std::string const& pathnam
     std::string::size_type shaIdx = iter->find(".sha.");
     if (std::string::npos != shaIdx) {
       // two cases: 1. its .sst follows so skip both, 2. no matching .sst, so delete
-      tempname = iter->substr(0, shaIdx);
-      tempname += ".sst";
+      tempname = iter->substr(0, shaIdx) + ".sst";
       TRI_ASSERT(tempname == TRI_Basename(tempname));
 
-      bool match = false;
       // cppcheck-suppress derefInvalidIteratorRedundantCheck
       auto next = iter + 1;
       // cppcheck-suppress derefInvalidIteratorRedundantCheck
-      if (filelist.end() != next) {
-        if (0 == next->compare(tempname)) {
-          TRI_ASSERT(iter->size() >= shaIdx + 64);
-          std::string hash = iter->substr(shaIdx + /*.sha.*/ 5, 64);
+      if (filelist.end() != next && 0 == next->compare(tempname)) {
+        TRI_ASSERT(iter->size() >= shaIdx + 64);
+        std::string hash = iter->substr(shaIdx + /*.sha.*/ 5, 64);
+        
+        iter = next;
 
-          // update our hashes table, in case we missed this file
-          {
-            MUTEX_LOCKER(mutexLock, _pendingMutex);
-            _calculatedHashes[tempname] = std::move(hash);
-          }
-
-          match = true;
-          iter = next;
-        }
-      }
-
-      if (!match) {
+        // update our hashes table, in case we missed this file
+        MUTEX_LOCKER(mutexLock, _pendingMutex);
+        _calculatedHashes[tempname] = std::move(hash);
+      } else {
         std::string tempPath = basics::FileUtils::buildFilename(pathname, *iter);
         LOG_TOPIC("4eac9", DEBUG, arangodb::Logger::ENGINES)
             << "checkMissingShaFiles:"
