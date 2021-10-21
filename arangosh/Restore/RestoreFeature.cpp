@@ -1044,7 +1044,6 @@ Result RestoreFeature::RestoreJob::sendRestoreData(arangodb::httpclient::SimpleH
   std::unique_ptr<SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::PUT, url, buffer, bufferSize, headers));
   arangodb::Result res = arangodb::HttpResponseChecker::check(client.getErrorMessage(), response.get(), "restoring data", "");
-  //arangodb::Result res = ::checkHttpResponse(client, response, "restoring data", "");
   
   if (res.fail()) {
     // error
