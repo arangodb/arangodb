@@ -329,7 +329,7 @@ struct ReplicatedLogMethodsCoordinator final
     VPackBufferUInt8 body;
     {
       VPackBuilder builder(body);
-      builder.add(VPackSlice::noneSlice());
+      builder.add(VPackSlice::emptyObjectSlice());
     }
 
     network::RequestOptions opts;
