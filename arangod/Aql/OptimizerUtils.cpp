@@ -593,9 +593,7 @@ void extractNonConstPartsOfAndPart(Ast* ast,
       captureFCallArgumentExpressions(ast, varInfo, leaf, std::move(path), indexVariable, result);
       continue;
     } else if (leaf->numMembers() != 2) {
-      // TODO: Validate that my assumption here is true
       // The Index cannot solve non-binary operators.
-      // I think this is disallowed
       TRI_ASSERT(false);
       continue;
     }
