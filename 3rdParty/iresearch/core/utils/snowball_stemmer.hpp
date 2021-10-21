@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,28 +17,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils/thread_utils.hpp"
+#ifndef SNOWBALL_STEMMER_H
+#define SNOWBALL_STEMMER_H
 
-#include "Containers.h"
+#include <memory>
 
-namespace arangodb {
+struct sb_stemmer;
+
 namespace iresearch {
 
-void ResourceMutex::reset() {
-  if (get()) {
-    irs::async_utils::read_write_mutex::write_mutex mutex(_mutex);
-    auto lock = irs::make_lock_guard(mutex);
-    _resource.store(nullptr);
-  }
-}
+struct stemmer_deleter {
+   void operator()(sb_stemmer* p) const noexcept;
+};
 
-}  // namespace iresearch
-}  // namespace arangodb
+using stemmer_ptr = std::unique_ptr<sb_stemmer, stemmer_deleter>;
 
-// -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
-// -----------------------------------------------------------------------------
+stemmer_ptr make_stemmer_ptr(const char * algorithm, const char * charenc);
+
+} // iresearch
+
+#endif // SNOWBALL_STEMMER_H

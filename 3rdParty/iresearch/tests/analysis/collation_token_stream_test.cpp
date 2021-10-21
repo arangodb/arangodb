@@ -27,7 +27,6 @@
 #include <unicode/locid.h>
 
 #include "tests_shared.hpp"
-#include "utils/locale_utils.hpp"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
@@ -40,6 +39,15 @@ TEST(collation_token_stream_test, construct_from_str) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
+      R"({"locale" : "ru.koi8.r"})");
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
+  }
+
+
+  {
+    auto stream = irs::analysis::analyzers::get(
+      "collation", irs::type<irs::text_format::json>::get(),
       R"({"locale" : "en-US"})");
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
@@ -48,7 +56,23 @@ TEST(collation_token_stream_test, construct_from_str) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
+      R"({"locale" : "en-US.utf-8"})");
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
+  }
+
+  {
+    auto stream = irs::analysis::analyzers::get(
+      "collation", irs::type<irs::text_format::json>::get(),
       R"({"locale" : "de_DE_phonebook"})");
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
+  }
+
+  {
+    auto stream = irs::analysis::analyzers::get(
+      "collation", irs::type<irs::text_format::json>::get(),
+      R"({"locale" : "C"})");
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
   }
@@ -76,82 +100,6 @@ TEST(collation_token_stream_test, construct_from_str) {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "[]"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{}"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{\"locale\":1}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : "en.utf-16"})"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : "de-DE.ascii@phonebook"})"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : "de_DE.utf-32@collation=phonebook"})"));
-  }
-}
-
-TEST(collation_token_stream_test, construct_from_obj) {
-  // json
-  {
-    auto stream = irs::analysis::analyzers::get(
-      "collation", irs::type<irs::text_format::json>::get(),
-      R"({ "locale": {"language" : "en", "country": "US", "encoding" : "UTF-8"}})");
-    ASSERT_NE(nullptr, stream);
-    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
-  }
-
-  {
-    auto stream = irs::analysis::analyzers::get(
-      "collation", irs::type<irs::text_format::json>::get(),
-      R"({ "locale": {"language" : "en", "country": "US", "variant" : "phonebook", "encoding" : "utf-8"}})");
-    ASSERT_NE(nullptr, stream);
-    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
-  }
-
-  {
-    auto stream = irs::analysis::analyzers::get(
-      "collation", irs::type<irs::text_format::json>::get(),
-      R"({ "locale": {"country": "US"}})");
-    ASSERT_EQ(nullptr, stream);
-  }
-
-  // vpack
-  {
-    std::string config = R"({ "locale": {"language" : "en", "country": "US", "variant" : "phonebook"}})";
-    auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
-    irs::string_ref in_str(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
-    auto stream = irs::analysis::analyzers::get("collation", irs::type<irs::text_format::vpack>::get(), in_str);
-    ASSERT_NE(nullptr, stream);
-    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
-  }
-
-  {
-    std::string config = R"({ "locale": {"language" : "en", "variant" : "phonebook"}})";
-    auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
-    irs::string_ref in_str(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
-    auto stream = irs::analysis::analyzers::get("collation", irs::type<irs::text_format::vpack>::get(), in_str);
-    ASSERT_NE(nullptr, stream);
-    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
-  }
-
-  {
-    std::string config = R"({ "locale": {"variant" : "phonebook"}})";
-    auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
-    irs::string_ref in_str(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
-    auto stream = irs::analysis::analyzers::get("collation", irs::type<irs::text_format::vpack>::get(), in_str);
-    ASSERT_EQ(nullptr, stream);
-  }
-
-  {
-    std::string config = R"({ "locale": {"country": "US"}})";
-    auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
-    irs::string_ref in_str(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
-    auto stream = irs::analysis::analyzers::get("collation", irs::type<irs::text_format::vpack>::get(), in_str);
-    ASSERT_EQ(nullptr, stream);
-  }
-
-  // invalid
-  {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "1"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "[]"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{\"locale\":1}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : {"language" : "de_DE", "variant" : "_phonebook", "encoding" : "utf-32"}})"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : {"language" : 123}})"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale": {"language" : "en", "country": "US", "variant" : "phonebook", "encoding" : "ascii"}})"));
   }
 }
 
@@ -187,7 +135,7 @@ TEST(collation_token_stream_test, check_collation) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale": {"language" : "en"}})");
+      R"({"locale": "en"})");
 
     ASSERT_NE(nullptr, stream);
 
@@ -213,7 +161,7 @@ TEST(collation_token_stream_test, check_collation) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale": {"language" : "sv"}})");
+      R"({"locale": "sv"})");
 
     ASSERT_NE(nullptr, stream);
 
@@ -273,7 +221,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale": {"language" : "de", "variant" : "pinyan"}})");
+      R"({"locale": "de__pinyin"})");
 
     ASSERT_NE(nullptr, stream);
 
@@ -385,7 +333,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale": {"language" : "de", "variant" : "_phonebook"}})");
+      R"({"locale": "de__phonebook"})");
 
     ASSERT_NE(nullptr, stream);
 
@@ -413,7 +361,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale": {"language" : "de_phonebook"}})");
+      R"({"locale": "de_phonebook"})");
 
     ASSERT_NE(nullptr, stream);
 
@@ -441,7 +389,33 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale": {"language" : "de@collation=phonebook"}})");
+      R"({"locale": "de@collation=phonebook"})");
+
+    ASSERT_NE(nullptr, stream);
+
+    auto* offset = irs::get<irs::offset>(*stream);
+    ASSERT_NE(nullptr, offset);
+    auto* term = irs::get<irs::term_attribute>(*stream);
+    ASSERT_NE(nullptr, term);
+    auto* inc = irs::get<irs::increment>(*stream);
+    ASSERT_NE(nullptr, inc);
+
+    {
+      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      ASSERT_TRUE(stream->reset(data));
+      ASSERT_TRUE(stream->next());
+      ASSERT_EQ(0, offset->start);
+      ASSERT_EQ(data.size(), offset->end);
+      ASSERT_EQ(get_collation_key(data), term->value);
+      ASSERT_EQ(1, inc->value);
+      ASSERT_FALSE(stream->next());
+    }
+  }
+
+  {
+    auto stream = irs::analysis::analyzers::get(
+      "collation", irs::type<irs::text_format::json>::get(),
+      R"({"locale" : "de@collation=phonebook"})");
 
     ASSERT_NE(nullptr, stream);
 
@@ -466,34 +440,6 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
 
   // locale defined as object
   // same variants, but collation is ignored, because input as old string. should be NOT EQUAL
-  {
-    auto stream = irs::analysis::analyzers::get(
-      "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale" : "de@collation=phonebook"})");
-
-    ASSERT_NE(nullptr, stream);
-
-    auto* offset = irs::get<irs::offset>(*stream);
-    ASSERT_NE(nullptr, offset);
-    auto* term = irs::get<irs::term_attribute>(*stream);
-    ASSERT_NE(nullptr, term);
-    auto* inc = irs::get<irs::increment>(*stream);
-    ASSERT_NE(nullptr, inc);
-
-    {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
-      ASSERT_TRUE(stream->reset(data));
-      ASSERT_TRUE(stream->next());
-      ASSERT_EQ(0, offset->start);
-      ASSERT_EQ(data.size(), offset->end);
-      ASSERT_NE(get_collation_key(data), term->value);
-      ASSERT_EQ(1, inc->value);
-      ASSERT_FALSE(stream->next());
-    }
-  }
-
-  // locale defined as string
-  // same variants, should be EQUAL
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
@@ -555,7 +501,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale": {"language" : "de", "variant" : "pinyan"}})");
+      R"({"locale": "de__pinyan"})");
 
     ASSERT_NE(nullptr, stream);
 
@@ -583,7 +529,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale": {"language" : "de", "variant" : "_phonebook"}})");
+      R"({"locale": "de__phonebook"})");
 
     ASSERT_NE(nullptr, stream);
 
@@ -611,7 +557,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale": {"language" : "de", "variant" : "@collation=phonebook"}})");
+      R"({"locale": "de@collation=phonebook"})");
 
     ASSERT_NE(nullptr, stream);
 
@@ -662,8 +608,6 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
     }
   }
 
-  // locale defined as string
-  // same variants, but collation is ignored, because input as old string. should be NOT EQUAL
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
@@ -684,7 +628,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(data.size(), offset->end);
-      ASSERT_NE(get_collation_key(data), term->value);
+      ASSERT_EQ(get_collation_key(data), term->value);
       ASSERT_EQ(1, inc->value);
       ASSERT_FALSE(stream->next());
     }
@@ -723,7 +667,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({ "locale" : {"language" : "en" }})");
+      R"({ "locale" : "en" })");
 
     ASSERT_NE(nullptr, stream);
 
@@ -824,7 +768,7 @@ TEST(collation_token_stream_test, check_tokens) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({ "locale" : {"language" : "de_DE" }})");
+      R"({ "locale" : "de_DE" })");
 
     ASSERT_NE(nullptr, stream);
 
@@ -851,34 +795,34 @@ TEST(collation_token_stream_test, check_tokens) {
 
 TEST(collation_token_stream_test, normalize) {
   {
-    std::string config = R"({ "locale" : {"language" : "de_DE", "variant" : "_phonebook", "encoding" : "utf-8"}})";
+    std::string config = R"({ "locale" : "de_DE_phonebook" })";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "collation", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE", "variant" : "PHONEBOOK","encoding":"utf-8"}})")->toString(), actual);
+    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : "de_DE_PHONEBOOK" })")->toString(), actual);
   }
 
   {
-    std::string config = R"({ "locale" : {"language" : "de_DE", "321variant" : "phonebook", "encoding" : "utf-8"}})";
+    std::string config = R"({ "locale" : "de_DE.utf-8" })";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "collation", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE","encoding":"utf-8"}})")->toString(), actual);
+    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : "de_DE"})")->toString(), actual);
   }
 
   {
-    std::string config = R"({ "locale" : {"language" : "de_DE", "321variant" : "phonebook"}})";
+    std::string config = R"({ "locale" : "de_DE@collation=phonebook" })";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "collation", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE","encoding":"utf-8"}})")->toString(), actual);
+    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : "de_DE@collation=phonebook" })")->toString(), actual);
   }
 
   {
-    std::string config = R"({ "locale" : {"language" : "de_DE", "321variant" : "phonebook", "encoding" : "utf-8"}})";
+    std::string config = R"({ "locale" : "de_DE@phonebook" })";
     auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
     std::string in_str;
     in_str.assign(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
     std::string out_str;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "collation", irs::type<irs::text_format::vpack>::get(), in_str));
     VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
-    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE", "encoding":"utf-8"}})")->toString(), out_slice.toString());
+    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : "de_DE_PHONEBOOK"})")->toString(), out_slice.toString());
   }
 }

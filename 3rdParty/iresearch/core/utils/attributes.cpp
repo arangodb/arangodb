@@ -55,7 +55,7 @@ namespace iresearch {
   try {
     return attribute_register::instance().get(name, load_library);
   } catch (...) {
-    IR_FRMT_ERROR("Caught exception while getting an attribute instance");
+    IR_FRMT_ERROR("Caught exception while getting an attribute instance"); // cppcheck-suppress syntaxError
   }
 
   return {}; // invalid type id

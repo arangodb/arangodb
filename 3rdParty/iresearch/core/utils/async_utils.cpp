@@ -32,12 +32,6 @@
 
 using namespace std::chrono_literals;
 
-namespace {
-
-constexpr auto RW_MUTEX_WAIT_TIMEOUT = 50ms;
-
-}
-
 namespace iresearch {
 namespace async_utils {
 
@@ -78,160 +72,6 @@ void busywait_mutex::unlock() {
   }
 }
 
-read_write_mutex::read_write_mutex() noexcept
-  : concurrent_count_(0),
-    exclusive_count_(0),
-    exclusive_owner_(std::thread::id()),
-    exclusive_owner_recursion_count_(0) {
-}
-
-read_write_mutex::~read_write_mutex() noexcept {
-#ifdef IRESEARCH_DEBUG
-  // ensure mutex is not locked before destroying it
-  auto lock = make_unique_lock(mutex_, std::try_to_lock);
-  assert(lock && !concurrent_count_.load() && !exclusive_count_);
-#endif
-}
-
-void read_write_mutex::lock_read() {
-  // if have write lock
-  if (owns_write()) {
-    ++exclusive_owner_recursion_count_; // write recursive lock
-
-    return;
-  }
-
-  auto lock = make_unique_lock(mutex_);
-
-  // yield if there is already a writer waiting
-  // wait for notification (possibly with writers waiting) or no more writers waiting
-  while (exclusive_count_ && std::cv_status::timeout == reader_cond_.wait_for(lock, RW_MUTEX_WAIT_TIMEOUT)) {}
-
-  ++concurrent_count_;
-}
-
-void read_write_mutex::lock_write() {
-  // if have write lock
-  if (owns_write()) {
-    ++exclusive_owner_recursion_count_; // write recursive lock
-
-    return;
-  }
-
-  auto lock = make_unique_lock(mutex_);
-
-  ++exclusive_count_; // mark mutex with writer-waiting state
-
-  // wait until lock is held exclusively by the current thread
-  while (concurrent_count_) {
-    try {
-      writer_cond_.wait_for(lock, RW_MUTEX_WAIT_TIMEOUT);
-    } catch (...) {
-      // 'wait_for' may throw according to specification
-    }
-  }
-
-  --exclusive_count_;
-  exclusive_owner_.store(std::this_thread::get_id());
-  lock.release(); // disassociate the associated mutex without unlocking it
-}
-
-bool read_write_mutex::owns_write() noexcept {
-  return exclusive_owner_.load() == std::this_thread::get_id();
-}
-
-bool read_write_mutex::try_lock_read() {
-  // if have write lock
-  if (owns_write()) {
-    ++exclusive_owner_recursion_count_; // write recursive lock
-
-    return true;
-  }
-
-  auto lock = make_unique_lock(mutex_, std::try_to_lock);
-
-  if (!lock || exclusive_count_) {
-    return false;
-  }
-
-  ++concurrent_count_;
-
-  return true;
-}
-
-bool read_write_mutex::try_lock_write() {
-  // if have write lock
-  if (owns_write()) {
-    ++exclusive_owner_recursion_count_; // write recursive lock
-
-    return true;
-  }
-
-  auto lock = make_unique_lock(mutex_, std::try_to_lock);
-
-  if (!lock || concurrent_count_) {
-    return false;
-  }
-
-  exclusive_owner_.store(std::this_thread::get_id());
-  lock.release(); // disassociate the associated mutex without unlocking it
-
-  return true;
-}
-
-void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
-  // if have write lock
-  if (owns_write()) {
-    if (exclusive_owner_recursion_count_) {
-      if (!exclusive_only) { // a recursively locked mutex is always top-level write locked
-        --exclusive_owner_recursion_count_; // write recursion unlock one level
-      }
-
-      return;
-    }
-
-    auto lock = make_unique_lock(mutex_, std::adopt_lock);
-
-    if (exclusive_only) {
-      ++concurrent_count_; // acquire the read-lock
-    }
-
-    exclusive_owner_.store(std::thread::id());
-    reader_cond_.notify_all(); // wake all reader and writers
-    writer_cond_.notify_all(); // wake all reader and writers
-
-    return;
-  }
-
-  if (exclusive_only) {
-    return; // NOOP for readers
-  }
-
-  // ...........................................................................
-  // after here assume have read lock
-  // ...........................................................................
-
-  #ifdef IRESEARCH_DEBUG
-    auto count = --concurrent_count_;
-    assert(count != size_t(-1)); // ensure decrement was for a positive number (i.e. not --0)
-    UNUSED(count);
-  #else
-    --concurrent_count_;
-  #endif // IRESEARCH_DEBUG
-
-  // FIXME: this should be changed to SCOPED_LOCK_NAMED, as right now it is not
-  // guaranteed that we can succesfully acquire the mutex here. and if we don't,
-  // there is no guarantee that the notify_all will wake up queued waiter.
-
-  // try to acquire mutex for use with cond
-  auto lock = make_unique_lock(mutex_, std::try_to_lock);
-
-  // wake only writers since this is a reader
-  // wake even without lock since writer may be waiting in lock_write() on cond
-  // the latter might also indicate a bug if deadlock occurs with SCOPED_LOCK()
-  writer_cond_.notify_all();
-}
-
 thread_pool::thread_pool(
     size_t max_threads /*= 0*/,
     size_t max_idle /*= 0*/,
@@ -249,6 +89,7 @@ thread_pool::~thread_pool() {
 }
 
 size_t thread_pool::max_idle() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return max_idle_;
@@ -258,6 +99,7 @@ void thread_pool::max_idle(size_t value) {
   auto& state = *shared_state_;
 
   {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(state.lock);
 
     max_idle_ = value;
@@ -270,6 +112,7 @@ void thread_pool::max_idle_delta(int delta) {
   auto& state = *shared_state_;
 
   {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(state.lock);
     auto max_idle = max_idle_ + delta;
 
@@ -286,6 +129,7 @@ void thread_pool::max_idle_delta(int delta) {
 }
 
 size_t thread_pool::max_threads() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return max_threads_;
@@ -295,6 +139,7 @@ void thread_pool::max_threads(size_t value) {
   auto& state = *shared_state_;
 
   {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(state.lock);
 
     max_threads_ = value;
@@ -311,6 +156,7 @@ void thread_pool::max_threads_delta(int delta) {
   auto& state = *shared_state_;
 
   {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(state.lock);
     auto max_threads = max_threads_ + delta;
 
@@ -383,6 +229,7 @@ void thread_pool::limits(size_t max_threads, size_t max_idle) {
   auto& state = *shared_state_;
 
   {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(state.lock);
 
     max_threads_ = max_threads;
@@ -415,30 +262,35 @@ bool thread_pool::maybe_spawn_worker() {
 }
 
 std::pair<size_t, size_t> thread_pool::limits() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return { max_threads_, max_idle_ };
 }
 
 std::tuple<size_t, size_t, size_t> thread_pool::stats() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return { active_, queue_.size(), threads_.load() };
 }
 
 size_t thread_pool::tasks_active() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return active_;
 }
 
 size_t thread_pool::tasks_pending() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return queue_.size();
 }
 
 size_t thread_pool::threads() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return threads_.load();
