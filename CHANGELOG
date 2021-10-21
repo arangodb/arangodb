@@ -1,6 +1,8 @@
 devel
 -----
 
+* fuerte: don't fall back to identity encoding in case of unknown encoding.
+
 * Fixed ES-881: Fixed LDAP global options. This needs to use the first active
   provider, not just the first provider and it should be globally disabled.
 
