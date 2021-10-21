@@ -396,6 +396,8 @@ class RocksDBEngine final : public StorageEngine {
   static arangodb::Result registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper);
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& recoveryHelpers();
 
+  void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
+
  private:
   void shutdownRocksDBInstance() noexcept;
   void waitForCompactionJobsToFinish();
