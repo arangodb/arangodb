@@ -759,7 +759,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
         v8::Handle<v8::Array> transformations = transformArray.As<v8::Array>();
-        if (transformArray->IsArray()) {
+        bool setRegularBody = !transformArray->IsArray();
+        if (!setRegularBody) {
           std::string out(TRI_ObjectToString(isolate, bodyVal));
 
           for (uint32_t i = 0; i < transformations->Length(); i++) {
@@ -780,15 +781,19 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               response->setHeaderNC(StaticStrings::ContentEncoding, StaticStrings::Binary);
             } else if (name == "gzip") {
               response->setAllowCompression(true);
+              setRegularBody = true;
             } else if (name == "deflate") {
               response->setAllowCompression(true);
+              setRegularBody = true;
             }
           }
-
-          // what type is out? always json?
-          httpResponse->body().appendText(out);
-          httpResponse->sealBody();
-        } else {
+          if (!setRegularBody) {
+            // what type is out? always json?
+            httpResponse->body().appendText(out);
+            httpResponse->sealBody();
+          }
+        }
+        if (setRegularBody) {
           if (V8Buffer::hasInstance(isolate, bodyVal)) {
             // body is a Buffer
             auto obj = bodyVal.As<v8::Object>();

@@ -32,6 +32,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
@@ -1855,27 +1856,58 @@ bool setPostBody(fu::Request& request,
 
 bool canParseResponse(fu::Response const& response) {
   return (response.isContentTypeVPack() || response.isContentTypeJSON()) &&
-         response.contentEncoding() == fuerte::ContentEncoding::Identity &&
+    (response.contentEncoding() == fuerte::ContentEncoding::Identity ||
+     response.contentEncoding() == fuerte::ContentEncoding::Deflate)     &&
          response.payload().size() > 0;
 }
 
 v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
                                         v8::Isolate* isolate) {
-  if (response.contentType() == fu::ContentType::VPack) {
-    std::vector<VPackSlice> const& slices = response.slices();
-    return TRI_VPackToV8(isolate, slices[0]);
-  } else if (response.contentType() == fu::ContentType::Json) {
+
+  if ((response.contentType() != fu::ContentType::VPack) &&
+      (response.contentType() == fu::ContentType::Json) ) {
+    return v8::Undefined(isolate);
+  }
+
+  if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
     auto responseBody = response.payload();
-    try {
-      auto parsedBody = VPackParser::fromJson(
-        reinterpret_cast<char const*>(
-          responseBody.data()),
-        responseBody.size());
-      return TRI_VPackToV8(isolate, parsedBody->slice());
-    } catch (std::exception const& ex) {
-      std::string err("Error parsing the server JSON reply: ");
-      err += ex.what();
-      TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
+    StringBuffer inflateBuf;
+    StringBuffer buf;
+    buf.replaceText(reinterpret_cast<const char*>(responseBody.data()),
+                    responseBody.size());
+    buf.inflate(inflateBuf);
+    if (response.contentType() == fu::ContentType::VPack) {
+      auto const& slices = VPackSlice(reinterpret_cast<uint8_t const*>(inflateBuf.c_str()));
+      return TRI_VPackToV8(isolate, slices);
+    } else {
+      try {
+        auto parsedBody = VPackParser::fromJson(
+          inflateBuf.c_str(),
+          inflateBuf.size());
+        return TRI_VPackToV8(isolate, parsedBody->slice());
+      } catch (std::exception const& ex) {
+        std::string err("Error parsing the server JSON reply: ");
+        err += ex.what();
+        TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
+      }
+    }
+  } else {
+    if (response.contentType() == fu::ContentType::VPack) {
+      std::vector<VPackSlice> const& slices = response.slices();
+      return TRI_VPackToV8(isolate, slices[0]);
+    } else {
+      auto responseBody = response.payload();
+      try {
+        auto parsedBody = VPackParser::fromJson(
+          reinterpret_cast<char const*>(
+            responseBody.data()),
+          responseBody.size());
+        return TRI_VPackToV8(isolate, parsedBody->slice());
+      } catch (std::exception const& ex) {
+        std::string err("Error parsing the server JSON reply: ");
+        err += ex.what();
+        TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
+      }
     }
   }
   return v8::Undefined(isolate);
@@ -1884,15 +1916,26 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
 v8::Local<v8::Value> translateResultBodyToV8(fu::Response const& response,
                                              v8::Isolate* isolate) {
   auto responseBody = response.payload();
-  if ((response.contentEncoding() == fuerte::ContentEncoding::Identity) &&
+  if (((response.contentEncoding() == fuerte::ContentEncoding::Identity) ||
+       (response.contentEncoding() == fuerte::ContentEncoding::Deflate)    ) &&
       (
         response.isContentTypeJSON() ||
         response.isContentTypeText() ||
         response.isContentTypeHtml()
         )
     ) {
-    const char* bodyStr = reinterpret_cast<const char*>(responseBody.data());
-    return TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
+    if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
+      StringBuffer inflateBuf;
+      StringBuffer buf;
+      buf.replaceText(reinterpret_cast<const char*>(responseBody.data()),
+                      responseBody.size());
+      buf.inflate(inflateBuf);
+
+      return TRI_V8_PAIR_STRING(isolate, inflateBuf.c_str(), inflateBuf.size());
+    } else {
+      const char* bodyStr = reinterpret_cast<const char*>(responseBody.data());
+      return TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
+    }
   } else {
     V8Buffer* buffer = V8Buffer::New
       (isolate,
