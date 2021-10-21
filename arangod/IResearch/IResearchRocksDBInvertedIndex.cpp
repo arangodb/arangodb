@@ -226,7 +226,7 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(VPackBuilder & builder,
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
 }
-
+/*
 std::vector<std::vector<arangodb::basics::AttributeName>> const&
 IResearchRocksDBInvertedIndex::coveredFields() const {
    std::vector<std::vector<arangodb::basics::AttributeName>> fields;
@@ -237,6 +237,7 @@ IResearchRocksDBInvertedIndex::coveredFields() const {
    }
    return fields;
 }
+*/
 
 Result IResearchRocksDBInvertedIndex::drop() {
   return deleteDataStore();

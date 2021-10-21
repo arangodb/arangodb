@@ -190,6 +190,8 @@ class IResearchInvertedIndex  : public IResearchDataStore {
     return false;
   }
 
+  bool covers(arangodb::aql::Projections& projections) const;
+
   std::unique_ptr<IndexIterator> iteratorForCondition(LogicalCollection* collection,
                                                       transaction::Methods* trx,
                                                       aql::AstNode const* node,

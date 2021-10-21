@@ -28,6 +28,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
+#include "Aql/Projections.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchInvertedIndex.h"
@@ -41,6 +42,10 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/Methods/Collections.h"
 #include "Basics/StaticStrings.h"
+
+namespace {
+std::vector<std::vector<std::string>> EMPTY_STORED_FIELDS{};
+}
 
 class IResearchInvertedIndexConditionTest
     : public ::testing::Test,
@@ -63,7 +68,9 @@ class IResearchInvertedIndexConditionTest
                                                  arangodb::tests::AnalyzerCollectionName,
                                                  false, _collection);
   }
-  VPackBuilder getPropertiesSlice(arangodb::IndexId iid, std::vector<std::string> const& fields) {
+  VPackBuilder getPropertiesSlice(arangodb::IndexId iid,
+                                  std::vector<std::string> const& fields,
+                                  std::vector<std::vector<std::string>> const& storedFields = EMPTY_STORED_FIELDS) {
     VPackBuilder vpack;
     {
       VPackObjectBuilder obj(&vpack);
@@ -86,6 +93,28 @@ class IResearchInvertedIndexConditionTest
 
   ~IResearchInvertedIndexConditionTest() {
     _collection.reset();
+  }
+
+  void assertProjectionsCoverageSuccess(
+    std::vector<std::vector<std::string>> const& storedFields,
+    std::vector<arangodb::aql::AttributeNamePath> const& attributes,
+    arangodb::aql::Projections const& expected) {
+    arangodb::aql::Projections projections(attributes);
+    arangodb::IndexId id(1);
+    arangodb::iresearch::InvertedIndexFieldMeta meta;
+    std::string errorField;
+    std::vector<std::string> fields = {"a"};
+    ASSERT_TRUE(meta.init(server.server(),
+                          getPropertiesSlice(id, fields, storedFields).slice(),
+                          false, errorField, _vocbase->name()));
+    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection, std::move(meta));
+    ASSERT_TRUE(Index.covers(projections));
+    ASSERT_EQ(expected.size(), projections.size());
+    for (size_t i = 0; i < expected.size(); ++i) {
+      ASSERT_EQ(expected[i].path, projections[i].path);
+      ASSERT_EQ(expected[i].coveringIndexCutoff, projections[i].coveringIndexCutoff);
+      ASSERT_EQ(expected[i].coveringIndexPosition, projections[i].coveringIndexPosition);
+    }
   }
 
   void estimateFilterCondition(
@@ -559,4 +588,14 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_array_comparison_equality)
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   expected.supportsCondition = true;
   estimateFilterCondition(queryString, fields, expected, &ctx);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering) {
+  std::vector<arangodb::aql::AttributeNamePath> attributes;
+  attributes.emplace_back("a");
+  std::vector<std::vector<std::string>> fields = {{"a"}};
+  arangodb::aql::Projections expected(attributes);
+  expected[0].coveringIndexCutoff = 0;
+  expected[0].coveringIndexPosition = 0;
+  assertProjectionsCoverageSuccess(fields, attributes, expected);
 }

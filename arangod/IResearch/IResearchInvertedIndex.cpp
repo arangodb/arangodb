@@ -419,6 +419,10 @@ AnalyzerPool::ptr IResearchInvertedIndex::findAnalyzer(AnalyzerPool const& analy
   return nullptr;
 }
 
+bool IResearchInvertedIndex::covers(arangodb::aql::Projections& projections) const {
+  return false;
+}
+
 bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
   auto value = other.get(arangodb::StaticStrings::IndexFields);
 
@@ -556,7 +560,8 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
 
   if (rv.ok()) {
     filterCosts.supportsCondition = true;
-    filterCosts.coveredAttributes = 0; // FIXME: we may use stored values!
+    // for filter we could safely assume 0 as we don't store exact token values in the index and can't return it.
+    filterCosts.coveredAttributes = 0;
     filterCosts.estimatedCosts = 1;// FIXME: use itemsInIndex;
   }
   return filterCosts;

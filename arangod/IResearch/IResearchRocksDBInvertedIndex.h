@@ -71,12 +71,16 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, publi
     return IResearchInvertedIndex::inProgress();
   }
 
+  bool covers(arangodb::aql::Projections& projections) const override {
+    return  IResearchInvertedIndex::covers(projections);
+  }
+
   
   bool hasCoveringIterator() const override {
     return !_meta._storedValues.empty();
   }
 
-  std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
+  //std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
 
   Result drop() override;
 
