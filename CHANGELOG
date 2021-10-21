@@ -1,6 +1,11 @@
 devel
 -----
 
+* Remove dysfunctional CMake variable `USE_OPTIMIZE_FOR_ARCHITECTURE`.
+  Architecture detection and architecture-specific optimization is now 
+  performed unconditionally. It is still possible to inject a certain
+  target architecture by setting the CMake variable `TARGET_ARCHITECTURE`.
+
 * Make background calculation of SHA hashes for RocksDB .sst files less
   intrusive. The previous implementation frequently iterated over all files
   in the database directory to check if it needed to ad-hoc calculate the
