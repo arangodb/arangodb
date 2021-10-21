@@ -701,8 +701,6 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
     _count._committedSeq = treeSeq;
 
     TRI_ASSERT(_numberDocuments.load() == countInTree);
-    TRI_ASSERT(_count._added == 0);
-    TRI_ASSERT(_count._removed == 0);
     
     LOG_TOPIC("f3f38", INFO, Logger::ENGINES)
           << context << ": rebuilt revision tree for collection with objectId '"
