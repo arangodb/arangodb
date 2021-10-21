@@ -46,7 +46,7 @@ RequestItem::RequestItem(std::unique_ptr<Request>&& req, RequestCallback&& cb,
       request(std::move(req)) {}
 
 template <SocketType ST>
-int H1Connection<ST>::on_message_begin(http_parser* p) {
+int H1Connection<ST>::on_message_begin(llhttp_t* p) {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(p->data);
   self->_lastHeaderField.clear();
   self->_lastHeaderValue.clear();
@@ -54,23 +54,23 @@ int H1Connection<ST>::on_message_begin(http_parser* p) {
   self->_shouldKeepAlive = false;
   self->_messageComplete = false;
   self->_response.reset(new Response());
-  return 0;
+  return HPE_OK;
 }
 
 template <SocketType ST>
-int H1Connection<ST>::on_status(http_parser* parser, const char* at,
+int H1Connection<ST>::on_status(llhttp_t* parser, const char* at,
                                 size_t len) {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
-  
+  // compat for arangosh
   self->_response->header.addMeta(std::string("http/") +
                                       std::to_string(parser->http_major) + '.' +
                                       std::to_string(parser->http_minor),
                                   std::to_string(parser->status_code) + ' ' + std::string(at, len));
-  return 0;
+  return HPE_OK;
 }
 
 template <SocketType ST>
-int H1Connection<ST>::on_header_field(http_parser* parser, const char* at,
+int H1Connection<ST>::on_header_field(llhttp_t* parser, const char* at,
                                       size_t len) {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
   if (self->_lastHeaderWasValue) {
@@ -82,11 +82,11 @@ int H1Connection<ST>::on_header_field(http_parser* parser, const char* at,
     self->_lastHeaderField.append(at, len);
   }
   self->_lastHeaderWasValue = false;
-  return 0;
+  return HPE_OK;
 }
 
 template <SocketType ST>
-int H1Connection<ST>::on_header_value(http_parser* parser, const char* at,
+int H1Connection<ST>::on_header_value(llhttp_t* parser, const char* at,
                                       size_t len) {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
   if (self->_lastHeaderWasValue) {
@@ -95,11 +95,11 @@ int H1Connection<ST>::on_header_value(http_parser* parser, const char* at,
     self->_lastHeaderValue.assign(at, len);
   }
   self->_lastHeaderWasValue = true;
-  return 0;
+  return HPE_OK;
 }
 
 template <SocketType ST>
-int H1Connection<ST>::on_header_complete(http_parser* parser) {
+int H1Connection<ST>::on_header_complete(llhttp_t* parser) {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
   self->_response->header.responseCode =
       static_cast<StatusCode>(parser->status_code);
@@ -109,7 +109,7 @@ int H1Connection<ST>::on_header_complete(http_parser* parser) {
                                     std::move(self->_lastHeaderValue));
   }
   // Adjust idle timeout if necessary
-  self->_shouldKeepAlive = http_should_keep_alive(parser);
+  self->_shouldKeepAlive = llhttp_should_keep_alive(parser);
 
   // head has no body, but may have a Content-Length
   if (self->_item->request->header.restVerb == RestVerb::Head) {
@@ -120,19 +120,19 @@ int H1Connection<ST>::on_header_complete(http_parser* parser) {
     self->_responseBuffer.reserve(maxReserve);
   }
 
-  return 0;
+  return HPE_OK;
 }
 
 template <SocketType ST>
-int H1Connection<ST>::on_body(http_parser* parser, const char* at, size_t len) {
+int H1Connection<ST>::on_body(llhttp_t* parser, const char* at, size_t len) {
   static_cast<H1Connection<ST>*>(parser->data)->_responseBuffer.append(at, len);
-  return 0;
+  return HPE_OK;
 }
 
 template <SocketType ST>
-int H1Connection<ST>::on_message_complete(http_parser* parser) {
+int H1Connection<ST>::on_message_complete(llhttp_t* parser) {
   static_cast<H1Connection<ST>*>(parser->data)->_messageComplete = true;
-  return 0;
+  return HPE_OK;
 }
 
 template <SocketType ST>
@@ -143,7 +143,7 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
       _shouldKeepAlive(false),
       _messageComplete(false) {
   // initialize http parsing code
-  http_parser_settings_init(&_parserSettings);
+  llhttp_settings_init(&_parserSettings);
   _parserSettings.on_message_begin = &on_message_begin;
   _parserSettings.on_status = &on_status;
   _parserSettings.on_header_field = &on_header_field;
@@ -151,7 +151,7 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
   _parserSettings.on_headers_complete = &on_header_complete;
   _parserSettings.on_body = &on_body;
   _parserSettings.on_message_complete = &on_message_complete;
-  http_parser_init(&_parser, HTTP_RESPONSE);
+  llhttp_init(&_parser, HTTP_RESPONSE, &_parserSettings);
 
   _parser.data = static_cast<void*>(this);
 
@@ -397,19 +397,20 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   auto buffers = this->_receiveBuffer.data();  // no copy
   for (auto const& buffer : buffers) {
     const char* data = reinterpret_cast<const char*>(buffer.data());
-    size_t n =
-        http_parser_execute(&_parser, &_parserSettings, data, buffer.size());
-    if (n != buffer.size()) {
+    enum llhttp_errno err = llhttp_execute(&_parser, data, buffer.size());
+    if (err != HPE_OK) {
       /* Handle error. Usually just close the connection. */
-      std::string msg = "Invalid HTTP response in parser: '";
-      msg.append(http_errno_description(HTTP_PARSER_ERRNO(&_parser)))
-          .append("'");
+      std::string msg("Invalid HTTP response in parser: '");
+      msg.append(llhttp_errno_name(err))
+         .append("' reason: '")
+         .append(llhttp_get_error_reason(&_parser))
+         .append("'");
       FUERTE_LOG_ERROR << msg << ", this=" << this << "\n";
-      this->shutdownConnection(Error::ProtocolError,
-                               msg);  // will cleanup _item
+      // will cleanup _item
+      this->shutdownConnection(Error::ProtocolError, msg);  
       return;
     }
-    nparsed += n;
+    nparsed += buffer.size();
   }
 
   // Remove consumed data from receive buffer.
