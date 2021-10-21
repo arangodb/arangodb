@@ -132,6 +132,7 @@ class StaticStrings {
   static std::string const IndexType;          // index type
   static std::string const IndexUnique;        // index uniqueness marker
   static std::string const IndexEstimates;     // index estimates flag
+  static std::string const IndexLegacyPolygons;// index legacyPolygons flag
 
   // static index names
   static std::string const IndexNameEdge;

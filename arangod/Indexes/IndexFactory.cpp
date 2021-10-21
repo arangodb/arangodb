@@ -479,6 +479,14 @@ void IndexFactory::processIndexGeoJsonFlag(VPackSlice definition, VPackBuilder& 
   }
 }
 
+/// @brief process the legacyPolygons flag and add it to the json
+void IndexFactory::processIndexLegacyPolygonsFlag(VPackSlice definition, VPackBuilder& builder) {
+  bool legacyPolygons =
+      basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexLegacyPolygons, false);
+
+  builder.add(StaticStrings::IndexLegacyPolygons, VPackValue(legacyPolygons));
+}
+
 /// @brief enhances the json of a hash, skiplist or persistent index
 Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
                                              VPackBuilder& builder, bool create) {
@@ -542,6 +550,7 @@ Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition, VPackBuilder& bu
     builder.add(StaticStrings::IndexSparse, velocypack::Value(true));
     builder.add(StaticStrings::IndexUnique, velocypack::Value(false));
     IndexFactory::processIndexGeoJsonFlag(definition, builder);
+    IndexFactory::processIndexLegacyPolygonsFlag(definition, builder);
 
     bool bck = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexInBackground,
                                                          false);

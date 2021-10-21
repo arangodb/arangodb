@@ -146,6 +146,10 @@ class IndexFactory {
   static void processIndexGeoJsonFlag(velocypack::Slice definition,
                                       velocypack::Builder& builder);
 
+  /// @brief process the legacyPolygons flag and add it to the json
+  static void processIndexLegacyPolygonsFlag(velocypack::Slice definition,
+                                             velocypack::Builder& builder);
+
   /// @brief enhances the json of a hash, skiplist or persistent index
   static Result enhanceJsonIndexGeneric(velocypack::Slice definition,
                                         velocypack::Builder& builder, bool create);

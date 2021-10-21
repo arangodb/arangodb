@@ -86,6 +86,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
  private:
   std::string const _typeName;
+  bool _legacyPolygons;   // indicate if geoJson is parsed with legacy polygons
 };
 }  // namespace arangodb
 
