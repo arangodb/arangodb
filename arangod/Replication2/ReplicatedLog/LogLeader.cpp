@@ -354,7 +354,7 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<std::unique_ptr<LogCor
       }
     };
 
-    LOG_CTX("8696f", INFO, _logContext) << "resign";
+    LOG_CTX("8696f", DEBUG, _logContext) << "resign";
     leaderData._didResign = true;
     static_assert(
         std::is_nothrow_constructible_v<DeferredAction, std::add_rvalue_reference_t<decltype(action)>>);
