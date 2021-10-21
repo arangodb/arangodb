@@ -122,42 +122,45 @@ struct CFilesSetup {
 
 TEST(RocksDBShaCalculatorThread, sha_a_new_file) {
   CFilesSetup s;
-  std::string new_sst;
-  bool good;
 
-  new_sst=s._directory.c_str();
-  new_sst+= TRI_DIR_SEPARATOR_CHAR;
-  new_sst+="000042.sst";
+  std::string new_sst = s._directory.c_str();
+  new_sst += TRI_DIR_SEPARATOR_CHAR;
+  new_sst += "000042.sst";
 
   auto ret_val = TRI_WriteFile(new_sst.c_str(), "the quick brown fox", 19);
   EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
 
-  good = arangodb::RocksDBShaCalculatorThread::shaCalcFile(new_sst.c_str());
+  auto [good, hash] = arangodb::RocksDBShaCalculatorThread::shaCalcFile(new_sst.c_str());
   EXPECT_TRUE(good);
+  EXPECT_EQ(hash, "9ecb36561341d18eb65484e833efea61edc74b84cf5e6ae1b81c63533e25fc8f");
 }
 
-TEST(RocksDBShaCalculatorThread, delete_matching_sha) {
+TEST(RocksDBShaCalculatorThread, sha_a_different_new_file) {
   CFilesSetup s;
-  std::string new_sst, basepath, new_sha;
-  bool good;
 
-  basepath=s._directory.c_str();
-  basepath+= TRI_DIR_SEPARATOR_CHAR;
-  basepath+="000069";
-  new_sst = basepath + ".sst";
+  std::string new_sst = s._directory.c_str();
+  new_sst += TRI_DIR_SEPARATOR_CHAR;
+  new_sst += "000042.sst";
 
   auto ret_val = TRI_WriteFile(new_sst.c_str(), "12345 67890 12345 67890", 23);
   EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
 
-  /// not real ssh for the data written above
-  new_sha = basepath + ".sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash";
-  ret_val = TRI_WriteFile(new_sha.c_str(), "", 0);
-  EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
-
-  good = arangodb::RocksDBShaCalculatorThread::deleteFile(new_sst.c_str());
+  auto [good, hash] = arangodb::RocksDBShaCalculatorThread::shaCalcFile(new_sst.c_str());
   EXPECT_TRUE(good);
+  EXPECT_EQ(hash, "e7f5561536b5891e35d6021015d67d5798b3731088b44dcebf6bad03785ac8c2");
 }
 
+TEST(RocksDBShaCalculatorThread, sha_a_non_existing_file) {
+  CFilesSetup s;
+
+  std::string sst = s._directory.c_str();
+  sst += TRI_DIR_SEPARATOR_CHAR;
+  sst += "does-not-exist";
+
+  auto [good, hash] = arangodb::RocksDBShaCalculatorThread::shaCalcFile(sst.c_str());
+  EXPECT_FALSE(good);
+  EXPECT_EQ(hash, "");
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test checkMissingShaFiles scenarios
