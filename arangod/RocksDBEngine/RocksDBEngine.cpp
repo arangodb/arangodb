@@ -680,8 +680,8 @@ void RocksDBEngine::start() {
     _options.listeners.push_back(_throttleListener);
   }
 
+  _shaListener = std::make_shared<RocksDBShaCalculator>(server(), _createShaFiles);
   if (_createShaFiles) {
-    _shaListener = std::make_shared<RocksDBShaCalculator>(server());
     _options.listeners.push_back(_shaListener);
   } 
   
@@ -732,13 +732,15 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addFamily(RocksDBColumnFamilyManager::Family::ZkdIndex);
-
+  
   size_t const minNumberOfColumnFamilies = RocksDBColumnFamilyManager::minNumberOfColumnFamilies;
   bool dbExisted = false;
   {
     rocksdb::Options testOptions;
     testOptions.create_if_missing = false;
     testOptions.create_missing_column_families = false;
+    testOptions.avoid_flush_during_recovery = true;
+    testOptions.avoid_flush_during_shutdown = true;
     testOptions.env = _options.env;
     std::vector<std::string> existingColumnFamilies;
     rocksdb::Status status =
@@ -806,12 +808,12 @@ void RocksDBEngine::start() {
       }
     }
   }
-
+  
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   rocksdb::Status status =
       rocksdb::TransactionDB::Open(_options, transactionOptions, _path,
                                    cfFamilies, &cfHandles, &_db);
-
+  
   if (!status.ok()) {
     std::string error;
     if (status.IsIOError()) {
@@ -866,12 +868,12 @@ void RocksDBEngine::start() {
                                   cfHandles[8]);
   TRI_ASSERT(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
-
+  
   // will crash the process if version does not match
   arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted);
 
   _dbExisted = dbExisted;
-
+  
   // only enable logger after RocksDB start
   if (logger != nullptr) {
     logger->enable();
@@ -959,7 +961,7 @@ void RocksDBEngine::beginShutdown() {
   }
 
   // signal the event listener that we are going to shut down soon
-  if (_shaListener != nullptr) {
+  if (_createShaFiles && _shaListener != nullptr) {
     _shaListener->beginShutdown();
   } 
 }
@@ -971,7 +973,7 @@ void RocksDBEngine::stop() {
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
   
-  if (_shaListener != nullptr) {
+  if (_createShaFiles && _shaListener != nullptr) {
     _shaListener->waitForShutdown();
   }
 
@@ -3149,6 +3151,12 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
     // RocksDB's compaction job(s) to finish.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   } while (true);
+}
+      
+void RocksDBEngine::checkMissingShaFiles(std::string const& pathname, int64_t requireAge) {
+  if (_shaListener != nullptr) {
+    _shaListener->checkMissingShaFiles(pathname, requireAge);
+  }
 }
 
 auto RocksDBEngine::dropReplicatedLog(TRI_vocbase_t& vocbase,
