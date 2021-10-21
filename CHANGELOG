@@ -1,6 +1,8 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Old license mechanism for docker containers removed.
+
 * Fixed ES-881: Fixed LDAP global options. This needs to use the first active
   provider, not just the first provider and it should be globally disabled.
 
