@@ -359,7 +359,7 @@ ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase, VPackSl
 
 Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                                  VPackSlice trxOpts, bool isFollowerTransaction) {
-  TRI_ASSERT(ServerState::instance()->isSingleServer() ||
+  TRI_ASSERT(ServerState::instance()->isSingleServer() && !isFollowerTransaction ||
              tid.isFollowerTransactionId() == isFollowerTransaction);
   transaction::Options options;
   std::vector<std::string> reads, writes, exclusives;
