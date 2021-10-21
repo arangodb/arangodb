@@ -1007,7 +1007,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeLineString) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape).ok(), false);
+  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYLINE, shape.type());
 
   // tokenize shape
@@ -1176,7 +1176,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPolygon) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, shape.type());
 
   // tokenize shape

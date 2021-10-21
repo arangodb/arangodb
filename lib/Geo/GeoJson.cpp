@@ -382,7 +382,7 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region, bool legacy
 /// @brief parse GeoJson polygon or array of loops. Each loop consists of
 /// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...].
 /// The multipolygon contains an array of looops
-Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region) {
+Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region, bool legacy) {
   if (Type::MULTI_POLYGON != type(vpack)) {
     return {TRI_ERROR_BAD_PARAMETER, "requires type: 'MultiPolygon'"};
   }
@@ -455,7 +455,13 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region)
       // more than half of the earth, we must not blindly "Normalize"
       // the loops, as we did in earlier versions, although RFC7946
       // says "parsers SHOULD NOT reject Polygons that do not follow
-      // the right-hand rule". Since we cannot detect this, we cannot    // reject anything, is my reading of this. Max 1.9.2021 .
+      // the right-hand rule". Since we cannot detect this, we cannot
+      // reject anything, is my reading of this. Max 1.9.2021 .
+      // Nevertheless, we need to support legacy applications, therefore:
+      if (legacy) {
+        S2Loop* loop = loops.back().get();
+        loop->Normalize();
+      }
 
       // Any subsequent loop must be a hole within first loop
       if (outerLoop + 1 < loops.size() &&
