@@ -315,7 +315,7 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(std::string const& pathnam
         // creation event.
         std::string tempPath = basics::FileUtils::buildFilename(pathname, *iter);
         int64_t now = ::time(nullptr);
-        int64_t modTime;
+        int64_t modTime = 0;
         auto r = TRI_MTimeFile(tempPath.c_str(), &modTime);
         if (r == TRI_ERROR_NO_ERROR && (now - modTime) >= requireAge) {
           LOG_TOPIC("d6c86", DEBUG, arangodb::Logger::ENGINES)
