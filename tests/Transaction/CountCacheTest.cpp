@@ -22,122 +22,148 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Transaction/CountCache.h"
+#include "Basics/system-functions.h"
 
 #include "gtest/gtest.h"
+
 #include <chrono>
 #include <thread>
 
 using namespace arangodb;
 
-TEST(TransactionCountCacheTest, testExpireShort) {
-  transaction::CountCache cache(0.5);
+struct SpeedyCountCache : public transaction::CountCache {
+  explicit SpeedyCountCache(double ttl)
+      : CountCache(ttl),
+        _time(TRI_microtime()) {}
 
-  ASSERT_EQ(transaction::CountCache::NotPopulated, cache.get());
-  ASSERT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  double getTime() const override {
+    return _time;
+  }
+
+  void advanceTime(double value) {
+    _time += value;
+  }
+
+ double _time;
+};
+
+TEST(TransactionCountCacheTest, testExpireShort) {
+  SpeedyCountCache cache(0.5);
+
+  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.get());
+  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
 
   cache.store(0);
-  ASSERT_EQ(0, cache.get());
-  ASSERT_EQ(0, cache.getWithTtl());
+  EXPECT_EQ(0, cache.get());
+  EXPECT_EQ(0, cache.getWithTtl());
   
   cache.store(555);
-  ASSERT_EQ(555, cache.get());
-  ASSERT_EQ(555, cache.getWithTtl());
+  EXPECT_EQ(555, cache.get());
+  EXPECT_EQ(555, cache.getWithTtl());
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(550));
+  cache.advanceTime(0.550);
 
-  ASSERT_EQ(555, cache.get());
-  ASSERT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(555, cache.get());
+  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
   
   cache.store(21111234);
-  ASSERT_EQ(21111234, cache.get());
-  ASSERT_EQ(21111234, cache.getWithTtl());
+  EXPECT_EQ(21111234, cache.get());
+  EXPECT_EQ(21111234, cache.getWithTtl());
   
   cache.store(0);
-  ASSERT_EQ(0, cache.get());
-  ASSERT_EQ(0, cache.getWithTtl());
+  EXPECT_EQ(0, cache.get());
+  EXPECT_EQ(0, cache.getWithTtl());
   
-  std::this_thread::sleep_for(std::chrono::milliseconds(550));
+  cache.advanceTime(0.550);
 
-  ASSERT_EQ(0, cache.get());
-  ASSERT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(0, cache.get());
+  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
 }
 
 TEST(TransactionCountCacheTest, testExpireMedium) {
-  transaction::CountCache cache(1.5);
+  SpeedyCountCache cache(1.5);
 
-  ASSERT_EQ(transaction::CountCache::NotPopulated, cache.get());
-  ASSERT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.get());
+  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
   
   cache.store(0);
-  ASSERT_EQ(0, cache.get());
-  ASSERT_EQ(0, cache.getWithTtl());
+  EXPECT_EQ(0, cache.get());
+  EXPECT_EQ(0, cache.getWithTtl());
   
   cache.store(555);
-  ASSERT_EQ(555, cache.get());
-  ASSERT_EQ(555, cache.getWithTtl());
+  EXPECT_EQ(555, cache.get());
+  EXPECT_EQ(555, cache.getWithTtl());
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(250));
+  cache.advanceTime(0.250);
   
-  ASSERT_EQ(555, cache.get());
-  ASSERT_EQ(555, cache.getWithTtl());
+  EXPECT_EQ(555, cache.get());
+  EXPECT_EQ(555, cache.getWithTtl());
   
-  std::this_thread::sleep_for(std::chrono::milliseconds(250));
+  cache.advanceTime(0.250);
 
-  ASSERT_EQ(555, cache.get());
-  ASSERT_EQ(555, cache.getWithTtl());
+  EXPECT_EQ(555, cache.get());
+  EXPECT_EQ(555, cache.getWithTtl());
   
-  std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+  cache.advanceTime(1.100);
 
-  ASSERT_EQ(555, cache.get());
-  ASSERT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(555, cache.get());
+  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
   
   cache.store(21111234);
   
-  ASSERT_EQ(21111234, cache.get());
-  ASSERT_EQ(21111234, cache.getWithTtl());
+  EXPECT_EQ(21111234, cache.get());
+  EXPECT_EQ(21111234, cache.getWithTtl());
   
-  std::this_thread::sleep_for(std::chrono::milliseconds(250));
+  cache.advanceTime(0.250);
   
-  ASSERT_EQ(21111234, cache.get());
-  ASSERT_EQ(21111234, cache.getWithTtl());
+  EXPECT_EQ(21111234, cache.get());
+  EXPECT_EQ(21111234, cache.getWithTtl());
   
-  std::this_thread::sleep_for(std::chrono::milliseconds(1350));
+  cache.advanceTime(1.350);
   
-  ASSERT_EQ(21111234, cache.get());
-  ASSERT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(21111234, cache.get());
+  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
 }
 
 TEST(TransactionCountCacheTest, testExpireLong) {
-  transaction::CountCache cache(60.0);
+  SpeedyCountCache cache(60.0);
 
-  ASSERT_EQ(transaction::CountCache::NotPopulated, cache.get());
-  ASSERT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.get());
+  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
   
   cache.store(0);
-  ASSERT_EQ(0, cache.get());
-  ASSERT_EQ(0, cache.getWithTtl());
+  EXPECT_EQ(0, cache.get());
+  EXPECT_EQ(0, cache.getWithTtl());
   
   cache.store(666);
-  ASSERT_EQ(666, cache.get());
-  ASSERT_EQ(666, cache.getWithTtl());
+  EXPECT_EQ(666, cache.get());
+  EXPECT_EQ(666, cache.getWithTtl());
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(250));
+  cache.advanceTime(0.250);
   
-  ASSERT_EQ(666, cache.get());
-  ASSERT_EQ(666, cache.getWithTtl());
+  EXPECT_EQ(666, cache.get());
+  EXPECT_EQ(666, cache.getWithTtl());
   
-  std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+  cache.advanceTime(1.100);
 
-  ASSERT_EQ(666, cache.get());
-  ASSERT_EQ(666, cache.getWithTtl());
+  EXPECT_EQ(666, cache.get());
+  EXPECT_EQ(666, cache.getWithTtl());
   
   cache.store(777);
   
-  ASSERT_EQ(777, cache.get());
-  ASSERT_EQ(777, cache.getWithTtl());
+  EXPECT_EQ(777, cache.get());
+  EXPECT_EQ(777, cache.getWithTtl());
   
   cache.store(888);
   
-  ASSERT_EQ(888, cache.get());
-  ASSERT_EQ(888, cache.getWithTtl());
+  EXPECT_EQ(888, cache.get());
+  EXPECT_EQ(888, cache.getWithTtl());
+  
+  cache.advanceTime(55.0);
+  EXPECT_EQ(888, cache.get());
+  EXPECT_EQ(888, cache.getWithTtl());
+  
+  cache.advanceTime(5.01);
+  EXPECT_EQ(888, cache.get());
+  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
 }
