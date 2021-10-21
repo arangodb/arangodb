@@ -29,10 +29,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-// TODO: Only used for ExpressionContainerParser. This could be moved to separate file
-#include "VPackDeserializer/deserializer.h"
-using namespace arangodb::velocypack::deserializer;
-
 
 using namespace arangodb::aql;
 
@@ -125,6 +121,10 @@ NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(Ast* ast
 }
 
 /*
+// TODO: Only used for ExpressionContainerParser. This could be moved to separate file
+#include "VPackDeserializer/deserializer.h"
+using namespace arangodb::velocypack::deserializer;
+
 template <typename T>
 using my_vector = std::vector<T>;
 template <typename K, typename V>
