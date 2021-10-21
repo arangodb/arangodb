@@ -13,6 +13,41 @@ devel
   The expensive iteration of files in the directory is now happening less
   frequently, and will not be as expensive as before if it runs.
 
+* Fixed ES-881: Fixed LDAP global options. This needs to use the first active
+  provider, not just the first provider and it should be globally disabled.
+
+* Web UI: Fixes the loading of map tiles which are being used to display the
+  query output based on a world map when using SSL encryption. This lead to not
+  displaying some world map tiles correctly (OASIS-590).
+
+* Web UI - Added missing HTML escaping inside the file upload plugin used in the
+  section of deploying a new Foxx application when uploading a zip file.
+* Now, arangoimport supports merging of attributes. When importing data from a
+  file into a collection, a document attribute can be comprised of merging
+  attributes from the file into it, with separators and other literal strings.
+  The new document attribute will result in the concatenation of the literal
+  strings, the values of the attributes and the separators, as in the example:
+
+      arangoimport --merge-attributes fullName=[firstName]:[lastName] 
+
+* Do not use an edge index for range queries, i.e. with the comparison 
+  operators `>`, `>=`, `<` or `<=`, but only for equality lookups using the
+  `==` and `IN` comparison operators.
+  The edge index is not fully ordered, so while using it for range queries
+  may produce _some_ documents, it is possible that other documents from the
+  range would be skipped.
+
+* Do not rename the arangod process to "arangod [shutting down]" during the
+  server shutdown. The renaming can cause issues with tools that look for
+  the exact process name "arangod".
+
+* Remove internal AQL query option `readCompleteInput` that controled if
+  all input for a modification operation (UPDATE / REPLACE / REMOVE) are
+  read into memory first. This was a necessity with the MMFiles storage
+  engine in cases when a query read from a collection and wrote into it
+  in the same query afterwards. With the RocksDB engine and its snapshots, 
+  we never need to read the entire input into memory first.
+
 * Fix windows installer PATH manipulation issue by replaceng the NSIS plugin
   (BTS-176).
 
@@ -242,6 +277,14 @@ devel
 * Added ArangoSearch condition optimization: STARTS_WITH is merged 
   with LEVENSHTEIN_MATCH if used in the same AND node and field name and prefix
   matches.
+
+* Hybrid (Disjoint) SmartGraphs (Enterprise Edition):
+  SmartGraphs have been extended with a new option to create Hybrid SmartGraphs.
+  Hybrid SmartGraphs are capable of using SatelliteCollections within their
+  graph definition. You can now select some VertexCollections to be satellites,
+  and therefore available on all DBServers. The SmartGraph can make use of those
+  to collections to increase the traversal performance by larger local
+  components.
 
 * Added multidimensional indexes which can be used to efficiently intersect
   multiple range queries. They are currently limited to IEEE-754 double values.

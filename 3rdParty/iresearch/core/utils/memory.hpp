@@ -301,6 +301,7 @@ struct managed_deleter : util::noncopyable {
   template<
     typename U,
     typename = std::enable_if_t<std::is_convertible_v<U*, pointer>, U*>>
+  // cppcheck-suppress noExplicitConstructor
   managed_deleter(managed_deleter<U>&& rhs) noexcept
     : ptr_(rhs.ptr_) {
     rhs.ptr_ = nullptr;
@@ -328,7 +329,7 @@ struct managed_deleter : util::noncopyable {
     return *this;
   }
 
-  void operator()(pointer p) noexcept {
+  void operator()(const pointer p) noexcept {
     assert(!ptr_ || p == ptr_);
     delete ptr_;
   }

@@ -325,6 +325,7 @@ ref_tracking_directory::ref_tracking_directory(
 }
 
 void ref_tracking_directory::clear_refs() const noexcept {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(mutex_);
   refs_.clear();
 }
@@ -431,6 +432,7 @@ bool ref_tracking_directory::rename(
 
 bool ref_tracking_directory::visit_refs(
     const std::function<bool(const index_file_refs::ref_t& ref)>& visitor) const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(mutex_);
 
   for (const auto& ref: refs_) {

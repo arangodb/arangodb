@@ -43,6 +43,7 @@ inline size_t size_without_removals(const irs::segment_meta& segment) noexcept{
 namespace tier {
 
 struct segment_stat {
+  // cppcheck-suppress noExplicitConstructor
   segment_stat(const irs::segment_meta& meta) noexcept
     : meta(&meta), 
       size(size_without_removals(meta)),
@@ -50,6 +51,7 @@ struct segment_stat {
   }
 
   bool operator<(const segment_stat& rhs) const noexcept {
+    // cppcheck-suppress constVariable
     auto& lhs = *this;
 
     if (lhs.size == rhs.size) {
@@ -92,8 +94,8 @@ struct consolidation_candidate {
 
   const segment_stat& back() const noexcept {
     assert(segments.first != segments.second);
-    auto end = segments.second;
-    return *(--end);
+    auto curr_end = segments.second;
+    return *(--curr_end);
   }
 
   void reset() noexcept {
@@ -193,6 +195,7 @@ index_writer::consolidation_policy_t consolidation_policy(
     size_t segment_count = meta.size();
 
     for (auto& segment : meta) {
+      // cppcheck-suppress 	useStlAlgorithm
       all_segment_bytes_size += segment.meta.size;
     }
 
@@ -300,6 +303,7 @@ index_writer::consolidation_policy_t consolidation_policy(
     size_t segment_count = meta.size();
 
     for (auto& segment : meta) {
+      // cppcheck-suppress useStlAlgorithm
       all_segment_docs_count += segment.meta.live_docs_count;
     }
 
