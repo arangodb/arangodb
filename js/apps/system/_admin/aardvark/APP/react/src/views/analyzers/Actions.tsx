@@ -77,7 +77,7 @@ const ViewButton = ({ analyzer, modalCid }: ButtonProps) => {
     formState: pick(analyzer, 'name', 'type', 'features', 'properties') as FormState,
     formCache: {},
     show: false,
-    showJsonForm: false,
+    showJsonForm,
     lockJsonForm: false,
     renderKey: ''
   };

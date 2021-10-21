@@ -10,6 +10,7 @@ import { ArangoTable, ArangoTD, ArangoTH } from "../../../../components/arango/t
 import Textbox from "../../../../components/pure-css/form/Textbox";
 import { IconButton } from "../../../../components/arango/buttons";
 import { useLinkState } from "../../helpers";
+import Fieldset from "../../../../components/pure-css/form/Fieldset";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
@@ -131,53 +132,56 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
       disabled && isEmpty(fields)
         ? null
         : <Cell size={'1'}>
-          <ArangoTable style={{ marginLeft: 0 }}>
-            <thead>
-            <tr>
+          <Fieldset legend={'Fields'}>
+            <ArangoTable style={{ marginLeft: 0 }}>
+              <thead>
+              <tr>
+                {
+                  disabled
+                    ? null
+                    : <ArangoTH seq={0} style={{ width: '2%' }}><i className={'fa fa-trash-o'}/></ArangoTH>
+                }
+                <ArangoTH seq={disabled ? 0 : 1} style={{ width: '8%' }}>Field</ArangoTH>
+                <ArangoTH seq={disabled ? 1 : 2} style={{ width: '90%' }}>Properties</ArangoTH>
+              </tr>
+              </thead>
+              <tbody>
+              {
+                map(fields, (properties, fld) => {
+                  return <tr key={fld} style={{ borderBottom: '1px  solid #DDD' }}>
+                    {
+                      disabled
+                        ? null
+                        : <ArangoTD seq={0} valign={'middle'}>
+                          <IconButton icon={'trash-o'} type={'danger'} onClick={getFieldRemover(fld)}/>
+                        </ArangoTD>
+                    }
+                    <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
+                    <ArangoTD seq={disabled ? 1 : 2}>
+                      <LinkPropertiesInput formState={properties} disabled={disabled}
+                                           basePath={`${basePath}.fields[${fld}]`}
+                                           dispatch={dispatch as unknown as Dispatch<DispatchArgs<LinkProperties>>}/>
+                    </ArangoTD>
+                  </tr>;
+                })
+              }
               {
                 disabled
                   ? null
-                  : <ArangoTH seq={0} style={{ width: '2%' }}><i className={'fa fa-trash-o'}/></ArangoTH>
+                  : <tr style={{ borderBottom: '1px  solid #DDD' }}>
+                    <ArangoTD seq={0} colSpan={2}>
+                      <Textbox type={'text'} placeholder={'Field'} onChange={updateField} value={field}/>
+                    </ArangoTD>
+                    <ArangoTD seq={1}>
+                      <IconButton icon={'plus'} type={'warning'} onClick={addField} disabled={addDisabled}>
+                        Add
+                      </IconButton>
+                    </ArangoTD>
+                  </tr>
               }
-              <ArangoTH seq={disabled ? 0 : 1} style={{ width: '8%' }}>Field</ArangoTH>
-              <ArangoTH seq={disabled ? 1 : 2} style={{ width: '90%' }}>Properties</ArangoTH>
-            </tr>
-            </thead>
-            <tbody>
-            {
-              map(fields, (properties, fld) => {
-                return <tr key={fld} style={{ borderBottom: '1px  solid #DDD' }}>
-                  {
-                    disabled
-                      ? null
-                      : <ArangoTD seq={0} valign={'middle'}>
-                        <IconButton icon={'trash-o'} type={'danger'} onClick={getFieldRemover(fld)}/>
-                      </ArangoTD>
-                  }
-                  <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
-                  <ArangoTD seq={disabled ? 1 : 2}>
-                    <LinkPropertiesInput formState={properties} disabled={disabled}
-                                         basePath={`${basePath}.fields[${fld}]`}
-                                         dispatch={dispatch as unknown as Dispatch<DispatchArgs<LinkProperties>>}/>
-                  </ArangoTD>
-                </tr>;
-              })
-            }
-            {
-              disabled
-                ? null
-                : <tr style={{ borderBottom: '1px  solid #DDD' }}>
-                  <ArangoTD seq={0} colSpan={2}>
-                    <Textbox type={'text'} placeholder={'Field'} onChange={updateField} value={field}/>
-                  </ArangoTD>
-                  <ArangoTD seq={1}>
-                    <IconButton icon={'plus'} type={'warning'} onClick={addField}
-                                disabled={addDisabled}>Add</IconButton>
-                  </ArangoTD>
-                </tr>
-            }
-            </tbody>
-          </ArangoTable>
+              </tbody>
+            </ArangoTable>
+          </Fieldset>
         </Cell>
     }
   </Grid>;

@@ -10,10 +10,10 @@ import Textbox from "../../../components/pure-css/form/Textbox";
 import { useLinkState } from "../helpers";
 
 type LinkPropertiesFormProps = FormProps<FormState> & {
-  cache: { [key: string]: any };
+  cache?: { [key: string]: any };
 };
 
-const LinkPropertiesForm = ({ formState, dispatch, disabled, cache }: LinkPropertiesFormProps) => {
+const LinkPropertiesForm = ({ formState, dispatch, disabled, cache = {} }: LinkPropertiesFormProps) => {
   const [collection, setCollection, addDisabled, links] = useLinkState(formState, 'links');
 
   useEffect(() => {
@@ -52,51 +52,56 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled, cache }: LinkProper
     cache.links[collection] = {};
   };
 
-  return <ArangoTable>
-    <thead>
-    <tr>
+  return disabled && isEmpty(links)
+    ? <span>No links found.</span>
+    : <ArangoTable>
+      <thead>
+      <tr>
+        {
+          disabled
+            ? null
+            : <ArangoTH seq={0} style={{ width: '2%' }}><i className={'fa fa-trash-o'}/></ArangoTH>
+        }
+        <ArangoTH seq={disabled ? 0 : 1} style={{ width: '8%' }}>Collection</ArangoTH>
+        <ArangoTH seq={disabled ? 1 : 2} style={{ width: '90%' }}>Properties</ArangoTH>
+      </tr>
+      </thead>
+      <tbody>
+      {
+        map(links, (properties, coll) => {
+          return <tr key={coll} style={{ borderBottom: '1px  solid #DDD' }}>
+            {
+              disabled
+                ? null
+                : <ArangoTD seq={0} valign={'middle'}>
+                  <Checkbox onChange={getLinkToggler(coll)} checked={!links[coll]}/>
+                </ArangoTD>
+            }
+            <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD>
+            <ArangoTD seq={disabled ? 1 : 2}>
+              <LinkPropertiesInput formState={properties || cache.links[coll]}
+                                   disabled={disabled || !properties}
+                                   dispatch={dispatch as unknown as Dispatch<DispatchArgs<LinkProperties>>}
+                                   basePath={`links[${coll}]`}/>
+            </ArangoTD>
+          </tr>;
+        })
+      }
       {
         disabled
           ? null
-          : <ArangoTH seq={0} style={{ width: '2%' }}><i className={'fa fa-trash-o'}/></ArangoTH>
+          : <tr style={{ borderBottom: '1px  solid #DDD' }}>
+            <ArangoTD seq={0} colSpan={2}>
+              <Textbox type={'text'} placeholder={'Collection'} onChange={updateCollection} value={collection}/>
+            </ArangoTD>
+            <ArangoTD seq={1}>
+              <IconButton icon={'plus'} type={'warning'} onClick={addLink}
+                          disabled={addDisabled}>Add</IconButton>
+            </ArangoTD>
+          </tr>
       }
-      <ArangoTH seq={disabled ? 0 : 1} style={{ width: '8%' }}>Collection</ArangoTH>
-      <ArangoTH seq={disabled ? 1 : 2} style={{ width: '90%' }}>Properties</ArangoTH>
-    </tr>
-    </thead>
-    <tbody>
-    {
-      map(links, (properties, coll) => {
-        return <tr key={coll} style={{ borderBottom: '1px  solid #DDD' }}>
-          {
-            disabled
-              ? null
-              : <ArangoTD seq={0} valign={'middle'}><Checkbox onChange={getLinkToggler(coll)}
-                                                              checked={!links[coll]}/></ArangoTD>
-          }
-          <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD>
-          <ArangoTD seq={disabled ? 1 : 2}>
-            <LinkPropertiesInput formState={properties || cache.links[coll]} disabled={!properties}
-                                 dispatch={dispatch as unknown as Dispatch<DispatchArgs<LinkProperties>>}
-                                 basePath={`links[${coll}]`}/>
-          </ArangoTD>
-        </tr>;
-      })
-    }
-    {
-      disabled
-        ? null
-        : <tr style={{ borderBottom: '1px  solid #DDD' }}>
-          <ArangoTD seq={0} colSpan={2}>
-            <Textbox type={'text'} placeholder={'Collection'} onChange={updateCollection} value={collection}/>
-          </ArangoTD>
-          <ArangoTD seq={1}>
-            <IconButton icon={'plus'} type={'warning'} onClick={addLink} disabled={addDisabled}>Add</IconButton>
-          </ArangoTD>
-        </tr>
-    }
-    </tbody>
-  </ArangoTable>;
+      </tbody>
+    </ArangoTable>;
 };
 
 export default LinkPropertiesForm;
