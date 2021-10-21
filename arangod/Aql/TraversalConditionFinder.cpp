@@ -39,6 +39,32 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using EN = arangodb::aql::ExecutionNode;
 
+namespace {
+AstNode* conditionWithInlineCalculations(ExecutionPlan const* plan, AstNode* cond) {
+  auto func = [&](AstNode* node) -> AstNode* {
+    if (node->type == NODE_TYPE_REFERENCE) {
+      auto variable = static_cast<Variable*>(node->getData());
+
+      if (variable != nullptr) {
+        auto setter = plan->getVarSetBy(variable->id);
+
+        if (setter != nullptr && setter->getType() == EN::CALCULATION) {
+          auto s = ExecutionNode::castTo<CalculationNode*>(setter);
+          auto filterExpression = s->expression();
+          AstNode* inNode = filterExpression->nodeForModification();
+          if (inNode->isDeterministic() && inNode->isSimple()) {
+            return inNode;
+          }
+        }
+      }
+    }
+    return node;
+  };
+
+  return Ast::traverseAndModify(cond, func);
+}
+}  // namespace
+
 enum class OptimizationCase { PATH, EDGE, VERTEX, NON_OPTIMIZABLE };
 
 static AstNodeType BuildSingleComparatorType(AstNode const* condition) {
@@ -473,37 +499,11 @@ static bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan, AstNo
     auto replaceNode =
         BuildExpansionReplacement(ast, parentOfReplace->getMemberUnchecked(replaceIdx), tempNode);
     parentOfReplace->changeMember(replaceIdx, replaceNode);
+    ///////////
     // NOTE: We have to reload the NODE here, because we may have replaced
     // it entirely
     ///////////
-    // TEMP BLOCK TO BE EXTRACTED INTO UTIL FILE
-    ///////////
-    auto cond = parent->getMemberUnchecked(testIndex);
-    auto func = [&](AstNode* node) -> AstNode* {
-      if (node->type == NODE_TYPE_REFERENCE) {
-        auto variable = static_cast<Variable*>(node->getData());
-
-        if (variable != nullptr) {
-          auto setter = plan->getVarSetBy(variable->id);
-
-          if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-            auto s = ExecutionNode::castTo<CalculationNode*>(setter);
-            auto filterExpression = s->expression();
-            AstNode* inNode = filterExpression->nodeForModification();
-            if (inNode->isDeterministic() && inNode->isSimple()) {
-              return inNode;
-            }
-          }
-        }
-      }
-      return node;
-    };
-
-    cond = Ast::traverseAndModify(cond, func);
-
-    ///////////
-    // END OF TEMP BLOCK
-    ///////////
+    auto cond = conditionWithInlineCalculations(plan, parent->getMemberUnchecked(testIndex));
     tn->registerGlobalCondition(isEdge, cond);
   } else {
     conditionIsImpossible = !tn->isInRange(depth, isEdge);
@@ -515,36 +515,8 @@ static bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan, AstNo
     // Point Access
     parentOfReplace->changeMember(replaceIdx, tempNode);
 
-    ///////////
-    // TEMP BLOCK TO BE EXTRACTED INTO UTIL FILE
-    ///////////
-    auto cond = parent->getMemberUnchecked(testIndex);
-    auto func = [&](AstNode* node) -> AstNode* {
-      if (node->type == NODE_TYPE_REFERENCE) {
-        auto variable = static_cast<Variable*>(node->getData());
+    auto cond = conditionWithInlineCalculations(plan, parent->getMemberUnchecked(testIndex));
 
-        if (variable != nullptr) {
-          auto setter = plan->getVarSetBy(variable->id);
-
-          if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-            auto s = ExecutionNode::castTo<CalculationNode*>(setter);
-            auto filterExpression = s->expression();
-            AstNode* inNode = filterExpression->nodeForModification();
-            if (inNode->isDeterministic() && inNode->isSimple()) {
-              return inNode;
-            }
-          }
-        }
-      }
-      return node;
-    };
-
-    cond = Ast::traverseAndModify(cond, func);
-
-    ///////////
-    // END OF TEMP BLOCK
-    ///////////
- 
     // NOTE: We have to reload the NODE here, because we may have replaced
     // it entirely
     tn->registerCondition(isEdge, depth, cond);
@@ -753,35 +725,10 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             // We have the Vertex or Edge variable in the statement
             // Both have about the Same code and just differ in the used variable.
             // auto usedVar = usedCase == OptimizationCase::VERTEX ? vertexVar : edgeVar;
-            AstNode* conditionToOptimize = andNode->getMemberUnchecked(i - 1);
-            ///////////
-            // TEMP BLOCK TO BE EXTRACTED INTO UTIL FILE
-            ///////////
-            auto func = [&](AstNode* node) -> AstNode* {
-              if (node->type == NODE_TYPE_REFERENCE) {
-                auto variable = static_cast<Variable*>(node->getData());
 
-                if (variable != nullptr) {
-                  auto setter = _plan->getVarSetBy(variable->id);
+            auto conditionToOptimize =
+                conditionWithInlineCalculations(_plan, andNode->getMemberUnchecked(i - 1));
 
-                  if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-                    auto s = ExecutionNode::castTo<CalculationNode*>(setter);
-                    auto filterExpression = s->expression();
-                    AstNode* inNode = filterExpression->nodeForModification();
-                    if (inNode->isDeterministic() && inNode->isSimple()) {
-                      return inNode;
-                    }
-                  }
-                }
-              }
-              return node;
-            };
-
-            conditionToOptimize = Ast::traverseAndModify(conditionToOptimize, func);
- 
-            ///////////
-            // END OF TEMP BLOCK
-            ///////////
             // Create a clone before we modify the Condition
             AstNode* cloned = conditionToOptimize->clone(_plan->getAst());
             // Retain original condition, as covered by this Node
