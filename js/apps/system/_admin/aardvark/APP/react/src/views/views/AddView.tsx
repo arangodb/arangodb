@@ -18,7 +18,10 @@ declare var arangoHelper: { [key: string]: any };
 
 const initialFormState: FormState = {
   name: '',
-  type: 'arangosearch'
+  type: 'arangosearch',
+  consolidationPolicy: {
+    type: 'tier'
+  }
 };
 
 const initialState: State<FormState> = {

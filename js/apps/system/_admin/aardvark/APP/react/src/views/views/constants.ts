@@ -238,7 +238,7 @@ export const formSchema: JSONSchemaType<FormState> = {
         propertyName: "type"
       },
       oneOf: [
-        {
+        /* {
           properties: {
             type: {
               const: 'bytes_accum'
@@ -252,7 +252,7 @@ export const formSchema: JSONSchemaType<FormState> = {
             }
           },
           additionalProperties: false
-        },
+        },*/
         {
           properties: {
             type: {
