@@ -1301,7 +1301,7 @@ function testOpenDiamondLabelVariableForwardingIndexed(testGraph, mode) {
     const query = `
         LET label = NOOPT(100)
         FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
-          GRAPH "${testGraph.name()}" OPTIONS {order: ${mode}}
+          GRAPH "${testGraph.name()}" OPTIONS {order: "${mode}"}
           FILTER p.edges[0].${testGraph.indexedAttribute()} != label
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
@@ -1344,7 +1344,7 @@ function testOpenDiamondLabelVariableForwardingIndexedLowerBoundRange(testGraph,
     const query = `
         LET lower = NOOPT(0)
         FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
-          GRAPH "${testGraph.name()}" OPTIONS {order: ${mode}}
+          GRAPH "${testGraph.name()}" OPTIONS {order: "${mode}"}
           FILTER p.edges[*].${testGraph.indexedAttribute()} ALL >= lower
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
@@ -1397,7 +1397,7 @@ function testOpenDiamondLabelVariableForwardingIndexedUpperBoundRange(testGraph,
     const query = `
         LET upper = NOOPT(100)
         FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
-          GRAPH "${testGraph.name()}" OPTIONS {order: ${mode}
+          GRAPH "${testGraph.name()}" OPTIONS {order: "${mode}"}
           FILTER p.edges[*].${testGraph.indexedAttribute()} ALL < upper
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
@@ -1441,7 +1441,7 @@ function testOpenDiamondLabelVariableForwardingIndexedBothSideRange(testGraph, m
         LET lower = NOOPT(0)
         LET upper = NOOPT(100)
         FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
-          GRAPH "${testGraph.name()}" OPTIONS {order: ${mode}}
+          GRAPH "${testGraph.name()}" OPTIONS {order: "${mode}"}
           FILTER p.edges[*].${testGraph.indexedAttribute()} ALL >= lower
           FILTER p.edges[*].${testGraph.indexedAttribute()} ALL < upper
         RETURN p.vertices[* RETURN CURRENT.key]
