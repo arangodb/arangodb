@@ -1,6 +1,20 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* Fix caching of collection counts and index selectivity estimates in cluster.
+  The cache values expired too early in previous versions, making the cache
+  ineffective.
+
+* Add better error message for replication request failures in case requests are
+  retried.
+
+* Make background statistics gathering more efficient by avoiding one AQL query
+  every 10 seconds that fetched the most recent stats entry. Instead, buffer the
+  entry in value after we have written it. Also spread out the statistics calls
+  by different servers more randomly, so that request spikes are avoided for
+  cluster with many coordinators that used to run their statistics queries at
+  about the same time when the instances were started simultaneously.
+
 * Fixed ES-881: Fixed LDAP global options. This needs to use the first active
   provider, not just the first provider and it should be globally disabled.
 

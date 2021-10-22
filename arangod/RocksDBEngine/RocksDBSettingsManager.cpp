@@ -258,7 +258,8 @@ Result RocksDBSettingsManager::sync(bool force) {
     return res;
   }
 
-  // we have to commit all counters in one batch
+  // make sure everything is synced properly when we are done
+  wo.sync = true;
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
     LOG_TOPIC("103ae", TRACE, Logger::ENGINES) << "updating lastSync to " << minSeqNr;

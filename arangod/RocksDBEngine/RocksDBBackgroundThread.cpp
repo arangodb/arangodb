@@ -82,7 +82,7 @@ void RocksDBBackgroundThread::run() {
             LOG_TOPIC("3ad54", WARN, Logger::ENGINES)
                 << "slow background settings sync: " << Logger::FIXED(end - start, 6)
                 << " s";
-          } else {
+          } else if (end - start > 0.75) {
             LOG_TOPIC("dd9ea", DEBUG, Logger::ENGINES)
                 << "slow background settings sync took: " << Logger::FIXED(end - start, 6)
                 << " s";
