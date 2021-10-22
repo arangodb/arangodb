@@ -80,8 +80,6 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, publi
     return !_meta._storedValues.empty();
   }
 
-  //std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
-
   Result drop() override;
 
   void load() override {}

@@ -24,6 +24,8 @@
 #include "IResearchInvertedIndex.h"
 
 #include "AqlHelper.h"
+#include "Aql/LateMaterializedOptimizerRulesCommon.h"
+#include "Aql/Projections.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
@@ -420,7 +422,16 @@ AnalyzerPool::ptr IResearchInvertedIndex::findAnalyzer(AnalyzerPool const& analy
 }
 
 bool IResearchInvertedIndex::covers(arangodb::aql::Projections& projections) const {
-  return false;
+  std::vector<std::vector<aql::latematerialized::ColumnVariant>> usedColumns;
+  aql::latematerialized::NodeWithAttrsColumn node; // we need here only attributes list actually!
+  for (size_t i = 0; i < projections.size(); ++i) {
+    aql::latematerialized::AttributeAndField af;
+    node.attrs.emplace_back()
+  }
+  aql::latematerialized::attributesMatch(_meta._sort, _meta._storedValues, node, usedColumns,
+                                         // TODO: remove this argument!
+                                         _meta._storedValues.columns().size() + 1);
+  return true;
 }
 
 bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {

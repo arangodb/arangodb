@@ -608,7 +608,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_one) {
     attributes.emplace_back(path);
     std::vector<std::vector<std::string>> fields = {{"a.b.c"}};
     arangodb::aql::Projections expected(attributes);
-    expected[0].coveringIndexCutoff = 0;
+    expected[0].coveringIndexCutoff = 3;
     expected[0].coveringIndexPosition = 0;
     assertProjectionsCoverageSuccess(fields, attributes, expected);
   }
@@ -648,7 +648,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
     attributes.emplace_back("d");
     std::vector<std::vector<std::string>> fields = {{"a.b.c"}, {"d"}};
     arangodb::aql::Projections expected(attributes);
-    expected[0].coveringIndexCutoff = 0;
+    expected[0].coveringIndexCutoff = 3;
     expected[0].coveringIndexPosition = 0;
     expected[0].coveringIndexCutoff = 0;
     expected[0].coveringIndexPosition = 1;
@@ -663,8 +663,8 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
     attributes.emplace_back("d");
     std::vector<std::vector<std::string>> fields = {{"a.b"}, {"d"}};
     arangodb::aql::Projections expected(attributes);
-    expected[0].coveringIndexCutoff = 0;
-    expected[0].coveringIndexPosition = 1;
+    expected[0].coveringIndexCutoff = 2;
+    expected[0].coveringIndexPosition = 0;
     expected[0].coveringIndexCutoff = 0;
     expected[0].coveringIndexPosition = 1;
     assertProjectionsCoverageSuccess(fields, attributes, expected);

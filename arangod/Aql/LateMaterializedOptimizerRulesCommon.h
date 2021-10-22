@@ -25,11 +25,17 @@
 
 #include <memory>
 #include <vector>
+#include <string> 
 
 namespace arangodb {
 
 namespace basics {
 struct AttributeName;
+}
+
+namespace iresearch {
+class IResearchViewSort;
+class IResearchViewStoredValues;
 }
 
 namespace aql {
@@ -73,7 +79,30 @@ struct NodeExpressionWithAttrs : NodeWithAttrs<AstAndFieldData> {
   Expression* expression;
 };
 
-using NodeWithAttrsColumn = latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>;
+using NodeWithAttrsColumn = NodeWithAttrs<AstAndColumnFieldData>;
+
+struct ColumnVariant {
+  AstAndColumnFieldData* afData;
+  size_t fieldNum;
+  std::vector<arangodb::basics::AttributeName> const* field;
+  std::vector<std::string> postfix;
+
+  ColumnVariant(AstAndColumnFieldData* afData,
+                size_t fieldNum,
+                std::vector<arangodb::basics::AttributeName> const* field,
+                std::vector<std::string>&& postfix) :
+    afData(afData), fieldNum(fieldNum), field(field), postfix(std::move(postfix)) {
+  }
+};
+
+bool attributesMatch(iresearch::IResearchViewSort const& primarySort,
+                     iresearch::IResearchViewStoredValues const& storedValues,
+                     NodeWithAttrsColumn& node,
+                     std::vector<std::vector<ColumnVariant>>& usedColumnsCounter,
+                     size_t columnsCount);
+
+void setAttributesMaxMatchedColumns(std::vector<std::vector<ColumnVariant>>& usedColumnsCounter,
+                                    size_t columnsCount);
 
 template<typename T>
 bool getReferencedAttributes(AstNode* node, Variable const* variable, T& nodeAttrs);
