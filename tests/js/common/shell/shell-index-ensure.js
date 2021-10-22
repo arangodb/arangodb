@@ -1105,9 +1105,95 @@ function ensureIndexSuite() {
       catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: geo indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureGeo : function() {
+      let check = function(r, expected) {
+        assertEqual("object", typeof r);
+        assertTrue(r.hasOwnProperty("legacyPolygons"));
+        assertEqual(expected, r.legacyPolygons);
+        let i = collection.getIndexes();
+        let found = false;
+        for (let j = 0; j < i.length; ++j) {
+          if (i[j].id === r.id) {
+            found = true;
+            assertEqual(expected, r.legacyPolygons);
+          }
+        }
+        assertTrue(found);
+        assertTrue(collection.dropIndex(r.id));
+      };
+
+      check(collection.ensureIndex({ type: "geo", fields: ["pos"] }), false);
+      check(collection.ensureIndex({ type: "geo", fields: ["pos"],
+                                     legacyPolygons: true }), true);
+      check(collection.ensureIndex({ type: "geo", fields: ["pos"],
+                                     legacyPolygons: false }), false);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: geo1 indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureGeo1 : function() {
+      let check = function(r, expected) {
+        assertEqual("object", typeof r);
+        assertTrue(r.hasOwnProperty("legacyPolygons"));
+        assertEqual(expected, r.legacyPolygons);
+        let i = collection.getIndexes();
+        let found = false;
+        for (let j = 0; j < i.length; ++j) {
+          if (i[j].id === r.id) {
+            found = true;
+            assertEqual(expected, r.legacyPolygons);
+          }
+        }
+        assertTrue(found);
+        assertTrue(collection.dropIndex(r.id));
+      };
+
+      check(collection.ensureIndex({ type: "geo1", fields: ["pos"] }), false);
+      check(collection.ensureIndex({ type: "geo1", fields: ["pos"],
+                                     legacyPolygons: true }), true);
+      check(collection.ensureIndex({ type: "geo1", fields: ["pos"],
+                                     legacyPolygons: false }), false);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: geo2 indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureGeo2 : function() {
+      let check = function(r, expected) {
+        assertEqual("object", typeof r);
+        assertTrue(r.hasOwnProperty("legacyPolygons"));
+        assertEqual(expected, r.legacyPolygons);
+        let i = collection.getIndexes();
+        let found = false;
+        for (let j = 0; j < i.length; ++j) {
+          if (i[j].id === r.id) {
+            found = true;
+            assertEqual(expected, r.legacyPolygons);
+          }
+        }
+        assertTrue(found);
+        assertTrue(collection.dropIndex(r.id));
+      };
+
+      check(collection.ensureIndex({ type: "geo2", fields: ["pos"] }), false);
+      check(collection.ensureIndex({ type: "geo2", fields: ["pos"],
+                                     legacyPolygons: true }), true);
+      check(collection.ensureIndex({ type: "geo2", fields: ["pos"],
+                                     legacyPolygons: false }), false);
+    },
+
   };
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: ensureIndex
