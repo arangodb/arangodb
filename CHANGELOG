@@ -1,6 +1,11 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Stop calling unnecessary `/_api/wal/open-transactions` REST API before
+  starting the continuous synchronization in active fail and single server
+  replication. This request is unnecessary with the RocksDB storage
+  engine.
+
 * Fixed SEARCH-261: Fix possible race between file creation and directory
   cleaner (ArangoSearch).
 
