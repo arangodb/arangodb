@@ -290,12 +290,14 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
                 _rocksTransaction->GetNumDeletes() == 0));
     // this is most likely the fill index case
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    for (auto& trxColl : _state->_collections) {
-      auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
-      TRI_ASSERT(!rcoll->hasOperations());
-      TRI_ASSERT(rcoll->stealTrackedOperations().empty());
-      TRI_ASSERT(rcoll->stealTrackedIndexOperations().empty());
-    }
+    // TODO - for ReplicatedRocksDBTransactionState this is no longer the case
+    // should we remove this or think of some other way to check the current state?
+    // for (auto& trxColl : _state->_collections) {
+    //   auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
+    //   TRI_ASSERT(!rcoll->hasOperations());
+    //   TRI_ASSERT(rcoll->stealTrackedOperations().empty());
+    //   TRI_ASSERT(rcoll->stealTrackedIndexOperations().empty());
+    // }
     // don't write anything if the transaction is empty
 #endif
     return Result();

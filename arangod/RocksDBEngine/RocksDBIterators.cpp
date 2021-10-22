@@ -50,7 +50,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
       _upperBound(_bounds.end()),
       _cmp(_bounds.columnFamily()->GetComparator()),
       _mustSeek(true),
-      _mustCheckBounds(RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(readOwnWrites)) {
+      _mustCheckBounds(RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(col->id(), readOwnWrites)) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   rocksdb::ColumnFamilyDescriptor desc;
   _bounds.columnFamily()->GetDescriptor(&desc);
@@ -182,7 +182,7 @@ void RocksDBAllIndexIterator::resetImpl() {
 void RocksDBAllIndexIterator::ensureIterator() {
   if (_iterator == nullptr) {
     // acquire rocksdb transaction
-    auto* mthds = RocksDBTransactionState::toMethods(_trx);
+    auto* mthds = RocksDBTransactionState::toMethods(_trx, _collection->id());
     
     _iterator = mthds->NewIterator(_bounds.columnFamily(), [&](ReadOptions& ro) {
       TRI_ASSERT(ro.snapshot != nullptr);
@@ -212,7 +212,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
       _bounds(static_cast<RocksDBMetaCollection*>(col->getPhysical())->bounds()),
       _total(0),
       _returned(0) {
-  auto* mthds = RocksDBTransactionState::toMethods(trx);
+  auto* mthds = RocksDBTransactionState::toMethods(trx, _collection->id());
   _iterator = mthds->NewIterator(_bounds.columnFamily(), [](rocksdb::ReadOptions& options) {
     TRI_ASSERT(options.snapshot != nullptr);
     TRI_ASSERT(options.prefix_same_as_start);
@@ -389,7 +389,7 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(trx != nullptr);
 
-  auto* mthds = RocksDBTransactionState::toMethods(trx);
+  auto* mthds = RocksDBTransactionState::toMethods(trx, col->id());
 
   rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   TRI_ASSERT(options.snapshot != nullptr);  // trx must contain a valid snapshot
