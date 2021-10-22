@@ -284,7 +284,6 @@ std::string to_string(ContentType type) {
 const std::string fu_content_encoding_identity("identity");
 const std::string fu_content_encoding_deflate("deflate");
 const std::string fu_content_encoding_gzip("gzip");
-const std::string fu_content_encoding_unknown("unknown");
 
 ContentEncoding to_ContentEncoding(std::string const& val) {
   if (val.empty()) {
@@ -299,7 +298,7 @@ ContentEncoding to_ContentEncoding(std::string const& val) {
                          fu_content_encoding_identity) == 0) {
     return ContentEncoding::Identity;
   }
-  return ContentEncoding::Unknown;
+  return ContentEncoding::Custom;
 }
 
 std::string to_string(ContentEncoding type) {
@@ -308,6 +307,10 @@ std::string to_string(ContentEncoding type) {
       return fu_content_encoding_deflate;
     case ContentEncoding::Gzip:
       return fu_content_encoding_gzip;
+    case ContentEncoding::Custom:
+      throw std::logic_error(
+          "custom content type could take different "
+          "values and is therefore not convertible to string");
     case ContentEncoding::Identity:
     default:
       return fu_content_encoding_identity;
