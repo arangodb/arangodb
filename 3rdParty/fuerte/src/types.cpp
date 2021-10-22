@@ -309,7 +309,7 @@ std::string to_string(ContentEncoding type) {
       return fu_content_encoding_gzip;
     case ContentEncoding::Custom:
       throw std::logic_error(
-          "custom content type could take different "
+          "custom content encoding could take different "
           "values and is therefore not convertible to string");
     case ContentEncoding::Identity:
     default:
