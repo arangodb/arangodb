@@ -1,6 +1,8 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed compilation and linking when using glibc 2.34.
+
 * Fixed ES-881: Fixed LDAP global options. This needs to use the first active
   provider, not just the first provider and it should be globally disabled.
 
