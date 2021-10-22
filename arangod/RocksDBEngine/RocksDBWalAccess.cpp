@@ -71,13 +71,6 @@ TRI_voc_tick_t RocksDBWalAccess::lastTick() const {
   return _engine.db()->GetLatestSequenceNumber();
 }
 
-/// should return the list of transactions started, but not committed in that
-/// range (range can be adjusted)
-WalAccessResult RocksDBWalAccess::openTransactions(WalAccess::Filter const& filter,
-                                                   TransactionCallback const&) const {
-  return WalAccessResult(TRI_ERROR_NO_ERROR, true, 0, 0, 0);
-}
-
 /// WAL parser. Premise of this code is that transactions
 /// can potentially be batched into the same rocksdb write batch
 /// but transactions can never be interleaved with operations
