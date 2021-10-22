@@ -36,6 +36,7 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::algorithms;
+using namespace arangodb::replication2::replicated_log;
 
 namespace {
 auto createFirstTerm(DatabaseID const& database, LogPlanSpecification const& spec,
@@ -334,7 +335,8 @@ IndexParticipantPair::IndexParticipantPair(LogIndex index, ParticipantId id)
     : index(index), id(std::move(id)) {}
 
 auto algorithms::calculateCommitIndex(std::vector<IndexParticipantPair>& indexes,
-                          std::size_t quorumSize) -> LogIndex {
+                          std::size_t quorumSize, LogIndex spearhead)
+    -> std::pair<LogIndex, CommitFailReason> {
   auto nth = indexes.begin();
   std::advance(nth, quorumSize - 1);
 
@@ -342,5 +344,11 @@ auto algorithms::calculateCommitIndex(std::vector<IndexParticipantPair>& indexes
     return left.index > right.index;
   });
 
-  return nth->index;
+  auto const commitIndex = nth->index;
+
+  if (spearhead == commitIndex) {
+    return {commitIndex, CommitFailReason::withNothingToCommit()};
+  }
+
+  return {nth->index, CommitFailReason::withQuorumSizeNotReached()};
 }

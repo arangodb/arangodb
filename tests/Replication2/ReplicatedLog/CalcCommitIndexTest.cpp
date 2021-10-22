@@ -27,6 +27,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::algorithms;
+using namespace arangodb::replication2::replicated_log;
 
 struct CalcCommitIndexTest : ::testing::Test {};
 
@@ -36,8 +37,9 @@ TEST_F(CalcCommitIndexTest, write_concern_1_single_pariticpant) {
       IndexParticipantPair{LogIndex{50}, "A"},
   };
 
-  auto result = algorithms::calculateCommitIndex(participants, 1);
-  EXPECT_EQ(result, LogIndex{50});
+  auto [index, reason] = algorithms::calculateCommitIndex(participants, 1, LogIndex{50});
+  EXPECT_EQ(index, LogIndex{50});
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 }
 
 TEST_F(CalcCommitIndexTest, write_concern_2_3_participants) {
@@ -48,8 +50,9 @@ TEST_F(CalcCommitIndexTest, write_concern_2_3_participants) {
       IndexParticipantPair{LogIndex{35}, "C"},
   };
 
-  auto result = algorithms::calculateCommitIndex(participants, 2);
-  EXPECT_EQ(result, LogIndex{35});
+  auto [index, reason] = algorithms::calculateCommitIndex(participants, 2, LogIndex{50});
+  EXPECT_EQ(index, LogIndex{35});
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
 }
 
 TEST_F(CalcCommitIndexTest, write_concern_3_3_participants) {
@@ -60,6 +63,7 @@ TEST_F(CalcCommitIndexTest, write_concern_3_3_participants) {
       IndexParticipantPair{LogIndex{35}, "C"},
   };
 
-  auto result = algorithms::calculateCommitIndex(participants, 3);
-  EXPECT_EQ(result, LogIndex{25});
+  auto [index, reason] = algorithms::calculateCommitIndex(participants, 3, LogIndex{50});
+  EXPECT_EQ(index, LogIndex{25});
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
 }

@@ -27,6 +27,7 @@
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <variant>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -320,6 +321,23 @@ struct LogConfig {
 
 [[nodiscard]] auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 [[nodiscard]] auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
+
+namespace replicated_log {
+struct CommitFailReason {
+  CommitFailReason() = default;
+
+  struct NothingToCommit {};
+  struct QuorumSizeNotReached {};
+  // later -- forced server not part of quorum
+  std::variant<NothingToCommit, QuorumSizeNotReached> value;
+
+  static auto withNothingToCommit() noexcept -> CommitFailReason;
+  static auto withQuorumSizeNotReached() noexcept -> CommitFailReason;
+ private:
+  template<typename... Args>
+  explicit CommitFailReason(std::in_place_t, Args&&... args) noexcept;
+};
+}
 
 }  // namespace arangodb::replication2
 

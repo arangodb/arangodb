@@ -27,6 +27,7 @@
 #include <unordered_map>
 
 #include "Cluster/ClusterTypes.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
@@ -83,6 +84,8 @@ struct IndexParticipantPair : implement_compare<IndexParticipantPair> {
 
 auto operator<<(std::ostream& os, IndexParticipantPair const& p) noexcept -> std::ostream&;
 
-auto calculateCommitIndex(std::vector<IndexParticipantPair>& indexes, std::size_t quorumSize) -> LogIndex;
+auto calculateCommitIndex(std::vector<IndexParticipantPair>& indexes,
+                          std::size_t quorumSize, LogIndex spearhead)
+    -> std::pair<LogIndex, replicated_log::CommitFailReason>;
 
 }  // namespace arangodb::replication2::algorithms

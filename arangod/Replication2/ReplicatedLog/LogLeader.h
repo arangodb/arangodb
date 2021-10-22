@@ -273,6 +273,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     LogIndex _largestCommonIndex{0};
     LogIndex _releaseIndex{0};
     bool _didResign{false};
+    CommitFailReason _lastCommitFailReason;
   };
 
   LoggerContext const _logContext;

@@ -380,3 +380,16 @@ auto replication2::operator!=(LogRange::Iterator const& a,
                               LogRange::Iterator const& b) noexcept -> bool {
   return !(a == b);
 }
+
+
+template <typename... Args>
+replicated_log::CommitFailReason::CommitFailReason(std::in_place_t, Args&&... args) noexcept
+    : value(std::forward<Args>(args)...) {}
+
+auto replicated_log::CommitFailReason::withNothingToCommit() noexcept -> CommitFailReason {
+  return CommitFailReason(std::in_place, NothingToCommit{});
+}
+
+auto replicated_log::CommitFailReason::withQuorumSizeNotReached() noexcept -> CommitFailReason{
+  return CommitFailReason(std::in_place, QuorumSizeNotReached{});
+}

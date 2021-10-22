@@ -781,7 +781,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
     _largestCommonIndex = newLargestCommonIndex;
   }
 
-  auto newCommitIndex = algorithms::calculateCommitIndex(indexes, quorum_size);
+  auto [newCommitIndex, commitFailReason] =
+      algorithms::calculateCommitIndex(indexes, quorum_size, _inMemoryLog.getLastIndex());
+  _lastCommitFailReason = commitFailReason;
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
       << "calculated commit index as " << newCommitIndex
