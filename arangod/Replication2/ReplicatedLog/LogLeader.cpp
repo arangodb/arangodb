@@ -53,6 +53,7 @@
 #include "Futures/Promise.h"
 #include "Futures/Unit.h"
 #include "Replication2/DeferredExecution.h"
+#include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -722,11 +723,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::getCommittedLogIterator(LogIn
   return _inMemoryLog.getIteratorRange(firstIndex, _commitIndex + 1);
 }
 
-auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> ResolvedPromiseSet {
-  auto const quorum_size = _self._config.writeConcern;
+auto replicated_log::LogLeader::GuardedLeaderData::collectEligibleFollowerIndexes() const
+    -> std::pair<LogIndex, std::vector<algorithms::IndexParticipantPair>> {
 
-  auto newLargestCommonIndex = _commitIndex;
-  std::vector<std::pair<LogIndex, ParticipantId>> indexes;
+  auto largestCommonIndex = _commitIndex;
+  std::vector<algorithms::IndexParticipantPair> indexes;
   indexes.reserve(_follower.size());
   for (auto const& follower : _follower) {
     // The lastAckedEntry is the last index/term pair that we sent that this
@@ -754,11 +755,19 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
           << ", but we're in term " << _self._currentTerm << ".";
     }
 
-    newLargestCommonIndex = std::min(follower.lastAckedCommitIndex, newLargestCommonIndex);
+    largestCommonIndex = std::min(largestCommonIndex, follower.lastAckedCommitIndex);
   }
 
-  LOG_CTX("a2d04", TRACE, _self._logContext) << "checking commit index on set " << indexes;
+  return {largestCommonIndex, std::move(indexes)};
+}
 
+auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> ResolvedPromiseSet {
+  auto const quorum_size = _self._config.writeConcern;
+  TRI_ASSERT(quorum_size > 0) << "quorum size should be greater than 0, but is " << quorum_size;
+
+  auto [newLargestCommonIndex, indexes] = collectEligibleFollowerIndexes();
+
+  LOG_CTX("a2d04", TRACE, _self._logContext) << "checking commit index on set " << indexes;
   if (quorum_size == 0 || quorum_size > indexes.size()) {
     LOG_CTX("24e92", WARN, _self._logContext)
         << "not enough participants to fulfill quorum size requirement";
@@ -771,36 +780,24 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
         << "largest common index went from " << _largestCommonIndex << " to "
         << newLargestCommonIndex;
     _largestCommonIndex = newLargestCommonIndex;
-    // TODO this not the right place to do a sync compaction on the log
-    //      when we want to update the commit index.
-    //      We can either ignore compactions that would be triggered by an lci
-    //      increment (because eventually the state machine will call release
-    //      again) or we put this in a deferred action.
-    std::ignore = checkCompaction();
   }
 
-  auto nth = indexes.begin();
-  std::advance(nth, quorum_size - 1);
-
-  std::nth_element(indexes.begin(), nth, indexes.end(),
-                   [](auto& a, auto& b) { return a.first > b.first; });
-
-  auto& [commitIndex, participant] = indexes.at(quorum_size - 1);
+  auto newCommitIndex = algorithms::calculateCommitIndex(indexes, quorum_size);
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
-      << "calculated commit index as " << commitIndex
+      << "calculated commit index as " << newCommitIndex
       << ", current commit index = " << _commitIndex;
-  TRI_ASSERT(commitIndex >= _commitIndex);
-  if (commitIndex > _commitIndex) {
+  TRI_ASSERT(newCommitIndex >= _commitIndex);
+  if (newCommitIndex > _commitIndex) {
     std::vector<ParticipantId> quorum;
     auto last = indexes.begin();
     std::advance(last, quorum_size);
     std::transform(indexes.begin(), last, std::back_inserter(quorum),
-                   [](auto& p) { return p.second; });
+                   [](auto& p) { return p.id; });
 
     auto const quorum_data =
-        std::make_shared<QuorumData>(commitIndex, _self._currentTerm, std::move(quorum));
-    return updateCommitIndexLeader(commitIndex, quorum_data);
+        std::make_shared<QuorumData>(newCommitIndex, _self._currentTerm, std::move(quorum));
+    return updateCommitIndexLeader(newCommitIndex, quorum_data);
   }
   return {};
 }

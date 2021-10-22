@@ -35,6 +35,9 @@ namespace arangodb::replication2::algorithms {
 struct ParticipantRecord {
   RebootId rebootId;
   bool isHealthy;
+
+  ParticipantRecord(RebootId rebootId, bool isHealthy)
+      : rebootId(rebootId), isHealthy(isHealthy) {}
 };
 
 using ParticipantInfo = std::unordered_map<ParticipantId, ParticipantRecord>;
@@ -68,5 +71,18 @@ struct LogActionContext {
 auto updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId, RebootId rebootId,
                          LogId logId, agency::LogPlanSpecification const* spec) noexcept
     -> arangodb::Result;
+
+struct IndexParticipantPair : implement_compare<IndexParticipantPair> {
+  LogIndex index;
+  ParticipantId id;
+
+  IndexParticipantPair(LogIndex index, ParticipantId id);
+
+  friend auto operator<<(std::ostream& os, IndexParticipantPair const& p) noexcept -> std::ostream&;
+};
+
+auto operator<<(std::ostream& os, IndexParticipantPair const& p) noexcept -> std::ostream&;
+
+auto calculateCommitIndex(std::vector<IndexParticipantPair>& indexes, std::size_t quorumSize) -> LogIndex;
 
 }  // namespace arangodb::replication2::algorithms

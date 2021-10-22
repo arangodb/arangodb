@@ -321,6 +321,26 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
       std::ignore = log->becomeFollower(serverId, spec->currentTerm->term, leaderString);
     }
 
-    return Result();
+    return {};
   });
+}
+
+auto algorithms::operator<<(std::ostream& os, IndexParticipantPair const& p) noexcept
+    -> std::ostream& {
+  return os << '{' << p.id << ':' << p.index << '}';
+}
+
+IndexParticipantPair::IndexParticipantPair(LogIndex index, ParticipantId id)
+    : index(index), id(std::move(id)) {}
+
+auto algorithms::calculateCommitIndex(std::vector<IndexParticipantPair>& indexes,
+                          std::size_t quorumSize) -> LogIndex {
+  auto nth = indexes.begin();
+  std::advance(nth, quorumSize - 1);
+
+  std::nth_element(indexes.begin(), nth, indexes.end(), [](auto& left, auto& right) {
+    return left.index > right.index;
+  });
+
+  return nth->index;
 }
