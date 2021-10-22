@@ -3,7 +3,7 @@ devel
 
 * Stop calling unnecessary `/_api/wal/open-transactions` REST API before
   starting the continuous synchronization in active fail and single server
-  replication. This request that is unnecessary with the RocksDB storage
+  replication. This request is unnecessary with the RocksDB storage
   engine.
 
 * Make background calculation of SHA hashes for RocksDB .sst files less
