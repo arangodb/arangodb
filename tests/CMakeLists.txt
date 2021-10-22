@@ -268,6 +268,7 @@ set(ARANGODB_TESTS_SOURCES
   Sharding/ShardDistributionReporterTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/Context-test.cpp
+  Transaction/CountCacheTest.cpp
   Transaction/Manager-test.cpp
   Transaction/RestTransactionHandler-test.cpp
   Utils/CollectionNameResolver-test.cpp

@@ -1872,8 +1872,8 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
       err += ex.what();
       TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
     }
-  } 
-  return v8::Local<v8::Value>();
+  }
+  return v8::Undefined(isolate);
 }
 
 v8::Local<v8::Value> translateResultBodyToV8(fu::Response const& response,

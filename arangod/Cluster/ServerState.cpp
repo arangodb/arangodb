@@ -635,9 +635,9 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
 bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
                                            ServerState::RoleEnum const& role) {
   std::string const agencyListKey = roleToAgencyListKey(role);
-  AgencyCommResult result = comm.getValues("Plan/" + agencyListKey);
+  AgencyCommResult result = comm.getValues("Plan/" + agencyListKey, 3.0);
   if (!result.successful()) {
-    LOG_TOPIC("0f327", FATAL, Logger::STARTUP)
+    LOG_TOPIC("0f327", WARN, Logger::STARTUP)
         << "Couldn't fetch Plan/" << agencyListKey << " from agency. "
         << " Agency is not initialized? " << result.errorMessage();
     return false;
@@ -646,9 +646,9 @@ bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
   VPackSlice servers = result.slice()[0].get(
       std::vector<std::string>({AgencyCommHelper::path(), "Plan", agencyListKey}));
   if (!servers.isObject()) {
-    LOG_TOPIC("6507f", FATAL, Logger::STARTUP)
-        << "Plan/" << agencyListKey << " in agency is no object. "
-        << "Agency not initialized?";
+    LOG_TOPIC("6507f", WARN, Logger::STARTUP)
+        << "Plan/" << agencyListKey << " in agency is no object, but " << servers.typeName()
+        << ". Agency not initialized?";
     return false;
   }
   return true;

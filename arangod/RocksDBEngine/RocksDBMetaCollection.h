@@ -44,8 +44,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
  public:
   explicit RocksDBMetaCollection(LogicalCollection& collection,
                                  arangodb::velocypack::Slice const& info);
-  RocksDBMetaCollection(LogicalCollection& collection,
-                        PhysicalCollection const*);  // use in cluster only!!!!!
   virtual ~RocksDBMetaCollection() = default;
   
   std::string const& path() const override final;
@@ -54,7 +52,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override final { return 0; }
-  uint64_t objectId() const { return _objectId.load(); }
+  uint64_t objectId() const { return _objectId; }
 
   RocksDBMetadata& meta() { return _meta; }
   RocksDBMetadata const& meta() const { return _meta; }
@@ -179,7 +177,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   static constexpr std::size_t revisionTreeDepth = 6;
 
  private:
-  std::atomic<uint64_t> _objectId;  /// rocksdb-specific object id for collection
+  uint64_t const _objectId;  /// rocksdb-specific object id for collection
 
   /// @brief helper class for accessing revision trees in a compressed or
   /// uncompressed state. this class alone is not thread-safe. it must be
