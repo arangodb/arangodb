@@ -1,6 +1,10 @@
 devel
 -----
 
+* BTS-624: fixed the execution of a query without the splicing-subqueries 
+  option being faster than the execution of a query with this option (after 
+  version 3.8, this option cannot be switched off). 
+
 * Remove dysfunctional CMake variable `USE_OPTIMIZE_FOR_ARCHITECTURE`.
   Architecture detection and architecture-specific optimization is now 
   performed unconditionally. It is still possible to inject a certain

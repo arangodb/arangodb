@@ -1,4 +1,4 @@
-#////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
@@ -1696,6 +1696,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
+  plan->findNodesOfType(nodes, EN::SUBQUERY, true);
 
   SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
   SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
@@ -1705,6 +1706,8 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
     plan->findNodesOfType(subs, ExecutionNode::SUBQUERY, true);
 
     // we build a map of the top-most nodes of each subquery to the outer subquery node
+    //FOR u in users FILTER u._id IN ( FOR user in memberof FILTER user._to IN
+    // ( FOR ug in accessto FILTER ug._to == 'tenantgroups/281058311' RETURN ug._from ) RETURN user._from) RETURN u._key
     for (auto& it : subs) {
       auto sub = ExecutionNode::castTo<SubqueryNode const*>(it)->getSubquery();
       while (sub->hasDependency()) {
@@ -1719,12 +1722,24 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
   VarSet vars;
 
   for (auto const& n : nodes) {
-    auto nn = ExecutionNode::castTo<CalculationNode*>(n);
-
-    if (!nn->expression()->isDeterministic()) {
-      // we will only move expressions up that cannot throw and that are
-      // deterministic
-      continue;
+    bool isAccessCollection = false;
+    if (n->getType() == EN::CALCULATION) {
+      auto nn = ExecutionNode::castTo<CalculationNode*>(n);
+      if (!nn->expression()->isDeterministic()) {
+        // we will only move expressions up that cannot throw and that are
+        // deterministic
+        continue;
+      }
+      if (::accessesCollectionVariable(plan.get(), nn, vars)) {
+        isAccessCollection = true;
+      }
+    } else {
+      auto nn = ExecutionNode::castTo<SubqueryNode*>(n);
+      if (nn->isModificationNode()) { // cannot move upwards if theres a modification keyword in the subquery e.g.
+                                      // INSERT would not be scope limited by the outermost subqueries, so we could end up
+                                      // inserting a smaller amount of documents than what's actually proposed in the query.
+        continue;
+      }
     }
 
     neededVars.clear();
@@ -1780,7 +1795,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
         // transfer the calculation result to the coordinator instead of the
         // full documents
 
-        if (!::accessesCollectionVariable(plan.get(), nn, vars)) {
+        if (!isAccessCollection) {
           // not accessing any collection data
           break;
         }
