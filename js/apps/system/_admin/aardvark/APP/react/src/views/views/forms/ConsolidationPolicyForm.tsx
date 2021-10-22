@@ -26,10 +26,10 @@ const TierConsolidationPolicyForm = ({
                                        dispatch,
                                        disabled
                                      }: FormProps<TierConsolidationPolicy>) => {
-  const segmentsMin = get(formState, ['consolidationPolicy', 'segmentsMin']);
-  const segmentsMax = get(formState, ['consolidationPolicy', 'segmentsMax']);
-  const segmentsBytesMax = get(formState, ['consolidationPolicy', 'segmentsBytesMax']);
-  const segmentsBytesFloor = get(formState, ['consolidationPolicy', 'segmentsBytesFloor']);
+  const segmentsMin = get(formState, ['consolidationPolicy', 'segmentsMin'], '');
+  const segmentsMax = get(formState, ['consolidationPolicy', 'segmentsMax'], '');
+  const segmentsBytesMax = get(formState, ['consolidationPolicy', 'segmentsBytesMax'], '');
+  const segmentsBytesFloor = get(formState, ['consolidationPolicy', 'segmentsBytesFloor'], '');
 
   return <Grid>
     <Cell size={'1-4'}>
@@ -57,7 +57,7 @@ const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<Vi
   return <Grid>
     <Cell size={'1-4'}>
       <Textbox type={'number'} label={'Consolidation Interval (msec)'} disabled={disabled}
-               value={formState.consolidationIntervalMsec}
+               value={formState.consolidationIntervalMsec || ''}
                onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
     </Cell>
     <Cell size={'1-4'}>
