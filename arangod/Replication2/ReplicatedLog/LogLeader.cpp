@@ -763,7 +763,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectEligibleFollowerIndexe
 
 auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> ResolvedPromiseSet {
   auto const quorum_size = _self._config.writeConcern;
-  TRI_ASSERT(quorum_size > 0) << "quorum size should be greater than 0, but is " << quorum_size;
 
   auto [newLargestCommonIndex, indexes] = collectEligibleFollowerIndexes();
 
