@@ -136,8 +136,7 @@
         url: url,
         success: function (licenseData) {
           if (licenseData.status && licenseData.features && licenseData.features.expires) {
-            self.setLicenseInfoToStorage(licenseData.status, licenseData.features.expires);
-            self.renderLicenseInfoFromStorage();
+            self.renderLicenseInfo(licenseData.status, licenseData.features.expires);
           }
         },
         error: function () {
@@ -147,53 +146,37 @@
       }); 
     },
 
-    setLicenseInfoToStorage: function (licenseStatus, licenseExpiration) {
-      if (Storage !== 'undefined') {
-        const licenseObject = {
-          status: licenseStatus,
-          expires: licenseExpiration
-        };
-        sessionStorage.setItem('licenseInfo', JSON.stringify(licenseObject));
+    renderLicenseInfo: function (status, expires) {
+      if (status !== null && expires !== null) {
+        let infotext = '';
+        let daysInfo = '';
+        let alertClasses = 'alert alert-license';
+        switch (status) {
+          case 'expiring':
+            daysInfo = Math.floor((expires - Math.round(new Date().getTime() / 1000)) / (3600*24));
+            infotext = 'Your license is expiring ' + daysInfo + ' days from now. Please contact ArangoDB sales to extend your license urgently.';
+            this.appendLicenseInfoToUi(infotext, alertClasses);
+            break;
+          case 'expired':
+            daysInfo = Math.floor((Math.round(new Date().getTime() / 1000) - expires) / (3600*24));
+            infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact ArangoDB sales immediately.';
+            alertClasses += ' alert-danger';
+            this.appendLicenseInfoToUi(infotext, alertClasses);
+            break;
+          case 'read-only':
+            infotext = 'Your license expired over 14 days ago. This installation has been restricted to read-only mode. Please contact ArangoDB sales immediately to extend your license.';
+            alertClasses += ' alert-danger';
+            this.appendLicenseInfoToUi(infotext, alertClasses);
+            break;
+          default:
+            break;
+        }
       }
     },
 
-    renderLicenseInfoFromStorage: function () {
-      if (Storage !== 'undefined') {
-        const info = sessionStorage.getItem('licenseInfo');
-        let infoJson = null;
-
-        try {
-          infoJson = JSON.parse(info);
-        } catch (err) {
-          arangoHelper.arangoError('License', 'Could not parse information: ' + err.toString());
-        }
-
-        if (infoJson !== null) {
-          let infotext = '';
-          let daysInfo = '';
-          let alertClasses = 'alert alert-license';
-          switch (infoJson.status) {
-            case 'expiring':
-              daysInfo = Math.floor((infoJson.expires - Math.round(new Date().getTime() / 1000)) / (3600*24));
-              infotext = 'Your license is expiring ' + daysInfo + ' days from now. Please contact ArangoDB sales to extend your license urgently.';
-              break;
-            case 'expired':
-              daysInfo = Math.floor((Math.round(new Date().getTime() / 1000) - infoJson.expires) / (3600*24));
-              infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact ArangoDB sales immediately.';
-              alertClasses += ' alert-danger';
-              break;
-            case 'read-only':
-              infotext = 'Your license expired over 14 days ago. This installation has been restricted to read-only mode. Please contact ArangoDB sales immediately to extend your license.';
-              alertClasses += ' alert-danger';
-              break;
-            default:
-              break;
-          }
-
-          var infoElement = '<div id="subNavLicenseInfo" class="' + alertClasses + '"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">' + infotext + '</span></div>';
-          $('#licenseInfoArea').append(infoElement);
-        }
-      }
+    appendLicenseInfoToUi: function(infotext, alertClasses) {
+      var infoElement = '<div id="subNavLicenseInfo" class="' + alertClasses + '"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">' + infotext + '</span></div>';
+      $('#licenseInfoArea').append(infoElement);
     },
 
     resize: function () {
