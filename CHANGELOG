@@ -5,6 +5,11 @@ devel
   arangorestore, arangobench and arangoexport to handle HTTP responses when 
   they are not in JSON format (e.g. text/html).   
 
+* Remove dysfunctional CMake variable `USE_OPTIMIZE_FOR_ARCHITECTURE`.
+  Architecture detection and architecture-specific optimization is now 
+  performed unconditionally. It is still possible to inject a certain
+  target architecture by setting the CMake variable `TARGET_ARCHITECTURE`.
+
 * Stop calling unnecessary `/_api/wal/open-transactions` REST API before
   starting the continuous synchronization in active fail and single server
   replication. This request is unnecessary with the RocksDB storage
