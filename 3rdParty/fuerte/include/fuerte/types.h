@@ -164,7 +164,7 @@ enum class ContentEncoding : uint8_t {
   Identity = 0,
   Deflate = 1,
   Gzip = 2,
-  Unknown = 3
+  Custom = 3
 };
 ContentEncoding to_ContentEncoding(std::string const& val);
 std::string to_string(ContentEncoding type);
