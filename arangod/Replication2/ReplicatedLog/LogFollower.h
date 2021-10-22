@@ -79,6 +79,8 @@ class LogFollower final : public ILogParticipant,
     [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
         -> std::unique_ptr<LogRangeIterator>;
     [[nodiscard]] auto checkCompaction() -> Result;
+    auto checkCommitIndex(LogIndex newCommitIndex, LogIndex newLCI,
+                          std::unique_ptr<WaitForQueue> outQueue) noexcept -> DeferredAction;
 
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;

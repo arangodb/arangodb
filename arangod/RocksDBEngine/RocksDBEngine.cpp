@@ -61,6 +61,7 @@
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
 #include "RocksDBEngine/Listeners/RocksDBShaCalculator.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
+#include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -80,13 +81,12 @@
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
-#include "RocksDBEngine/RocksDBTransactionCollection.h"
-#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBUpgrade.h"
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
+#include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
@@ -680,8 +680,8 @@ void RocksDBEngine::start() {
     _options.listeners.push_back(_throttleListener);
   }
 
+  _shaListener = std::make_shared<RocksDBShaCalculator>(server(), _createShaFiles);
   if (_createShaFiles) {
-    _shaListener = std::make_shared<RocksDBShaCalculator>(server());
     _options.listeners.push_back(_shaListener);
   } 
   
@@ -732,13 +732,15 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addFamily(RocksDBColumnFamilyManager::Family::ZkdIndex);
-
+  
   size_t const minNumberOfColumnFamilies = RocksDBColumnFamilyManager::minNumberOfColumnFamilies;
   bool dbExisted = false;
   {
     rocksdb::Options testOptions;
     testOptions.create_if_missing = false;
     testOptions.create_missing_column_families = false;
+    testOptions.avoid_flush_during_recovery = true;
+    testOptions.avoid_flush_during_shutdown = true;
     testOptions.env = _options.env;
     std::vector<std::string> existingColumnFamilies;
     rocksdb::Status status =
@@ -806,12 +808,12 @@ void RocksDBEngine::start() {
       }
     }
   }
-
+  
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   rocksdb::Status status =
       rocksdb::TransactionDB::Open(_options, transactionOptions, _path,
                                    cfFamilies, &cfHandles, &_db);
-
+  
   if (!status.ok()) {
     std::string error;
     if (status.IsIOError()) {
@@ -866,12 +868,12 @@ void RocksDBEngine::start() {
                                   cfHandles[8]);
   TRI_ASSERT(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
-
+  
   // will crash the process if version does not match
   arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted);
 
   _dbExisted = dbExisted;
-
+  
   // only enable logger after RocksDB start
   if (logger != nullptr) {
     logger->enable();
@@ -959,7 +961,7 @@ void RocksDBEngine::beginShutdown() {
   }
 
   // signal the event listener that we are going to shut down soon
-  if (_shaListener != nullptr) {
+  if (_createShaFiles && _shaListener != nullptr) {
     _shaListener->beginShutdown();
   } 
 }
@@ -971,7 +973,7 @@ void RocksDBEngine::stop() {
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
   
-  if (_shaListener != nullptr) {
+  if (_createShaFiles && _shaListener != nullptr) {
     _shaListener->waitForShutdown();
   }
 
@@ -1026,13 +1028,10 @@ std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
 
 std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid, transaction::Options const& options) {
-  return std::make_shared<RocksDBTransactionState>(vocbase, tid, options);
-}
-
-std::unique_ptr<TransactionCollection> RocksDBEngine::createTransactionCollection(
-    TransactionState& state, DataSourceId cid, AccessMode::Type accessType) {
-  return std::unique_ptr<TransactionCollection>(
-      new RocksDBTransactionCollection(&state, cid, accessType));
+  if (vocbase.replicationVersion() == replication::Version::TWO) {
+    return std::make_shared<ReplicatedRocksDBTransactionState>(vocbase, tid, options);
+  }
+  return std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options);
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
@@ -3143,6 +3142,12 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
     // RocksDB's compaction job(s) to finish.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   } while (true);
+}
+      
+void RocksDBEngine::checkMissingShaFiles(std::string const& pathname, int64_t requireAge) {
+  if (_shaListener != nullptr) {
+    _shaListener->checkMissingShaFiles(pathname, requireAge);
+  }
 }
 
 auto RocksDBEngine::dropReplicatedLog(TRI_vocbase_t& vocbase,
