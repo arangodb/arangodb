@@ -1865,7 +1865,7 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
                                         v8::Isolate* isolate) {
 
   if ((response.contentType() != fu::ContentType::VPack) &&
-      (response.contentType() == fu::ContentType::Json) ) {
+      (response.contentType() != fu::ContentType::Json) ) {
     return v8::Undefined(isolate);
   }
 
