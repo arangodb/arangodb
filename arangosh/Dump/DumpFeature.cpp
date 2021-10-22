@@ -33,7 +33,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <SimpleHttpClient/HttpResponseChecker.h>
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -52,6 +51,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
+#include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
