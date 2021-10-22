@@ -47,6 +47,10 @@ class ClusterTransactionState final : public TransactionState {
   uint64_t numCommits() const override;
 
   bool hasFailedOperations() const override { return false; }
+
+ protected:
+  std::unique_ptr<TransactionCollection> createTransactionCollection(
+      DataSourceId cid, AccessMode::Type accessType) override;
 };
 
 }  // namespace arangodb

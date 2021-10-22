@@ -30,7 +30,7 @@
 
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
-var analyzers = require("@arangodb/analyzers");
+const analyzers = require("@arangodb/analyzers");
 const db = arangodb.db;
 
 const replication = require('@arangodb/replication');
@@ -56,8 +56,7 @@ const connectToFollower = function () {
 };
 
 const collectionChecksum = function (name) {
-  var c = db._collection(name).checksum(true, true);
-  return c.checksum;
+  return db._collection(name).checksum(true, true).checksum;
 };
 
 const collectionCount = function (name) {
@@ -65,7 +64,7 @@ const collectionCount = function (name) {
 };
 
 const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, followerFuncFinal, applierConfiguration) {
-  var state = {};
+  let state = {};
 
   db._flushCache();
   leaderFunc(state);
@@ -78,7 +77,7 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
     internal.wait(0.1, false);
   }
 
-  var syncResult = replication.sync({
+  let syncResult = replication.sync({
     endpoint: leaderEndpoint,
     username: 'root',
     password: '',
@@ -93,13 +92,13 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
   leaderFunc2(state);
 
   // use lastLogTick as of now
-  state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
+  let loggerState = replication.logger.state().state;
+  state.lastLogTick = loggerState.lastUncommittedLogTick;
 
   applierConfiguration = applierConfiguration || {};
   applierConfiguration.endpoint = leaderEndpoint;
   applierConfiguration.username = 'root';
   applierConfiguration.password = '';
-  applierConfiguration.force32mode = false;
   applierConfiguration.requireFromPresent = true;
 
   if (!applierConfiguration.hasOwnProperty('chunkSize')) {
@@ -114,6 +113,8 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
   var printed = false;
   var handled = false;
 
+  let followerState;
+
   while (true) {
     if (!handled) {
       var r = followerFuncOngoing(state);
@@ -126,7 +127,7 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
       handled = true;
     }
 
-    var followerState = replication.applier.state();
+    followerState = replication.applier.state();
 
     if (followerState.state.lastError.errorNum > 0) {
       console.topic('replication=error', 'follower has errored:', JSON.stringify(followerState.state.lastError));
@@ -156,7 +157,13 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
 
   internal.wait(1.0, false);
   db._flushCache();
-  followerFuncFinal(state);
+
+  try {
+    followerFuncFinal(state);
+  } catch (err) {
+    console.warn("caught error. debug information: syncResult:", syncResult, "loggerState:", loggerState, "followerState:", followerState.state);
+    throw err;
+  }
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -360,12 +367,16 @@ function BaseTestConfig () {
           db[cn].insert({
             _key: 'boom',
             who: 'follower'
-          });
+          }, {waitForSync: true});
+          console.warn("leader state:", replication.logger.state().state);  
+          assertEqual('follower', db[cn].document('boom').who);
+
           connectToLeader();
           db[cn].insert({
             _key: 'boom',
             who: 'leader'
-          });
+          }, {waitForSync: true});
+          assertEqual('leader', db[cn].document('boom').who);
         },
 
         function (state) {

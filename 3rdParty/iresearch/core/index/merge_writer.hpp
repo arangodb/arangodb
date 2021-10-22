@@ -65,7 +65,6 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
       comparator_(comparator) {
     assert(column_info);
   }
-
   merge_writer(merge_writer&&) = default;
   merge_writer& operator=(merge_writer&&) = delete;
 

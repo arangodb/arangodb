@@ -817,7 +817,7 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
   while (de != nullptr) {
     if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0) {
       // may throw
-      result.emplace_back(std::string(de->d_name));
+      result.emplace_back(de->d_name);
     }
 
     de = readdir(d);
@@ -1081,23 +1081,14 @@ bool TRI_ProcessFile(char const* filename,
     return false;
   }
   
-  TRI_string_buffer_t result;
-  TRI_InitStringBuffer(&result, false);
-
-  auto guard = scopeGuard([&fd, &result]() noexcept {
+  auto guard = scopeGuard([&fd]() noexcept {
     TRI_CLOSE(fd);
-    TRI_DestroyStringBuffer(&result);
   });
 
-  auto res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return false;
-  }
+  char buffer[4096];
 
   while (true) {
-    TRI_ASSERT(TRI_CapacityStringBuffer(&result) >= READBUFFER_SIZE);
-    TRI_read_return_t n = TRI_READ(fd, (void*) TRI_BeginStringBuffer(&result), READBUFFER_SIZE);
+    TRI_read_return_t n = TRI_READ(fd, &buffer[0], sizeof(buffer));
 
     if (n == 0) {
       return true;
@@ -1108,7 +1099,7 @@ bool TRI_ProcessFile(char const* filename,
       return false;
     }
 
-    if (!reader(result._buffer, n)) {
+    if (!reader(&buffer[0], n)) {
       return false;
     }
   }
@@ -1704,7 +1695,7 @@ std::string TRI_BinaryName(char const* argv0) {
 std::string TRI_LocateBinaryPath(char const* argv0) {
 #if _WIN32
   wchar_t buff[4096];
-  int res = GetModuleFileNameW(NULL, buff, sizeof(buff));
+  int res = GetModuleFileNameW(nullptr, buff, sizeof(buff));
 
   if (res != 0) {
     buff[4095] = '\0';
@@ -2092,33 +2083,21 @@ std::string TRI_HomeDirectory() {
 ////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
-  FILE* fin;
-  void* buffer;
-  auto res = TRI_ERROR_NO_ERROR;
-
-  *crc = TRI_InitialCrc32();
-
-  constexpr size_t bufferSize = 4096;
-  buffer = TRI_Allocate(bufferSize);
-
-  if (buffer == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  fin = TRI_FOPEN(path, "rb");
+  FILE* fin = TRI_FOPEN(path, "rb");
 
   if (fin == nullptr) {
-    TRI_Free(buffer);
-
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  res = TRI_ERROR_NO_ERROR;
+  char buffer[4096];
+  
+  auto res = TRI_ERROR_NO_ERROR;
+  *crc = TRI_InitialCrc32();
 
   while (true) {
-    size_t sizeRead = fread(buffer, 1, bufferSize, fin);
+    size_t sizeRead = fread(&buffer[0], 1, sizeof(buffer), fin);
 
-    if (sizeRead < bufferSize) {
+    if (sizeRead < sizeof(buffer)) {
       if (feof(fin) == 0) {
         res = TRI_ERROR_FAILED;
         break;
@@ -2126,13 +2105,11 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
     }
 
     if (sizeRead > 0) {
-      *crc = TRI_BlockCrc32(*crc, static_cast<char const*>(buffer), sizeRead);
+      *crc = TRI_BlockCrc32(*crc, &buffer[0], sizeRead);
     } else /* if (sizeRead <= 0) */ {
       break;
     }
   }
-
-  TRI_Free(buffer);
 
   if (0 != fclose(fin)) {
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -2652,7 +2629,7 @@ TRI_SHA256Functor::~TRI_SHA256Functor() {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   EVP_MD_CTX_free(_context);
 #else
-    EVP_MD_CTX_destroy(_context);
+  EVP_MD_CTX_destroy(_context);
 #endif
 }
 

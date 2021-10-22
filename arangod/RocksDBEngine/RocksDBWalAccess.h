@@ -47,11 +47,6 @@ class RocksDBWalAccess final : public WalAccess {
   ///
   TRI_voc_tick_t lastTick() const override;
 
-  /// should return the list of transactions started, but not committed in that
-  /// range (range can be adjusted)
-  WalAccessResult openTransactions(WalAccess::Filter const& filter,
-                                   TransactionCallback const&) const override;
-
   /// Tails the wall, this will already sanitize the
   WalAccessResult tail(WalAccess::Filter const& filter, size_t chunkSize,
                        MarkerCallback const&) const override;
