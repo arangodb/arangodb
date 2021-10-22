@@ -47,7 +47,6 @@ TEST(HttpResponseCheckerTest, testEmptyWithClientErrorMsg) {
 TEST(HttpResponseCheckerTest, testErrorResponse) {
   std::unique_ptr<httpclient::SimpleHttpResult> response = std::make_unique<httpclient::SimpleHttpResult>();
   response->setResultType(httpclient::SimpleHttpResult::resultTypes{arangodb::httpclient::SimpleHttpResult::COULD_NOT_CONNECT});
-  response->setHttpReturnMessage("NOT FOUND");
   auto check = HttpResponseChecker::check("", response.get(), "Http request");
   EXPECT_EQ(check.errorNumber(), TRI_ERROR_INTERNAL);
   EXPECT_NE(check.errorMessage().find("Http request"), std::string::npos);
