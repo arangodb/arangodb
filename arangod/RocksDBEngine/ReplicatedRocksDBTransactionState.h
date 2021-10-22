@@ -18,39 +18,57 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "StorageEngine/TransactionState.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 
 namespace arangodb {
+class RocksDBTransactionMethods;
 
-/// @brief transaction type
-class ClusterTransactionState final : public TransactionState {
+class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
  public:
-  ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                          transaction::Options const& options);
-  ~ClusterTransactionState() = default;
+  ReplicatedRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+                                transaction::Options const& options);
+
+  ~ReplicatedRocksDBTransactionState() override;
 
   /// @brief begin a transaction
   Result beginTransaction(transaction::Hints hints) override;
 
-  /// @brief commit a transaction
-  Result commitTransaction(transaction::Methods* trx) override;
+  RocksDBTransactionMethods* rocksdbMethods(DataSourceId collectionId) const override;
 
-  /// @brief abort a transaction
-  Result abortTransaction(transaction::Methods* trx) override;
-  
-  /// @brief return number of commits, including intermediate commits
+  void beginQuery(bool isModificationQuery) override;
+  void endQuery(bool isModificationQuery) noexcept override;
+
+  /// @returns tick of last operation in a transaction
+  /// @note the value is guaranteed to be valid only after
+  ///       transaction is committed
+  TRI_voc_tick_t lastOperationTick() const noexcept override;
+
+  /// @brief number of commits, including intermediate commits
   uint64_t numCommits() const override;
 
-  bool hasFailedOperations() const override { return false; }
+  bool hasOperations() const noexcept override;
+
+  uint64_t numOperations() const noexcept override;
+
+  bool ensureSnapshot() override;
+
+  rocksdb::SequenceNumber beginSeq() const override;
 
  protected:
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) override;
+
+  Result doCommit() override;
+  Result doAbort() override;
+
+ private:
+  void maybeDisableIndexing();
+  bool _hasActiveTrx = false;
 };
 
 }  // namespace arangodb

@@ -117,7 +117,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     _done = true;
 
     rocksdb::PinnableSlice ps;
-    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
+    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx, _collection->id());
     rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &ps, canReadOwnWrites());
 
     if (s.ok()) {
@@ -139,7 +139,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     _done = true;
 
     rocksdb::PinnableSlice ps;
-    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
+    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx, _collection->id());
     rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &ps, canReadOwnWrites());
 
     if (s.ok()) {
@@ -187,7 +187,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _bounds(std::move(bounds)),
         _rangeBound(reverse ? _bounds.start() : _bounds.end()),
         _mustSeek(true),
-        _mustCheckBounds(RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(readOwnWrites)) {
+        _mustCheckBounds(RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(collection->id(), readOwnWrites)) {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex));
   }
@@ -332,7 +332,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   void ensureIterator() {
     if (_iterator == nullptr) {
       auto state = RocksDBTransactionState::toState(_trx);
-      RocksDBTransactionMethods* mthds = state->rocksdbMethods();
+      RocksDBTransactionMethods* mthds = state->rocksdbMethods(_collection->id());
       _iterator = mthds->NewIterator(_index->columnFamily(), [&](ReadOptions& options) {
         TRI_ASSERT(options.prefix_same_as_start);
         // we need to have a pointer to a slice for the upper bound
