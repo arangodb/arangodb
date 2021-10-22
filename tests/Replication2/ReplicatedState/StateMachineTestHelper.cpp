@@ -48,6 +48,6 @@ auto StateMachineTest::createReplicatedLog()
   auto persisted = std::make_shared<test::MockLog>(LogId{0});
   auto core = std::make_unique<replicated_log::LogCore>(persisted);
   auto metrics = std::make_shared<ReplicatedLogMetricsMock>();
-  auto options = std::make_shared<ReplicatedLogOptions>();
+  auto options = std::make_shared<ReplicatedLogGlobalSettings>();
   return std::make_shared<replicated_log::ReplicatedLog>(std::move(core), metrics, options, LoggerContext(Logger::REPLICATION2));
 }

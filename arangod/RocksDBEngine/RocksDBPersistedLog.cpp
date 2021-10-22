@@ -159,7 +159,7 @@ auto RocksDBPersistedLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter
 
 RocksDBLogPersistor::RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf,
                                          rocksdb::DB* db, std::shared_ptr<Executor> executor,
-                                         std::shared_ptr<replication2::ReplicatedLogOptions const> options)
+                                         std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options)
     : _cf(cf), _db(db), _executor(std::move(executor)), _options(std::move(options)) {}
 
 void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {

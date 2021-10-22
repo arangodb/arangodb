@@ -59,7 +59,7 @@ struct LogMultiplexerTestBase : ::testing::Test, public ::arangodb::tests::LogSu
     auto persisted = std::make_shared<MockLog>(id);
     auto core = std::make_unique<replicated_log::LogCore>(persisted);
     auto metrics = std::make_shared<ReplicatedLogMetricsMock>();
-    auto options = std::make_shared<ReplicatedLogOptions>();
+    auto options = std::make_shared<ReplicatedLogGlobalSettings>();
 
     return std::make_shared<Impl>(std::move(core), metrics, options,
                                   LoggerContext(Logger::REPLICATION2));

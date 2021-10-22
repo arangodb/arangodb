@@ -40,7 +40,7 @@ class ReplicatedLogFeature final : public application_features::ApplicationFeatu
   auto metrics() const noexcept
       -> std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics> const&;
   auto options() const noexcept
-      -> std::shared_ptr<replication2::ReplicatedLogOptions const>;
+      -> std::shared_ptr<replication2::ReplicatedLogGlobalSettings const>;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -48,7 +48,7 @@ class ReplicatedLogFeature final : public application_features::ApplicationFeatu
 
  private:
   std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics> _replicatedLogMetrics;
-  std::shared_ptr<replication2::ReplicatedLogOptions> _options;
+  std::shared_ptr<replication2::ReplicatedLogGlobalSettings> _options;
 };
 
 }  // namespace arangodb

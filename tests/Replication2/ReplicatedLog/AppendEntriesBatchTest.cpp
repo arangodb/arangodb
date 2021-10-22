@@ -38,7 +38,7 @@ using namespace arangodb::replication2::test;
 
 struct AppendEntriesBatchTest
     : ReplicatedLogTest,
-      ::testing::WithParamInterface<std::tuple<ReplicatedLogOptions, std::vector<LogPayload>>> {
+      ::testing::WithParamInterface<std::tuple<ReplicatedLogGlobalSettings, std::vector<LogPayload>>> {
   AppendEntriesBatchTest() : _payloads(std::get<1>(GetParam())) {
     *_optionsMock = std::get<0>(GetParam());
   }
@@ -142,8 +142,8 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
 }
 
 auto testReplicatedLogOptions =
-    testing::Values(ReplicatedLogOptions{5, 5}, ReplicatedLogOptions{1024, 1024},
-                    ReplicatedLogOptions{1024 * 1024, 1024 * 1024});
+    testing::Values(ReplicatedLogGlobalSettings{5, 5}, ReplicatedLogGlobalSettings{1024, 1024},
+                    ReplicatedLogGlobalSettings{1024 * 1024, 1024 * 1024});
 
 auto testPayloads = testing::Values(
     std::vector<LogPayload>{LogPayload::createFromString("a")},

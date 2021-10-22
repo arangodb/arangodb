@@ -326,7 +326,8 @@ struct LogConfig {
 [[nodiscard]] auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 [[nodiscard]] auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 
-struct ReplicatedLogOptions {
+// These settings are initialised by the ReplicatedLogFeature based on command line arguments
+struct ReplicatedLogGlobalSettings {
  public:
   static inline constexpr std::size_t defaultMaxNetworkBatchSize{1024 * 1024};
   static inline constexpr std::size_t minNetworkBatchSize{1024 * 1024};

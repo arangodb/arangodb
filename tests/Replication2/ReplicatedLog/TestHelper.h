@@ -95,7 +95,7 @@ struct ReplicatedLogTest : ::testing::Test {
 
   std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
   std::shared_ptr<ReplicatedLogMetricsMock> _logMetricsMock = std::make_shared<ReplicatedLogMetricsMock>();
-  std::shared_ptr<ReplicatedLogOptions> _optionsMock = std::make_shared<ReplicatedLogOptions>();
+  std::shared_ptr<ReplicatedLogGlobalSettings> _optionsMock = std::make_shared<ReplicatedLogGlobalSettings>();
 };
 
 

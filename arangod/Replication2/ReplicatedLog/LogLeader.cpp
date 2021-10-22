@@ -87,7 +87,7 @@ using namespace arangodb::replication2;
 
 replicated_log::LogLeader::LogLeader(LoggerContext logContext,
                                      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-                                     std::shared_ptr<ReplicatedLogOptions const> options,
+                                     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
                                      LogConfig config, ParticipantId id,
                                      LogTerm term, InMemoryLog inMemoryLog)
     : _logContext(std::move(logContext)),
@@ -255,7 +255,7 @@ auto replicated_log::LogLeader::construct(
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     ParticipantId id, LogTerm const term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-    std::shared_ptr<ReplicatedLogOptions const> options) -> std::shared_ptr<LogLeader> {
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options) -> std::shared_ptr<LogLeader> {
   if (ADB_UNLIKELY(logCore == nullptr)) {
     auto followerIds = std::vector<std::string>{};
     std::transform(followers.begin(), followers.end(), std::back_inserter(followerIds),
@@ -275,7 +275,7 @@ auto replicated_log::LogLeader::construct(
    public:
     MakeSharedLogLeader(LoggerContext logContext,
                         std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-                        std::shared_ptr<ReplicatedLogOptions const> options, LogConfig config,
+                        std::shared_ptr<ReplicatedLogGlobalSettings const> options, LogConfig config,
                         ParticipantId id, LogTerm term, InMemoryLog inMemoryLog)
         : LogLeader(std::move(logContext), std::move(logMetrics), std::move(options),
                     config, std::move(id), term, std::move(inMemoryLog)) {}
@@ -936,7 +936,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
 
 auto replicated_log::LogLeader::construct(
     const LoggerContext& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-    std::shared_ptr<ReplicatedLogOptions const> options, ParticipantId id,
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options, ParticipantId id,
     std::unique_ptr<LogCore> logCore, LogTerm term,
     const std::vector<std::shared_ptr<AbstractFollower>>& followers,
     std::size_t writeConcern) -> std::shared_ptr<LogLeader> {

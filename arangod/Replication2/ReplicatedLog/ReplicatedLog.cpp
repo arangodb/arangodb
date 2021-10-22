@@ -46,7 +46,7 @@ using namespace arangodb::replication2;
 
 replicated_log::ReplicatedLog::ReplicatedLog(std::unique_ptr<LogCore> core,
                                              std::shared_ptr<ReplicatedLogMetrics> const& metrics,
-                                             std::shared_ptr<ReplicatedLogOptions const> options,
+                                             std::shared_ptr<ReplicatedLogGlobalSettings const> options,
                                              LoggerContext const& logContext)
     : _logContext(logContext.with<logContextKeyLogId>(core->logId())),
       _participant(
