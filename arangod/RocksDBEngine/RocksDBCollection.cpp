@@ -691,7 +691,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
   TRI_ASSERT(objectId() != 0);
   auto state = RocksDBTransactionState::toState(&trx);
-  RocksDBTransactionMethods* mthds = state->rocksdbMethods();
+  RocksDBTransactionMethods* mthds = state->rocksdbMethods(_logicalCollection.id());
 
   if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
@@ -833,13 +833,13 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     TRI_ASSERT(key.isString());
     TRI_ASSERT(rid.isSet());
 
-    RocksDBSavePoint savepoint(state, &trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    RocksDBSavePoint savepoint(_logicalCollection.id(), *state, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
     LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
     auto res = removeDocument(&trx, savepoint, docId, docBuffer.slice(), options, rid);
 
     if (res.ok()) {
-      res = savepoint.finish(_logicalCollection.id(), newRevisionId());
+      res = savepoint.finish(newRevisionId());
     }
     
     if (res.fail()) {  // Failed to remove document in truncate.
@@ -1012,7 +1012,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   LocalDocumentId const documentId = ::generateDocumentId(_logicalCollection, revisionId);
   
   auto* state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint savepoint(state, trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
+  RocksDBSavePoint savepoint(_logicalCollection.id(), *state, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
   res = insertDocument(trx, savepoint, documentId, newSlice, options, revisionId);
 
@@ -1032,7 +1032,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       resultMdr.setRevisionId(revisionId);
     }
 
-    res = savepoint.finish(_logicalCollection.id(), revisionId);
+    res = savepoint.finish(revisionId);
   }
 
   return res;
@@ -1143,7 +1143,7 @@ Result RocksDBCollection::performUpdateOrReplace(transaction::Methods* trx,
 
   auto* state = RocksDBTransactionState::toState(trx);
   auto opType = isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE : TRI_VOC_DOCUMENT_OPERATION_REPLACE;
-  RocksDBSavePoint savepoint(state, trx, opType);
+  RocksDBSavePoint savepoint(_logicalCollection.id(), *state, opType);
 
   res = modifyDocument(trx, savepoint, oldDocumentId, oldDoc, newDocumentId, newDoc, options, revisionId);
 
@@ -1165,7 +1165,7 @@ Result RocksDBCollection::performUpdateOrReplace(transaction::Methods* trx,
       previousMdr.clearData();
     }
 
-    res = savepoint.finish(_logicalCollection.id(), revisionId);
+    res = savepoint.finish(revisionId);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -1255,7 +1255,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
   }
 
   auto* state = RocksDBTransactionState::toState(&trx);
-  RocksDBSavePoint savepoint(state, &trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+  RocksDBSavePoint savepoint(_logicalCollection.id(), *state, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   res = removeDocument(&trx, savepoint, documentId, oldDoc, options, previousMdr.revisionId());
 
@@ -1271,7 +1271,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
       previousMdr.clearData();
     }
 
-    res = savepoint.finish(_logicalCollection.id(), newRevisionId());
+    res = savepoint.finish(newRevisionId());
   }
   
   return res;
@@ -1389,7 +1389,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
                                          VPackSlice doc,
                                          OperationOptions const& options,
                                          RevisionId const& revisionId) const {
-  savepoint.prepareOperation(_logicalCollection.id(), revisionId);
+  savepoint.prepareOperation(revisionId);
 
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -1397,7 +1397,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   Result res;
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
-  RocksDBMethods* mthds = state->rocksdbMethods();
+  RocksDBMethods* mthds = state->rocksdbMethods(_logicalCollection.id());
     
   TRI_ASSERT(!options.checkUniqueConstraintsInPreflight || state->isOnlyExclusiveTransaction());
   
@@ -1520,7 +1520,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
                                          VPackSlice doc,
                                          OperationOptions const& options,
                                          RevisionId const& revisionId) const {
-  savepoint.prepareOperation(_logicalCollection.id(), revisionId);
+  savepoint.prepareOperation(revisionId);
 
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -1534,7 +1534,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   invalidateCacheEntry(key.ref());
 
-  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
@@ -1622,7 +1622,7 @@ Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
                                          VPackSlice const& newDoc,
                                          OperationOptions& options,
                                          RevisionId const& revisionId) const {
-  savepoint.prepareOperation(_logicalCollection.id(), revisionId);
+  savepoint.prepareOperation(revisionId);
 
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -1631,7 +1631,7 @@ Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
   Result res;
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
-  RocksDBMethods* mthds = state->rocksdbMethods();
+  RocksDBMethods* mthds = state->rocksdbMethods(_logicalCollection.id());
 
   TRI_ASSERT(!options.checkUniqueConstraintsInPreflight || state->isOnlyExclusiveTransaction());
 
@@ -1794,7 +1794,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
     }
   }
 
-  RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
+  RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
   rocksdb::Status s =
       mthd->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
                 key->string(), &ps, readOwnWrites);
@@ -1848,7 +1848,7 @@ Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
   transaction::StringLeaser buffer(trx);
   rocksdb::PinnableSlice ps(buffer.get());
 
-  RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
+  RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
   rocksdb::Status s =
       mthd->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
                 key->string(), &ps, readOwnWrites);
