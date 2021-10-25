@@ -17,6 +17,7 @@ import Checkbox from "../../../components/pure-css/form/Checkbox";
 import NGramInput from "./inputs/NGramInput";
 import AccentInput from "./inputs/AccentInput";
 import StopwordsInput from "./inputs/StopwordsInput";
+import { getBooleanFieldSetter } from "../../../utils/helpers";
 
 const TextForm = ({ formState, dispatch, disabled }: FormProps<TextState>) => {
   const updateStopwordsPath = (event: ChangeEvent<HTMLInputElement>) => {
@@ -25,16 +26,6 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps<TextState>) => {
       field: {
         path: 'properties.stopwordsPath',
         value: event.target.value
-      }
-    });
-  };
-
-  const updateStemming = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.stemming',
-        value: event.target.checked
       }
     });
   };
@@ -70,7 +61,8 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps<TextState>) => {
         </Cell>
 
         <Cell size={'1-3'}>
-          <Checkbox onChange={updateStemming} label={'Stemming'} disabled={disabled}
+          <Checkbox onChange={getBooleanFieldSetter('properties.stemming', dispatch)} label={'Stemming'}
+                    disabled={disabled}
                     checked={textFormState.properties.stemming || false}/>
         </Cell>
 

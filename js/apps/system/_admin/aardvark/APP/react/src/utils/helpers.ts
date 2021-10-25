@@ -153,7 +153,8 @@ export function getNumericFieldValue (value: number | undefined): number | strin
   return value === undefined ? '' : value;
 }
 
-export function getNumericFieldSetter<FormState> (field: string, dispatch: Dispatch<DispatchArgs<FormState>>, basePath?: string) {
+export function getNumericFieldSetter<FormState> (field: string, dispatch: Dispatch<DispatchArgs<FormState>>,
+                                                  basePath?: string) {
   return (event: ChangeEvent<HTMLInputElement>) => {
     const numValue = parseInt(event.target.value);
 
@@ -178,6 +179,20 @@ export function getNumericFieldSetter<FormState> (field: string, dispatch: Dispa
   };
 }
 
+export function getBooleanFieldSetter<FormState> (field: string, dispatch: Dispatch<DispatchArgs<FormState>>,
+                                                  basePath?: string) {
+  return (event: ChangeEvent<HTMLInputElement>) => {
+    dispatch({
+      type: 'setField',
+      field: {
+        path: field,
+        value: event.target.checked
+      },
+      basePath
+    });
+  };
+}
+
 export function useJsonFormErrorHandler<FormState> (dispatch: Dispatch<DispatchArgs<FormState>>,
                                                     setFormErrors: (value: string[]) => void) {
   return useCallback((errors: ErrorObject[] | null | undefined) => {
@@ -185,8 +200,8 @@ export function useJsonFormErrorHandler<FormState> (dispatch: Dispatch<DispatchA
       dispatch({ type: 'lockJsonForm' });
 
       setFormErrors(errors.map(error => {
-          if (has(error.params, 'errors')) {
-            return `
+        if (has(error.params, 'errors')) {
+          return `
               ${error.params.errors[0].keyword} error: ${error.instancePath}${error.message}.
             `;
           } else {

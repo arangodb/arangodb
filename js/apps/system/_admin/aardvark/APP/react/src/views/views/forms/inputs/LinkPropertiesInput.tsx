@@ -11,6 +11,7 @@ import Textbox from "../../../../components/pure-css/form/Textbox";
 import { IconButton } from "../../../../components/arango/buttons";
 import { useLinkState } from "../../helpers";
 import Fieldset from "../../../../components/pure-css/form/Fieldset";
+import { getBooleanFieldSetter } from "../../../../utils/helpers";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
@@ -76,17 +77,6 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
     return (formState.analyzers || []).join('\n');
   };
 
-  const getBooleanFieldSetter = (field: string) => (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: field,
-        value: event.target.checked
-      },
-      basePath
-    });
-  };
-
   const updateStoreValues = (event: ChangeEvent<HTMLSelectElement>) => {
     dispatch(
       {
@@ -108,12 +98,13 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
     <Cell size={'2-3'}>
       <Grid>
         <Cell size={'1-2'}>
-          <Checkbox onChange={getBooleanFieldSetter('includeAllFields')} label={'Include All Fields'}
-                    disabled={disabled} checked={formState.includeAllFields}/>
+          <Checkbox onChange={getBooleanFieldSetter('includeAllFields', dispatch, basePath)}
+                    label={"Include All Fields"} disabled={disabled} checked={formState.includeAllFields}/>
         </Cell>
         <Cell size={'1-2'}>
-          <Checkbox onChange={getBooleanFieldSetter('trackListPositions')} label={'Track List Positions'}
-                    disabled={disabled} checked={formState.trackListPositions}/>
+          <Checkbox onChange={getBooleanFieldSetter('trackListPositions', dispatch, basePath)}
+                    label={'Track List Positions'} disabled={disabled}
+                    checked={formState.trackListPositions}/>
         </Cell>
         <Cell size={'1-2'}>
           <Select value={formState.storeValues || 'none'} onChange={updateStoreValues} disabled={disabled}
@@ -123,7 +114,8 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
           </Select>
         </Cell>
         <Cell size={'1-2'}>
-          <Checkbox onChange={getBooleanFieldSetter('inBackground')} label={'In Background'}
+          <Checkbox onChange={getBooleanFieldSetter('inBackground', dispatch, basePath)}
+                    label={'In Background'}
                     disabled={disabled} checked={formState.inBackground}/>
         </Cell>
       </Grid>

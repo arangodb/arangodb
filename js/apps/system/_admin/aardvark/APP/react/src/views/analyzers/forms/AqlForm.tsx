@@ -6,7 +6,7 @@ import Textbox from "../../../components/pure-css/form/Textbox";
 import Textarea from "../../../components/pure-css/form/Textarea";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Select from "../../../components/pure-css/form/Select";
-import { getNumericFieldSetter, getNumericFieldValue } from "../../../utils/helpers";
+import { getBooleanFieldSetter, getNumericFieldSetter, getNumericFieldValue } from "../../../utils/helpers";
 
 const AqlForm = ({ formState, dispatch, disabled }: FormProps<AqlState>) => {
   const updateQueryString = (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -25,26 +25,6 @@ const AqlForm = ({ formState, dispatch, disabled }: FormProps<AqlState>) => {
       field: {
         path: 'properties.returnType',
         value: event.target.value
-      }
-    });
-  };
-
-  const updateCollapsePositions = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.collapsePositions',
-        value: event.target.checked
-      }
-    });
-  };
-
-  const updateKeepNull = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.keepNull',
-        value: event.target.checked
       }
     });
   };
@@ -74,10 +54,12 @@ const AqlForm = ({ formState, dispatch, disabled }: FormProps<AqlState>) => {
       <Grid>
         <Cell size={'1-3'}>
           <Checkbox checked={formState.properties.collapsePositions || false} disabled={disabled}
-                    onChange={updateCollapsePositions} label={'Collapse Positions'}/>
+                    onChange={getBooleanFieldSetter('properties.collapsePositions', dispatch)}
+                    label={'Collapse Positions'}/>
         </Cell>
         <Cell size={'1-3'}>
-          <Checkbox checked={formState.properties.keepNull || false} onChange={updateKeepNull}
+          <Checkbox checked={formState.properties.keepNull || false}
+                    onChange={getBooleanFieldSetter('properties.keepNull', dispatch)}
                     disabled={disabled} label={'Keep Null'}/>
         </Cell>
         <Cell size={'1-3'}>
