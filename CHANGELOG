@@ -10,10 +10,6 @@ v3.9.0 (XXXX-XX-XX)
 * Fixed ES-881: Fixed LDAP global options. This needs to use the first active
   provider, not just the first provider and it should be globally disabled.
 
-* Fix caching of collection counts and index selectivity estimates in cluster.
-  The cache values expired too early in previous versions, making the cache
-  ineffective.
-
 * Web UI: Fixes the loading of map tiles which are being used to display the
   query output based on a world map when using SSL encryption. This lead to not
   displaying some world map tiles correctly (OASIS-590).
