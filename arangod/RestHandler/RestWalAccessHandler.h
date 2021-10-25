@@ -47,6 +47,8 @@ class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
   void handleCommandTickRange(WalAccess const* wal);
   void handleCommandLastTick(WalAccess const* wal);
   void handleCommandTail(WalAccess const* wal);
+
+  /// @brief deprecated. remove in future version
   void handleCommandDetermineOpenTransactions(WalAccess const* wal);
 };
 }  // namespace arangodb

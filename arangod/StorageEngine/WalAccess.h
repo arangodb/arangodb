@@ -45,10 +45,6 @@ struct WalAccessResult {
         _lastScannedTick(lastScannedTick),
         _latestTick(latest) {}
 
-  /*
-    WalAccessResult(WalAccessResult const& other) = default;
-    WalAccessResult& operator=(WalAccessResult const& other)  = default;
-  */
   bool fromTickIncluded() const { return _fromTickIncluded; }
   TRI_voc_tick_t lastIncludedTick() const { return _lastIncludedTick; }
   TRI_voc_tick_t lastScannedTick() const { return _lastScannedTick; }
@@ -142,11 +138,6 @@ class WalAccess {
   ///  }}
   ///
   virtual TRI_voc_tick_t lastTick() const = 0;
-
-  /// should return the list of transactions started, but not committed in that
-  /// range (range can be adjusted)
-  virtual WalAccessResult openTransactions(Filter const& filter,
-                                           TransactionCallback const&) const = 0;
 
   virtual WalAccessResult tail(Filter const& filter, size_t chunkSize,
                                MarkerCallback const&) const = 0;
