@@ -5,6 +5,8 @@ devel
 
 * Added enterprise license feature visibility for arangosh.
 
+* Fix local cluster script for deprecated authentication option.
+
 * Fix caching of collection counts and index selectivity estimates in cluster.
   The cache values expired too early in previous versions, making the cache 
   ineffective.
@@ -20,8 +22,6 @@ devel
   at about the same time when the instances were started simultaneously.
 
 * Fixed compilation and linking when using glibc 2.34.
-
-* Fix local cluster script for deprecated authentication option.
 
 * Fuerte: don't fall back to identity encoding in case of unknown encoding.
 
