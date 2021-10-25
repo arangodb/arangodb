@@ -87,6 +87,16 @@ class IResearchInvertedIndexConditionTest
           vpack.add(VPackValue(f));
         }
       }
+      if (!storedFields.empty())
+      {
+        VPackArrayBuilder arrayFields(&vpack, "storedValues");
+        for (auto const& f : storedFields) {
+          VPackArrayBuilder arrayFields(&vpack);
+          for (auto const& s : f) {
+            vpack.add(VPackValue(s));
+          }
+        }
+      }
     }
     return vpack;
   }
@@ -597,7 +607,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_one) {
     attributes.emplace_back("a");
     std::vector<std::vector<std::string>> fields = {{"a"}};
     arangodb::aql::Projections expected(attributes);
-    expected[0].coveringIndexCutoff = 0;
+    expected[0].coveringIndexCutoff = 1;
     expected[0].coveringIndexPosition = 0;
     assertProjectionsCoverageSuccess(fields, attributes, expected);
   }
@@ -633,9 +643,9 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
     attributes.emplace_back("c");
     std::vector<std::vector<std::string>> fields = {{"a"}, {"b"}, {"c"}};
     arangodb::aql::Projections expected(attributes);
-    expected[0].coveringIndexCutoff = 0;
+    expected[0].coveringIndexCutoff = 1;
     expected[0].coveringIndexPosition = 0;
-    expected[1].coveringIndexCutoff = 0;
+    expected[1].coveringIndexCutoff = 1;
     expected[1].coveringIndexPosition = 2;
     assertProjectionsCoverageSuccess(fields, attributes, expected);
   }
@@ -650,8 +660,8 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
     arangodb::aql::Projections expected(attributes);
     expected[0].coveringIndexCutoff = 3;
     expected[0].coveringIndexPosition = 0;
-    expected[0].coveringIndexCutoff = 0;
-    expected[0].coveringIndexPosition = 1;
+    expected[1].coveringIndexCutoff = 1;
+    expected[1].coveringIndexPosition = 1;
     assertProjectionsCoverageSuccess(fields, attributes, expected);
   }
 
@@ -665,8 +675,8 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
     arangodb::aql::Projections expected(attributes);
     expected[0].coveringIndexCutoff = 2;
     expected[0].coveringIndexPosition = 0;
-    expected[0].coveringIndexCutoff = 0;
-    expected[0].coveringIndexPosition = 1;
+    expected[1].coveringIndexCutoff = 1;
+    expected[1].coveringIndexPosition = 1;
     assertProjectionsCoverageSuccess(fields, attributes, expected);
   }
 }

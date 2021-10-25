@@ -26,6 +26,7 @@
 #include "AqlHelper.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/Projections.h"
+#include "Aql/IResearchViewNode.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
@@ -425,13 +426,52 @@ bool IResearchInvertedIndex::covers(arangodb::aql::Projections& projections) con
   std::vector<std::vector<aql::latematerialized::ColumnVariant>> usedColumns;
   aql::latematerialized::NodeWithAttrsColumn node; // we need here only attributes list actually!
   for (size_t i = 0; i < projections.size(); ++i) {
-    aql::latematerialized::AttributeAndField af;
-    node.attrs.emplace_back()
+    aql::latematerialized::NodeWithAttrsColumn::AttributeAndField af;
+    for (auto const& a : projections[i].path.path) {
+      af.attr.emplace_back(a, false); // TODO: false? 
+    }
+    node.attrs.emplace_back(af);
   }
-  aql::latematerialized::attributesMatch(_meta._sort, _meta._storedValues, node, usedColumns,
-                                         // TODO: remove this argument!
-                                         _meta._storedValues.columns().size() + 1);
-  return true;
+  auto const columnsCount  = _meta._storedValues.columns().size() + 1;
+  usedColumns.resize(columnsCount);
+  if (aql::latematerialized::attributesMatch(_meta._sort, _meta._storedValues, node, usedColumns, columnsCount)) {
+    aql::latematerialized::setAttributesMaxMatchedColumns(usedColumns, columnsCount);
+    for (size_t i = 0; i < projections.size(); ++i) {
+      auto const& nodeAttr = node.attrs[i];
+      size_t index{0};
+      if (iresearch::IResearchViewNode::SortColumnNumber == nodeAttr.afData.columnNumber) { // found in the sort column
+        index = nodeAttr.afData.fieldNumber;
+      }
+      else {
+        index = _meta._sort.fields().size();
+        TRI_ASSERT(nodeAttr.afData.columnNumber < _meta._storedValues.columns().size());
+        for (size_t j = 0; j < nodeAttr.afData.columnNumber; j++) {
+          // FIXME: we will need to decode the same back inside index iterator :(
+          index += _meta._storedValues.columns()[j].fields.size();
+        }
+      }
+      projections[i].coveringIndexPosition = index + nodeAttr.afData.fieldNumber;
+      TRI_ASSERT(projections[i].path.size() > nodeAttr.afData.postfix.size());
+      projections[i].coveringIndexCutoff = projections[i].path.size() - nodeAttr.afData.postfix.size();
+      //size_t columnNum{0};
+      //for (auto const& column : usedColumns) {
+      //  for (auto const& field : column) {
+      //    TRI_ASSERT(field.afData->field);
+      //    if (ADB_LIKELY(field.afData->field)) {
+      //      return true;
+      //      //if (*field.afData->field. projections[i].path.path == ) {
+
+      //      //}
+      //    } else {
+      //      return false; // fail safe
+      //    }
+      //  }
+      //  ++columnNum;
+      //}
+    }
+    return true;
+  }
+  return false;
 }
 
 bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
