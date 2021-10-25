@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix local cluster script for deprecated authentication option.
+
 * BTS-616: Added support for client tools arangoimport, arangodump,
   arangorestore, arangobench and arangoexport to handle HTTP responses when 
   they are not in JSON format (e.g. text/html).   

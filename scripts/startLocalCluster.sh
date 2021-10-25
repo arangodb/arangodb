@@ -76,7 +76,7 @@ printf " # coordinators: %s," "$NRCOORDINATORS"
 printf " transport: %s\n" "$TRANSPORT"
 
 if (( $NRAGENTS % 2 == 0)) ; then
-  echo "**ERROR: Number of agents must be odd! Bailing out."
+  echo "**ERROR**: Number of agents must be odd! Bailing out."
   exit 1
 fi
 
@@ -102,7 +102,12 @@ if [ -z "$JWT_SECRET" ];then
   AUTHENTICATION="--server.authentication false"
   AUTHORIZATION_HEADER=""
 else
-  AUTHENTICATION="--server.jwt-secret $JWT_SECRET"
+  if ! command -v jwtgen &> /dev/null; then
+    echo "**ERROR**: jwtgen could not be found. Install via \"npm install -g jwtgen\". Bailing out"
+    exit
+  fi
+  echo $JWT_SECRET > cluster/jwt.secret
+  AUTHENTICATION="--server.jwt-secret-keyfile cluster/jwt.secret"
   AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
 fi
 
