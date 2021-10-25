@@ -1717,6 +1717,22 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // of the next SubqueryRuns is not skipepd over.
           localExecutorState = ExecutorState::DONE;
           _execState = ExecState::SHADOWROWS;
+          // The following line is in particular for the UnsortedGatherExecutor,
+          // which implies we're using a MultiDependencyRowFetcher.
+          // Imagine the following situation:
+          // In case the last subquery ended, at least for one dependency, on an
+          // item block-boundary. But the next row in this dependency - and thus,
+          // all other dependencies - is a non-relevant shadow row. Then the
+          // executor will have been called by now, possibly multiple times,
+          // until all dependencies have some input and thus arrived at this
+          // particular shadow row. So now the condition of this if-branch is
+          // true.
+          // The outcome of this is that the executor is no longer in a freshly
+          // initialized state, but may have progressed over one or more
+          // dependencies already.
+          // Without the following reset, these dependencies would thus be
+          // ignored in the next subquery iteration.
+          resetExecutor();
         } else {
           _execState = ExecState::CHECKCALL;
         }
