@@ -56,6 +56,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
+#include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
@@ -275,23 +276,17 @@ void BenchFeature::start() {
     std::unordered_map<std::string, std::string> headers;
     headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeVPack);
 
-    auto result = createDbClient->request(rest::RequestType::POST,
+    std::unique_ptr<SimpleHttpResult> result(createDbClient->request(RequestType::POST,
                                           "/_api/database", b.slice().startAs<char>(),
-                                          b.slice().byteSize(), headers);
+                                          b.slice().byteSize(), headers));
 
-    if (!result || result->wasHttpError()) {
-      std::string msg;
-      if (result) {
-        msg = result->getHttpReturnMessage();
-        delete result;
-      }
-
+    auto check = arangodb::HttpResponseChecker::check(createDbClient->getErrorMessage(), result.get());
+    if (check.fail()) {
       LOG_TOPIC("5cda8", FATAL, arangodb::Logger::BENCH)
-          << "failed to create the specified database: " << msg;
+          << "failed to create the specified database: " << check.errorMessage();
       FATAL_ERROR_EXIT();
     }
-
-    delete result;
+    
     client.setDatabaseName(connectDB);
   }
   int ret = EXIT_SUCCESS;
