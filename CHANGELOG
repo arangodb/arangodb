@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fuerte: don't fall back to identity encoding in case of unknown encoding.
+
+* BTS-616: Added support for client tools arangoimport, arangodump,
+  arangorestore, arangobench and arangoexport to handle HTTP responses when 
+  they are not in JSON format (e.g. text/html).   
+
 * Updated ArangoDB Starter to 0.15.3-preview-1.
 
 * Remove dysfunctional CMake variable `USE_OPTIMIZE_FOR_ARCHITECTURE`.
@@ -34,6 +40,7 @@ devel
 
 * Web UI - Added missing HTML escaping inside the file upload plugin used in the
   section of deploying a new Foxx application when uploading a zip file.
+
 * Now, arangoimport supports merging of attributes. When importing data from a
   file into a collection, a document attribute can be comprised of merging
   attributes from the file into it, with separators and other literal strings.
