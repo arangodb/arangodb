@@ -489,20 +489,14 @@ bool accessesVariable(AstNode const* node, Variable const* var) {
   }
 
   return false;
-};
-
+}
 
 /**
- * @brief Captures the given expression
- * into the NonConstExpressionContainer
- * for later execution.
- * Extracts all required variables and
- * retains their registers, s.t. all
- * necessary pieces are stored in the container.
+ * @brief Captures the given expression into the NonConstExpressionContainer for later execution.
+ * Extracts all required variables and retains their registers, s.t. all necessary pieces are stored in the container.
  */
 void captureNonConstExpression(Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-                               AstNode* expression,
-                               std::vector<size_t> selectedMembersFromRoot,
+                               AstNode* expression, std::vector<size_t> selectedMembersFromRoot,
                                NonConstExpressionContainer& result) {
   // all new AstNodes are registered with the Ast in the Query
   auto e = std::make_unique<aql::Expression>(ast, expression);
@@ -531,11 +525,12 @@ void captureNonConstExpression(Ast* ast, std::unordered_map<VariableId, VarInfo>
   }
 }
 
-void captureFCallArgumentExpressions(Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-                               AstNode const* fCallExpression,
-                               std::vector<size_t> selectedMembersFromRoot,
-                               Variable const* indexVariable,
-                               NonConstExpressionContainer& result) {
+void captureFCallArgumentExpressions(Ast* ast,
+                                     std::unordered_map<VariableId, VarInfo> const& varInfo,
+                                     AstNode const* fCallExpression,
+                                     std::vector<size_t> selectedMembersFromRoot,
+                                     Variable const* indexVariable,
+                                     NonConstExpressionContainer& result) {
   TRI_ASSERT(fCallExpression->type == NODE_TYPE_FCALL);
   TRI_ASSERT(1 == fCallExpression->numMembers());
 
