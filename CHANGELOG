@@ -1,6 +1,8 @@
 devel
 -----
 
+* Old license mechanism for docker containers removed.
+
 * Add license information to the web UI.
 
 * Fix local cluster script for deprecated authentication option.
