@@ -167,18 +167,13 @@ function adminLicenseSuite () {
           console.warn(e);
           assertTrue(false);
         }
-        
         try {
           result = arango.GET('/_admin/server/mode');
-          print(result)
-/*          assertEqual(result.mode, "read-only");
-          assertTrue(result.hasOwnProperty("status"));
-          assertTrue(result.status === "read-only");*/
+          assertEqual(result.mode, "readonly");
         } catch (e) {
           console.warn(e);
           assertTrue(false);
         }
-
       } catch (e) {
         console.warn(e);
         assertTrue(false);
@@ -204,7 +199,15 @@ function adminLicenseSuite () {
           console.warn(e);
           assertTrue(false);
         }
-        
+
+        try {
+          result = arango.GET('/_admin/server/mode');
+          assertEqual(result.mode, "default");
+        } catch (e) {
+          console.warn(e);
+          assertTrue(false);
+        }
+
       } catch (e) {
         console.warn(e);
       }
