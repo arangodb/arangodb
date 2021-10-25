@@ -1097,6 +1097,11 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
     args['datatype'] = what.datatype;
   }
 
+  if (what.mergeAttributes !== undefined) {
+    args['merge-attributes'] = what.mergeAttributes;
+  }
+
+
   return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
 }
 
@@ -1814,7 +1819,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       }
       print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.role);
       let url = arangod.url;
-      if (arangod.role === "coordinator") {
+      if (arangod.role === "coordinator" && arangod.args["javascript.enabled"] !== "false") {
         url += '/_admin/aardvark/index.html';
       } else {
         url += '/_api/version';

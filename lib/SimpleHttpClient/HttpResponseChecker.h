@@ -18,28 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils/thread_utils.hpp"
+#pragma once
+#include "Basics/Result.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
-#include "Containers.h"
 
 namespace arangodb {
-namespace iresearch {
+class HttpResponseChecker {
+ public:
+  HttpResponseChecker() = delete;
+  static arangodb::Result check(std::string const& clientErrorMsg, arangodb::httpclient::SimpleHttpResult const* const response,
+                                std::string const& actionMsg = "", std::string const& requestPayload = "");
+};
 
-void ResourceMutex::reset() {
-  if (get()) {
-    irs::async_utils::read_write_mutex::write_mutex mutex(_mutex);
-    auto lock = irs::make_lock_guard(mutex);
-    _resource.store(nullptr);
-  }
 }
-
-}  // namespace iresearch
-}  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
-// -----------------------------------------------------------------------------

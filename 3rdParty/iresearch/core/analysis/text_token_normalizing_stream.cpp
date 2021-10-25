@@ -23,18 +23,6 @@
 
 #include "text_token_normalizing_stream.hpp"
 
-#include <frozen/unordered_map.h>
-
-#include "velocypack/Slice.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
-#include "utils/hash_utils.hpp"
-#include "utils/locale_utils.hpp"
-#include "utils/vpack_utils.hpp"
-
-#include <unicode/locid.h> // for icu::Locale
-
 #if defined(_MSC_VER)
   #pragma warning(disable: 4512)
 #endif
@@ -47,15 +35,14 @@
 
 #include <unicode/translit.h> // for icu::Transliterator
 
-#if defined(_MSC_VER)
-  #pragma warning(disable: 4229)
-#endif
+#include <frozen/unordered_map.h>
 
-#include <unicode/uclean.h> // for u_cleanup
-
-#if defined(_MSC_VER)
-  #pragma warning(default: 4229)
-#endif
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
+#include "utils/hash_utils.hpp"
+#include "utils/vpack_utils.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -64,27 +51,22 @@ namespace analysis {
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
-struct text_token_normalizing_stream::state_t {
+struct normalizing_token_stream::state_t {
   icu::UnicodeString data;
-  icu::Locale icu_locale;
-  const options_t options;
-  std::string term_buf; // used by reset()
+  icu::UnicodeString token;
+  std::string term_buf;
   const icu::Normalizer2* normalizer; // reusable object owned by ICU
   std::unique_ptr<icu::Transliterator> transliterator;
+  const options_t options;
 
   explicit state_t(const options_t& opts)
-    : icu_locale{"C"},
-      options{opts},
-      normalizer{} {
-    // NOTE: use of the default constructor for Locale() or
-    //       use of Locale::createFromName(nullptr)
-    //       causes a memory leak with Boost 1.58, as detected by valgrind
-    icu_locale.setToBogus(); // set to uninitialized
+    : normalizer{},
+      options{opts} {
   }
 };
 
 } // analysis
-} // ROOT
+} // iresearch
 
 namespace {
 
@@ -96,85 +78,110 @@ constexpr VPackStringRef ACCENT_PARAM_NAME      {"accent"};
 
 constexpr frozen::unordered_map<
     string_ref,
-    analysis::text_token_normalizing_stream::options_t::case_convert_t, 3> CASE_CONVERT_MAP = {
-  { "lower", analysis::text_token_normalizing_stream::options_t::case_convert_t::LOWER },
-  { "none", analysis::text_token_normalizing_stream::options_t::case_convert_t::NONE },
-  { "upper", analysis::text_token_normalizing_stream::options_t::case_convert_t::UPPER },
+    analysis::normalizing_token_stream::case_convert_t, 3> CASE_CONVERT_MAP = {
+  { "lower", analysis::normalizing_token_stream::LOWER },
+  { "none", analysis::normalizing_token_stream::NONE },
+  { "upper", analysis::normalizing_token_stream::UPPER },
 };
 
+bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
+  if (!slice.isString()) {
+    IR_FRMT_WARN(
+      "Non-string value in '%s' while constructing "
+      "text_token_normalizing_stream from VPack arguments",
+      LOCALE_PARAM_NAME.data());
+
+    return false;
+  }
+
+  const auto locale_name = get_string<std::string>(slice);
+
+  locale = icu::Locale::createFromName(locale_name.c_str());
+
+  if (!locale.isBogus()) {
+    locale = icu::Locale{
+      locale.getLanguage(),
+      locale.getCountry(),
+      locale.getVariant() };
+  }
+
+  if (locale.isBogus()) {
+    IR_FRMT_WARN(
+      "Failed to instantiate locale from the supplied string '%s'"
+      "while constructing text_token_normalizing_stream from VPack arguments",
+      locale_name.c_str());
+
+    return false;
+  }
+
+  return true;
+}
 
 bool parse_vpack_options(
     const VPackSlice slice,
-    analysis::text_token_normalizing_stream::options_t& options) {
-
-  if (!slice.isObject() && !slice.isString()) {
+    analysis::normalizing_token_stream::options_t& options) {
+  if (!slice.isObject()) {
     IR_FRMT_ERROR(
-      "Slice for delimited_token_stream is not an object or string");
+      "Slice for text_token_normalizing_stream is not an object");
     return false;
   }
 
   try {
-    switch (slice.type()) {
-      case VPackValueType::String:
-        return locale_utils::icu_locale(get_string<string_ref>(slice), options.locale);  // required
-      case VPackValueType::Object:
-      {
-        auto param_name_slice = slice.get(LOCALE_PARAM_NAME);
-        if (!param_name_slice.isNone() && param_name_slice.isString()) {
-          if (!locale_utils::icu_locale(get_string<string_ref>(param_name_slice), options.locale)) {
-            return false;
-          }
-          if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
-            auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME);  // optional string enum
+    const auto locale_slice = slice.get(LOCALE_PARAM_NAME);
 
-            if (!case_convert_slice.isString()) {
-              IR_FRMT_WARN(
-                "Non-string value in '%s' while constructing "
-                "text_token_normalizing_stream from VPack arguments",
-                CASE_CONVERT_PARAM_NAME.data());
-
-              return false;
-            }
-
-            auto itr = CASE_CONVERT_MAP.find(get_string<string_ref>(case_convert_slice));
-
-            if (itr == CASE_CONVERT_MAP.end()) {
-              IR_FRMT_WARN(
-                "Invalid value in '%s' while constructing "
-                "text_token_normalizing_stream from VPack arguments",
-                CASE_CONVERT_PARAM_NAME.data());
-
-              return false;
-            }
-
-            options.case_convert = itr->second;
-          }
-
-          if (slice.hasKey(ACCENT_PARAM_NAME)) {
-            auto accent_slice = slice.get(ACCENT_PARAM_NAME);  // optional bool
-
-            if (!accent_slice.isBool()) {
-              IR_FRMT_WARN(
-                "Non-boolean value in '%s' while constructing "
-                "text_token_normalizing_stream from VPack arguments",
-                ACCENT_PARAM_NAME.data());
-
-              return false;
-            }
-
-            options.accent = accent_slice.getBool();
-          }
-
-          return true;
-        }
+    if (!locale_slice.isNone()) {
+      if (!locale_from_slice(locale_slice, options.locale)) {
+        return false;
       }
-      [[fallthrough]];
-      default:
-        IR_FRMT_ERROR(
-          "Missing '%s' while constructing text_token_normalizing_stream "
-          "from VPack arguments",
-          LOCALE_PARAM_NAME.data());
+
+      if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
+        auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME); // optional string enum
+
+        if (!case_convert_slice.isString()) {
+          IR_FRMT_WARN(
+            "Non-string value in '%s' while constructing "
+            "text_token_normalizing_stream from VPack arguments",
+            CASE_CONVERT_PARAM_NAME.data());
+
+          return false;
+        }
+
+        auto itr = CASE_CONVERT_MAP.find(get_string<string_ref>(case_convert_slice));
+
+        if (itr == CASE_CONVERT_MAP.end()) {
+          IR_FRMT_WARN(
+            "Invalid value in '%s' while constructing "
+            "text_token_normalizing_stream from VPack arguments",
+            CASE_CONVERT_PARAM_NAME.data());
+
+          return false;
+        }
+
+        options.case_convert = itr->second;
+      }
+
+      if (slice.hasKey(ACCENT_PARAM_NAME)) {
+        auto accent_slice = slice.get(ACCENT_PARAM_NAME);  // optional bool
+
+        if (!accent_slice.isBool()) {
+          IR_FRMT_WARN(
+            "Non-boolean value in '%s' while constructing "
+            "text_token_normalizing_stream from VPack arguments",
+            ACCENT_PARAM_NAME.data());
+
+          return false;
+        }
+
+        options.accent = accent_slice.getBool();
+      }
+
+      return true;
     }
+
+    IR_FRMT_ERROR(
+      "Missing '%s' while constructing text_token_normalizing_stream "
+      "from VPack arguments",
+      LOCALE_PARAM_NAME.data());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
       "Caught error '%s' while constructing text_token_normalizing_stream from VPack",
@@ -193,9 +200,9 @@ bool parse_vpack_options(
 ///        "accent"(bool): leave accents
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
-  analysis::text_token_normalizing_stream::options_t options;
+  analysis::normalizing_token_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
-    return memory::make_unique<analysis::text_token_normalizing_stream>(
+    return memory::make_unique<analysis::normalizing_token_stream>(
       std::move(options));
   } else {
     return nullptr;
@@ -212,13 +219,12 @@ analysis::analyzer::ptr make_vpack(const string_ref& args) {
 /// @param definition string for storing json document with config
 ///////////////////////////////////////////////////////////////////////////////
 bool make_vpack_config(
-    const analysis::text_token_normalizing_stream::options_t& options,
+    const analysis::normalizing_token_stream::options_t& options,
     VPackBuilder* builder) {
-
   VPackObjectBuilder object(builder);
   {
     // locale
-    const auto& locale_name = locale_utils::name(options.locale);
+    const auto& locale_name = options.locale.getBaseName();
     builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
 
     // case convert
@@ -244,7 +250,7 @@ bool make_vpack_config(
 }
 
 bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
-  analysis::text_token_normalizing_stream::options_t options;
+  analysis::normalizing_token_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
     return make_vpack_config(options, builder);
   } else {
@@ -257,37 +263,6 @@ bool normalize_vpack_config(const string_ref& args, std::string& config) {
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
-    return true;
-  }
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief args is a language to use for normalizing
-////////////////////////////////////////////////////////////////////////////////
-analysis::analyzer::ptr make_text(const string_ref& args) {
-  try {
-    analysis::text_token_normalizing_stream::options_t options;
-
-    if (locale_utils::icu_locale(args, options.locale)) {// interpret 'args' as a locale name
-      return memory::make_unique<analysis::text_token_normalizing_stream>(
-          std::move(options));
-    }
-  } catch (...) {
-    std::string err_msg = static_cast<std::string>(args);
-    IR_FRMT_ERROR(
-      "Caught error while constructing text_token_normalizing_stream TEXT arguments: %s",
-      err_msg.c_str());
-  }
-
-  return nullptr;
-}
-
-bool normalize_text_config(const string_ref& args,
-                           std::string& definition) {
-  std::locale locale;
-  if (locale_utils::icu_locale(args, locale)){
-    definition = locale_utils::name(locale);
     return true;
   }
   return false;
@@ -335,11 +310,9 @@ bool normalize_json_config(const string_ref& args, std::string& definition) {
   return false;
 }
 
-REGISTER_ANALYZER_JSON(analysis::text_token_normalizing_stream, make_json,
+REGISTER_ANALYZER_JSON(analysis::normalizing_token_stream, make_json,
                        normalize_json_config);
-REGISTER_ANALYZER_TEXT(analysis::text_token_normalizing_stream, make_text,
-                       normalize_text_config);
-REGISTER_ANALYZER_VPACK(analysis::text_token_normalizing_stream, make_vpack,
+REGISTER_ANALYZER_VPACK(analysis::normalizing_token_stream, make_vpack,
                        normalize_vpack_config);
 
 }
@@ -347,33 +320,26 @@ REGISTER_ANALYZER_VPACK(analysis::text_token_normalizing_stream, make_vpack,
 namespace iresearch {
 namespace analysis {
 
-void text_token_normalizing_stream::state_deleter_t::operator()(
+void normalizing_token_stream::state_deleter_t::operator()(
     state_t* p) const noexcept {
   delete p;
 }
 
-text_token_normalizing_stream::text_token_normalizing_stream(
+normalizing_token_stream::normalizing_token_stream(
     const options_t& options)
-  : analyzer{irs::type<text_token_normalizing_stream>::get()},
+  : analyzer{irs::type<normalizing_token_stream>::get()},
     state_{new state_t{options}},
     term_eof_{true} {
 }
 
-/*static*/ void text_token_normalizing_stream::init() {
-  REGISTER_ANALYZER_JSON(text_token_normalizing_stream, make_json,
+/*static*/ void normalizing_token_stream::init() {
+  REGISTER_ANALYZER_JSON(normalizing_token_stream, make_json,
                          normalize_json_config); // match registration above
-  REGISTER_ANALYZER_TEXT(text_token_normalizing_stream, make_text,
-                         normalize_text_config); // match registration above
-  REGISTER_ANALYZER_VPACK(analysis::text_token_normalizing_stream, make_vpack,
+  REGISTER_ANALYZER_VPACK(normalizing_token_stream, make_vpack,
                          normalize_vpack_config); // match registration above
 }
 
-/*static*/ analyzer::ptr text_token_normalizing_stream::make(
-    const string_ref& locale) {
-  return make_text(locale);
-}
-
-bool text_token_normalizing_stream::next() {
+bool normalizing_token_stream::next() {
   if (term_eof_) {
     return false;
   }
@@ -383,18 +349,7 @@ bool text_token_normalizing_stream::next() {
   return true;
 }
 
-bool text_token_normalizing_stream::reset(const string_ref& data) {
-  if (state_->icu_locale.isBogus()) {
-    state_->icu_locale = icu::Locale(
-      std::string(locale_utils::language(state_->options.locale)).c_str(),
-      std::string(locale_utils::country(state_->options.locale)).c_str()
-    );
-
-    if (state_->icu_locale.isBogus()) {
-      return false;
-    }
-  }
-
+bool normalizing_token_stream::reset(const string_ref& data) {
   auto err = UErrorCode::U_ZERO_ERROR; // a value that passes the U_SUCCESS() test
 
   if (!state_->normalizer) {
@@ -411,7 +366,7 @@ bool text_token_normalizing_stream::reset(const string_ref& data) {
   if (!state_->options.accent && !state_->transliterator) {
     // transliteration rule taken verbatim from: http://userguide.icu-project.org/transforms/general
     // do not allocate statically since it causes memory leaks in ICU
-    icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC");
+    const icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC");
 
     // reusable object owned by *this
     state_->transliterator.reset(icu::Transliterator::createInstance(
@@ -424,72 +379,48 @@ bool text_token_normalizing_stream::reset(const string_ref& data) {
     }
   }
 
-  // ...........................................................................
-  // convert encoding to UTF8 for use with ICU
-  // ...........................................................................
-  std::string data_utf8;
-  string_ref data_utf8_ref;
-  if (locale_utils::is_utf8(state_->options.locale)) {
-    data_utf8_ref = data;
-  } else {
-    // valid conversion since 'locale_' was created with internal unicode encoding
-    if (!locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
-      return false; // UTF8 conversion failure
-    }
-    data_utf8_ref = data_utf8;
-  }
-
-  if (data_utf8_ref.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
-    return false; // ICU UnicodeString signatures can handle at most INT32_MAX
+  // convert input string for use with ICU
+  if (data.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
+    return false;
   }
 
   state_->data = icu::UnicodeString::fromUTF8(
-    icu::StringPiece(data_utf8_ref.c_str(), static_cast<int32_t>(data_utf8_ref.size())));
+    icu::StringPiece{data.c_str(), static_cast<int32_t>(data.size())});
 
-  // ...........................................................................
   // normalize unicode
-  // ...........................................................................
-  icu::UnicodeString term_icu;
-
-  state_->normalizer->normalize(state_->data, term_icu, err);
+  state_->normalizer->normalize(state_->data, state_->token, err);
 
   if (!U_SUCCESS(err)) {
-    term_icu = state_->data; // use non-normalized value if normalization failure
+    // use non-normalized value if normalization failure
+    state_->token = std::move(state_->data);
   }
 
-  // ...........................................................................
   // case-convert unicode
-  // ...........................................................................
   switch (state_->options.case_convert) {
-   case options_t::case_convert_t::LOWER:
-    term_icu.toLower(state_->icu_locale); // inplace case-conversion
+   case LOWER:
+    state_->token.toLower(state_->options.locale); // inplace case-conversion
     break;
-   case options_t::case_convert_t::UPPER:
-    term_icu.toUpper(state_->icu_locale); // inplace case-conversion
+   case UPPER:
+    state_->token.toUpper(state_->options.locale); // inplace case-conversion
     break;
    default:
     {} // NOOP
   };
 
-  // ...........................................................................
   // collate value, e.g. remove accents
-  // ...........................................................................
   if (state_->transliterator) {
-    state_->transliterator->transliterate(term_icu); // inplace translitiration
+    state_->transliterator->transliterate(state_->token); // inplace translitiration
   }
 
   state_->term_buf.clear();
-  term_icu.toUTF8String(state_->term_buf);
+  state_->token.toUTF8String(state_->term_buf);
 
-  // ...........................................................................
   // use the normalized value
-  // ...........................................................................
-  static_assert(sizeof(byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
+  static_assert(sizeof(byte_type) == sizeof(char));
   std::get<term_attribute>(attrs_).value = irs::ref_cast<byte_type>(state_->term_buf);
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());
-  std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
   term_eof_ = false;
 
   return true;

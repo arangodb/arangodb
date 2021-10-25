@@ -31,7 +31,6 @@
 #include "velocypack/velocypack-aliases.h"
 
 #include "utils/vpack_utils.hpp"
-#include "utils/icu_locale_utils.hpp"
 
 namespace {
 
@@ -39,47 +38,72 @@ using namespace irs;
 
 constexpr VPackStringRef LOCALE_PARAM_NAME {"locale"};
 
+bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
+  if (!slice.isString()) {
+    IR_FRMT_WARN(
+      "Non-string value in '%s' while constructing "
+      "collation_token_stream from VPack arguments",
+      LOCALE_PARAM_NAME.data());
+
+    return false;
+  }
+
+  const auto locale_name = get_string<std::string>(slice);
+
+  locale = icu::Locale::createCanonical(locale_name.c_str());
+
+  if (locale.isBogus()) {
+    IR_FRMT_WARN(
+      "Failed to instantiate locale from the supplied string '%s' "
+      "while constructing collation_token_stream from VPack arguments",
+      locale_name.c_str());
+
+    return false;
+  }
+
+  // validate creation of icu::Collator
+  auto err = UErrorCode::U_ZERO_ERROR;
+  std::unique_ptr<icu::Collator> collator{
+    icu::Collator::createInstance(locale, err)};
+
+  if (!collator) {
+    IR_FRMT_WARN(
+      "Can't instantiate icu::Collator from locale '%s'",
+      locale_name.c_str());
+    return false;
+  }
+
+  // print warn message
+  if (err != UErrorCode::U_ZERO_ERROR) {
+    IR_FRMT_WARN(
+      "Warning while instantiation of icu::Collator from locale '%s' : '%s'",
+      locale_name.c_str(), u_errorName(err));
+  }
+
+  return U_SUCCESS(err);
+}
+
 bool parse_vpack_options(
     const VPackSlice slice,
     analysis::collation_token_stream::options_t& options) {
-
   if (!slice.isObject()) {
-    IR_FRMT_ERROR(
-      "Slice for collation_token_stream is not an object");
+    IR_FRMT_ERROR("Slice for collation_token_stream is not an object");
     return false;
   }
 
   try {
+    const auto locale_slice = slice.get(LOCALE_PARAM_NAME);
 
-    auto locale_slice = slice.get(LOCALE_PARAM_NAME);
+    if (locale_slice.isNone()) {
+      IR_FRMT_ERROR(
+        "Missing '%s' while constructing collation_token_stream "
+        "from VPack arguments",
+        LOCALE_PARAM_NAME.data());
 
-    switch (locale_slice.type()) {
-      case VPackValueType::String:
-      {
-         bool res = icu_locale_utils::get_locale_from_str(get_string<string_ref>(locale_slice),
-                                                     options.locale,
-                                                     false, // true - new format of locale string
-                                                     &options.unicode);
-         if (res && options.unicode == icu_locale_utils::Unicode::UTF8) {
-           return true;
-         } else {
-           return false;
-         }
-      }
-      case VPackValueType::Object:
-      {
-        return icu_locale_utils::get_locale_from_vpack(locale_slice,
-                                                       options.locale,
-                                                       &options.unicode);
-
-      }
-      [[fallthrough]];
-      default:
-        IR_FRMT_ERROR(
-          "Missing '%s' while constructing collation_token_stream"
-          "or value is not a string or an object",
-          LOCALE_PARAM_NAME.data());
+      return false;
     }
+
+    return locale_from_slice(locale_slice, options.locale);
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
       "Caught error '%s' while constructing collation_token_stream from VPack",
@@ -117,16 +141,10 @@ analysis::analyzer::ptr make_vpack(const string_ref& args) {
 bool make_vpack_config(
     const analysis::collation_token_stream::options_t& options,
     VPackBuilder* builder) {
+  VPackObjectBuilder object{builder};
 
-  VPackBuilder locale_builder;
-  icu_locale_utils::locale_to_vpack(options.locale, &locale_builder, &options.unicode);
-
-  // locale
-  VPackObjectBuilder locale_obj(builder);
-  {
-    builder->add(LOCALE_PARAM_NAME.data(), locale_builder.slice());
-  }
-
+  const auto locale_name = options.locale.getName();
+  builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
   return true;
 }
 
@@ -209,7 +227,7 @@ struct collation_token_stream::state_t {
   std::string utf8_buf;
   byte_type term_buf[MAX_TOKEN_SIZE];
 
-  state_t(const options_t& opts) :
+  explicit state_t(const options_t& opts) :
       options(opts) {
   }
 };
@@ -225,11 +243,6 @@ void collation_token_stream::state_deleter_t::operator()(state_t* p) const noexc
   delete p;
 }
 
-/*static*/ analyzer::ptr collation_token_stream::make(
-    const string_ref& locale) {
-  return make_json(locale);
-}
-
 collation_token_stream::collation_token_stream(
     const options_t& options)
   : analyzer{irs::type<collation_token_stream>::get()},
@@ -238,7 +251,6 @@ collation_token_stream::collation_token_stream(
 }
 
 bool collation_token_stream::reset(const string_ref& data) {
-
   if (!state_->collator) {
     auto err = UErrorCode::U_ZERO_ERROR;
     state_->collator.reset(icu::Collator::createInstance(state_->options.locale, err));
@@ -280,7 +292,6 @@ bool collation_token_stream::reset(const string_ref& data) {
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());
-  std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
   term_eof_ = false;
 
   return true;

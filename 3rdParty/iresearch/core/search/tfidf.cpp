@@ -170,7 +170,7 @@ struct byte_ref_iterator {
   const irs::byte_type* end_;
   const irs::byte_type* pos_;
 
-  byte_ref_iterator(const irs::bytes_ref& in)
+  explicit byte_ref_iterator(const irs::bytes_ref& in)
     : end_(in.c_str() + in.size()), pos_(in.c_str()) {
   }
 
@@ -345,8 +345,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
     const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0; // nullptr possible if e.g.'by_column_existence' filter
 
     idf.value += float_t(
-      std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0
-    );
+      std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
     assert(idf.value >= 0.f);
   }
 

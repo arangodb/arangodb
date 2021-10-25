@@ -1147,7 +1147,8 @@ void column::finish(index_output& index_out) {
 // -----------------------------------------------------------------------------
 
 writer::writer(bool consolidation)
-  : alloc_{&memory_allocator::global()},
+  : dir_{nullptr},
+    alloc_{&memory_allocator::global()},
     buf_{memory::make_unique<byte_type[]>(column::BLOCK_SIZE*sizeof(uint64_t))},
     consolidation_{consolidation} {
 }

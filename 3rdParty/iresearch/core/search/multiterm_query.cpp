@@ -81,6 +81,7 @@ bool lazy_bitset_iterator::refill(
       -> const seek_cookie* {
     if (begin != end) {
       auto* cookie = begin->get();
+      // cppcheck-suppress unreadVariable
       ++begin;
       return cookie;
     }
