@@ -1,10 +1,11 @@
-import { ChangeEvent, Dispatch, useEffect, useRef } from "react";
+import { ChangeEvent, Dispatch, useCallback, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "./arangoClient";
 import minimatch from "minimatch";
-import { cloneDeep, compact, merge, parseInt, set, uniqueId, unset } from "lodash";
+import { cloneDeep, compact, has, isEqual, merge, parseInt, set, uniqueId, unset } from "lodash";
 import { DispatchArgs, State } from "./constants";
 import { validateAndFix } from "../views/analyzers/helpers";
+import { ErrorObject, ValidateFunction } from "ajv";
 
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };
@@ -178,3 +179,38 @@ export function getNumericFieldSetter<FormState> (field: string, dispatch: Dispa
     }
   };
 }
+
+export function useJsonFormErrorHandler<FormState> (dispatch: Dispatch<DispatchArgs<FormState>>,
+                                                    setFormErrors: (value: string[]) => void) {
+  return useCallback((errors: ErrorObject[] | null | undefined) => {
+    if (Array.isArray(errors)) {
+      dispatch({ type: 'lockJsonForm' });
+
+      setFormErrors(errors.map(error => {
+          if (has(error.params, 'errors')) {
+            return `
+              ${error.params.errors[0].keyword} error: ${error.instancePath}${error.message}.
+            `;
+          } else {
+            return `
+              ${error.keyword} error: ${error.instancePath} ${error.message}.
+              Schema: ${JSON.stringify(error.params)}
+            `;
+          }
+        }
+      ));
+    }
+  }, [dispatch, setFormErrors]);
+}
+
+export function useJsonFormUpdateEffect<FormState> (validate: ValidateFunction<FormState>, formState: FormState,
+                                                    raiseError: (errors: ErrorObject[] | null | undefined) => void) {
+  const prevFormState = usePrevious(formState);
+
+  useEffect(() => {
+    if (!isEqual(prevFormState, formState) && !validate(formState)) {
+      raiseError(validate.errors);
+    }
+  }, [formState, prevFormState, raiseError, validate]);
+}
+

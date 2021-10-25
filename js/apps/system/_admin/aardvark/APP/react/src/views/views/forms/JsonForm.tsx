@@ -5,6 +5,7 @@ import { formSchema, FormState, linksSchema } from "../constants";
 import { FormProps, State } from "../../../utils/constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import { pick } from "lodash";
+import { useJsonFormErrorHandler, useJsonFormUpdateEffect } from "../../../utils/helpers";
 
 const ajv = new Ajv2019({
   allErrors: true,
@@ -23,6 +24,9 @@ type JsonFormProps =
 
 const JsonForm = ({ formState, dispatch, renderKey, isEdit = false }: JsonFormProps) => {
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  const raiseError = useJsonFormErrorHandler(dispatch, setFormErrors);
+
+  useJsonFormUpdateEffect(validate, formState, raiseError);
 
   const changeHandler = (json: FormState) => {
     if (validate(json)) {
