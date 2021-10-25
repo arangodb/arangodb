@@ -39,6 +39,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TtlFeature.h"
@@ -197,9 +198,16 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
 void StatisticsWorker::historian() {
   try {
     double now = TRI_microtime();
-    std::shared_ptr<arangodb::velocypack::Builder> prevRawBuilder =
-        lastEntry(statisticsRawCollection, now - 2.0 * INTERVAL);
-    VPackSlice prevRaw = prevRawBuilder->slice();
+    // only query the previously stored statistics value once on our first iteration
+    if (_lastStoredValue.slice().isNone()) {
+      auto prevRawBuilder =
+          lastEntry(statisticsRawCollection, now - 2.0 * INTERVAL);
+
+      VPackSlice prevRaw = prevRawBuilder->slice();
+      if (prevRaw.isArray() && prevRaw.length()) {
+        _lastStoredValue.add(prevRaw.at(0).resolveExternals());
+      }
+    }
 
     _rawBuilder.clear();
     generateRawStatistics(_rawBuilder, now);
@@ -207,24 +215,20 @@ void StatisticsWorker::historian() {
     saveSlice(_rawBuilder.slice(), statisticsRawCollection);
 
     // create the per-seconds statistics
-    if (prevRaw.isArray() && prevRaw.length()) {
-      VPackSlice slice = prevRaw.at(0).resolveExternals();
+    if (_lastStoredValue.slice().isObject()) {
       _tempBuilder.clear();
-      computePerSeconds(_tempBuilder, _rawBuilder.slice(), slice);
+      computePerSeconds(_tempBuilder, _rawBuilder.slice(), _lastStoredValue.slice());
       VPackSlice perSecs = _tempBuilder.slice();
 
       if (perSecs.length()) {
         saveSlice(perSecs, statisticsCollection);
       }
     }
+
+    // remember what we stored last, so we don't have to re-query it on the next iteration
+    _lastStoredValue.clear();
+    _lastStoredValue.add(_rawBuilder.slice());
   } catch (...) {
-    // errors on shutdown are expected. do not log them in case they occur
-    // if (err.errorNum !== internal.errors.ERROR_SHUTTING_DOWN.code &&
-    //     err.errorNum !==
-    //     internal.errors.ERROR_ARANGO_CORRUPTED_COLLECTION.code &&
-    //     err.errorNum !==
-    //     internal.errors.ERROR_ARANGO_CORRUPTED_DATAFILE.code) {
-    //   require('console').warn('catch error in historian: %s', err.stack);
   }
 }
 
@@ -548,8 +552,8 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
   builder.close();
 }
 
-void StatisticsWorker::computePerSeconds(VPackBuilder& result, VPackSlice const& current,
-                                         VPackSlice const& prev) {
+void StatisticsWorker::computePerSeconds(VPackBuilder& result, VPackSlice current,
+                                         VPackSlice prev) {
   result.clear();
   result.openObject();
 
@@ -780,8 +784,8 @@ void StatisticsWorker::computePerSeconds(VPackBuilder& result, VPackSlice const&
   result.close();
 }
 
-void StatisticsWorker::avgPercentDistributon(VPackBuilder& builder, VPackSlice const& now,
-                                             VPackSlice const& last,
+void StatisticsWorker::avgPercentDistributon(VPackBuilder& builder, VPackSlice now,
+                                             VPackSlice last,
                                              VPackBuilder const& cuts) const {
   uint32_t n = static_cast<uint32_t>(cuts.slice().length() + 1);
   double count = 0;
@@ -814,7 +818,7 @@ void StatisticsWorker::avgPercentDistributon(VPackBuilder& builder, VPackSlice c
   builder.close();
 }
 
-void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const& now) {
+void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double now) {
   ProcessInfo info = TRI_ProcessInfoSelf();
   uint64_t rss = static_cast<uint64_t>(info._residentSize);
   double rssp = 0;
@@ -969,8 +973,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.close();
 }
 
-
-void StatisticsWorker::saveSlice(VPackSlice const& slice, std::string const& collection) const {
+void StatisticsWorker::saveSlice(VPackSlice slice, std::string const& collection) const {
   if (isStopping()) {
     return;
   }
@@ -1032,11 +1035,18 @@ void StatisticsWorker::run() {
     // do not fail hard here, as we are inside a thread!
   }
 
+  // if we have multiple servers in the cluster, we don't want them
+  // to execute their statistics insert requests all at the same time.
+  // we use this term to add a bit of variance
+  TRI_ASSERT(STATISTICS_INTERVAL > 1);
+  uint64_t const ourTerm = RandomGenerator::interval(STATISTICS_INTERVAL - 1);
+  TRI_ASSERT(ourTerm < STATISTICS_INTERVAL);
+
   uint64_t seconds = 0;
   while (!isStopping() && StatisticsFeature::enabled()) {
     seconds++;
     try {
-      if (seconds % STATISTICS_INTERVAL == 0) {
+      if (seconds % STATISTICS_INTERVAL == ourTerm) {
         // new stats are produced every 10 seconds
         historian();
       }
