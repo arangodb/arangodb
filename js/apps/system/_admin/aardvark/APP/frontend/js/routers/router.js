@@ -424,8 +424,9 @@
 
     rebalanceShards: function () {
       this.checkUser();
+
       this.init.then(() => {
-        if (this.isCluster === false || isCurrentCoordinator === false || (frontendConfig.authenticationEnabled || this.currentUser !== 'root')) {
+        if (this.isCluster === false || isCurrentCoordinator === false) {
           this.routes[''] = 'dashboard';
           this.navigate('#dashboard', { trigger: true });
           return;
