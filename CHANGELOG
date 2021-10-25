@@ -799,12 +799,6 @@ v3.9.0 (XXXX-XX-XX)
   struct member was passed as an argument to its base class. This potentially
   had no observable effects, but should be fixed.
 
-* Implemented a workaround for an issue with authentication at the API level that causes basic auth to fail.
-  It now uses bearer auth, and works for all 3 following scenarios:
-   - Authenticated user with non-empty password,
-   - Authenticated user with empty password,
-   - Root user without password, when server is running in auth-less mode.
-
 
 v3.8.1 (2021-08-27)
 -------------------
