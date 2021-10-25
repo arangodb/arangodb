@@ -197,7 +197,7 @@ struct ReplicatedLogMethodsCoordinator final
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
-
+          LOG_DEVEL << resp.slice().toJson();
           return replication2::replicated_log::LogStatus::fromVelocyPack(
               resp.slice().get("result"));
         });
