@@ -1028,7 +1028,7 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
       return true;
     }
     case NODE_TYPE_OBJECT: {
-      // Is representable as VPack if all it's members
+      // Is representable as VPack if all its members
       // are representable as VPack
       size_t const n = numMembers();
       for (size_t i = 0; i < n; ++i) {
