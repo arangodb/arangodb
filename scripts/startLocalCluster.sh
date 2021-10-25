@@ -108,7 +108,7 @@ else
   fi
   echo $JWT_SECRET > cluster/jwt.secret
   AUTHENTICATION="--server.jwt-secret-keyfile cluster/jwt.secret"
-  AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
+  export AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
 fi
 
 if [ -z "$ENCRYPTION_SECRET" ];then
@@ -322,5 +322,9 @@ done
 
 echo == Done, your cluster is ready at
 for p in `seq $CO_BASE $PORTTOPCO` ; do
+  if [ -z "$JWT_SECRET" ];then
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p"
+  else
+    echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p --server.jwt-secret-keyfile cluster/jwt.secret"
+  fi
 done
