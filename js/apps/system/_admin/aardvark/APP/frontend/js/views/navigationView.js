@@ -137,13 +137,19 @@
         success: function (licenseData) {
           if (licenseData.status && licenseData.features && licenseData.features.expires) {
             self.renderLicenseInfo(licenseData.status, licenseData.features.expires);
+          } else {
+            self.showLicenseError();  
           }
         },
         error: function () {
-          const errorElement = '<div id="subNavLicenseInfo" class="alert alert-danger alert-license"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">Error: Failed to fetch license information</span></div>';
-          $('#licenseInfoArea').append(errorElement);
+          self.showLicenseError();
         }
       }); 
+    },
+
+    showLicenseError: function () {
+      const errorElement = '<div id="subNavLicenseInfo" class="alert alert-danger alert-license"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">Error: Failed to fetch license information</span></div>';
+      $('#licenseInfoArea').append(errorElement);
     },
 
     renderLicenseInfo: function (status, expires) {
