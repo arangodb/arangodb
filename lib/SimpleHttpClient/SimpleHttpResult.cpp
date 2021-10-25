@@ -86,21 +86,6 @@ std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack() const {
   return parser.steal();
 }
 
-std::string SimpleHttpResult::getResultTypeMessage() const {
-  switch (_requestResultType) {
-    case (COMPLETE):
-      return "No error.";
-    case (COULD_NOT_CONNECT):
-      return "Could not connect to server.";
-    case (WRITE_ERROR):
-      return "Error while writing to server.";
-    case (READ_ERROR):
-      return "Error while reading from server.";
-    default:
-      return "Unknown error.";
-  }
-}
-
 void SimpleHttpResult::addHeaderField(char const* line, size_t length) {
   auto find = static_cast<char const*>(memchr(static_cast<void const*>(line), ':', length));
 
