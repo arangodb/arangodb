@@ -85,7 +85,7 @@ struct BaseOptions {
     // Position of _from / _to in the index search condition
     size_t conditionMemberToUpdate;
 
-    std::optional<aql::NonConstExpressionContainer> _nonConstContainer;
+    aql::NonConstExpressionContainer _nonConstContainer;
 
     LookupInfo();
     ~LookupInfo();

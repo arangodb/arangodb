@@ -117,7 +117,7 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
   indexCondition = query.ast()->createNode(read);
   read = info.get("nonConstContainer");
   if (read.isObject()) {
-    _nonConstContainer.emplace(NonConstExpressionContainer::fromVelocyPack(query.ast(), read));
+    _nonConstContainer = NonConstExpressionContainer::fromVelocyPack(query.ast(), read);
   }
 }
 
@@ -129,9 +129,7 @@ BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
   if (other.expression != nullptr) {
     expression = other.expression->clone(nullptr);
   }
-  if (other._nonConstContainer.has_value()) {
-    _nonConstContainer.emplace(other._nonConstContainer->clone(nullptr));
-  }
+  _nonConstContainer = other._nonConstContainer.clone(nullptr);
 }
 
 void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
@@ -154,10 +152,8 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   indexCondition->toVelocyPack(result, true);
   result.add("condNeedUpdate", VPackValue(conditionNeedUpdate));
   result.add("condMemberToUpdate", VPackValue(conditionMemberToUpdate));
-  if (_nonConstContainer.has_value()) {
-    result.add(VPackValue("nonConstContainer"));
-    _nonConstContainer.value().toVelocyPack(result);
-  }
+  result.add(VPackValue("nonConstContainer"));
+  _nonConstContainer.toVelocyPack(result);
   result.close();
 }
 
@@ -182,21 +178,20 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
 void BaseOptions::LookupInfo::initializeNonConstExpressions(
     aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
     aql::Variable const* indexVariable) {
-  _nonConstContainer.emplace(
-      aql::utils::extractNonConstPartsOfIndexCondition(ast, varInfo, false, false,
-                                                       indexCondition, indexVariable));
+  _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(ast, varInfo, false, false,
+                                                       indexCondition, indexVariable);
   // We cannot optimize V8 expressions
-  TRI_ASSERT(!_nonConstContainer->_hasV8Expression);
+  TRI_ASSERT(!_nonConstContainer._hasV8Expression);
 }
 
 void BaseOptions::LookupInfo::calculateIndexExpressions(Ast* ast, ExpressionContext& ctx) {
-  if (!_nonConstContainer.has_value() || _nonConstContainer->_expressions.empty()) {
+  if (_nonConstContainer._expressions.empty()) {
     return;
   }
 
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
-  for (auto& toReplace : _nonConstContainer->_expressions) {
+  for (auto& toReplace : _nonConstContainer._expressions) {
     auto exp = toReplace->expression.get();
     bool mustDestroy;
     AqlValue a = exp->execute(&ctx, mustDestroy);
@@ -227,14 +222,14 @@ void BaseOptions::LookupInfo::calculateIndexExpressions(Ast* ast, ExpressionCont
 void BaseOptions::LookupInfo::injectVariableValues(aql::Ast* ast,
     ResetableExecutorExpressionContext& ctx,
     aql::InputAqlItemRow const& input) {
-  if (!_nonConstContainer.has_value() || _nonConstContainer->_expressions.empty()) {
+  if (!_nonConstContainer._expressions.empty()) {
     return;
   }
   // We cannot optimize V8 expressions
-  TRI_ASSERT(!_nonConstContainer->_hasV8Expression);
+  TRI_ASSERT(!_nonConstContainer._hasV8Expression);
 
   ctx.injectInputRow(input);
-  ctx.injectVariableMapping(_nonConstContainer->_varToRegisterMapping);
+  ctx.injectVariableMapping(_nonConstContainer._varToRegisterMapping);
   calculateIndexExpressions(ast, ctx);
 }
 

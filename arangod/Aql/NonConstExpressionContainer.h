@@ -35,12 +35,29 @@ namespace aql {
 class Ast;
 struct NonConstExpression;
 
+/**
+ * @brief Container for multiple NonConstExpressions.
+ *
+ * A NonConst expression is part of any Aql Condition that is not
+ * constant and needs to be evaluated before we can use it.
+ * (e.g. for Indexes). This is a mechanism to do a partial evaluation
+ * of the AqlCondition.
+ *
+ * This container associates the required variables and their registers,
+ * and also retains if a V8 expression is used.
+ */
+
 struct NonConstExpressionContainer {
   NonConstExpressionContainer() = default;
   ~NonConstExpressionContainer() = default;
+
+  // Do not copy, we are using a unique_ptr as member will not work anyways
   NonConstExpressionContainer(NonConstExpressionContainer const&) = delete;
-  NonConstExpressionContainer(NonConstExpressionContainer&&) = default;
   NonConstExpressionContainer& operator=(NonConstExpressionContainer const&) = delete;
+
+  // Allow moving.
+  NonConstExpressionContainer(NonConstExpressionContainer&&) = default;
+  NonConstExpressionContainer& operator=(NonConstExpressionContainer&&) = default;
 
   std::vector<std::unique_ptr<NonConstExpression>> _expressions;
   std::unordered_map<VariableId, RegisterId> _varToRegisterMapping; 
