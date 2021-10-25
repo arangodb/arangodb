@@ -60,6 +60,12 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
   std::vector<RegisterId> const& _regs;
 };
 
+/**
+ * @brief This Executor expression context is dynamic in comparison to non-resetable one.
+ * The Variable values are not defined on creation, but can be modified and injected at runtime.
+ * This allows to keep the context for all executions within an AQL query, and does not require
+ * reallocation of internal structures.
+ */
 class ResetableExecutorExpressionContext final : public QueryExpressionContext {
  public:
   ResetableExecutorExpressionContext(transaction::Methods& trx,
