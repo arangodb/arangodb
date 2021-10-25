@@ -56,6 +56,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
+#include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
@@ -161,34 +162,51 @@ uint64_t getNumberOfShards(arangodb::RestoreFeature::Options const& options,
   return result;
 }
 
-/// @brief check whether HTTP response is valid, complete, and not an error
-arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& client,
-                                   std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response,
-                                   char const* requestAction,
-                                   std::string const& originalRequest) {
-  using arangodb::basics::StringUtils::itoa;
-  if (response == nullptr || !response->isComplete()) {
-    return {TRI_ERROR_INTERNAL,
-            "got invalid response from server: '" + client.getErrorMessage() +
-                "' while executing " + requestAction + (originalRequest.empty() ? "" : " with this payload: '" +
-                originalRequest + "'")};
+/// @brief Sort collections for proper recreation order
+bool sortCollectionsForCreation(VPackBuilder const& l, VPackBuilder const& r) {
+  VPackSlice const left = l.slice().get("parameters");
+  VPackSlice const right = r.slice().get("parameters");
+
+  std::string leftName =
+      arangodb::basics::VelocyPackHelper::getStringValue(left, "name", "");
+  std::string rightName =
+      arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
+
+  // First we sort by shard distribution.
+  // We first have to create the collections which have no dependencies.
+  // NB: Dependency graph has depth at most 1, no need to manage complex DAG
+  VPackSlice leftDist = left.get(arangodb::StaticStrings::DistributeShardsLike);
+  VPackSlice rightDist = right.get(arangodb::StaticStrings::DistributeShardsLike);
+  if (leftDist.isNone() && rightDist.isString() &&
+      rightDist.copyString() == leftName) {
+    return true;
   }
-  if (response->wasHttpError()) {
-    auto errorNum = static_cast<int>(TRI_ERROR_INTERNAL);
-    std::string errorMsg = response->getHttpReturnMessage();
-    std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
-    arangodb::velocypack::Slice error = bodyBuilder->slice();
-    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
-      errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
-      errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
-    }
-    auto err = ErrorCode{errorNum};
-    return {err, "got invalid response from server: HTTP " +
-                     itoa(response->getHttpReturnCode()) + ": '" + errorMsg +
-                     "' while executing " + requestAction +
-                     (originalRequest.empty() ? "" : "' with this payload: '" + originalRequest + "'")};
+  if (rightDist.isNone() && leftDist.isString() &&
+      leftDist.copyString() == rightName) {
+    return false;
   }
-  return {TRI_ERROR_NO_ERROR};
+
+  // Next we sort by collection type so that vertex collections are recreated
+  // before edge, etc.
+  int leftType =
+      arangodb::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
+  int rightType =
+      arangodb::basics::VelocyPackHelper::getNumericValue<int>(right, "type", 0);
+  if (leftType != rightType) {
+    return leftType < rightType;
+  }
+
+  // Finally, sort by name so we have stable, reproducible results
+  // Sort system collections first
+  if (!leftName.empty() && leftName[0] == '_' &&
+      !rightName.empty() && rightName[0] != '_') {
+    return true;
+  }
+  if (!leftName.empty() && leftName[0] != '_' &&
+      !rightName.empty() && rightName[0] == '_') {
+    return false;
+  }
+  return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
 
 void makeAttributesUnique(arangodb::velocypack::Builder& builder,
@@ -321,12 +339,14 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   if (returnCode == static_cast<int>(ResponseCode::UNAUTHORIZED) ||
       returnCode == static_cast<int>(ResponseCode::FORBIDDEN)) {
     // invalid authorization
-    auto res = ::checkHttpResponse(*httpClient, response, "creating database", body);
+    auto res = arangodb::HttpResponseChecker::check(httpClient->getErrorMessage(), response.get(), "creating database", body);
+ //   auto res = ::checkHttpResponse(*httpClient, response, "creating database", body);
     return {TRI_ERROR_FORBIDDEN, res.errorMessage()};
   }
 
   // any other error
-  auto res = ::checkHttpResponse(*httpClient, response, "creating database", body);
+  auto res = arangodb::HttpResponseChecker::check(httpClient->getErrorMessage(), response.get(), "creating database", body);
+ // auto res = ::checkHttpResponse(*httpClient, response, "creating database", body);
   return {TRI_ERROR_INTERNAL, res.errorMessage()};
 }
 
@@ -457,7 +477,9 @@ arangodb::Result sendRestoreCollection(arangodb::httpclient::SimpleHttpClient& h
 
   std::unique_ptr<SimpleHttpResult> response(
       httpClient.request(arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
-  return ::checkHttpResponse(httpClient, response, "restoring collection", body);
+  return arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(), "restoring collection", body);
+
+ // return ::checkHttpResponse(httpClient, response, "restoring collection", body);
 }
 
 /// @brief Recreate a collection given its description
@@ -507,7 +529,8 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::string const body = viewDefinition.toJson();
   std::unique_ptr<SimpleHttpResult> response(
       httpClient.request(arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
-  return ::checkHttpResponse(httpClient, response, "restoring view", body);
+  return arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(), "restoring view", body);
+  //return ::checkHttpResponse(httpClient, response, "restoring view", body);
 }
 
 arangodb::Result triggerFoxxHeal(arangodb::httpclient::SimpleHttpClient& httpClient) {
@@ -521,7 +544,7 @@ arangodb::Result triggerFoxxHeal(arangodb::httpclient::SimpleHttpClient& httpCli
       httpClient.request(arangodb::rest::RequestType::POST, statusUrl,
                          body.c_str(), body.length()));
 
-  auto res =  ::checkHttpResponse(httpClient, response, "check status", body);
+  auto res = arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(), "check status", body);
   if (res.ok() && response) {
     try {
       if (!response->getBodyVelocyPack()->slice().get("foxxApi").getBool()) {
@@ -539,7 +562,9 @@ arangodb::Result triggerFoxxHeal(arangodb::httpclient::SimpleHttpClient& httpCli
     httpClient.request(arangodb::rest::RequestType::POST, FoxxHealUrl,
                        body.c_str(), body.length())
   );
-  return ::checkHttpResponse(httpClient, response, "trigger self heal", body);
+  return arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(), "trigger self heal", body);
+
+ // return ::checkHttpResponse(httpClient, response, "trigger self heal", body);
 }
 
 arangodb::Result processInputDirectory(
@@ -1099,7 +1124,7 @@ Result RestoreFeature::RestoreJob::sendRestoreData(arangodb::httpclient::SimpleH
 
   std::unique_ptr<SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::PUT, url, buffer, bufferSize, headers));
-  arangodb::Result res = ::checkHttpResponse(client, response, "restoring data", "");
+  arangodb::Result res = arangodb::HttpResponseChecker::check(client.getErrorMessage(), response.get(), "restoring data", "");
   
   if (res.fail()) {
     // error
@@ -1552,7 +1577,7 @@ Result RestoreFeature::RestoreMainJob::sendRestoreIndexes(arangodb::httpclient::
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
-  return ::checkHttpResponse(client, response, "restoring indexes", body);
+  return arangodb::HttpResponseChecker::check(client.getErrorMessage(), response.get(), "restoring indexes", body);
 }
 
 RestoreFeature::RestoreSendJob::RestoreSendJob(RestoreFeature& feature,
