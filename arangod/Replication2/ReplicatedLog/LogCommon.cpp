@@ -381,7 +381,6 @@ auto replication2::operator!=(LogRange::Iterator const& a,
   return !(a == b);
 }
 
-
 template <typename... Args>
 replicated_log::CommitFailReason::CommitFailReason(std::in_place_t, Args&&... args) noexcept
     : value(std::forward<Args>(args)...) {}
@@ -390,6 +389,73 @@ auto replicated_log::CommitFailReason::withNothingToCommit() noexcept -> CommitF
   return CommitFailReason(std::in_place, NothingToCommit{});
 }
 
-auto replicated_log::CommitFailReason::withQuorumSizeNotReached() noexcept -> CommitFailReason{
+auto replicated_log::CommitFailReason::withQuorumSizeNotReached() noexcept -> CommitFailReason {
   return CommitFailReason(std::in_place, QuorumSizeNotReached{});
+}
+
+namespace {
+inline constexpr std::string_view ReasonFieldName = "reason";
+inline constexpr std::string_view NothingToCommitEnum = "NothingToCommit";
+inline constexpr std::string_view QuorumSizeNotReachedEnum =
+    "QuorumSizeNotReached";
+}  // namespace
+
+auto replicated_log::CommitFailReason::NothingToCommit::fromVelocyPack(velocypack::Slice s)
+    -> NothingToCommit {
+  TRI_ASSERT(s.get(ReasonFieldName).isString())
+      << "Expected string, found: " << s.toJson();
+  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(VPackStringRef(NothingToCommitEnum)))
+      << "Expected string `" << NothingToCommitEnum << "`, found: " << s.stringView();
+  return {};
+}
+
+void replicated_log::CommitFailReason::NothingToCommit::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder obj(&builder);
+  builder.add(VPackStringRef(ReasonFieldName), VPackValue(NothingToCommitEnum));
+}
+
+auto replicated_log::CommitFailReason::QuorumSizeNotReached::fromVelocyPack(velocypack::Slice s)
+    -> QuorumSizeNotReached {
+  TRI_ASSERT(s.get(ReasonFieldName).isString())
+      << "Expected string, found: " << s.toJson();
+  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(VPackStringRef(QuorumSizeNotReachedEnum)))
+      << "Expected string `" << QuorumSizeNotReachedEnum
+      << "`, found: " << s.stringView();
+  return {};
+}
+
+void replicated_log::CommitFailReason::QuorumSizeNotReached::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder obj(&builder);
+  builder.add(VPackStringRef(ReasonFieldName), VPackValue(QuorumSizeNotReachedEnum));
+}
+
+auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s) -> CommitFailReason {
+  auto reason = s.get(ReasonFieldName).stringView();
+  if (reason == NothingToCommitEnum) {
+    return CommitFailReason{std::in_place, NothingToCommit::fromVelocyPack(s)};
+  } else if (reason == QuorumSizeNotReachedEnum) {
+    return CommitFailReason{std::in_place, QuorumSizeNotReached::fromVelocyPack(s)};
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        basics::StringUtils::concatT("CommitFailReason `", reason,
+                                     "` unknown."));
+  }
+}
+
+void replicated_log::CommitFailReason::toVelocyPack(velocypack::Builder& builder) const {
+  std::visit([&](auto const& v) { v.toVelocyPack(builder); }, value);
+}
+
+auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
+  struct ToStringVisitor {
+    auto operator()(CommitFailReason::NothingToCommit const&) -> std::string {
+      return "Nothing to commit";
+    }
+    auto operator()(CommitFailReason::QuorumSizeNotReached const&) -> std::string {
+      return "Required quorum size not yet reached";
+    }
+  };
+
+  return std::visit(ToStringVisitor{}, r.value);
 }
