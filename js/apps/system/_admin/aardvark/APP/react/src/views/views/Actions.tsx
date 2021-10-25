@@ -13,6 +13,7 @@ import LinkPropertiesForm from "./forms/LinkPropertiesForm";
 import ViewPropertiesForm from "./forms/ViewPropertiesForm";
 import { getReducer } from "../../utils/helpers";
 import JsonForm from "./forms/JsonForm";
+import { postProcessor } from "./helpers";
 
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };
@@ -31,7 +32,7 @@ const EditButton = ({ view, modalCid }: ButtonProps) => {
     lockJsonForm: false,
     renderKey: ''
   });
-  const [state, dispatch] = useReducer(getReducer<FormState>(initialState.current), initialState.current);
+  const [state, dispatch] = useReducer(getReducer<FormState>(initialState.current, postProcessor), initialState.current);
   const { data } = useSWR(state.show
     ? `/view/${view.name}/properties`
     : null, (path) => getApiRouteForCurrentDB().get(path));

@@ -1,6 +1,6 @@
 import React, { Dispatch, useReducer } from 'react';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
-import { cloneDeep, uniqueId } from 'lodash';
+import { cloneDeep, merge, set, uniqueId } from 'lodash';
 import JsonForm from "./forms/JsonForm";
 import FeatureForm from "./forms/FeatureForm";
 import BaseForm from "./forms/BaseForm";
@@ -10,8 +10,8 @@ import { AnalyzerTypeState, FormState } from "./constants";
 import { DispatchArgs, State } from '../../utils/constants';
 import CopyFromInput from "./forms/inputs/CopyFromInput";
 import { Cell, Grid } from "../../components/pure-css/grid";
-import { getForm } from "./helpers";
-import { getReducer } from "../../utils/helpers";
+import { getForm, validateAndFix } from "./helpers";
+import { getPath, getReducer } from "../../utils/helpers";
 import { IconButton } from "../../components/arango/buttons";
 
 declare var arangoHelper: { [key: string]: any };
@@ -34,12 +34,29 @@ const initialState: State<FormState> = {
   renderKey: uniqueId('force_re-render_')
 };
 
+const postProcessor = (state: State<FormState>, action: DispatchArgs<FormState>) => {
+  if (action.type === 'setField' && action.field) {
+    const path = getPath(action.basePath, action.field.path);
+
+    if (action.field.path === 'type') {
+      const tempFormState = cloneDeep(state.formCache);
+
+      validateAndFix(tempFormState);
+      state.formState = tempFormState as unknown as FormState;
+
+      merge(state.formCache, state.formState);
+    } else if (action.field.value !== undefined) {
+      set(state.formState, path, action.field.value);
+    }
+  }
+};
+
 interface AddAnalyzerProps {
   analyzers: FormState[];
 }
 
 const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
-  const [state, dispatch] = useReducer(getReducer<FormState>(initialState), initialState);
+  const [state, dispatch] = useReducer(getReducer<FormState>(initialState, postProcessor), initialState);
 
   const formState = state.formState;
 

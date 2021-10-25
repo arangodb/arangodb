@@ -1,7 +1,10 @@
 import Ajv2019 from "ajv/dist/2019";
 import ajvErrors from 'ajv-errors';
-import { formSchema, linksSchema } from "./constants";
+import { formSchema, FormState, linksSchema } from "./constants";
 import { useEffect, useMemo, useState } from "react";
+import { DispatchArgs, State } from "../../utils/constants";
+import { getPath } from "../../utils/helpers";
+import { set } from "lodash";
 
 const ajv = new Ajv2019({
   allErrors: true,
@@ -25,3 +28,11 @@ export function useLinkState (formState: { [key: string]: any }, formField: stri
 
   return [field, setField, addDisabled, fields];
 }
+
+export const postProcessor = (state: State<FormState>, action: DispatchArgs<FormState>) => {
+  if (action.type === 'setField' && action.field && action.field.value !== undefined) {
+    const path = getPath(action.basePath, action.field.path);
+
+    set(state.formState, path, action.field.value);
+  }
+};

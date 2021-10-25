@@ -13,6 +13,7 @@ import LinkPropertiesForm from "./forms/LinkPropertiesForm";
 import ViewPropertiesForm from "./forms/ViewPropertiesForm";
 import { getReducer } from "../../utils/helpers";
 import { IconButton } from "../../components/arango/buttons";
+import { postProcessor } from "./helpers";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -38,7 +39,7 @@ interface AddViewProps {
 }
 
 const AddView = ({ views }: AddViewProps) => {
-  const [state, dispatch] = useReducer(getReducer<FormState>(initialState), initialState);
+  const [state, dispatch] = useReducer(getReducer<FormState>(initialState, postProcessor), initialState);
   const cacheRef = useRef({});
 
   const formState = state.formState;
