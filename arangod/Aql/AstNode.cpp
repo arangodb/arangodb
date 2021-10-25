@@ -1045,7 +1045,7 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
       return true;
     }
     case NODE_TYPE_ATTRIBUTE_ACCESS: {
-      // Is representable as VPack if it's first member is
+      // Is representable as VPack if its first member is
       // representable as VPack
       auto value = getMember(0);
       TRI_ASSERT(value != nullptr);
