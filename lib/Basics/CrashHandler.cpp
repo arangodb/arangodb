@@ -482,7 +482,7 @@ void CrashHandler::installCrashHandler() {
 
 #ifndef _WIN32
   try {
-    constexpr size_t stackSize = std::max<size_t>(
+    size_t const stackSize = std::max<size_t>(
         128 * 1024, 
         std::max<size_t>(
           MINSIGSTKSZ, 
