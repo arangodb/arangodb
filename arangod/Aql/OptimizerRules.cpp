@@ -1735,7 +1735,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
       }
     } else {
       auto nn = ExecutionNode::castTo<SubqueryNode*>(n);
-      if (nn->isModificationNode()) { // cannot move upwards if theres a modification keyword in the subquery e.g.
+      if (nn->isModificationNode()  || !nn->isDeterministic()) { // cannot move upwards if theres a modification keyword in the subquery e.g.
                                       // INSERT would not be scope limited by the outermost subqueries, so we could end up
                                       // inserting a smaller amount of documents than what's actually proposed in the query.
         continue;
