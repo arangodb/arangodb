@@ -679,4 +679,42 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
     expected[1].coveringIndexPosition = 1;
     assertProjectionsCoverageSuccess(fields, attributes, expected);
   }
+
+  // sub-attribute partial more complex
+  {
+    std::vector<arangodb::aql::AttributeNamePath> attributes;
+    std::vector<std::string> path1 {"a", "b"};
+    attributes.emplace_back(path1);
+    std::vector<std::string> path2 {"b", "d"};
+    attributes.emplace_back(path2);
+    attributes.emplace_back("d");
+    std::vector<std::vector<std::string>> fields = {{"a.b"}, {"b.d"}, {"d"}};
+    arangodb::aql::Projections expected(attributes);
+    expected[0].coveringIndexCutoff = 2;
+    expected[0].coveringIndexPosition = 0;
+    expected[1].coveringIndexCutoff = 2;
+    expected[1].coveringIndexPosition = 1;
+    expected[2].coveringIndexCutoff = 1;
+    expected[2].coveringIndexPosition = 2;
+    assertProjectionsCoverageSuccess(fields, attributes, expected);
+  }
+
+  // sub-attribute partial - check if the best is selected
+  {
+    std::vector<arangodb::aql::AttributeNamePath> attributes;
+    std::vector<std::string> path1 {"a", "b"};
+    attributes.emplace_back(path1);
+    std::vector<std::string> path2 {"b", "d"};
+    attributes.emplace_back(path2);
+    attributes.emplace_back("d");
+    std::vector<std::vector<std::string>> fields = {{"a.b"}, {"b.d"}, {"a.b", "b.d", "a.c"}, {"d"}};
+    arangodb::aql::Projections expected(attributes);
+    expected[0].coveringIndexCutoff = 2;
+    expected[0].coveringIndexPosition = 2;
+    expected[1].coveringIndexCutoff = 2;
+    expected[1].coveringIndexPosition = 3;
+    expected[2].coveringIndexCutoff = 1;
+    expected[2].coveringIndexPosition = 5;
+    assertProjectionsCoverageSuccess(fields, attributes, expected);
+  }
 }
