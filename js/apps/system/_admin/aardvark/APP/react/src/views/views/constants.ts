@@ -13,11 +13,20 @@ export type StoredValues = {
   storedValues?: StoredValue[]
 };
 
+export type PrimartSortTypeDirection = {
+  field: string;
+  direction: Direction;
+};
+
+export type PrimarySortTypeBoolean = {
+  field: string;
+  asc: boolean;
+}
+
+export type PrimarySortType = PrimartSortTypeDirection | PrimarySortTypeBoolean;
+
 export type PrimarySort = {
-  primarySort?: {
-    field: string;
-    direction: Direction;
-  }[]
+  primarySort?: PrimarySortType[]
 };
 
 export type BytesAccumConsolidationPolicy = {
@@ -144,22 +153,42 @@ export const formSchema: JSONSchemaType<FormState> = {
       items: {
         type: 'object',
         nullable: false,
-        properties: {
-          field: {
-            type: 'string',
-            nullable: false
+        oneOf: [
+          {
+            properties: {
+              field: {
+                type: 'string',
+                nullable: false
+              },
+              direction: {
+                type: 'string',
+                nullable: false,
+                enum: ['asc', 'desc']
+              }
+            },
+            required: ['field', 'direction'],
+            additionalProperties: false
           },
-          direction: {
-            type: 'string',
-            enum: ['asc', 'desc'],
-            default: 'asc'
+          {
+            properties: {
+              field: {
+                type: 'string',
+                nullable: false
+              },
+              asc: {
+                type: 'boolean',
+                nullable: false
+              }
+            },
+            required: ['field', 'asc'],
+            additionalProperties: false
           }
-        },
+        ],
         default: {
+          field: '',
           direction: 'asc'
         },
-        required: ['field', 'direction'],
-        additionalProperties: false
+        required: ['field']
       }
     },
     primarySortCompression: {
