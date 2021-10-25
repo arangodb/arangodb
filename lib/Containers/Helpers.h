@@ -33,8 +33,8 @@ namespace arangodb::containers {
 struct Helpers {
 /// @brief calculate capacity for the container for at least one more 
 /// element.
-/// if this would exceed the container's capacity, use a factor-of-2
-/// growth strategy to calculate the capacity.
+/// if this would exceed the container's capacity, use a growth factor of
+/// 1.5 to calculate the new capacity.
 template<typename T>
 static std::size_t nextCapacity(T const& container, std::size_t initialCapacity) {
   std::size_t capacity;
@@ -42,10 +42,18 @@ static std::size_t nextCapacity(T const& container, std::size_t initialCapacity)
     // reserve some initial space
     capacity = std::max(std::size_t(1), initialCapacity);
   } else {
+    TRI_ASSERT(container.capacity() > 0);
+    // minimum requirement is that we have room for at least one more element.
     capacity = container.size() + 1;
-    // allocate with power of 2 growth
     if (capacity > container.capacity()) {
-      capacity *= 2;
+      // inspired by facebook/folly (https://github.com/facebook/folly/blob/master/folly/memory/Malloc.h):
+      constexpr size_t jemallocMinInPlaceExpandable = 4096;
+      if (container.capacity() < jemallocMinInPlaceExpandable / std::max(sizeof(typename T::value_type), alignof(typename T::value_type))) {
+        capacity = container.capacity() * 2;
+      } else {
+        // grow with a growth factor of 1.5
+        capacity = (container.size() * 3 + 1) / 2;
+      }
     }
   }
   TRI_ASSERT(capacity > container.size());
@@ -53,8 +61,8 @@ static std::size_t nextCapacity(T const& container, std::size_t initialCapacity)
 }
 
 /// @brief reserve space for at least one more element in the container.
-/// if this would exceed the container's capacity, use a factor-of-2
-/// growth strategy to grow the container's memory.
+/// if this would exceed the container's capacity, use a growth factor of
+/// 1.5 to grow the container's memory.
 template<typename T>
 static void reserveSpace(T& container, std::size_t initialCapacity) {
   std::size_t capacity = nextCapacity(container, initialCapacity);
