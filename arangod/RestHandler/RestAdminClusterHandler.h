@@ -91,7 +91,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleQueryJobStatus();
 
   RestStatus handleRemoveServer();
-  std::pair<RestStatus, std::uint32_t> handleRebalanceShards();
+  RestStatus handleRebalanceShards();
 
  private:
   struct MoveShardContext {
@@ -169,7 +169,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   using ShardMap = std::map<std::string, std::unordered_set<CollectionShardPair>>;
   using ReshardAlgorithm =
-      std::function<void(ShardMap&, std::vector<MoveShardDescription>&)>;
+      std::function<void(ShardMap&, std::vector<MoveShardDescription>&, std::uint32_t)>;
 
  private:
   FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);

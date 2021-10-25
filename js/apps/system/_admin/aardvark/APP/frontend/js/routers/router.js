@@ -6,6 +6,7 @@
 (function () {
   'use strict';
 
+  let isCurrentCoordinator = false;
   window.Router = Backbone.Router.extend({
     toUpdate: [],
     dbServers: [],
@@ -13,6 +14,7 @@
     foxxApiEnabled: undefined,
     statisticsInAllDatabases: undefined,
     lastRoute: undefined,
+    maxNumberOfMoveShards: undefined,
 
     routes: {
       '': 'cluster',
@@ -210,6 +212,8 @@
         this.statisticsInAllDatabases = frontendConfig.statisticsInAllDatabases;
       }
 
+      this.maxNumberOfMoveShards = frontendConfig.maxNumberOfMoveShards;
+
       document.addEventListener('keyup', this.listener, false);
 
       // This should be the only global object
@@ -237,6 +241,7 @@
       this.initOnce = _.once(function () {
         const callback = function (error, isCoordinator) {
           if (isCoordinator === true) {
+           isCurrentCoordinator = true;
             self.coordinatorCollection.fetch({
               success: function () {
                 self.fetchDBS();
@@ -420,7 +425,7 @@
     rebalanceShards: function () {
       this.checkUser();
       this.init.then(() => {
-        if (this.isCluster === false) {
+        if (this.isCluster === false || isCurrentCoordinator === false || (frontendConfig.authenticationEnabled || this.currentUser !== 'root')) {
           this.routes[''] = 'dashboard';
           this.navigate('#dashboard', { trigger: true });
           return;
@@ -429,6 +434,7 @@
           this.rebalanceShardsView.remove();
         }
         this.rebalanceShardsView = new window.RebalanceShardsView({
+          maxNumberOfMoveShards: this.maxNumberOfMoveShards
         });
         this.rebalanceShardsView.render();
       });

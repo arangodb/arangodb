@@ -1800,14 +1800,14 @@ using CollectionShardPair = RestAdminClusterHandler::CollectionShardPair;
 using MoveShardDescription = RestAdminClusterHandler::MoveShardDescription;
 
 void theSimpleStupidOne(std::map<std::string, std::unordered_set<CollectionShardPair>>& shardMap,
-                        std::vector<MoveShardDescription>& moves) {
+                        std::vector<MoveShardDescription>& moves, std::uint32_t numMoveShards) {
   // If you dislike this algorithm feel free to add a new one.
   // shardMap is a map from dbserver to a set of shards located on that server.
   // your algorithm has to fill `moves` with the move shard operations that it wants to execute.
   // Please fill in all values of the `MoveShardDescription` struct.
 
   std::unordered_set<std::string> movedShards;
-  while (moves.size() < arangodb::rest::server().getFeature<ClusterFeature>().numMoveShards()) {
+  while (moves.size() < numMoveShards) {
     auto [emptiest, fullest] =
         std::minmax_element(shardMap.begin(), shardMap.end(),
                             [](auto const& a, auto const& b) {
@@ -1849,16 +1849,23 @@ void theSimpleStupidOne(std::map<std::string, std::unordered_set<CollectionShard
 
 RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalanceShards(
     const ReshardAlgorithm& algorithm) {
-  LOG_DEVEL << "OI 5";
+
   // dbserver -> shards
   std::vector<MoveShardDescription> moves;
   std::map<std::string, std::unordered_set<CollectionShardPair>> shardMap;
   getShardDistribution(shardMap);
 
-  algorithm(shardMap, moves);
+  algorithm(shardMap, moves, server().getFeature<ClusterFeature>().maxNumberOfMoveShards());
+
+  VPackBuilder responseBuilder;
+  responseBuilder.openObject();
+  responseBuilder.add("operations", VPackValue(moves.size()));
+  responseBuilder.close();
 
   if (moves.empty()) {
-    resetResponse(rest::ResponseCode::OK);
+
+
+    generateOk(rest::ResponseCode::OK, responseBuilder.slice());
     return futures::makeFuture();
   }
 
@@ -1890,33 +1897,32 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalance
     std::move(write).end().done();
   }
 
-  return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue([this](AsyncAgencyCommResult&& result) {
+  return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue([this, resBuilder = std::move(responseBuilder)](AsyncAgencyCommResult&& result) {
     if (result.ok() && result.statusCode() == 200) {
-      LOG_DEVEL << "OI 6";
-      generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
+      generateOk(rest::ResponseCode::ACCEPTED, resBuilder.slice());
     } else {
       generateError(result.asResult());
     }
   });
 }
 
-std::pair<RestStatus, std::uint32_t> RestAdminClusterHandler::handleRebalanceShards() {
+RestStatus RestAdminClusterHandler::handleRebalanceShards() {
   if (request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return {RestStatus::DONE, 0};
+    return RestStatus::DONE;
   }
 
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
-    return {RestStatus::DONE, 0};
+    return RestStatus::DONE;
   }
 
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(auth::Level::RW)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficent permissions");
-    return {RestStatus::DONE, 0};
+    return RestStatus::DONE;
   }
 
   // ADD YOUR ALGORITHM HERE!!!
@@ -1928,10 +1934,10 @@ std::pair<RestStatus, std::uint32_t> RestAdminClusterHandler::handleRebalanceSha
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "unknown algorithm");
-    return {RestStatus::DONE, 0};
+    return RestStatus::DONE;
   }
 
-  return {waitForFuture(
+  return waitForFuture(
       handlePostRebalanceShards(algorithm)
           .thenError<VPackException>([this](VPackException const& e) {
             generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
@@ -1939,5 +1945,5 @@ std::pair<RestStatus, std::uint32_t> RestAdminClusterHandler::handleRebalanceSha
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          })), server().getFeature<ClusterFeature>().numMoveShards()};
+          }));
 }

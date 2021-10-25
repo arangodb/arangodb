@@ -83,7 +83,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::uint32_t maxNumberOfShards() const { return _maxNumberOfShards; }
   std::uint32_t minReplicationFactor() const { return _minReplicationFactor; }
   std::uint32_t maxReplicationFactor() const { return _maxReplicationFactor; }
-  std::uint32_t numMoveShards() const { return _numMoveShards;}
+  std::uint32_t maxNumberOfMoveShards() const { return _maxNumberOfMoveShards;}
   bool forceOneShard() const { return _forceOneShard; }
   /// @brief index creation timeout in seconds. note: this used to be
   /// a configurable parameter in previous versions, but is now hard-coded.
@@ -165,7 +165,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
   std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
   std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
-  std::uint32_t _numMoveShards = 10;     // number of shards to be moved per rebalance operation (0 = unrestricted)
+  std::uint32_t _maxNumberOfMoveShards = 10;     // maximum number of shards to be moved per rebalance operation (>=1)
   ErrorCode _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
   bool _createWaitsForSyncReplication = true;
   bool _forceOneShard = false;

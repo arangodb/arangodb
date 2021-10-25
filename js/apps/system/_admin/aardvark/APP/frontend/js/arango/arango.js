@@ -544,6 +544,9 @@
         },
         Shards: {
           route: '#shards'
+        },
+        "Rebalance Shards": {
+          route: '#rebalanceShards'
         }
       };
 

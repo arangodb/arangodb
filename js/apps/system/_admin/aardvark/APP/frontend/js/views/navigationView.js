@@ -44,6 +44,7 @@
       this.isCluster = options.isCluster;
       this.foxxApiEnabled = options.foxxApiEnabled;
       this.statisticsInAllDatabases = options.statisticsInAllDatabases;
+      this.numMoveShards = options.numMoveShards;
 
       this.handleKeyboardHotkeys();
 
