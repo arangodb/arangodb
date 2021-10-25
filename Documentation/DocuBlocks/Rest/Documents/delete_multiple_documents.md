@@ -25,6 +25,17 @@ If set to *true*, ignore any *_rev* attribute in the selectors. No
 revision check is performed. If set to *false* then revisions are checked.
 The default is *true*.
 
+@RESTQUERYPARAM{silent,boolean,optional}
+If set to *true*, an empty array will be returned as the response in case
+no errors occurred. No meta-data will be returned for the removed documents. 
+This option can be used to save some network traffic. 
+In case any of the remove operations produces an error, the result array 
+will contain only those errors. Only the errors will be returned in it, 
+without any positional mapping to the original input documents. That means 
+it is still visible _that_ errors have happened, but the errors cannot be
+unambiguously mapped to the input documents.
+The option is *false* by default.
+
 @RESTDESCRIPTION
 The body of the request is an array consisting of selectors for
 documents. A selector can either be a string with a key or a string
@@ -35,8 +46,9 @@ selector is an object and has a *_rev* attribute, it is a
 precondition that the actual revision of the removed document in the
 collection is the specified one.
 
-The body of the response is an array of the same length as the input
-array. For each input selector, the output contains a JSON object
+If the *silent* option is not set, the body of the response is an array of 
+the same length as the input array. 
+For each input selector, the output contains a JSON object
 with the information about the outcome of the operation. If no error
 occurred, an object is built in which the attribute *_id* contains
 the known *document-id* of the removed document, *_key* contains
@@ -44,6 +56,14 @@ the key which uniquely identifies a document in a given collection,
 and the attribute *_rev* contains the document revision. In case of
 an error, an object with the attribute *error* set to *true* and
 *errorCode* set to the error code is built.
+If the *silent* option is set, the body of the response is an array that
+will contain one entry per failed removal operation. If no removal operation
+has failed, the result will be an empty array. If errors happened and
+the *silent* option is set, it may not be possible to map the resulting
+errors unambiguously to the input values, because the result array may
+be shorter than the input array. Thus the *silent* option should only
+be used under circumstances that do not require error checking or when
+error checking can be very coarse-grained.
 
 If the *waitForSync* parameter is not specified or set to *false*,
 then the collection's default *waitForSync* behavior is applied.

@@ -28,12 +28,19 @@ in the result.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
 Additionally return the complete old document under the attribute *old*
-in the result. Only available if the overwrite option is used.
+in the result. Only available if the *overwrite* or *overwriteMode* options
+are used.
 
 @RESTQUERYPARAM{silent,boolean,optional}
-If set to *true*, an empty object will be returned as response. No meta-data
-will be returned for the created document. This option can be used to
-save some network traffic.
+If set to *true*, an empty array will be returned as the response in case
+no errors occurred. No meta-data will be returned for the inserted documents. 
+This option can be used to save some network traffic. 
+In case any of the insert operations produces an error, the result array 
+will contain only those errors. Only the errors will be returned in it, 
+without any positional mapping to the original input documents. That means 
+it is still visible _that_ errors have happened, but the errors cannot be
+unambiguously mapped to the input documents.
+The option is *false* by default.
 
 @RESTQUERYPARAM{overwrite,boolean,optional}
 If set to *true*, the insert becomes a replace-insert. If a document with the
@@ -68,28 +75,28 @@ command, the URL query parameter *keepNull* can be used with a value of
 *false*. This will modify the behavior of the patch command to remove any
 attributes from the existing document that are contained in the patch document
 with an attribute value of *null*.
-This option controls the update-insert behavior only.
+This option controls the insert-update behavior only.
 
 @RESTQUERYPARAM{mergeObjects,boolean,optional}
 Controls whether objects (not arrays) will be merged if present in both the
 existing and the update-insert document. If set to *false*, the value in the
 patch document will overwrite the existing document's value. If set to *true*,
 objects will be merged. The default is *true*.
-This option controls the update-insert behavior only.
+This option controls the insert-update behavior only.
 
 @RESTDESCRIPTION
 Creates new documents from the documents given in the body, unless there
 is already a document with the *_key* given. If no *_key* is given, a new
-unique *_key* is generated automatically.
+unique *_key* is generated for each document automatically.
 
-The result body will contain a JSON array of the
+Possibly given *_id* and *_rev* attributes in the input request body are 
+always ignored, the URL part or the query parameter collection respectively counts.
+
+If the *silent* option is not set, the result body will contain an array of the
 same length as the input array, and each entry contains the result
 of the operation for the corresponding input. In case of an error
 the entry is a document with attributes *error* set to *true* and
 errorCode set to the error code that has happened.
-
-Possibly given *_id* and *_rev* attributes in the body are always ignored,
-the URL part or the query parameter collection respectively counts.
 
 If *silent* is not set to *true*, the body of the response contains an
 array of JSON objects with the following attributes:
@@ -97,6 +104,15 @@ array of JSON objects with the following attributes:
   - *_id* contains the document identifier of the newly created document
   - *_key* contains the document key
   - *_rev* contains the document revision
+
+If the *silent* option is set, the body of the response is an array that
+will contain one entry per failed insert operation. If no insert operation
+has failed, the result will be an empty array. If errors happened and
+the *silent* option is set, it may not be possible to map the resulting
+errors unambiguously to the input values, because the result array may
+be shorter than the input array. Thus the *silent* option should only
+be used under circumstances that do not require error checking or when
+error checking can be very coarse-grained.
 
 If the collection parameter *waitForSync* is *false*, then the call
 returns as soon as the documents have been accepted. It will not wait

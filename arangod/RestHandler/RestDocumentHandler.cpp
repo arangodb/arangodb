@@ -144,17 +144,16 @@ RestStatus RestDocumentHandler::insertDocument() {
 
 
   arangodb::OperationOptions opOptions(_context);
-  opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
-  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
-  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
-  opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
-  opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
+  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, OperationOptions::defaultValues.waitForSync);
+  opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, OperationOptions::defaultValues.isRestore);
+  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, !OperationOptions::defaultValues.validate);
+  opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, OperationOptions::defaultValues.returnNew);
+  opOptions.silent = _request->parsedValue(StaticStrings::SilentString, OperationOptions::defaultValues.silent);
   
   if (_request->parsedValue(StaticStrings::Overwrite, false)) {
     // the default behavior if just "overwrite" is set
     opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
   }
-
 
   std::string const& mode = _request->value(StaticStrings::OverwriteMode);
   if (!mode.empty()) {
@@ -164,13 +163,13 @@ RestStatus RestDocumentHandler::insertDocument() {
       opOptions.overwriteMode = overwriteMode;
 
       if (opOptions.overwriteMode == OperationOptions::OverwriteMode::Update) {
-        opOptions.mergeObjects = _request->parsedValue(StaticStrings::MergeObjectsString, true);
+        opOptions.mergeObjects = _request->parsedValue(StaticStrings::MergeObjectsString, OperationOptions::defaultValues.mergeObjects);
         opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, false);
       }
     }
   }
-  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false) &&
-                        opOptions.isOverwriteModeUpdateReplace();
+  opOptions.returnOld = opOptions.isOverwriteModeUpdateReplace() &&
+                        _request->parsedValue(StaticStrings::ReturnOldString, OperationOptions::defaultValues.returnOld);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -213,24 +212,22 @@ RestStatus RestDocumentHandler::insertDocument() {
   
   return waitForFuture(
       _activeTrx->insertAsync(cname, body, opOptions)
-          .thenValue([=](OperationResult&& opres) {
+          .thenValue([=](OperationResult&& opRes) {
             // Will commit if no error occured.
             // or abort if an error occured.
             // result stays valid!
-            return _activeTrx->finishAsync(opres.result).thenValue([=, opres(std::move(opres))](Result&& res) {
-              if (opres.fail()) {
-                generateTransactionError(cname, opres);
+            return _activeTrx->finishAsync(opRes.result).thenValue([=, opRes(std::move(opRes))](Result&& res) {
+              if (opRes.fail()) {
+                generateTransactionError(cname, opRes);
                 return;
               }
 
               if (res.fail()) {
-                generateTransactionError(cname, OperationResult(res, opOptions),
-                                         "");
+                generateTransactionError(cname, OperationResult(res, opOptions));
                 return;
               }
 
-              generateSaved(opres, cname,
-                            TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+              generateSaved(opRes, cname,
                             _activeTrx->transactionContextPtr()->getVPackOptions(),
                             isMultiple);
             });
@@ -440,13 +437,13 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     return RestStatus::DONE;
   }
 
-  opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
-  opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
-  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
-  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
-  opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
-  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
-  opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
+  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, OperationOptions::defaultValues.waitForSync);
+  opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, OperationOptions::defaultValues.isRestore);
+  opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, OperationOptions::defaultValues.ignoreRevs);
+  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, !OperationOptions::defaultValues.validate);
+  opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, OperationOptions::defaultValues.returnNew);
+  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, OperationOptions::defaultValues.returnOld);
+  opOptions.silent = _request->parsedValue(StaticStrings::SilentString, OperationOptions::defaultValues.silent);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -540,7 +537,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     f = _activeTrx->replaceAsync(cname, body, opOptions);
   }
 
-  return waitForFuture(std::move(f).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
+  return waitForFuture(std::move(f).thenValue([=](OperationResult opRes) {
     return _activeTrx->finishAsync(opRes.result).thenValue([=, opRes(std::move(opRes))](Result&& res) {
       // ...........................................................................
       // outside write transaction
@@ -556,7 +553,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
         return;
       }
 
-      generateSaved(opRes, cname, TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+      generateSaved(opRes, cname,
                     _activeTrx->transactionContextPtr()->getVPackOptions(), isArrayCase);
     });
   }));
@@ -594,10 +591,11 @@ RestStatus RestDocumentHandler::removeDocument() {
   }
 
   OperationOptions opOptions(_context);
-  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
-  opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
-  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
-  opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
+  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, OperationOptions::defaultValues.waitForSync);
+  opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, OperationOptions::defaultValues.isRestore);
+  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, OperationOptions::defaultValues.returnOld);
+  opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, OperationOptions::defaultValues.ignoreRevs);
+  opOptions.silent = _request->parsedValue(StaticStrings::SilentString, OperationOptions::defaultValues.silent);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -687,7 +685,6 @@ RestStatus RestDocumentHandler::removeDocument() {
           }
 
           generateDeleted(opRes, cname,
-                          TRI_col_type_e(_activeTrx->getCollectionType(cname)),
                           _activeTrx->transactionContextPtr()->getVPackOptions(), isMultiple);
         });
       }));

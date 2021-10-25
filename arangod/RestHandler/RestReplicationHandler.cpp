@@ -1722,15 +1722,15 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
     return {ec};
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC("8e8e1", WARN, Logger::CLUSTER)
-        << "could not insert documents for restore exception: " << ex.what();
+        << "could not insert documents for restore: " << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     LOG_TOPIC("f1e7f", WARN, Logger::CLUSTER)
-        << "could not insert documents for restore exception: " << ex.what();
+        << "could not insert documents for restore: " << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     LOG_TOPIC("368bb", WARN, Logger::CLUSTER)
-        << "could not insert documents for restore exception.";
+        << "could not insert documents for restore: unknown exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 }

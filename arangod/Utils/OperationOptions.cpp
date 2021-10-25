@@ -28,41 +28,12 @@
 
 using namespace arangodb;
 
-OperationOptions::OperationOptions()
-    : indexOperationMode(IndexOperationMode::normal),
-      overwriteMode(OverwriteMode::Unknown),
-      waitForSync(false),
-      validate(true),
-      keepNull(true),
-      mergeObjects(true),
-      silent(false),
-      ignoreRevs(true),
-      returnOld(false),
-      returnNew(false),
-      isRestore(false),
-      checkUniqueConstraintsInPreflight(false),
-      truncateCompact(true),
-      documentCallFromAql(false),
-      _context(nullptr) {}
+// default values for operation options, created at program start.
+OperationOptions const OperationOptions::defaultValues;
 
 OperationOptions::OperationOptions(ExecContext const& context)
     : OperationOptions() {
   _context = &context;
-}
-
-namespace {
-const char* indexOpModeString(IndexOperationMode mode) {
-  switch (mode) {
-    case IndexOperationMode::normal:
-      return "normal";
-    case IndexOperationMode::rollback:
-      return "rollback";
-    case IndexOperationMode::internal:
-      return "internal";
-  }
-  TRI_ASSERT(false);
-  return "invalid";
-}
 }
 
 // The following code does not work with VisualStudio 2019's `cl`
@@ -72,7 +43,7 @@ std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
   // clang-format off
   os << "OperationOptions : " << std::boolalpha
      << "{ isSynchronousReplicationFrom : '" << ops.isSynchronousReplicationFrom << "'"
-     << ", indexOperationMode : " << ::indexOpModeString(ops.indexOperationMode)
+     << ", indexOperationMode : " << OperationOptions::stringifyIndexOperationMode(ops.indexOperationMode)
      << ", waitForSync : " << ops.waitForSync
      << ", validate : " << ops.validate
      << ", keepNull : " << ops.keepNull
@@ -98,8 +69,22 @@ ExecContext const& OperationOptions::context() const {
   return *_context;
 }
 
+/// @brief stringifies the index operation mode
+char const* OperationOptions::stringifyIndexOperationMode(IndexOperationMode mode) noexcept {
+  switch (mode) {
+    case IndexOperationMode::normal:
+      return "normal";
+    case IndexOperationMode::rollback:
+      return "rollback";
+    case IndexOperationMode::internal:
+      return "internal";
+  }
+  TRI_ASSERT(false);
+  return "invalid";
+}
+
 /// @brief stringifies the overwrite mode
-char const* OperationOptions::stringifyOverwriteMode(OperationOptions::OverwriteMode mode) {
+char const* OperationOptions::stringifyOverwriteMode(OperationOptions::OverwriteMode mode) noexcept {
   switch (mode) {
     case OverwriteMode::Unknown: return "unknown";
     case OverwriteMode::Conflict: return "conflict";

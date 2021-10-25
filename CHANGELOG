@@ -1,6 +1,22 @@
 devel
 -----
 
+* The "silent" flag for document operations was previously not supported for
+  multi-document operations. Specifying the "silent" parameter for these
+  operations had no effect. Now, "silent" can be used for these operations too.
+  When specified, multi-document operations will now return an empty array
+  back if all operations succeeded. If some operations fail, only the failed
+  operations are returned in the result. That means the result array can be
+  shorter than the input array if "silent" is set, and the errors may not be
+  mapped unambiguously to the input values.
+  The "silent" option is turned off by default and should be used only in case
+  when it is important to save the extra bytes that would otherwise be
+  transferred for successful document operations. Because the error handling
+  can be more difficult with the "silent" option enabled, it is recommended
+  to only use it for multi-document operations when error handling is not
+  important ("fire and forget") or when a very coarse-grained error handling 
+  is sufficient.
+
 * Old license mechanism for docker containers removed.
 
 * Add license information to the web UI.

@@ -76,25 +76,28 @@ struct OperationOptions {
     Ignore    // keep the target document unmodified (no writes)
   };
   
-  OperationOptions();
+  OperationOptions() = default;
   explicit OperationOptions(ExecContext const&);
   
-// The following code does not work with VisualStudi 2019's `cl`
+// The following code does not work with VisualStudio 2019's `cl`
 // Lets keep it for debugging on linux.
 #ifndef _WIN32
   friend std::ostream& operator<<(std::ostream& os, OperationOptions const& ops);
 #endif
 
-  bool isOverwriteModeSet() const {
+  bool isOverwriteModeSet() const noexcept {
     return (overwriteMode != OverwriteMode::Unknown);
   }
   
-  bool isOverwriteModeUpdateReplace() const {
+  bool isOverwriteModeUpdateReplace() const noexcept {
     return (overwriteMode == OverwriteMode::Update || overwriteMode == OverwriteMode::Replace);
   }
+
+  /// @brief stringifies the index operation mode
+  static char const* stringifyIndexOperationMode(IndexOperationMode mode) noexcept;
   
   /// @brief stringifies the overwrite mode
-  static char const* stringifyOverwriteMode(OperationOptions::OverwriteMode mode);
+  static char const* stringifyOverwriteMode(OperationOptions::OverwriteMode mode) noexcept;
 
   /// @brief determine the overwrite mode from the string value
   static OverwriteMode determineOverwriteMode(velocypack::StringRef value);
@@ -107,41 +110,65 @@ struct OperationOptions {
   // from the wrong leader.
   std::string isSynchronousReplicationFrom;
  
-  IndexOperationMode indexOperationMode;
+  IndexOperationMode indexOperationMode = IndexOperationMode::normal;
 
   // INSERT ... OPTIONS { overwrite: true } behavior: 
-  // - replace an existing document, update an existing document, or do nothing
-  OverwriteMode overwriteMode;
+  // - replace an existing document, update an existing document, or do nothing.
+  OverwriteMode overwriteMode = OverwriteMode::Unknown;
 
-  // wait until the operation has been synced
-  bool waitForSync;
+  // wait until the operation has been synced.
+  // NOTE: if this default value is ever changed, please make sure to check if 
+  // function `addRequestOptionParameter` in ClusterMethods.cpp and its callers 
+  // also need adjustment. 
+  bool waitForSync = false;
 
   // apply document vaidators if there are any available
-  bool validate;
+  // NOTE: if this default value is ever changed, please make sure to check if 
+  // function `addRequestOptionParameter` in ClusterMethods.cpp and its callers 
+  // also need adjustment. 
+  bool validate = true;
 
   // keep null values on update (=true) or remove them (=false). only used for
   // update operations
-  bool keepNull;
+  bool keepNull = true;
 
   // merge objects. only used for update operations
-  bool mergeObjects;
+  // NOTE: if this default value is ever changed, please make sure to check if 
+  // function `addRequestOptionParameter` in ClusterMethods.cpp and its callers 
+  // also need adjustment. 
+  bool mergeObjects = true;
 
   // be silent. this will build smaller results and thus may speed up operations
-  bool silent;
+  // NOTE: if this default value is ever changed, please make sure to check if 
+  // function `addRequestOptionParameter` in ClusterMethods.cpp and its callers 
+  // also need adjustment. 
+  bool silent = false;
 
   // ignore _rev attributes given in documents (for replace and update)
-  bool ignoreRevs;
+  // NOTE: if this default value is ever changed, please make sure to check if 
+  // function `addRequestOptionParameter` in ClusterMethods.cpp and its callers 
+  // also need adjustment. 
+  bool ignoreRevs = true;
 
   // returnOld: for replace, update and remove return previous value
-  bool returnOld;
+  // NOTE: if this default value is ever changed, please make sure to check if 
+  // function `addRequestOptionParameter` in ClusterMethods.cpp and its callers 
+  // also need adjustment. 
+  bool returnOld = false;
 
   // returnNew: for insert, replace and update return complete new value
-  bool returnNew;
+  // NOTE: if this default value is ever changed, please make sure to check if 
+  // function `addRequestOptionParameter` in ClusterMethods.cpp and its callers 
+  // also need adjustment. 
+  bool returnNew = false;
 
   // for insert operations: use _key value even when this is normally prohibited
   // for the end user this option is there to ensure _key values once set can be
-  // restored by replicated and arangorestore
-  bool isRestore;
+  // restored by replication and arangorestore
+  // NOTE: if this default value is ever changed, please make sure to check if 
+  // function `addRequestOptionParameter` in ClusterMethods.cpp and its callers 
+  // also need adjustment. 
+  bool isRestore = false;
 
   // for replication; only set true if case insert/replace should have a read-only
   // preflight phase, in which it checks whether a document can actually be inserted
@@ -150,27 +177,31 @@ struct OperationOptions {
   // preflight check without modifying the transaction's underlying WriteBatch object,
   // so in case a unique constraint violation is detected, it does not need to be
   // rebuilt (this would be _very_ expensive).
-  bool checkUniqueConstraintsInPreflight;
+  bool checkUniqueConstraintsInPreflight = false;
 
   // when truncating - should we also run the compaction?
-  // defaults to true.
-  bool truncateCompact;
+  bool truncateCompact = true;
 
   // whether or not this request is a DOCUMENT() call from inside AQL. only set
   // for exactly this case on a coordinator, in order to make it set a special
-  // header when putting together the requests for DB servers
-  bool documentCallFromAql;
+  // header when putting together the requests for DB servers.
+  bool documentCallFromAql = false;
 
   // whether or not indexing can be disabed. We must not disable indexing if we have to ensure
   // that writes become visible to the current query.
   // This is necessary for UPSERTS where the subquery relies on a non-unique secondary index.
   bool canDisableIndexing = true;
 
+  // default values for operation options, created at program start.
+  // these are used by function `addRequestOptionParameter` and callers to determine
+  // if one of the options is at its default value or not.
+  static OperationOptions const defaultValues;
+
   // get associated execution context
   ExecContext const& context() const;
 
  private:
-  ExecContext const* _context;
+  ExecContext const* _context = nullptr;
 };
 
 #if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))

@@ -39,17 +39,15 @@ namespace arangodb {
 
 struct OperationResult final {
   // create from Result
-  explicit OperationResult(Result const& other, OperationOptions const& options)
-      : result(other), options(options) {}
-  explicit OperationResult(Result&& other, OperationOptions const& options)
-      : result(std::move(other)), options(options) {}
+  OperationResult(Result other, OperationOptions options)
+      : result(std::move(other)), options(std::move(options)) {}
 
   // copy
   OperationResult(OperationResult const& other) = delete;
   OperationResult& operator=(OperationResult const& other) = delete;
 
   // move
-  OperationResult(OperationResult&& other) = default;
+  OperationResult(OperationResult&& other) noexcept = default;
   OperationResult& operator=(OperationResult&& other) noexcept {
     if (this != &other) {
       result = std::move(other.result);

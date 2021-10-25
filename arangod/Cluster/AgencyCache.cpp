@@ -358,7 +358,7 @@ void AgencyCache::run() {
                 increaseWaitTime();
                 LOG_TOPIC("9a93e", DEBUG, Logger::CLUSTER) <<
                   "Failed to get poll result from agency.";
-                  return futures::makeFuture();
+                return futures::makeFuture();
               }
               // Correct response:
               index_t curIndex = 0;

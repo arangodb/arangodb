@@ -143,17 +143,17 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief generates a HTTP 201 or 202 response
   void generate20x(arangodb::OperationResult const&, std::string const&,
-                   TRI_col_type_e, arangodb::velocypack::Options const*,
+                   arangodb::velocypack::Options const*,
                    bool isMultiple, rest::ResponseCode waitForSyncResponseCode);
 
   /// @brief generates message for a saved document
   void generateSaved(arangodb::OperationResult const& result,
-                     std::string const& collectionName, TRI_col_type_e type,
+                     std::string const& collectionName, 
                      arangodb::velocypack::Options const*, bool isMultiple);
 
   /// @brief generates deleted message
   void generateDeleted(arangodb::OperationResult const& result,
-                       std::string const& collectionName, TRI_col_type_e type,
+                       std::string const& collectionName,
                        arangodb::velocypack::Options const*, bool isMultiple);
 
   /// @brief generates document not found error message, no transaction info

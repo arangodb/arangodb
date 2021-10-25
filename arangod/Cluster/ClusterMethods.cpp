@@ -196,6 +196,20 @@ void addTransactionHeaderForShard(transaction::Methods const& trx, ShardMap cons
   }
 }
 
+/// @brief add a request option to a request, in case the option differs
+/// from the default value.
+void addRequestOptionParameter(network::RequestOptions& reqOpts, std::string const& name, 
+                               bool value, bool defaultValue) {
+  if (value != defaultValue) {
+    // only add the parameter to the request when we are not sending the
+    // default value. this saves inserts into the parameters map in case
+    // we are sending the default value anyway, and saves some space in 
+    // the requests because URL parameters with default values are not
+    // serialized into the request URL
+    reqOpts.parameters.insert_or_assign(name, value ? "true" : "false");
+  }
+}
+
 /// @brief iterate over shard responses and compile a result
 /// This will take care of checking the fuerte responses. If the response has
 /// a body, then the callback will be called on the body, with access to the
@@ -219,14 +233,13 @@ OperationResult handleResponsesFromAllShards(
   if (!result.fail()) {
     for (Try<arangodb::network::Response> const& tryRes : responses) {
       network::Response const& res = tryRes.get();  // throws exceptions upwards
-      ShardID sId = res.destinationShard();
       auto commError = network::fuerteToArangoErrorCode(res);
       if (commError != TRI_ERROR_NO_ERROR) {
         result.reset(commError);
       } else {
         TRI_ASSERT(res.error == fuerte::Error::NoError);
         VPackSlice answer = res.slice();
-        handler(result, builder, sId, answer);
+        handler(result, builder, res.destinationShard(), answer);
       }
 
       if (result.fail()) {
@@ -236,7 +249,7 @@ OperationResult handleResponsesFromAllShards(
     post(result, builder);
   }
 
-  return OperationResult(result, builder.steal(), options);
+  return OperationResult(std::move(result), builder.steal(), std::move(options));
 }
 
 // velocypack representation of object
@@ -265,7 +278,7 @@ const char* notFoundSlice =
 ////////////////////////////////////////////////////////////////////////////////
 void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder& resultBody,
                            std::unordered_map<::ErrorCode, size_t>& errorCounter,
-                           VPackValueLength const expectedResults) {
+                           VPackValueLength expectedResults, OperationOptions const& options) {
   // errorCounter is not allowed to contain any NOT_FOUND entry.
   TRI_ASSERT(errorCounter.find(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ==
              errorCounter.end());
@@ -284,15 +297,19 @@ void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder&
       if (errorNumSlice.isNumber()) {
         errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
       }
-      if ((errorNum != TRI_ERROR_NO_ERROR && errorNum != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ||
-          oneRes.hasKey(StaticStrings::KeyString)) {
+      if (errorNum != TRI_ERROR_NO_ERROR && errorNum != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        // an error: report it
+        resultBody.add(oneRes);
+        foundRes = true;
+        break;
+      } else if (!options.silent && oneRes.hasKey(StaticStrings::KeyString)) {
         // This is the correct result: Use it
         resultBody.add(oneRes);
         foundRes = true;
         break;
       }
     }
-    if (!foundRes) {
+    if (!foundRes && !options.silent) {
       // Found none, use static NOT_FOUND
       resultBody.add(VPackSlice(reinterpret_cast<uint8_t const*>(::notFoundSlice)));
       realNotFound++;
@@ -304,16 +321,16 @@ void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder&
   }
 }
 
-/// @brief handle CRUD api shard responses, fast path
+/// @brief handle CRUD API shard responses, fast path
 template <typename F, typename CT>
 OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
                                              std::vector<Try<network::Response>> const& results) {
   std::map<ShardID, VPackSlice> resultMap;
   std::map<ShardID, int> shardError;
   std::unordered_map<::ErrorCode, size_t> errorCounter;
-
-  fuerte::StatusCode code = fuerte::StatusInternalError;
+  
   // If none of the shards responded we return a SERVER_ERROR;
+  fuerte::StatusCode code = fuerte::StatusInternalError;
 
   for (Try<arangodb::network::Response> const& tryRes : results) {
     network::Response const& res = tryRes.get();  // throws exceptions upwards
@@ -321,14 +338,12 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
 
     auto commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
-      shardError.try_emplace(sId, commError);
+      shardError.try_emplace(std::move(sId), commError);
     } else {
       VPackSlice result = res.slice();
       // we expect an array of baby-documents, but the response might
       // also be an error, if the DBServer threw a hissy fit
-      if (result.isObject() && 
-          result.get(StaticStrings::Error).isBoolean() &&
-          result.get(StaticStrings::Error).getBoolean()) {
+      if (result.isObject() && result.get(StaticStrings::Error).isTrue()) {
         // an error occurred, now rethrow the error
         auto code = ::ErrorCode{result.get(StaticStrings::ErrorNum).getNumericValue<int>()};
         VPackSlice msg = result.get(StaticStrings::ErrorMessage);
@@ -365,16 +380,19 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
       resultBody.close();
     } else {
       VPackSlice arr = it->second;
-      resultBody.add(arr.at(pair.second));
+      VPackSlice result = arr.at(pair.second);
+      if (!opCtx.options.silent || (result.isObject() && result.get(StaticStrings::Error).isTrue())) {
+        resultBody.add(result);
+      }
     }
   }
   resultBody.close();
-
+  
   return std::forward<F>(func)(code, resultBody.steal(),
                                std::move(opCtx.options), std::move(errorCounter));
 }
 
-/// @brief handle CRUD api shard responses, slow path
+/// @brief handle CRUD API shard responses, slow path
 template <typename F>
 OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, OperationOptions options,
                                              std::vector<Try<network::Response>> const& responses) {
@@ -392,6 +410,9 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
         bool const isNotFound = res.statusCode() == fuerte::StatusNotFound;
         if (!isNotFound || (isNotFound && nrok == 0 && i == responses.size() - 1)) {
           nrok++;
+          if (nrok > 1) {
+            return OperationResult(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS, std::move(options));
+          }
           code = res.statusCode();
           buffer = res.response().stealPayload();
         }
@@ -401,10 +422,7 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
     }
 
     if (nrok == 0) {  // This can only happen, if a commError was encountered!
-      return OperationResult(commError, options);
-    }
-    if (nrok > 1) {
-      return OperationResult(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS, options);
+      return OperationResult(commError, std::move(options));
     }
 
     return std::forward<F>(func)(code, std::move(buffer), std::move(options), {});
@@ -419,7 +437,7 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
   for (Try<network::Response> const& tryRes : responses) {
     network::Response const& res = tryRes.get();
     if (res.error != fuerte::Error::NoError) {
-      return OperationResult(network::fuerteToArangoErrorCode(res), options);
+      return OperationResult(network::fuerteToArangoErrorCode(res), std::move(options));
     }
 
     allResults.push_back(res.slice());
@@ -429,7 +447,7 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
   VPackBuilder resultBody;
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == responses.size());
-  mergeResultsAllShards(allResults, resultBody, errorCounter, expectedLen);
+  mergeResultsAllShards(allResults, resultBody, errorCounter, expectedLen, options);
   return OperationResult(Result(), resultBody.steal(), std::move(options),
                          std::move(errorCounter));
 }
@@ -567,11 +585,11 @@ struct CreateOperationCtx {
   // We found the responsible shard. Add it to the list.
   auto it = opCtx.shardMap.find(shardID);
   if (it == opCtx.shardMap.end()) {
-    opCtx.shardMap.try_emplace(shardID, std::vector<std::pair<VPackSlice, std::string>>{{value, _key}});
-    opCtx.reverseMapping.emplace_back(shardID, 0);
+    opCtx.shardMap.try_emplace(shardID, std::vector<std::pair<VPackSlice, std::string>>{{value, std::move(_key)}});
+    opCtx.reverseMapping.emplace_back(std::move(shardID), 0);
   } else {
-    it->second.emplace_back(value, _key);
-    opCtx.reverseMapping.emplace_back(shardID, it->second.size() - 1);
+    it->second.emplace_back(value, std::move(_key));
+    opCtx.reverseMapping.emplace_back(std::move(shardID), it->second.size() - 1);
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -605,7 +623,7 @@ bool ClusterMethods::includeHiddenCollectionInLink(std::string const& name) {
 /// @brief Enterprise Relevant code to demangle hidden collections names
 ////////////////////////////////////////////////////////////////////////////////
 #ifndef USE_ENTERPRISE
-void ClusterMethods::realNameFromSmartName(std::string&) { }
+void ClusterMethods::realNameFromSmartName(std::string&) {}
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -670,13 +688,12 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
           }
         } while (candidate == serverIds[0]);  // mop: ignore leader
       }
-      serverIds.push_back(candidate);
+      serverIds.push_back(std::move(candidate));
     }
 
     // determine shard id
     std::string shardId = "s" + StringUtils::itoa(id + i);
-
-    shards->try_emplace(shardId, serverIds);
+    shards->try_emplace(std::move(shardId), std::move(serverIds));
   }
 
   return shards;
@@ -1225,7 +1242,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   }
 
   std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
-  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  bool const isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged) {
     Result res = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Synchronous)
                      .get();
@@ -1446,7 +1463,7 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
   }
 
   Future<Result> f = makeFuture(Result());
-  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  bool const isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin transactions on leaders
     f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
   }
@@ -1464,16 +1481,23 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
     reqOpts.retryNotFound = true;
     reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
-    reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
-           .param(StaticStrings::ReturnNewString, (options.returnNew ? "true" : "false"))
-           .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
-           .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"))
-           .param(StaticStrings::KeepNullString, (options.keepNull ? "true" : "false"))
-           .param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"))
-           .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"));
+    addRequestOptionParameter(reqOpts, StaticStrings::WaitForSyncString, options.waitForSync, OperationOptions::defaultValues.waitForSync);
+    addRequestOptionParameter(reqOpts, StaticStrings::IsRestoreString, options.isRestore, OperationOptions::defaultValues.isRestore);
+    addRequestOptionParameter(reqOpts, StaticStrings::ReturnNewString, options.returnNew, OperationOptions::defaultValues.returnNew);
+    addRequestOptionParameter(reqOpts, StaticStrings::SkipDocumentValidation, !options.validate, !OperationOptions::defaultValues.validate);
+
     if (options.isOverwriteModeSet()) {
+      // the following options only need to be set if an overwriteMode is used
       reqOpts.parameters.insert_or_assign(StaticStrings::OverwriteMode,
                                           OperationOptions::stringifyOverwriteMode(options.overwriteMode));
+      
+      addRequestOptionParameter(reqOpts, StaticStrings::MergeObjectsString, options.mergeObjects, OperationOptions::defaultValues.mergeObjects);
+      addRequestOptionParameter(reqOpts, StaticStrings::ReturnOldString, options.returnOld, OperationOptions::defaultValues.returnOld);
+      
+      // the following parameter has to be treated specially on insert, because
+      // it seems to have a different default value here
+      reqOpts.parameters.insert_or_assign(StaticStrings::KeepNullString, 
+                                          (options.keepNull ? "true" : "false"));
     }
       
     // Now prepare the requests:
@@ -1555,7 +1579,7 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
 
   CrudOperationCtx opCtx;
   opCtx.options = options;
-  const bool useMultiple = slice.isArray();
+  bool const useMultiple = slice.isArray();
 
   bool canUseFastPath = true;
   if (useMultiple) {
@@ -1579,11 +1603,11 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
   reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
-  reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
-         .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
-         .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
+  addRequestOptionParameter(reqOpts, StaticStrings::WaitForSyncString, options.waitForSync, OperationOptions::defaultValues.waitForSync);
+  addRequestOptionParameter(reqOpts, StaticStrings::ReturnOldString, options.returnOld, OperationOptions::defaultValues.returnOld);
+  addRequestOptionParameter(reqOpts, StaticStrings::IgnoreRevsString, options.ignoreRevs, OperationOptions::defaultValues.ignoreRevs);
 
-  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  bool const isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   if (canUseFastPath) {
     // All shard keys are known in all documents.
@@ -1788,7 +1812,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
   CrudOperationCtx opCtx;
   opCtx.options = options;
-  const bool useMultiple = slice.isArray();
+  bool const useMultiple = slice.isArray();
 
   bool canUseFastPath = true;
   if (useMultiple) {
@@ -1815,16 +1839,14 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   reqOpts.database = trx.vocbase().name();
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
-  reqOpts.param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
+  addRequestOptionParameter(reqOpts, StaticStrings::IgnoreRevsString, options.ignoreRevs, OperationOptions::defaultValues.ignoreRevs);
 
   fuerte::RestVerb restVerb;
   if (!useMultiple) {
     restVerb = options.silent ? fuerte::RestVerb::Head : fuerte::RestVerb::Get;
   } else {
     restVerb = fuerte::RestVerb::Put;
-    if (options.silent) {
-      reqOpts.param(StaticStrings::SilentString, "true");
-    }
+    addRequestOptionParameter(reqOpts, StaticStrings::SilentString, options.silent, OperationOptions::defaultValues.silent);
     reqOpts.param("onlyget", "true");
   }
 
@@ -1854,7 +1876,9 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
         if (options.documentCallFromAql) {
           headers.try_emplace(StaticStrings::AqlDocumentCall, "true");
         }
-        std::string url;
+        std::string url("/_api/document/");
+        url.append(StringUtils::urlEncode(it.first));
+
         VPackBuffer<uint8_t> buffer;
 
         if (!useMultiple) {
@@ -1869,12 +1893,10 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           }
           VPackStringRef ref = keySlice.stringRef();
           // We send to single endpoint
-          url.append("/_api/document/").append(StringUtils::urlEncode(it.first)).push_back('/');
+          url.push_back('/');
           url.append(StringUtils::urlEncode(ref.data(), ref.length()));
         } else {
           // We send to Babies endpoint
-          url.append("/_api/document/").append(StringUtils::urlEncode(it.first));
-
           VPackBuilder builder(buffer);
           builder.openArray(/*unindexed*/true);
           for (auto const& value : it.second) {
@@ -1928,7 +1950,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   if (!useMultiple) {
     VPackStringRef const key(slice.isObject() ? slice.get(StaticStrings::KeyString) : slice);
 
-    const bool addMatch = !options.ignoreRevs && slice.hasKey(StaticStrings::RevString);
+    bool const addMatch = !options.ignoreRevs && slice.hasKey(StaticStrings::RevString);
     for (auto const& shardServers : *shardIds) {
       ShardID const& shard = shardServers.first;
 
@@ -2303,11 +2325,9 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   //     are given, we first try the fast path, but might, as above,
   //     have to use the slow path after all.
 
-  ShardID shardID;
-
   CrudOperationCtx opCtx;
   opCtx.options = options;
-  const bool useMultiple = slice.isArray();
+  bool const useMultiple = slice.isArray();
 
   bool canUseFastPath = true;
   if (useMultiple) {
@@ -2338,10 +2358,11 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
-  reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
-         .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"))
-         .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"))
-         .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"));
+  addRequestOptionParameter(reqOpts, StaticStrings::WaitForSyncString, options.waitForSync, OperationOptions::defaultValues.waitForSync);
+  addRequestOptionParameter(reqOpts, StaticStrings::IgnoreRevsString, options.ignoreRevs, OperationOptions::defaultValues.ignoreRevs);
+  addRequestOptionParameter(reqOpts, StaticStrings::SkipDocumentValidation, !options.validate, !OperationOptions::defaultValues.validate);
+  addRequestOptionParameter(reqOpts, StaticStrings::ReturnOldString, options.returnOld, OperationOptions::defaultValues.returnOld);
+  addRequestOptionParameter(reqOpts, StaticStrings::ReturnNewString, options.returnNew, OperationOptions::defaultValues.returnNew);
 
   fuerte::RestVerb restVerb;
   if (isPatch) {
@@ -2349,18 +2370,12 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
     if (!options.keepNull) {
       reqOpts.param(StaticStrings::KeepNullString, "false");
     }
-    reqOpts.param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"));
+    addRequestOptionParameter(reqOpts, StaticStrings::MergeObjectsString, options.mergeObjects, OperationOptions::defaultValues.mergeObjects);
   } else {
     restVerb = fuerte::RestVerb::Put;
   }
-  if (options.returnNew) {
-    reqOpts.param(StaticStrings::ReturnNewString, "true");
-  }
-  if (options.returnOld) {
-    reqOpts.param(StaticStrings::ReturnOldString, "true");
-  }
 
-  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  bool const isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   if (canUseFastPath) {
     // All shard keys are known in all documents.
@@ -2382,7 +2397,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
       futures.reserve(opCtx.shardMap.size());
 
       for (auto const& it : opCtx.shardMap) {
-        std::string url;
+        std::string url = "/_api/document/" + StringUtils::urlEncode(it.first);
         VPackBuffer<uint8_t> buffer;
 
         if (!useMultiple) {
@@ -2390,14 +2405,10 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
           TRI_ASSERT(slice.isObject());
           VPackStringRef const ref(slice.get(StaticStrings::KeyString));
           // We send to single endpoint
-          url = "/_api/document/" + StringUtils::urlEncode(it.first) + "/" +
-                StringUtils::urlEncode(ref.data(), ref.length());
+          url += "/" + StringUtils::urlEncode(ref.data(), ref.length());
           buffer.append(slice.begin(), slice.byteSize());
-
         } else {
           // We send to Babies endpoint
-          url = "/_api/document/" + StringUtils::urlEncode(it.first);
-
           VPackBuilder builder(buffer);
           builder.clear();
           builder.openArray(/*unindexed*/true);
@@ -2448,7 +2459,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
     std::vector<Future<network::Response>> futures;
     futures.reserve(shardIds->size());
 
-    const size_t expectedLen = useMultiple ? slice.length() : 0;
+    size_t const expectedLen = useMultiple ? slice.length() : 0;
     VPackBuffer<uint8_t> buffer;
     buffer.append(slice.begin(), slice.byteSize());
 
@@ -2457,13 +2468,11 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
 
-      std::string url;
-      if (!useMultiple) { // send to single API
-        VPackStringRef const key(slice.get(StaticStrings::KeyString));
-        url = "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
-              StringUtils::urlEncode(key.data(), key.size());
-      } else {
-        url = "/_api/document/" + StringUtils::urlEncode(shard);
+      std::string url = "/_api/document/" + StringUtils::urlEncode(shard);
+      if (!useMultiple) { 
+        // send to single API
+        VPackStringRef key(slice.get(StaticStrings::KeyString));
+        url += "/" + StringUtils::urlEncode(key.data(), key.size());
       }
       futures.emplace_back(
           network::sendRequestRetry(pool, "shard:" + shard, restVerb,
@@ -3771,9 +3780,9 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(network::ConnectionPool
 
   // Perform the requests
   for (Future<network::Response>& f : futures) {
-     network::Response const& r = f.get();
+    network::Response const& r = f.get();
 
-     if (r.fail()) {
+    if (r.fail()) {
       return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
                   std::string("Communication error locking transactions on ")
                   + r.destination);
@@ -4244,7 +4253,7 @@ arangodb::Result listHotBackupsOnCoordinator(ClusterFeature& feature, VPackSlice
   if (payload.isObject() && payload.hasKey("id")) {
     idSlice = payload.get("id");
     if (idSlice.isArray()) {
-      for (auto const i : VPackArrayIterator(payload.get("id"))) {
+      for (auto const i : VPackArrayIterator(idSlice)) {
         if (!i.isString()) {
           return arangodb::Result(
               TRI_ERROR_HTTP_BAD_PARAMETER,

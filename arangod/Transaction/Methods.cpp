@@ -1329,7 +1329,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   // lambda //////////////
   auto workForOneDocument = [this, &operation, &options, &collection,
                              &resultBuilder, &cid, &previous,
-                             &result](VPackSlice const newVal, bool isBabies) -> Result {
+                             &result](VPackSlice newVal, bool isBabies) -> Result {
     Result res;
     if (!newVal.isObject()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1414,7 +1414,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
                                operation, resDocs, {}, *collection->followers())
     .thenValue([options, errs = std::move(errorCounter), resDocs](Result&& res) mutable {
       if (!res.ok()) {
-        return OperationResult{std::move(res), options};
+        return OperationResult{std::move(res), std::move(options)};
       }
       if (options.silent && errs.empty()) {
         // We needed the results, but do not want to report:
@@ -1429,7 +1429,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     // We needed the results, but do not want to report:
     resDocs->clear();
   }
-
+    
   return OperationResult(std::move(res), std::move(resDocs),
                          std::move(options), std::move(errorCounter));
 }

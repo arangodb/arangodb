@@ -46,6 +46,17 @@ documents under the attribute *old* in the result.
 Return additionally the complete new documents under the attribute *new*
 in the result.
 
+@RESTQUERYPARAM{silent,boolean,optional}
+If set to *true*, an empty array will be returned as the response in case
+no errors occurred. No meta-data will be returned for the updated documents. 
+This option can be used to save some network traffic. 
+In case any of the update operations produces an error, the result array 
+will contain only those errors. Only the errors will be returned in it, 
+without any positional mapping to the original input documents. That means 
+it is still visible _that_ errors have happened, but the errors cannot be
+unambiguously mapped to the input documents.
+The option is *false* by default.
+
 @RESTDESCRIPTION
 Partially updates documents, the documents to update are specified
 by the *_key* attributes in the body objects. The body of the
@@ -82,15 +93,23 @@ applied. The *waitForSync* query parameter cannot be used to disable
 synchronization for collections that have a default *waitForSync* value
 of *true*.
 
-The body of the response contains a JSON array of the same length
-as the input array with the information about the identifier and the
-revision of the updated documents. In each entry, the attribute
+If the *silent* option is not set, the body of the response is an array of
+the same length as the input array, with the information about the identifier 
+and the revision of the updated documents. In each entry, the attribute
 *_id* contains the known *document-id* of each updated document,
 *_key* contains the key which uniquely identifies a document in a
 given collection, and the attribute *_rev* contains the new document
 revision. In case of an error or violated precondition, an error
 object with the attribute *error* set to *true* and the attribute
 *errorCode* set to the error code is built.
+If the *silent* option is set, the body of the response is an array that
+will contain one entry per failed update operation. If no update operation
+has failed, the result will be an empty array. If errors happened and
+the *silent* option is set, it may not be possible to map the resulting
+errors unambiguously to the input values, because the result array may
+be shorter than the input array. Thus the *silent* option should only
+be used under circumstances that do not require error checking or when
+error checking can be very coarse-grained.
 
 If the query parameter *returnOld* is *true*, then, for each
 generated document, the complete previous revision of the document
