@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix local cluster script for deprecated authentication option.
+
 * Fix caching of collection counts and index selectivity estimates in cluster.
   The cache values expired too early in previous versions, making the cache 
   ineffective.
