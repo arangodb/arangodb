@@ -1016,7 +1016,7 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
       // All values are trivially representable as VPack
       return true;
     case NODE_TYPE_ARRAY: {
-      // Is representable as VPack if all it's members
+      // Is representable as VPack if all its members
       // are representable as VPack
       size_t const n = numMembers();
       for (size_t i = 0; i < n; ++i) {
