@@ -48,7 +48,7 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
     return {TRI_ERROR_INTERNAL, "no response from server!"};
   }
 
-  auto code = TRI_ERROR_NO_ERROR;
+  auto code = TRI_ERROR_INTERNAL;
   // set base message
   std::string message("got error from server: HTTP " + itoa(result->getHttpReturnCode()) +
                       " (" + result->getHttpReturnMessage() + ")");

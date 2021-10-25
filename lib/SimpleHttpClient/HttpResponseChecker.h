@@ -18,40 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include "Basics/Result.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
-#include "StorageEngine/TransactionState.h"
 
 namespace arangodb {
-
-/// @brief transaction type
-class ClusterTransactionState final : public TransactionState {
+class HttpResponseChecker {
  public:
-  ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                          transaction::Options const& options);
-  ~ClusterTransactionState() = default;
-
-  /// @brief begin a transaction
-  Result beginTransaction(transaction::Hints hints) override;
-
-  /// @brief commit a transaction
-  Result commitTransaction(transaction::Methods* trx) override;
-
-  /// @brief abort a transaction
-  Result abortTransaction(transaction::Methods* trx) override;
-  
-  /// @brief return number of commits, including intermediate commits
-  uint64_t numCommits() const override;
-
-  bool hasFailedOperations() const override { return false; }
-
- protected:
-  std::unique_ptr<TransactionCollection> createTransactionCollection(
-      DataSourceId cid, AccessMode::Type accessType) override;
+  HttpResponseChecker() = delete;
+  static arangodb::Result check(std::string const& clientErrorMsg, arangodb::httpclient::SimpleHttpResult const* const response,
+                                std::string const& actionMsg = "", std::string const& requestPayload = "");
 };
 
-}  // namespace arangodb
-
+}

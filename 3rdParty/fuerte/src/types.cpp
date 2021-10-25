@@ -302,7 +302,7 @@ ContentEncoding to_ContentEncoding(std::string const& val) {
                          fu_content_encoding_identity) == 0) {
     return ContentEncoding::Identity;
   }
-  return ContentEncoding::Identity;
+  return ContentEncoding::Custom;
 }
 
 std::string to_string(ContentEncoding type) {
@@ -311,6 +311,10 @@ std::string to_string(ContentEncoding type) {
       return fu_content_encoding_deflate;
     case ContentEncoding::Gzip:
       return fu_content_encoding_gzip;
+    case ContentEncoding::Custom:
+      throw std::logic_error(
+          "custom content encoding could take different "
+          "values and is therefore not convertible to string");
     case ContentEncoding::Identity:
     default:
       return fu_content_encoding_identity;
