@@ -129,7 +129,7 @@ class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
   static int on_status(llhttp_t* p, const char* at, size_t len);
   static int on_header_field(llhttp_t* p, const char* at, size_t len);
   static int on_header_value(llhttp_t* p, const char* at, size_t len);
-  static int on_header_complete(llhttp_t* p);
+  static int on_headers_complete(llhttp_t* p);
   static int on_body(llhttp_t* p, const char* at, size_t len);
   static int on_message_complete(llhttp_t* p);
 

@@ -99,8 +99,10 @@ int H1Connection<ST>::on_header_value(llhttp_t* parser, const char* at,
 }
 
 template <SocketType ST>
-int H1Connection<ST>::on_header_complete(llhttp_t* parser) {
+int H1Connection<ST>::on_headers_complete(llhttp_t* parser) {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
+  FUERTE_LOG_HTTPTRACE << "on_headers_complete this=" << self << "\n";
+
   self->_response->header.responseCode =
       static_cast<StatusCode>(parser->status_code);
   if (!self->_lastHeaderField.empty()) {
@@ -125,12 +127,14 @@ int H1Connection<ST>::on_header_complete(llhttp_t* parser) {
 
 template <SocketType ST>
 int H1Connection<ST>::on_body(llhttp_t* parser, const char* at, size_t len) {
+  FUERTE_LOG_HTTPTRACE << "on_body len=" << len << " this=" << parser->data << "\n";
   static_cast<H1Connection<ST>*>(parser->data)->_responseBuffer.append(at, len);
   return HPE_OK;
 }
 
 template <SocketType ST>
 int H1Connection<ST>::on_message_complete(llhttp_t* parser) {
+  FUERTE_LOG_HTTPTRACE << "on_message_complete this=" << parser->data << "\n";
   static_cast<H1Connection<ST>*>(parser->data)->_messageComplete = true;
   return HPE_OK;
 }
@@ -148,11 +152,10 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
   _parserSettings.on_status = &on_status;
   _parserSettings.on_header_field = &on_header_field;
   _parserSettings.on_header_value = &on_header_value;
-  _parserSettings.on_headers_complete = &on_header_complete;
+  _parserSettings.on_headers_complete = &on_headers_complete;
   _parserSettings.on_body = &on_body;
   _parserSettings.on_message_complete = &on_message_complete;
   llhttp_init(&_parser, HTTP_RESPONSE, &_parserSettings);
-
   _parser.data = static_cast<void*>(this);
 
   // preemptively cache
@@ -381,13 +384,9 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 template <SocketType ST>
 void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   // Do not cancel timeout now, because we might be going on to read!
-  if (ec || _item == nullptr) {
+  if (_item == nullptr) { // could happen on aborts
     this->_proto.timer.cancel();
-
-    FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '"
-                     << ec.message() << "' , this=" << this << "\n";
-
-    this->shutdownConnection(translateError(ec, Error::ReadError));
+    this->shutdownConnection(Error::CloseRequested);
     return;
   }
   FUERTE_ASSERT(_item != nullptr);
@@ -397,6 +396,7 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   auto buffers = this->_receiveBuffer.data();  // no copy
   for (auto const& buffer : buffers) {
     const char* data = reinterpret_cast<const char*>(buffer.data());
+
     enum llhttp_errno err = llhttp_execute(&_parser, data, buffer.size());
     if (err != HPE_OK) {
       /* Handle error. Usually just close the connection. */
@@ -416,12 +416,23 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   // Remove consumed data from receive buffer.
   this->_receiveBuffer.consume(nparsed);
 
+  if (ec == asio_ns::error::misc_errors::eof &&
+      llhttp_message_needs_eof(&_parser)) {
+    llhttp_finish(&_parser);
+  }
+
   if (_messageComplete) {
     this->_proto.timer.cancel();  // got response in time
 
     // thread-safe access on IO-Thread
     if (!_responseBuffer.empty()) {
       _response->setPayload(std::move(_responseBuffer), 0);
+    }
+
+    if (_item->request->header.restVerb == RestVerb::Head) {
+      // for some reason the llhttp parser swallows the on_message_done
+      // signal for the following request
+      llhttp_reset(&_parser);
     }
 
     try {
@@ -436,14 +447,23 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
                             "response this="
                          << this << "\n";
 
-    asyncWriteNextRequest();  // send next request
-    return;
+    if (!ec) {
+      asyncWriteNextRequest();  // send next request
+      return;
+    }
   }
 
-  FUERTE_LOG_HTTPTRACE << "asyncReadCallback: response not complete yet this="
-                       << this << "\n";
-  this->asyncReadSome();  // keep reading from socket
-  // leave read timeout in place!
+  if (ec) {
+    FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '"
+                     << ec.message() << "' , this=" << this << "\n";
+    this->shutdownConnection(translateError(ec, Error::ReadError));
+  } else {
+    FUERTE_LOG_HTTPTRACE << "asyncReadCallback: response not complete yet this="
+                        << this << "\n";
+
+    this->asyncReadSome();  // keep reading from socket
+    // leave read timeout in place!
+  }
 }
 
 /// abort ongoing / unfinished requests
