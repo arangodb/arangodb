@@ -18,38 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include "Basics/Result.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
-#include "StorageEngine/WalAccess.h"
 
 namespace arangodb {
-
-/// Storage engine agnostic handler for using the WalAccess interface
-class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
+class HttpResponseChecker {
  public:
-  RestWalAccessHandler(application_features::ApplicationServer&,
-                       GeneralRequest*, GeneralResponse*);
-
- public:
-  char const* name() const override final { return "RestWalAccessHandler"; }
-  RequestLane lane() const override final {
-    return RequestLane::SERVER_REPLICATION;
-  }
-  RestStatus execute() override;
-
- private:
-  bool parseFilter(WalAccess::Filter& filter);
-
-  void handleCommandTickRange(WalAccess const* wal);
-  void handleCommandLastTick(WalAccess const* wal);
-  void handleCommandTail(WalAccess const* wal);
-
-  /// @brief deprecated. remove in future version
-  void handleCommandDetermineOpenTransactions(WalAccess const* wal);
+  HttpResponseChecker() = delete;
+  static arangodb::Result check(std::string const& clientErrorMsg, arangodb::httpclient::SimpleHttpResult const* const response,
+                                std::string const& actionMsg = "", std::string const& requestPayload = "");
 };
-}  // namespace arangodb
 
+}

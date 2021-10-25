@@ -244,8 +244,6 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
 
   // collection was not contained. now create and insert it
 
-  StorageEngine& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine();
-
   auto* const trxColl = engine.createTransactionCollection(*this, cid, accessType).release();
 
   TRI_ASSERT(trxColl != nullptr);

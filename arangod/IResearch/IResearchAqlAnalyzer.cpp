@@ -220,6 +220,12 @@ class CalculationTransactionState final : public arangodb::TransactionState {
   [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept override {
     return 0;
   }
+
+  std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
+      arangodb::DataSourceId cid, arangodb::AccessMode::Type accessType) override {
+    TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 };
 
 /// @brief Dummy transaction context which just gives dummy state

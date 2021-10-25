@@ -373,6 +373,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   });
 }
 
+/// @brief deprecated. remove in future version
 void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess const* wal) {
   // determine start and end tick
 
@@ -410,21 +411,15 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess cons
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openArray();
-  WalAccessResult r = wal->openTransactions(filter, [&](TransactionId, TransactionId tid) {
-    builder.add(VPackValue(std::to_string(tid.id())));
-  });
   builder.close();
 
   _response->setContentType(rest::ContentType::DUMP);
   if (res.fail()) {
     generateError(res);
   } else {
-    auto cc = r.lastIncludedTick() != 0 ? ResponseCode::OK : ResponseCode::NO_CONTENT;
-    generateResult(cc, std::move(buffer));
+    generateResult(ResponseCode::NO_CONTENT, std::move(buffer));
 
-    _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
-                           r.fromTickIncluded() ? "true" : "false");
-    _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
-                           StringUtils::itoa(r.lastIncludedTick()));
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent, "true");
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded, "0");
   }
 }

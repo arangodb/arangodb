@@ -57,6 +57,10 @@ class ClusterTransactionState final : public TransactionState {
   [[nodiscard]] bool hasFailedOperations() const override { return false; }
 
   [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept override;
+
+ protected:
+  std::unique_ptr<TransactionCollection> createTransactionCollection(
+      DataSourceId cid, AccessMode::Type accessType) override;
 };
 
 }  // namespace arangodb

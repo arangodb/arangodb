@@ -265,7 +265,10 @@ class TransactionState {
   /// Only allowed on coordinators.
   void coordinatorRerollTransactionId();
 
- protected:
+ protected: 
+  virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
+    DataSourceId cid, AccessMode::Type accessType) = 0;
+
   /// @brief find a collection in the transaction's list of collections
   struct CollectionNotFound {
     std::size_t lowerBound;
