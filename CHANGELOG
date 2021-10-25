@@ -5,6 +5,8 @@ devel
   arangorestore, arangobench and arangoexport to handle HTTP responses when 
   they are not in JSON format (e.g. text/html).   
 
+* Updated ArangoDB Starter to 0.15.3-preview-1.
+
 * Remove dysfunctional CMake variable `USE_OPTIMIZE_FOR_ARCHITECTURE`.
   Architecture detection and architecture-specific optimization is now 
   performed unconditionally. It is still possible to inject a certain
