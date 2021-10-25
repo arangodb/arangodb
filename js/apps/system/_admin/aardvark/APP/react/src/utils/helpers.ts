@@ -149,6 +149,10 @@ export const getReducer = <FormState extends object> (initialState: State<FormSt
     return newState;
   };
 
+export function getNumericFieldValue (value: number | undefined): number | string {
+  return value === undefined ? '' : value;
+}
+
 export function getNumericFieldSetter<FormState> (field: string, dispatch: Dispatch<DispatchArgs<FormState>>, basePath?: string) {
   return (event: ChangeEvent<HTMLInputElement>) => {
     const numValue = parseInt(event.target.value);

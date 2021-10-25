@@ -6,7 +6,7 @@ import Select from "../../../components/pure-css/form/Select";
 import { ViewProperties } from "../constants";
 import StoredValuesInput from "./inputs/StoredValuesInput";
 import Textbox from "../../../components/pure-css/form/Textbox";
-import { getNumericFieldSetter } from "../../../utils/helpers";
+import { getNumericFieldSetter, getNumericFieldValue } from "../../../utils/helpers";
 import ConsolidationPolicyForm from "./ConsolidationPolicyForm";
 
 type ViewPropertiesFormProps = FormProps<ViewProperties> & {
@@ -55,23 +55,28 @@ const ViewPropertiesForm = ({ formState, dispatch, disabled, isEdit = false }: V
       </Select>
     </Cell>
     <Cell size={'1-3'}>
-      <Textbox type={'number'} label={'Cleanup Interval Step'} value={formState.cleanupIntervalStep || ''}
+      <Textbox type={'number'} label={'Cleanup Interval Step'}
+               value={getNumericFieldValue(formState.cleanupIntervalStep)}
                onChange={getNumericFieldSetter('cleanupIntervalStep', dispatch)} disabled={disabled}/>
     </Cell>
     <Cell size={'1-3'}>
-      <Textbox type={'number'} label={'Commit Interval (msec)'} value={formState.commitIntervalMsec || ''}
+      <Textbox type={'number'} label={'Commit Interval (msec)'}
+               value={getNumericFieldValue(formState.commitIntervalMsec)}
                onChange={getNumericFieldSetter('commitIntervalMsec', dispatch)} disabled={disabled}/>
     </Cell>
     <Cell size={'1-3'}>
-      <Textbox type={'number'} label={'Write Buffer Idle'} value={formState.writebufferIdle || ''}
+      <Textbox type={'number'} label={'Write Buffer Idle'}
+               value={getNumericFieldValue(formState.writebufferIdle)}
                onChange={getNumericFieldSetter('writebufferIdle', dispatch)} disabled={disabled || isEdit}/>
     </Cell>
     <Cell size={'1-3'}>
-      <Textbox type={'number'} label={'Write Buffer Active'} value={formState.writebufferActive || ''}
+      <Textbox type={'number'} label={'Write Buffer Active'}
+               value={getNumericFieldValue(formState.writebufferActive)}
                onChange={getNumericFieldSetter('writebufferActive', dispatch)} disabled={disabled || isEdit}/>
     </Cell>
     <Cell size={'1-3'}>
-      <Textbox type={'number'} label={'Write Buffer Size Max'} value={formState.writebufferSizeMax || ''}
+      <Textbox type={'number'} label={'Write Buffer Size Max'}
+               value={getNumericFieldValue(formState.writebufferSizeMax)}
                onChange={getNumericFieldSetter('writebufferSizeMax', dispatch)}
                disabled={disabled || isEdit}/>
     </Cell>

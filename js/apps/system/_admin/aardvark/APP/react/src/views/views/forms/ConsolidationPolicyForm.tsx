@@ -4,14 +4,14 @@ import React from "react";
 import { get } from "lodash";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Textbox from "../../../components/pure-css/form/Textbox";
-import { getNumericFieldSetter } from "../../../utils/helpers";
+import { getNumericFieldSetter, getNumericFieldValue } from "../../../utils/helpers";
 
 const BytesAccumConsolidationPolicyForm = ({
                                              formState,
                                              dispatch,
                                              disabled
                                            }: FormProps<BytesAccumConsolidationPolicy>) => {
-  const threshold = get(formState, ['consolidationPolicy', 'threshold']);
+  const threshold = get(formState, ['consolidationPolicy', 'threshold'], '');
 
   return <Grid>
     <Cell size={'1-2'}>
@@ -57,7 +57,7 @@ const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<Vi
   return <Grid>
     <Cell size={'1-4'}>
       <Textbox type={'number'} label={'Consolidation Interval (msec)'} disabled={disabled}
-               value={formState.consolidationIntervalMsec || ''}
+               value={getNumericFieldValue(formState.consolidationIntervalMsec)}
                onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
     </Cell>
     <Cell size={'1-4'}>
