@@ -1,6 +1,8 @@
 devel
 -----
 
+* Single server license output checking fixed.
+
 * Added enterprise license feature visibility for arangosh.
 
 * Fuerte: don't fall back to identity encoding in case of unknown encoding.

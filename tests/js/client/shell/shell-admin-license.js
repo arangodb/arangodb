@@ -27,6 +27,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
+const crypto = require('@arangodb/crypto');;
 
 function adminLicenseSuite () {
   'use strict';
@@ -91,6 +92,44 @@ function adminLicenseSuite () {
         assertTrue(result.error);
         assertEqual(result.code, 400);
         assertEqual(result.errorNum, 9001);
+      }
+    },
+
+    testExpired: function () {
+      var result;
+      var license = "eyJncmFudCI6ImV5Sm1aV0YwZFhKbGN5STZleUpsZUhCcGNtVnpJam94TlRRd05EWXlNVFUwZlN3aWRtVnljMmx2YmlJNk1YMD0iLCJzaWduYXR1cmUiOiJEcVpKYlhEbWFDYUxlMmJDVGxyTWM4L3ZMb21vdU8raEJBbkFwMUkwZnlyOFUxQTJ6NDdGQytYSXlRK0d2WDdkWXpaYnBrUzBDTVU2VVBrdDVUd2lwUDM3NEVEazZ2S3l6VnIyZnVndm1DWXQ2VENwZjEyNEhNcEkwTE44dFlSZ01xbTVDMkt2RkhyaVhpTk9udFc5NTVWSzN4OXBDdjNwU2ZFbktDeW5nb2xyRVRJeDRXVzQ1YWthUjVOWEp0bzZiR3lybFp5RklVK1lhWXl2bGhocFRVeFdWUmQwKzV6UjQxdk4yWWRlWm50dVY5WDU0SVJRWkVVNEdpQmRaMHo1aGRZUERsMys5cTc0LzJ6WTI2VzlEdlNwcmZLYkZwOC95ejViV21IY1lEYWtLUHJkcXd6UnZaMDU1NXNWbDUwUjRvWUNPNGRuakxTeXhIbGdnczliSWc9PSJ9";
+      try {
+        result = arango.PUT('/_admin/license', JSON.stringify(license));
+      } catch (e) {
+        console.warn(e);
+      }
+      print(result);
+      assertTrue(result.error);
+      assertEqual(result.code, 400);
+      assertEqual(result.errorNum, 9007);
+    },
+
+    testExpiredForced: function () {
+      var license = "eyJncmFudCI6ImV5Sm1aV0YwZFhKbGN5STZleUpsZUhCcGNtVnpJam94TlRRd05EWXlNVFUwZlN3aWRtVnljMmx2YmlJNk1YMD0iLCJzaWduYXR1cmUiOiJEcVpKYlhEbWFDYUxlMmJDVGxyTWM4L3ZMb21vdU8raEJBbkFwMUkwZnlyOFUxQTJ6NDdGQytYSXlRK0d2WDdkWXpaYnBrUzBDTVU2VVBrdDVUd2lwUDM3NEVEazZ2S3l6VnIyZnVndm1DWXQ2VENwZjEyNEhNcEkwTE44dFlSZ01xbTVDMkt2RkhyaVhpTk9udFc5NTVWSzN4OXBDdjNwU2ZFbktDeW5nb2xyRVRJeDRXVzQ1YWthUjVOWEp0bzZiR3lybFp5RklVK1lhWXl2bGhocFRVeFdWUmQwKzV6UjQxdk4yWWRlWm50dVY5WDU0SVJRWkVVNEdpQmRaMHo1aGRZUERsMys5cTc0LzJ6WTI2VzlEdlNwcmZLYkZwOC95ejViV21IY1lEYWtLUHJkcXd6UnZaMDU1NXNWbDUwUjRvWUNPNGRuakxTeXhIbGdnczliSWc9PSJ9";
+      try {
+        var result = arango.PUT('/_admin/license?force=true', JSON.stringify(license));
+        print(result);
+        assertFalse(result.error);
+        assertEqual(result.code, 201);
+      } catch (e) {
+        console.warn(e);
+      }
+    },
+
+    testUnExpire: function () {
+      var license = "eyJncmFudCI6ImV5Sm1aV0YwZFhKbGN5STZleUpsZUhCcGNtVnpJam94TnpJNU9EUTVNRFEzZlN3aWRtVnljMmx2YmlJNk1YMD0iLCJzaWduYXR1cmUiOiJ3SzBqSnpUNFVSdExUTGhGVzBkMy9RYm9OQzFrZnorM1ZqNGhwREFkd3VWL3c3VWF5QjJYMmtpNHVYd1MrM1ZJN1FmM25pNUh1VUlTMDIyVEs2UzZUTzdibDM0Q3c3WWVuSW43RDNEdTFHeVlkNk5Jay9ndEYrZFNVc1hRL1RxbWo2UWtsRW5XcDE5dzZLd1BVQ2NCWDFJRyt6NTMrd01kVzk5R1ZKWnV1ZkZmMzRzSnpxbEQ5WmM1UW12S0o5NFVVU2lnQlNlRW0wUWZvTWdKKzcrUmNRUVFMTVozTWhjOTMxL1U0dUJ2V0oyTEtQdUl1T1ZOMGhnK053V1ljQnk3RXNKc2o5cGRhNWdkM3dldm9TMmxIekZZQ3FzemQ0cmRwMlRIazJCbnY4aDRZTGxHeElOVjJnZExhNzVhdnBIS05ORkxSTGhNd3RpOWNGVWxwcUVTUnc9PSJ9";
+      try {
+        var result = arango.PUT('/_admin/license', JSON.stringify(license));
+        print(result);
+        assertFalse(result.error);
+        assertEqual(result.code, 201);
+      } catch (e) {
+        console.warn(e);
       }
     },
 
