@@ -453,21 +453,6 @@ bool IResearchInvertedIndex::covers(arangodb::aql::Projections& projections) con
       projections[i].coveringIndexPosition = index + nodeAttr.afData.fieldNumber;
       TRI_ASSERT(projections[i].path.size() > nodeAttr.afData.postfix.size());
       projections[i].coveringIndexCutoff = projections[i].path.size() - nodeAttr.afData.postfix.size();
-      //size_t columnNum{0};
-      //for (auto const& column : usedColumns) {
-      //  for (auto const& field : column) {
-      //    TRI_ASSERT(field.afData->field);
-      //    if (ADB_LIKELY(field.afData->field)) {
-      //      return true;
-      //      //if (*field.afData->field. projections[i].path.path == ) {
-
-      //      //}
-      //    } else {
-      //      return false; // fail safe
-      //    }
-      //  }
-      //  ++columnNum;
-      //}
     }
     return true;
   }
