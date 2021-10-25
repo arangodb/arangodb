@@ -122,6 +122,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     return isProduceResult() && !_projections.supportsCoveringIndex();
   }
 
+  bool isDeterministic() const override final { return !canReadOwnWrites(); }
+
   struct IndexVariable {
     size_t indexFieldNum;
     Variable const* var;

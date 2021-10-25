@@ -1592,7 +1592,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
 
 void EnumerateCollectionNode::setRandom() { _random = true; }
 
-bool EnumerateCollectionNode::isDeterministic() { return !_random; }
+bool EnumerateCollectionNode::isDeterministic() { return !_random && !canReadOwnWrites(); }
 
 std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
