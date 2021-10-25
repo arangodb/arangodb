@@ -33,6 +33,10 @@ devel
   The expensive iteration of files in the directory is now happening less
   frequently, and will not be as expensive as before if it runs.
 
+* Fix a potential overwhelm situation on DB servers that can lead to no further
+  tasks being pulled from a DB servers queue even though there would still be
+  processing capacity and idle threads available.
+
 * Fixed ES-881: Fixed LDAP global options. This needs to use the first active
   provider, not just the first provider and it should be globally disabled.
 
