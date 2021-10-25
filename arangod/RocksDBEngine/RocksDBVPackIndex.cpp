@@ -1411,6 +1411,8 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
               return std::make_unique<EmptyIndexIterator>(&_collection, trx);
           }
 
+          // If the value does not have a vpack representation the index cannot use it,
+          // and the results of the query are wrong.
           TRI_ASSERT(value->valueHasVelocyPackRepresentation());
           value->toVelocyPackValue(searchValues);
         }
