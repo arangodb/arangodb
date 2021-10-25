@@ -35,6 +35,7 @@
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
 #include "Shell/ClientFeature.h"
+#include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/ManagedDirectory.h"
@@ -1027,21 +1028,12 @@ bool ImportHelper::collectionExists() {
     return true;
   }
 
-  std::shared_ptr<velocypack::Builder> bodyBuilder(result->getBodyVelocyPack());
-  velocypack::Slice error = bodyBuilder->slice();
-  if (!error.isNone()) {
-    auto errorNum = error.get(StaticStrings::ErrorNum).getUInt();
-    auto errorMsg = error.get(StaticStrings::ErrorMessage).copyString();
+  auto check = arangodb::HttpResponseChecker::check(_httpClient->getErrorMessage(), result.get());
+
+  if (check.fail()) {
     LOG_TOPIC("f2c4a", ERR, arangodb::Logger::FIXME)
         << "unable to access collection '" << _collectionName
-        << "', server returned status code: " << static_cast<int>(code)
-        << "; error [" << errorNum << "] " << errorMsg;
-  } else {
-    LOG_TOPIC("57d57", ERR, arangodb::Logger::FIXME)
-        << "unable to accesss collection '" << _collectionName
-        << "', server returned status code: " << static_cast<int>(code)
-        << "; server returned message: "
-        << Logger::CHARS(result->getBody().c_str(), result->getBody().length());
+        << "', " << check.errorMessage();
   }
   return false;
 }
@@ -1081,21 +1073,11 @@ bool ImportHelper::checkCreateCollection() {
     return true;
   }
 
-  std::shared_ptr<velocypack::Builder> bodyBuilder(result->getBodyVelocyPack());
-  velocypack::Slice error = bodyBuilder->slice();
-  if (!error.isNone()) {
-    auto errorNum = error.get(StaticStrings::ErrorNum).getUInt();
-    auto errorMsg = error.get(StaticStrings::ErrorMessage).copyString();
+  auto check = arangodb::HttpResponseChecker::check(_httpClient->getErrorMessage(), result.get());
+  if (check.fail()) {
     LOG_TOPIC("09478", ERR, arangodb::Logger::FIXME)
         << "unable to create collection '" << _collectionName
-        << "', server returned status code: " << static_cast<int>(code)
-        << "; error [" << errorNum << "] " << errorMsg;
-  } else {
-    LOG_TOPIC("2211f", ERR, arangodb::Logger::FIXME)
-        << "unable to create collection '" << _collectionName
-        << "', server returned status code: " << static_cast<int>(code)
-        << "; server returned message: "
-        << Logger::CHARS(result->getBody().c_str(), result->getBody().length());
+        << "', " << check.errorMessage();
   }
   _hasError = true;
   return false;
@@ -1122,9 +1104,12 @@ bool ImportHelper::truncateCollection() {
     return true;
   }
 
-  LOG_TOPIC("f8ae4", ERR, arangodb::Logger::FIXME)
-      << "unable to truncate collection '" << _collectionName
-      << "', server returned status code: " << static_cast<int>(code);
+  auto check = arangodb::HttpResponseChecker::check(_httpClient->getErrorMessage(), result.get());
+  if (check.fail()) {
+    LOG_TOPIC("f8ae4", ERR, arangodb::Logger::FIXME)
+        << "unable to truncate collection '" << _collectionName << "', "
+        << check.errorMessage();
+  }
   _hasError = true;
   _errorMessages.push_back("Unable to overwrite collection");
   return false;
