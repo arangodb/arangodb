@@ -3,6 +3,8 @@ v3.8.2 (XXXX-XX-XX)
 
 * Fixed compilation and linking when using glibc 2.34.
 
+* Fuerte: don't fall back to identity encoding in case of unknown encoding.
+
 * Fix caching of collection counts and index selectivity estimates in cluster.
   The cache values expired too early in previous versions, making the cache
   ineffective.
