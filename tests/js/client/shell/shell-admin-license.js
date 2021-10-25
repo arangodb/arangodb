@@ -125,91 +125,96 @@ function adminLicenseSuite () {
     },
 
     testExpired: function () {
-      var result;
-      var license = "eyJncmFudCI6ImV5Sm1aV0YwZFhKbGN5STZleUpsZUhCcGNtVnpJam94TlRRd05EWXlNVFUwZlN3aWRtVnljMmx2YmlJNk1YMD0iLCJzaWduYXR1cmUiOiJEcVpKYlhEbWFDYUxlMmJDVGxyTWM4L3ZMb21vdU8raEJBbkFwMUkwZnlyOFUxQTJ6NDdGQytYSXlRK0d2WDdkWXpaYnBrUzBDTVU2VVBrdDVUd2lwUDM3NEVEazZ2S3l6VnIyZnVndm1DWXQ2VENwZjEyNEhNcEkwTE44dFlSZ01xbTVDMkt2RkhyaVhpTk9udFc5NTVWSzN4OXBDdjNwU2ZFbktDeW5nb2xyRVRJeDRXVzQ1YWthUjVOWEp0bzZiR3lybFp5RklVK1lhWXl2bGhocFRVeFdWUmQwKzV6UjQxdk4yWWRlWm50dVY5WDU0SVJRWkVVNEdpQmRaMHo1aGRZUERsMys5cTc0LzJ6WTI2VzlEdlNwcmZLYkZwOC95ejViV21IY1lEYWtLUHJkcXd6UnZaMDU1NXNWbDUwUjRvWUNPNGRuakxTeXhIbGdnczliSWc9PSJ9";
-      try {
-        result = arango.PUT('/_admin/license', JSON.stringify(license));
-      } catch (e) {
-        console.warn(e);
-        assertTrue(false);
-      }
-      assertTrue(result.error);
-      assertEqual(result.code, 400);
-      assertEqual(result.errorNum, 9007);
-      assertTrue(!result.hasOwnProperty("hash"));
-
-      try {
-        result = arango.GET('/_admin/license');
-        assertEqual(result.version, 1);
+      if (!skip) {
+        var result;
+        var license = "eyJncmFudCI6ImV5Sm1aV0YwZFhKbGN5STZleUpsZUhCcGNtVnpJam94TlRRd05EWXlNVFUwZlN3aWRtVnljMmx2YmlJNk1YMD0iLCJzaWduYXR1cmUiOiJEcVpKYlhEbWFDYUxlMmJDVGxyTWM4L3ZMb21vdU8raEJBbkFwMUkwZnlyOFUxQTJ6NDdGQytYSXlRK0d2WDdkWXpaYnBrUzBDTVU2VVBrdDVUd2lwUDM3NEVEazZ2S3l6VnIyZnVndm1DWXQ2VENwZjEyNEhNcEkwTE44dFlSZ01xbTVDMkt2RkhyaVhpTk9udFc5NTVWSzN4OXBDdjNwU2ZFbktDeW5nb2xyRVRJeDRXVzQ1YWthUjVOWEp0bzZiR3lybFp5RklVK1lhWXl2bGhocFRVeFdWUmQwKzV6UjQxdk4yWWRlWm50dVY5WDU0SVJRWkVVNEdpQmRaMHo1aGRZUERsMys5cTc0LzJ6WTI2VzlEdlNwcmZLYkZwOC95ejViV21IY1lEYWtLUHJkcXd6UnZaMDU1NXNWbDUwUjRvWUNPNGRuakxTeXhIbGdnczliSWc9PSJ9";
+        try {
+          result = arango.PUT('/_admin/license', JSON.stringify(license));
+        } catch (e) {
+          console.warn(e);
+          assertTrue(false);
+        }
+        assertTrue(result.error);
+        assertEqual(result.code, 400);
+        assertEqual(result.errorNum, 9007);
         assertTrue(!result.hasOwnProperty("hash"));
-        assertTrue(result.hasOwnProperty("status"));
-        assertTrue(result.status === "expiring");
-      } catch (e) {
-        console.warn(e);
-        assertTrue(false);
+
+        try {
+          result = arango.GET('/_admin/license');
+          assertEqual(result.version, 1);
+          assertTrue(!result.hasOwnProperty("hash"));
+          assertTrue(result.hasOwnProperty("status"));
+          assertTrue(result.status === "expiring");
+        } catch (e) {
+          console.warn(e);
+          assertTrue(false);
+        }
       }
     },
 
     testForceExpired: function () {
-      var license = "eyJncmFudCI6ImV5Sm1aV0YwZFhKbGN5STZleUpsZUhCcGNtVnpJam94TlRRd05EWXlNVFUwZlN3aWRtVnljMmx2YmlJNk1YMD0iLCJzaWduYXR1cmUiOiJEcVpKYlhEbWFDYUxlMmJDVGxyTWM4L3ZMb21vdU8raEJBbkFwMUkwZnlyOFUxQTJ6NDdGQytYSXlRK0d2WDdkWXpaYnBrUzBDTVU2VVBrdDVUd2lwUDM3NEVEazZ2S3l6VnIyZnVndm1DWXQ2VENwZjEyNEhNcEkwTE44dFlSZ01xbTVDMkt2RkhyaVhpTk9udFc5NTVWSzN4OXBDdjNwU2ZFbktDeW5nb2xyRVRJeDRXVzQ1YWthUjVOWEp0bzZiR3lybFp5RklVK1lhWXl2bGhocFRVeFdWUmQwKzV6UjQxdk4yWWRlWm50dVY5WDU0SVJRWkVVNEdpQmRaMHo1aGRZUERsMys5cTc0LzJ6WTI2VzlEdlNwcmZLYkZwOC95ejViV21IY1lEYWtLUHJkcXd6UnZaMDU1NXNWbDUwUjRvWUNPNGRuakxTeXhIbGdnczliSWc9PSJ9";
-      try {
-        var result = arango.PUT('/_admin/license?force=true', JSON.stringify(license));
-        assertTrue(!result.error);
+      if (!skip) {
+        var license = "eyJncmFudCI6ImV5Sm1aV0YwZFhKbGN5STZleUpsZUhCcGNtVnpJam94TlRRd05EWXlNVFUwZlN3aWRtVnljMmx2YmlJNk1YMD0iLCJzaWduYXR1cmUiOiJEcVpKYlhEbWFDYUxlMmJDVGxyTWM4L3ZMb21vdU8raEJBbkFwMUkwZnlyOFUxQTJ6NDdGQytYSXlRK0d2WDdkWXpaYnBrUzBDTVU2VVBrdDVUd2lwUDM3NEVEazZ2S3l6VnIyZnVndm1DWXQ2VENwZjEyNEhNcEkwTE44dFlSZ01xbTVDMkt2RkhyaVhpTk9udFc5NTVWSzN4OXBDdjNwU2ZFbktDeW5nb2xyRVRJeDRXVzQ1YWthUjVOWEp0bzZiR3lybFp5RklVK1lhWXl2bGhocFRVeFdWUmQwKzV6UjQxdk4yWWRlWm50dVY5WDU0SVJRWkVVNEdpQmRaMHo1aGRZUERsMys5cTc0LzJ6WTI2VzlEdlNwcmZLYkZwOC95ejViV21IY1lEYWtLUHJkcXd6UnZaMDU1NXNWbDUwUjRvWUNPNGRuakxTeXhIbGdnczliSWc9PSJ9";
+        try {
+          var result = arango.PUT('/_admin/license?force=true', JSON.stringify(license));
+          assertTrue(!result.error);
 
-        try {
-          result = arango.GET('/_admin/license');
-          assertEqual(result.version, 1);
-          assertTrue(result.hasOwnProperty("hash"));
-          assertEqual(result.hash, crypto.sha256(license));
-          assertTrue(result.hasOwnProperty("status"));
-          assertTrue(result.status === "read-only");
+          try {
+            result = arango.GET('/_admin/license');
+            assertEqual(result.version, 1);
+            assertTrue(result.hasOwnProperty("hash"));
+            assertEqual(result.hash, crypto.sha256(license));
+            assertTrue(result.hasOwnProperty("status"));
+            assertTrue(result.status === "read-only");
+          } catch (e) {
+            console.warn(e);
+            assertTrue(false);
+          }
+          try {
+            result = arango.GET('/_admin/server/mode');
+            assertEqual(result.mode, "readonly");
+          } catch (e) {
+            console.warn(e);
+            assertTrue(false);
+          }
         } catch (e) {
           console.warn(e);
           assertTrue(false);
         }
-        try {
-          result = arango.GET('/_admin/server/mode');
-          assertEqual(result.mode, "readonly");
-        } catch (e) {
-          console.warn(e);
-          assertTrue(false);
-        }
-      } catch (e) {
-        console.warn(e);
-        assertTrue(false);
       }
-
     },
 
-    testUnExpire: function () {
-      var license = "eyJncmFudCI6ImV5Sm1aV0YwZFhKbGN5STZleUpsZUhCcGNtVnpJam94TnpJNU9EUTVNRFEzZlN3aWRtVnljMmx2YmlJNk1YMD0iLCJzaWduYXR1cmUiOiJ3SzBqSnpUNFVSdExUTGhGVzBkMy9RYm9OQzFrZnorM1ZqNGhwREFkd3VWL3c3VWF5QjJYMmtpNHVYd1MrM1ZJN1FmM25pNUh1VUlTMDIyVEs2UzZUTzdibDM0Q3c3WWVuSW43RDNEdTFHeVlkNk5Jay9ndEYrZFNVc1hRL1RxbWo2UWtsRW5XcDE5dzZLd1BVQ2NCWDFJRyt6NTMrd01kVzk5R1ZKWnV1ZkZmMzRzSnpxbEQ5WmM1UW12S0o5NFVVU2lnQlNlRW0wUWZvTWdKKzcrUmNRUVFMTVozTWhjOTMxL1U0dUJ2V0oyTEtQdUl1T1ZOMGhnK053V1ljQnk3RXNKc2o5cGRhNWdkM3dldm9TMmxIekZZQ3FzemQ0cmRwMlRIazJCbnY4aDRZTGxHeElOVjJnZExhNzVhdnBIS05ORkxSTGhNd3RpOWNGVWxwcUVTUnc9PSJ9";
-      try {
-        var result = arango.PUT('/_admin/license', JSON.stringify(license));
-        assertTrue(!result.error);
-        assertEqual(result.result.code, 201);
-
+    testUnExpire: function () {      
+      if (!skip) {
+        var license = "eyJncmFudCI6ImV5Sm1aV0YwZFhKbGN5STZleUpsZUhCcGNtVnpJam94TnpJNU9EUTVNRFEzZlN3aWRtVnljMmx2YmlJNk1YMD0iLCJzaWduYXR1cmUiOiJ3SzBqSnpUNFVSdExUTGhGVzBkMy9RYm9OQzFrZnorM1ZqNGhwREFkd3VWL3c3VWF5QjJYMmtpNHVYd1MrM1ZJN1FmM25pNUh1VUlTMDIyVEs2UzZUTzdibDM0Q3c3WWVuSW43RDNEdTFHeVlkNk5Jay9ndEYrZFNVc1hRL1RxbWo2UWtsRW5XcDE5dzZLd1BVQ2NCWDFJRyt6NTMrd01kVzk5R1ZKWnV1ZkZmMzRzSnpxbEQ5WmM1UW12S0o5NFVVU2lnQlNlRW0wUWZvTWdKKzcrUmNRUVFMTVozTWhjOTMxL1U0dUJ2V0oyTEtQdUl1T1ZOMGhnK053V1ljQnk3RXNKc2o5cGRhNWdkM3dldm9TMmxIekZZQ3FzemQ0cmRwMlRIazJCbnY4aDRZTGxHeElOVjJnZExhNzVhdnBIS05ORkxSTGhNd3RpOWNGVWxwcUVTUnc9PSJ9";
         try {
-          result = arango.GET('/_admin/license');
-          assertEqual(result.version, 1);
-          assertTrue(result.hasOwnProperty("hash"));
-          assertEqual(result.hash, crypto.sha256(license));
-          assertTrue(result.hasOwnProperty("status"));
-          assertTrue(result.status === "good");
+          var result = arango.PUT('/_admin/license', JSON.stringify(license));
+          assertTrue(!result.error);
+          assertEqual(result.result.code, 201);
+
+          try {
+            result = arango.GET('/_admin/license');
+            assertEqual(result.version, 1);
+            assertTrue(result.hasOwnProperty("hash"));
+            assertEqual(result.hash, crypto.sha256(license));
+            assertTrue(result.hasOwnProperty("status"));
+            assertTrue(result.status === "good");
+          } catch (e) {
+            console.warn(e);
+            assertTrue(false);
+          }
+
+          try {
+            result = arango.GET('/_admin/server/mode');
+            assertEqual(result.mode, "default");
+          } catch (e) {
+            console.warn(e);
+            assertTrue(false);
+          }
+
         } catch (e) {
           console.warn(e);
-          assertTrue(false);
         }
-
-        try {
-          result = arango.GET('/_admin/server/mode');
-          assertEqual(result.mode, "default");
-        } catch (e) {
-          console.warn(e);
-          assertTrue(false);
-        }
-
-      } catch (e) {
-        console.warn(e);
       }
     },
 
