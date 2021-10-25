@@ -88,7 +88,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     return std::move(_response);
   }
 
-  application_features::ApplicationServer& server() { return _server; };
+  application_features::ApplicationServer& server() { return _server; }
 
   RequestStatistics::Item const& statistics() { return _statistics; }
   RequestStatistics::Item&& stealStatistics();
@@ -216,6 +216,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::atomic<std::thread::id> _executionMutexOwner;
 
   HandlerState _state;
+  // whether or not we have tracked this task as ongoing.
+  // can only be true during handler execution, and only for
+  // low priority tasks
+  bool _trackedAsOngoingLowPrio;
+
   RequestLane _lane;
 
  protected:

@@ -33,6 +33,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/signals.h"
 #include "Basics/system-functions.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -113,7 +114,10 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                      "ongoing at a given point in time, relative to the "
                      "maximum number of request handling threads",
                      new DoubleParameter(&_ongoingLowPriorityMultiplier),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::DefaultNoComponents, 
+                                                         arangodb::options::Flags::OnSingle, 
+                                                         arangodb::options::Flags::OnCoordinator, 
+                                                         arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30800);
 
   options->addOption("--server.maximal-queue-size",
@@ -212,6 +216,15 @@ void SchedulerFeature::prepare() {
   TRI_ASSERT(4 <= _nrMinimalThreads);
   TRI_ASSERT(_nrMinimalThreads <= _nrMaximalThreads);
   TRI_ASSERT(_queueSize > 0);
+
+  // on a DB server we intentionally disable throttling of incoming requests.
+  // this is because coordinators are the gatekeepers, and they should
+  // perform all the throttling.
+  uint64_t ongoingLowPriorityLimit = 
+      ServerState::instance()->isDBServer() ? 
+         0 : 
+         static_cast<uint64_t>(_ongoingLowPriorityMultiplier * _nrMaximalThreads);
+
 // wait for windows fix or implement operator new
 #if (_MSC_VER >= 1)
 #pragma warning(push)
@@ -220,7 +233,7 @@ void SchedulerFeature::prepare() {
   auto sched =
       std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads, _nrMaximalThreads,
                                             _queueSize, _fifo1Size, _fifo2Size,
-                                            _fifo3Size, _ongoingLowPriorityMultiplier,
+                                            _fifo3Size, ongoingLowPriorityLimit,
                                             _unavailabilityQueueFillGrade);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)

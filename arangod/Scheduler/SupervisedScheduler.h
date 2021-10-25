@@ -47,7 +47,7 @@ class SupervisedScheduler final : public Scheduler {
   SupervisedScheduler(application_features::ApplicationServer& server,
                       uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
                       uint64_t fifo1Size, uint64_t fifo2Size, uint64_t fifo3Size,
-                      double ongoingMultiplier, double unavailabilityQueueFillGrade);
+                      uint64_t ongoingLowPriorityLimit, double unavailabilityQueueFillGrade);
   ~SupervisedScheduler() final;
 
   bool start() override;
@@ -56,8 +56,9 @@ class SupervisedScheduler final : public Scheduler {
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
 
-  void trackBeginOngoingLowPriorityTask();
-  void trackEndOngoingLowPriorityTask();
+  void trackCreateHandlerTask() noexcept;
+  void trackBeginOngoingLowPriorityTask() noexcept;
+  void trackEndOngoingLowPriorityTask() noexcept;
 
   /// @brief set the time it took for the last low prio item to be dequeued
   /// (time between queuing and dequeing) [ms]
@@ -179,7 +180,7 @@ class SupervisedScheduler final : public Scheduler {
   size_t const _minNumWorkers;
   size_t const _maxNumWorkers;
   uint64_t const _maxFifoSizes[NumberOfQueues];
-  size_t const _ongoingLowPriorityLimit;
+  uint64_t const _ongoingLowPriorityLimit;
 
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)
@@ -214,6 +215,7 @@ class SupervisedScheduler final : public Scheduler {
   Gauge<uint64_t>& _metricsNumWorkingThreads;
   Gauge<uint64_t>& _metricsNumWorkerThreads;
   
+  Counter& _metricsHandlerTasksCreated;
   Counter& _metricsThreadsStarted;
   Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
