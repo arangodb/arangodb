@@ -526,6 +526,14 @@ find_package(PythonInterp 3 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
+execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} -c "import distutils.spawn"
+    RESULT_VARIABLE EXIT_CODE
+    OUTPUT_QUIET
+    )
+if (NOT "${EXIT_CODE}" EQUAL "0")
+  message(FATAL_ERROR "python distutils package is required! ")
+endif()
 
 # FIXME the build containers seem to have a
 # /usr/bin/ch(mod|own) to prevent the search

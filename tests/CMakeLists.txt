@@ -275,9 +275,11 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/ShaEventListener.cpp
   RocksDBEngine/TransactionManagerTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
+  SimpleHttpClient/HttpResponseCheckerTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/Context-test.cpp
+  Transaction/CountCacheTest.cpp
   Transaction/Manager-test.cpp
   Transaction/RestTransactionHandler-test.cpp
   Utils/CollectionNameResolver-test.cpp
