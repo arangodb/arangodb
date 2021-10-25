@@ -397,6 +397,8 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     });
     return;
   }
+  
+  SchedulerFeature::SCHEDULER->trackCreateHandlerTask();
 
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
