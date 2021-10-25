@@ -1028,7 +1028,7 @@ auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const -> R
   auto res = _guardedLogCore.doUnderLock([&](auto& core) {
     LOG_CTX("23745", DEBUG, _logContext)
         << "local follower releasing with stop at " << stop;
-    return core->removeFront(stop);
+    return core->removeFront(stop).get();
   });
   LOG_CTX_IF("2aba1", WARN, _logContext, res.fail())
       << "local follower failed to release log entries: " << res.errorMessage();

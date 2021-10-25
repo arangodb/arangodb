@@ -28,6 +28,7 @@
 #include "RocksDBKeyBounds.h"
 
 #include <array>
+#include <variant>
 
 namespace arangodb {
 
@@ -47,16 +48,36 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   auto persist(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
                std::unique_ptr<arangodb::replication2::replicated_log::PersistedLogIterator> iter,
                WriteOptions const& options) -> futures::Future<Result>;
+  auto persist(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
+               replication2::LogIndex stop, WriteOptions const& options)
+      -> futures::Future<Result>;
 
   struct PersistRequest {
     PersistRequest(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
                    std::unique_ptr<arangodb::replication2::replicated_log::PersistedLogIterator> iter,
                    futures::Promise<Result> promise)
-        : log(std::move(log)), iter(std::move(iter)), promise(std::move(promise)) {}
+        : log(std::move(log)), action(InsertEntries{std::move(iter)}), promise(std::move(promise)) {}
+    PersistRequest(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
+                   replication2::LogIndex stop,
+                   futures::Promise<Result> promise)
+        : log(std::move(log)), action(RemoveFront{stop}), promise(std::move(promise)) {}
+
+    struct InsertEntries {
+      std::unique_ptr<arangodb::replication2::replicated_log::PersistedLogIterator> iter;
+    };
+
+    struct RemoveFront {
+      replication2::LogIndex stop;
+    };
+
+    auto execute(rocksdb::WriteBatch& wb) -> Result;
+
     std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log;
-    std::unique_ptr<arangodb::replication2::replicated_log::PersistedLogIterator> iter;
+    std::variant<InsertEntries, RemoveFront> action;
     futures::Promise<Result> promise;
   };
+
+  void persist(PersistRequest req, WriteOptions const& options);
 
   struct Lane {
     Lane() = delete;
@@ -93,12 +114,13 @@ class RocksDBPersistedLog : public replication2::replicated_log::PersistedLog,
                    WriteOptions const&) -> futures::Future<Result> override;
   auto read(replication2::LogIndex start)
       -> std::unique_ptr<replication2::replicated_log::PersistedLogIterator> override;
-  auto removeFront(replication2::LogIndex stop) -> Result override;
+  auto removeFront(replication2::LogIndex stop) -> futures::Future<Result> override;
   auto removeBack(replication2::LogIndex start) -> Result override;
 
   // On success, iter will be completely consumed and written to wb.
   auto prepareWriteBatch(replication2::replicated_log::PersistedLogIterator& iter,
                          rocksdb::WriteBatch& wb) -> Result;
+  auto prepareRemoveFront(replication2::LogIndex stop, rocksdb::WriteBatch&) -> Result;
 
   uint64_t objectId() const { return _objectId; }
 
