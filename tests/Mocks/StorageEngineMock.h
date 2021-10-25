@@ -179,6 +179,9 @@ class TransactionStateMock : public arangodb::TransactionState {
   virtual arangodb::Result commitTransaction(arangodb::transaction::Methods* trx) override;
   virtual uint64_t numCommits() const override;
   virtual bool hasFailedOperations() const override;
+
+  std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
+    arangodb::DataSourceId cid, arangodb::AccessMode::Type accessType) override;
 };
 
 class StorageEngineMock : public arangodb::StorageEngine {
@@ -211,9 +214,6 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(
       arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& info) override;
   virtual arangodb::Result createTickRanges(VPackBuilder&) override;
-  virtual std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
-      arangodb::TransactionState& state, arangodb::DataSourceId cid,
-      arangodb::AccessMode::Type) override;
   virtual std::unique_ptr<arangodb::transaction::Manager> createTransactionManager(
       arangodb::transaction::ManagerFeature&) override;
   virtual std::shared_ptr<arangodb::TransactionState> createTransactionState(

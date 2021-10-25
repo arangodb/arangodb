@@ -15,6 +15,26 @@ devel
   for cluster with many coordinators that used to run their statistics queries
   at about the same time when the instances were started simultaneously.
 
+* Fixed compilation and linking when using glibc 2.34.
+
+* Fuerte: don't fall back to identity encoding in case of unknown encoding.
+
+* BTS-616: Added support for client tools arangoimport, arangodump,
+  arangorestore, arangobench and arangoexport to handle HTTP responses when 
+  they are not in JSON format (e.g. text/html).   
+
+* Updated ArangoDB Starter to 0.15.3-preview-1.
+
+* Remove dysfunctional CMake variable `USE_OPTIMIZE_FOR_ARCHITECTURE`.
+  Architecture detection and architecture-specific optimization is now 
+  performed unconditionally. It is still possible to inject a certain
+  target architecture by setting the CMake variable `TARGET_ARCHITECTURE`.
+
+* Stop calling unnecessary `/_api/wal/open-transactions` REST API before
+  starting the continuous synchronization in active fail and single server
+  replication. This request is unnecessary with the RocksDB storage
+  engine.
+
 * Make background calculation of SHA hashes for RocksDB .sst files less
   intrusive. The previous implementation frequently iterated over all files
   in the database directory to check if it needed to ad-hoc calculate the
@@ -27,6 +47,10 @@ devel
   The expensive iteration of files in the directory is now happening less
   frequently, and will not be as expensive as before if it runs.
 
+* Fix a potential overwhelm situation on DB servers that can lead to no further
+  tasks being pulled from a DB servers queue even though there would still be
+  processing capacity and idle threads available.
+
 * Fixed ES-881: Fixed LDAP global options. This needs to use the first active
   provider, not just the first provider and it should be globally disabled.
 
@@ -36,6 +60,7 @@ devel
 
 * Web UI - Added missing HTML escaping inside the file upload plugin used in the
   section of deploying a new Foxx application when uploading a zip file.
+
 * Now, arangoimport supports merging of attributes. When importing data from a
   file into a collection, a document attribute can be comprised of merging
   attributes from the file into it, with separators and other literal strings.

@@ -215,6 +215,12 @@ class CalculationTransactionState final : public arangodb::TransactionState {
 
   /// @brief number of commits, including intermediate commits
   uint64_t numCommits() const override { return 0; }
+
+  std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
+      arangodb::DataSourceId cid, arangodb::AccessMode::Type accessType) override {
+    TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 };
 
 /// @brief Dummy transaction context which just gives dummy state

@@ -61,6 +61,7 @@
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
 #include "RocksDBEngine/Listeners/RocksDBShaCalculator.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
+#include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -80,13 +81,12 @@
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
-#include "RocksDBEngine/RocksDBTransactionCollection.h"
-#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBUpgrade.h"
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
+#include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
@@ -1028,13 +1028,10 @@ std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
 
 std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid, transaction::Options const& options) {
-  return std::make_shared<RocksDBTransactionState>(vocbase, tid, options);
-}
-
-std::unique_ptr<TransactionCollection> RocksDBEngine::createTransactionCollection(
-    TransactionState& state, DataSourceId cid, AccessMode::Type accessType) {
-  return std::unique_ptr<TransactionCollection>(
-      new RocksDBTransactionCollection(&state, cid, accessType));
+  if (vocbase.replicationVersion() == replication::Version::TWO) {
+    return std::make_shared<ReplicatedRocksDBTransactionState>(vocbase, tid, options);
+  }
+  return std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options);
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
