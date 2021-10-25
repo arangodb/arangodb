@@ -1,7 +1,7 @@
 devel
 -----
 
-* Add license information to frontend.
+* Add license information to the web UI.
 
 * Fix local cluster script for deprecated authentication option.
 
