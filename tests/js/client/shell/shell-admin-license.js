@@ -168,6 +168,18 @@ function adminLicenseSuite () {
           assertTrue(false);
         }
         
+        try {
+          result = arango.GET('/_admin/read-only');
+          assertEqual(result.version, 1);
+          assertTrue(result.hasOwnProperty("hash"));
+          assertEqual(result.hash, crypto.sha256(license));
+          assertTrue(result.hasOwnProperty("status"));
+          assertTrue(result.status === "read-only");
+        } catch (e) {
+          console.warn(e);
+          assertTrue(false);
+        }
+
       } catch (e) {
         console.warn(e);
         assertTrue(false);
