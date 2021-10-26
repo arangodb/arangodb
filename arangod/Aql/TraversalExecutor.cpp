@@ -289,9 +289,6 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
   auto opts = _traverser.options();
   opts->clearVariableValues();
 
-  AqlFunctionsInternalCache cache{};
-  ResetableExecutorExpressionContext ctx(*opts->trx(), opts->query(), cache);
-
   // Now reset the traverser
   // NOTE: It is correct to ask for whether there is a data row here
   //       even if we're using a constant start vertex, as we expect
@@ -320,7 +317,7 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       TRI_ASSERT(_inputRow.isInitialized());
     }
 
-    opts->injectVariableValuesForIndexes(_infos.getAst(), ctx, _inputRow);
+    opts->calculateIndexExpressions(_infos.getAst());
 
     std::string sourceString;
     TRI_ASSERT(_inputRow.isInitialized());
