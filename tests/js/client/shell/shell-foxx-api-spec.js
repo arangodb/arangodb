@@ -174,7 +174,6 @@ describe('FoxxApi commit', function () {
     expect(result).to.have.property('parsedBody');
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'deflate'});
-    print(result)
     if (!isVst) {
       // no transparent compression support in VST atm.
       expect(result.body).to.be.instanceof(Buffer);
@@ -184,8 +183,6 @@ describe('FoxxApi commit', function () {
 
 
     result = arango.GET_RAW('/test/encode-object-deflate', {'accept-encoding': 'deflate'});
-    print(result)
-    print(JSON.stringify(result.body))
     if (!isVst) {
       // no transparent compression support in VST atm.
       expect(result.body).to.be.instanceof(Buffer);
@@ -194,8 +191,6 @@ describe('FoxxApi commit', function () {
     }
 
     result = arango.GET_RAW('/test/encode-array-deflate', {'accept-encoding': 'deflate'});
-    print(result)
-    print(JSON.stringify(result.body))
     if (!isVst) {
       // no transparent compression support in VST atm.
       expect(result.body).to.be.instanceof(Buffer);
@@ -205,11 +200,9 @@ describe('FoxxApi commit', function () {
 
     if (!isVst) {
       // doesn't work with vst..
-      result = arango.GET_RAW('/test/encode-array-base64encode', {'accept-encoding': 'base64'});
-      print(result)
+      arango.GET_RAW('/test/encode-array-base64encode', {'accept-encoding': 'base64'});
 
-      result = arango.GET_RAW('/test/encode-object-base64encode', {'accept-encoding': 'base64'});
-      print(result)
+      arango.GET_RAW('/test/encode-object-base64encode', {'accept-encoding': 'base64'});
     }
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'deflate'});
