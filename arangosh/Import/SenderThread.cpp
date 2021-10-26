@@ -166,6 +166,9 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
     haveBody = true;
   } catch (...) {
     // no body, likely error situation
+    _errorMessage = result->getHttpReturnMessage();
+    // will trigger the waiting ImportHelper thread to cancel the import
+    _hasError = true;
   }
 
   if (haveBody) {

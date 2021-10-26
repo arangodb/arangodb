@@ -73,7 +73,6 @@ struct ReplicatedLogMetrics;
 }  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb::replication2::replicated_log {
-struct PersistedLogIterator;
 
 /**
  * @brief Leader instance of a replicated log.
