@@ -29,20 +29,6 @@
 let jsunity = require('jsunity');
 const crypto = require('@arangodb/crypto');
 
-function isEnterprise() {
-  var result;
-  try {
-    result = arango.GET('/_admin/version');
-  } catch (e) {
-    console.warn(e);
-    assertTrue(false);
-  }
-  return result.license === "enterprise";
-}
-function isCommunity() {
-  return !isEnterprise();
-}
-
 function adminLicenseSuite () {
   'use strict';
 
