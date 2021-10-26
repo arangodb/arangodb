@@ -304,6 +304,9 @@ struct TypedLogRangeIterator : TypedLogIterator<T> {
 using LogIterator = TypedLogIterator<LogEntryView>;
 using LogRangeIterator = TypedLogRangeIterator<LogEntryView>;
 
+// ReplicatedLog-internal iterator over PersistingLogEntries
+struct PersistedLogIterator : TypedLogIterator<PersistingLogEntry> {};
+
 struct LogConfig {
   std::size_t writeConcern = 1;
   std::size_t replicationFactor = 1;
