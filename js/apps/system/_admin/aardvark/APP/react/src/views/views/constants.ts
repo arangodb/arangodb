@@ -2,8 +2,6 @@ import { JSONSchemaType } from 'ajv';
 
 type Compression = 'lz4' | 'none';
 
-type Direction = 'asc' | 'desc';
-
 export type StoredValue = {
   fields: string[];
   compression: Compression;
@@ -13,17 +11,10 @@ export type StoredValues = {
   storedValues?: StoredValue[]
 };
 
-export type PrimartSortTypeDirection = {
-  field: string;
-  direction: Direction;
-};
-
-export type PrimarySortTypeBoolean = {
+export type PrimarySortType = {
   field: string;
   asc: boolean;
-}
-
-export type PrimarySortType = PrimartSortTypeDirection | PrimarySortTypeBoolean;
+};
 
 export type PrimarySort = {
   primarySort?: PrimarySortType[]
@@ -153,42 +144,22 @@ export const formSchema: JSONSchemaType<FormState> = {
       items: {
         type: 'object',
         nullable: false,
-        oneOf: [
-          {
-            properties: {
-              field: {
-                type: 'string',
-                nullable: false
-              },
-              direction: {
-                type: 'string',
-                nullable: false,
-                enum: ['asc', 'desc']
-              }
-            },
-            required: ['field', 'direction'],
-            additionalProperties: false
+        properties: {
+          field: {
+            type: 'string',
+            nullable: false
           },
-          {
-            properties: {
-              field: {
-                type: 'string',
-                nullable: false
-              },
-              asc: {
-                type: 'boolean',
-                nullable: false
-              }
-            },
-            required: ['field', 'asc'],
-            additionalProperties: false
+          asc: {
+            type: 'boolean',
+            nullable: false
           }
-        ],
+        },
         default: {
           field: '',
           direction: 'asc'
         },
-        required: ['field']
+        required: ['field', 'asc'],
+        additionalProperties: false
       }
     },
     primarySortCompression: {
@@ -267,7 +238,7 @@ export const formSchema: JSONSchemaType<FormState> = {
         propertyName: "type"
       },
       oneOf: [
-        /* {
+        {
           properties: {
             type: {
               const: 'bytes_accum'
@@ -281,7 +252,7 @@ export const formSchema: JSONSchemaType<FormState> = {
             }
           },
           additionalProperties: false
-        },*/
+        },
         {
           properties: {
             type: {

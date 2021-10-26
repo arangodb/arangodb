@@ -2,7 +2,7 @@ import { ChangeEvent, Dispatch, useCallback, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "./arangoClient";
 import minimatch from "minimatch";
-import { cloneDeep, compact, has, isEqual, merge, parseInt, set, uniqueId, unset } from "lodash";
+import { cloneDeep, compact, has, isEqual, merge, set, uniqueId, unset } from "lodash";
 import { DispatchArgs, State } from "./constants";
 import { ErrorObject, ValidateFunction } from "ajv";
 
@@ -156,7 +156,7 @@ export function getNumericFieldValue (value: number | undefined): number | strin
 export function getNumericFieldSetter<FormState> (field: string, dispatch: Dispatch<DispatchArgs<FormState>>,
                                                   basePath?: string) {
   return (event: ChangeEvent<HTMLInputElement>) => {
-    const numValue = parseInt(event.target.value);
+    const numValue = parseFloat(event.target.value);
 
     if (Number.isNaN(numValue)) {
       dispatch({

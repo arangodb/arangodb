@@ -1,8 +1,21 @@
-import { FormState } from "./constants";
+import Ajv2019 from "ajv/dist/2019";
+import ajvErrors from 'ajv-errors';
+import { formSchema, FormState, linksSchema } from "./constants";
 import { useEffect, useMemo, useState } from "react";
 import { DispatchArgs, State } from "../../utils/constants";
 import { getPath } from "../../utils/helpers";
-import { set } from "lodash";
+import { cloneDeep, merge, set } from "lodash";
+
+const ajv = new Ajv2019({
+  allErrors: true,
+  removeAdditional: 'failing',
+  useDefaults: true,
+  discriminator: true,
+  $data: true
+});
+ajvErrors(ajv);
+
+export const validateAndFix = ajv.addSchema(linksSchema).compile(formSchema);
 
 export function useLinkState (formState: { [key: string]: any }, formField: string) {
   const [field, setField] = useState('');
@@ -17,9 +30,18 @@ export function useLinkState (formState: { [key: string]: any }, formField: stri
 }
 
 export const postProcessor = (state: State<FormState>, action: DispatchArgs<FormState>) => {
-  if (action.type === 'setField' && action.field && action.field.value !== undefined) {
+  if (action.type === 'setField' && action.field) {
     const path = getPath(action.basePath, action.field.path);
 
-    set(state.formState, path, action.field.value);
+    if (action.field.path === 'consolidationPolicy.type') {
+      const tempFormState = cloneDeep(state.formCache);
+
+      validateAndFix(tempFormState);
+      state.formState = tempFormState as unknown as FormState;
+
+      merge(state.formCache, state.formState);
+    } else if (action.field.value !== undefined) {
+      set(state.formState, path, action.field.value);
+    }
   }
 };

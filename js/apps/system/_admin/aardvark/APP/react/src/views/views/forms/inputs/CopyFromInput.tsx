@@ -1,10 +1,11 @@
 import { FormState } from "../../constants";
 import { FormProps } from "../../../../utils/constants";
 import React, { ChangeEvent, useEffect, useState } from "react";
-import { find, omit, sortBy } from "lodash";
+import { find, sortBy } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { validateAndFix } from "../../helpers";
 import { IconButton } from "../../../../components/arango/buttons";
 
 type CopyFromInputProps = {
@@ -16,9 +17,7 @@ const CopyFromInput = ({ views, dispatch }: CopyFromInputProps) => {
   const [selectedView, setSelectedView] = useState(sortedViews[0]);
   const { data } = useSWR(`/view/${selectedView.name}/properties`, (path) => getApiRouteForCurrentDB().get(path));
 
-  const fullView = data
-    ? omit(data.body, 'error', 'code', 'id', 'globallyUniqueId', 'minScore', 'consolidationPolicy.minScore', 'name')
-    : selectedView;
+  const fullView = data ? data.body : selectedView;
 
   useEffect(() => {
     setSortedViews(sortBy(views, 'name'));
@@ -33,6 +32,7 @@ const CopyFromInput = ({ views, dispatch }: CopyFromInputProps) => {
 
   const copyFormState = () => {
     fullView.name = '';
+    validateAndFix(fullView);
 
     dispatch({
       type: 'setFormState',

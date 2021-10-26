@@ -5,17 +5,13 @@ import { ArangoTable, ArangoTD, ArangoTH } from "../../../../components/arango/t
 import Textbox from "../../../../components/pure-css/form/Textbox";
 import { getPath } from "../../../../utils/helpers";
 import Select from "../../../../components/pure-css/form/Select";
-import { PrimartSortTypeDirection, PrimarySort, PrimarySortType } from "../../constants";
+import { PrimarySort } from "../../constants";
 import { IconButton } from "../../../../components/arango/buttons";
 
 const columnWidths: { [key: string]: number[] } = {
   'false': [5, 60, 10, 25],
   'true': [5, 85, 10, 0]
 };
-
-function isPrimartSortTypeDirection (item: PrimarySortType): item is PrimartSortTypeDirection {
-  return item.hasOwnProperty('direction');
-}
 
 const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySort>) => {
   const items = formState.primarySort || [];
@@ -83,7 +79,7 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
   const addPrimarySort = () => {
     const primarySort = {
       field: '',
-      direction: 'asc'
+      asc: true
     };
 
     dispatch({
@@ -144,31 +140,18 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
             };
 
             const updateDirection = (event: ChangeEvent<HTMLSelectElement>) => {
-              itemDispatch({
-                type: 'unsetField',
-                field: {
-                  path: 'asc'
-                }
-              });
-
               itemDispatch(
                 {
                   type: 'setField',
                   field: {
-                    path: 'direction',
-                    value: event.target.value
+                    path: 'asc',
+                    value: event.target.value === 'asc'
                   }
                 }
               );
             };
 
-            let direction;
-
-            if (isPrimartSortTypeDirection(item)) {
-              direction = item.direction;
-            } else {
-              direction = item.asc ? 'asc' : 'desc';
-            }
+            const direction = item.asc ? 'asc' : 'desc';
 
             return <tr key={idx} style={{ borderBottom: '1px  solid #DDD' }}>
               <ArangoTD seq={0}>{idx + 1}.</ArangoTD>

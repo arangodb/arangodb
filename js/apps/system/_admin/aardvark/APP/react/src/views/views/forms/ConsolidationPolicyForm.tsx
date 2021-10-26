@@ -1,8 +1,9 @@
 import { FormProps } from "../../../utils/constants";
 import { BytesAccumConsolidationPolicy, TierConsolidationPolicy, ViewProperties } from "../constants";
-import React from "react";
+import React, { ChangeEvent } from "react";
 import { get } from "lodash";
 import { Cell, Grid } from "../../../components/pure-css/grid";
+import Select from "../../../components/pure-css/form/Select";
 import Textbox from "../../../components/pure-css/form/Textbox";
 import { getNumericFieldSetter, getNumericFieldValue } from "../../../utils/helpers";
 
@@ -52,6 +53,16 @@ const TierConsolidationPolicyForm = ({
 };
 
 const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<ViewProperties>) => {
+  const updateConsolidationPolicyType = (event: ChangeEvent<HTMLSelectElement>) => {
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'consolidationPolicy.type',
+        value: event.target.value
+      }
+    });
+  };
+
   const policyType = get(formState, ['consolidationPolicy', 'type'], 'tier');
 
   return <Grid>
@@ -61,7 +72,11 @@ const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<Vi
                onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
     </Cell>
     <Cell size={'1-4'}>
-      <Textbox label={'Consolidation Policy Type'} type={'text'} value={policyType} disabled={true}/>
+      <Select label={'Consolidation Policy Type'} disabled={disabled} value={policyType}
+              onChange={updateConsolidationPolicyType}>
+        <option key={'tier'} value={'tier'}>Tier</option>
+        <option key={'bytes_accum'} value={'bytes_accum'}>Bytes Accum [DEPRECATED]</option>
+      </Select>
     </Cell>
     <Cell size={'1-2'}/>
     <Cell size={'1'}>
