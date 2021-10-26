@@ -35,7 +35,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#ifdef USE_ENTERPRISE
 #include "Enterprise/License/LicenseFeature.h"
+#endif
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Utils/ExecContext.h"
@@ -85,11 +87,11 @@ RestStatus RestLicenseHandler::execute() {
 }
 #endif
 
-/// @brief check for administrator rights and rocksdb storage engine
-///        generate the error response if issues found
+/// @brief check for administrator rights
 arangodb::Result RestLicenseHandler::verifyPermitted() {
+  #ifdef USE_ENTERPRISE
   auto& feature = server().getFeature<arangodb::LicenseFeature>();
-
+  
   // do we have admin rights (if rights are active)
   if (feature.onlySuperUser()) {
     if (!ExecContext::current().isSuperuser()) {
@@ -102,7 +104,7 @@ arangodb::Result RestLicenseHandler::verifyPermitted() {
         TRI_ERROR_HTTP_FORBIDDEN, "you need admin rights for license operations");
     }
   }
-
+  #endif
   return arangodb::Result();
 
 }
