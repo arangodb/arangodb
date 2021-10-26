@@ -42,7 +42,6 @@ class ExecutionPlan;
 class Expression;
 class InputAqlItemRow;
 class QueryContext;
-class ResetableExecutorExpressionContext;
 struct VarInfo;
 }  // namespace aql
 
@@ -99,10 +98,6 @@ struct BaseOptions {
     void initializeNonConstExpressions(aql::Ast* ast,
                                        std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
                                        aql::Variable const* indexVariable);
-
-    void injectVariableValues(aql::Ast* ast,
-        aql::ResetableExecutorExpressionContext& ctx,
-        aql::InputAqlItemRow const& input);
 
     /// @brief Build a velocypack containing all relevant information
     ///        for DBServer traverser engines.
@@ -215,10 +210,6 @@ struct BaseOptions {
   virtual void initializeIndexConditions(
     aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
     aql::Variable const* indexVariable);
-
-  virtual void injectVariableValuesForIndexes(aql::Ast* ast,
-                                              aql::ResetableExecutorExpressionContext& ctx,
-                                              aql::InputAqlItemRow const& input);
 
   virtual void calculateIndexExpressions(aql::Ast* ast);
 

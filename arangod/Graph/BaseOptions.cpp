@@ -219,20 +219,6 @@ void BaseOptions::LookupInfo::calculateIndexExpressions(Ast* ast, ExpressionCont
   }
 }
 
-void BaseOptions::LookupInfo::injectVariableValues(aql::Ast* ast,
-    ResetableExecutorExpressionContext& ctx,
-    aql::InputAqlItemRow const& input) {
-  if (!_nonConstContainer._expressions.empty()) {
-    return;
-  }
-  // We cannot optimize V8 expressions
-  TRI_ASSERT(!_nonConstContainer._hasV8Expression);
-
-  ctx.injectInputRow(input);
-  ctx.injectVariableMapping(_nonConstContainer._varToRegisterMapping);
-  calculateIndexExpressions(ast, ctx);
-}
-
 std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
     arangodb::aql::QueryContext& query, VPackSlice const& definition) {
   VPackSlice type = definition.get("type");
@@ -498,14 +484,6 @@ void BaseOptions::initializeIndexConditions(
     aql::Variable const* indexVariable) {
   for (auto& it : _baseLookupInfos) {
     it.initializeNonConstExpressions(ast, varInfo, indexVariable);
-  }
-}
-
-void BaseOptions::injectVariableValuesForIndexes(aql::Ast* ast,
-    ResetableExecutorExpressionContext& ctx,
-    aql::InputAqlItemRow const& input) {
-  for (auto& it : _baseLookupInfos) {
-    it.injectVariableValues(ast, ctx, input);
   }
 }
 
