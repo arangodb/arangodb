@@ -1,6 +1,8 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.15.3.
+
 * Fix caching of index selectivity estimates in cluster.
   The cache values expired too early in previous versions, making the cache
   ineffective.
