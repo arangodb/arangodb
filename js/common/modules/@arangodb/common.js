@@ -531,9 +531,9 @@ exports.enterpriseLicenseVisibility = function() {
   // enterprise license issues. If the counterpart does not expose the license
   // API (non-enterprise and <= 3.9), nothing is displayed.
 
-  var license;
+  let license;
   try {
-    license = arango.GET("_admin/license");
+    license = arango.GET("/_admin/license");
   } catch (e) {
     return;
   }
