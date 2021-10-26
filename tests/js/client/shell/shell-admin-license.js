@@ -27,29 +27,29 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
-const crypto = require('@arangodb/crypto');;
+const crypto = require('@arangodb/crypto');
+
+function isEnterprise() {
+  var result;
+  try {
+    result = arango.GET('/_admin/version');
+  } catch (e) {
+    console.warn(e);
+    assertTrue(false);
+  }
+  return result.license === "enterprise";
+}
+function isCommunity() {
+  return !isEnterprise();
+}
 
 function adminLicenseSuite () {
   'use strict';
-  var skip = false;
 
   return {
 
-    testSetup: function () {
-      var result;
-      try {
-        result = arango.GET('/_admin/license');
-        if (result.hasOwnProperty("error") && result.error && result.code === 404) {
-          skip = true;
-        }
-      } catch (e) {
-        console.warn(e);
-        assertTrue(false);
-      }
-    },
-
     testGet: function () {
-      if (!skip) {
+      if (isCommunity()) {
         var result;
         try {
           result = arango.GET('/_admin/license');
@@ -57,23 +57,12 @@ function adminLicenseSuite () {
           console.warn(e);
           assertTrue(false);
         }
-
-        let now = new Date();
-        assertTrue(result.hasOwnProperty("status"));
-        assertTrue(result.status === "expiring");
-        assertTrue(result.hasOwnProperty("features"));
-        assertTrue(result.features.hasOwnProperty("expires"));
-        assertTrue(result.hasOwnProperty("status"));
-        assertEqual(result.status, "expiring");
-        assertTrue(!result.hasOwnProperty("hash"));
-        let expires = new Date(result.features.expires * 1000);
-        assertTrue(expires > now);
-
+        assertTrue(_.isEqual(result, {license:"none"}));
       }
     },
 
-    testPutHelloWorld: function () {
-      if (!skip) {
+    testPut: function () {
+      if (isCommunity()) {
         var result;
         try {
           result = arango.PUT('/_admin/license', "Hello World");
@@ -82,145 +71,52 @@ function adminLicenseSuite () {
           assertTrue(false);
         }
         assertTrue(result.error);
-        assertEqual(result.code, 400);
-        assertEqual(result.errorNum, 37);
-        assertTrue(!result.hasOwnProperty("hash"));
-        try {
-          result = arango.GET('/_admin/license');
-          assertEqual(result.version, 1);
-          assertTrue(!result.hasOwnProperty("hash"));
-          assertTrue(result.hasOwnProperty("status"));
-          assertTrue(result.status === "expiring");
-        } catch (e) {
-          console.warn(e);
-          assertTrue(false);
-        }
+        assertEqual(result.code, 501);
+        assertEqual(result.errorNum, 31);
       }
     },
 
-    testPutHelloWorldString: function () {
-      if (!skip) {
-        var result;
-        try {
-          result = arango.PUT('/_admin/license', '"Hello World"');
-        } catch (e) {
-          console.warn(e);
-          assertTrue(false);
-        }
-        assertTrue(result.error);
-        assertEqual(result.code, 400);
-        assertEqual(result.errorNum, 9001);
-        assertTrue(!result.hasOwnProperty("hash"));
-        try {
-          result = arango.GET('/_admin/license');
-          assertEqual(result.version, 1);
-          assertTrue(!result.hasOwnProperty("hash"));
-          assertTrue(result.hasOwnProperty("status"));
-          assertTrue(result.status === "expiring");
-        } catch (e) {
-          console.warn(e);
-          assertTrue(false);
-        }
+    testPost: function () {
+      var result;
+      try {
+        result = arango.POST('/_admin/license', {});
+      } catch (e) {
+        console.warn(e);
+        assertTrue(false);
       }
+      assertTrue(result.error);
+      assertEqual(result.code, 405);
+      assertEqual(result.errorNum, 405);
     },
 
-    testExpired: function () {
-      if (!skip) {
-        var result;
-        var license = "eyJncmFudCI6ImV5Sm1aV0YwZFhKbGN5STZleUpsZUhCcGNtVnpJam94TlRRd05EWXlNVFUwZlN3aWRtVnljMmx2YmlJNk1YMD0iLCJzaWduYXR1cmUiOiJEcVpKYlhEbWFDYUxlMmJDVGxyTWM4L3ZMb21vdU8raEJBbkFwMUkwZnlyOFUxQTJ6NDdGQytYSXlRK0d2WDdkWXpaYnBrUzBDTVU2VVBrdDVUd2lwUDM3NEVEazZ2S3l6VnIyZnVndm1DWXQ2VENwZjEyNEhNcEkwTE44dFlSZ01xbTVDMkt2RkhyaVhpTk9udFc5NTVWSzN4OXBDdjNwU2ZFbktDeW5nb2xyRVRJeDRXVzQ1YWthUjVOWEp0bzZiR3lybFp5RklVK1lhWXl2bGhocFRVeFdWUmQwKzV6UjQxdk4yWWRlWm50dVY5WDU0SVJRWkVVNEdpQmRaMHo1aGRZUERsMys5cTc0LzJ6WTI2VzlEdlNwcmZLYkZwOC95ejViV21IY1lEYWtLUHJkcXd6UnZaMDU1NXNWbDUwUjRvWUNPNGRuakxTeXhIbGdnczliSWc9PSJ9";
-        try {
-          result = arango.PUT('/_admin/license', JSON.stringify(license));
-        } catch (e) {
-          console.warn(e);
-          assertTrue(false);
-        }
-        assertTrue(result.error);
-        assertEqual(result.code, 400);
-        assertEqual(result.errorNum, 9007);
-        assertTrue(!result.hasOwnProperty("hash"));
-
-        try {
-          result = arango.GET('/_admin/license');
-          assertEqual(result.version, 1);
-          assertTrue(!result.hasOwnProperty("hash"));
-          assertTrue(result.hasOwnProperty("status"));
-          assertTrue(result.status === "expiring");
-        } catch (e) {
-          console.warn(e);
-          assertTrue(false);
-        }
+    testDelete: function () {
+      var result;
+      try {
+        result = arango.DELETE('/_admin/license', {});
+      } catch (e) {
+        console.warn(e);
+        assertTrue(false);
       }
+      assertTrue(result.error);
+      assertEqual(result.code, 405);
+      assertEqual(result.errorNum, 405);
     },
 
-    testForceExpired: function () {
-      if (!skip) {
-        var license = "eyJncmFudCI6ImV5Sm1aV0YwZFhKbGN5STZleUpsZUhCcGNtVnpJam94TlRRd05EWXlNVFUwZlN3aWRtVnljMmx2YmlJNk1YMD0iLCJzaWduYXR1cmUiOiJEcVpKYlhEbWFDYUxlMmJDVGxyTWM4L3ZMb21vdU8raEJBbkFwMUkwZnlyOFUxQTJ6NDdGQytYSXlRK0d2WDdkWXpaYnBrUzBDTVU2VVBrdDVUd2lwUDM3NEVEazZ2S3l6VnIyZnVndm1DWXQ2VENwZjEyNEhNcEkwTE44dFlSZ01xbTVDMkt2RkhyaVhpTk9udFc5NTVWSzN4OXBDdjNwU2ZFbktDeW5nb2xyRVRJeDRXVzQ1YWthUjVOWEp0bzZiR3lybFp5RklVK1lhWXl2bGhocFRVeFdWUmQwKzV6UjQxdk4yWWRlWm50dVY5WDU0SVJRWkVVNEdpQmRaMHo1aGRZUERsMys5cTc0LzJ6WTI2VzlEdlNwcmZLYkZwOC95ejViV21IY1lEYWtLUHJkcXd6UnZaMDU1NXNWbDUwUjRvWUNPNGRuakxTeXhIbGdnczliSWc9PSJ9";
-        try {
-          var result = arango.PUT('/_admin/license?force=true', JSON.stringify(license));
-          assertTrue(!result.error);
-
-          try {
-            result = arango.GET('/_admin/license');
-            assertEqual(result.version, 1);
-            assertTrue(result.hasOwnProperty("hash"));
-            assertEqual(result.hash, crypto.sha256(license));
-            assertTrue(result.hasOwnProperty("status"));
-            assertTrue(result.status === "read-only");
-          } catch (e) {
-            console.warn(e);
-            assertTrue(false);
-          }
-          try {
-            result = arango.GET('/_admin/server/mode');
-            assertEqual(result.mode, "readonly");
-          } catch (e) {
-            console.warn(e);
-            assertTrue(false);
-          }
-        } catch (e) {
-          console.warn(e);
-          assertTrue(false);
-        }
+    testPatch: function () {
+      var result;
+      try {
+        result = arango.PATCH('/_admin/license', {});
+      } catch (e) {
+        console.warn(e);
+        assertTrue(false);
       }
+      assertTrue(result.error);
+      assertEqual(result.code, 405);
+      assertEqual(result.errorNum, 405);
     },
 
-    testUnExpire: function () {      
-      if (!skip) {
-        var license = "eyJncmFudCI6ImV5Sm1aV0YwZFhKbGN5STZleUpsZUhCcGNtVnpJam94TnpJNU9EUTVNRFEzZlN3aWRtVnljMmx2YmlJNk1YMD0iLCJzaWduYXR1cmUiOiJ3SzBqSnpUNFVSdExUTGhGVzBkMy9RYm9OQzFrZnorM1ZqNGhwREFkd3VWL3c3VWF5QjJYMmtpNHVYd1MrM1ZJN1FmM25pNUh1VUlTMDIyVEs2UzZUTzdibDM0Q3c3WWVuSW43RDNEdTFHeVlkNk5Jay9ndEYrZFNVc1hRL1RxbWo2UWtsRW5XcDE5dzZLd1BVQ2NCWDFJRyt6NTMrd01kVzk5R1ZKWnV1ZkZmMzRzSnpxbEQ5WmM1UW12S0o5NFVVU2lnQlNlRW0wUWZvTWdKKzcrUmNRUVFMTVozTWhjOTMxL1U0dUJ2V0oyTEtQdUl1T1ZOMGhnK053V1ljQnk3RXNKc2o5cGRhNWdkM3dldm9TMmxIekZZQ3FzemQ0cmRwMlRIazJCbnY4aDRZTGxHeElOVjJnZExhNzVhdnBIS05ORkxSTGhNd3RpOWNGVWxwcUVTUnc9PSJ9";
-        try {
-          var result = arango.PUT('/_admin/license', JSON.stringify(license));
-          assertTrue(!result.error);
-          assertEqual(result.result.code, 201);
-
-          try {
-            result = arango.GET('/_admin/license');
-            assertEqual(result.version, 1);
-            assertTrue(result.hasOwnProperty("hash"));
-            assertEqual(result.hash, crypto.sha256(license));
-            assertTrue(result.hasOwnProperty("status"));
-            assertTrue(result.status === "good");
-          } catch (e) {
-            console.warn(e);
-            assertTrue(false);
-          }
-
-          try {
-            result = arango.GET('/_admin/server/mode');
-            assertEqual(result.mode, "default");
-          } catch (e) {
-            console.warn(e);
-            assertTrue(false);
-          }
-
-        } catch (e) {
-          console.warn(e);
-        }
-      }
-    },
-
-  };
+  }
 }
-
 jsunity.run(adminLicenseSuite);
 
 return jsunity.done();
