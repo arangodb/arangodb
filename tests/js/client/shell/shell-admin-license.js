@@ -70,43 +70,13 @@ function adminLicenseSuite () {
       }
     },
 
-    testPost: function () {
-      var result;
-      try {
-        result = arango.POST('/_admin/license', {});
-      } catch (e) {
-        console.warn(e);
-        assertTrue(false);
-      }
-      assertTrue(result.error);
-      assertEqual(result.code, 405);
-      assertEqual(result.errorNum, 405);
-    },
-
-    testDelete: function () {
-      var result;
-      try {
-        result = arango.DELETE('/_admin/license', {});
-      } catch (e) {
-        console.warn(e);
-        assertTrue(false);
-      }
-      assertTrue(result.error);
-      assertEqual(result.code, 405);
-      assertEqual(result.errorNum, 405);
-    },
-
-    testPatch: function () {
-      var result;
-      try {
-        result = arango.PATCH('/_admin/license', {});
-      } catch (e) {
-        console.warn(e);
-        assertTrue(false);
-      }
-      assertTrue(result.error);
-      assertEqual(result.code, 405);
-      assertEqual(result.errorNum, 405);
+    testUnsupportedMethods: function () {
+      ["POST", "PATCH", "DELETE"].forEach((method) => {
+        let result = arango[method]('/_admin/license', {});
+        assertTrue(result.error);
+        assertEqual(result.code, 405);
+        assertEqual(result.errorNum, 405);
+      });
     },
 
   };
