@@ -67,9 +67,8 @@ void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
   LOG_TOPIC("29da9", TRACE, Logger::REQUESTS)
       << "registering CommTask with ptr " << t;
   {
-    auto* ptr = task.get();
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
-    _commTasks.try_emplace(ptr, std::move(task));
+    _commTasks.try_emplace(t, std::move(task));
   }
   t->start();
 }

@@ -244,9 +244,7 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
   // collection was not contained. now create and insert it
   TRI_ASSERT(trxColl == nullptr);
 
-  StorageEngine& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine();
-
-  trxColl = engine.createTransactionCollection(*this, cid, accessType).release();
+  trxColl = createTransactionCollection(cid, accessType).release();
 
   TRI_ASSERT(trxColl != nullptr);
 
