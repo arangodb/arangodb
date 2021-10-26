@@ -39,6 +39,7 @@ TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServ
       ArangoErrorTempl(),
       VocbaseColTempl(),
       VocbaseViewTempl(),
+      VocbaseReplicatedLogTempl(),
       VocbaseTempl(),
       EnvTempl(),
       UsersTempl(),

@@ -18,30 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include "V8ShellFeaturePhase.h"
-
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
-#include "Shell/ShellConsoleFeature.h"
-#include "Shell/V8ShellFeature.h"
+#include "Basics/Common.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-namespace application_features {
 
-V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "V8ShellPhase") {
-  setOptional(false);
-  startsAfter<GreetingsFeaturePhase>();
-
-  startsAfter<ShellConsoleFeature>();
-  startsAfter<V8ShellFeature>();
-  startsAfter<V8PlatformFeature>();
-  startsAfter<V8SecurityFeature>();
+namespace replication2 {
+struct ReplicatedLogMethods;
 }
 
-}  // namespace application_features
+class RestLogInternalHandler : public RestVocbaseBaseHandler {
+ public:
+  RestLogInternalHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
+  ~RestLogInternalHandler() override;
+
+ public:
+  RestStatus execute() final;
+  char const* name() const final { return "RestLogInternalHandler"; }
+  RequestLane lane() const final {
+    return RequestLane::CLIENT_SLOW;
+  }
+};
 }  // namespace arangodb

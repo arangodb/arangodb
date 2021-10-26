@@ -66,14 +66,15 @@ namespace arangodb::futures {
 template <typename T>
 class Try;
 }
-
+namespace arangodb::replication2::algorithms {
+struct IndexParticipantPair;
+}
 namespace arangodb::replication2::replicated_log {
 struct LogCore;
 struct ReplicatedLogMetrics;
 }  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb::replication2::replicated_log {
-struct PersistedLogIterator;
 
 /**
  * @brief Leader instance of a replicated log.
@@ -238,6 +239,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
         -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet>;
 
     [[nodiscard]] auto checkCommitIndex() -> ResolvedPromiseSet;
+
+    [[nodiscard]] auto collectEligibleFollowerIndexes() const
+        -> std::pair<LogIndex, std::vector<algorithms::IndexParticipantPair>>;
     [[nodiscard]] auto checkCompaction() -> Result;
 
     [[nodiscard]] auto updateCommitIndexLeader(LogIndex newIndex,
@@ -268,6 +272,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     LogIndex _largestCommonIndex{0};
     LogIndex _releaseIndex{0};
     bool _didResign{false};
+    CommitFailReason _lastCommitFailReason;
   };
 
   LoggerContext const _logContext;
