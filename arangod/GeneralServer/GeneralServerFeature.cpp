@@ -658,13 +658,14 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler("/_admin/statistics-description",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
+  _handlerFactory->addPrefixHandler("/_admin/license",
+                                    RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
+  
 #ifdef USE_ENTERPRISE
   if (backup.isAPIEnabled()) {
     _handlerFactory->addPrefixHandler("/_admin/backup",
                                       RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
   }
-  _handlerFactory->addPrefixHandler("/_admin/license",
-                                    RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
 #endif
 
 
