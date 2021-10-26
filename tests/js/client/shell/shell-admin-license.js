@@ -49,14 +49,8 @@ function adminLicenseSuite () {
   return {
 
     testGet: function () {
-      if (isCommunity()) {
-        var result;
-        try {
-          result = arango.GET('/_admin/license');
-        } catch (e) {
-          console.warn(e);
-          assertTrue(false);
-        }
+      if (!require("internal").isEnterprise()) {
+        let result = arango.GET('/_admin/license');
         assertEqual(result, {license:"none"});
       }
     },
