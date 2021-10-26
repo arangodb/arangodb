@@ -761,7 +761,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
 
   VPackBuilder s;
   s.openObject();
-  s.add("objectId", VPackSlice::nullSlice());
+  s.add(StaticStrings::ObjectId, VPackSlice::nullSlice());
   s.close();
   VPackBuilder merged =
       VPackCollection::merge(indexSlice, s.slice(),
