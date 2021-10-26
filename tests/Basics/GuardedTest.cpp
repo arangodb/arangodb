@@ -204,7 +204,6 @@ TYPED_TEST_P(GuardedDeathTest, test_guard_unlock_releases_value) {
   EXPECT_EQ(2, guard.get().val);
   guard.unlock();
 
-  ASSERT_DEATH_CORE_FREE({ ASSERT_NE(2, guard.get().val); }, "");
   // stunt to find out whether we are compiling with ASan enabled...
   // we do this to avoid getting a mysterious SIGSEGV during testing.
   // more details can be found in BTS-598
