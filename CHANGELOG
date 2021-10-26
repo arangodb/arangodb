@@ -3,6 +3,8 @@ devel
 
 * Single server license output checking fixed.
 
+* Added enterprise license feature visibility for arangosh.
+
 * When using Indexes within traversals (e.g. [_from, date]) and filter based
   on a function (e.g. FILTER path.edges[0].date <= DATE_ADD(@now, 5, "day"))
   this function was passed through to the index. The index cannot evaluate this
