@@ -91,7 +91,7 @@ RestStatus RestLicenseHandler::execute() {
 arangodb::Result RestLicenseHandler::verifyPermitted() {
   #ifdef USE_ENTERPRISE
   auto& feature = server().getFeature<arangodb::LicenseFeature>();
-  
+
   // do we have admin rights (if rights are active)
   if (feature.onlySuperUser()) {
     if (!ExecContext::current().isSuperuser()) {

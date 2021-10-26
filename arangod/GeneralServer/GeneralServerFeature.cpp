@@ -182,7 +182,7 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "number of threads used to handle IO",
                      new UInt64Parameter(&_numIoThreads),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
-  
+
   options->addOption("--server.support-info-api",
                      "policy for exposing support info API",
                      new DiscreteValuesParameter<StringParameter>(
@@ -221,7 +221,7 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                     "if true, use a permanent redirect. If false, use a temporary",
                     new BooleanParameter(&_permanentRootRedirect))
                     .setIntroducedIn(30712);
-  
+
   options->addOption("--http.return-queue-time-header",
                     "if true, return the 'x-arango-queue-time-seconds' response header",
                     new BooleanParameter(&_returnQueueTimeHeader))
@@ -365,7 +365,7 @@ bool GeneralServerFeature::permanentRootRedirect() const noexcept {
 std::string GeneralServerFeature::redirectRootTo() const {
   return _redirectRootTo;
 }
-  
+
 std::string const& GeneralServerFeature::supportInfoApiPolicy() const noexcept {
   return _supportInfoApiPolicy;
 }
@@ -539,7 +539,7 @@ void GeneralServerFeature::defineHandlers() {
         agency.agent());
   }
 
-  
+
   if (cluster.isEnabled()) {
     // add "/agency-callbacks" handler
     _handlerFactory->addPrefixHandler(
@@ -558,7 +558,7 @@ void GeneralServerFeature::defineHandlers() {
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addHandler("/_admin/actions",
                               RestHandlerCreator<MaintenanceRestHandler>::createNoData);
-    
+
   _handlerFactory->addHandler("/_admin/auth/reload",
                               RestHandlerCreator<RestAuthReloadHandler>::createNoData);
 
@@ -571,7 +571,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler("/_admin/time",
                               RestHandlerCreator<RestTimeHandler>::createNoData);
-  
+
   _handlerFactory->addHandler("/_admin/compact",
                               RestHandlerCreator<RestCompactHandler>::createNoData);
 
@@ -600,7 +600,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler("/_admin/status",
                               RestHandlerCreator<RestStatusHandler>::createNoData);
- 
+
   if (_supportInfoApiPolicy != "disabled") {
     _handlerFactory->addHandler("/_admin/support-info",
                                 RestHandlerCreator<RestSupportInfoHandler>::createNoData);
@@ -660,7 +660,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler("/_admin/license",
                                     RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
-  
+
 #ifdef USE_ENTERPRISE
   if (backup.isAPIEnabled()) {
     _handlerFactory->addPrefixHandler("/_admin/backup",
