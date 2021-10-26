@@ -1,6 +1,8 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* Updated ArangoDB Starter to 0.15.3.
+
 * Fix a potential overwhelm situation on DB servers that can lead to no further
   tasks being pulled from a DB servers queue even though there would still be
   processing capacity and idle threads available.
@@ -152,8 +154,6 @@ v3.8.2 (XXXX-XX-XX)
   If the option is set and the query satisfies the requirements for using the
   option, the query's execution plan will contain the "cluster-one-shard"
   optimizer rule.
-
-* Updated ArangoDB Starter to 0.15.2.
 
 * SEARCH-238: Improved SortNodes placement optimization in cluster so late
   materialization could cover more cases.
