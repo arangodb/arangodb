@@ -29,90 +29,34 @@
 let jsunity = require('jsunity');
 const crypto = require('@arangodb/crypto');
 
-function isEnterprise() {
-  var result;
-  try {
-    result = arango.GET('/_admin/version');
-  } catch (e) {
-    console.warn(e);
-    assertTrue(false);
-  }
-  return result.license === "enterprise";
-}
-function isCommunity() {
-  return !isEnterprise();
-}
-
 function adminLicenseSuite () {
   'use strict';
 
   return {
 
     testGet: function () {
-      if (isCommunity()) {
-        var result;
-        try {
-          result = arango.GET('/_admin/license');
-        } catch (e) {
-          console.warn(e);
-          assertTrue(false);
-        }
+      if (!require("internal").isEnterprise()) {
+        let result = arango.GET('/_admin/license');
         assertEqual(result, {license:"none"});
       }
     },
 
     testPut: function () {
-      if (isCommunity()) {
-        var result;
-        try {
-          result = arango.PUT('/_admin/license', "Hello World");
-        } catch (e) {
-          console.warn(e);
-          assertTrue(false);
-        }
+      if (!require("internal").isEnterprise()) {
+        let result = arango.PUT('/_admin/license', "Hello World");
         assertTrue(result.error);
         assertEqual(result.code, 501);
         assertEqual(result.errorNum, 31);
       }
     },
 
-    testPost: function () {
-      var result;
-      try {
-        result = arango.POST('/_admin/license', {});
-      } catch (e) {
-        console.warn(e);
-        assertTrue(false);
-      }
-      assertTrue(result.error);
-      assertEqual(result.code, 405);
-      assertEqual(result.errorNum, 405);
-    },
-
-    testDelete: function () {
-      var result;
-      try {
-        result = arango.DELETE('/_admin/license', {});
-      } catch (e) {
-        console.warn(e);
-        assertTrue(false);
-      }
-      assertTrue(result.error);
-      assertEqual(result.code, 405);
-      assertEqual(result.errorNum, 405);
-    },
-
-    testPatch: function () {
-      var result;
-      try {
-        result = arango.PATCH('/_admin/license', {});
-      } catch (e) {
-        console.warn(e);
-        assertTrue(false);
-      }
-      assertTrue(result.error);
-      assertEqual(result.code, 405);
-      assertEqual(result.errorNum, 405);
+    testUnsupportedMethods: function () {
+      ["POST", "PATCH", "DELETE"].forEach((method) => {
+        let result = arango[method]('/_admin/license', {});
+        assertTrue(result.error);
+        assertEqual(result.code, 405);
+        assertEqual(result.errorNum, 405);
+      });
     },
 
   };
