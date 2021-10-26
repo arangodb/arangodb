@@ -1870,6 +1870,10 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
   }
 
   if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
+    // TODO: working with the stringbuffer adds another alloc / copy.
+    // translateResultBodyToV8 will probably decode once more.
+    // this uses more resources than neccessary; a better solution
+    // would implement this inside fuerte.
     auto responseBody = response.payload();
     StringBuffer inflateBuf;
     StringBuffer buf;
