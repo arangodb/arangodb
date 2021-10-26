@@ -1,6 +1,8 @@
 devel
 -----
 
+* add option to content-transfer encode gzip foxx replies.
+
 * Single server license output checking fixed.
 
 * Added enterprise license feature visibility for arangosh.
