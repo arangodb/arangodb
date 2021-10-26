@@ -2,6 +2,11 @@ import { JSONSchemaType } from 'ajv';
 
 type Compression = 'lz4' | 'none';
 
+type PrimarySortType = {
+  field: string;
+  asc: boolean;
+};
+
 export type StoredValue = {
   fields: string[];
   compression: Compression;
@@ -9,11 +14,6 @@ export type StoredValue = {
 
 export type StoredValues = {
   storedValues?: StoredValue[]
-};
-
-export type PrimarySortType = {
-  field: string;
-  asc: boolean;
 };
 
 export type PrimarySort = {

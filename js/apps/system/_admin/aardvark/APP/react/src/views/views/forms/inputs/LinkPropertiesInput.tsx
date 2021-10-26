@@ -5,7 +5,6 @@ import { filter, isEmpty, map, negate } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Textarea from "../../../../components/pure-css/form/Textarea";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
-import Select from "../../../../components/pure-css/form/Select";
 import { ArangoTable, ArangoTD, ArangoTH } from "../../../../components/arango/table";
 import Textbox from "../../../../components/pure-css/form/Textbox";
 import { IconButton } from "../../../../components/arango/buttons";
@@ -77,49 +76,52 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
     return (formState.analyzers || []).join('\n');
   };
 
-  const updateStoreValues = (event: ChangeEvent<HTMLSelectElement>) => {
+  const updateStoreValues = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch(
       {
         type: 'setField',
         field: {
           path: 'storeValues',
-          value: event.target.value
+          value: event.target.checked ? 'id' : 'none'
         },
         basePath
       }
     );
   };
 
+  const storeIdValues = formState.storeValues === 'id';
+
   return <Grid>
     <Cell size={'1-3'}>
-      <Textarea value={getAnalyzers()} onChange={updateAnalyzers} disabled={disabled} label={'Analyzers'}
-                rows={4}/>
+      <Textarea value={getAnalyzers()} onChange={updateAnalyzers} disabled={disabled} rows={4}
+                label={'Analyzers (One per line)'}/>
     </Cell>
-    <Cell size={'2-3'}>
-      <Grid>
-        <Cell size={'1-2'}>
-          <Checkbox onChange={getBooleanFieldSetter('includeAllFields', dispatch, basePath)}
+    <Cell size={'1-3'}>
+      <Grid style={{ marginTop: 24 }}>
+        <Cell size={'1'}>
+          <Checkbox onChange={getBooleanFieldSetter('includeAllFields', dispatch, basePath)} inline={true}
                     label={"Include All Fields"} disabled={disabled} checked={formState.includeAllFields}/>
         </Cell>
-        <Cell size={'1-2'}>
+        <Cell size={'1'}>
           <Checkbox onChange={getBooleanFieldSetter('trackListPositions', dispatch, basePath)}
-                    label={'Track List Positions'} disabled={disabled}
+                    label={'Track List Positions'} disabled={disabled} inline={true}
                     checked={formState.trackListPositions}/>
         </Cell>
-        <Cell size={'1-2'}>
-          <Select value={formState.storeValues || 'none'} onChange={updateStoreValues} disabled={disabled}
-                  label={'Store Values'}>
-            <option key={'none'} value={'none'}>None</option>
-            <option key={'id'} value={'id'}>ID</option>
-          </Select>
-        </Cell>
-        <Cell size={'1-2'}>
-          <Checkbox onChange={getBooleanFieldSetter('inBackground', dispatch, basePath)}
-                    label={'In Background'}
-                    disabled={disabled} checked={formState.inBackground}/>
+        <Cell size={'1'}>
+          <Checkbox onChange={updateStoreValues} label={'Store ID Values'} disabled={disabled} inline={true}
+                    checked={storeIdValues}/>
         </Cell>
       </Grid>
     </Cell>
+    {
+      disabled
+        ? null
+        : <Cell size={'1-3'} style={{ marginTop: 24 }}>
+          <Checkbox onChange={getBooleanFieldSetter('inBackground', dispatch, basePath)}
+                    label={'In Background'} inline={true}
+                    disabled={disabled} checked={formState.inBackground}/>
+        </Cell>
+    }
     {
       disabled && isEmpty(fields)
         ? null
