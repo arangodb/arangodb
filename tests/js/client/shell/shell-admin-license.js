@@ -56,14 +56,8 @@ function adminLicenseSuite () {
     },
 
     testPut: function () {
-      if (isCommunity()) {
-        var result;
-        try {
-          result = arango.PUT('/_admin/license', "Hello World");
-        } catch (e) {
-          console.warn(e);
-          assertTrue(false);
-        }
+      if (!require("internal").isEnterprise()) {
+        let result = arango.PUT('/_admin/license', "Hello World");
         assertTrue(result.error);
         assertEqual(result.code, 501);
         assertEqual(result.errorNum, 31);
