@@ -63,6 +63,33 @@ const verifySatelliteCollection = (collection) => {
   assert.assertFalse(collection.properties().isSmart);
 };
 
+const verifyGeneralGraphCollection = (collection, options) => {
+  // at least check for existence
+  assert.assertTrue(db[collection.name()]);
+
+  const cProperties = collection.properties();
+  if (options) {
+    // ... and in case we supplied additional options, check them as well.
+    _.each(options, (value, key) => {
+      assert.assertIdentical(cProperties[key], value);
+    });
+  }
+};
+
+const verifyGeneralGraph = (graphName, options) => {
+  const g = cgm._graph(graphName);
+  _.each(g.__vertexCollections, function(collection) {
+    verifyGeneralGraphCollection(collection, options);
+  });
+  _.each(g.__edgeCollections, function(collection) {
+    verifyGeneralGraphCollection(collection, options);
+  });
+  _.each(g.__orphanCollections, function(collection) {
+    // as unfortunately orphans are stored as strings and not objects ...
+    verifyGeneralGraphCollection(db[collection], options);
+  });
+};
+
 const verifySmartGraph = (graphName, isDisjoint) => {
   const g = sgm._graph(graphName);
   assert.assertTrue(g.__isSmart);
@@ -77,6 +104,10 @@ const verifySmartGraph = (graphName, isDisjoint) => {
   _.each(g.__edgeCollections, function(collection) {
     verifySmartCollection(collection);
   });
+  _.each(g.__orphanCollections, function(collection) {
+    // as unfortunately orphans are stored as strings and not objects ...
+    verifySmartCollection(db[collection]);
+  });
 };
 
 const verifySatelliteGraph = (graphName) => {
@@ -90,15 +121,20 @@ const verifySatelliteGraph = (graphName) => {
   _.each(g.__edgeCollections, function(collection) {
     verifySatelliteCollection(collection);
   });
+  _.each(g.__orphanCollections, function(collection) {
+    // as unfortunately orphans are stored as strings and not objects ...
+    verifySatelliteCollection(db[collection]);
+  });
 };
 
 class TestGraph {
-  constructor(graphName, edges, eRel, vn, en, protoSmartSharding, testVariant, numberOfShards, unconnectedVertices = []) {
+  constructor(graphName, edges, eRel, vn, en, on, protoSmartSharding, testVariant, numberOfShards, unconnectedVertices = []) {
     this.graphName = graphName;
     this.edges = edges || [];
     this.eRel = eRel || [];
     this.vn = vn || "";
     this.en = en || "";
+    this.on = on || "";
     this.protoSmartSharding = protoSmartSharding;
     this.testVariant = testVariant;
     this.numberOfShards = numberOfShards;
@@ -108,12 +144,14 @@ class TestGraph {
   create() {
     switch (this.testVariant) {
       case TestVariants.SingleServer: {
-        cgm._create(this.name(), [this.eRel], [], {});
+        cgm._create(this.name(), [this.eRel], [this.on], {});
+        verifyGeneralGraph(this.name());
         break;
       }
       case TestVariants.GeneralGraph: {
         const options = {numberOfShards: this.numberOfShards};
-        cgm._create(this.name(), [this.eRel], [], options);
+        cgm._create(this.name(), [this.eRel], [this.on], options);
+        verifyGeneralGraph(this.name(), options);
         break;
       }
       case TestVariants.SmartGraphSingleServer:
@@ -123,7 +161,7 @@ class TestGraph {
           smartGraphAttribute: ProtoGraph.smartAttr(),
           isSmart: true
         };
-        sgm._create(this.name(), [this.eRel], [], options);
+        sgm._create(this.name(), [this.eRel], [this.on], options);
         verifySmartGraph(this.name(), false);
         break;
       }
@@ -135,7 +173,7 @@ class TestGraph {
           isSmart: true,
           isDisjoint: true
         };
-        sgm._create(this.name(), [this.eRel], [], options);
+        sgm._create(this.name(), [this.eRel], [this.on], options);
         verifySmartGraph(this.name(), true);
         break;
       }
@@ -144,7 +182,7 @@ class TestGraph {
         const options = {
           replicationFactor: 'satellite'
         };
-        satgm._create(this.name(), [this.eRel], [], options);
+        satgm._create(this.name(), [this.eRel], [this.on], options);
         verifySatelliteGraph(this.name());
         break;
       }
@@ -319,10 +357,11 @@ class ProtoGraph {
   prepareSingleServerGraph() {
     const vn = this.protoGraphName + '_Vertex';
     const en = this.protoGraphName + '_Edge';
+    const on = this.protoGraphName + '_Orphan';
     const gn = this.protoGraphName + '_Graph';
     const eRel = cgm._relation(en, vn, vn);
 
-    return [new TestGraph(gn, this.edges, eRel, vn, en, [], TestVariants.SingleServer, null, this.unconnectedVertices)];
+    return [new TestGraph(gn, this.edges, eRel, vn, en, on, [], TestVariants.SingleServer, null, this.unconnectedVertices)];
   }
 
   prepareGeneralGraphs() {
@@ -330,10 +369,11 @@ class ProtoGraph {
       const suffix = `_${numberOfShards}shards`;
       const vn = this.protoGraphName + '_Vertex' + suffix;
       const en = this.protoGraphName + '_Edge' + suffix;
+      const on = this.protoGraphName + '_Orphan' + suffix;
       const gn = this.protoGraphName + '_Graph' + suffix;
       const eRel = cgm._relation(en, vn, vn);
 
-      return new TestGraph(gn, this.edges, eRel, vn, en, [], TestVariants.GeneralGraph, numberOfShards, this.unconnectedVertices);
+      return new TestGraph(gn, this.edges, eRel, vn, en, on, [], TestVariants.GeneralGraph, numberOfShards, this.unconnectedVertices);
     });
   }
 
@@ -344,11 +384,12 @@ class ProtoGraph {
 
       const vn = this.protoGraphName + '_Vertex' + suffix;
       const en = this.protoGraphName + '_Edge' + suffix;
+      const on = this.protoGraphName + '_Orphan' + suffix;
       const gn = this.protoGraphName + '_Graph' + suffix;
 
       const eRel = sgm._relation(en, vn, vn);
 
-      return new TestGraph(gn, this.edges, eRel, vn, en, vertexSharding, variant, numberOfShards, this.unconnectedVertices);
+      return new TestGraph(gn, this.edges, eRel, vn, en, on, vertexSharding, variant, numberOfShards, this.unconnectedVertices);
     });
   }
 
@@ -365,11 +406,12 @@ class ProtoGraph {
 
       const vn = this.protoGraphName + '_Vertex' + suffix;
       const en = this.protoGraphName + '_Edge' + suffix;
+      const on = this.protoGraphName + '_Orphan' + suffix;
       const gn = this.protoGraphName + '_Graph' + suffix;
 
       const eRel = sgm._relation(en, vn, vn);
 
-      return new TestGraph(gn, this.edges, eRel, vn, en, vertexSharding, variant, numberOfShards, this.unconnectedVertices);
+      return new TestGraph(gn, this.edges, eRel, vn, en, on, vertexSharding, variant, numberOfShards, this.unconnectedVertices);
     });
   }
 
@@ -379,11 +421,12 @@ class ProtoGraph {
     const numberOfShards = 1;
     const vn = this.protoGraphName + '_Vertex' + suffix;
     const en = this.protoGraphName + '_Edge' + suffix;
+    const on = this.protoGraphName + '_Orphan' + suffix;
     const gn = this.protoGraphName + '_Graph' + suffix;
 
     const eRel = cgm._relation(en, vn, vn);
 
-    return [new TestGraph(gn, this.edges, eRel, vn, en, [], variant, numberOfShards, this.unconnectedVertices)];
+    return [new TestGraph(gn, this.edges, eRel, vn, en, on, [], variant, numberOfShards, this.unconnectedVertices)];
   }
 
   static _buildSmartSuffix({numberOfShards, vertexSharding, name}, shardingIndex, variant) {
