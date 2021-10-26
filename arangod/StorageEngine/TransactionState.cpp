@@ -244,7 +244,7 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
 
   // collection was not contained. now create and insert it
 
-  auto* const trxColl = engine.createTransactionCollection(*this, cid, accessType).release();
+  auto* const trxColl = createTransactionCollection(cid, accessType).release();
 
   TRI_ASSERT(trxColl != nullptr);
 

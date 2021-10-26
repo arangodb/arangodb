@@ -351,7 +351,7 @@ RocksDBTransactionState* RocksDBTransactionState::toState(transaction::Methods* 
   return static_cast<RocksDBTransactionState*>(state);
 }
 
-RocksDBTransactionMethods* RocksDBTransactionState::toMethods(transaction::Methods* trx) {
+RocksDBTransactionMethods* RocksDBTransactionState::toMethods(transaction::Methods* trx, DataSourceId collectionId) {
   TRI_ASSERT(trx != nullptr);
   TransactionState* state = trx->state();
   TRI_ASSERT(state != nullptr);
@@ -360,10 +360,6 @@ RocksDBTransactionMethods* RocksDBTransactionState::toMethods(transaction::Metho
 
 void RocksDBTransactionState::prepareForParallelReads() { _parallel = true; }
 bool RocksDBTransactionState::inParallelMode() const { return _parallel; }
-RocksDBTransactionMethods* RocksDBTransactionState::rocksdbMethods() {
-  TRI_ASSERT(_rocksMethods);
-  return _rocksMethods.get();
-}
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 RocksDBTransactionStateGuard::RocksDBTransactionStateGuard(RocksDBTransactionState* state) noexcept
