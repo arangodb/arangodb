@@ -1,6 +1,15 @@
 devel
 -----
 
+* APM-187: The "Rebalance Shards" button now is displayed in a new tab, and it 
+  is displayed for any database in cluster mode. There is also a new flag for 
+  arangod, `--cluster.max-number-of-move-shards` (default = 10), which limits 
+  the amount of move shards operations each time the button is clicked to 
+  rebalance shards. When the button is clicked, the number of move shards 
+  operations scheduled is shown, or that no operation was scheduled if the flag 
+  `--cluster.max-number-of-move-shards` has a value of 0.
+  
+
 * Now, arangoimport supports merging of attributes. When importing data from a
   file into a collection, a document attribute can be comprised of merging
   attributes from the file into it, with separators and other literal strings.

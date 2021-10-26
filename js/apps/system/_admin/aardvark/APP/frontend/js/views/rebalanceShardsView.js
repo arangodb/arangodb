@@ -19,9 +19,9 @@
     },
 
     render: function (navi) {
-      $("#rebalanceShards *").prop('disabled',true);
+      $("#rebalanceShards *").prop('disabled', true);
       arangoHelper.checkDatabasePermissions("", () => {
-        $("#rebalanceShards *").prop('disabled',false);
+        $("#rebalanceShards *").prop('disabled', false);
       });
       if (window.location.hash === '#rebalanceShards') {
         arangoHelper.buildNodesSubNav('Rebalance Shards');
