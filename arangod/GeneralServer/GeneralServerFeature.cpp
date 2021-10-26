@@ -77,6 +77,8 @@
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
+#include "RestHandler/RestLogHandler.h"
+#include "RestHandler/RestLogInternalHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
@@ -98,7 +100,6 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
-#include "RestHandler/RestLogHandler.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -496,6 +497,11 @@ void GeneralServerFeature::defineHandlers() {
     _handlerFactory->addPrefixHandler("/_api/log", RestHandlerCreator<RestLogHandler>::createNoData);
   }
 #endif
+
+  if (cluster.isEnabled()) {
+    _handlerFactory->addPrefixHandler(std::string{StaticStrings::ApiLogInternal},
+                                      RestHandlerCreator<RestLogInternalHandler>::createNoData);
+  }
 
   // This is the only handler were we need to inject
   // more than one data object. So we created the combinedRegistries

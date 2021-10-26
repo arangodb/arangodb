@@ -125,6 +125,7 @@ std::string const StaticStrings::DataSourceName("name");
 std::string const StaticStrings::DataSourcePlanId("planId");
 std::string const StaticStrings::DataSourceSystem("isSystem");
 std::string const StaticStrings::DataSourceType("type");
+std::string const StaticStrings::DataSourceParameters("parameters");
 
 // Index definition fields
 std::string const StaticStrings::IndexExpireAfter("expireAfter");
@@ -420,6 +421,8 @@ std::string const StaticStrings::ValidationParameterMessage("message");
 std::string const StaticStrings::ValidationParameterLevel("level");
 std::string const StaticStrings::ValidationParameterRule("rule");
 std::string const StaticStrings::ValidationParameterType("type");
+
+std::string_view const StaticStrings::ApiLogInternal("/_api/log-internal");
 
 // TODO REMOVE ME AFTER REFACTOR IS DONE
 std::string const StaticStrings::GraphRefactorFlag("refactor");

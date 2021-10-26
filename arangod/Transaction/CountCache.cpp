@@ -38,10 +38,14 @@ uint64_t CountCache::get() const {
   return count.load(std::memory_order_relaxed);
 }
 
+double CountCache::getTime() const {
+  return TRI_microtime();
+}
+
 uint64_t CountCache::getWithTtl() const {
   // (1) - this acquire-load synchronizes with the release-store (2)
   double ts = expireStamp.load(std::memory_order_acquire);
-  if (ts < TRI_microtime()) {
+  if (ts >= getTime()) {
     // not yet expired
     return get();
   }
@@ -52,5 +56,5 @@ void CountCache::store(uint64_t value) {
   TRI_ASSERT(value != CountCache::NotPopulated);
   count.store(value, std::memory_order_relaxed);
   // (2) - this release-store synchronizes with the acquire-load (1)
-  expireStamp.store(TRI_microtime() + ttl, std::memory_order_release);
+  expireStamp.store(getTime() + ttl, std::memory_order_release);
 }

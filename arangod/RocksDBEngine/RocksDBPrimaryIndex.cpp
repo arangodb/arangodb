@@ -296,7 +296,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         _index(index),
         _cmp(index->comparator()),
         _mustSeek(true),
-        _mustCheckBounds(RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(readOwnWrites)),
+        _mustCheckBounds(RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(collection->id(), readOwnWrites)),
         _bounds(std::move(bounds)),
         _rangeBound(reverse ? _bounds.start() : _bounds.end()) {
     TRI_ASSERT(index->columnFamily() ==
@@ -446,7 +446,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   void ensureIterator() {
     if (_iterator == nullptr) {
       auto state = RocksDBTransactionState::toState(_trx);
-      RocksDBTransactionMethods* mthds = state->rocksdbMethods();
+      RocksDBTransactionMethods* mthds = state->rocksdbMethods(_collection->id());
       _iterator = mthds->NewIterator(_index->columnFamily(), [&](rocksdb::ReadOptions& options) {
         TRI_ASSERT(options.prefix_same_as_start);
         // we need to have a pointer to a slice for the upper bound
@@ -572,7 +572,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     }
   }
 
-  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx, _collection.id());
   rocksdb::PinnableSlice val;
   rocksdb::Status s = mthds->Get(_cf, key->string(), &val, readOwnWrites);
   if (!s.ok()) {
@@ -615,7 +615,7 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
   key->constructPrimaryIndexValue(objectId(), keyRef);
 
   // acquire rocksdb transaction
-  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx, _collection.id());
   rocksdb::PinnableSlice val;
   rocksdb::Status s = mthds->Get(_cf, key->string(), &val, readOwnWrites);
   if (!s.ok()) {
@@ -790,7 +790,7 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
   invalidateCacheEntry(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   // acquire rocksdb transaction
-  auto* mthds = RocksDBTransactionState::toMethods(&trx);
+  auto* mthds = RocksDBTransactionState::toMethods(&trx, _collection.id());
   rocksdb::Status s = mthds->Delete(_cf, key.ref());
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
