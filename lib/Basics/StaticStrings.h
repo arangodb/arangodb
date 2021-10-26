@@ -24,6 +24,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 namespace arangodb {
 class StaticStrings {
@@ -390,6 +391,9 @@ class StaticStrings {
   static std::string const ValidationParameterLevel;
   static std::string const ValidationParameterRule;
   static std::string const ValidationParameterType;
+
+  // API Strings
+  static std::string_view const ApiLogInternal;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;

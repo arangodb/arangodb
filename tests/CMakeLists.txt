@@ -280,6 +280,7 @@ set(ARANGODB_TESTS_SOURCES
   SimpleHttpClient/ConnectionCacheTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/Context-test.cpp
+  Transaction/CountCacheTest.cpp
   Transaction/Manager-test.cpp
   Transaction/RestTransactionHandler-test.cpp
   Utils/CollectionNameResolver-test.cpp
@@ -333,7 +334,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/AsyncFollower.h
   Replication2/Mocks/FakeFollower.h
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
-  )
+  Replication2/ReplicatedLog/CalcCommitIndexTest.cpp)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
