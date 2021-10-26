@@ -398,6 +398,8 @@ inline constexpr std::string_view ReasonFieldName = "reason";
 inline constexpr std::string_view NothingToCommitEnum = "NothingToCommit";
 inline constexpr std::string_view QuorumSizeNotReachedEnum =
     "QuorumSizeNotReached";
+inline constexpr std::string_view ForcedParticipantNotInQuorumEnum =
+    "ForcedParticipantNotInQuorum";
 }  // namespace
 
 auto replicated_log::CommitFailReason::NothingToCommit::fromVelocyPack(velocypack::Slice s)
@@ -435,6 +437,8 @@ auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s) -> Co
     return CommitFailReason{std::in_place, NothingToCommit::fromVelocyPack(s)};
   } else if (reason == QuorumSizeNotReachedEnum) {
     return CommitFailReason{std::in_place, QuorumSizeNotReached::fromVelocyPack(s)};
+  } else if (reason == ForcedParticipantNotInQuorumEnum) {
+      return CommitFailReason{std::in_place, ForcedParticipantNotInQuorum::fromVelocyPack(s)};
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -454,6 +458,9 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
     }
     auto operator()(CommitFailReason::QuorumSizeNotReached const&) -> std::string {
       return "Required quorum size not yet reached";
+    }
+    auto operator()(CommitFailReason::ForcedParticipantNotInQuorum const&) -> std::string {
+      return "Forced participant not in quorum";
     }
   };
 

@@ -328,27 +328,64 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
 
 auto algorithms::operator<<(std::ostream& os, IndexParticipantPair const& p) noexcept
     -> std::ostream& {
-  return os << '{' << p.id << ':' << p.index << '}';
+  return os << '{' << p.id << ':' << p.index <<
+    ", excluded: " << std::boolalpha << p.isExcluded <<
+    ", forced: " << std::boolalpha << p.isForced << '}';
 }
 
-IndexParticipantPair::IndexParticipantPair(LogIndex index, ParticipantId id)
-    : index(index), id(std::move(id)) {}
+IndexParticipantPair::IndexParticipantPair(LogIndex index, ParticipantId id, bool exclude, bool force)
+    : index(index), id(std::move(id)), isExcluded(exclude), isForced(force) {}
+
+auto operator<=(IndexParticipantPair left, IndexParticipantPair right) noexcept -> bool {
+  if (left.index < right.index) {
+    return true;
+  } else if (left.index==right.index) {
+    return left.id <= right.id;
+  } else {
+    return false;
+  }
+}
 
 auto algorithms::calculateCommitIndex(std::vector<IndexParticipantPair>& indexes,
                           std::size_t quorumSize, LogIndex spearhead)
     -> std::pair<LogIndex, CommitFailReason> {
-  auto nth = indexes.begin();
-  std::advance(nth, quorumSize - 1);
 
-  std::nth_element(indexes.begin(), nth, indexes.end(), [](auto& left, auto& right) {
-    return left.index > right.index;
-  });
+    TRI_ASSERT(indexes.size() > 0) << "at least one participant required to calculate commit index";
 
-  auto const commitIndex = nth->index;
+    // Compute the minimum forced LogIndex
+    //
+    // requires at least one participant
+    // a really ugly way to do filter/reduce
+    auto iter = std::begin(indexes);
+    auto minForcedCommitIndex = iter->index;
+    for (; iter != indexes.end(); ++iter) {
+      if(iter->isForced) {
+        if(iter->index < minForcedCommitIndex) {
+          minForcedCommitIndex = iter->index;
+        }
+      }
+    }
 
-  if (spearhead == commitIndex) {
-    return {commitIndex, CommitFailReason::withNothingToCommit()};
-  }
+    // Get the list of all non-excluded participants
+    // and compute the smallest quorate log index
+    auto a = std::vector<IndexParticipantPair>{};
+    std::copy_if(indexes.begin(), indexes.end(), std::back_inserter(a), [](auto& i) { return not i.isExcluded; });
 
-  return {nth->index, CommitFailReason::withQuorumSizeNotReached()};
+    auto nth = a.begin();
+    std::advance(nth, quorumSize - 1);
+
+    std::nth_element(a.begin(), nth, a.end(), [](auto& left, auto& right) {
+      return left.index > right.index;
+    });
+    auto const minNonExcludedCommitIndex = nth->index;
+
+    auto commitIndex = std::min(minForcedCommitIndex, minNonExcludedCommitIndex);
+
+    if (spearhead == commitIndex) {
+      return {commitIndex, CommitFailReason::withNothingToCommit()};
+    } else if (minForcedCommitIndex < minNonExcludedCommitIndex) {
+      return {commitIndex, CommitFailReason::withForcedParticipantNotInQuorum()};
+    }
+
+    return {commitIndex, CommitFailReason::withQuorumSizeNotReached()};
 }

@@ -77,11 +77,16 @@ struct IndexParticipantPair : implement_compare<IndexParticipantPair> {
   LogIndex index;
   ParticipantId id;
 
-  IndexParticipantPair(LogIndex index, ParticipantId id);
+  bool isExcluded{false};
+  bool isForced{false};
 
+  IndexParticipantPair(LogIndex index, ParticipantId id, bool exclude, bool force);
+
+  friend auto operator<=(IndexParticipantPair, IndexParticipantPair) noexcept -> bool;
   friend auto operator<<(std::ostream& os, IndexParticipantPair const& p) noexcept -> std::ostream&;
 };
 
+auto operator<=(IndexParticipantPair left, IndexParticipantPair right) noexcept -> bool;
 auto operator<<(std::ostream& os, IndexParticipantPair const& p) noexcept -> std::ostream&;
 
 auto calculateCommitIndex(std::vector<IndexParticipantPair>& indexes,

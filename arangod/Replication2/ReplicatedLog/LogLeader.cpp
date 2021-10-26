@@ -747,7 +747,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectEligibleFollowerIndexe
     // This also includes log entries persisted on this server, i.e. our
     // LocalFollower is no exception.
     if (lastAckedEntry.term == this->_self._currentTerm) {
-      indexes.emplace_back(lastAckedEntry.index, follower._impl->getParticipantId());
+      indexes.emplace_back(lastAckedEntry.index, follower._impl->getParticipantId(), false, false);
     } else {
       LOG_CTX("54869", TRACE, _self._logContext)
           << "Will ignore follower "
