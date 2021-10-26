@@ -342,7 +342,6 @@ struct ReplicatedLogGlobalSettings {
   std::size_t _maxRocksDBWriteBatchSize{defaultMaxRocksDBWriteBatchSize};
 };
 
-}  // namespace arangodb::replication2
 
 namespace replicated_log {
 struct CommitFailReason {
@@ -373,6 +372,8 @@ struct CommitFailReason {
 auto to_string(CommitFailReason const&) -> std::string;
 }  // namespace replicated_log
 
+
+}  // namespace arangodb::replication2
 
 namespace arangodb {
 template <>
