@@ -1,6 +1,10 @@
 devel
 -----
 
+* arangorestore: Fix the order (regarding distributeShardsLike) in which
+  collections are being created during restore, which could result in an error
+  and make manual intervention necessary.
+
 * Updated ArangoDB Starter to 0.15.3.
 
 * Old license mechanism for docker containers removed.
