@@ -27,6 +27,7 @@
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <variant>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -56,8 +57,8 @@ class Slice;
 namespace arangodb::replication2 {
 
 /**
- * This implements all comparsion operators for a type `T` with another type `S`,
- * given that `operator<=(T const&, S const&)` is available.
+ * This implements all comparsion operators for a type `T` with another type
+ * `S`, given that `operator<=(T const&, S const&)` is available.
  * @tparam T
  * @tparam S defaults to T
  */
@@ -202,7 +203,6 @@ class PersistingLogEntry {
   PersistingLogEntry(TermIndexPair, std::optional<LogPayload>);
   PersistingLogEntry(LogIndex, velocypack::Slice persisted);
 
-
   [[nodiscard]] auto logTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto logPayload() const noexcept -> std::optional<LogPayload> const&;
@@ -284,7 +284,7 @@ class LogId : public arangodb::basics::Identifier {
 
 auto to_string(LogId logId) -> std::string;
 
-template<typename T>
+template <typename T>
 struct TypedLogIterator {
   virtual ~TypedLogIterator() = default;
   // The returned view is guaranteed to stay valid until a successive next()
@@ -292,7 +292,7 @@ struct TypedLogIterator {
   virtual auto next() -> std::optional<T> = 0;
 };
 
-template<typename T>
+template <typename T>
 struct TypedLogRangeIterator : TypedLogIterator<T> {
   // returns the index interval [from, to)
   // Note that this does not imply that all indexes in the range [from, to)
@@ -324,50 +324,81 @@ struct LogConfig {
 [[nodiscard]] auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 [[nodiscard]] auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 
+namespace replicated_log {
+struct CommitFailReason {
+  CommitFailReason() = default;
+
+  struct NothingToCommit {
+    static auto fromVelocyPack(velocypack::Slice) -> NothingToCommit;
+    void toVelocyPack(velocypack::Builder& builder) const;
+  };
+  struct QuorumSizeNotReached {
+    static auto fromVelocyPack(velocypack::Slice) -> QuorumSizeNotReached;
+    void toVelocyPack(velocypack::Builder& builder) const;
+  };
+  // later -- forced server not part of quorum
+  std::variant<NothingToCommit, QuorumSizeNotReached> value;
+
+  static auto withNothingToCommit() noexcept -> CommitFailReason;
+  static auto withQuorumSizeNotReached() noexcept -> CommitFailReason;
+
+  static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;
+  void toVelocyPack(velocypack::Builder& builder) const;
+
+ private:
+  template <typename... Args>
+  explicit CommitFailReason(std::in_place_t, Args&&... args) noexcept;
+};
+
+auto to_string(CommitFailReason const&) -> std::string;
+}  // namespace replicated_log
+
 }  // namespace arangodb::replication2
 
 namespace arangodb {
-template<>
+template <>
 struct velocypack::Extractor<replication2::LogTerm> {
   static auto extract(velocypack::Slice slice) -> replication2::LogTerm {
     return replication2::LogTerm{slice.getNumericValue<std::uint64_t>()};
   }
 };
 
-template<>
+template <>
 struct velocypack::Extractor<replication2::LogIndex> {
   static auto extract(velocypack::Slice slice) -> replication2::LogIndex {
     return replication2::LogIndex{slice.getNumericValue<std::uint64_t>()};
   }
 };
 
-template<>
+template <>
 struct velocypack::Extractor<replication2::LogId> {
   static auto extract(velocypack::Slice slice) -> replication2::LogId {
     return replication2::LogId{slice.getNumericValue<std::uint64_t>()};
   }
 };
 
-}
+}  // namespace arangodb
 
 template <>
 struct std::hash<arangodb::replication2::LogIndex> {
-  [[nodiscard]] auto operator()(arangodb::replication2::LogIndex const& v) const noexcept -> std::size_t {
+  [[nodiscard]] auto operator()(arangodb::replication2::LogIndex const& v) const noexcept
+      -> std::size_t {
     return std::hash<uint64_t>{}(v.value);
   }
 };
 
 template <>
 struct std::hash<arangodb::replication2::LogTerm> {
-  [[nodiscard]] auto operator()(arangodb::replication2::LogTerm const& v) const noexcept -> std::size_t {
+  [[nodiscard]] auto operator()(arangodb::replication2::LogTerm const& v) const noexcept
+      -> std::size_t {
     return std::hash<uint64_t>{}(v.value);
   }
 };
 
 template <>
 struct std::hash<arangodb::replication2::LogId> {
-  [[nodiscard]] auto operator()(arangodb::replication2::LogId const& v) const noexcept -> std::size_t {
+  [[nodiscard]] auto operator()(arangodb::replication2::LogId const& v) const noexcept
+      -> std::size_t {
     return std::hash<arangodb::basics::Identifier>{}(v);
   }
 };
-
