@@ -583,7 +583,9 @@ exports.checkAvailableVersions = function() {
     log = internal.print;
   }
 
-  exports.enterpriseLicenseVisibility();
+  if(internal.isEnterprise()) {
+    exports.enterpriseLicenseVisibility();
+  }
 
   let isStable = true;
   if (version.match(/beta|alpha|preview|milestone|devel/) !== null) {
