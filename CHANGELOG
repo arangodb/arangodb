@@ -1,6 +1,7 @@
 devel
 -----
 
+* Single server license output checking fixed.
 
 * When using Indexes within traversals (e.g. [_from, date]) and filter based
   on a function (e.g. FILTER path.edges[0].date <= DATE_ADD(@now, 5, "day"))
