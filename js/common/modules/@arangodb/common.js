@@ -522,6 +522,52 @@ exports.checkParameter = function(usage, descs, vars) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief checks server's license status
+// //////////////////////////////////////////////////////////////////////////////
+
+exports.enterpriseLicenseVisibility = function() {
+
+  // This is only a best effort to inform the customer of any upcoming / existing
+  // enterprise license issues. If the counterpart does not expose the license
+  // API (non-enterprise and <= 3.9), nothing is displayed.
+
+  var license;
+  try {
+    license = arango.GET("_admin/license");
+  } catch (e) {
+    return;
+  }
+
+  if (license.hasOwnProperty("status") &&
+      license.hasOwnProperty("features") &&
+      license.features.hasOwnProperty("expires")) {
+
+    let expires = new Date(1000 * license.features.expires);
+    switch (license.status) {
+    case "expiring":
+      console.warn("Your license is expiring soon on " + expires + ".");
+      console.warn("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license.");
+      return;
+    case "expired":
+      console.error("Your server's license has expired.");
+      console.error("Its operation will be restricted to read-only mode on " + expires + "!");
+      console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.");
+      return;
+    case "read-only":
+      console.error("Your server's license expired on " + expires + ".");
+      console.error("Its operation has been restricted to read-only mode!");
+      console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.");
+      return;
+    case "good":
+    default:
+      return;
+    }
+
+  }
+
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief generate info message for newer version(s) available
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -537,6 +583,8 @@ exports.checkAvailableVersions = function() {
     log = internal.print;
   }
 
+  exports.enterpriseLicenseVisibility();
+
   let isStable = true;
   if (version.match(/beta|alpha|preview|milestone|devel/) !== null) {
     isStable = false;
@@ -547,7 +595,7 @@ exports.checkAvailableVersions = function() {
           "') of ArangoDB"
       );
     }
-  } 
+  }
 
   if (isServer && internal.isEnterprise()) {
     // don't check for version updates in arangod in Enterprise Edition
@@ -557,7 +605,7 @@ exports.checkAvailableVersions = function() {
     // don't check for version updates in arangosh in stable Enterprise Edition
     return;
   }
-  
+
   try {
     var hash = "A" + Math.random();
     var engine = "unknown";
