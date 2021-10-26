@@ -59,7 +59,7 @@ auto FollowerStatus::fromVelocyPack(velocypack::Slice slice) -> FollowerStatus {
   FollowerStatus status;
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
   status.largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
-  status.local = LogStatistics::fromVelocyPack(slice);
+  status.local = LogStatistics::fromVelocyPack(slice.get("local"));
   if (auto leader = slice.get(StaticStrings::Leader); !leader.isNone()) {
     status.leader = leader.copyString();
   }
