@@ -59,18 +59,20 @@ RestStatus RestLicenseHandler::execute() {
     return RestStatus::DONE;
   }
 
-  VPackBuilder builder;
 
+  VPackBuilder builder;
   switch(_request->requestType()) {
   case RequestType::GET:
-    VPackObjectBuilder b(&builder);
-    builder.add("license", VPackValue("none"));
+    {
+      VPackObjectBuilder b(&builder);
+      builder.add("license", VPackValue("none"));
+    }
+    generateResult(rest::ResponseCode::OK, builder.slice());
     break;
   case RequestType::PUT:
     generateError(
       rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_ONLY_ENTERPRISE,
       "The community edition cannot be licensed.");
-    generateResult(rest::ResponseCode::OK, builder.slice());
     break;
   default:
     generateError(
