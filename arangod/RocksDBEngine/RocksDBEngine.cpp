@@ -1037,8 +1037,8 @@ std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
-  if (!info.hasKey("objectId")) {
-    builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
+  if (!info.hasKey(StaticStrings::ObjectId)) {
+    builder.add(StaticStrings::ObjectId, VPackValue(std::to_string(TRI_NewTickServer())));
   }
   if (!info.get(StaticStrings::CacheEnabled).isBool()) {
     builder.add(StaticStrings::CacheEnabled, VPackValue(false));
@@ -1488,17 +1488,23 @@ void RocksDBEngine::processTreeRebuilds() {
             auto collection = vocbase->lookupCollectionByUuid(candidate.second);
             if (collection != nullptr && !collection->deleted()) {
               LOG_TOPIC("b96bc", INFO, Logger::ENGINES)
-                  << "starting background rebuild of revision tree for collection " << collection->name();
+                  << "starting background rebuild of revision tree for collection " << candidate.first << "/" << collection->name();
               Result res = static_cast<RocksDBCollection*>(collection->getPhysical())->rebuildRevisionTree();
               if (res.ok()) {
                 ++_metricsTreeRebuildsSuccess;
                 LOG_TOPIC("2f997", INFO, Logger::ENGINES)
-                    << "successfully rebuilt revision tree for collection " << collection->name();
+                    << "successfully rebuilt revision tree for collection " << candidate.first << "/" << collection->name();
               } else {
                 ++_metricsTreeRebuildsFailure;
-                LOG_TOPIC("a1fc2", ERR, Logger::ENGINES)
-                    << "failure during revision tree rebuilding for collection " << collection->name()
-                    << ": " << res.errorMessage();
+                if (res.is(TRI_ERROR_LOCK_TIMEOUT)) {
+                  LOG_TOPIC("bce3a", WARN, Logger::ENGINES)
+                      << "failure during revision tree rebuilding for collection " << candidate.first << "/" << collection->name() 
+                      << ": " << res.errorMessage();
+                } else {
+                  LOG_TOPIC("a1fc2", ERR, Logger::ENGINES)
+                      << "failure during revision tree rebuilding for collection " << candidate.first << "/" << collection->name() 
+                      << ": " << res.errorMessage();
+                }
                 {
                  // mark as to-be-done again
                   MUTEX_LOCKER(locker, _rebuildCollectionsLock);
@@ -2345,7 +2351,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     RocksDBValue value(RocksDBEntryType::Collection, it->value());
 
     uint64_t const objectId =
-        basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
+        basics::VelocyPackHelper::stringUInt64(value.slice(), StaticStrings::ObjectId);
 
     auto const cnt = RocksDBMetadata::loadCollectionCount(_db, objectId);
     uint64_t const numberDocuments = cnt._added - cnt._removed;
@@ -2357,7 +2363,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
       for (VPackSlice it : VPackArrayIterator(indexes)) {
         // delete index documents
         uint64_t objectId =
-            basics::VelocyPackHelper::stringUInt64(it, "objectId");
+            basics::VelocyPackHelper::stringUInt64(it, StaticStrings::ObjectId);
         res = RocksDBMetadata::deleteIndexEstimate(db, objectId);
         if (res.fail()) {
           return;
