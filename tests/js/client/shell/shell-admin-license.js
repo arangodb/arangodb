@@ -2,7 +2,7 @@
 /* global assertTrue, assertEqual, assertNotEqual, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoTransaction sTests
+// / @brief ArangoDB Enterprise License Tests
 // /
 // /
 // / DISCLAIMER
