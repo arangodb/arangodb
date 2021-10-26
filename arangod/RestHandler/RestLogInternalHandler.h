@@ -18,40 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include "Basics/Common.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-/// @brief wrapped class for TRI_vocbase_t
-/// Layout:
-/// - SLOT_CLASS_TYPE
-/// - SLOT_CLASS
-static int32_t const WRP_VOCBASE_TYPE = 1;
+namespace arangodb {
 
-/// @brief wrapped class for LogicalCollection
-/// Layout:
-/// - SLOT_CLASS_TYPE
-/// - SLOT_CLASS
-static int32_t const WRP_VOCBASE_COL_TYPE = 2;
+namespace replication2 {
+struct ReplicatedLogMethods;
+}
 
-/// @brief wrapped class for LogicalView
-/// Layout:
-/// - SLOT_CLASS_TYPE
-/// - SLOT_CLASS
-static int32_t const WRP_VOCBASE_VIEW_TYPE = 3;
+class RestLogInternalHandler : public RestVocbaseBaseHandler {
+ public:
+  RestLogInternalHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
+  ~RestLogInternalHandler() override;
 
-/// @brief wrapped class for IResearch Analyzer
-/// Layout:
-/// - SLOT_CLASS_TYPE
-/// - SLOT_CLASS
-static int32_t const WRP_IRESEARCH_ANALYZER_TYPE = 4;
-
-/// @brief wrapped class for ReplicatedLog
-/// Layout:
-/// - SLOT_CLASS_TYPE
-/// - SLOT_CLASS
-static int32_t const WRP_VOCBASE_REPLICATED_LOG_TYPE = 5;
-
+ public:
+  RestStatus execute() final;
+  char const* name() const final { return "RestLogInternalHandler"; }
+  RequestLane lane() const final {
+    return RequestLane::CLIENT_SLOW;
+  }
+};
+}  // namespace arangodb
