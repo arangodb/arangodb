@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.3.
+
 * Old license mechanism for docker containers removed.
 
 * Add license information to the web UI.
