@@ -29,9 +29,9 @@ namespace arangodb {
 
 class ClientFeature;
 
-class ConsoleFeature final : public application_features::ApplicationFeature {
+class ShellConsoleFeature final : public application_features::ApplicationFeature {
  public:
-  explicit ConsoleFeature(application_features::ApplicationServer& server);
+  explicit ShellConsoleFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
