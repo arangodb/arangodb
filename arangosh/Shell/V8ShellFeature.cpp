@@ -34,7 +34,6 @@
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
-#include "Utilities/IsArangoExecutable.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -46,17 +45,18 @@
 #include "Rest/CommonDefines.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
-#include "Shell/ConsoleFeature.h"
+#include "Shell/ShellConsoleFeature.h"
 #include "Shell/V8ClientConnection.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
+#include "Utilities/IsArangoExecutable.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-deadline.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
-#include "V8/v8-deadline.h"
 #include "V8/v8-vpack.h"
 
 #include <regex>
@@ -88,7 +88,7 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
-  startsAfter<ConsoleFeature>();
+  startsAfter<ShellConsoleFeature>();
   startsAfter<RandomFeature>();
   startsAfter<V8PlatformFeature>();
   startsAfter<V8SecurityFeature>();
@@ -318,7 +318,7 @@ void V8ShellFeature::copyInstallationFiles() {
 }
 
 bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
-  ConsoleFeature& console = server().getFeature<ConsoleFeature>();
+  ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
   bool promptError = false;
 
   // for the banner see
@@ -440,7 +440,7 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
 }
 
 ErrorCode V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
-  ConsoleFeature& console = server().getFeature<ConsoleFeature>();
+  ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
 
   auto isolate = _isolate;
   v8::Locker locker{_isolate};
@@ -720,7 +720,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
       ok = TRI_ParseJavaScriptFile(_isolate, file.c_str());
     }
   }
-  ConsoleFeature& console = server().getFeature<ConsoleFeature>();
+  ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
   console.flushLog();
 
   return ok;
@@ -763,7 +763,7 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
     }
   }
 
-  ConsoleFeature& console = server().getFeature<ConsoleFeature>();
+  ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
   console.flushLog();
 
   return ok;
@@ -911,7 +911,7 @@ static void JS_PagerOutput(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ConsoleFeature* console = static_cast<ConsoleFeature*>(wrap->Value());
+  ShellConsoleFeature* console = static_cast<ShellConsoleFeature*>(wrap->Value());
 
   for (int i = 0; i < args.Length(); i++) {
     // extract the next argument
@@ -931,7 +931,7 @@ static void JS_StartOutputPager(v8::FunctionCallbackInfo<v8::Value> const& args)
   v8::HandleScope scope(isolate);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ConsoleFeature* console = static_cast<ConsoleFeature*>(wrap->Value());
+  ShellConsoleFeature* console = static_cast<ShellConsoleFeature*>(wrap->Value());
 
   if (console->pager()) {
     console->print("Using pager already.\n");
@@ -954,7 +954,7 @@ static void JS_StopOutputPager(v8::FunctionCallbackInfo<v8::Value> const& args) 
   v8::HandleScope scope(isolate);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ConsoleFeature* console = static_cast<ConsoleFeature*>(wrap->Value());
+  ShellConsoleFeature* console = static_cast<ShellConsoleFeature*>(wrap->Value());
 
   if (console->pager()) {
     console->print("Stopping pager.\n");
@@ -1064,7 +1064,7 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void V8ShellFeature::initGlobals() {
-  ConsoleFeature& console = server().getFeature<ConsoleFeature>();
+  ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
   auto context = _isolate->GetCurrentContext();
 
   // string functions

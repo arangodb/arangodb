@@ -363,8 +363,10 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/MultiDependencySingleRowFetcher.cpp
   Aql/MutexExecutor.cpp
   Aql/MutexNode.cpp
-  Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
+  Aql/NonConstExpression.cpp
+  Aql/NonConstExpressionContainer.cpp
+  Aql/NoResultsExecutor.cpp
   Aql/Optimizer.cpp
   Aql/OptimizerRules.cpp
   Aql/OptimizerRulesCluster.cpp
@@ -569,7 +571,10 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/types.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
-)
+  Replication2/Methods.cpp
+  Replication2/Methods.h
+  RestHandler/RestLogInternalHandler.cpp
+  RestHandler/RestLogInternalHandler.h)
 
 set (LIB_ARANGO_METRICS_SOURCES
   RestServer/Metrics.cpp
@@ -633,7 +638,7 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
-)
+  V8Server/v8-replicated-logs.cpp V8Server/v8-replicated-logs.h)
 
 set(LIB_ARANGO_NETWORK_SOURCES
   Network/ClusterUtils.cpp
@@ -738,6 +743,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestImportHandler.cpp
   RestHandler/RestIndexHandler.cpp
   RestHandler/RestJobHandler.cpp
+  RestHandler/RestLicenseHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
   RestHandler/RestShutdownHandler.cpp
