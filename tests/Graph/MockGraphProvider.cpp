@@ -183,6 +183,10 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
   return &_trx;
 }
 
+void MockGraphProvider::prepareIndexExpressions(aql::Ast* ast) {
+  // Nothing to do here. We do not have any special index conditions
+}
+
 aql::TraversalStats MockGraphProvider::stealStats() {
   auto t = _stats;
   // Placement new of stats, do not reallocate space.

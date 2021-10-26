@@ -24,12 +24,16 @@
 #include "BaseOptions.h"
 
 #include "Aql/AqlTransaction.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/IndexNode.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/NonConstExpression.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Cluster/ClusterEdgeCursor.h"
@@ -48,6 +52,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
@@ -110,6 +115,10 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
         "Each lookup requires condition to be an object");
   }
   indexCondition = query.ast()->createNode(read);
+  read = info.get("nonConstContainer");
+  if (read.isObject()) {
+    _nonConstContainer = NonConstExpressionContainer::fromVelocyPack(query.ast(), read);
+  }
 }
 
 BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
@@ -120,6 +129,7 @@ BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
   if (other.expression != nullptr) {
     expression = other.expression->clone(nullptr);
   }
+  _nonConstContainer = other._nonConstContainer.clone(nullptr);
 }
 
 void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
@@ -142,6 +152,8 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   indexCondition->toVelocyPack(result, true);
   result.add("condNeedUpdate", VPackValue(conditionNeedUpdate));
   result.add("condMemberToUpdate", VPackValue(conditionMemberToUpdate));
+  result.add(VPackValue("nonConstContainer"));
+  _nonConstContainer.toVelocyPack(result);
   result.close();
 }
 
@@ -161,6 +173,50 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   // Some hard-coded value
   nrItems += 1000;
   return 1000.0;
+}
+
+void BaseOptions::LookupInfo::initializeNonConstExpressions(
+    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Variable const* indexVariable) {
+  _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(ast, varInfo, false, false,
+                                                       indexCondition, indexVariable);
+  // We cannot optimize V8 expressions
+  TRI_ASSERT(!_nonConstContainer._hasV8Expression);
+}
+
+void BaseOptions::LookupInfo::calculateIndexExpressions(Ast* ast, ExpressionContext& ctx) {
+  if (_nonConstContainer._expressions.empty()) {
+    return;
+  }
+
+  // The following are needed to evaluate expressions with local data from
+  // the current incoming item:
+  for (auto& toReplace : _nonConstContainer._expressions) {
+    auto exp = toReplace->expression.get();
+    bool mustDestroy;
+    AqlValue a = exp->execute(&ctx, mustDestroy);
+    AqlValueGuard guard(a, mustDestroy);
+
+    AqlValueMaterializer materializer(&(ctx.trx().vpackOptions()));
+    VPackSlice slice = materializer.slice(a, false);
+    AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
+
+    AstNode* tmp = indexCondition;
+    for (size_t x = 0; x < toReplace->indexPath.size(); x++) {
+      size_t idx = toReplace->indexPath[x];
+      AstNode* old = tmp->getMember(idx);
+      // modify the node in place
+      TEMPORARILY_UNLOCK_NODE(tmp);
+      if (x + 1 < toReplace->indexPath.size()) {
+        AstNode* cpy = old;
+        tmp->changeMember(idx, cpy);
+        tmp = cpy;
+      } else {
+        // insert the actual expression value
+        tmp->changeMember(idx, evaluatedNode);
+      }
+    }
+  }
 }
 
 std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
@@ -418,6 +474,20 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression, VPac
   return result;
 }
 
+void BaseOptions::initializeIndexConditions(
+    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Variable const* indexVariable) {
+  for (auto& it : _baseLookupInfos) {
+    it.initializeNonConstExpressions(ast, varInfo, indexVariable);
+  }
+}
+
+void BaseOptions::calculateIndexExpressions(aql::Ast* ast) {
+  for (auto& it : _baseLookupInfos) {
+    it.calculateIndexExpressions(ast, _expressionCtx);
+  }
+}
+
 double BaseOptions::costForLookupInfoList(std::vector<BaseOptions::LookupInfo> const& list,
                                           size_t& createItems) const {
   double cost = 0;
@@ -460,6 +530,10 @@ void BaseOptions::activateCache(bool enableDocumentCache,
 void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
   TRI_ASSERT(_cache == nullptr);
   _cache = std::move(testCache);
+}
+
+arangodb::aql::FixedVarExpressionContext& BaseOptions::getExpressionCtx() {
+  return _expressionCtx;
 }
 
 arangodb::aql::FixedVarExpressionContext const& BaseOptions::getExpressionCtx() const {
