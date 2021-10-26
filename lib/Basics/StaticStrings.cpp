@@ -124,6 +124,7 @@ std::string const StaticStrings::DataSourceName("name");
 std::string const StaticStrings::DataSourcePlanId("planId");
 std::string const StaticStrings::DataSourceSystem("isSystem");
 std::string const StaticStrings::DataSourceType("type");
+std::string const StaticStrings::DataSourceParameters("parameters");
 
 // Index definition fields
 std::string const StaticStrings::IndexExpireAfter("expireAfter");

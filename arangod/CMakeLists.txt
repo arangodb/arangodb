@@ -352,8 +352,10 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/MultiDependencySingleRowFetcher.cpp
   Aql/MutexExecutor.cpp
   Aql/MutexNode.cpp
-  Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
+  Aql/NonConstExpression.cpp
+  Aql/NonConstExpressionContainer.cpp
+  Aql/NoResultsExecutor.cpp
   Aql/Optimizer.cpp
   Aql/OptimizerRules.cpp
   Aql/OptimizerRulesCluster.cpp
