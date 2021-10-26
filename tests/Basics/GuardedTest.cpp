@@ -194,6 +194,7 @@ TYPED_TEST_P(GuardedTest, test_guard_unlock_releases_mutex) {
   thr.join();
 }
 
+
 TYPED_TEST_P(GuardedDeathTest, test_guard_unlock_releases_value) {
   auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
   EXPECT_EQ(1, guardedObj.copy().val);
@@ -204,6 +205,22 @@ TYPED_TEST_P(GuardedDeathTest, test_guard_unlock_releases_value) {
   guard.unlock();
 
   ASSERT_DEATH_CORE_FREE({ ASSERT_NE(2, guard.get().val); }, "");
+  // stunt to find out whether we are compiling with ASan enabled...
+  // we do this to avoid getting a mysterious SIGSEGV during testing.
+  // more details can be found in BTS-598
+#if defined(__SANITIZE_ADDRESS__)
+  // ASan enabled
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+  // ASan enabled
+#else
+  // ASan not enabled
+  ASSERT_DEATH_CORE_FREE({ ASSERT_NE(2, guard.get().val); }, "");
+#endif
+#else
+  // ASan not enabled
+  ASSERT_DEATH_CORE_FREE({ ASSERT_NE(2, guard.get().val); }, "");
+#endif
 }
 
 TYPED_TEST_P(GuardedTest, test_do_allows_access) {
