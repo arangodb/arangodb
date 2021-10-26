@@ -57,7 +57,7 @@ function adminLicenseSuite () {
           console.warn(e);
           assertTrue(false);
         }
-        assertTrue(_.isEqual(result, {license:"none"}));
+        assertEqual(result, {license:"none"});
       }
     },
 
@@ -115,7 +115,7 @@ function adminLicenseSuite () {
       assertEqual(result.errorNum, 405);
     },
 
-  }
+  };
 }
 jsunity.run(adminLicenseSuite);
 
