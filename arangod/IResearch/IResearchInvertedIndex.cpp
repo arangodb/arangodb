@@ -423,36 +423,40 @@ AnalyzerPool::ptr IResearchInvertedIndex::findAnalyzer(AnalyzerPool const& analy
 }
 
 bool IResearchInvertedIndex::covers(arangodb::aql::Projections& projections) const {
-  std::vector<std::vector<aql::latematerialized::ColumnVariant>> usedColumns;
-  aql::latematerialized::NodeWithAttrsColumn node; // we need here only attributes list actually!
+  std::vector<std::vector<aql::latematerialized::ColumnVariant<true>>> usedColumns;
+  std::vector<aql::latematerialized::AttributeAndField<aql::latematerialized::IndexFieldData>> attrs;
   for (size_t i = 0; i < projections.size(); ++i) {
-    aql::latematerialized::NodeWithAttrsColumn::AttributeAndField af;
+    aql::latematerialized::AttributeAndField<aql::latematerialized::IndexFieldData> af;
     for (auto const& a : projections[i].path.path) {
       af.attr.emplace_back(a, false); // TODO: false? 
     }
-    node.attrs.emplace_back(af);
+    attrs.emplace_back(af);
   }
   auto const columnsCount  = _meta._storedValues.columns().size() + 1;
   usedColumns.resize(columnsCount);
-  if (aql::latematerialized::attributesMatch(_meta._sort, _meta._storedValues, node, usedColumns, columnsCount)) {
-    aql::latematerialized::setAttributesMaxMatchedColumns(usedColumns, columnsCount);
+  if (aql::latematerialized::attributesMatch<true>(_meta._sort,
+                                                  _meta._storedValues,
+                                                   attrs, usedColumns, columnsCount)) {
+    aql::latematerialized::setAttributesMaxMatchedColumns<true>(usedColumns, columnsCount);
     for (size_t i = 0; i < projections.size(); ++i) {
-      auto const& nodeAttr = node.attrs[i];
+      auto const& nodeAttr = attrs[i];
       size_t index{0};
       if (iresearch::IResearchViewNode::SortColumnNumber == nodeAttr.afData.columnNumber) { // found in the sort column
         index = nodeAttr.afData.fieldNumber;
       }
       else {
         index = _meta._sort.fields().size();
-        TRI_ASSERT(nodeAttr.afData.columnNumber < _meta._storedValues.columns().size());
-        for (size_t j = 0; j < nodeAttr.afData.columnNumber; j++) {
+        TRI_ASSERT(nodeAttr.afData.columnNumber < static_cast<ptrdiff_t>(_meta._storedValues.columns().size()));
+        for (ptrdiff_t j = 0; j < nodeAttr.afData.columnNumber; j++) {
           // FIXME: we will need to decode the same back inside index iterator :(
           index += _meta._storedValues.columns()[j].fields.size();
         }
       }
-      projections[i].coveringIndexPosition = index + nodeAttr.afData.fieldNumber;
-      TRI_ASSERT(projections[i].path.size() > nodeAttr.afData.postfix.size());
-      projections[i].coveringIndexCutoff = projections[i].path.size() - nodeAttr.afData.postfix.size();
+      TRI_ASSERT((index + nodeAttr.afData.fieldNumber) <=
+                 std::numeric_limits<uint16_t>::max());
+      projections[i].coveringIndexPosition = static_cast<uint16_t>(index + nodeAttr.afData.fieldNumber);
+      TRI_ASSERT(projections[i].path.size() > nodeAttr.afData.postfix);
+      projections[i].coveringIndexCutoff = static_cast<uint16_t>(projections[i].path.size() - nodeAttr.afData.postfix);
     }
     return true;
   }

@@ -331,7 +331,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
                                   arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
   std::vector<latematerialized::NodeWithAttrsColumn> nodesToChange;
-  std::vector<std::vector<latematerialized::ColumnVariant>> usedColumnsCounter;
+  std::vector<std::vector<latematerialized::ColumnVariant<false>>> usedColumnsCounter;
   for (auto* vNode : viewNodes) {
     TRI_ASSERT(vNode && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(vNode);
@@ -363,7 +363,7 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
       // find attributes referenced to view node out variable
       if (latematerialized::getReferencedAttributes(astNode, &var, node)) {
         if (!node.attrs.empty()) {
-          if (attributesMatch(primarySort, storedValues, node, usedColumnsCounter, columnsCount)) {
+          if (attributesMatch(primarySort, storedValues, node.attrs, usedColumnsCounter, columnsCount)) {
             nodesToChange.emplace_back(std::move(node));
           } else {
             viewNodeState.disableNoDocumentMaterialization();

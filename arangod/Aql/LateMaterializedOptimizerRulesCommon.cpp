@@ -87,7 +87,7 @@ bool getReferencedAttributes(AstNode* node,
           afData.parentNode = parentNode;
           afData.childNumber = childNumber;
           state.nodeAttrs.attrs.emplace_back(
-            typename T::AttributeAndField{std::vector<arangodb::basics::AttributeName>{
+            AttributeAndField<typename T::DataType>{std::vector<arangodb::basics::AttributeName>{
               {std::string(node->getStringValue(), node->getStringLength()), false}}, std::move(afData)});
           state.wasAccess = true;
         } else {
@@ -132,17 +132,17 @@ bool getReferencedAttributes(AstNode* node,
   return state.optimize;
 }
 
-
+template<bool indexDataOnly, typename Attrs>
 bool attributesMatch(iresearch::IResearchViewSort const& primarySort,
                      iresearch::IResearchViewStoredValues const& storedValues,
-                     latematerialized::NodeWithAttrsColumn& node,
-                     std::vector<std::vector<ColumnVariant>>& usedColumnsCounter,
+                     Attrs& attrs,
+                     std::vector<std::vector<ColumnVariant<indexDataOnly>>>& usedColumnsCounter,
                      size_t columnsCount) {
   TRI_ASSERT(columnsCount <= usedColumnsCounter.size());
   // check all node attributes to be in sort
-  std::vector<std::vector<ColumnVariant>> tmpUsedColumnsCounter(columnsCount);
-  std::vector<std::string> postfix;
-  for (auto& nodeAttr : node.attrs) {
+  std::remove_reference_t<decltype(usedColumnsCounter)> tmpUsedColumnsCounter(columnsCount);
+  typename ColumnVariant<indexDataOnly>::PostfixType postfix{};
+  for (auto& nodeAttr : attrs) {
     auto found = false;
     nodeAttr.afData.field = nullptr;
     // try to find in the sort column
@@ -150,8 +150,11 @@ bool attributesMatch(iresearch::IResearchViewSort const& primarySort,
     TRI_ASSERT(!tmpUsedColumnsCounter.empty());
     auto& tmpSlot = tmpUsedColumnsCounter.front();
     for (auto const& field : primarySort.fields()) {
-      if (latematerialized::isPrefix(field, nodeAttr.attr, false, postfix)) {
+      if (latematerialized::isPrefix<indexDataOnly>(field, nodeAttr.attr, false, postfix)) {
         tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, &field, std::move(postfix));
+        if constexpr (std::is_arithmetic_v<decltype(postfix)>) {
+          postfix = 0;
+        }
         found = true;
         break;
       }
@@ -164,8 +167,11 @@ bool attributesMatch(iresearch::IResearchViewSort const& primarySort,
       TRI_ASSERT(static_cast<ptrdiff_t>(tmpUsedColumnsCounter.size()) >= columnNum);
       auto& tmpSlot = tmpUsedColumnsCounter[columnNum];
       for (auto const& field : column.fields) {
-        if (latematerialized::isPrefix(field.second, nodeAttr.attr, false, postfix)) {
+        if (latematerialized::isPrefix<indexDataOnly>(field.second, nodeAttr.attr, false, postfix)) {
           tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix));
+          if constexpr (std::is_arithmetic_v<decltype(postfix)>) {
+            postfix = 0;
+          }
           found = true;
           break;
         }
@@ -178,7 +184,7 @@ bool attributesMatch(iresearch::IResearchViewSort const& primarySort,
       return false;
     }
   }
-  static_assert(std::is_move_constructible_v<ColumnVariant>,
+  static_assert(std::is_move_constructible_v<ColumnVariant<indexDataOnly>>,
                 "To efficiently move from temp variable we need working move for ColumnVariant");
   // store only on successful exit, otherwise pointers to afData will be invalidated as Node will be not stored!
   size_t current = 0;
@@ -188,7 +194,8 @@ bool attributesMatch(iresearch::IResearchViewSort const& primarySort,
   return true;
 }
 
-void setAttributesMaxMatchedColumns(std::vector<std::vector<ColumnVariant>>& usedColumnsCounter,
+template<bool indexDataOnly>
+void setAttributesMaxMatchedColumns(std::vector<std::vector<ColumnVariant<indexDataOnly>>>& usedColumnsCounter,
                                     size_t columnsCount) {
   TRI_ASSERT(columnsCount <= usedColumnsCounter.size());
   std::vector<ptrdiff_t> idx(columnsCount);
@@ -202,9 +209,15 @@ void setAttributesMaxMatchedColumns(std::vector<std::vector<ColumnVariant>>& use
     // column contains more fields or
     // columns sizes == 1 and postfix is less (less column size) or
     // less column number (sort column priority)
-    return lSize > rSize ||
-        (lSize == rSize && ((lSize == 1 && lhs_val[0].postfix.size() < rhs_val[0].postfix.size()) ||
-        lhs < rhs));
+    if constexpr (indexDataOnly) {
+      return lSize > rSize ||
+          (lSize == rSize && ((lSize == 1 && lhs_val[0].postfix < rhs_val[0].postfix) ||
+          lhs < rhs));
+    } else {
+      return lSize > rSize ||
+          (lSize == rSize && ((lSize == 1 && lhs_val[0].postfix.size() < rhs_val[0].postfix.size()) ||
+          lhs < rhs));
+    }
   });
   // get values from columns which contain max number of appropriate values
   for (auto i : idx) {
@@ -224,11 +237,18 @@ void setAttributesMaxMatchedColumns(std::vector<std::vector<ColumnVariant>>& use
   }
 }
 
+template<bool indexDataOnly>
 bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
                                 std::vector<arangodb::basics::AttributeName> const& attrs,
                                 bool ignoreExpansionInLast,
-                                std::vector<std::string>& postfix) {
-  TRI_ASSERT(postfix.empty());
+                                typename ColumnVariant<indexDataOnly>::PostfixType& postfix) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if constexpr (!indexDataOnly) {
+    TRI_ASSERT(postfix.empty());
+  } else {
+    TRI_ASSERT(postfix == 0);
+  }
+#endif
   if (prefix.size() > attrs.size()) {
     return false;
   }
@@ -248,13 +268,16 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
     }
   }
   if (i < attrs.size()) {
-    postfix.reserve(attrs.size() - i);
-    std::transform(attrs.cbegin() + static_cast<ptrdiff_t>(i),
-                   attrs.cend(), std::back_inserter(postfix), [](auto const& attr) {
-      return attr.name;
-    });
+    if constexpr (indexDataOnly) {
+      postfix = attrs.size() - i;
+    } else {
+      postfix.reserve(attrs.size() - i);
+      std::transform(attrs.cbegin() + static_cast<ptrdiff_t>(i),
+                     attrs.cend(), std::back_inserter(postfix), [](auto const& attr) {
+        return attr.name;
+      });
+    }
   }
-
   return true;
 }
 
@@ -271,3 +294,42 @@ template bool latematerialized::getReferencedAttributes(
   AstNode* node,
   Variable const* variable,
   NodeWithAttrsColumn& nodeAttrs);
+
+template
+bool latematerialized::isPrefix<false>(
+  std::vector<arangodb::basics::AttributeName> const& prefix,
+  std::vector<arangodb::basics::AttributeName> const& attrs,
+  bool ignoreExpansionInLast,
+  typename ColumnVariant<false>::PostfixType& postfix);
+
+template
+void latematerialized::setAttributesMaxMatchedColumns<false>(
+  std::vector<std::vector<latematerialized::ColumnVariant<false>>>& usedColumnsCounter,
+  size_t columnsCount);
+
+template
+void latematerialized::setAttributesMaxMatchedColumns<true>(
+  std::vector<std::vector<latematerialized::ColumnVariant<true>>>& usedColumnsCounter,
+  size_t columnsCount);
+
+template
+bool latematerialized::attributesMatch<true,
+                                       std::vector<
+                                         latematerialized::AttributeAndField<
+                                           latematerialized::IndexFieldData>>>  (
+  iresearch::IResearchViewSort const& primarySort,
+  iresearch::IResearchViewStoredValues const& storedValues,
+  std::vector<latematerialized::AttributeAndField<latematerialized::IndexFieldData>>& attrs,
+  std::vector<std::vector<ColumnVariant<true>>>& usedColumnsCounter,
+  size_t columnsCount);
+
+template
+bool latematerialized::attributesMatch<false,
+                                       std::vector<
+                                         latematerialized::AttributeAndField<
+                                         latematerialized::AstAndColumnFieldData>>>  (
+  iresearch::IResearchViewSort const& primarySort,
+  iresearch::IResearchViewStoredValues const& storedValues,
+  std::vector<latematerialized::AttributeAndField<latematerialized::AstAndColumnFieldData>>& attrs,
+  std::vector<std::vector<ColumnVariant<false>>>& usedColumnsCounter,
+  size_t columnsCount);
