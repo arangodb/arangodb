@@ -60,8 +60,6 @@ RestStatus RestLicenseHandler::execute() {
   }
 
   VPackBuilder builder;
-  bool force = _request->parsedValue("force", /*default value*/ false);
-  auto& feature = server().getFeature<LicenseFeature>();
 
   switch(_request->requestType()) {
   case RequestType::GET:
@@ -72,6 +70,7 @@ RestStatus RestLicenseHandler::execute() {
     generateError(
       rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_ONLY_ENTERPRISE,
       "The community edition cannot be licensed.");
+    generateResult(rest::ResponseCode::OK, builder.slice());
     break;
   default:
     generateError(
