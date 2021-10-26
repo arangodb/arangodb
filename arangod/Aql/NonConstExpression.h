@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,27 +20,24 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8ShellFeaturePhase.h"
+#pragma once
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
-#include "Shell/ShellConsoleFeature.h"
-#include "Shell/V8ShellFeature.h"
+#include "Aql/Expression.h"
+
+#include <memory>
+#include <vector>
 
 namespace arangodb {
-namespace application_features {
 
-V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "V8ShellPhase") {
-  setOptional(false);
-  startsAfter<GreetingsFeaturePhase>();
+namespace aql {
 
-  startsAfter<ShellConsoleFeature>();
-  startsAfter<V8ShellFeature>();
-  startsAfter<V8PlatformFeature>();
-  startsAfter<V8SecurityFeature>();
+/// @brief struct to hold the member-indexes in the _condition node
+struct NonConstExpression {
+  std::unique_ptr<Expression> expression;
+  std::vector<size_t> const indexPath;
+
+  NonConstExpression(std::unique_ptr<Expression> exp, std::vector<size_t> idxPath);
+};
+
 }
-
-}  // namespace application_features
-}  // namespace arangodb
+}

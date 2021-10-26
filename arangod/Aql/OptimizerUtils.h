@@ -23,9 +23,12 @@
 
 #pragma once
 
+#include "Aql/types.h"
+
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <unordered_map>
 
 namespace arangodb {
 class Index;
@@ -38,6 +41,9 @@ struct Collection;
 class IndexHint;
 class SortCondition;
 struct Variable;
+struct VarInfo;
+struct NonConstExpressionContainer;
+struct RegisterId;
 
 /// code that used to be in transaction::Methods
 namespace utils {
@@ -70,6 +76,10 @@ bool getIndexForSortCondition(
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     aql::IndexHint const& hint, std::vector<std::shared_ptr<Index>>& usedIndexes,
     size_t& coveredAttributes);
+
+NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
+    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo, bool evaluateFCalls,
+    bool sorted, AstNode const* condition, Variable const* indexVariable);
 
 } // namespace utils
 } // namespace aql

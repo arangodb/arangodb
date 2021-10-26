@@ -177,6 +177,12 @@ void SingleServerProvider<Step>::insertEdgeIdIntoResult(EdgeDocumentToken edge,
 }
 
 template <class Step>
+void SingleServerProvider<Step>::prepareIndexExpressions(aql::Ast* ast) {
+  TRI_ASSERT(_cursor != nullptr);
+  _cursor->prepareIndexExpressions(ast);
+}
+
+template <class Step>
 std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> SingleServerProvider<Step>::buildCursor(
     arangodb::aql::FixedVarExpressionContext& expressionContext) {
   return std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(

@@ -36,7 +36,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Shell/ConsoleFeature.h"
+#include "Shell/ShellConsoleFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Ssl/ssl-helper.h"
@@ -301,7 +301,7 @@ void ClientFeature::readPassword() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   try {
-    ConsoleFeature& console = server().getFeature<ConsoleFeature>();
+    ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
 
     if (console.isEnabled()) {
       _password = console.readPassword("Please specify a password: ");
@@ -311,7 +311,7 @@ void ClientFeature::readPassword() {
   }
 
   std::cout << "Please specify a password: " << std::flush;
-  _password = ConsoleFeature::readPassword();
+  _password = ShellConsoleFeature::readPassword();
   std::cout << std::endl << std::flush;
 }
 
@@ -319,7 +319,7 @@ void ClientFeature::readJwtSecret() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   try {
-    ConsoleFeature& console = server().getFeature<ConsoleFeature>();
+    ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
 
     if (console.isEnabled()) {
       _jwtSecret = console.readPassword("Please specify the JWT secret: ");
@@ -329,7 +329,7 @@ void ClientFeature::readJwtSecret() {
   }
 
   std::cout << "Please specify the JWT secret: " << std::flush;
-  _jwtSecret = ConsoleFeature::readPassword();
+  _jwtSecret = ShellConsoleFeature::readPassword();
   std::cout << std::endl << std::flush;
 }
 
