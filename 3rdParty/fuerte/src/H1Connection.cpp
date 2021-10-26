@@ -422,9 +422,10 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   }
 
   if (_messageComplete) {
-    this->_proto.timer.cancel();  // got response in time
+    FUERTE_ASSERT(_response != nullptr);
+    _messageComplete = false; // prevent entering branch on EOF
 
-    // thread-safe access on IO-Thread
+    this->_proto.timer.cancel();  // got response in time
     if (!_responseBuffer.empty()) {
       _response->setPayload(std::move(_responseBuffer), 0);
     }
