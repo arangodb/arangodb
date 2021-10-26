@@ -119,7 +119,7 @@ auto MutexGuard<T, L>::get() const noexcept -> T& {
 
 template <class T, class L>
 auto MutexGuard<T, L>::operator->() const noexcept -> T* {
-  return std::addressof(get());
+  return _value.get();
 }
 
 template <class T, class L>
