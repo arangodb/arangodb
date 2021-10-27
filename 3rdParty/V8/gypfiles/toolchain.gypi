@@ -366,8 +366,8 @@
               ['v8_target_arch==target_arch', {
                 # Target built with a Mips CXX compiler.
                 'variables': {
-                  'ldso_path%': '<!(/bin/echo -n $LDSO_PATH)',
-                  'ld_r_path%': '<!(/bin/echo -n $LD_R_PATH)',
+                  'ldso_path%': '<!(printf "%s" $LDSO_PATH)',
+                  'ld_r_path%': '<!(printf "%s" $LD_R_PATH)',
                 },
                 'conditions': [
                   ['ldso_path!=""', {

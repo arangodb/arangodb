@@ -366,11 +366,6 @@ int main(int argc, char* argv[]) {
 #endif
 
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
-#ifdef __linux__
-#ifdef USE_ENTERPRISE
-  arangodb::checkLicenseKey();
-#endif
-#endif
 
   TRI_GET_ARGV(argc, argv);
 #if _WIN32

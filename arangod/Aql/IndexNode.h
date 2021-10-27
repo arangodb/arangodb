@@ -47,16 +47,10 @@ class ExecutionEngine;
 class ExecutionPlan;
 class Expression;
 class Projections;
+struct NonConstExpression;
+
 template<typename T> struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
-
-/// @brief struct to hold the member-indexes in the _condition node
-struct NonConstExpression {
-  std::unique_ptr<Expression> expression;
-  std::vector<size_t> const indexPath;
-
-  NonConstExpression(std::unique_ptr<Expression> exp, std::vector<size_t>&& idxPath);
-};
 
 /// @brief class IndexNode
 class IndexNode : public ExecutionNode, public DocumentProducingNode, public CollectionAccessingNode {
@@ -146,9 +140,9 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
-  void initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
-                      std::vector<RegisterId>& inRegs,
-                      std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions) const;
+  std::vector<std::unique_ptr<NonConstExpression>> initializeOnce(
+      bool& hasV8Expression, std::vector<Variable const*>& inVars,
+      std::vector<RegisterId>& inRegs) const;
 
   bool isProduceResult() const {
     return (isVarUsedLater(_outVariable) || _filter != nullptr) && !doCount();
