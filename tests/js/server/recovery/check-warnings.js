@@ -84,6 +84,10 @@ function recoverySuite () {
           // intentionally ignore "extended names for databases is an experimental feature...
           return false;
         }
+        if (line.match(/\[1afb1\].*This is an unlicensed ArangoDB instance./)) {
+          // intentionally ignore "This is an unlicensed ArangoDB instance...
+          return false;
+        }
 
         return true;
       });

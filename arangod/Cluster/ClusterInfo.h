@@ -958,7 +958,7 @@ class ClusterInfo final {
   CollectionID getCollectionNameForShard(ShardID const& shardId);
 
   auto getReplicatedLogLeader(DatabaseID const& database, replication2::LogId) const
-      -> std::optional<ServerID>;
+      -> ResultT<ServerID>;
 
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds

@@ -10,8 +10,9 @@
 
 #### Backports:
 
-- [ ] No backports required
-- [ ] Backports required for: *(Please specify versions and link PRs)*
+- [ ] Backport for 3.9: *(Please link PR)*
+- [ ] Backport for 3.8: *(Please link PR)*
+- [ ] Backport for 3.7: *(Please link PR)*
 
 #### Related Information
 

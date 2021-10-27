@@ -53,6 +53,7 @@ const TestVariants = Object.freeze({
 
 const defaultSmartGraphValue = "1";
 const graphWeightAttribute = 'distance';
+const graphIndexedAttribute = 'indexedValue';
 
 const verifySmartCollection = (collection) => {
   assert.assertTrue(collection.properties().isSmart);
@@ -209,6 +210,8 @@ class TestGraph {
       const vertexSharding = this.protoSmartSharding.map(([v, i]) => [v, shardAttrsByShardIndex[i]]);
       this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices, vertexSharding);
     }
+
+    db[this.en].ensureIndex({type: "persistent", fields: ["_from", graphIndexedAttribute]});
   }
 
   name() {
@@ -217,6 +220,10 @@ class TestGraph {
 
   weightAttribute() {
     return graphWeightAttribute;
+  }
+
+  indexedAttribute() {
+    return graphIndexedAttribute;
   }
 
   vertex(name) {
@@ -290,8 +297,10 @@ class TestGraph {
       // check if our edge also has a weight defined and is a number
       if (edge[2] && typeof edge[2] === 'number') {
         // if found, add attribute "distance" as weightAttribute to the edge document
-        let document = {};
-        document[graphWeightAttribute] = edge[2];
+        let document = {
+          [graphWeightAttribute]: edge[2],
+          [graphIndexedAttribute]: edge[2]
+        };
         ec.save(v, w, document);
       } else {
         ec.save(v, w, {});

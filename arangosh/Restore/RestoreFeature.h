@@ -241,7 +241,9 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   };
   
   ClientTaskQueue<RestoreJob>& taskQueue();
-  
+
+  static void sortCollectionsForCreation(std::vector<VPackBuilder>& collections);
+
  private:
   struct DatabaseInfo {
     std::string directory;
