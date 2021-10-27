@@ -53,7 +53,8 @@ struct RocksDBLogTest : testing::Test {
       }
     };
 
-    _persistor = std::make_shared<RocksDBLogPersistor>(_db->DefaultColumnFamily(), _db, std::make_shared<SyncExecutor>());
+    _persistor = std::make_shared<RocksDBLogPersistor>(_db->DefaultColumnFamily(), _db, std::make_shared<SyncExecutor>(),
+                                                       std::make_shared<ReplicatedLogGlobalSettings>());
   }
 
   static void TearDownTestCase() {

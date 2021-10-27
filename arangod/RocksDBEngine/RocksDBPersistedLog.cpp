@@ -25,9 +25,10 @@
 #include <Basics/ScopeGuard.h>
 #include <Basics/debugging.h>
 #include <Replication2/ReplicatedLog/PersistedLog.h>
+#include <memory>
 
 #include <utility>
-
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBKey.h"
 #include "RocksDBPersistedLog.h"
 #include "RocksDBValue.h"
@@ -161,8 +162,9 @@ auto RocksDBPersistedLog::prepareRemoveFront(replication2::LogIndex stop,
 }
 
 RocksDBLogPersistor::RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf,
-                                         rocksdb::DB* db, std::shared_ptr<Executor> executor)
-    : _cf(cf), _db(db), _executor(std::move(executor)) {}
+                                         rocksdb::DB* db, std::shared_ptr<Executor> executor,
+                                         std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options)
+    : _cf(cf), _db(db), _executor(std::move(executor)), _options(std::move(options)) {}
 
 void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
   // This function is noexcept so in case an exception bubbles up we
@@ -198,7 +200,8 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         // persisted log already has some entries that are not yet confirmed
         // (which may be overwritten later). This could still be improved upon a
         // little by reporting up to which entry was written successfully.
-        while (wb.Count() < 1000 && nextReqToWrite != std::end(pendingRequests)) {
+        while (wb.GetDataSize() < _options->_maxRocksDBWriteBatchSize &&
+               nextReqToWrite != std::end(pendingRequests)) {
           if (auto res = nextReqToWrite->execute(wb); res.fail()) {
             return res;
           }

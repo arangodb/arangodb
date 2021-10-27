@@ -314,6 +314,7 @@ void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
       aql::AqlValue val(pair.at(1).start());
       _opts->setVariableValue(var, val);
     }
+    _opts->calculateIndexExpressions(_query.ast());
   }
 }
 

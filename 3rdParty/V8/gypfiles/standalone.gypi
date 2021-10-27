@@ -166,7 +166,7 @@
         ['OS=="win"', {
           'gomadir': 'c:\\goma\\goma-win',
         }, {
-          'gomadir': '<!(/bin/echo -n ${HOME}/goma)',
+          'gomadir': '<!(printf "%s" ${HOME}/goma)',
         }],
         ['host_arch!="ppc" and host_arch!="ppc64" and host_arch!="ppc64le" and host_arch!="s390" and host_arch!="s390x"', {
           'host_clang%': 1,
@@ -1306,10 +1306,10 @@
       # Hardcode the compiler names in the Makefile so that
       # it won't depend on the environment at make time.
       'make_global_settings': [
-        ['LD', '<!(/bin/echo -n <(android_toolchain)/../*/bin/ld)'],
-        ['RANLIB', '<!(/bin/echo -n <(android_toolchain)/../*/bin/ranlib)'],
-        ['CC', '<!(/bin/echo -n <(android_toolchain)/*-gcc)'],
-        ['CXX', '<!(/bin/echo -n <(android_toolchain)/*-g++)'],
+        ['LD', '<!(printf "%s" <(android_toolchain)/../*/bin/ld)'],
+        ['RANLIB', '<!(printf "%s" <(android_toolchain)/../*/bin/ranlib)'],
+        ['CC', '<!(printf "%s" <(android_toolchain)/*-gcc)'],
+        ['CXX', '<!(printf "%s" <(android_toolchain)/*-g++)'],
         ['LD.host', '<(host_ld)'],
         ['RANLIB.host', '<(host_ranlib)'],
         ['CC.host', '<(host_cc)'],

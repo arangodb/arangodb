@@ -33,7 +33,6 @@
 
 namespace arangodb::replication2::replicated_log {
 struct PersistedLog;
-struct PersistedLogIterator;
 
 /**
  * @brief The persistent core of a replicated log. There must only ever by one

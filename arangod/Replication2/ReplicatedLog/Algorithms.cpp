@@ -36,6 +36,7 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::algorithms;
+using namespace arangodb::replication2::replicated_log;
 
 namespace {
 auto createFirstTerm(DatabaseID const& database, LogPlanSpecification const& spec,
@@ -321,6 +322,33 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
       std::ignore = log->becomeFollower(serverId, spec->currentTerm->term, leaderString);
     }
 
-    return Result();
+    return {};
   });
+}
+
+auto algorithms::operator<<(std::ostream& os, IndexParticipantPair const& p) noexcept
+    -> std::ostream& {
+  return os << '{' << p.id << ':' << p.index << '}';
+}
+
+IndexParticipantPair::IndexParticipantPair(LogIndex index, ParticipantId id)
+    : index(index), id(std::move(id)) {}
+
+auto algorithms::calculateCommitIndex(std::vector<IndexParticipantPair>& indexes,
+                          std::size_t quorumSize, LogIndex spearhead)
+    -> std::pair<LogIndex, CommitFailReason> {
+  auto nth = indexes.begin();
+  std::advance(nth, quorumSize - 1);
+
+  std::nth_element(indexes.begin(), nth, indexes.end(), [](auto& left, auto& right) {
+    return left.index > right.index;
+  });
+
+  auto const commitIndex = nth->index;
+
+  if (spearhead == commitIndex) {
+    return {commitIndex, CommitFailReason::withNothingToCommit()};
+  }
+
+  return {nth->index, CommitFailReason::withQuorumSizeNotReached()};
 }

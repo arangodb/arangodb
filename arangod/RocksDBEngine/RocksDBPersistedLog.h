@@ -29,6 +29,7 @@
 
 #include <array>
 #include <variant>
+#include <memory>
 
 namespace arangodb {
 
@@ -39,14 +40,15 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   };
 
   RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf, rocksdb::DB* db,
-                      std::shared_ptr<Executor> executor);
+                      std::shared_ptr<Executor> executor,
+                      std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options);
 
   struct WriteOptions {
     bool waitForSync = false;
   };
 
   auto persist(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
-               std::unique_ptr<arangodb::replication2::replicated_log::PersistedLogIterator> iter,
+               std::unique_ptr<arangodb::replication2::PersistedLogIterator> iter,
                WriteOptions const& options) -> futures::Future<Result>;
   auto persist(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
                replication2::LogIndex stop, WriteOptions const& options)
@@ -54,7 +56,7 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
 
   struct PersistRequest {
     PersistRequest(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
-                   std::unique_ptr<arangodb::replication2::replicated_log::PersistedLogIterator> iter,
+                   std::unique_ptr<arangodb::replication2::PersistedLogIterator> iter,
                    futures::Promise<Result> promise)
         : log(std::move(log)), action(InsertEntries{std::move(iter)}), promise(std::move(promise)) {}
     PersistRequest(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
@@ -63,7 +65,7 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
         : log(std::move(log)), action(RemoveFront{stop}), promise(std::move(promise)) {}
 
     struct InsertEntries {
-      std::unique_ptr<arangodb::replication2::replicated_log::PersistedLogIterator> iter;
+      std::unique_ptr<arangodb::replication2::PersistedLogIterator> iter;
     };
 
     struct RemoveFront {
@@ -82,8 +84,8 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   struct Lane {
     Lane() = delete;
 
-    struct WaitForSync{};
-    struct DontWaitForSync{};
+    struct WaitForSync {};
+    struct DontWaitForSync {};
     explicit Lane(WaitForSync) : _waitForSync(true) {}
     explicit Lane(DontWaitForSync) : _waitForSync(false) {}
 
@@ -100,6 +102,7 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   rocksdb::ColumnFamilyHandle* const _cf;
   rocksdb::DB* const _db;
   std::shared_ptr<Executor> _executor;
+  std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> const _options;
 };
 
 class RocksDBPersistedLog : public replication2::replicated_log::PersistedLog,
@@ -109,16 +112,16 @@ class RocksDBPersistedLog : public replication2::replicated_log::PersistedLog,
   RocksDBPersistedLog(replication2::LogId id, uint64_t objectId,
                       std::shared_ptr<RocksDBLogPersistor> persistor);
 
-  auto insert(replication2::replicated_log::PersistedLogIterator& iter, WriteOptions const&) -> Result override;
-  auto insertAsync(std::unique_ptr<replication2::replicated_log::PersistedLogIterator> iter,
+  auto insert(replication2::PersistedLogIterator& iter, WriteOptions const&) -> Result override;
+  auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
   auto read(replication2::LogIndex start)
-      -> std::unique_ptr<replication2::replicated_log::PersistedLogIterator> override;
+      -> std::unique_ptr<replication2::PersistedLogIterator> override;
   auto removeFront(replication2::LogIndex stop) -> futures::Future<Result> override;
   auto removeBack(replication2::LogIndex start) -> Result override;
 
   // On success, iter will be completely consumed and written to wb.
-  auto prepareWriteBatch(replication2::replicated_log::PersistedLogIterator& iter,
+  auto prepareWriteBatch(replication2::PersistedLogIterator& iter,
                          rocksdb::WriteBatch& wb) -> Result;
   auto prepareRemoveFront(replication2::LogIndex stop, rocksdb::WriteBatch&) -> Result;
 

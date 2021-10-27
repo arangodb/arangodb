@@ -31,9 +31,6 @@
 
 namespace arangodb::replication2::replicated_log {
 
-// ReplicatedLog-internal iterator over PersistingLogEntries
-struct PersistedLogIterator : TypedLogIterator<PersistingLogEntry> {};
-
 /**
  * @brief Interface to persist a replicated log locally. Implemented by
  * arango::RocksDBLog.
