@@ -191,6 +191,15 @@ int sslRand(int64_t*);
 
 int sslRand(int32_t*);
 
+//////////////////////////////////////////////////////////////////////////
+/// @brief RSA private key signing
+///
+/// Will return 0 on sucess non-zero else
+//////////////////////////////////////////////////////////////////////////
+
+int rsaPrivSign (char const* pem, size_t pemLength, char const* msg,
+                 size_t msgLength, std::string& sign,  std::string& error);
+
 }  // namespace SslInterface
 }  // namespace rest
 }  // namespace arangodb
