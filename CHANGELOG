@@ -1,7 +1,7 @@
 devel
 -----
 
-* add option to content-transfer encode gzip foxx replies.
+* Add option to content-transfer encode gzip Foxx replies.
 
 * Single server license output checking fixed.
 
