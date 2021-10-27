@@ -50,8 +50,8 @@ auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
     request.toVelocyPack(builder);
   }
 
-  auto path = "_api/log/" + std::to_string(logId.id()) + "/appendEntries";
-
+  auto path = basics::StringUtils::joinT("/", StaticStrings::ApiLogInternal,
+                                         logId, "append-entries");
   network::RequestOptions opts;
   opts.database = database;
   auto f = network::sendRequest(pool, "server:" + id, arangodb::fuerte::RestVerb::Post,

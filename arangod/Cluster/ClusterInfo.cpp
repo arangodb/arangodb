@@ -5705,21 +5705,26 @@ CollectionID ClusterInfo::getCollectionNameForShard(ShardID const& shardId) {
 }
 
 auto ClusterInfo::getReplicatedLogLeader(DatabaseID const& database, replication2::LogId id) const
--> std::optional<ServerID> {
+-> ResultT<ServerID> {
   READ_LOCKER(readLocker, _planProt.lock);
 
-  if (auto it = _newStuffByDatabase.find(database); it != std::end(_newStuffByDatabase)) {
-    if (auto it2 = it->second->replicatedLogs.find(id);
-        it2 != std::end(it->second->replicatedLogs)) {
-      if (auto const& term = it2->second->currentTerm) {
-        if (auto const& leader = term->leader) {
-          return leader->serverId;
-        }
-      }
+  auto it = _newStuffByDatabase.find(database);
+  if (it == std::end(_newStuffByDatabase)) {
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
+  }
+
+  auto it2 = it->second->replicatedLogs.find(id);
+  if (it2 == std::end(it->second->replicatedLogs)) {
+    return { TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND };
+  }
+
+  if (auto const& term = it2->second->currentTerm) {
+    if (auto const& leader = term->leader) {
+      return leader->serverId;
     }
   }
 
-  return std::nullopt;
+  return {TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
 }
 
 arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {

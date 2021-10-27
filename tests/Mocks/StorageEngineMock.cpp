@@ -1595,13 +1595,6 @@ arangodb::Result StorageEngineMock::createTickRanges(VPackBuilder&) {
   return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-std::unique_ptr<arangodb::TransactionCollection> StorageEngineMock::createTransactionCollection(
-    arangodb::TransactionState& state, arangodb::DataSourceId cid,
-    arangodb::AccessMode::Type accessType) {
-  return std::unique_ptr<arangodb::TransactionCollection>(
-      new TransactionCollectionMock(&state, cid, accessType));
-}
-
 std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager(
     arangodb::transaction::ManagerFeature& feature) {
   return std::make_unique<arangodb::transaction::Manager>(feature);
@@ -1975,6 +1968,11 @@ uint64_t TransactionStateMock::numCommits() const {
 
 bool TransactionStateMock::hasFailedOperations() const {
   return false;  // assume no failed operations
+}
+
+std::unique_ptr<arangodb::TransactionCollection> TransactionStateMock::createTransactionCollection(
+    arangodb::DataSourceId cid, arangodb::AccessMode::Type accessType) {
+  return std::make_unique<TransactionCollectionMock>(this, cid, accessType);
 }
 
 // -----------------------------------------------------------------------------

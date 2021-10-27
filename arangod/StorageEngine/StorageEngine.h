@@ -97,8 +97,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
   virtual std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId, transaction::Options const& options) = 0;
-  virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
-      TransactionState& state, DataSourceId cid, AccessMode::Type accessType) = 0;
 
   // when a new collection is created, this method is called to augment the
   // collection creation data with engine-specific information
