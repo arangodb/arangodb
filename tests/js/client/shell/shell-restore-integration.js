@@ -54,22 +54,21 @@ function restoreIntegrationSuite () {
 
   assertTrue(fs.isFile(arangorestore), "arangorestore not found!");
 
-  let addConnectionArgs = function(args) {
-    let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
-    args.push('--server.endpoint');
-    args.push(endpoint);
-    args.push('--server.database');
-    args.push(arango.getDatabaseName());
-    args.push('--server.username');
-    args.push(arango.connectedUser());
-  };
+  const endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
+  const connectionArgs = [
+    '--server.endpoint', endpoint,
+    '--server.database', arango.getDatabaseName(),
+    '--server.username', arango.connectedUser(),
+  ];
 
   let runRestore = function(path, args, rc) {
-    args.push('--input-directory');
-    args.push(path);
-    addConnectionArgs(args);
+    const actualArgs =
+      [ ...connectionArgs,
+        '--input-directory', path,
+        ...args,
+      ];
 
-    let actualRc = internal.executeExternalAndWait(arangorestore, args);
+    let actualRc = internal.executeExternalAndWait(arangorestore, actualArgs);
     assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
     assertEqual(rc, actualRc.exit, actualRc);
   };
