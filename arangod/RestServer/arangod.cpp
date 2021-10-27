@@ -49,6 +49,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/CrashHandler.h"
+#include "Basics/FeatureFlags.h"
 #include "Basics/FileUtils.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
@@ -226,7 +227,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<QueryRegistryFeature>();
     server.addFeature<RandomFeature>();
     server.addFeature<ReplicationFeature>();
-    server.addFeature<ReplicatedLogFeature>();
+    if (replication2::EnableReplication2) {
+      server.addFeature<ReplicatedLogFeature>();
+    }
     server.addFeature<ReplicationMetricsFeature>();
     server.addFeature<ReplicationTimeoutFeature>();
     server.addFeature<SchedulerFeature>();
