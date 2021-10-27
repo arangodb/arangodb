@@ -431,6 +431,12 @@
           this.navigate('#dashboard', { trigger: true });
           return;
         }
+        // this below is for when Rebalance Shards tab is not clickable, but user enters it through its URL
+        else if (this.userCollection.authOptions.ro) { // if user can't edit the database, it goes back to the Overview page
+          this.routes[''] = 'nodes';
+          this.navigate('#nodes', { trigger: true });
+          return;
+        }
         if (this.rebalanceShardsView) {
           this.rebalanceShardsView.remove();
         }

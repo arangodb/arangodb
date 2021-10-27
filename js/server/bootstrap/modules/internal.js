@@ -32,7 +32,6 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   var exports = require('internal');
-  var console = require('console');
   var fs = require('fs');
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -537,6 +536,10 @@
     exports.maxNumberOfShards = global.MAX_NUMBER_OF_SHARDS;
     delete global.MAX_NUMBER_OF_SHARDS;
   }
+  if (global.MAX_NUMBER_OF_MOVE_SHARDS) {
+    exports.maxNumberOfMoveShards = global.MAX_NUMBER_OF_MOVE_SHARDS;
+    delete global.MAX_NUMBER_OF_MOVE_SHARDS;
+  }
   if (global.FORCE_ONE_SHARD) {
     exports.forceOneShard = global.FORCE_ONE_SHARD;
     delete global.FORCE_ONE_SHARD;
@@ -561,5 +564,11 @@
     exports.createHotbackup = global.SYS_CREATE_HOTBACKUP;
     delete global.SYS_CREATE_HOTBACKUP;
   };
+
+  // /////////////////////////////////////////////////////////////////////////////
+  // / @brief maximum number of shards to move in each rebalance shards operation
+  // /////////////////////////////////////////////////////////////////////////////
+
+  exports.numMoveShards = global.numMoveShards;
 
 }());

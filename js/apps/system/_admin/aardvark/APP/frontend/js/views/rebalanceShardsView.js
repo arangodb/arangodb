@@ -24,11 +24,9 @@
         $("#rebalanceShards *").prop('disabled', false);
       });
       if (window.location.hash === '#rebalanceShards') {
-        arangoHelper.buildNodesSubNav('Rebalance Shards');
-        this.$el.html(this.template.render({}));
-        document.getElementById("rebalanceShards").innerHTML += ` <div style="font-size: 10pt; margin-left: 10px; margin-top: 12px; font-weight: 200"> 
-                <b>WARNING:</b> Clicking this button will start a 
-                shard rebalancing process and schedule up to ${this.maxNumberOfMoveShards} shards move operations, which may have background load </div>`;
+        arangoHelper.buildNodesSubNav('Rebalance Shards', false);
+        this.$el.html(this.template.render({maxNumberOfMoveShards: this.maxNumberOfMoveShards}));
+
         arangoHelper.createTooltips();
       }
     },
