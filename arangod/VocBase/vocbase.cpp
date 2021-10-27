@@ -236,7 +236,8 @@ struct arangodb::VocBaseLogManager {
             auto it = data.logs.try_emplace(
                 id, std::make_shared<arangodb::replication2::replicated_log::ReplicatedLog>(
                         std::move(logCore),
-                        server.getFeature<ReplicatedLogFeature>().metrics(), logContext));
+                        server.getFeature<ReplicatedLogFeature>().metrics(),
+                        server.getFeature<ReplicatedLogFeature>().options(), logContext));
 
             return it.first->second;
           } else {
@@ -1854,10 +1855,12 @@ void TRI_vocbase_t::registerReplicatedLog(
   _logManager->_guardedData.doUnderLock([&](VocBaseLogManager::GuardedData& data) {
     auto core = std::make_unique<arangodb::replication2::replicated_log::LogCore>(
         std::move(persistedLog));
-    auto [iter, inserted] = data.logs.try_emplace(
-        logId, std::make_shared<replication2::replicated_log::ReplicatedLog>(
-                   std::move(core), server().getFeature<ReplicatedLogFeature>().metrics(),
-                   LoggerContext(Logger::REPLICATION2)));
+    auto& feature = server().getFeature<ReplicatedLogFeature>();
+    auto [iter, inserted] =
+        data.logs.try_emplace(logId,
+                              std::make_shared<replication2::replicated_log::ReplicatedLog>(
+                                  std::move(core), feature.metrics(), feature.options(),
+                                  LoggerContext(Logger::REPLICATION2)));
     server().getFeature<ReplicatedLogFeature>().metrics()->replicatedLogNumber->fetch_add(1);
     TRI_ASSERT(inserted);
   });

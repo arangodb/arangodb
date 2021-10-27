@@ -296,8 +296,8 @@ ArangoDatabase.prototype._setLicense = function (data, options) {
       error: true,
       code: internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code,
       errorNum: internal.errors.ERROR_LICENSE_INVALID.code,
-      errorMessage: "License body must be a string. It is " + (typeof data)
-    });
+      errorMessage:
+        "License body must be a string. It is however " + (typeof data) + "."});
   }
 
   var requestResult = this._connection.PUT(url, data);
