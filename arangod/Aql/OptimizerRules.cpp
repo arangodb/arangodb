@@ -1706,8 +1706,6 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
     plan->findNodesOfType(subs, ExecutionNode::SUBQUERY, true);
 
     // we build a map of the top-most nodes of each subquery to the outer subquery node
-    //FOR u in users FILTER u._id IN ( FOR user in memberof FILTER user._to IN
-    // ( FOR ug in accessto FILTER ug._to == 'tenantgroups/281058311' RETURN ug._from ) RETURN user._from) RETURN u._key
     for (auto& it : subs) {
       auto sub = ExecutionNode::castTo<SubqueryNode const*>(it)->getSubquery();
       while (sub->hasDependency()) {
