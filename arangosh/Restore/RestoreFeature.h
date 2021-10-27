@@ -116,6 +116,8 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     JobData(ManagedDirectory&, RestoreFeature&, Options const&, Stats&, VPackSlice const&);
   };
 
+  static void sortCollectionsForCreation(std::vector<VPackBuilder>& collections);
+
  private:
   ClientManager _clientManager;
   ClientTaskQueue<JobData> _clientTaskQueue;
