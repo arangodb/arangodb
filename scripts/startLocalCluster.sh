@@ -76,7 +76,7 @@ printf " # coordinators: %s," "$NRCOORDINATORS"
 printf " transport: %s\n" "$TRANSPORT"
 
 if (( $NRAGENTS % 2 == 0)) ; then
-  echo "**ERROR: Number of agents must be odd! Bailing out."
+  echo "**ERROR**: Number of agents must be odd! Bailing out."
   exit 1
 fi
 
@@ -102,8 +102,13 @@ if [ -z "$JWT_SECRET" ];then
   AUTHENTICATION="--server.authentication false"
   AUTHORIZATION_HEADER=""
 else
-  AUTHENTICATION="--server.jwt-secret $JWT_SECRET"
-  AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
+  if ! command -v jwtgen &> /dev/null; then
+    echo "**ERROR**: jwtgen could not be found. Install via \"npm install -g jwtgen\". Bailing out"
+    exit
+  fi
+  echo $JWT_SECRET > cluster/jwt.secret
+  AUTHENTICATION="--server.jwt-secret-keyfile cluster/jwt.secret"
+  export AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
 fi
 
 if [ -z "$ENCRYPTION_SECRET" ];then
@@ -317,5 +322,9 @@ done
 
 echo == Done, your cluster is ready at
 for p in `seq $CO_BASE $PORTTOPCO` ; do
+  if [ -z "$JWT_SECRET" ];then
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p"
+  else
+    echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p --server.jwt-secret-keyfile cluster/jwt.secret"
+  fi
 done

@@ -289,6 +289,14 @@ struct AstNode {
   /// @brief fetch a node's type from VPack
   static AstNodeType getNodeTypeFromVPack(arangodb::velocypack::Slice const& slice);
 
+  /**
+   * @brief Helper class to check if this node can be represented as VelocyPack
+   * If this method returns FALSE a call to "toVelocyPackValue" will yield
+   * no change in the handed in builder.
+   * On TRUE it is guaranteed that the handed in Builder was modified.
+   */
+  bool valueHasVelocyPackRepresentation() const;
+
   /// @brief build a VelocyPack representation of the node value
   ///        Can throw Out of Memory Error
   void toVelocyPackValue(arangodb::velocypack::Builder& builder) const;

@@ -361,6 +361,17 @@ struct UInt64Parameter : public NumericParameter<uint64_t> {
   std::string name() const override { return "uint64"; }
 };
 
+// concrete size_t number value type
+struct SizeTParameter : public NumericParameter<std::size_t> {
+  typedef std::size_t ValueType;
+
+  explicit SizeTParameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
+  SizeTParameter(ValueType* ptr, ValueType base)
+      : NumericParameter<ValueType>(ptr, base) {}
+
+  std::string name() const override { return "size"; }
+};
+
 template <typename T>
 struct BoundedParameter : public T {
   BoundedParameter(typename T::ValueType* ptr, typename T::ValueType minValue,

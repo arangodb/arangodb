@@ -97,31 +97,6 @@ constexpr char TRI_INDEX_HANDLE_SEPARATOR_CHR = '/';
 /// @brief index handle separator as string
 constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 
-/// @brief collection enum
-enum TRI_col_type_e : uint32_t {
-  TRI_COL_TYPE_UNKNOWN = 0,  // only used to signal an invalid collection type
-  TRI_COL_TYPE_DOCUMENT = 2,
-  TRI_COL_TYPE_EDGE = 3
-};
-
-/// @brief database type
-enum TRI_vocbase_type_e {
-  TRI_VOCBASE_TYPE_NORMAL = 0,
-  TRI_VOCBASE_TYPE_COORDINATOR = 1
-};
-
-/// @brief status of a collection
-/// note: the following status existed before, but are now obosolete:
-/// - TRI_VOC_COL_STATUS_NEW_BORN = 1
-/// - TRI_VOC_COL_STATUS_UNLOADED = 2
-/// - TRI_VOC_COL_STATUS_UNLOADING = 4
-/// - TRI_VOC_COL_STATUS_LOADING = 6
-enum TRI_vocbase_col_status_e : int {
-  TRI_VOC_COL_STATUS_CORRUPTED = 0,
-  TRI_VOC_COL_STATUS_LOADED = 3,
-  TRI_VOC_COL_STATUS_DELETED = 5,
-};
-
 /// @brief database
 struct TRI_vocbase_t {
   friend class arangodb::StorageEngine;
