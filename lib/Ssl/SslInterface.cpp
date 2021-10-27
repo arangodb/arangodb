@@ -322,47 +322,27 @@ int sslRand(int32_t* value) {
 
 int rsaPrivSign(EVP_MD_CTX* ctx, EVP_PKEY *pkey, char const* msg, size_t msgLength,
                 std::string& sign, std::string& error) {
-
-  int tres;
   size_t signLength;
-
-  if (msg == nullptr || msgLength == 0) {
+  if (EVP_DigestSignInit(ctx, nullptr, EVP_sha256(), nullptr, pkey) == 0) {
+    error.append("EVP_DigestSignInit failed: ").append(ERR_error_string(ERR_get_error(), nullptr));
     return 1;
   }
-
-  if (pkey == nullptr) {
-    return 2;
-  }
-
-  tres = EVP_DigestSignInit(ctx, nullptr, EVP_sha256(), nullptr, pkey);
-  if (tres != 1) {
-    error.append("EVP_DigestSignInit failed: ").append(ERR_error_string(ERR_get_error(), nullptr));
-    return 3;
-  }
-
-  tres = EVP_DigestSignUpdate(ctx, msg, msgLength);
-  if (tres != 1) {
+  tres = ;
+  if (EVP_DigestSignUpdate(ctx, msg, msgLength) == 0) {
     error.append("EVP_DigestSignUpdate failed: ").append( ERR_error_string(ERR_get_error(), nullptr));
-    return 4;
+    return 1;
   }
-
-  tres = EVP_DigestSignFinal(ctx, nullptr, &signLength);
-  if (tres != 1) {
+  if (EVP_DigestSignFinal(ctx, nullptr, &signLength) == 0) {
     error.append("EVP_DigestSignFinal failed: ").append( ERR_error_string(ERR_get_error(), nullptr));
-    return 5;
+    return 1;
   }
-
   sign.resize(signLength);
-
-  tres = EVP_DigestSignFinal(ctx, (unsigned char*) sign.data(), &signLength);
-  if (tres != 1) {
+  if (EVP_DigestSignFinal(ctx, (unsigned char*) sign.data(), &signLength) == 0) {
     error.append("EVP_DigestSignFinal failed, return code ")
       .append(std::to_string(tres)).append(" ").append(ERR_error_string(ERR_get_error(), nullptr));
-    return 7;
+    return 1;
   }
-
   return 0;
-
 }
 
 int rsaPrivSign(char const* pem, size_t pemLength, char const* msg,
@@ -378,6 +358,10 @@ int rsaPrivSign(char const* pem, size_t pemLength, char const* msg,
       EVP_PKEY_free(pKey);
       BIO_free_all(keybio);
     });
+    if (pKey == nullptr) {
+      error.append("Failed to create private key object");
+      return 1;
+    }
 
     auto* ctx = EVP_MD_CTX_new();
     auto cleanupContext = scopeGuard([&]() noexcept {
@@ -385,6 +369,7 @@ int rsaPrivSign(char const* pem, size_t pemLength, char const* msg,
     });
     if (ctx == nullptr) {
       error.append("EVP_MD_CTX_create failed,: ").append(ERR_error_string(ERR_get_error(), nullptr));
+      return 1;
     }
 
     return rsaPrivSign(ctx, pKey, msg, msgLength, sign, error);

@@ -3979,7 +3979,7 @@ static void JS_RsaPrivSign(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_V8_RETURN(signStr);
   TRI_V8_TRY_CATCH_END
-    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sleeps

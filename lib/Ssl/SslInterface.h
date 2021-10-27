@@ -203,4 +203,3 @@ int rsaPrivSign (char const* pem, size_t pemLength, char const* msg,
 }  // namespace SslInterface
 }  // namespace rest
 }  // namespace arangodb
-
