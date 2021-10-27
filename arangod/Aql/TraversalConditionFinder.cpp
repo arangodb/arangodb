@@ -39,6 +39,32 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using EN = arangodb::aql::ExecutionNode;
 
+namespace {
+AstNode* conditionWithInlineCalculations(ExecutionPlan const* plan, AstNode* cond) {
+  auto func = [&](AstNode* node) -> AstNode* {
+    if (node->type == NODE_TYPE_REFERENCE) {
+      auto variable = static_cast<Variable*>(node->getData());
+
+      if (variable != nullptr) {
+        auto setter = plan->getVarSetBy(variable->id);
+
+        if (setter != nullptr && setter->getType() == EN::CALCULATION) {
+          auto s = ExecutionNode::castTo<CalculationNode*>(setter);
+          auto filterExpression = s->expression();
+          AstNode* inNode = filterExpression->nodeForModification();
+          if (inNode->isDeterministic() && inNode->isSimple()) {
+            return inNode;
+          }
+        }
+      }
+    }
+    return node;
+  };
+
+  return Ast::traverseAndModify(cond, func);
+}
+}  // namespace
+
 enum class OptimizationCase { PATH, EDGE, VERTEX, NON_OPTIMIZABLE };
 
 static AstNodeType BuildSingleComparatorType(AstNode const* condition) {
@@ -221,7 +247,7 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
   }
 }
 
-static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent, size_t testIndex,
+static bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan, AstNode* parent, size_t testIndex,
                                             TraversalNode* tn, Variable const* pathVar,
                                             bool& conditionIsImpossible, size_t& swappedIndex,
                                             int64_t& indexedAccessDepth) {
@@ -473,9 +499,12 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent, size_t te
     auto replaceNode =
         BuildExpansionReplacement(ast, parentOfReplace->getMemberUnchecked(replaceIdx), tempNode);
     parentOfReplace->changeMember(replaceIdx, replaceNode);
+    ///////////
     // NOTE: We have to reload the NODE here, because we may have replaced
     // it entirely
-    tn->registerGlobalCondition(isEdge, parent->getMemberUnchecked(testIndex));
+    ///////////
+    auto cond = conditionWithInlineCalculations(plan, parent->getMemberUnchecked(testIndex));
+    tn->registerGlobalCondition(isEdge, cond);
   } else {
     conditionIsImpossible = !tn->isInRange(depth, isEdge);
     if (conditionIsImpossible) {
@@ -485,9 +514,12 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent, size_t te
     TEMPORARILY_UNLOCK_NODE(parentOfReplace);
     // Point Access
     parentOfReplace->changeMember(replaceIdx, tempNode);
+
+    auto cond = conditionWithInlineCalculations(plan, parent->getMemberUnchecked(testIndex));
+
     // NOTE: We have to reload the NODE here, because we may have replaced
     // it entirely
-    tn->registerCondition(isEdge, depth, parent->getMemberUnchecked(testIndex));
+    tn->registerCondition(isEdge, depth, cond);
   }
   return true;
 }
@@ -643,6 +675,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         varsUsedByCondition.clear();
         Ast::getReferencedVariables(cond, varsUsedByCondition);
         OptimizationCase usedCase = identifyCase();
+
         switch (usedCase) {
           case OptimizationCase::NON_OPTIMIZABLE:
             // we found a variable created after the
@@ -655,7 +688,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
             size_t swappedIndex = 0;
             // If we get here we can optimize this condition
-            if (!checkPathVariableAccessFeasible(_plan->getAst(), andNode, i - 1,
+            if (!checkPathVariableAccessFeasible(_plan->getAst(), _plan, andNode, i - 1,
                                                  node, pathVar, conditionIsImpossible,
                                                  swappedIndex, indexedAccessDepth)) {
               if (conditionIsImpossible) {
@@ -692,7 +725,10 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             // We have the Vertex or Edge variable in the statement
             // Both have about the Same code and just differ in the used variable.
             // auto usedVar = usedCase == OptimizationCase::VERTEX ? vertexVar : edgeVar;
-            AstNode* conditionToOptimize = andNode->getMemberUnchecked(i - 1);
+
+            auto conditionToOptimize =
+                conditionWithInlineCalculations(_plan, andNode->getMemberUnchecked(i - 1));
+
             // Create a clone before we modify the Condition
             AstNode* cloned = conditionToOptimize->clone(_plan->getAst());
             // Retain original condition, as covered by this Node

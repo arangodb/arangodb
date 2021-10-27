@@ -207,6 +207,7 @@ class PersistingLogEntry {
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto logPayload() const noexcept -> std::optional<LogPayload> const&;
   [[nodiscard]] auto logTermIndexPair() const noexcept -> TermIndexPair;
+  [[nodiscard]] auto approxByteSize() const noexcept -> std::size_t;
 
   class OmitLogIndex {};
   constexpr static auto omitLogIndex = OmitLogIndex();
@@ -224,6 +225,10 @@ class PersistingLogEntry {
   // TODO It seems impractical to not copy persisting log entries, so we should
   //      probably make this a shared_ptr (or immer::box).
   std::optional<LogPayload> _payload;
+
+  // TODO this is a magic constant "measuring" the size of
+  //      of the non-payload data in a PersistingLogEntry
+  static inline constexpr auto approxMetaDataSize = std::size_t{42};
 };
 
 // A log entry, enriched with non-persisted metadata, to be stored in an
@@ -324,6 +329,20 @@ struct LogConfig {
 [[nodiscard]] auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 [[nodiscard]] auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 
+// These settings are initialised by the ReplicatedLogFeature based on command line arguments
+struct ReplicatedLogGlobalSettings {
+ public:
+  static inline constexpr std::size_t defaultMaxNetworkBatchSize{1024 * 1024};
+  static inline constexpr std::size_t minNetworkBatchSize{1024 * 1024};
+
+  static inline constexpr std::size_t defaultMaxRocksDBWriteBatchSize{1024 * 1024};
+  static inline constexpr std::size_t minRocksDBWriteBatchSize{1024 * 1024};
+
+  std::size_t _maxNetworkBatchSize{defaultMaxNetworkBatchSize};
+  std::size_t _maxRocksDBWriteBatchSize{defaultMaxRocksDBWriteBatchSize};
+};
+
+
 namespace replicated_log {
 struct CommitFailReason {
   CommitFailReason() = default;
@@ -356,6 +375,7 @@ struct CommitFailReason {
 
 auto to_string(CommitFailReason const&) -> std::string;
 }  // namespace replicated_log
+
 
 }  // namespace arangodb::replication2
 

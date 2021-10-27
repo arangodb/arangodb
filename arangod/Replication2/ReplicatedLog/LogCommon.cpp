@@ -125,6 +125,16 @@ auto PersistingLogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
   return TermIndexPair{_logTerm, _logIndex};
 }
 
+auto PersistingLogEntry::approxByteSize() const noexcept -> std::size_t {
+  auto size = approxMetaDataSize;
+
+  if(_payload.has_value()) {
+      size += _payload->byteSize();
+  }
+
+  return size;
+}
+
 PersistingLogEntry::PersistingLogEntry(LogIndex index, velocypack::Slice persisted) {
   _logIndex = index;
   _logTerm = persisted.get("logTerm").extract<LogTerm>();

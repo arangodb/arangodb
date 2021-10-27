@@ -244,6 +244,11 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
 }
 
 template <class Configuration>
+auto OneSidedEnumerator<Configuration>::prepareIndexExpressions(aql::Ast* ast) -> void {
+  _provider.prepareIndexExpressions(ast);
+}
+
+template <class Configuration>
 auto OneSidedEnumerator<Configuration>::stealStats() -> aql::TraversalStats {
   _stats += _provider.stealStats();
 
