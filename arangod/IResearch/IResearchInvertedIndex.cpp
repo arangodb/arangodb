@@ -105,10 +105,33 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   IResearchInvertedIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                                  aql::AstNode const& condition, IResearchInvertedIndex* index,
                                  aql::Variable const* variable, int64_t mutableConditionIdx,
-                                 std::string_view extraName)
+                                 std::string_view extraFieldName, aql::Projections const& covering)
     : IndexIterator(collection, trx, ReadOwnWrites::no), _index(index),
-      _variable(variable), _mutableConditionIdx(mutableConditionIdx), _extraName(extraName) {
+      _variable(variable), _mutableConditionIdx(mutableConditionIdx), _extraName(extraFieldName) {
     resetFilter(condition);
+    auto projectionsCount = covering.size();
+    for (size_t i = 0; i < projectionsCount; ++i) {
+      size_t columnIndex{0};
+      size_t fieldIndex{0};
+      if (covering[i].coveringIndexPosition < index->_meta._sort.fields().size()) { // cover from sort
+        _projections.emplace_back(irs::string_ref::EMPTY, covering[i].coveringIndexPosition);
+      } else {
+        fieldIndex = index->_meta._sort.fields().size();
+        while (fieldIndex < covering[i].coveringIndexPosition) {
+          auto columnSize = index->_meta._storedValues.columns()[columnIndex].fields.size();
+          if (fieldIndex + columnSize >= covering[i].coveringIndexPosition) {
+            // we found column
+            _projections.emplace_back(index->_meta._storedValues.columns()[columnIndex].name,
+                                      covering[i].coveringIndexPosition - fieldIndex);
+            break;
+          } else {
+            ++columnIndex;
+            fieldIndex += columnSize;
+            TRI_ASSERT(columnIndex < index->_meta._storedValues.columns().size());
+          }
+        }
+      }
+    }
   }
   char const* typeName() const override { return "inverted-index-iterator"; }
 
@@ -332,6 +355,58 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   }
 
  private:
+
+  /// @brief  Struct represents value of a Projections[i]
+  ///         After the document id has beend found "get" method
+  ///         could be used to get Slice for the Projections
+  struct CoveringValue : ColumnIterator {
+    CoveringValue(irs::string_ref col, size_t idx)
+      : _column(col), _index(idx) {}
+
+    void reset(irs::sub_reader& rdr) {
+      itr.reset();
+      value = &NoPayload;
+      auto extraValuesReader = _column.empty() ? rdr.sort() : rdr.column_reader(_column);
+      if (ADB_LIKELY(extraValuesReader)) {
+        itr = extraValuesReader->iterator();
+        TRI_ASSERT(itr);
+        if (ADB_LIKELY(itr)) {
+          value = irs::get<irs::payload>(*itr);
+          if (ADB_UNLIKELY(!value)) {
+            value = &NoPayload;
+          }
+        } 
+      } 
+    }
+
+    VPackSlice get(irs::doc_id_t doc) {
+      if (itr && doc == itr->seek(doc)) {
+        size_t i = 0;
+        auto const totalSize = value->value.size();
+        if (ADB_LIKELY(totalSize > 0)) {
+          size_t size = 0;
+          VPackSlice slice(value->value.c_str());
+          while (i < _index) {
+            size += slice.byteSize();
+            TRI_ASSERT(size <= totalSize);
+            if (ADB_UNLIKELY(size > totalSize)) {
+              slice = VPackSlice::noneSlice();
+              break;
+            }
+            slice = VPackSlice{slice.end()};
+            ++i;
+          }
+          TRI_ASSERT(!slice.isNone());
+          return slice;
+        }
+      }
+      return VPackSlice::noneSlice();
+    }
+
+    irs::string_ref _column;
+    size_t _index;
+  };
+
   irs::doc_iterator::ptr _itr;
   irs::doc_iterator::ptr _pkDocItr;
   irs::filter::prepared::ptr _filter;
@@ -343,8 +418,10 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   size_t _readerOffset{0};
   int64_t _mutableConditionIdx;
   irs::order::prepared _order;
+
+  std::vector<CoveringValue> _projections;
   ColumnIterator _extraValuesReader;
-  std::string_view _extraName;
+  std::string _extraName;
 };
 } // namespace
 
