@@ -45,7 +45,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Shell/ClientFeature.h"
-#include "Shell/ConsoleFeature.h"
+#include "Shell/ShellConsoleFeature.h"
 #include "Shell/ShellFeature.h"
 #include "Shell/V8ShellFeature.h"
 #include "Ssl/SslFeature.h"
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
 
       server.addFeature<ClientFeature, HttpEndpointProvider>(true);
       server.addFeature<ConfigFeature>(name);
-      server.addFeature<ConsoleFeature>();
+      server.addFeature<ShellConsoleFeature>();
       server.addFeature<LanguageFeature>();
       server.addFeature<LoggerFeature>(false);
       server.addFeature<RandomFeature>();

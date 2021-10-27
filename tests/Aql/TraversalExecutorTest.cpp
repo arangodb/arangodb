@@ -301,7 +301,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
         registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
         noFixed(""),
         registerInfos(RegIdSet{inReg}, RegIdSet{outReg}, 1, 2, {}, {RegIdSet{0}}),
-        executorInfos(std::move(traverserPtr), registerMapping, noFixed, inReg, filterConditionVariables)
+        executorInfos(std::move(traverserPtr), registerMapping, noFixed, inReg, filterConditionVariables, fakedQuery->ast())
 
   {}
 };
@@ -481,7 +481,7 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
         fixed("v/1"),
         registerInfos({}, RegIdSet{1}, 1, 2, {}, {RegIdSet{0}}),
         executorInfos(std::move(traverserPtr), registerMapping, fixed,
-                      RegisterPlan::MaxRegisterId, filterConditionVariables) {}
+                      RegisterPlan::MaxRegisterId, filterConditionVariables, fakedQuery->ast()) {}
 };
 
 TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_doesnt_produce) {

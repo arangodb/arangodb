@@ -151,8 +151,6 @@ class RocksDBEngine final : public StorageEngine {
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId, transaction::Options const& options) override;
-  std::unique_ptr<TransactionCollection> createTransactionCollection(
-      TransactionState& state, DataSourceId cid, AccessMode::Type accessType) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
@@ -395,6 +393,8 @@ class RocksDBEngine final : public StorageEngine {
 
   static arangodb::Result registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper);
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& recoveryHelpers();
+
+  void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
 
  private:
   void shutdownRocksDBInstance() noexcept;
