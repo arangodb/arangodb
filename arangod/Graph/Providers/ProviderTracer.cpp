@@ -107,6 +107,13 @@ aql::TraversalStats ProviderTracer<ProviderImpl>::stealStats() {
 }
 
 template <class ProviderImpl>
+void ProviderTracer<ProviderImpl>::prepareIndexExpressions(aql::Ast* ast) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["prepareIndexExpressions"].addTiming(TRI_microtime() - start); });
+  return _impl.prepareIndexExpressions(ast);
+}
+
+template <class ProviderImpl>
 transaction::Methods* ProviderTracer<ProviderImpl>::trx() {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept { _stats["trx"].addTiming(TRI_microtime() - start); });

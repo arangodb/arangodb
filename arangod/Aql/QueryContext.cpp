@@ -129,7 +129,6 @@ void QueryContext::addDataSource(                                  // track Data
 }
 
 aql::Ast* QueryContext::ast() {
-  TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
   return _ast.get();
 }
 

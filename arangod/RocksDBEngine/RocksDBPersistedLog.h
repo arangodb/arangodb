@@ -28,6 +28,7 @@
 #include "RocksDBKeyBounds.h"
 
 #include <array>
+#include <memory>
 
 namespace arangodb {
 
@@ -38,7 +39,8 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   };
 
   RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf, rocksdb::DB* db,
-                      std::shared_ptr<Executor> executor);
+                      std::shared_ptr<Executor> executor,
+                      std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options);
 
   struct WriteOptions {
     bool waitForSync = false;
@@ -61,8 +63,8 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   struct Lane {
     Lane() = delete;
 
-    struct WaitForSync{};
-    struct DontWaitForSync{};
+    struct WaitForSync {};
+    struct DontWaitForSync {};
     explicit Lane(WaitForSync) : _waitForSync(true) {}
     explicit Lane(DontWaitForSync) : _waitForSync(false) {}
 
@@ -79,6 +81,7 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   rocksdb::ColumnFamilyHandle* const _cf;
   rocksdb::DB* const _db;
   std::shared_ptr<Executor> _executor;
+  std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> const _options;
 };
 
 class RocksDBPersistedLog : public replication2::replicated_log::PersistedLog,

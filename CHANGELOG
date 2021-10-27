@@ -1,6 +1,16 @@
 devel
 -----
 
+* Single server license output checking fixed.
+
+* Added enterprise license feature visibility for arangosh.
+
+* When using Indexes within traversals (e.g. [_from, date]) and filter based
+  on a function (e.g. FILTER path.edges[0].date <= DATE_ADD(@now, 5, "day"))
+  this function was passed through to the index. The index cannot evaluate this
+  function and returned incorrect results. Now all functions are evaluted
+  before looking into the index. (Fixes BTS-407)
+
 * arangorestore: Fix the order (regarding distributeShardsLike) in which
   collections are being created during restore, which could result in an error
   and make manual intervention necessary.
