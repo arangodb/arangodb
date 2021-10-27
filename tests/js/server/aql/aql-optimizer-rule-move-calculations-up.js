@@ -30,7 +30,6 @@
 
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
-const print = require('internal').print;
 const db = require('internal').db;
 const collectionName = "UnitTestsCollection";
 
@@ -121,6 +120,30 @@ function optimizerRuleTestSuite () {
       });
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that rule moves calculations out of subquery
+////////////////////////////////////////////////////////////////////////////////
+
+    testRuleMovesCalculationOutOfSubquery : function () {
+      var query = "FOR i IN 1..10 LET x = (FOR j IN 1..10 LET a = i * 2 LET b = j * 2 RETURN a + b) RETURN x";
+      var result = AQL_EXPLAIN(query, { }, paramEnabled);
+      let nodes = result.plan.nodes;
+      // calculations of variables "#7" and "a" are moved out
+      assertEqual([
+        "SingletonNode",     // ROOT
+        "CalculationNode",   // - LET #9 = 1 .. 10   /* range */   /* simple expression */
+        "CalculationNode",   // - LET #7 = 1 .. 10   /* range */   /* simple expression */
+        "EnumerateListNode", // - FOR i IN #7   /* list iteration */
+        "CalculationNode",   //   - LET a = (i * 2)   /* simple expression */
+        "SubqueryStartNode", //   - LET x = ( /* subquery begin */
+        "EnumerateListNode", //     - FOR j IN #9   /* list iteration */
+        "CalculationNode",   //       - LET b = (j * 2)   /* simple expression */
+        "CalculationNode",   //       - LET #11 = (a + b)   /* simple expression */
+        "SubqueryEndNode",   //       - RETURN  #11 ) /* subquery end */
+        "ReturnNode"         //   - RETURN x
+      ], nodes.map(n => n.type));
+    },
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test that rule moves subquery up
 ////////////////////////////////////////////////////////////////////////////////
