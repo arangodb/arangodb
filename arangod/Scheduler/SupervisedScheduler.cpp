@@ -181,6 +181,8 @@ DECLARE_GAUGE(arangodb_scheduler_num_worker_threads, uint64_t,
 DECLARE_GAUGE(
     arangodb_scheduler_ongoing_low_prio, uint64_t,
     "Total number of ongoing RestHandlers coming from the low prio queue");
+DECLARE_COUNTER(arangodb_scheduler_handler_tasks_created_total,
+                "Number of scheduler tasks created");
 DECLARE_COUNTER(arangodb_scheduler_queue_full_failures_total,
                 "Tasks dropped and not added to internal queue");
 DECLARE_COUNTER(arangodb_scheduler_queue_time_violations_total,
@@ -196,7 +198,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
                                          uint64_t minThreads, uint64_t maxThreads,
                                          uint64_t maxQueueSize, uint64_t fifo1Size,
                                          uint64_t fifo2Size, uint64_t fifo3Size,
-                                         double ongoingMultiplier,
+                                         uint64_t ongoingLowPriorityLimit,
                                          double unavailabilityQueueFillGrade)
     : Scheduler(server),
       _nf(server.getFeature<NetworkFeature>()),
@@ -210,7 +212,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _minNumWorkers(minThreads),
       _maxNumWorkers(maxThreads),
       _maxFifoSizes{maxQueueSize, fifo1Size, fifo2Size, fifo3Size},
-      _ongoingLowPriorityLimit(static_cast<std::size_t>(ongoingMultiplier * _maxNumWorkers)),
+      _ongoingLowPriorityLimit(ongoingLowPriorityLimit),
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
@@ -234,6 +236,8 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           arangodb_scheduler_num_working_threads{})),
       _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_scheduler_num_worker_threads{})),
+      _metricsHandlerTasksCreated(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_handler_tasks_created_total{})),
       _metricsThreadsStarted(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_scheduler_threads_started_total{})),
       _metricsThreadsStopped(server.getFeature<arangodb::MetricsFeature>().add(
@@ -719,18 +723,24 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
   }
 
   TRI_ASSERT(queueIndex == LowPriorityQueue);
-
+  
   // We limit the number of ongoing low priority jobs to prevent a cluster
-  // from getting overwhelmed
-  std::size_t const ongoing = _ongoingLowPriorityGauge.load();
-  if (ongoing >= _ongoingLowPriorityLimit) {
-    return false;
-  }
+  // from getting overwhelmed. 
+  if (_ongoingLowPriorityLimit > 0) {
+    TRI_ASSERT(!ServerState::instance()->isDBServer());
+    // note: _ongoingLowPriorityLimit will be 0 on DB servers, as in a
+    // cluster the coordinators will act as the gatekeepers that control
+    // the amount of requests that get into the system
+    uint64_t ongoing = _ongoingLowPriorityGauge.load();
+    if (ongoing >= _ongoingLowPriorityLimit) {
+      return false;
+    }
 
-  // Because jobs may fan out to multiple servers and shards, we also limit
-  // dequeuing based on the number of internal requests in flight
-  if (_nf.isSaturated()) {
-    return false;
+    // Because jobs may fan out to multiple servers and shards, we also limit
+    // dequeuing based on the number of internal requests in flight
+    if (_nf.isSaturated()) {
+      return false;
+    }
   }
 
   // We can work on low if less than 50% of the workers are busy
@@ -973,16 +983,16 @@ void SupervisedScheduler::toVelocyPack(velocypack::Builder& b) const {
   b.add("direct-exec", VPackValue(0)); // obsolete
 }
 
-void SupervisedScheduler::trackBeginOngoingLowPriorityTask() {
-  if (!_server.isStopping()) {
-    ++_ongoingLowPriorityGauge;
-  }
+void SupervisedScheduler::trackCreateHandlerTask() noexcept {
+  ++_metricsHandlerTasksCreated;
 }
 
-void SupervisedScheduler::trackEndOngoingLowPriorityTask() {
-  if (!_server.isStopping()) {
-    --_ongoingLowPriorityGauge;
-  }
+void SupervisedScheduler::trackBeginOngoingLowPriorityTask() noexcept {
+  ++_ongoingLowPriorityGauge;
+}
+
+void SupervisedScheduler::trackEndOngoingLowPriorityTask() noexcept {
+  --_ongoingLowPriorityGauge;
 }
 
 void SupervisedScheduler::trackQueueTimeViolation() {

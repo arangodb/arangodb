@@ -3,6 +3,7 @@ import useSWR from 'swr';
 import { memoize } from 'lodash';
 
 declare var frontendConfig: { [key: string]: any };
+declare var arangoHelper: { [key: string]: any };
 
 const env = process.env.NODE_ENV;
 let url: string;
@@ -14,7 +15,10 @@ if (env === 'development') {
 
 export const getDB = memoize((db: string) => new Database({
   url,
-  databaseName: db
+  databaseName: db,
+  auth: {
+    token: arangoHelper.getCurrentJwt()
+  }
 }));
 
 export const getRouteForDB = memoize((db: string, route: string) => getDB(db).route(route),

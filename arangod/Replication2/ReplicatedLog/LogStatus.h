@@ -48,6 +48,7 @@ struct LeaderStatus {
   std::unordered_map<ParticipantId, FollowerStatistics> follower;
   // now() - insertTP of last uncommitted entry
   std::chrono::duration<double, std::milli> commitLagMS;
+  CommitFailReason lastCommitStatus;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;

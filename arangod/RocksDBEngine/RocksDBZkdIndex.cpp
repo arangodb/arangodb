@@ -70,7 +70,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
     _cur = _min;
     _upperBound = _bound.end();
 
-    RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx);
+    RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx, _collection->id());
     _iter = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
       TRI_ASSERT(opts.prefix_same_as_start);
       opts.iterate_upper_bound = &_upperBound;
