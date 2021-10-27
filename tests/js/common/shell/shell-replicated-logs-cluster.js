@@ -32,9 +32,11 @@ const ERRORS = arangodb.errors;
 const waitForLeader = function (id) {
   while (true) {
     try {
-      db._replicatedLog(id);
-      break;
-    } catch(err) {
+      let status = db._replicatedLog(id).status();
+      if (status.role === "leader") {
+        break;
+      }
+    } catch (err) {
       if (err.errorNum !== ERRORS.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code) {
         throw err;
       }
