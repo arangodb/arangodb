@@ -1857,6 +1857,7 @@ bool setPostBody(fu::Request& request,
 bool canParseResponse(fu::Response const& response) {
   return (response.isContentTypeVPack() || response.isContentTypeJSON()) &&
     (response.contentEncoding() == fuerte::ContentEncoding::Identity ||
+     response.contentEncoding() == fuerte::ContentEncoding::Gzip ||
      response.contentEncoding() == fuerte::ContentEncoding::Deflate)     &&
          response.payload().size() > 0;
 }
@@ -1869,7 +1870,8 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
     return v8::Undefined(isolate);
   }
 
-  if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
+  if (response.contentEncoding() == fuerte::ContentEncoding::Deflate ||
+      response.contentEncoding() == fuerte::ContentEncoding::Gzip) {
     // TODO: working with the stringbuffer adds another alloc / copy.
     // translateResultBodyToV8 will probably decode once more.
     // this uses more resources than neccessary; a better solution
@@ -1921,6 +1923,7 @@ v8::Local<v8::Value> translateResultBodyToV8(fu::Response const& response,
                                              v8::Isolate* isolate) {
   auto responseBody = response.payload();
   if (((response.contentEncoding() == fuerte::ContentEncoding::Identity) ||
+       (response.contentEncoding() == fuerte::ContentEncoding::Gzip) ||
        (response.contentEncoding() == fuerte::ContentEncoding::Deflate)    ) &&
       (
         response.isContentTypeJSON() ||
@@ -1928,7 +1931,8 @@ v8::Local<v8::Value> translateResultBodyToV8(fu::Response const& response,
         response.isContentTypeHtml()
         )
     ) {
-    if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
+    if (response.contentEncoding() == fuerte::ContentEncoding::Deflate ||
+        response.contentEncoding() == fuerte::ContentEncoding::Gzip)      {
       StringBuffer inflateBuf;
       StringBuffer buf;
       buf.replaceText(reinterpret_cast<const char*>(responseBody.data()),
