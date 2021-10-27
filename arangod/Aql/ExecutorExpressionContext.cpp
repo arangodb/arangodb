@@ -33,42 +33,39 @@ using namespace arangodb::aql;
 AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                      bool& mustDestroy) const {
   mustDestroy = false;
-
   auto const searchId = variable->id;
-  auto it = _varsToRegister.find(searchId);
-  if (it == _varsToRegister.end()) {
-    std::string msg("variable not found '");
-    msg.append(variable->name);
-    msg.append("' in executeSimpleExpression()");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+  for (auto const& [varId, regId] : _varsToRegister) {
+    if (varId == searchId) {
+      if (doCopy) {
+        mustDestroy = true;  // as we are copying
+        return _inputRow.getValue(regId).clone();
+      }
+      return _inputRow.getValue(regId);
+    }
   }
-  if (doCopy) {
-    mustDestroy = true;  // as we are copying
-    return _inputRow.getValue(it->second).clone();
-  }
-  return _inputRow.getValue(it->second);
+  std::string msg("variable not found '");
+  msg.append(variable->name);
+  msg.append("' in executeSimpleExpression()");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
 }
 
-ExecutorExpressionContext::ExecutorExpressionContext(arangodb::transaction::Methods& trx,
-                                                     QueryContext& context,
-                                                     AqlFunctionsInternalCache& cache,
-                                                     InputAqlItemRow const& inputRow,
-                                                     std::vector<Variable const*> const& vars,
-                                                     std::vector<RegisterId> const& regs)
-    : QueryExpressionContext(trx, context, cache),
-      _inputRow(inputRow), _varsToRegister{}  {
+ExecutorExpressionContext::ExecutorExpressionContext(
+    arangodb::transaction::Methods& trx, QueryContext& context,
+    AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
+    std::vector<Variable const*> const& vars, std::vector<RegisterId> const& regs)
+    : QueryExpressionContext(trx, context, cache), _inputRow(inputRow), _varsToRegister{} {
   TRI_ASSERT(vars.size() == regs.size());
   for (size_t i = 0; i < vars.size(); ++i) {
     auto var = vars.at(i);
     TRI_ASSERT(var != nullptr);
-    _varsToRegister.emplace(var->id, regs.at(i));
+    _varsToRegister.emplace_back(var->id, regs.at(i));
   }
 }
 
-ExecutorExpressionContext::ExecutorExpressionContext(arangodb::transaction::Methods& trx,
-                                                     QueryContext& context,
-                                                     AqlFunctionsInternalCache& cache,
-                                                     InputAqlItemRow const& inputRow,
-                            std::unordered_map<VariableId, RegisterId> const& varsToRegister)
+ExecutorExpressionContext::ExecutorExpressionContext(
+    arangodb::transaction::Methods& trx, QueryContext& context,
+    AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
+    std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister)
     : QueryExpressionContext(trx, context, cache),
-      _inputRow(inputRow), _varsToRegister(varsToRegister) {}
+      _inputRow(inputRow),
+      _varsToRegister(varsToRegister) {}

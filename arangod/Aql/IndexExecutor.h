@@ -98,7 +98,7 @@ class IndexExecutorInfos {
 
   Ast* getAst() const noexcept;
 
-  std::unordered_map<VariableId, RegisterId> const& getVarsToRegister() const noexcept;
+  std::vector<std::pair<VariableId, RegisterId>> const& getVarsToRegister() const noexcept;
 
   // setter
   void setHasMultipleExpansions(bool flag);

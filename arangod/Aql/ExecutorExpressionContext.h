@@ -48,7 +48,7 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
   ExecutorExpressionContext(transaction::Methods& trx,
                             QueryContext& context,
                             AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
-                            std::unordered_map<VariableId, RegisterId> const& varsToRegister);
+                            std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister);
 
   ~ExecutorExpressionContext() override = default;
 
@@ -63,7 +63,7 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
   /// @brief temporary storage for expression data context
   InputAqlItemRow const& _inputRow;
   // TODO: Make this const&
-  std::unordered_map<VariableId, RegisterId> _varsToRegister;
+  std::vector<std::pair<VariableId, RegisterId>> _varsToRegister;
 };
 
 }  // namespace aql

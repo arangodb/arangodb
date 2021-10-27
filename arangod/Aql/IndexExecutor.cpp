@@ -316,7 +316,7 @@ bool IndexExecutorInfos::isAscending() const noexcept {
 
 Ast* IndexExecutorInfos::getAst() const noexcept { return _ast; }
 
-std::unordered_map<VariableId, RegisterId> const& IndexExecutorInfos::getVarsToRegister() const noexcept {
+std::vector<std::pair<VariableId, RegisterId>> const& IndexExecutorInfos::getVarsToRegister() const noexcept {
   return _nonConstExpressions._varToRegisterMapping;
 }
 
