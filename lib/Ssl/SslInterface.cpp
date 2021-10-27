@@ -327,7 +327,6 @@ int rsaPrivSign(EVP_MD_CTX* ctx, EVP_PKEY *pkey, char const* msg, size_t msgLeng
     error.append("EVP_DigestSignInit failed: ").append(ERR_error_string(ERR_get_error(), nullptr));
     return 1;
   }
-  tres = ;
   if (EVP_DigestSignUpdate(ctx, msg, msgLength) == 0) {
     error.append("EVP_DigestSignUpdate failed: ").append( ERR_error_string(ERR_get_error(), nullptr));
     return 1;
@@ -338,8 +337,8 @@ int rsaPrivSign(EVP_MD_CTX* ctx, EVP_PKEY *pkey, char const* msg, size_t msgLeng
   }
   sign.resize(signLength);
   if (EVP_DigestSignFinal(ctx, (unsigned char*) sign.data(), &signLength) == 0) {
-    error.append("EVP_DigestSignFinal failed, return code ")
-      .append(std::to_string(tres)).append(" ").append(ERR_error_string(ERR_get_error(), nullptr));
+    error.append("EVP_DigestSignFinal failed, return code: ")
+      .append(ERR_error_string(ERR_get_error(), nullptr));
     return 1;
   }
   return 0;

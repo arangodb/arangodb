@@ -3958,7 +3958,7 @@ static void JS_RsaPrivSign(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // extract arguments
   if (args.Length() != 2 || !args[0]->IsString()|| !args[1]->IsString()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("privsign(<private key pem>, <text>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("privsign(<private key pem>, <to sign>)");
   }
 
   std::string key = TRI_ObjectToString(isolate, args[0]);
