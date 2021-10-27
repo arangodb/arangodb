@@ -35,6 +35,17 @@ const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
 const isCluster = require("internal").isCluster();
 
+function createDumpJsonFile (path, databaseName, id) {
+  let fn = fs.join(path, "dump.json");
+  fs.write(fn, JSON.stringify({
+    database: databaseName,
+    properties: {
+      name: databaseName,
+      id: id
+    }
+  }));
+}
+
 function restoreIntegrationSuite () {
   'use strict';
   const cn = 'UnitTestsRestore';
