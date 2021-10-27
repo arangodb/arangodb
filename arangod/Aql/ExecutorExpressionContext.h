@@ -38,11 +38,17 @@ class InputAqlItemRow;
 
 class ExecutorExpressionContext final : public QueryExpressionContext {
  public:
+   // TODO backwards compatible constructor. Should be removed
   ExecutorExpressionContext(transaction::Methods& trx,
                             QueryContext& context,
                             AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
                             std::vector<Variable const*> const& vars,
                             std::vector<RegisterId> const& regs);
+
+  ExecutorExpressionContext(transaction::Methods& trx,
+                            QueryContext& context,
+                            AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
+                            std::unordered_map<VariableId, RegisterId> const& varsToRegister);
 
   ~ExecutorExpressionContext() override = default;
 
@@ -56,8 +62,8 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
  private:
   /// @brief temporary storage for expression data context
   InputAqlItemRow const& _inputRow;
-  std::vector<Variable const*> const& _vars;
-  std::vector<RegisterId> const& _regs;
+  // TODO: Make this const&
+  std::unordered_map<VariableId, RegisterId> _varsToRegister;
 };
 
 }  // namespace aql

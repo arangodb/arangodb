@@ -35,24 +35,18 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, b
   mustDestroy = false;
 
   auto const searchId = variable->id;
-  size_t i = -1;  // size_t is guaranteed to be unsigned so the overflow is ok
-  for (auto const* var : _vars) {
-    TRI_ASSERT(var != nullptr);
-    ++i;
-    if (var->id == searchId) {
-      TRI_ASSERT(i < _regs.size());
-      if (doCopy) {
-        mustDestroy = true;  // as we are copying
-        return _inputRow.getValue((_regs)[i]).clone();
-      }
-      return _inputRow.getValue((_regs)[i]);
-    }
+  auto it = _varsToRegister.find(searchId);
+  if (it == _varsToRegister.end()) {
+    std::string msg("variable not found '");
+    msg.append(variable->name);
+    msg.append("' in executeSimpleExpression()");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
   }
-
-  std::string msg("variable not found '");
-  msg.append(variable->name);
-  msg.append("' in executeSimpleExpression()");
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+  if (doCopy) {
+    mustDestroy = true;  // as we are copying
+    return _inputRow.getValue(it->second).clone();
+  }
+  return _inputRow.getValue(it->second);
 }
 
 ExecutorExpressionContext::ExecutorExpressionContext(arangodb::transaction::Methods& trx,
@@ -62,4 +56,19 @@ ExecutorExpressionContext::ExecutorExpressionContext(arangodb::transaction::Meth
                                                      std::vector<Variable const*> const& vars,
                                                      std::vector<RegisterId> const& regs)
     : QueryExpressionContext(trx, context, cache),
-      _inputRow(inputRow), _vars(vars), _regs(regs) {}
+      _inputRow(inputRow), _varsToRegister{}  {
+  TRI_ASSERT(vars.size() == regs.size());
+  for (size_t i = 0; i < vars.size(); ++i) {
+    auto var = vars.at(i);
+    TRI_ASSERT(var != nullptr);
+    _varsToRegister.emplace(var->id, regs.at(i));
+  }
+}
+
+ExecutorExpressionContext::ExecutorExpressionContext(arangodb::transaction::Methods& trx,
+                                                     QueryContext& context,
+                                                     AqlFunctionsInternalCache& cache,
+                                                     InputAqlItemRow const& inputRow,
+                            std::unordered_map<VariableId, RegisterId> const& varsToRegister)
+    : QueryExpressionContext(trx, context, cache),
+      _inputRow(inputRow), _varsToRegister(varsToRegister) {}
