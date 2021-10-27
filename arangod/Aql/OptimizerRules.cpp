@@ -1723,21 +1723,23 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
 
   for (auto const& n : nodes) {
     bool isAccessCollection = false;
+    if (!n->isDeterministic()) {
+      // we will only move expressions up that cannot throw and that are
+      // deterministic
+      // if it's a subquery node, it cannot move upwards if theres a
+      // modification keyword in the subquery e.g.
+      // INSERT would not be scope limited by the outermost subqueries, so we could end up
+      // inserting a smaller amount of documents than what's actually proposed in the query.
+      continue;
+    }
     if (n->getType() == EN::CALCULATION) {
       auto nn = ExecutionNode::castTo<CalculationNode*>(n);
-      if (!nn->expression()->isDeterministic()) {
-        // we will only move expressions up that cannot throw and that are
-        // deterministic
-        continue;
-      }
       if (::accessesCollectionVariable(plan.get(), nn, vars)) {
         isAccessCollection = true;
       }
     } else {
       auto nn = ExecutionNode::castTo<SubqueryNode*>(n);
-      if (nn->isModificationNode()  || !nn->isDeterministic()) { // cannot move upwards if theres a modification keyword in the subquery e.g.
-                                      // INSERT would not be scope limited by the outermost subqueries, so we could end up
-                                      // inserting a smaller amount of documents than what's actually proposed in the query.
+      if (nn->isModificationNode()) {
         continue;
       }
     }
