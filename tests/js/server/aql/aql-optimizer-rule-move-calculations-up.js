@@ -32,7 +32,7 @@ const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const print = require('internal').print;
 const db = require('internal').db;
-const collectionName = "testCollecion";
+const collectionName = "UnitTestsCollection";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
