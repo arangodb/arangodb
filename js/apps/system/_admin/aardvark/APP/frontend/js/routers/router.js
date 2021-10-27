@@ -426,13 +426,14 @@
       this.checkUser();
 
       this.init.then(() => {
-        if (this.isCluster === false || isCurrentCoordinator === false) {
+        if (this.isCluster === false || isCurrentCoordinator === false || this.maxNumberOfMoveShards === 0) {
           this.routes[''] = 'dashboard';
           this.navigate('#dashboard', { trigger: true });
           return;
         }
         // this below is for when Rebalance Shards tab is not clickable, but user enters it through its URL
-        else if (this.userCollection.authOptions.ro) { // if user can't edit the database, it goes back to the Overview page
+        else if (this.userCollection.authOptions.ro  || this.maxNumberOfMoveShards === 0) { // if user can't edit the database,
+                                                                                            // it goes back to the Overview page
           this.routes[''] = 'nodes';
           this.navigate('#nodes', { trigger: true });
           return;

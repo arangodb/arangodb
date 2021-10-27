@@ -165,7 +165,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
   std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
   std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
-  std::uint32_t _maxNumberOfMoveShards = 10;     // maximum number of shards to be moved per rebalance operation (>=1)
+  std::uint32_t _maxNumberOfMoveShards = 10;     // maximum number of shards to be moved per rebalance operation
+                                                 //if value = 0, no move shards operations will be scheduled
   ErrorCode _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
   bool _createWaitsForSyncReplication = true;
   bool _forceOneShard = false;
