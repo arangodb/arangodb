@@ -328,7 +328,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
-    TRI_ASSERT(_currentSequence < startSequence);
+    TRI_ASSERT(_currentSequence <= startSequence);
 
     // starting new write batch
     _startSequence = startSequence;
