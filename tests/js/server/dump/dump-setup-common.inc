@@ -35,14 +35,13 @@ const isCluster = require('internal').isCluster();
 const isEnterprise = require("internal").isEnterprise();
 
 let sgm;
-if (isEnterprise) {
-  sgm = require("@arangodb/smart-graph");
-}
-
 let satgm;
 if (isEnterprise) {
+  sgm = require("@arangodb/smart-graph");
   satgm = require("@arangodb/satellite-graph");
 }
+
+
 function cleanup() {
   'use strict';
 
@@ -162,7 +161,7 @@ function createModifyCollection() {
 
   // we insert data and remove it
   c = db._create("UnitTestsDumpTruncated");
-  c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i})));  
+  c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i})));
   c.truncate({ compact: false });
 }
 
@@ -411,16 +410,17 @@ function createAnalyzers() {
 
 /**
  * Chooses the right graph module from the given string.
- * @param kind: "SmartGraph", "Disjoint" (for disjoint smart graph) or "Satellite"
+ * @param kind: "SmartGraph", "Disjoint" (for disjoint smart graph), "Satellite", "Hybrid", "HybridDisjoint"
  * @returns: the module
  */
 function chooseGraphModule(kind) {
-  if (kind === "SmartGraph" || "Disjoint") {
-    return sgm;
-  } else if (kind === "Satellite") {
-    return satgm;
-  } else {
-    throw "A wrong parameter in the test!";
+  switch(kind) {
+  case "SmartGraph": case "Disjoint": case "Hybrid": case "HybridDisjoint":
+      return sgm;
+  case "Satellite":
+      return satgm;
+  default:
+      throw "A wrong parameter in the test!";
   }
 }
 
@@ -428,7 +428,7 @@ function chooseGraphModule(kind) {
  * @brief Only if enterprise mode:
  *        Creates an empty SmartGraph sharded by `value`, with no edge relations.
  *        @param kind: one of "SmartGraph", "Disjoint", "Satellite"
- *        @param options: a JSON document
+ *        @param options: a document
  */
 function createEmptyGraph(kind, options) {
   if (!isEnterprise) {
@@ -440,10 +440,12 @@ function createEmptyGraph(kind, options) {
   let graphModule = chooseGraphModule(kind);
 
   let graphName;
-  if (kind === "SmartGraph") { // special case, don't duplicate the substring "SmartGraph"
-    graphName = "UnitTestsDumpEmptySmartGraph";
-  } else {
-    graphName = "UnitTestsDumpEmpty" + kind + "SmartGraph";
+  switch (kind) {
+    case "SmartGraph": graphName = "UnitTestsDumpEmptySmartGraph";
+    break;
+    case "Satellite": graphName = "UnitTestsDumpEmptySatelliteGraph";
+    break;
+    case "Disjoint": graphName = "UnitTestsDumpEmptyDisjointGraph";
   }
 
   if (graphModule._exists(graphName)) {
@@ -471,7 +473,9 @@ function createEmptySmartGraph() {
  *        Creates an empty Satellite SmartGraph with no edge relations.
  */
 function createEmptySatelliteGraph() {
-  createEmptyGraph("Satellite", {});
+  createEmptyGraph("Satellite", {
+    numberOfShards: 5,
+    replicationFactor: 'satellite'});
 }
 
 /**
@@ -540,132 +544,167 @@ function createSmartGraphSingleServer() {
   const vertices = "UnitTestDumpSmartVerticesSingleServer";
   const orphans = "UnitTestDumpSmartOrphansSingleServer";
 
-  createSmartGraphWithoutData({ smartGraphName, edges, vertices, orphans });
+  createSmartGraphWithoutData({ smartGraphName: smartGraphName, edges: edges, fromVertices: vertices, orphans: orphans });
 
   const size = 100;
+
   let docs = fillAndSaveVDocs(size, vertices);
-  let eDocs = fillEDocs(size, [docs.vDocs]);
+  let eDocs = fillEDocs([docs.saved]);
 
   db[edges].save(eDocs);
   db[orphans].save(docs.vDocs);
 }
 
-/**
- * Fill the \a vDocs returned array with numbers from 0 to \a size, save them
- * into \a db under \a verticesName and return the object {saved: <saved array>, vDocs: <the values>>}
- * @param size: upper limit to the numbers to be saved
- * @param verticesName: the name of the collection to save the number
- * @returns {{saved, vDocs: *[]}}
- */
-function fillAndSaveVDocs(size, verticesName) {
-  let vDocs = [];
-  for (let i = 0; i < size; ++i) {
-    vDocs.push({value: String(i)});
-  }
-  return {saved: db[verticesName].save(vDocs).map(v => v._id), vDocs: vDocs};
-}
-
-/**
- * Returns the array of edges that, on each already saved (this is not checked) vertex collection from \a savedVDocsColls,
- * induce an undirected cycle with self-loops (i.e., edges build symmetric pairs + self-loops).
- * All collections must be of size \a size (otherwise the test throws an error).
- * @param size: the size of the given collections
- * @param savedVDocsColls: an array of saved collections
- * @returns {*[]}
- */
-function fillEDocs(size, savedVDocsColls = []) {
-  let eDocs = [];
-  for (let ell = 0; ell < savedVDocsColls.length; ++ell) {
-    const savedColl = savedVDocsColls[ell];
-    if (savedColl.length !== size) { // check that the parameter is correct
-      throw "The test is incorrect: fillEDocs got a wrong parameter (a wrong size of saved collection number "
-            + ell.toString() +" is not " + size.toString() + ").";
-    }
-
-    for (let i = 0; i < size; ++i) {
-      eDocs.push({_from: savedColl[(i + 1) % size], _to: savedColl[i], value: String(i)});
-      eDocs.push({_from: savedColl[i], _to: savedColl[i], value: String(i)});
-      eDocs.push({_from: savedColl[i], _to: savedColl[(i + 1) % size], value: String(i)});
-    }
-  }
-  return eDocs;
-}
-
-function createDisjointSmartGraphSingleServer() {
+function createDisjointGraphSingleServer() {
   if (!isEnterprise) {
     return;
   }
 
-  const smartGraphName = "UnitTestDumpDisjointSmartGraphSingleServer";
-  const edges = "UnitTestDumpDisjointSmartEdgesSingleServer";
-  const vertices = "UnitTestDumpDisjointSmartVerticesSingleServer";
-  const orphans = "UnitTestDumpDisjointSmartOrphansSingleServer";
+  const smartGraphName = "UnitTestDumpDisjointGraphSingleServer";
+  const edges = "UnitTestDumpDisjointEdgesSingleServer";
+  const vertices = "UnitTestDumpDisjointVerticesSingleServer";
+  const orphans = "UnitTestDumpDisjointOrphansSingleServer";
 
-  createSmartGraphWithoutData({ smartGraphName, edges, vertices, orphans }, true);
+  createSmartGraphWithoutData(
+      { smartGraphName: smartGraphName, edges: edges, fromVertices: vertices, orphans: orphans },
+      {isDisjoint: true}
+  );
 
   const size = 50;
 
   const docs1 = fillAndSaveVDocs(size, vertices);
   const docs2 = fillAndSaveVDocs(size, vertices);
-  const eDocs = fillEDocs(size, [docs1.saved, docs2.saved]);
+  const eDocs = fillEDocs([docs1.saved, docs2.saved]);
 
   db[edges].save(eDocs);
   db[orphans].save(docs1.vDocs);
   db[orphans].save(docs2.vDocs);
 }
 
-function createSatelliteSmartGraphSingleServer() {
+function createSatelliteGraphSingleServer() {
   if (!isEnterprise) {
     return;
   }
 
-  const smartGraphName = "UnitTestDumpSatelliteSmartGraphSingleServer";
-  const edges = "UnitTestDumpSatelliteSmartEdgesSingleServer";
-  const vertices = "UnitTestDumpSatelliteSmartVerticesSingleServer";
-  const orphans = "UnitTestDumpSatelliteSmartOrphansSingleServer";
+  const graphName = "UnitTestDumpSatelliteGraphSingleServer";
+  const vertices = "UnitTestDumpSatelliteVerticesSingleServer";
+  const edges = "UnitTestDumpSatelliteEdgesSingleServer";
+  const orphans = "UnitTestDumpSatelliteOrphansSingleServer";
 
-  createSmartGraphWithoutData({ smartGraphName, edges, vertices, orphans }, false, true);
+  createSmartGraphWithoutData({
+    smartGraphName: graphName, edges: edges, fromVertices: vertices, orphans: orphans },
+      {isSatellite: true, isSmart : false/*needed: default is true*/,
+              replicationFactor: 'satellite'});
 
   const size = 50;
 
   const docs1 = fillAndSaveVDocs(size, vertices);
   const docs2 = fillAndSaveVDocs(size, vertices);
   const allDocs =  docs1.saved.concat(docs2.saved);
-  const eDocs = fillEDocs(2*size, [allDocs]);
+  const eDocs = fillEDocs([allDocs]);
 
   db[edges].save(eDocs);
   db[orphans].save(docs1.vDocs);
   db[orphans].save(docs2.vDocs);
 }
 
-/**
- * @brief Only if enterprise mode:
- *        Creates a SmartGraph sharded by `value`, and a single edge relation.
- */
-function createSmartGraphWithoutData({
-                                       smartGraphName = "UnitTestDumpSmartGraphWithoutData",
-                                       edges = "UnitTestDumpSmartEdgesWithoutData",
-                                       vertices = "UnitTestDumpSmartVerticesWithoutData",
-                                       orphans = "UnitTestDumpSmartOrphansWithoutData"
-                                     } = {}, isDisjoint = false, isSatellite = false) {
+function createHybridSmartGraphSingleServer() {
   if (!isEnterprise) {
     return;
   }
-  db._useDatabase("UnitTestsDumpSrc");
 
-  let kind = isSatellite ? "Satellite" : "SmartGraph";
-  let graphModule = chooseGraphModule(kind);
+  const hybridGraphName = "UnitTestDumpHybridSmartGraphSingleServer";
+  const verticesNonSat = "UnitTestDumpHybridSmartVerticesNonSatSingleServer";
+  const verticesSat = "UnitTestDumpHybridSmartVerticesSatSingleServer";
+  const edges = "UnitTestDumpHybridSmartEdgesSingleServer";
+  const orphans = "UnitTestDumpHybridSmartOrphansSingleServer";
 
-  if (graphModule._exists(smartGraphName)) {
-    graphModule._drop(smartGraphName, true);
+  if (sgm._exists(hybridGraphName)) {
+    sgm._drop(hybridGraphName, true);
   }
   db._drop(edges);
-  db._drop(vertices);
+  db._drop(verticesNonSat);
+  db._drop(verticesSat);
   db._drop(orphans);
 
-  sgm._create(smartGraphName, [sgm._relation(edges, vertices, vertices)],
-    [orphans], {numberOfShards: 5, smartGraphAttribute: "value", isDisjoint: isDisjoint});
+  const relSatNonSat = sgm._relation(edges, verticesSat, verticesNonSat);
+
+  sgm._create(hybridGraphName, [relSatNonSat], [orphans], {satellites : [verticesSat]});
+
+  // create vertices
+  const size = 50;
+
+  const docsSat = fillAndSaveVDocs(size, verticesSat);
+  const docsNonSat = fillAndSaveVDocs(size, verticesNonSat);
+  let eDocs = [];
+  for (let i = 0; i < size; ++i) {
+    eDocs.push({_from: docsSat.saved[i], _to: docsNonSat.saved[i], value: String(i)});
+    eDocs.push({_from: docsSat.saved[i], _to: docsNonSat.saved[(i + 1) % size], value: String(i)});
+  }
+
+  db[edges].save(eDocs);
+
+  db[orphans].save(docsSat.vDocs);
+  db[orphans].save(docsNonSat.vDocs);
 }
+
+function createHybridDisjointSmartGraphSingleServer() {
+  if (!isEnterprise) {
+    return;
+  }
+
+  const hybridGraphName = "UnitTestDumpHybridDisjointSmartGraphSingleServer";
+  const verticesANonSat = "UnitTestDumpHybridDisjointSmartVerticesANonSatSingleServer";
+  const verticesBNonSat = "UnitTestDumpHybridDisjointSmartVerticesBNonSatSingleServer";
+  const verticesSat = "UnitTestDumpHybridDisjointSmartVerticesSatSingleServer";
+  const edgesSatA = "UnitTestDumpHybridSDisjointmartEdgesSatASingleServer";
+  const edgesAB = "UnitTestDumpHybridSDisjointmartEdgesABSingleServer";
+  const orphans = "UnitTestDumpHybridSDisjointmartOrphansSingleServer";
+
+  if (sgm._exists(hybridGraphName)) {
+    sgm._drop(hybridGraphName, true);
+  }
+  db._drop(edgesSatA);
+  db._drop(edgesAB);
+  db._drop(verticesANonSat);
+  db._drop(verticesSat);
+  db._drop(orphans);
+
+  const relSatANonSat = sgm._relation(edgesSatA, verticesSat, verticesANonSat);
+  const relAB = sgm._relation(edgesAB, verticesANonSat, verticesBNonSat);
+
+  sgm._create(hybridGraphName, [relSatANonSat, relAB], [orphans], {satellites : [verticesSat],
+    isDisjoint: true/*the only difference to simple hybrid*/,
+    smartGraphAttribute: 'value'});
+
+  // create vertices
+  const size = 50;
+
+  const docsSat = fillAndSaveVDocs(size, verticesSat);
+  const docsANonSat = fillAndSaveVDocs(size, verticesANonSat);
+  const docsBNonSat = fillAndSaveVDocs(size, verticesBNonSat);
+  let eDocs = [];
+
+  // from Sat to A
+  for (let i = 0; i < size; ++i) {
+    eDocs.push({_from: docsSat.saved[i], _to: docsANonSat.saved[i], value: String(i)});
+    eDocs.push({_from: docsSat.saved[i], _to: docsANonSat.saved[(i + 1) % size], value: String(i)});
+  }
+
+  db[edgesSatA].save(eDocs);
+  eDocs = [];
+  // from A to B
+  for (let i = 0; i < size; ++i) {
+    eDocs.push({_from: docsANonSat.saved[i], _to: docsBNonSat.saved[i], value: String(i)});
+    eDocs.push({_from: docsANonSat.saved[i], _to: docsBNonSat.saved[(i + 1) % size], value: String(i)});
+  }
+  db[edgesAB].save(eDocs);
+
+  console.warn(eDocs);
+
+  db[orphans].save(docsSat.vDocs);
+  db[orphans].save(docsANonSat.vDocs);}
+
 
 function createSatelliteGraphWithoutData() {
   if (! isEnterprise) {
@@ -677,8 +716,7 @@ function createSatelliteGraphWithoutData() {
       edges : "UnitTestDumpSatelliteEdgesWithoutData",
       vertices : "UnitTestDumpSatelliteVerticesWithoutData",
       orphans : "UnitTestDumpSatelliteOrphansWithoutData"},
-      false,
-      true
+      {isSatellite: true}
   );
 }
 
@@ -692,10 +730,131 @@ function createDisjointGraphWithoutData() {
         edges : "UnitTestDumpDisjointEdgesWithoutData",
         vertices : "UnitTestDumpDisjointVerticesWithoutData",
         orphans : "UnitTestDumpDisjointOrphansWithoutData"},
-      true,
-      false
+      {isDisjoint: true}
   );
 }
+
+/**
+ * Fill the \a vDocs returned array with numbers from 0 to \a size, save them
+ * into \a db under \a verticesName and return the object {saved: <saved array>, vDocs: <the values>>}
+ * @param size: upper limit to the numbers to be saved
+ * @param verticesName: the name of the collection to save the numbers
+ * @returns {{saved, vDocs: *[]}}
+ */
+function fillAndSaveVDocs(size, verticesName) {
+  let vDocs = [];
+  const startValue = db[verticesName] ? db[verticesName].count() : 0;
+  for (let i = startValue; i < startValue + size; ++i) {
+    vDocs.push({value: String(i)});
+  }
+
+  return {saved: db[verticesName].save(vDocs).map(v => v._id), vDocs: vDocs};
+}
+
+
+/**
+ * Returns the array of edges that, on each already saved (this is not checked) vertex collection from \a savedVDocsColls,
+ * induce an undirected cycle with self-loops (i.e., edges build symmetric pairs + self-loops). Note: For disjoint graphs,
+ * edges with different value of 'value' are not saved.
+ * @param savedVDocsColls: an array of saved collections
+ * @returns {*[]}
+ */
+function fillEDocs(savedVDocsColls = []) {
+  let eDocs = [];
+  for (let ell = 0; ell < savedVDocsColls.length; ++ell) {
+    const savedColl = savedVDocsColls[ell];
+    const size = savedColl.length;
+
+    for (let i = 0; i < size; ++i) {
+      eDocs.push({_from: savedColl[(i + 1) % size], _to: savedColl[i], value: String(i)});
+      eDocs.push({_from: savedColl[i], _to: savedColl[i], value: String(i)});
+      eDocs.push({_from: savedColl[i], _to: savedColl[(i + 1) % size], value: String(i)});
+    }
+  }
+  return eDocs;
+}
+
+/**
+ * @brief Only if enterprise mode:
+ *        Creates a SmartGraph, and a single edge relation: if \a toVertices is given and not "", then from
+ *        \a fromvertices to \a toVertices, otherwise from \a fromVertices to \a toVertices.
+ *        If the graph or any of given collections exist, they are dropped first.
+ * @param names: a document that can contain the following keys:
+ * smartGraphName, edges: the name for the edge collection, fromVertices: the collection of the tails of the edges,
+ * orphans: vertices not incident to any edges, toVertices: the collection of the heads of the edges
+ * @param options: a document that can contain the following keys:
+ * numberOfShards (default: 5), smartGraphAttribute (default: "values"), isDisjoint (default: false),
+ * isSatellite (default: false), satellites (not contained by default), isSmart (default: true)
+ */
+function
+createSmartGraphWithoutData(names = {}, options = undefined) {
+  if (!isEnterprise) {
+    return;
+  }
+  db._useDatabase("UnitTestsDumpSrc");
+
+  // set default collections names if not given as a parameter
+  if (! names.smartGraphName) {
+    names.smartGraphName = "UnitTestDumpSmartGraphWithoutData";
+  }
+  if (! names.edges) {
+    names.edges = "UnitTestDumpSmartEdgesWithoutData";
+  }
+  if (! names.fromVertices) {
+    names.fromVertices = "UnitTestDumpSmartVerticesWithoutData";
+  }
+  if (! names.orphans) {
+    names.orphans = "UnitTestDumpSmartOrphansWithoutData";
+  }
+  if (! names.toVertices) {
+    names.toVertices = names.fromVertices;
+  }
+
+  // set default options if not given as a parameter
+  if (options === undefined) {
+      options = {numberOfShards : 5, smartGraphAttribute : "value"};
+  } else {
+    if (options.numberOfShards === undefined) {
+      options.numberOfShards = 5;
+    }
+    if (options.smartGraphAttribute === undefined) {
+      options.smartGraphAttribute = "value";
+    }
+    if (options.isDisjoint === undefined) {
+      options.isDisjoint = false;
+    }
+    if (options.isSatellite === undefined) {
+      options.isSatellite = false;
+    }
+    if (options.isSmart === undefined) {
+      options.isSmart = true;
+    }
+
+  }
+
+  // prepare graph module
+  const kind = options.isSatellite ? "Satellite" : "SmartGraph";
+  const graphModule = chooseGraphModule(kind);
+
+  // drop the graph and collections (if any)
+  if (graphModule._exists(names.smartGraphName)) {
+    graphModule._drop(names.smartGraphName, true);
+  }
+  db._drop(names.edges);
+  db._drop(names.fromVertices);
+  if (names.toVertices !== names.fromVertices) {
+    db._drop(names.toVertices);
+  }
+  db._drop(names.orphans);
+
+  console.warn("CREATING GRAPH:");
+  console.warn(names.smartGraphName);
+  console.warn("options:");
+  console.warn(options);
+
+  graphModule._create(names.smartGraphName, [graphModule._relation(names.edges, names.fromVertices, names.toVertices)], [names.orphans], options);
+}
+
 
 /**
  * @brief Only if enterprise mode:
@@ -839,7 +998,7 @@ function createSatelliteGraphs() {
 /**
  * @brief Only if enterprise mode:
  *        Creates a SmartGraph and changes the value of the smart
- *        attribute to check that the graph can still be restored. 
+ *        attribute to check that the graph can still be restored.
  *
  *        This is a regression test for a bug in which a dumped
  *        database containing a SmartGraph with edited smart attribute
@@ -870,7 +1029,7 @@ function createSmartGraphRegressionTest() {
   // update smartGraphAttribute. This makes _key inconsistent
   // and on dump/restore used to throw an error. We now ignore
   // that error
-  db._update(saved[0], { cheesyness: "bread" });  
+  db._update(saved[0], { cheesyness: "bread" });
 }
 
 exports.createEmptySmartGraph = createEmptySmartGraph;
@@ -884,8 +1043,14 @@ exports.createDisjointGraphWithoutData = createDisjointGraphWithoutData;
 exports.createSmartGraph = createSmartGraph;
 
 exports.createSmartGraphSingleServer = createSmartGraphSingleServer;
-exports.createSatelliteSmartGraphSingleServer = createSatelliteSmartGraphSingleServer;
-exports.createDisjointSmartGraphSingleServer = createDisjointSmartGraphSingleServer;
+exports.createSatelliteGraphSingleServer = createSatelliteGraphSingleServer;
+exports.createDisjointGraphSingleServer = createDisjointGraphSingleServer;
+exports.createHybridSmartGraphSingleServer = createHybridSmartGraphSingleServer;
+exports.createHybridDisjointSmartGraphSingleServer = createHybridDisjointSmartGraphSingleServer;
+// todo: hybrid disjoint
+// A -> B -> C
+// A smart, B satellite, C smart: A-B-C okay,
+// A-C okay only if the same attribute
 
 exports.createSmartArangoSearch = createSmartArangoSearch;
 exports.createSatelliteCollections = createSatelliteCollections;

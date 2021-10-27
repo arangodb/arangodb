@@ -58,8 +58,10 @@ const setup = require(base);
   setup.createSatelliteGraphWithoutData();
   setup.createDisjointGraphWithoutData();
   setup.createSmartGraphSingleServer();
-  setup.createSatelliteSmartGraphSingleServer();
-  setup.createDisjointSmartGraphSingleServer();
+  setup.createSatelliteGraphSingleServer();
+  setup.createDisjointGraphSingleServer();
+  setup.createHybridSmartGraphSingleServer();
+  setup.createHybridDisjointSmartGraphSingleServer();
 })();
 
 return {
