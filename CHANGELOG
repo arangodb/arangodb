@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgrade bundled version of RocksDB to 6.26.
+
 * Single server license output checking fixed.
 
 * Added enterprise license feature visibility for arangosh.
