@@ -1,6 +1,10 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* arangorestore: Fix the order (regarding distributeShardsLike) in which
+  collections are being created during restore, which could result in an error
+  and make manual intervention necessary.
+
 * Updated ArangoDB Starter to 0.15.3.
 
 * Fix caching of collection counts and index selectivity estimates in cluster.
