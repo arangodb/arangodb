@@ -41,6 +41,7 @@
 #include <exception>
 #include <functional>
 #include <iterator>
+#include <memory>
 #include <ratio>
 #include <string>
 #include <string_view>
@@ -55,6 +56,7 @@
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
@@ -86,10 +88,12 @@ using namespace arangodb::replication2;
 
 replicated_log::LogLeader::LogLeader(LoggerContext logContext,
                                      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+                                     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
                                      LogConfig config, ParticipantId id,
                                      LogTerm term, InMemoryLog inMemoryLog)
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
+      _options(std::move(options)),
       _config(config),
       _id(std::move(id)),
       _currentTerm(term),
@@ -251,7 +255,8 @@ auto replicated_log::LogLeader::construct(
     LogConfig const config, std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     ParticipantId id, LogTerm const term, LoggerContext const& logContext,
-    std::shared_ptr<ReplicatedLogMetrics> logMetrics) -> std::shared_ptr<LogLeader> {
+    std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options) -> std::shared_ptr<LogLeader> {
   if (ADB_UNLIKELY(logCore == nullptr)) {
     auto followerIds = std::vector<std::string>{};
     std::transform(followers.begin(), followers.end(), std::back_inserter(followerIds),
@@ -270,10 +275,11 @@ auto replicated_log::LogLeader::construct(
   struct MakeSharedLogLeader : LogLeader {
    public:
     MakeSharedLogLeader(LoggerContext logContext,
-                        std::shared_ptr<ReplicatedLogMetrics> logMetrics, LogConfig config,
+                        std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+                        std::shared_ptr<ReplicatedLogGlobalSettings const> options, LogConfig config,
                         ParticipantId id, LogTerm term, InMemoryLog inMemoryLog)
-        : LogLeader(std::move(logContext), std::move(logMetrics), config,
-                    std::move(id), term, std::move(inMemoryLog)) {}
+        : LogLeader(std::move(logContext), std::move(logMetrics), std::move(options),
+                    config, std::move(id), term, std::move(inMemoryLog)) {}
   };
 
   auto log = InMemoryLog::loadFromLogCore(*logCore);
@@ -283,11 +289,11 @@ auto replicated_log::LogLeader::construct(
     // because we must not commit entries of older terms, but do not want to
     // wait with committing until the next insert.
 
-    // Also make sure that this entry is written with waitForSync = true to ensure
-    // that entries of the previous term are synced as well.
+    // Also make sure that this entry is written with waitForSync = true to
+    // ensure that entries of the previous term are synced as well.
     log.appendInPlace(logContext,
-                      InMemoryLogEntry(PersistingLogEntry(term, lastIndex.index + 1,
-                                                          std::nullopt), true));
+                      InMemoryLogEntry(PersistingLogEntry(term, lastIndex.index + 1, std::nullopt),
+                                       true));
     // Note that we do still want to use the unchanged lastIndex to initialize
     // our followers with, as none of them can possibly have this entry.
     // This is particularly important for the LocalFollower, which blindly
@@ -300,7 +306,7 @@ auto replicated_log::LogLeader::construct(
 
   auto leader = std::make_shared<MakeSharedLogLeader>(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
-      std::move(logMetrics), config, std::move(id), term, log);
+      std::move(logMetrics), std::move(options), config, std::move(id), term, log);
   auto localFollower = std::make_shared<LocalFollower>(
       *leader, commonLogContext.with<logContextKeyLogComponent>("local-follower"),
       std::move(logCore), lastIndex);
@@ -349,7 +355,7 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<std::unique_ptr<LogCor
       }
     };
 
-    LOG_CTX("8696f", INFO, _logContext) << "resign";
+    LOG_CTX("8696f", DEBUG, _logContext) << "resign";
     leaderData._didResign = true;
     static_assert(
         std::is_nothrow_constructible_v<DeferredAction, std::add_rvalue_reference_t<decltype(action)>>);
@@ -545,7 +551,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerIn
     return std::nullopt;  // nothing to replicate
   }
 
-
   auto const executionDelay = std::invoke([&] {
     using namespace std::chrono_literals;
     if (follower.numErrorsSinceLastAnswer > 0) {
@@ -597,10 +602,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   {
     auto it = getInternalLogIterator(follower.lastAckedEntry.index + 1);
     auto transientEntries = decltype(req.entries)::transient_type{};
+    auto sizeCounter = std::size_t{0};
     while (auto entry = it->next()) {
       req.waitForSync |= entry->getWaitForSync();
+
       transientEntries.push_back(InMemoryLogEntry(*entry));
-      if (transientEntries.size() >= 1000) {
+      sizeCounter += entry->entry().approxByteSize();
+
+      if (sizeCounter >= _self._options->_maxNetworkBatchSize) {
         break;
       }
     }
@@ -855,7 +864,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag() const no
   auto memtry = _inMemoryLog.getEntryByIndex(_commitIndex + 1);
   if (memtry.has_value()) {
     return std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
-               std::chrono::steady_clock::now() - memtry->insertTp());
+        std::chrono::steady_clock::now() - memtry->insertTp());
   } else {
     TRI_ASSERT(_commitIndex == _inMemoryLog.getLastIndex())
         << "If there is no entry following the commitIndex the last index "
@@ -926,14 +935,15 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
 
 auto replicated_log::LogLeader::construct(
     const LoggerContext& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options, ParticipantId id,
+    std::unique_ptr<LogCore> logCore, LogTerm term,
     const std::vector<std::shared_ptr<AbstractFollower>>& followers,
     std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
   LogConfig config;
   config.writeConcern = writeConcern;
   config.waitForSync = false;
-  return LogLeader::construct(config, std::move(logCore), followers, std::move(id),
-                              term, logContext, std::move(logMetrics));
+  return LogLeader::construct(config, std::move(logCore), followers, std::move(id), term,
+                              logContext, std::move(logMetrics), std::move(options));
 }
 
 auto replicated_log::LogLeader::copyInMemoryLog() const -> replicated_log::InMemoryLog {

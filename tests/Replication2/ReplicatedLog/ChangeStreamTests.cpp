@@ -49,8 +49,8 @@ TEST_F(ChangeStreamTests, ask_for_existing_entries) {
     coreA = std::make_unique<LogCore>(leaderLog);
   }
 
-  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
-                                     std::move(coreA), LogTerm{3}, {}, 1);
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, _optionsMock,
+                                     "leader", std::move(coreA), LogTerm{3}, {}, 1);
   leader->triggerAsyncReplication();
   {
     auto fut = leader->waitForIterator(LogIndex{2});
@@ -90,7 +90,7 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries) {
     coreA = std::make_unique<LogCore>(leaderLog);
   }
 
-  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, _optionsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {}, 1);
   // Note that the leader inserts an empty log entry in LogLeader::construct
   auto fut = leader->waitForIterator(LogIndex{3});
@@ -151,7 +151,7 @@ TEST_F(ChangeStreamTests, ask_for_internal_entries_should_block_until_the_next_u
     coreA = std::make_unique<LogCore>(leaderLog);
   }
 
-  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, _optionsMock, "leader",
       std::move(coreA), LogTerm{3}, {}, 1);
   // The forth entry is inserted in LogLeader::construct - wait for it
   auto fut = leader->waitForIterator(LogIndex{4});
@@ -206,7 +206,7 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_with_follower) {
   auto follower = std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock,
                                                        "follower", std::move(coreB),
                                                        LogTerm{3}, "leader");
-  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, _optionsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {follower}, 2);
 
   leader->triggerAsyncReplication();
@@ -266,7 +266,7 @@ TEST_F(ChangeStreamTests, ask_for_non_replicated_entries_with_follower) {
   auto follower = std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock,
                                                        "follower", std::move(coreB),
                                                        LogTerm{3}, "leader");
-  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, _optionsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {follower}, 2);
 
   leader->triggerAsyncReplication();
@@ -319,7 +319,7 @@ TEST_F(ChangeStreamTests, ask_for_existing_entries_follower) {
   auto followerLog = makeReplicatedLog(LogId{2});
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
 
-  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, _optionsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {follower}, 1);
   leader->triggerAsyncReplication();
 
@@ -368,7 +368,7 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_follower) {
   auto followerLog = makeReplicatedLog(LogId{2});
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
 
-  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, _optionsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {follower}, 2);
   leader->triggerAsyncReplication();
 
@@ -431,7 +431,7 @@ TEST_F(ChangeStreamTests, ask_for_non_committed_entries_follower) {
   auto followerLog = makeReplicatedLog(LogId{2});
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
 
-  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, _optionsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {follower}, 2);
   leader->triggerAsyncReplication();
 
