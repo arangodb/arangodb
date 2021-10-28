@@ -109,10 +109,11 @@ NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(Ast* ast
   TRI_ASSERT(vars.isObject());
   for (auto const& [varId, regId] : VPackObjectIterator(vars)) {
     VariableId variableId = 0;
-    bool converted = basics::StringUtils::toNumber(varId.copyString(), variableId); 
+    bool converted = basics::StringUtils::toNumber(varId.copyString(), variableId);
     TRI_ASSERT(converted);
-    result._varToRegisterMapping.emplace(variableId, regId.getNumber<RegisterId::value_t>());
-  } 
+    result._varToRegisterMapping.emplace_back(
+        std::make_pair(variableId, regId.getNumber<RegisterId::value_t>()));
+  }
   auto v8 = slice.get(hasV8ExpressionKey);
   TRI_ASSERT(v8.isBoolean());
   result._hasV8Expression = v8.getBoolean();

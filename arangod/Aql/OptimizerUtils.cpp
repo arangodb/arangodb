@@ -517,7 +517,7 @@ void captureNonConstExpression(Ast* ast, std::unordered_map<VariableId, VarInfo>
     auto it = varInfo.find(v->id);
     TRI_ASSERT(it != varInfo.cend());
     TRI_ASSERT(it->second.registerId.isValid());
-    result._varToRegisterMapping.emplace(v->id, it->second.registerId);
+    result._varToRegisterMapping.emplace_back(v->id, it->second.registerId);
   }
 
   TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
