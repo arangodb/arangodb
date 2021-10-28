@@ -32,6 +32,14 @@
 
 using namespace arangodb::transaction;
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+uint64_t Options::defaultMaxTransactionSize =
+    std::numeric_limits<decltype(Options::defaultMaxTransactionSize)>::max();
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+uint64_t Options::defaultIntermediateCommitSize = std::uint64_t{512} * 1024 * 1024;  // 1 << 29
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+uint64_t Options::defaultIntermediateCommitCount = 1'000'000;
+
 Options::Options() {
   // if we are a coordinator, fill in our own server id/reboot id.
   // the data is passed to DB servers when the transaction is started

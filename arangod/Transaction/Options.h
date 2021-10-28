@@ -60,11 +60,9 @@ struct Options {
   bool isIntermediateCommitEnabled() const noexcept;
 
   static constexpr double defaultLockTimeout = 900.0;
-  static constexpr std::uint64_t defaultMaxTransactionSize =
-      std::numeric_limits<decltype(defaultMaxTransactionSize)>::max();
-  static constexpr std::uint64_t defaultIntermediateCommitSize =
-      std::uint64_t{1} << 29U;  // 512 * 1024 * 1024
-  static constexpr std::uint64_t defaultIntermediateCommitCount = 1'000'000;
+  static std::uint64_t defaultMaxTransactionSize; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+  static std::uint64_t defaultIntermediateCommitSize; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+  static std::uint64_t defaultIntermediateCommitCount; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
   /// @brief time (in seconds) that is spent waiting for a lock
   double lockTimeout = defaultLockTimeout;
