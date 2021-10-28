@@ -3,6 +3,30 @@ v3.9.0 (XXXX-XX-XX)
 
 * Old license mechanism for docker containers removed.
 
+* Updated ArangoDB Starter to 0.15.3.
+
+* Fix caching of collection counts and index selectivity estimates in cluster.
+  The cache values expired too early in previous versions, making the cache
+  ineffective.
+
+* Add better error message for replication request failures in case requests are
+  retried.
+
+* Make background statistics gathering more efficient by avoiding one AQL query
+  every 10 seconds that fetched the most recent stats entry. Instead, buffer the
+  entry in value after we have written it. Also spread out the statistics calls
+  by different servers more randomly, so that request spikes are avoided for
+  cluster with many coordinators that used to run their statistics queries at
+  about the same time when the instances were started simultaneously.
+
+* Fix a potential overwhelm situation on DB servers that can lead to no further
+  tasks being pulled from a DB servers queue even though there would still be
+  processing capacity and idle threads available.
+
+* Fixed compilation and linking when using glibc 2.34.
+
+* Fuerte: don't fall back to identity encoding in case of unknown encoding.
+
 * Fixed ES-881: Fixed LDAP global options. This needs to use the first active
   provider, not just the first provider and it should be globally disabled.
 
@@ -343,8 +367,6 @@ v3.9.0 (XXXX-XX-XX)
   If the option is set and the query satisfies the requirements for using the
   option, the query's execution plan will contain the "cluster-one-shard"
   optimizer rule.
-
-* Updated ArangoDB Starter to 0.15.2.
 
 * SEARCH-238: Improved SortNodes placement optimization in cluster so
   late materialization could cover more cases
