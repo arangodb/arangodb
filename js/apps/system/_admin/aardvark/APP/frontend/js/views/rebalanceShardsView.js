@@ -67,5 +67,5 @@
       delete this.el;
       return this;
     },
-  })
+  });
 }());
