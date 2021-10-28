@@ -51,7 +51,7 @@
           if (data.result.operations === 0) {
             arangoHelper.arangoNotification('No move shards operations were scheduled.');
           } else {
-            arangoHelper.arangoNotification('Started rebalance process. Scheduled ' + data.result.operations + ' shards move operations. (Limit is ' + self.maxNumberOfMoveShards + '.)');
+            arangoHelper.arangoNotification('Started rebalance process. Scheduled ' + data.result.operations + ' shards move operation(s).');
           }
         },
         error: function () {
