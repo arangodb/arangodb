@@ -194,6 +194,9 @@ class Optimizer {
 
   /// @brief run only the required optimizer rules
   bool _runOnlyRequiredRules;
+
+  /// @brief use new way of distributing queries
+  bool _useNewDistribute;
 };
 
 }  // namespace aql

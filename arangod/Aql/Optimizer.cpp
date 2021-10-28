@@ -37,7 +37,9 @@
 using namespace arangodb::aql;
 
 Optimizer::Optimizer(size_t maxNumberOfPlans)
-    : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {}
+    : _maxNumberOfPlans(maxNumberOfPlans), 
+      _runOnlyRequiredRules(false),
+      _useNewDistribute(false) {}
 
 void Optimizer::disableRules(ExecutionPlan* plan,
                              std::function<bool(OptimizerRule const&)> const& predicate) {
@@ -218,7 +220,7 @@ void Optimizer::initializeRules(ExecutionPlan* plan, QueryOptions const& queryOp
     TRI_ASSERT(std::is_sorted(rules.begin(), rules.end(), [](OptimizerRule const& lhs, OptimizerRule const& rhs) {
       return lhs.level < rhs.level;
     }));
-
+  
     int index = -1;
     for (auto& rule : OptimizerRulesFeature::rules()) {
       // insert position of rule inside OptimizerRulesFeature::_rules
@@ -228,7 +230,7 @@ void Optimizer::initializeRules(ExecutionPlan* plan, QueryOptions const& queryOp
       }
     }
   }
-  
+
   // enable/disable rules as per user request
   for (auto const& name : queryOptions.optimizerRules) {
     if (name.empty()) {
@@ -237,6 +239,9 @@ void Optimizer::initializeRules(ExecutionPlan* plan, QueryOptions const& queryOp
     if (name[0] == '-') {
       disableRule(plan, arangodb::velocypack::StringRef(name));
     } else {
+      if (name == "distribute-query") {
+        _useNewDistribute = true;
+      }
       enableRule(plan, arangodb::velocypack::StringRef(name));
     }
   }
@@ -290,8 +295,11 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        if (p->isDisabledRule(rule.level) ||
-            (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() && rule.canBeDisabled())) {
+        bool disabled = (_useNewDistribute && rule.isClusterOnly());
+        disabled |= p->isDisabledRule(rule.level);
+        disabled |= (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() && rule.canBeDisabled());
+
+        if (disabled) {
           // we picked a disabled rule or we have reached the max number of
           // plans and just skip this rule
           ++it;  // move it to the next rule to be processed in the next

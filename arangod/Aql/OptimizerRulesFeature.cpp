@@ -450,6 +450,16 @@ void OptimizerRulesFeature::addRules() {
 
   // add the storage-engine specific rules
   addStorageEngineRules();
+  
+  // distribute query in the cluster.
+  // currently does nothing, but in the future this will be the _one_ rule 
+  // to determine where (coord, db server) to carry out the individual parts
+  // of the query and the shards that are required.
+  registerRule("distribute-query", distributeQueryRule, OptimizerRule::distributeQueryRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::DisabledByDefault,
+                                        // OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::Hidden));
 
   // Splice subqueries
   //

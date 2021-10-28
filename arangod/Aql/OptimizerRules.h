@@ -331,6 +331,10 @@ auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node) -> GatherNod
 auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, SubqueryNode* snode)
     -> DistributeNode*;
 
+//// @brief distribute a query in the cluster
+void distributeQueryRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                         OptimizerRule const&);
+
 }  // namespace aql
 }  // namespace arangodb
 

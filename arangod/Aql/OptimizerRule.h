@@ -341,6 +341,9 @@ struct OptimizerRule {
     // needs to take into account query distribution across cluster nodes
     // for index
     lateDocumentMaterializationRule,
+    
+    // distribute a query in the cluster
+    distributeQueryRule,
 
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode

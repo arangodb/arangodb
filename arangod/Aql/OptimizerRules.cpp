@@ -8407,3 +8407,10 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
     plan.findVarUsage();
   }
 }
+
+void arangodb::aql::distributeQueryRule(Optimizer* opt,
+                                        std::unique_ptr<ExecutionPlan> plan,
+                                        OptimizerRule const& rule) {
+  bool modified = true;
+  opt->addPlan(std::move(plan), rule, modified);
+}
