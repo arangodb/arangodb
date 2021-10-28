@@ -738,7 +738,8 @@ function createSatelliteGraphWithoutData() {
   createSmartGraphWithoutData({
       smartGraphName: "UnitTestDumpSatelliteGraphWithoutData",
       edges: "UnitTestDumpSatelliteEdgesWithoutData",
-      vertices: "UnitTestDumpSatelliteVerticesWithoutData",
+      fromVertices: "UnitTestDumpSatelliteVerticesWithoutData",
+      toVertices: "UnitTestDumpSatelliteVerticesWithoutData",
       orphans: "UnitTestDumpSatelliteOrphansWithoutData"
     },
     {isSatellite: true}
@@ -812,11 +813,26 @@ function fillEDocs(savedVDocsColls = []) {
  * numberOfShards (default: 5), smartGraphAttribute (default: "values"), isDisjoint (default: false),
  * isSatellite (default: false), satellites (not contained by default), isSmart (default: true)
  */
-function createSmartGraphWithoutData(names = {}, options = undefined) {
+function createSmartGraphWithoutData(names, options = undefined) {
   if (!isEnterprise) {
     return;
   }
   db._useDatabase("UnitTestsDumpSrc");
+
+  if (!names) {
+    const smartGraphName = "UnitTestDumpSmartGraphDefault";
+    const edges = "UnitTestDumpSmartEdgesDefault";
+    const vertices = "UnitTestDumpSmartVerticesDefault";
+    const orphans = "UnitTestDumpSmartOrphansDefault";
+
+    names = {
+      smartGraphName: smartGraphName,
+      edges: edges,
+      fromVertices: vertices,
+      toVertices: vertices,
+      orphans: orphans
+    };
+  }
 
   // set default options if not given as a parameter
   if (options === undefined) {
@@ -839,36 +855,12 @@ function createSmartGraphWithoutData(names = {}, options = undefined) {
     }
   }
 
-  // set default collections names if not given as a parameter
-  if (!names.smartGraphName) {
-    names.smartGraphName = "UnitTestDumpSmartGraphWithoutData";
-  }
-  if (!names.edges) {
-    names.edges = "UnitTestDumpSmartEdgesWithoutData";
-  }
-  if (!names.fromVertices) {
-    if (options.isDisjoint) {
-      names.fromVertices = "UnitTestDumpDisjointSmartVerticesWithoutData";
-    } else {
-      names.fromVertices = "UnitTestDumpSmartVerticesWithoutData";
-    }
-  }
-  if (!names.orphans) {
-    if (options.isDisjoint) {
-      names.orphans = "UnitTestDumpDisjointSmartOrphansWithoutData";
-    } else {
-      names.orphans = "UnitTestDumpSmartOrphansWithoutData";
-    }
-  }
-  if (!names.toVertices) {
-    names.toVertices = names.fromVertices;
-  }
-
   // prepare graph module
   const kind = options.isSatellite ? "Satellite" : "SmartGraph";
   const graphModule = chooseGraphModule(kind);
 
   // drop the graph and collections (if any)
+  console.warn("NAMES");
   console.warn(names);
   if (graphModule._exists(names.smartGraphName)) {
     graphModule._drop(names.smartGraphName, true);
