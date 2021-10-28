@@ -1120,10 +1120,8 @@ void Manager::iterateManagedTrx(std::function<void(TransactionId, ManagedTrx con
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
   bool didWork = false;
-  ::arangodb::containers::SmallVector<TransactionId, 64>::allocator_type::arena_type a1;
-  ::arangodb::containers::SmallVector<TransactionId, 64> toAbort{a1};
-  ::arangodb::containers::SmallVector<TransactionId, 64>::allocator_type::arena_type a2;
-  ::arangodb::containers::SmallVector<TransactionId, 64> toErase{a2};
+  ::arangodb::containers::SmallVectorWithArena<TransactionId, 64> toAbort;
+  ::arangodb::containers::SmallVectorWithArena<TransactionId, 64> toErase;
 
   uint64_t numAborted = 0;
 
@@ -1215,8 +1213,7 @@ bool Manager::garbageCollect(bool abortAll) {
 
 /// @brief abort all transactions matching
 bool Manager::abortManagedTrx(std::function<bool(TransactionState const&, std::string const&)> cb) {
-  ::arangodb::containers::SmallVector<TransactionId, 64>::allocator_type::arena_type arena;
-  ::arangodb::containers::SmallVector<TransactionId, 64> toAbort{arena};
+  ::arangodb::containers::SmallVectorWithArena<TransactionId, 64> toAbort;
 
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     READ_LOCKER(locker, _transactions[bucket]._lock);

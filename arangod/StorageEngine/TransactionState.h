@@ -289,9 +289,8 @@ class TransactionState {
   /// @brief current status
   transaction::Status _status;
 
-  using ListType = arangodb::containers::SmallVector<TransactionCollection*>;
-  ListType::allocator_type::arena_type _arena;  // memory for collections
-  ListType _collections;  // list of participating collections
+  // list of participating collections
+  arangodb::containers::SmallVectorWithArena<TransactionCollection*> _collections;
 
   transaction::Hints _hints;  // hints; set on _nestingLevel == 0
 

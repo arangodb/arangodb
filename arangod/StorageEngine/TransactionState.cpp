@@ -53,8 +53,6 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
     : _vocbase(vocbase),
       _type(AccessMode::Type::READ),
       _status(transaction::Status::CREATED),
-      _arena(),
-      _collections{_arena},  // assign arena to vector
       _hints(),
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
