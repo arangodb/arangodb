@@ -152,7 +152,7 @@ function optimizerRuleTestSuite () {
       const query = "FOR i IN 1..10 LET x = (FOR j IN 1..10 LET a = j * 2 LET b = j * 3 RETURN a + b) RETURN x";
       const resultEnabled = AQL_EXPLAIN(query, { }, paramEnabled);
       const rulesEnabled = resultEnabled.plan.rules;
-      assertNotEqual(rulesEnabled.indexOf("move-calculations-up"), -1);
+      assertNotEqual(rulesEnabled.indexOf(ruleName), -1);
       const nodesEnabled = filterOutRules(resultEnabled.plan.nodes);
       assertEqual(nodesEnabled.map(node => node.type), ["SubqueryStartNode", "EnumerateListNode", "SubqueryEndNode", "EnumerateListNode", "ReturnNode"]);
       assertEqual(nodesEnabled[0].subqueryOutVariable.name, "x");
@@ -163,8 +163,8 @@ function optimizerRuleTestSuite () {
 
       const resultDisabled = AQL_EXPLAIN(query, { }, noMoveCalculationsUp);
       const rulesDisabled = resultDisabled.plan.rules;
-      assertEqual(rulesDisabled.indexOf("move-calculations-up"), -1);
-      assertEqual(rulesDisabled.indexOf("move-calculations-up-2"), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName + "2"), -1);
       const nodesDisabled = filterOutRules(resultDisabled.plan.nodes);
       assertEqual(nodesDisabled.map(node => node.type), ["EnumerateListNode", "SubqueryStartNode", "EnumerateListNode", "SubqueryEndNode",  "ReturnNode"]);
       assertEqual(nodesDisabled[0].outVariable.name, "i");
@@ -192,8 +192,8 @@ function optimizerRuleTestSuite () {
       assertEqual(nodesEnabled[4].inVariable.name, "x");
       const resultDisabled = AQL_EXPLAIN(query, { }, noMoveCalculationsUp);
       const rulesDisabled = resultDisabled.plan.rules;
-      assertEqual(rulesDisabled.indexOf("move-calculations-up"), -1);
-      assertEqual(rulesDisabled.indexOf("move-calculations-up-2"), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName + "2"), -1);
       const nodesDisabled = filterOutRules(resultDisabled.plan.nodes);
       assertEqual(nodesDisabled.map(node => node.type), ["EnumerateListNode", "SubqueryStartNode", "EnumerateListNode",
         "SubqueryEndNode", "ReturnNode"]);
@@ -213,7 +213,7 @@ function optimizerRuleTestSuite () {
       const query = "FOR i IN 1..10 LET x = (FOR j IN 1..10 INSERT {} INTO " + collectionName + ") RETURN x";
       const resultEnabled = AQL_EXPLAIN(query, { }, paramEnabled);
       const rulesEnabled = resultEnabled.plan.rules;
-      assertNotEqual(rulesEnabled.indexOf("move-calculations-up"), -1);
+      assertNotEqual(rulesEnabled.indexOf(ruleName), -1);
       const nodesEnabled = filterOutRules(resultEnabled.plan.nodes);
       assertEqual(nodesEnabled.map(node => node.type), ["EnumerateListNode", "SubqueryStartNode", "EnumerateListNode",
         "InsertNode", "SubqueryEndNode", "ReturnNode"]);
@@ -225,8 +225,8 @@ function optimizerRuleTestSuite () {
 
       const resultDisabled = AQL_EXPLAIN(query, { }, noMoveCalculationsUp);
       const rulesDisabled = resultDisabled.plan.rules;
-      assertEqual(rulesDisabled.indexOf("move-calculations-up"), -1);
-      assertEqual(rulesDisabled.indexOf("move-calculations-up-2"), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName + "2"), -1);
       const nodesDisabled = filterOutRules(resultDisabled.plan.nodes);
       assertEqual(nodesDisabled.map(node => node.type), ["EnumerateListNode", "SubqueryStartNode", "EnumerateListNode",
         "InsertNode", "SubqueryEndNode", "ReturnNode"]);
@@ -246,7 +246,7 @@ function optimizerRuleTestSuite () {
       const query = "FOR i IN 1..10 LET x = (FOR j IN 1..10 UPSERT {} INSERT {} UPDATE {} INTO " + collectionName + ") RETURN x";
       const resultEnabled = AQL_EXPLAIN(query, { }, paramEnabled);
       const rulesEnabled = resultEnabled.plan.rules;
-      assertNotEqual(rulesEnabled.indexOf("move-calculations-up"), -1);
+      assertNotEqual(rulesEnabled.indexOf(ruleName), -1);
       let nodesEnabled = filterOutRules(resultEnabled.plan.nodes);
       assertEqual(nodesEnabled.map(node => node.type), ["SubqueryStartNode", "EnumerateCollectionNode", "LimitNode",
         "SubqueryEndNode", "EnumerateListNode", "SubqueryStartNode", "EnumerateListNode",
@@ -258,8 +258,8 @@ function optimizerRuleTestSuite () {
       assertEqual(nodesEnabled[9].inVariable.name, "x");
       const resultDisabled = AQL_EXPLAIN(query, { }, noMoveCalculationsUp);
       const rulesDisabled = resultDisabled.plan.rules;
-      assertEqual(rulesDisabled.indexOf("move-calculations-up"), -1);
-      assertEqual(rulesDisabled.indexOf("move-calculations-up-2"), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName + "2"), -1);
       const nodesDisabled = filterOutRules(resultDisabled.plan.nodes);
       assertEqual(nodesDisabled.map(node => node.type), ["EnumerateListNode", "SubqueryStartNode", "EnumerateListNode",
         "SubqueryStartNode", "EnumerateCollectionNode", "LimitNode", "SubqueryEndNode", "UpsertNode",
