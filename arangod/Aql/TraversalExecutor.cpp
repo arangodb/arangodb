@@ -23,6 +23,7 @@
 
 #include "TraversalExecutor.h"
 
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/PruneExpressionEvaluator.h"
@@ -42,17 +43,21 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     std::unique_ptr<Traverser>&& traverser,
     std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
     std::string fixedSource, RegisterId inputRegister,
-    std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables)
+    std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables,
+    Ast* ast)
     : _traverser(std::move(traverser)),
       _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
       _inputRegister(inputRegister),
-      _filterConditionVariables(std::move(filterConditionVariables)) {
+      _filterConditionVariables(std::move(filterConditionVariables)),
+      _ast(ast) {
   TRI_ASSERT(_traverser != nullptr);
   // _fixedSource XOR _inputRegister
   // note: _fixedSource can be the empty string here
   TRI_ASSERT(_fixedSource.empty() ||
              (!_fixedSource.empty() && _inputRegister.value() == RegisterId::maxRegisterId));
+  // All Nodes are located in the AST it cannot be non existing.
+  TRI_ASSERT(_ast != nullptr);
 }
 
 Traverser& TraversalExecutorInfos::traverser() {
@@ -74,6 +79,10 @@ bool TraversalExecutorInfos::useEdgeOutput() const {
 
 bool TraversalExecutorInfos::usePathOutput() const {
   return usesOutputRegister(OutputName::PATH);
+}
+
+Ast* TraversalExecutorInfos::getAst() const {
+  return _ast;
 }
 
 static std::string typeToString(TraversalExecutorInfos::OutputName type) {
@@ -307,6 +316,8 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       evaluator->prepareContext(_inputRow);
       TRI_ASSERT(_inputRow.isInitialized());
     }
+
+    opts->calculateIndexExpressions(_infos.getAst());
 
     std::string sourceString;
     TRI_ASSERT(_inputRow.isInitialized());

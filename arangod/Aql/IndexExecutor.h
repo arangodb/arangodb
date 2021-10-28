@@ -245,8 +245,8 @@ class IndexExecutor {
 
  private:
   bool advanceCursor();
-  void executeExpressions(InputAqlItemRow& input);
-  void initIndexes(InputAqlItemRow& input);
+  void executeExpressions(InputAqlItemRow const& input);
+  void initIndexes(InputAqlItemRow const& input);
 
   CursorReader& getCursor();
 
