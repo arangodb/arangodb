@@ -77,6 +77,7 @@
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
+#include "RestHandler/RestLicenseHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
@@ -110,7 +111,6 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestHandler/RestHotBackupHandler.h"
-#include "Enterprise/RestHandler/RestLicenseHandler.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 
@@ -658,13 +658,14 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler("/_admin/statistics-description",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
+  _handlerFactory->addPrefixHandler("/_admin/license",
+                                    RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
+
 #ifdef USE_ENTERPRISE
   if (backup.isAPIEnabled()) {
     _handlerFactory->addPrefixHandler("/_admin/backup",
                                       RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
   }
-  _handlerFactory->addPrefixHandler("/_admin/license",
-                                    RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
 #endif
 
 

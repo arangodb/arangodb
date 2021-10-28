@@ -1,9 +1,15 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
-* backport PR #14974: Fixed the execution of a query without the 
-  splicing-subqueries option being faster than the execution of a query with 
-  this option (after version 3.8, this option cannot be switched off).  
+* Fixed the execution of a query without the splicing-subqueries option being
+  faster than the execution of a query with this option (after version 3.8, this
+  option cannot be switched off).
+
+* arangorestore: Fix the order (regarding distributeShardsLike) in which
+  collections are being created during restore, which could result in an error
+  and make manual intervention necessary.
+
+* Single server license output checking fixed.
 
 * Updated ArangoDB Starter to 0.15.3.
 
