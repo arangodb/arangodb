@@ -77,7 +77,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, publi
 
   
   bool hasCoveringIterator() const override {
-    return !_meta._storedValues.empty();
+    return !_meta._storedValues.empty() || !_meta._sort.empty();
   }
 
   Result drop() override;

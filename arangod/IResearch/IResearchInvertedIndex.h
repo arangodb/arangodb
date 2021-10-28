@@ -196,7 +196,9 @@ class IResearchInvertedIndex  : public IResearchDataStore {
                                                       transaction::Methods* trx,
                                                       aql::AstNode const* node,
                                                       aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts);
+                                                      IndexIteratorOptions const& opts,
+                                                      int mutableConditionIdx,
+                                                      aql::Projections const* projections);
 
   Index::SortCosts supportsSortCondition(aql::SortCondition const* sortCondition,
                                          aql::Variable const* reference,

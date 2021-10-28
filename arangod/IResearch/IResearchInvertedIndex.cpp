@@ -105,38 +105,82 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   IResearchInvertedIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                                  aql::AstNode const& condition, IResearchInvertedIndex* index,
                                  aql::Variable const* variable, int64_t mutableConditionIdx,
-                                 std::string_view extraFieldName, aql::Projections const& covering)
+                                 std::string_view extraFieldName, aql::Projections const* projections)
     : IndexIterator(collection, trx, ReadOwnWrites::no), _index(index),
       _variable(variable), _mutableConditionIdx(mutableConditionIdx), _extraName(extraFieldName) {
     resetFilter(condition);
-    auto projectionsCount = covering.size();
+    if (!extraFieldName.empty()) {
+      TRI_ASSERT(projections == nullptr);
+      TRI_ASSERT(extraFieldName == "_from" || extraFieldName == "_to");
+      auto columnSize = index->_meta._sort.fields().size();
+      // extra is expected to be the _from/_to attribute. So don't bother with the full
+      // path inspection
+      for (size_t i = 0; i < columnSize; ++i) {
+        if (index->_meta._sort.fields()[i].size() == 1 &&
+            index->_meta._sort.fields()[i].front().name == extraFieldName) {
+          _projections.emplace_back(irs::string_ref::EMPTY, i);
+          break;
+        }
+      }
+      if (_projections.empty()) { // try to find in other stored
+        for (size_t columnIndex = 0; _projections.empty() &&
+                                     columnIndex < index->_meta._storedValues.columns().size();
+             ++columnIndex) {
+          auto const& column = index->_meta._storedValues.columns()[columnIndex];
+          columnSize = column.fields.size();
+          for (size_t i = 0; i < columnSize; ++i) {
+            if (column.fields[i].second.size() == 1 &&
+                column.fields[i].second.front().name == extraFieldName) {
+              _projections.emplace_back(column.name, i);
+              break;
+            }
+          }
+        }
+      }
+    }
+    auto projectionsCount = projections ? projections->size() : 0;
     for (size_t i = 0; i < projectionsCount; ++i) {
+      TRI_ASSERT(extraFieldName.empty());
       size_t columnIndex{0};
       size_t fieldIndex{0};
-      if (covering[i].coveringIndexPosition < index->_meta._sort.fields().size()) { // cover from sort
-        _projections.emplace_back(irs::string_ref::EMPTY, covering[i].coveringIndexPosition);
+      auto columnSize = index->_meta._sort.fields().size();
+      auto const& projection = (*projections)[i];
+      if (projection.coveringIndexPosition < columnSize) { // cover from sort
+        _projections.emplace_back(irs::string_ref::EMPTY, projection.coveringIndexPosition);
       } else {
-        fieldIndex = index->_meta._sort.fields().size();
-        while (fieldIndex < covering[i].coveringIndexPosition) {
-          auto columnSize = index->_meta._storedValues.columns()[columnIndex].fields.size();
-          if (fieldIndex + columnSize >= covering[i].coveringIndexPosition) {
-            // we found column
+        fieldIndex = columnSize;
+        while (fieldIndex < projection.coveringIndexPosition &&
+               columnIndex < index->_meta._storedValues.columns().size()) {
+          columnSize = index->_meta._storedValues.columns()[columnIndex].fields.size();
+          if (fieldIndex + columnSize >= projection.coveringIndexPosition) {
+            // we found a column
             _projections.emplace_back(index->_meta._storedValues.columns()[columnIndex].name,
-                                      covering[i].coveringIndexPosition - fieldIndex);
+                                      projection.coveringIndexPosition - fieldIndex);
             break;
           } else {
             ++columnIndex;
             fieldIndex += columnSize;
             TRI_ASSERT(columnIndex < index->_meta._storedValues.columns().size());
+            if (ADB_UNLIKELY(columnIndex >= index->_meta._storedValues.columns().size())) {
+              LOG_TOPIC("04235", WARN, arangodb::iresearch::TOPIC)
+                << "Failed to find stored column for desired projection position "
+                << projection.coveringIndexPosition << " while creating iterator for index "
+                << index->id().id();
+              i = projectionsCount + 1; // terminate the cycle. Fallback to non-covering state
+              _projections.clear();
+              break;
+            }
           }
         }
       }
     }
   }
+
   char const* typeName() const override { return "inverted-index-iterator"; }
 
   /// @brief The default index has no extra information
-  bool hasExtra() const override { return _extraName.size() != 0; }
+  bool hasExtra() const override { return !_extraName.empty() &&
+                                          _projections.size() == 1; }
 
  protected:
   bool nextExtraImpl(ExtraCallback const& callback, size_t limit) override {
@@ -176,17 +220,9 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
         auto& segmentReader = (*_reader)[_readerOffset++];
         _pkDocItr = ::pkColumn(segmentReader);
         _pkValue = irs::get<irs::payload>(*_pkDocItr);
-        if constexpr (withExtra) {
-          auto const* extraValuesReader =
-            segmentReader.column_reader(_extraName);
-          if (ADB_LIKELY(extraValuesReader)) {
-            _extraValuesReader.itr = extraValuesReader->iterator();
-            _extraValuesReader.value = irs::get<irs::payload>(*_extraValuesReader.itr);
-            if (ADB_UNLIKELY(!_extraValuesReader.value)) {
-              _extraValuesReader.value = &NoPayload;
-            }
-          } else {
-            _extraValuesReader.value = &NoPayload;
+        if constexpr (withExtra || withCovering) {
+          for (auto& projection : _projections) {
+            projection.reset(segmentReader);
           }
         }
         if (ADB_UNLIKELY(!_pkValue)) {
@@ -199,14 +235,24 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
           LocalDocumentId documentId;
           bool const readSuccess = DocumentPrimaryKey::read(documentId,  _pkValue->value);
           if (readSuccess) {
-            if constexpr (withExtra || withCovering) {
-              if (_extraValuesReader.itr && 
-                  _doc->value == _extraValuesReader.itr->seek(_doc->value)) {
+            if constexpr (withExtra) {
+              TRI_ASSERT(!_projections.empty());
+              auto extraSlice = _projections[0].get(_doc->value);
+              if (!extraSlice.isNone()) {
                 --limit;
-                auto extraSlice = VPackSlice(_extraValuesReader.value->value.c_str());
-                TRI_ASSERT(extraSlice.byteSize() == _extraValuesReader.value->value.size());
                 callback(documentId, extraSlice);
               } 
+            } else if constexpr (withCovering) {
+              // FIXME: it is faster to have "tuple of slices" implementation for callback
+              _coveringBuffer.reset(); // reassemble VPackArray as required by current API
+              VPackBuilder builder(_coveringBuffer);
+              {
+                VPackArrayBuilder array(&builder);
+                for (auto& projection : _projections) {
+                  builder.add(projection.get(_doc->value));
+                }
+              }
+              callback(documentId, builder.slice());
             } else {
               --limit;
               callback(documentId);
@@ -363,7 +409,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
     CoveringValue(irs::string_ref col, size_t idx)
       : _column(col), _index(idx) {}
 
-    void reset(irs::sub_reader& rdr) {
+    void reset(irs::sub_reader const& rdr) {
       itr.reset();
       value = &NoPayload;
       auto extraValuesReader = _column.empty() ? rdr.sort() : rdr.column_reader(_column);
@@ -407,6 +453,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
     size_t _index;
   };
 
+  VPackBuffer<uint8_t> _coveringBuffer;
   irs::doc_iterator::ptr _itr;
   irs::doc_iterator::ptr _pkDocItr;
   irs::filter::prepared::ptr _filter;
@@ -420,8 +467,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   irs::order::prepared _order;
 
   std::vector<CoveringValue> _projections;
-  ColumnIterator _extraValuesReader;
-  std::string _extraName;
+  irs::string_ref _extraName;
 };
 } // namespace
 
@@ -589,14 +635,14 @@ bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
 
 std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iteratorForCondition(
     LogicalCollection* collection, transaction::Methods* trx, aql::AstNode const* node, aql::Variable const* reference,
-    IndexIteratorOptions const& opts) {
+    IndexIteratorOptions const& opts, int mutableConditionIdx, aql::Projections const* projections) {
   if (node) {
     std::string_view extraFieldName(nullptr, 0);
-    if (opts.mutableConditionIdx >= 0) {
-      TRI_ASSERT(opts.mutableConditionIdx < static_cast<int64_t>(node->numMembers()));
+    if (mutableConditionIdx >= 0 && !projections) {
+      TRI_ASSERT(mutableConditionIdx < static_cast<int64_t>(node->numMembers()));
       // we are in traversal. So try to find extra. If we are searching for '_to' then
       // "next" step (and our extra) is '_from' and vice versa
-      auto mutableCondition = node->getMember(opts.mutableConditionIdx);
+      auto mutableCondition = node->getMember(mutableConditionIdx);
       if (mutableCondition->type == aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
         TRI_ASSERT(mutableCondition->numMembers() == 2);
         auto attributeAccess = mutableCondition->getMember(0)->type == aql::AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS ?
@@ -604,24 +650,16 @@ std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iter
         if (attributeAccess->type == aql::AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS &&
             attributeAccess->value.type == aql::AstNodeValueType::VALUE_TYPE_STRING) {
           auto fieldName = attributeAccess->getStringRef();
-          std::string_view requiredStoreName;
           if (fieldName == "_from") {
-            requiredStoreName = "_to";
+            extraFieldName = "_to";
           } else if (fieldName == "_to") {
-            requiredStoreName = "_from";
-          }
-          bool found{false};
-          for (auto const& stored : _meta._storedValues.columns()) {
-            if (stored.sameName(requiredStoreName)) {
-              extraFieldName = stored.name; // keep pointer on our meta as it will stay alive for sure.
-              break;
-            }
+            extraFieldName = "_from";
           }
         }
       }
     }
-    return std::make_unique<IResearchInvertedIndexIterator>(collection, trx, *node, this, reference, opts.mutableConditionIdx,
-                                                            extraFieldName);
+    return std::make_unique<IResearchInvertedIndexIterator>(collection, trx, *node, this, reference, mutableConditionIdx,
+                                                            extraFieldName, projections);
   } else {
     TRI_ASSERT(false);
     //sorting  case

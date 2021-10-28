@@ -285,8 +285,6 @@ struct IndexIteratorOptions {
   bool evaluateFCalls = true;
   /// @brief enable caching
   bool enableCache = true;
-  /// @brief the only mutable part of the condition
-  int64_t mutableConditionIdx{-1};
 };
   
 /// index estimate map, defined here because it was convenient
