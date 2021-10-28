@@ -40,16 +40,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-CalculationExecutorInfos::CalculationExecutorInfos(RegisterId outputRegister,
-                                                   QueryContext& query, Expression& expression,
-                                                   std::vector<Variable const*>&& expInVars,
-                                                   std::vector<RegisterId>&& expInRegs)
+CalculationExecutorInfos::CalculationExecutorInfos(
+    RegisterId outputRegister, QueryContext& query, Expression& expression,
+    std::vector<std::pair<VariableId, RegisterId>>&& expInVarToRegs)
     : _outputRegisterId(outputRegister),
       _query(query),
       _expression(expression),
-      _expInVars(std::move(expInVars)),
-      _expInRegs(std::move(expInRegs)) {
-}
+      _expVarToRegs(std::move(expInVarToRegs)) {}
 
 template <CalculationType calculationType>
 CalculationExecutor<calculationType>::CalculationExecutor(Fetcher& fetcher,
@@ -75,12 +72,8 @@ Expression& CalculationExecutorInfos::getExpression() const noexcept {
   return _expression;
 }
 
-std::vector<Variable const*> const& CalculationExecutorInfos::getExpInVars() const noexcept {
-  return _expInVars;
-}
-
-std::vector<RegisterId> const& CalculationExecutorInfos::getExpInRegs() const noexcept {
-  return _expInRegs;
+std::vector<std::pair<VariableId, RegisterId>> const& CalculationExecutorInfos::getVarToRegs() const noexcept {
+  return _expVarToRegs;
 }
 
 template <CalculationType calculationType>
@@ -150,7 +143,7 @@ bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks() cons
 template <>
 void CalculationExecutor<CalculationType::Reference>::doEvaluation(InputAqlItemRow& input,
                                                                    OutputAqlItemRow& output) {
-  auto const& inRegs = _infos.getExpInRegs();
+  auto const& inRegs = _infos.getVarToRegs();
   TRI_ASSERT(inRegs.size() == 1);
 
   TRI_IF_FAILURE("CalculationBlock::executeExpression") {
@@ -163,7 +156,7 @@ void CalculationExecutor<CalculationType::Reference>::doEvaluation(InputAqlItemR
   // We assume here that the output block (which must be the same as the input
   // block) is already responsible for this value.
   // Thus we do not want to clone it.
-  output.copyBlockInternalRegister(input, inRegs[0], _infos.getOutputRegisterId());
+  output.copyBlockInternalRegister(input, inRegs[0].second, _infos.getOutputRegisterId());
 }
 
 template <>
@@ -171,7 +164,7 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(InputAqlItemR
                                                                    OutputAqlItemRow& output) {
   // execute the expression
   ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _aqlFunctionsInternalCache, input,
-                                _infos.getExpInVars(), _infos.getExpInRegs());
+                                _infos.getVarToRegs());
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
@@ -203,8 +196,8 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
   // execute the expression
-  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _aqlFunctionsInternalCache, input,
-                                _infos.getExpInVars(), _infos.getExpInRegs());
+  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _aqlFunctionsInternalCache,
+                                input, _infos.getVarToRegs());
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
