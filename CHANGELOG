@@ -5,6 +5,8 @@ v3.9.0 (XXXX-XX-XX)
   faster than the execution of a query with this option (after version 3.8, this
   option cannot be switched off).
 
+* Old license mechanism for docker containers removed.
+
 * arangorestore: Fix the order (regarding distributeShardsLike) in which
   collections are being created during restore, which could result in an error
   and make manual intervention necessary.
