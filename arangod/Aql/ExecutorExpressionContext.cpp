@@ -30,36 +30,29 @@
 
 using namespace arangodb::aql;
 
+ExecutorExpressionContext::ExecutorExpressionContext(
+    arangodb::transaction::Methods& trx, QueryContext& context,
+    AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
+    std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister)
+    : QueryExpressionContext(trx, context, cache),
+      _inputRow(inputRow),
+      _varsToRegister(varsToRegister) {}
+
 AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                      bool& mustDestroy) const {
   mustDestroy = false;
-
   auto const searchId = variable->id;
-  size_t i = -1;  // size_t is guaranteed to be unsigned so the overflow is ok
-  for (auto const* var : _vars) {
-    TRI_ASSERT(var != nullptr);
-    ++i;
-    if (var->id == searchId) {
-      TRI_ASSERT(i < _regs.size());
+  for (auto const& [varId, regId] : _varsToRegister) {
+    if (varId == searchId) {
       if (doCopy) {
         mustDestroy = true;  // as we are copying
-        return _inputRow.getValue((_regs)[i]).clone();
+        return _inputRow.getValue(regId).clone();
       }
-      return _inputRow.getValue((_regs)[i]);
+      return _inputRow.getValue(regId);
     }
   }
-
   std::string msg("variable not found '");
   msg.append(variable->name);
   msg.append("' in executeSimpleExpression()");
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
 }
-
-ExecutorExpressionContext::ExecutorExpressionContext(arangodb::transaction::Methods& trx,
-                                                     QueryContext& context,
-                                                     AqlFunctionsInternalCache& cache,
-                                                     InputAqlItemRow const& inputRow,
-                                                     std::vector<Variable const*> const& vars,
-                                                     std::vector<RegisterId> const& regs)
-    : QueryExpressionContext(trx, context, cache),
-      _inputRow(inputRow), _vars(vars), _regs(regs) {}

@@ -47,7 +47,7 @@ class ExecutionEngine;
 class ExecutionPlan;
 class Expression;
 class Projections;
-struct NonConstExpression;
+struct NonConstExpressionContainer;
 
 template<typename T> struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
@@ -140,9 +140,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
-  std::vector<std::unique_ptr<NonConstExpression>> initializeOnce(
-      bool& hasV8Expression, std::vector<Variable const*>& inVars,
-      std::vector<RegisterId>& inRegs) const;
+  NonConstExpressionContainer initializeOnce() const;
 
   bool isProduceResult() const {
     return (isVarUsedLater(_outVariable) || _filter != nullptr) && !doCount();

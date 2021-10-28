@@ -51,9 +51,9 @@ class SingleRowFetcher;
 struct Variable;
 
 struct CalculationExecutorInfos {
-  CalculationExecutorInfos(RegisterId outputRegister, QueryContext& query, Expression& expression,
-                           std::vector<Variable const*>&& expInVars,
-                           std::vector<RegisterId>&& expInRegs);
+  CalculationExecutorInfos(RegisterId outputRegister, QueryContext& query,
+                           Expression& expression,
+                           std::vector<std::pair<VariableId, RegisterId>>&& expInVarToRegs);
 
   CalculationExecutorInfos() = delete;
   CalculationExecutorInfos(CalculationExecutorInfos&&) = default;
@@ -67,17 +67,15 @@ struct CalculationExecutorInfos {
 
   Expression& getExpression() const noexcept;
 
-  std::vector<Variable const*> const& getExpInVars() const noexcept;
-
-  std::vector<RegisterId> const& getExpInRegs() const noexcept;
+  std::vector<std::pair<VariableId, RegisterId>> const& getVarToRegs() const noexcept;
 
  private:
   RegisterId _outputRegisterId;
 
   QueryContext& _query;
   Expression& _expression;
-  std::vector<Variable const*> _expInVars;  // input variables for expression
-  std::vector<RegisterId> _expInRegs;       // input registers for expression
+  // Input variable and register pairs required for the expression
+  std::vector<std::pair<VariableId, RegisterId>> _expVarToRegs;
 };
 
 enum class CalculationType { Condition, V8Condition, Reference };
