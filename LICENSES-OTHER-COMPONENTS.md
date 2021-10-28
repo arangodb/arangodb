@@ -417,10 +417,10 @@ _Enterprise Edition only_
 ### llhttp
 
 * Name: llhttp
-* Version: 1.1.1
-* Date: 2019-01-28 00:32:31Z
+* Version: 6.0.4
+* Date: 2021-06-26 22:27:35 -0700
 * Project Home: https://github.com/nodejs/llhttp
-* License: https://raw.githubusercontent.com/nodejs/llhttp/master/LICENSE-MIT
+* License: https://raw.githubusercontent.com/nodejs/llhttp/main/LICENSE-MIT
 * License Name: MIT License
 * License Id: MIT
 
