@@ -632,7 +632,8 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   // transaction IDs will randomly be identified as follower transactions,
   // leader transactions, legacy transactions or coordinator transactions;
   // context is important.
-  TRI_ASSERT(!ServerState::instance()->isSingleServer());
+  TRI_ASSERT(!ServerState::instance()->isSingleServer() ||
+             ServerState::instance()->isGoogleTest());
   // We should never have `options.isFollowerTransaction == true`, but
   // `tid.isFollowerTransactionId() == false`.
   TRI_ASSERT(options.isFollowerTransaction == tid.isFollowerTransactionId() ||

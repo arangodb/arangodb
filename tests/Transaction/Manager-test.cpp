@@ -76,7 +76,7 @@ class TransactionManagerTest : public ::testing::Test {
   TransactionManagerTest()
       : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(setup.server.server())),
         mgr(transaction::ManagerFeature::manager()),
-        tid(TRI_NewTickServer()) {}
+        tid(TransactionId::createLeader()) {}
 
   ~TransactionManagerTest() { mgr->garbageCollect(true); }
 };
@@ -245,7 +245,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), true);
+  Result res = mgr->ensureManagedTrx(vocbase, TransactionId::createFollower(), json->slice(), true);
   ASSERT_TRUE(res.ok());
 
   {
