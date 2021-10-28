@@ -164,7 +164,7 @@ function optimizerRuleTestSuite () {
       const resultDisabled = AQL_EXPLAIN(query, { }, noMoveCalculationsUp);
       const rulesDisabled = resultDisabled.plan.rules;
       assertEqual(rulesDisabled.indexOf(ruleName), -1);
-      assertEqual(rulesDisabled.indexOf(ruleName + "2"), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName + "-2"), -1);
       const nodesDisabled = filterOutRules(resultDisabled.plan.nodes);
       assertEqual(nodesDisabled.map(node => node.type), ["EnumerateListNode", "SubqueryStartNode", "EnumerateListNode", "SubqueryEndNode",  "ReturnNode"]);
       assertEqual(nodesDisabled[0].outVariable.name, "i");
@@ -193,7 +193,7 @@ function optimizerRuleTestSuite () {
       const resultDisabled = AQL_EXPLAIN(query, { }, noMoveCalculationsUp);
       const rulesDisabled = resultDisabled.plan.rules;
       assertEqual(rulesDisabled.indexOf(ruleName), -1);
-      assertEqual(rulesDisabled.indexOf(ruleName + "2"), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName + "-2"), -1);
       const nodesDisabled = filterOutRules(resultDisabled.plan.nodes);
       assertEqual(nodesDisabled.map(node => node.type), ["EnumerateListNode", "SubqueryStartNode", "EnumerateListNode",
         "SubqueryEndNode", "ReturnNode"]);
@@ -226,7 +226,7 @@ function optimizerRuleTestSuite () {
       const resultDisabled = AQL_EXPLAIN(query, { }, noMoveCalculationsUp);
       const rulesDisabled = resultDisabled.plan.rules;
       assertEqual(rulesDisabled.indexOf(ruleName), -1);
-      assertEqual(rulesDisabled.indexOf(ruleName + "2"), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName + "-2"), -1);
       const nodesDisabled = filterOutRules(resultDisabled.plan.nodes);
       assertEqual(nodesDisabled.map(node => node.type), ["EnumerateListNode", "SubqueryStartNode", "EnumerateListNode",
         "InsertNode", "SubqueryEndNode", "ReturnNode"]);
@@ -259,7 +259,7 @@ function optimizerRuleTestSuite () {
       const resultDisabled = AQL_EXPLAIN(query, { }, noMoveCalculationsUp);
       const rulesDisabled = resultDisabled.plan.rules;
       assertEqual(rulesDisabled.indexOf(ruleName), -1);
-      assertEqual(rulesDisabled.indexOf(ruleName + "2"), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName + "-2"), -1);
       const nodesDisabled = filterOutRules(resultDisabled.plan.nodes);
       assertEqual(nodesDisabled.map(node => node.type), ["EnumerateListNode", "SubqueryStartNode", "EnumerateListNode",
         "SubqueryStartNode", "EnumerateCollectionNode", "LimitNode", "SubqueryEndNode", "UpsertNode",
