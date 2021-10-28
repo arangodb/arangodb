@@ -628,6 +628,15 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
+  // This method should not be used in a single server. Note that single-server
+  // transaction IDs will randomly be identified as follower transactions,
+  // leader transactions, legacy transactions or coordinator transactions;
+  // context is important.
+  TRI_ASSERT(!ServerState::instance()->isSingleServer());
+  // We should never have `options.isFollowerTransaction == true`, but
+  // `tid.isFollowerTransactionId() == false`.
+  TRI_ASSERT(options.isFollowerTransaction == tid.isFollowerTransactionId() ||
+             !options.isFollowerTransaction);
   options.isFollowerTransaction = tid.isFollowerTransactionId();
 
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
