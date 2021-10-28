@@ -320,14 +320,14 @@ int sslRand(int32_t* value) {
 }
 
 
-int rsaPrivSign(EVP_MD_CTX* ctx, EVP_PKEY *pkey, char const* msg, size_t msgLength,
+int rsaPrivSign(EVP_MD_CTX* ctx, EVP_PKEY *pkey, std::string const& msg,
                 std::string& sign, std::string& error) {
   size_t signLength;
   if (EVP_DigestSignInit(ctx, nullptr, EVP_sha256(), nullptr, pkey) == 0) {
     error.append("EVP_DigestSignInit failed: ").append(ERR_error_string(ERR_get_error(), nullptr));
     return 1;
   }
-  if (EVP_DigestSignUpdate(ctx, msg, msgLength) == 0) {
+  if (EVP_DigestSignUpdate(ctx, msg.c_str(), msg.size()) == 0) {
     error.append("EVP_DigestSignUpdate failed: ").append( ERR_error_string(ERR_get_error(), nullptr));
     return 1;
   }
@@ -344,11 +344,11 @@ int rsaPrivSign(EVP_MD_CTX* ctx, EVP_PKEY *pkey, char const* msg, size_t msgLeng
   return 0;
 }
 
-int rsaPrivSign(char const* pem, size_t pemLength, char const* msg,
-                size_t msgLength, std::string& sign, std::string& error) {
+int rsaPrivSign(std::string const& pem , std::string const& msg,
+                std::string& sign, std::string& error) {
 
-    BIO* keybio = BIO_new_mem_buf(pem, -1);
-    RSA* rsa;
+  BIO* keybio = BIO_new_mem_buf(pem.c_str(), -1);
+  RSA* rsa;
     rsa = RSA_new();
     rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa, nullptr, nullptr);
     EVP_PKEY *pKey = EVP_PKEY_new();
@@ -371,7 +371,7 @@ int rsaPrivSign(char const* pem, size_t pemLength, char const* msg,
       return 1;
     }
 
-    return rsaPrivSign(ctx, pKey, msg, msgLength, sign, error);
+    return rsaPrivSign(ctx, pKey, msg, sign, error);
 
 }
 

@@ -197,8 +197,8 @@ int sslRand(int32_t*);
 /// Will return 0 on sucess non-zero else
 //////////////////////////////////////////////////////////////////////////
 
-int rsaPrivSign (char const* pem, size_t pemLength, char const* msg,
-                 size_t msgLength, std::string& sign,  std::string& error);
+int rsaPrivSign (std::string const& pem, std::string const& msg,
+                 std::string& sign, std::string& error);
 
 }  // namespace SslInterface
 }  // namespace rest

@@ -3966,8 +3966,7 @@ static void JS_RsaPrivSign(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string sign;
   std::string error;
 
-  auto res = SslInterface::rsaPrivSign(key.c_str(), key.size(), message.c_str(),
-                                       message.size(), sign, error);
+  auto res = SslInterface::rsaPrivSign(key, message, sign, error);
 
   if (res == 0) {
     sign = StringUtils::encodeBase64(sign);
