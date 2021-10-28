@@ -457,9 +457,8 @@ void OptimizerRulesFeature::addRules() {
   // of the query and the shards that are required.
   registerRule("distribute-query", distributeQueryRule, OptimizerRule::distributeQueryRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault,
-                                        // OptimizerRule::Flags::ClusterOnly,
-                                        OptimizerRule::Flags::Hidden));
+                                        OptimizerRule::Flags::DisabledByDefault));
+                                        // OptimizerRule::Flags::ClusterOnly;
 
   // Splice subqueries
   //
