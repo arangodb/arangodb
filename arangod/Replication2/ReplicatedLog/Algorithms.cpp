@@ -346,24 +346,54 @@ auto operator<=(IndexParticipantPair left, IndexParticipantPair right) noexcept 
   }
 }
 
+
+/* Add flag for failed server to IndexParticipant struct
+ *
+ *  add struct for parameters:
+ *   replicationFactor
+ *   - writeConcern (==quorumSize)
+ *   - softWriteConcern (better name?)
+ *   -
+ *  TRI_ASSERT(indexes.size() == replicationFactor)
+ *  TRI_ASSERT(writeConcern <= softWriteConcern <= replicationFactor)
+ *
+ *   actualWriteConcern = max(writeConcern, x)
+ *     where x = min(replicationFactor - number of failedServers,
+ *                   softWriteConcern);
+ *
+ *  for purposes of computing actualwriteConcern, excluded and failed
+ *  servers are treated the same.
+ */
 auto algorithms::calculateCommitIndex(std::vector<IndexParticipantPair>& indexes,
-                          std::size_t quorumSize, LogIndex spearhead)
+                          CalculateCommitIndexOptions const opt, LogIndex spearhead)
     -> std::pair<LogIndex, CommitFailReason> {
 
-    TRI_ASSERT(indexes.size() > 0) << "at least one participant required to calculate commit index";
+  // TODO some of these could happen on  creation of CalculateCommitIndexOptions
+  TRI_ASSERT(indexes.size() == opt.replicationFactor)
+          << "number of participants != replicationFactor (" <<
+      indexes.size() << " < " << opt.replicationFactor ")";
+  TRI_ASSERT(indexes.size() > 0)
+      << "at least one participant required to calculate commit index";
+  TRI_ASSERT(opt.writeConcern <= opt.softWriteConcern)
+      << "writeConcern > softWriteConcern " << opt.writeConcern
+      << " > " << opt.softWriteConcern;
+  TRI_ASSERT(opt.softWriteConcern <= opt.replicationFactor)
+      << "softWriteConcern > opt.replicationFactor " << opt.softWriteConcern
+      << " > " << opt.replicationFactor;
 
-    // Compute the minimum forced LogIndex
-    //
-    // requires at least one participant
-    // a really ugly way to do filter/reduce
-    auto iter = std::begin(indexes);
-    auto minForcedCommitIndex = iter->index;
-    for (; iter != indexes.end(); ++iter) {
-      if(iter->isForced) {
-        if(iter->index < minForcedCommitIndex) {
-          minForcedCommitIndex = iter->index;
-        }
+  //
+  // Compute the minimum forced LogIndex
+  //
+  // requires at least one participant
+  // a really ugly way to do filter/reduce
+  auto iter = std::begin(indexes);
+  auto minForcedCommitIndex = iter->index;
+  for (; iter != indexes.end(); ++iter) {
+    if (iter->isForced) {
+      if (iter->index < minForcedCommitIndex) {
+        minForcedCommitIndex = iter->index;
       }
+    }
     }
 
     // Get the list of all non-excluded participants

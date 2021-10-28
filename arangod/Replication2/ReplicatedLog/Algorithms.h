@@ -89,8 +89,16 @@ struct IndexParticipantPair : implement_compare<IndexParticipantPair> {
 auto operator<=(IndexParticipantPair left, IndexParticipantPair right) noexcept -> bool;
 auto operator<<(std::ostream& os, IndexParticipantPair const& p) noexcept -> std::ostream&;
 
+struct CalculateCommitIndexOptions {
+  // TODO: Constructor that asserts relationships between
+  // members
+  std::size_t const replicationFactor{0};
+  std::size_t const writeConcern{0};       // might be called quorumSize in other places
+  std::size_t const softWriteConcern{0};
+};
+
 auto calculateCommitIndex(std::vector<IndexParticipantPair>& indexes,
-                          std::size_t quorumSize, LogIndex spearhead)
+                          CalculateCommitIndexOptions const opt, LogIndex spearhead)
     -> std::pair<LogIndex, replicated_log::CommitFailReason>;
 
 }  // namespace arangodb::replication2::algorithms
