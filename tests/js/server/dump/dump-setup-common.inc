@@ -562,7 +562,13 @@ function createSmartGraphSingleServer() {
   const vertices = "UnitTestDumpSmartVerticesSingleServer";
   const orphans = "UnitTestDumpSmartOrphansSingleServer";
 
-  createSmartGraphWithoutData({smartGraphName: smartGraphName, edges: edges, fromVertices: vertices, orphans: orphans});
+  createSmartGraphWithoutData({
+    smartGraphName: smartGraphName,
+    edges: edges,
+    fromVertices: [vertices],
+    toVertices: [vertices],
+    orphans: [orphans]
+  });
 
   const size = 100;
 
@@ -584,7 +590,13 @@ function createDisjointGraphSingleServer() {
   const orphans = "UnitTestDumpDisjointOrphansSingleServer";
 
   createSmartGraphWithoutData(
-    {smartGraphName: smartGraphName, edges: edges, fromVertices: vertices, orphans: orphans},
+    {
+      smartGraphName: smartGraphName,
+      edges: edges,
+      fromVertices: [vertices],
+      toVertices: [vertices],
+      orphans: [orphans]
+    },
     {isDisjoint: true}
   );
 
@@ -610,7 +622,11 @@ function createSatelliteGraphSingleServer() {
   const orphans = "UnitTestDumpSatelliteOrphansSingleServer";
 
   createSmartGraphWithoutData({
-      smartGraphName: graphName, edges: edges, fromVertices: vertices, orphans: orphans
+      smartGraphName: graphName,
+      edges: edges,
+      fromVertices: [vertices],
+      toVertices: [vertices],
+      orphans: [orphans]
     },
     {
       isSatellite: true, isSmart: false/*needed: default is true*/,
@@ -723,8 +739,6 @@ function createHybridDisjointSmartGraphSingleServer() {
   }
   db[edgesAB].save(eDocs);
 
-  console.warn(eDocs);
-
   db[orphans].save(docsSat.vDocs);
   db[orphans].save(docsANonSat.vDocs);
 }
@@ -738,9 +752,9 @@ function createSatelliteGraphWithoutData() {
   createSmartGraphWithoutData({
       smartGraphName: "UnitTestDumpSatelliteGraphWithoutData",
       edges: "UnitTestDumpSatelliteEdgesWithoutData",
-      fromVertices: "UnitTestDumpSatelliteVerticesWithoutData",
-      toVertices: "UnitTestDumpSatelliteVerticesWithoutData",
-      orphans: "UnitTestDumpSatelliteOrphansWithoutData"
+      fromVertices: ["UnitTestDumpSatelliteVerticesWithoutData"],
+      toVertices: ["UnitTestDumpSatelliteVerticesWithoutData"],
+      orphans: ["UnitTestDumpSatelliteOrphansWithoutData"]
     },
     {isSatellite: true}
   );
@@ -754,8 +768,9 @@ function createDisjointGraphWithoutData() {
   createSmartGraphWithoutData({
       smartGraphName: "UnitTestDumpDisjointGraphWithoutData",
       edges: "UnitTestDumpDisjointEdgesWithoutData",
-      vertices: "UnitTestDumpDisjointVerticesWithoutData",
-      orphans: "UnitTestDumpDisjointOrphansWithoutData"
+      fromVertices: ["UnitTestDumpDisjointVerticesWithoutData"],
+      toVertices: ["UnitTestDumpDisjointVerticesWithoutData"],
+      orphans: ["UnitTestDumpDisjointOrphansWithoutData"]
     },
     {isDisjoint: true}
   );
@@ -820,17 +835,17 @@ function createSmartGraphWithoutData(names, options = undefined) {
   db._useDatabase("UnitTestsDumpSrc");
 
   if (!names) {
-    const smartGraphName = "UnitTestDumpSmartGraphDefault";
-    const edges = "UnitTestDumpSmartEdgesDefault";
-    const vertices = "UnitTestDumpSmartVerticesDefault";
-    const orphans = "UnitTestDumpSmartOrphansDefault";
+    const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
+    const edges = "UnitTestDumpSmartEdgesWithoutData";
+    const vertices = "UnitTestDumpSmartVerticesWithoutData";
+    const orphans = "UnitTestDumpSmartOrphansWithoutData";
 
     names = {
       smartGraphName: smartGraphName,
       edges: edges,
-      fromVertices: vertices,
-      toVertices: vertices,
-      orphans: orphans
+      fromVertices: [vertices],
+      toVertices: [vertices],
+      orphans: [orphans]
     };
   }
 
@@ -860,8 +875,6 @@ function createSmartGraphWithoutData(names, options = undefined) {
   const graphModule = chooseGraphModule(kind);
 
   // drop the graph and collections (if any)
-  console.warn("NAMES");
-  console.warn(names);
   if (graphModule._exists(names.smartGraphName)) {
     graphModule._drop(names.smartGraphName, true);
   }
@@ -872,15 +885,10 @@ function createSmartGraphWithoutData(names, options = undefined) {
   }
   db._drop(names.orphans);
 
-  console.warn("CREATING GRAPH:");
-  console.warn(names.smartGraphName);
-  console.warn("options:");
-  console.warn(options);
-
   graphModule._create(
     names.smartGraphName,
     [graphModule._relation(names.edges, names.fromVertices, names.toVertices)],
-    [names.orphans],
+    names.orphans,
     options
   );
 }
