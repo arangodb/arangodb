@@ -1724,10 +1724,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
     if (!n->isDeterministic()) {
       // we will only move expressions up that cannot throw and that are
       // deterministic
-      // if it's a subquery node, it cannot move upwards if theres a
-      // modification keyword in the subquery e.g.
-      // INSERT would not be scope limited by the outermost subqueries, so we could end up
-      // inserting a smaller amount of documents than what's actually proposed in the query.
+
       continue;
     }
     if (n->getType() == EN::CALCULATION) {
@@ -1737,7 +1734,10 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
       }
     } else {
       auto nn = ExecutionNode::castTo<SubqueryNode*>(n);
-      if (nn->isModificationNode()) {
+      if (nn->isModificationNode()) { // if it's a subquery node, it cannot move upwards if theres a
+                                      // modification keyword in the subquery e.g.
+                                      // INSERT would not be scope limited by the outermost subqueries, so we could end up
+                                      // inserting a smaller amount of documents than what's actually proposed in the query.
         continue;
       }
     }
