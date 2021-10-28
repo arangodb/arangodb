@@ -119,17 +119,6 @@ add_dependencies(arango_iresearch
   v8_build # for ICU required by iResearch
 )
 
-################################################################################
-# llhttp
-################################################################################
-
-
-SET(LLHTTP_SOURCES
-  ${PROJECT_SOURCE_DIR}/3rdParty/llhttp/src/api.c
-  ${PROJECT_SOURCE_DIR}/3rdParty/llhttp/src/http.c
-  ${PROJECT_SOURCE_DIR}/3rdParty/llhttp/src/llhttp.c
-)
-
 
 ################################################################################
 ## arangod
@@ -950,12 +939,6 @@ add_library(arango_cluster_methods STATIC
   ${LIB_ARANGO_CLUSTER_METHODS_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_CLUSTER_METHODS_SOURCES}
 )
-
-add_library(llhttp STATIC
-  ${LLHTTP_SOURCES}
-)
-
-target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
 # s2 requires /J to be set on Windows.
