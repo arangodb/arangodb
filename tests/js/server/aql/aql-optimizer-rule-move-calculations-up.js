@@ -43,8 +43,7 @@ function optimizerRuleTestSuite () {
   // various choices to control the optimizer:
   var paramNone   = { optimizer: { rules: [ "-all" ] } };
   var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var paramDisabled  = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
-  var noMoveCalculationsUp = { optimizer: { rules: [ "+all", "-" + ruleName, "-" + ruleName + "-2"] } };
+  var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName, "-" + ruleName + "-2"] } };
 
   const nodeTypesExcluded = ['SingletonNode', 'ScatterNode', 'GatherNode', 'DistributeNode', 'RemoteNode', 'CalculationNode'];
 
@@ -161,7 +160,7 @@ function optimizerRuleTestSuite () {
       assertEqual(nodesEnabled[3].outVariable.name, "i");
       assertEqual(nodesEnabled[4].inVariable.name, "x");
 
-      const resultDisabled = AQL_EXPLAIN(query, { }, noMoveCalculationsUp);
+      const resultDisabled = AQL_EXPLAIN(query, { }, paramDisabled);
       const rulesDisabled = resultDisabled.plan.rules;
       assertEqual(rulesDisabled.indexOf(ruleName), -1);
       assertEqual(rulesDisabled.indexOf(ruleName + "-2"), -1);
@@ -190,7 +189,7 @@ function optimizerRuleTestSuite () {
       assertEqual(nodesEnabled[2].outVariable.name, "j");
       assertEqual(nodesEnabled[3].outVariable.name, "x");
       assertEqual(nodesEnabled[4].inVariable.name, "x");
-      const resultDisabled = AQL_EXPLAIN(query, { }, noMoveCalculationsUp);
+      const resultDisabled = AQL_EXPLAIN(query, { }, paramDisabled);
       const rulesDisabled = resultDisabled.plan.rules;
       assertEqual(rulesDisabled.indexOf(ruleName), -1);
       assertEqual(rulesDisabled.indexOf(ruleName + "-2"), -1);
@@ -223,7 +222,7 @@ function optimizerRuleTestSuite () {
       assertEqual(nodesEnabled[4].outVariable.name, "x");
       assertEqual(nodesEnabled[5].inVariable.name, "x");
 
-      const resultDisabled = AQL_EXPLAIN(query, { }, noMoveCalculationsUp);
+      const resultDisabled = AQL_EXPLAIN(query, { }, paramDisabled);
       const rulesDisabled = resultDisabled.plan.rules;
       assertEqual(rulesDisabled.indexOf(ruleName), -1);
       assertEqual(rulesDisabled.indexOf(ruleName + "-2"), -1);
@@ -256,7 +255,7 @@ function optimizerRuleTestSuite () {
       assertEqual(nodesEnabled[6].outVariable.name, "j");
       assertEqual(nodesEnabled[8].outVariable.name, "x");
       assertEqual(nodesEnabled[9].inVariable.name, "x");
-      const resultDisabled = AQL_EXPLAIN(query, { }, noMoveCalculationsUp);
+      const resultDisabled = AQL_EXPLAIN(query, { }, paramDisabled);
       const rulesDisabled = resultDisabled.plan.rules;
       assertEqual(rulesDisabled.indexOf(ruleName), -1);
       assertEqual(rulesDisabled.indexOf(ruleName + "-2"), -1);
@@ -271,6 +270,73 @@ function optimizerRuleTestSuite () {
       assertEqual(nodesDisabled[9].inVariable.name, "x");
 
     },
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// @brief test that rule doesn't move subquery up because there's a RAND in it and remove-sort-rand-limit-1
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    testRuleNotMoveSubqueryRandUp : function () {
+      const query = "FOR i IN 1..10 LET x = FIRST( FOR d IN " + collectionName + " SORT RAND() LIMIT 0, 1 RETURN d) RETURN x";
+      const paramEnabledRand    = { optimizer: { rules: [ "-all", "+" + ruleName, "+remove-sort-rand-limit-1"] } };
+
+      const resultEnabled = AQL_EXPLAIN(query, { }, paramEnabledRand);
+
+      const rulesEnabled = resultEnabled.plan.rules;
+      assertEqual(rulesEnabled.indexOf(ruleName), -1);
+      let nodesEnabled = filterOutRules(resultEnabled.plan.nodes);
+      assertEqual(nodesEnabled.map(node => node.type), ["EnumerateListNode", "SubqueryStartNode", "EnumerateCollectionNode",
+      "LimitNode", "SubqueryEndNode", "ReturnNode"]);
+      assertEqual(nodesEnabled[0].outVariable.name, "i");
+      assertEqual(nodesEnabled[2].collection, collectionName);
+      assertEqual(nodesEnabled[2].random, true);
+      assertEqual(nodesEnabled[4].inVariable.name, "d");
+      assertEqual(nodesEnabled[5].inVariable.name, "x");
+
+      const resultDisabled = AQL_EXPLAIN(query, { }, paramDisabled);
+
+      const rulesDisabled = resultDisabled.plan.rules;
+      assertEqual(rulesDisabled.indexOf(ruleName), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName + "-2"), -1);
+      const nodesDisabled = filterOutRules(resultDisabled.plan.nodes);
+      assertEqual(nodesDisabled.map(node => node.type), ["EnumerateListNode", "SubqueryStartNode", "EnumerateCollectionNode",
+      "LimitNode", "SubqueryEndNode", "ReturnNode"]);
+      assertEqual(nodesEnabled[0].outVariable.name, "i");
+      assertEqual(nodesEnabled[2].collection, collectionName);
+      assertEqual(nodesEnabled[4].inVariable.name, "d");
+      assertEqual(nodesEnabled[5].inVariable.name, "x");
+
+    },
+
+    /////////////////////////////////////////////////////////////////////////////
+/// @brief test that rule doesn't move subquery up because there's a RAND in it
+/////////////////////////////////////////////////////////////////////////////////
+
+    testRuleNotMoveSubqueryRandUp2 : function () {
+      const query = "FOR i IN 1..10 LET x = ( FOR j IN 1..10 RETURN RAND()) RETURN x";
+      const resultEnabled = AQL_EXPLAIN(query, { }, paramEnabled);
+      let nodesEnabled = filterOutRules(resultEnabled.plan.nodes);
+      assertEqual(nodesEnabled.map(node => node.type), ["EnumerateListNode", "SubqueryStartNode", "EnumerateListNode",
+      "SubqueryEndNode", "ReturnNode"]);
+      assertEqual(nodesEnabled[0].outVariable.name, "i");
+      assertEqual(nodesEnabled[2].outVariable.name, "j");
+      assertEqual(nodesEnabled[3].outVariable.name, "x");
+      assertEqual(nodesEnabled[4].inVariable.name, "x");
+
+      const resultDisabled = AQL_EXPLAIN(query, { }, paramDisabled);
+
+      const rulesDisabled = resultDisabled.plan.rules;
+      assertEqual(rulesDisabled.indexOf(ruleName), -1);
+      assertEqual(rulesDisabled.indexOf(ruleName + "-2"), -1);
+      const nodesDisabled = filterOutRules(resultDisabled.plan.nodes);
+      assertEqual(nodesDisabled.map(node => node.type), ["EnumerateListNode", "SubqueryStartNode", "EnumerateListNode",
+        "SubqueryEndNode", "ReturnNode"]);
+      assertEqual(nodesEnabled[0].outVariable.name, "i");
+      assertEqual(nodesEnabled[2].outVariable.name, "j");
+      assertEqual(nodesEnabled[3].outVariable.name, "x");
+      assertEqual(nodesEnabled[4].inVariable.name, "x");
+
+    },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test generated plans
