@@ -59,7 +59,8 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
                                                       const aql::AstNode* node,
                                                       const aql::Variable* reference,
                                                       const IndexIteratorOptions& opts,
-                                                      ReadOwnWrites readOwnWrites) override;
+                                                      ReadOwnWrites readOwnWrites,
+                                                      int, aql::Projections const*) override;
 };
 
 class RocksDBZkdIndex final : public RocksDBZkdIndexBase {
