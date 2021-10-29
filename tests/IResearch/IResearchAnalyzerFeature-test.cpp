@@ -105,7 +105,7 @@ struct TestIndex : public arangodb::Index {
       arangodb::transaction::Methods* /* trx */, arangodb::aql::AstNode const* /* node */,
       arangodb::aql::Variable const* /* reference */,
       arangodb::IndexIteratorOptions const& /* opts */,
-      arangodb::ReadOwnWrites) override {
+      arangodb::ReadOwnWrites, int, arangodb::aql::Projections const*) override {
     return nullptr;
   }
   void load() override {}
