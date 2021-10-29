@@ -9,7 +9,7 @@ set -e
 
 mkdir -p build
 cd build
-cmake ..
+cmake .. -DHWY_WARNINGS_ARE_ERRORS:BOOL=ON
 make -j
 ctest -j
 echo Success
