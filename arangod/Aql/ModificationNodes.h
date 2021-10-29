@@ -38,6 +38,7 @@ namespace arangodb {
 namespace aql {
 struct Collection;
 class ExecutionBlock;
+class ExecutionLocation;
 class ExecutionPlan;
 
 /// @brief abstract base class for modification operations
@@ -60,6 +61,8 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   ModificationNode(ExecutionPlan*, arangodb::velocypack::Slice const& slice);
 
  public:
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
+
   /// @brief estimateCost
   /// Note that all the modifying nodes use this estimateCost method which is
   /// why we can make it final here.

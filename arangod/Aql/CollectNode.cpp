@@ -27,6 +27,7 @@
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/HashedCollectExecutor.h"
@@ -84,6 +85,10 @@ CollectNode::CollectNode(
       _specialized(false) {}
 
 CollectNode::~CollectNode() = default;
+
+ExecutionLocation CollectNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+}
 
 /// @brief doToVelocyPack, for CollectNode
 void CollectNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {

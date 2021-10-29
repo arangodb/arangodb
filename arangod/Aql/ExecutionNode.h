@@ -495,10 +495,7 @@ class ExecutionNode {
    * be executed. This information is used within the optimizer to decide
    * where the ExecutionNode will be placed.
    */
-  // TODO: We need to decide if we want this to have a default implementation or not.
-  // PRO default: Most nodes can actually run anywhere, so less code.
-  // CON default: For new nodes you cannot forget to implement this.
-  [[nodiscard]] virtual ExecutionLocation getAllowedLocation() const;
+  [[nodiscard]] virtual ExecutionLocation getAllowedLocation() const = 0;
 
  protected:
   /// @brief serialize this ExecutionNode to VelocyPack.
@@ -607,6 +604,8 @@ class SingletonNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -645,6 +644,8 @@ class EnumerateCollectionNode : public ExecutionNode,
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -671,8 +672,6 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief user hint regarding which index ot use
   IndexHint const& hint() const;
 
-  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
-
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
@@ -698,6 +697,8 @@ class EnumerateListNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -748,6 +749,8 @@ class LimitNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -802,6 +805,8 @@ class CalculationNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -860,6 +865,8 @@ class SubqueryNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief invalidate the cost estimate for the node and its dependencies
   void invalidateCost() override;
@@ -928,6 +935,8 @@ class FilterNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override;
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -988,6 +997,8 @@ class ReturnNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief tell the node to count the returned values
   void setCount();
@@ -1015,8 +1026,6 @@ class ReturnNode : public ExecutionNode {
 
   bool returnInheritedResults() const;
 
-  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
-
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
@@ -1040,6 +1049,8 @@ class NoResultsNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -1071,6 +1082,8 @@ class AsyncNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -1100,6 +1113,8 @@ class MaterializeNode : public ExecutionNode {
  public:
   /// @brief return the type of the node
   NodeType getType() const override final { return ExecutionNode::MATERIALIZE; }
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

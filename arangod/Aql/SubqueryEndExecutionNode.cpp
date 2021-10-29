@@ -26,6 +26,7 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
@@ -63,6 +64,10 @@ SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id,
       _outVariable(outVariable) {
   // _inVariable might be nullptr
   TRI_ASSERT(_outVariable != nullptr);
+}
+
+ExecutionLocation SubqueryEndNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
 }
 
 void SubqueryEndNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {

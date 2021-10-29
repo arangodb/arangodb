@@ -28,6 +28,7 @@
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
@@ -328,6 +329,10 @@ WindowNode::WindowNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _aggregateVariables(aggregateVariables) {}
 
 WindowNode::~WindowNode() = default;
+
+ExecutionLocation WindowNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+}
 
 /// @brief doToVelocyPack, for CollectNode
 void WindowNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {

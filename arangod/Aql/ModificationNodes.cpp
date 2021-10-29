@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
@@ -52,6 +53,10 @@ ModificationNode::ModificationNode(ExecutionPlan* plan, arangodb::velocypack::Sl
       _producesResults(base.hasKey("producesResults")
                            ? base.get("producesResults").getBool()
                            : true) {}
+
+ExecutionLocation ModificationNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::DBSERVER);
+}
 
 /// @brief toVelocyPack
 void ModificationNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {

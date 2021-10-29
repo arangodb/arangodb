@@ -31,6 +31,7 @@
 #include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IResearchViewExecutor.h"
 #include "Aql/NoResultsExecutor.h"
@@ -1182,6 +1183,10 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
       _outNonMaterializedViewVars = std::move(viewValuesVars);
     }
   }
+}
+
+aql::ExecutionLocation IResearchViewNode::getAllowedLocation() const {
+  return aql::ExecutionLocation(aql::ExecutionLocation::LocationType::DBSERVER);
 }
 
 std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const {

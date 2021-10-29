@@ -36,6 +36,7 @@
 #include "Aql/Collection.h"
 #include "Aql/DistributeExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/GraphNode.h"
@@ -131,6 +132,10 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _server(base.get("server").copyString()),
       _queryId(base.get("queryId").copyString()) {}
 
+ExecutionLocation RemoteNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
@@ -182,6 +187,10 @@ CostEstimate RemoteNode::estimateCost() const {
 ScatterNode::ScatterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base) {
   readClientsFromVelocyPack(base);
+}
+
+ExecutionLocation ScatterNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -275,6 +284,10 @@ DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice 
       addSatellite(c);
     }
   }
+}
+
+ExecutionLocation DistributeNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::COORDINATOR);
 }
 
 /// @brief clone ExecutionNode recursively
@@ -448,6 +461,10 @@ GatherNode::GatherNode(ExecutionPlan* plan, ExecutionNodeId id,
       _sortmode(sortMode),
       _parallelism(parallelism),
       _limit(0) {}
+
+ExecutionLocation GatherNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+}
 
 /// @brief doToVelocyPack, for GatherNode
 void GatherNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
@@ -662,6 +679,10 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
     TRI_ASSERT(false);
     return nullptr;
   }
+}
+
+ExecutionLocation SingleRemoteOperationNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::COORDINATOR);
 }
 
 /// @brief doToVelocyPack, for SingleRemoteOperationNode

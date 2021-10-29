@@ -29,6 +29,7 @@ namespace arangodb {
 namespace aql {
 
 class DistributeConsumerNode;
+class ExecutionLocation;
 
 /// @brief class MutexNode
 class MutexNode : public ExecutionNode {
@@ -41,7 +42,9 @@ class MutexNode : public ExecutionNode {
   MutexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
-  NodeType getType() const override final;
+  NodeType getType() const override final { return MUTEX; }
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

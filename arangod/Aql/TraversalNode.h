@@ -30,10 +30,6 @@
 
 namespace arangodb {
 
-namespace aql {
-struct Collection;
-}
-
 namespace graph {
 struct BaseOptions;
 }
@@ -43,6 +39,7 @@ struct TraverserOptions;
 }
 
 namespace aql {
+struct Collection;
 
 /// @brief class TraversalNode
 class TraversalNode : public virtual GraphNode {
@@ -105,7 +102,7 @@ class TraversalNode : public virtual GraphNode {
  public:
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }
-
+  
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,

@@ -44,6 +44,7 @@ class Slice;
 }  // namespace velocypack
 namespace aql {
 class ExecutionBlock;
+class ExecutionLocation;
 class ExecutionPlan;
 class IndexNode;
 class UpdateNode;
@@ -71,6 +72,8 @@ class RemoteNode final : public DistributeConsumerNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOTE; }
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -136,6 +139,8 @@ class ScatterNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override { return SCATTER; }
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -203,6 +208,8 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
   /// @brief return the type of the node
   NodeType getType() const override final { return DISTRIBUTE; }
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -282,6 +289,8 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return GATHER; }
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -372,6 +381,8 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOTESINGLE; }
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

@@ -43,6 +43,7 @@ namespace aql {
 
 struct Aggregator;
 class ExecutionBlock;
+class ExecutionLocation;
 class ExecutionPlan;
 class QueryWarnings;
 
@@ -112,6 +113,8 @@ class WindowNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief calculate the aggregate registers
   void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,

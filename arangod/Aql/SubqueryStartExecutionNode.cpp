@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
@@ -44,6 +45,10 @@ SubqueryStartNode::SubqueryStartNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base), _subqueryOutVariable(nullptr) {
   // On purpose exclude the _subqueryOutVariable
   // A query cannot be explained after nodes have been serialized and deserialized
+}
+
+ExecutionLocation SubqueryStartNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
 }
 
 CostEstimate SubqueryStartNode::estimateCost() const {

@@ -44,6 +44,7 @@ struct Collection;
 class Condition;
 class ExecutionBlock;
 class ExecutionEngine;
+class ExecutionLocation;
 class ExecutionPlan;
 class Expression;
 class Projections;
@@ -68,6 +69,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief return the condition for the node
   Condition* condition() const;

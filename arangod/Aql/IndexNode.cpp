@@ -28,6 +28,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
@@ -179,6 +180,10 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   }
 
   _projections.determineIndexSupport(this->collection()->id(), _indexes);
+}
+
+ExecutionLocation IndexNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::DBSERVER);
 }
 
 void IndexNode::setProjections(arangodb::aql::Projections projections) {

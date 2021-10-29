@@ -28,6 +28,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -504,6 +505,13 @@ GraphNode::GraphNode(THIS_THROWS_WHEN_CALLED)
     : ExecutionNode(nullptr, ExecutionNodeId{0}), _defaultDirection() {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+ExecutionLocation GraphNode::getAllowedLocation() const {
+  if (isLocalGraphNode()) {
+    return ExecutionLocation(ExecutionLocation::LocationType::DBSERVER);
+  } 
+  return ExecutionLocation(ExecutionLocation::LocationType::COORDINATOR);
 }
 
 std::string const& GraphNode::collectionToShardName(std::string const& collName) const {

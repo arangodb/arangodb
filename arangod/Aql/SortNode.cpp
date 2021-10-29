@@ -27,6 +27,7 @@
 #include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
@@ -66,6 +67,10 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
       _elements(elements),
       _stable(stable),
       _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
+  
+ExecutionLocation SortNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+}
 
 /// @brief doToVelocyPack, for SortNode
 void SortNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {

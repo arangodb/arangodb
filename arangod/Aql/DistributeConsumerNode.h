@@ -33,6 +33,7 @@
 namespace arangodb::aql {
 
 class ExecutionBlock;
+class ExecutionLocation;
 class ExecutionPlan;
 class ScatterNode;
 
@@ -47,6 +48,8 @@ class DistributeConsumerNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override { return DISTRIBUTE_CONSUMER; }
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

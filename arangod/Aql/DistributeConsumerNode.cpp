@@ -25,6 +25,7 @@
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -40,6 +41,10 @@ DistributeConsumerNode::DistributeConsumerNode(ExecutionPlan* plan,
       _distributeId(VelocyPackHelper::getStringValue(base, "distributeId", "")),
       _isResponsibleForInitializeCursor(
           base.get("isResponsibleForInitializeCursor").getBoolean()) {}
+
+ExecutionLocation DistributeConsumerNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+}
 
 void DistributeConsumerNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add("distributeId", VPackValue(_distributeId));

@@ -41,9 +41,10 @@ class LogicalView;
 
 namespace aql {
 struct Collection;
-class ExecutionNode;
 class ExecutionBlock;
 class ExecutionEngine;
+class ExecutionLocation;
+class ExecutionNode;
 template<typename T> struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct VarInfo;
@@ -105,6 +106,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_IRESEARCH_VIEW; }
+  
+  [[nodiscard]] aql::ExecutionLocation getAllowedLocation() const override;
 
   /// @brief clone ExecutionNode recursively
   aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,

@@ -24,6 +24,7 @@
 #include "MutexNode.h"
 
 #include "Aql/DistributeConsumerNode.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/MutexExecutor.h"
 
 #include <velocypack/Builder.h>
@@ -48,7 +49,9 @@ MutexNode::MutexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   }
 }
 
-ExecutionNode::NodeType MutexNode::getType() const { return MUTEX; }
+ExecutionLocation MutexNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+}
 
 ExecutionNode* MutexNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {

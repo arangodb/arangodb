@@ -47,6 +47,7 @@ class Graph;
 }  // namespace graph
 
 namespace aql {
+class ExecutionLocation;
 
 // @brief This is a pure virtual super-class for all AQL graph operations
 //        It does the generally required:
@@ -81,6 +82,8 @@ class GraphNode : public ExecutionNode {
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
  public:
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
+
   // QueryPlan decided that we use this graph as a satellite
   bool isUsedAsSatellite() const;
   // Defines whether a GraphNode can fully be pushed down to a DBServer

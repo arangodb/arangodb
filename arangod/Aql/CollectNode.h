@@ -39,6 +39,7 @@ class Slice;
 }
 namespace aql {
 class ExecutionBlock;
+class ExecutionLocation;
 class ExecutionPlan;
 struct Aggregator;
 
@@ -68,6 +69,8 @@ class CollectNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+  
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief whether or not the node requires an additional post SORT
   bool isDistinctCommand() const;

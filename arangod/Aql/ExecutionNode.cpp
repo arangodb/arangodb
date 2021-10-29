@@ -1529,6 +1529,10 @@ SingletonNode::SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 
 ExecutionNode::NodeType SingletonNode::getType() const { return SINGLETON; }
 
+ExecutionLocation SingletonNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+}
+
 EnumerateCollectionNode::EnumerateCollectionNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -1536,6 +1540,24 @@ EnumerateCollectionNode::EnumerateCollectionNode(ExecutionPlan* plan,
       CollectionAccessingNode(plan, base),
       _random(base.get("random").getBoolean()),
       _hint(base) {}
+
+ExecutionLocation EnumerateCollectionNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::DBSERVER);
+}
+
+EnumerateCollectionNode::EnumerateCollectionNode(ExecutionPlan* plan, ExecutionNodeId id,
+                                                 aql::Collection const* collection,
+                                                 Variable const* outVariable,
+                                                 bool random, IndexHint const& hint)
+    : ExecutionNode(plan, id),
+      DocumentProducingNode(outVariable),
+      CollectionAccessingNode(collection),
+      _random(random),
+      _hint(hint) {}
+
+ExecutionNode::NodeType EnumerateCollectionNode::getType() const {
+  return ENUMERATE_COLLECTION;
+}
 
 /// @brief doToVelocyPack, for EnumerateCollectionNode
 void EnumerateCollectionNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
@@ -1595,6 +1617,8 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
+IndexHint const& EnumerateCollectionNode::hint() const { return _hint; }
+
 void EnumerateCollectionNode::setRandom() { _random = true; }
 
 bool EnumerateCollectionNode::isDeterministic() { return !_random; }
@@ -1641,6 +1665,10 @@ void EnumerateListNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) cons
 
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
+}
+
+ExecutionLocation EnumerateListNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -1759,6 +1787,10 @@ LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _limit(base.get("limit").getNumericValue<decltype(_limit)>()),
       _fullCount(base.get("fullCount").getBoolean()) {}
 
+ExecutionLocation LimitNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
@@ -1844,6 +1876,19 @@ CalculationNode::CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
 }
 
 CalculationNode::~CalculationNode() = default;
+
+ExecutionLocation CalculationNode::getAllowedLocation() const {
+  if (_expression->willUseV8()) {
+    // V8 expressions have to be executed on the coordinator
+    return ExecutionLocation(ExecutionLocation::LocationType::COORDINATOR);
+  }
+  bool const isOneShard = _plan->getAst()->query().vocbase().isOneShard();
+  if (!_expression->canRunOnDBServer(isOneShard)) {
+    // some expression we cannot run on a DB server
+    return ExecutionLocation(ExecutionLocation::LocationType::COORDINATOR);
+  }
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+}
 
 /// @brief doToVelocyPack, for CalculationNode
 void CalculationNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
@@ -1955,10 +2000,10 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   if (isReference) {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(
-        &engine, this,std::move(registerInfos), std::move(executorInfos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else if (!willUseV8) {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>>(
-        &engine, this,std::move(registerInfos), std::move(executorInfos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -2030,6 +2075,10 @@ SubqueryNode::SubqueryNode(ExecutionPlan* plan, arangodb::velocypack::Slice cons
     : ExecutionNode(plan, base),
       _subquery(nullptr),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
+
+ExecutionLocation SubqueryNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+}
 
 /// @brief doToVelocyPack, for SubqueryNode
 void SubqueryNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
@@ -2289,6 +2338,10 @@ FilterNode::FilterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
     : ExecutionNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
+ExecutionLocation FilterNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+}
+
 /// @brief doToVelocyPack, for FilterNode
 void FilterNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add(VPackValue("inVariable"));
@@ -2363,6 +2416,14 @@ ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")),
       _count(VelocyPackHelper::getBooleanValue(base, "count", false)) {}
 
+ExecutionLocation ReturnNode::getAllowedLocation() const {
+  bool const isRoot = plan()->root() == this;
+  if (isRoot) {
+    return {ExecutionLocation::LocationType::COORDINATOR};
+  }
+  return {ExecutionLocation::LocationType::ANYWHERE};
+}
+
 /// @brief doToVelocyPack, for ReturnNode
 void ReturnNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add(VPackValue("inVariable"));
@@ -2413,14 +2474,6 @@ bool ReturnNode::returnInheritedResults() const {
   return isRoot && !isDBServer;
 }
 
-[[nodiscard]] ExecutionLocation ReturnNode::getAllowedLocation() const {
-  bool const isRoot = plan()->root() == this;
-  if (isRoot) {
-    return {ExecutionLocation::LocationType::COORDINATOR};
-  }
-  return {ExecutionLocation::LocationType::ANYWHERE};
-};
-
 /// @brief clone ExecutionNode recursively
 ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
@@ -2469,6 +2522,10 @@ void ReturnNode::getVariablesUsedHere(VarSet& vars) const {
 Variable const* ReturnNode::inVariable() const { return _inVariable; }
 
 void ReturnNode::inVariable(Variable const* v) { _inVariable = v; }
+
+ExecutionLocation NoResultsNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+}
 
 /// @brief doToVelocyPack, for NoResultsNode
 void NoResultsNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
@@ -2526,27 +2583,6 @@ std::string SortElement::toString() const {
   return result;
 }
 
-EnumerateCollectionNode::EnumerateCollectionNode(ExecutionPlan* plan, ExecutionNodeId id,
-                                                 aql::Collection const* collection,
-                                                 Variable const* outVariable,
-                                                 bool random, IndexHint const& hint)
-    : ExecutionNode(plan, id),
-      DocumentProducingNode(outVariable),
-      CollectionAccessingNode(collection),
-      _random(random),
-      _hint(hint) {}
-
-ExecutionNode::NodeType EnumerateCollectionNode::getType() const {
-  return ENUMERATE_COLLECTION;
-}
-
-IndexHint const& EnumerateCollectionNode::hint() const { return _hint; }
-
-[[nodiscard]] ExecutionLocation EnumerateCollectionNode::getAllowedLocation() const {
-  return {ExecutionLocation::LocationType::DBSERVER};
-};
-
-
 SortInformation::Match SortInformation::isCoveredBy(SortInformation const& other) {
   if (!isValid || !other.isValid) {
     return unequal;
@@ -2581,6 +2617,10 @@ SortInformation::Match SortInformation::isCoveredBy(SortInformation const& other
   }
 
   return allEqual;
+}
+
+ExecutionLocation AsyncNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
 }
 
 /// @brief doToVelocyPack, for AsyncNode
@@ -2645,6 +2685,10 @@ MaterializeNode::MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slic
                                                           true)),
       _outVariable(aql::Variable::varFromVPack(plan->getAst(), base,
                                                MATERIALIZE_NODE_OUT_VARIABLE_PARAM)) {}
+
+ExecutionLocation MaterializeNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::DBSERVER);
+}
 
 void MaterializeNode::doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const {
   nodes.add(VPackValue(MATERIALIZE_NODE_IN_NM_DOC_PARAM));
