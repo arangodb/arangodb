@@ -412,7 +412,9 @@ class Index {
                                                               aql::AstNode const* node,
                                                               aql::Variable const* reference,
                                                               IndexIteratorOptions const& opts,
-                                                              ReadOwnWrites readOwnWrites);
+                                                              ReadOwnWrites readOwnWrites,
+                                                              int mutableConditionIdx,
+                                                              aql::Projections const* projections);
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,

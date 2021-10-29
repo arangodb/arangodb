@@ -669,7 +669,9 @@ std::unique_ptr<IndexIterator> Index::iteratorForCondition(transaction::Methods*
                                                            aql::AstNode const* /* node */,
                                                            aql::Variable const* /* reference */,
                                                            IndexIteratorOptions const& /* opts */,
-                                                           ReadOwnWrites /* readOwnWrites */) {
+                                                           ReadOwnWrites /* readOwnWrites */,
+                                                           int /*mutableConditionIdx*/,
+                                                           aql::Projections const* /*projections*/) {
   // the default implementation should never be called
   TRI_ASSERT(false); 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("no default implementation for iteratorForCondition. index type: ") + typeName());

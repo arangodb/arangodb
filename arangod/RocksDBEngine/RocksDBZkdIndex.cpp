@@ -494,7 +494,7 @@ arangodb::aql::AstNode* arangodb::RocksDBZkdIndexBase::specializeCondition(
 std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndexBase::iteratorForCondition(
     arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
     const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts,
-    ReadOwnWrites readOwnWrites) {
+    ReadOwnWrites readOwnWrites, int, aql::Projections const*) {
 
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 

@@ -93,9 +93,12 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, publi
                                                     aql::AstNode const* node,
                                                     aql::Variable const* reference,
                                                     IndexIteratorOptions const& opts,
-                                                    ReadOwnWrites readOwnWrites) override {
+                                                    ReadOwnWrites readOwnWrites,
+                                                    int mutableConditionIdx,
+                                                    aql::Projections const* projections) override {
     TRI_ASSERT(readOwnWrites == ReadOwnWrites::no); // FIXME: check - should we ever care?
-    return IResearchInvertedIndex::iteratorForCondition(&IResearchDataStore::collection(), trx, node, reference, opts);
+    return IResearchInvertedIndex::iteratorForCondition(&IResearchDataStore::collection(), trx, node,
+                                                        reference, opts, mutableConditionIdx, projections);
   }
 
   Index::SortCosts supportsSortCondition(aql::SortCondition const* sortCondition,

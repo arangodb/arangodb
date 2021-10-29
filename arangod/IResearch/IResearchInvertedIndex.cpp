@@ -110,7 +110,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
       _variable(variable), _mutableConditionIdx(mutableConditionIdx), _extraName(extraFieldName) {
     resetFilter(condition);
     if (!extraFieldName.empty()) {
-      TRI_ASSERT(projections == nullptr);
+      TRI_ASSERT(projections == nullptr || projections->empty());
       TRI_ASSERT(extraFieldName == "_from" || extraFieldName == "_to");
       auto columnSize = index->_meta._sort.fields().size();
       // extra is expected to be the _from/_to attribute. So don't bother with the full
@@ -638,7 +638,7 @@ std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iter
     IndexIteratorOptions const& opts, int mutableConditionIdx, aql::Projections const* projections) {
   if (node) {
     std::string_view extraFieldName(nullptr, 0);
-    if (mutableConditionIdx >= 0 && !projections) {
+    if (mutableConditionIdx >= 0 && (!projections || projections->empty())) {
       TRI_ASSERT(mutableConditionIdx < static_cast<int64_t>(node->numMembers()));
       // we are in traversal. So try to find extra. If we are searching for '_to' then
       // "next" step (and our extra) is '_from' and vice versa
