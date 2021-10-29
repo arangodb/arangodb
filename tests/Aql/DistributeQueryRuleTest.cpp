@@ -86,7 +86,7 @@ TEST_F(DistributeQueryRuleTest, single_enumerate_collection) {
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
   planSlice = planSlice.get("nodes");
-  assertNodesMatch(planSlice, {"SingletonNode", "EnumerateCollectionNode", "RemoteNode", "ReturnNode"} );
+  assertNodesMatch(planSlice, {"SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ReturnNode"} );
 }
 }  // namespace aql
 }  // namespace tests
