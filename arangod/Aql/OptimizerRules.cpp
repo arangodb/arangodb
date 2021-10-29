@@ -8420,9 +8420,12 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
   struct NodePositioner : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
     bool before(arangodb::aql::ExecutionNode* n) override {
       auto loc = n->getAllowedLocation();
-      LOG_DEVEL << loc;
+      LOG_DEVEL << n->getTypeString() << " can be executed on " << loc;
       // Always continue walking
       return false;
+    };
+
+    void after(arangodb::aql::ExecutionNode* n) override {
     };
   } walker{};
 

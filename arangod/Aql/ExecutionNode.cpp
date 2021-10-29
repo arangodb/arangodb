@@ -2413,6 +2413,14 @@ bool ReturnNode::returnInheritedResults() const {
   return isRoot && !isDBServer;
 }
 
+[[nodiscard]] ExecutionLocation ReturnNode::getAllowedLocation() const {
+  bool const isRoot = plan()->root() == this;
+  if (isRoot) {
+    return {ExecutionLocation::LocationType::COORDINATOR};
+  }
+  return {ExecutionLocation::LocationType::ANYWHERE};
+};
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
@@ -2533,6 +2541,11 @@ ExecutionNode::NodeType EnumerateCollectionNode::getType() const {
 }
 
 IndexHint const& EnumerateCollectionNode::hint() const { return _hint; }
+
+[[nodiscard]] ExecutionLocation EnumerateCollectionNode::getAllowedLocation() const {
+  return {ExecutionLocation::LocationType::DBSERVER};
+};
+
 
 SortInformation::Match SortInformation::isCoveredBy(SortInformation const& other) {
   if (!isValid || !other.isValid) {

@@ -671,6 +671,8 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief user hint regarding which index ot use
   IndexHint const& hint() const;
 
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
@@ -1012,6 +1014,8 @@ class ReturnNode : public ExecutionNode {
   void inVariable(Variable const* v);
 
   bool returnInheritedResults() const;
+
+  [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
  protected:
   /// @brief export to VelocyPack
