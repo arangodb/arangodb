@@ -734,10 +734,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::getCommittedLogIterator(LogIn
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::collectEligibleFollowerIndexes() const
-    -> std::pair<LogIndex, std::vector<algorithms::IndexParticipantPair>> {
+    -> std::pair<LogIndex, std::vector<algorithms::ParticipantStateTuple>> {
 
   auto largestCommonIndex = _commitIndex;
-  std::vector<algorithms::IndexParticipantPair> indexes;
+  std::vector<algorithms::ParticipantStateTuple> indexes;
   indexes.reserve(_follower.size());
   for (auto const& follower : _follower) {
     // The lastAckedEntry is the last index/term pair that we sent that this
@@ -756,7 +756,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectEligibleFollowerIndexe
     // This also includes log entries persisted on this server, i.e. our
     // LocalFollower is no exception.
     if (lastAckedEntry.term == this->_self._currentTerm) {
-      indexes.emplace_back(lastAckedEntry.index, follower._impl->getParticipantId(), false, false);
+      indexes.emplace_back(lastAckedEntry.index, follower._impl->getParticipantId(),
+                           algorithms::ParticipantFlags{});
     } else {
       LOG_CTX("54869", TRACE, _self._logContext)
           << "Will ignore follower "
@@ -792,7 +793,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
   }
 
   auto [newCommitIndex, commitFailReason] =
-      algorithms::calculateCommitIndex(indexes, quorum_size, _inMemoryLog.getLastIndex());
+      algorithms::calculateCommitIndex(indexes,
+                                       algorithms::CalculateCommitIndexOptions{quorum_size, quorum_size, quorum_size},
+                                       _inMemoryLog.getLastIndex(), _commitIndex);
   _lastCommitFailReason = commitFailReason;
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)

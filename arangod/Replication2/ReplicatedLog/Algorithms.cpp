@@ -326,17 +326,51 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
   });
 }
 
-auto algorithms::operator<<(std::ostream& os, IndexParticipantPair const& p) noexcept
+auto algorithms::operator<<(std::ostream& os, ParticipantFlag const& p) noexcept
     -> std::ostream& {
-  return os << '{' << p.id << ':' << p.index <<
-    ", excluded: " << std::boolalpha << p.isExcluded <<
-    ", forced: " << std::boolalpha << p.isForced << '}';
+  switch(p) {
+    case ParticipantFlag::Excluded: {
+      return os << "excluded";
+    } break;
+    case ParticipantFlag::Failed: {
+      return os << "failed";
+    } break;
+    case ParticipantFlag::Forced: {
+      return os << "forced";
+    } break;
+  }
+  return os;
 }
 
-IndexParticipantPair::IndexParticipantPair(LogIndex index, ParticipantId id, bool exclude, bool force)
-    : index(index), id(std::move(id)), isExcluded(exclude), isForced(force) {}
+// TODO: Make prettier
+auto algorithms::operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept
+    -> std::ostream& {
+  os << '{' << p.id << ':' << p.index <<
+    ", ";
+  for (auto f : p.flags) {
+    os << f << ",";
+  }
+  os<< '}';
+  return os;
+}
 
-auto operator<=(IndexParticipantPair left, IndexParticipantPair right) noexcept -> bool {
+ParticipantStateTuple::ParticipantStateTuple(LogIndex index, ParticipantId id, ParticipantFlags flags)
+  : index(index), id(std::move(id)), flags(std::move(flags))
+{}
+
+auto ParticipantStateTuple::isExcluded() const noexcept -> bool {
+  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Excluded) != std::end(flags);
+};
+
+auto ParticipantStateTuple::isForced() const noexcept -> bool {
+  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Forced) != std::end(flags);
+};
+
+auto ParticipantStateTuple::isFailed() const noexcept -> bool {
+  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Failed) != std::end(flags);
+};
+
+auto operator<=(ParticipantStateTuple left, ParticipantStateTuple right) noexcept -> bool {
   if (left.index < right.index) {
     return true;
   } else if (left.index==right.index) {
@@ -363,48 +397,77 @@ auto operator<=(IndexParticipantPair left, IndexParticipantPair right) noexcept 
  *
  *  for purposes of computing actualwriteConcern, excluded and failed
  *  servers are treated the same.
- */
-auto algorithms::calculateCommitIndex(std::vector<IndexParticipantPair>& indexes,
-                          CalculateCommitIndexOptions const opt, LogIndex spearhead)
+ *
+ * writeConcern is the *minimum* number of confirmed copies necessary to
+ * proceed with a commit for any given LogIndex
+ *
+ * softWriteConcern allows for a number of failed servers to be tolerated
+ * for the purposes of commit
+ *
+ * replicationFactor is the (expected) number of participants in the
+ * replicated log
+ *
+ * */
+
+algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
+  std::size_t replicationFactor,
+  std::size_t writeConcern,
+  std::size_t softWriteConcern) :
+  _replicationFactor(replicationFactor), _writeConcern(writeConcern),
+  _softWriteConcern(softWriteConcern) {
+  TRI_ASSERT(_writeConcern <= _softWriteConcern)
+      << "writeConcern > softWriteConcern " << _writeConcern << " > "
+      << _softWriteConcern;
+  TRI_ASSERT(_softWriteConcern <= _replicationFactor)
+      << "softWriteConcern > opt.replicationFactor " << _softWriteConcern
+      << " > " << _replicationFactor;
+}
+
+auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple>& indexes,
+                                      CalculateCommitIndexOptions const opt,
+                                      LogIndex currentCommitIndex, LogIndex spearhead)
     -> std::pair<LogIndex, CommitFailReason> {
+  TRI_ASSERT(indexes.size() == opt._replicationFactor)
+      << "number of participants != replicationFactor (" << indexes.size()
+      << " < " << opt._replicationFactor << ")";
 
-  // TODO some of these could happen on  creation of CalculateCommitIndexOptions
-  TRI_ASSERT(indexes.size() == opt.replicationFactor)
-          << "number of participants != replicationFactor (" <<
-      indexes.size() << " < " << opt.replicationFactor ")";
-  TRI_ASSERT(indexes.size() > 0)
-      << "at least one participant required to calculate commit index";
-  TRI_ASSERT(opt.writeConcern <= opt.softWriteConcern)
-      << "writeConcern > softWriteConcern " << opt.writeConcern
-      << " > " << opt.softWriteConcern;
-  TRI_ASSERT(opt.softWriteConcern <= opt.replicationFactor)
-      << "softWriteConcern > opt.replicationFactor " << opt.softWriteConcern
-      << " > " << opt.replicationFactor;
 
-  //
-  // Compute the minimum forced LogIndex
-  //
-  // requires at least one participant
-  // a really ugly way to do filter/reduce
-  auto iter = std::begin(indexes);
-  auto minForcedCommitIndex = iter->index;
-  for (; iter != indexes.end(); ++iter) {
-    if (iter->isForced) {
-      if (iter->index < minForcedCommitIndex) {
-        minForcedCommitIndex = iter->index;
+  // number of failed participants
+  auto nrFailedServers = std::count_if(std::begin(indexes), std::end(indexes),
+                                       [](auto& p) { return p.isFailed(); });
+  auto actualWriteConcern =
+      std::max(opt._writeConcern, std::min(opt._replicationFactor - nrFailedServers,
+                                          opt._softWriteConcern));
+  TRI_ASSERT(actualWriteConcern > 0)
+      << "actualWriteConcern has to be at least 1";
+
+  // vector of participants that are neither excluded nor
+  // have failed
+  auto active = std::vector<ParticipantStateTuple>{};
+  std::copy_if(std::begin(indexes), std::end(indexes), std::back_inserter(active),
+                             [](auto& p) { return !p.isFailed() && !p.isExcluded(); });
+
+  // the minimal commit index caused by forced participants
+  // if there are no forced participants, this component is just
+  // the spearhead (the furthest we could commit to)
+  auto minForcedCommitIndex = spearhead;
+  for (auto const& pt : indexes) {
+    if (pt.isForced()) {
+      if (pt.index < minForcedCommitIndex) {
+        minForcedCommitIndex = pt.index;
       }
     }
-    }
+  }
 
-    // Get the list of all non-excluded participants
-    // and compute the smallest quorate log index
-    auto a = std::vector<IndexParticipantPair>{};
-    std::copy_if(indexes.begin(), indexes.end(), std::back_inserter(a), [](auto& i) { return not i.isExcluded; });
+  if (actualWriteConcern <= active.size()) {
+    auto nth = std::begin(active);
 
-    auto nth = a.begin();
-    std::advance(nth, quorumSize - 1);
+    // This should succeed because of the check above
+    std::advance(nth, actualWriteConcern - 1);
 
-    std::nth_element(a.begin(), nth, a.end(), [](auto& left, auto& right) {
+    TRI_ASSERT(nth != std::end(active));
+
+    std::nth_element(std::begin(active), nth, std::end(active), [](auto& left, auto& right) {
       return left.index > right.index;
     });
     auto const minNonExcludedCommitIndex = nth->index;
@@ -416,6 +479,9 @@ auto algorithms::calculateCommitIndex(std::vector<IndexParticipantPair>& indexes
     } else if (minForcedCommitIndex < minNonExcludedCommitIndex) {
       return {commitIndex, CommitFailReason::withForcedParticipantNotInQuorum()};
     }
+  }
 
-    return {commitIndex, CommitFailReason::withQuorumSizeNotReached()};
+  // This case happens when all servers are either excluded or failed;
+  // this certainly means we could not reach a quorum
+  return {currentCommitIndex, CommitFailReason::withQuorumSizeNotReached()};
 }

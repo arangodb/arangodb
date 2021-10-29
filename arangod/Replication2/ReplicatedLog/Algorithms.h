@@ -25,6 +25,7 @@
 
 #include <variant>
 #include <unordered_map>
+#include <set>
 
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -73,32 +74,46 @@ auto updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId, Reboot
                          LogId logId, agency::LogPlanSpecification const* spec) noexcept
     -> arangodb::Result;
 
-struct IndexParticipantPair : implement_compare<IndexParticipantPair> {
+enum class ParticipantFlag {
+  Excluded,
+  Forced,
+  Failed
+};
+using ParticipantFlags = std::set<ParticipantFlag>;
+
+struct ParticipantStateTuple : implement_compare<ParticipantStateTuple> {
   LogIndex index;
   ParticipantId id;
+  ParticipantFlags flags;
 
-  bool isExcluded{false};
-  bool isForced{false};
+  ParticipantStateTuple(LogIndex index, ParticipantId id, ParticipantFlags flags);
 
-  IndexParticipantPair(LogIndex index, ParticipantId id, bool exclude, bool force);
+  [[nodiscard]] auto isExcluded() const noexcept -> bool;
+  [[nodiscard]] auto isForced() const noexcept -> bool;
+  [[nodiscard]] auto isFailed() const noexcept -> bool;
 
-  friend auto operator<=(IndexParticipantPair, IndexParticipantPair) noexcept -> bool;
-  friend auto operator<<(std::ostream& os, IndexParticipantPair const& p) noexcept -> std::ostream&;
+  friend auto operator<=(ParticipantStateTuple, ParticipantStateTuple) noexcept -> bool;
+  friend auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept -> std::ostream&;
 };
 
-auto operator<=(IndexParticipantPair left, IndexParticipantPair right) noexcept -> bool;
-auto operator<<(std::ostream& os, IndexParticipantPair const& p) noexcept -> std::ostream&;
+auto operator<=(ParticipantStateTuple left, ParticipantStateTuple right) noexcept -> bool;
+auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept -> std::ostream&;
+auto operator<<(std::ostream& os, ParticipantFlag const& f) noexcept
+ -> std::ostream&;
 
 struct CalculateCommitIndexOptions {
   // TODO: Constructor that asserts relationships between
   // members
-  std::size_t const replicationFactor{0};
-  std::size_t const writeConcern{0};       // might be called quorumSize in other places
-  std::size_t const softWriteConcern{0};
+  std::size_t const _replicationFactor{0};
+  std::size_t const _writeConcern{0};       // might be called quorumSize in other places
+  std::size_t const _softWriteConcern{0};
+
+  CalculateCommitIndexOptions(std::size_t replicationFactor, std::size_t writeConcern, std::size_t softWriteConcern);
 };
 
-auto calculateCommitIndex(std::vector<IndexParticipantPair>& indexes,
-                          CalculateCommitIndexOptions const opt, LogIndex spearhead)
+auto calculateCommitIndex(std::vector<ParticipantStateTuple>& indexes,
+                          CalculateCommitIndexOptions const opt,
+                          LogIndex commitIndex, LogIndex spearhead)
     -> std::pair<LogIndex, replicated_log::CommitFailReason>;
 
 }  // namespace arangodb::replication2::algorithms
