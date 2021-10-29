@@ -18,11 +18,7 @@
       this.maxNumberOfMoveShards = options.maxNumberOfMoveShards;
     },
 
-    render: function (navi) {
-      $("#rebalanceShards *").prop('disabled', true);
-      arangoHelper.checkDatabasePermissions("", () => {
-        $("#rebalanceShards *").prop('disabled', false);
-      });
+    render: function () {
       if (window.location.hash === '#rebalanceShards') {
         arangoHelper.buildNodesSubNav('Rebalance Shards', false);
         this.$el.html(this.template.render({maxNumberOfMoveShards: this.maxNumberOfMoveShards}));
@@ -43,11 +39,6 @@
         data: JSON.stringify({}),
         async: true,
         success: function (data) {
-          if (data === true) {
-            window.setTimeout(function () {
-              self.render(false);
-            }, 3000);
-          }
           if (data.result.operations === 0) {
             arangoHelper.arangoNotification('No move shards operations were scheduled.');
           } else {
