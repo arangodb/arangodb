@@ -230,6 +230,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
 }
 
 TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
+  tid = TransactionId::createFollower();
   auto beforeRole = arangodb::ServerState::instance()->getRole();
   auto roleGuard = scopeGuard([&]() noexcept {
     arangodb::ServerState::instance()->setRole(beforeRole);
@@ -245,7 +246,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->ensureManagedTrx(vocbase, TransactionId::createFollower(), json->slice(), true);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), true);
   ASSERT_TRUE(res.ok());
 
   {
