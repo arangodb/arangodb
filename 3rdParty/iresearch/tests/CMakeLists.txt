@@ -30,6 +30,8 @@ set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
   ./analysis/collation_token_stream_test.cpp
+  ./analysis/classification_stream_test.cpp
+  ./analysis/nearest_neighbors_stream_test.cpp
   ./analysis/ngram_token_stream_test.cpp
   ./analysis/pipeline_stream_tests.cpp
   ./analysis/segmentation_stream_tests.cpp
@@ -126,8 +128,6 @@ set(IReSearch_tests_sources
   ./tests_param.cpp
   ./tests_main.cpp
 )
-
-
 
 set(IReSearch_tests_headers
   ./index/assert_format.hpp
@@ -274,6 +274,7 @@ include_directories(${IResearchTests_TARGET_NAME}-shared
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
   ${ICU_INCLUDE_DIR}
+  ${Fasttext_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
   ${FROZEN_INCLUDE_DIR}
@@ -287,6 +288,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
   ${ICU_INCLUDE_DIR}
+  ${Fasttext_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
   ${FROZEN_INCLUDE_DIR}
