@@ -270,10 +270,7 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node) cons
   return node;
 }
 
-std::vector<std::unique_ptr<NonConstExpression>> IndexNode::initializeOnce(
-    bool& hasV8Expression, std::vector<Variable const*>& inVars,
-    std::vector<RegisterId>& inRegs) const {
-
+NonConstExpressionContainer IndexNode::initializeOnce() const {
   if (_condition->root() != nullptr) {
     auto idx = _indexes.at(0);
     if (!idx) {
@@ -281,21 +278,9 @@ std::vector<std::unique_ptr<NonConstExpression>> IndexNode::initializeOnce(
                                      "The index id cannot be empty.");
     }
 
-    auto nonConstParts = utils::extractNonConstPartsOfIndexCondition(
+    return utils::extractNonConstPartsOfIndexCondition(
         _plan->getAst(), getRegisterPlan()->varInfo, options().evaluateFCalls,
         idx->sparse() || idx->isSorted(), _condition->root(), _outVariable);
-    // Refactoring todo:
-    // We can instead move around the nonConstParts container
-    // but the caller would need to be modified before.
-    hasV8Expression |= nonConstParts._hasV8Expression;
-    for (auto const& [varId, regId] : nonConstParts._varToRegisterMapping) {
-      auto v = _plan->getAst()->variables()->getVariable(varId);
-      // We have gotten the variable from this AST, it has to know it.
-      TRI_ASSERT(v != nullptr);
-      inVars.emplace_back(v);
-      inRegs.emplace_back(regId);
-    }
-    return std::move(nonConstParts._expressions);
   }
   return {};
 }
@@ -314,18 +299,9 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                                        std::to_string(maxWait) + ")");
   }
 
-  bool hasV8Expression = false;
-  /// @brief _inVars, a vector containing for each expression above
-  /// a vector of Variable*, used to execute the expression
-  std::vector<Variable const*> inVars;
-
-  /// @brief _inRegs, a vector containing for each expression above
-  /// a vector of RegisterId, used to execute the expression
-  std::vector<RegisterId> inRegs;
-
   /// @brief _nonConstExpressions, list of all non const expressions, mapped
   /// by their _condition node path indexes
-  std::vector<std::unique_ptr<NonConstExpression>> nonConstExpressions = initializeOnce(hasV8Expression, inVars, inRegs);
+  auto nonConstExpressions = initializeOnce();
 
   auto const outVariable = isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
   auto const outRegister = variableToRegisterId(outVariable);
@@ -369,10 +345,9 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   auto executorInfos =
       IndexExecutorInfos(outRegister, engine.getQuery(), this->collection(),
                          _outVariable, isProduceResult(), this->_filter.get(),
-                         this->projections(),
-                         std::move(nonConstExpressions), std::move(inVars),
-                         std::move(inRegs), hasV8Expression, doCount(), canReadOwnWrites(),
-                         _condition->root(), this->getIndexes(), _plan->getAst(), this->options(),
+                         this->projections(), std::move(nonConstExpressions),
+                         doCount(), canReadOwnWrites(), _condition->root(),
+                         this->getIndexes(), _plan->getAst(), this->options(),
                          _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(&engine, this,
