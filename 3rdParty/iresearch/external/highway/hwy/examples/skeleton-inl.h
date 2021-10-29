@@ -29,39 +29,29 @@
 // It is fine to #include normal or *-inl headers.
 #include <stddef.h>
 
-#include "hwy/examples/skeleton_shared.h"
 #include "hwy/highway.h"
 
 HWY_BEFORE_NAMESPACE();
 namespace skeleton {
 namespace HWY_NAMESPACE {
 
-using hwy::HWY_NAMESPACE::MulAdd;
+using namespace hwy::HWY_NAMESPACE;
 
-// Computes out[i] = in1[i] * kMultiplier + in2[i] for i < 256.
-HWY_MAYBE_UNUSED void ExampleMulAdd(const float* HWY_RESTRICT in1,
-                                    const float* HWY_RESTRICT in2,
-                                    float* HWY_RESTRICT out) {
-  // Descriptor(s) for all vector types used in this function.
-  HWY_FULL(float) df;
-
-  const auto mul = Set(df, kMultiplier);
-  for (size_t i = 0; i < 256; i += Lanes(df)) {
-    const auto result = MulAdd(mul, Load(df, in1 + i), Load(df, in2 + i));
-    Store(result, df, out + i);
+// Example of a type-agnostic (caller-specified lane type) and width-agnostic
+// (uses best available instruction set) function in a header.
+//
+// Computes x[i] = mul_array[i] * x_array[i] + add_array[i] for i < size.
+template <class D, typename T>
+HWY_MAYBE_UNUSED void MulAddLoop(const D d, const T* HWY_RESTRICT mul_array,
+                                 const T* HWY_RESTRICT add_array,
+                                 const size_t size, T* HWY_RESTRICT x_array) {
+  for (size_t i = 0; i < size; i += Lanes(d)) {
+    const auto mul = Load(d, mul_array + i);
+    const auto add = Load(d, add_array + i);
+    auto x = Load(d, x_array + i);
+    x = MulAdd(mul, x, add);
+    Store(x, d, x_array + i);
   }
-}
-
-// (This doesn't generate SIMD instructions, so is not required here)
-HWY_MAYBE_UNUSED const char* ExampleGatherStrategy() {
-  // Highway functions generate per-target implementations from the same source
-  // code via HWY_CAPPED(type, HWY_MIN(any_LANES_constants, ..)). If needed,
-  // entirely different codepaths can also be selected like so:
-#if HWY_GATHER_LANES > 1
-  return "Has gather";
-#else
-  return "Gather is limited to one lane";
-#endif
 }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)
