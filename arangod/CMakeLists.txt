@@ -312,6 +312,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ExecutionBlock.cpp
   Aql/ExecutionBlockImpl.cpp
   Aql/ExecutionEngine.cpp
+  Aql/ExecutionLocation.cpp
   Aql/ExecutionNode.cpp
   Aql/ExecutionNodeId.cpp
   Aql/ExecutionPlan.cpp

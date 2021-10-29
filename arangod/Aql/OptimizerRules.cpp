@@ -34,6 +34,7 @@
 #include "Aql/ConditionFinder.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -8411,6 +8412,22 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
 void arangodb::aql::distributeQueryRule(Optimizer* opt,
                                         std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
+  /*
+   * This struct can be moved out of this method.
+   * i just kept them in here for simplicity to move this rule into a seperate file
+   * there is nothing from the scope  required.
+   */
+  struct NodePositioner : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
+    bool before(arangodb::aql::ExecutionNode* n) override {
+      auto loc = n->getAllowedLocation();
+      LOG_DEVEL << loc;
+      // Always continue walking
+      return false;
+    };
+  } walker{};
+
+  plan->root()->walk(walker);
+
   bool modified = true;
   opt->addPlan(std::move(plan), rule, modified);
 }

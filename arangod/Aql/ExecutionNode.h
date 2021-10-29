@@ -97,6 +97,8 @@ template<typename T> struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct Variable;
 
+class ExecutionLocation;
+
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document
 
@@ -487,6 +489,16 @@ class ExecutionNode {
   [[nodiscard]] bool alwaysCopiesRows() const;
   
   auto getRegsToKeepStack() const -> RegIdSetStack;
+
+  /**
+   * @brief Every ExecutionNode needs to define on which locations it can
+   * be executed. This information is used within the optimizer to decide
+   * where the ExecutionNode will be placed.
+   */
+  // TODO: We need to decide if we want this to have a default implementation or not.
+  // PRO default: Most nodes can actually run anywhere, so less code.
+  // CON default: For new nodes you cannot forget to implement this.
+  [[nodiscard]] virtual ExecutionLocation getAllowedLocation() const;
 
  protected:
   /// @brief serialize this ExecutionNode to VelocyPack.

@@ -34,6 +34,7 @@
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -1149,6 +1150,10 @@ auto ExecutionNode::getRegsToKeepStack() const -> RegIdSetStack {
                                          getVariablesSetHere());
   }
   return _regsToKeepStack;
+}
+
+ExecutionLocation ExecutionNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
 }
 
 RegisterCount ExecutionNode::getNrOutputRegisters() const {
