@@ -1247,7 +1247,7 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
 std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites) {
+    ReadOwnWrites readOwnWrites, int, aql::Projections const*) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
   VPackBuilder searchValues;

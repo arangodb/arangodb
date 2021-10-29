@@ -80,7 +80,8 @@ class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
                                                       const aql::AstNode* node,
                                                       const aql::Variable* reference,
                                                       const IndexIteratorOptions& opts,
-                                                      ReadOwnWrites readOwnWrites) override;
+                                                      ReadOwnWrites readOwnWrites,
+                                                      int, aql::Projections const*) override;
 };
 
 namespace zkd {
