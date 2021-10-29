@@ -125,9 +125,7 @@
         const properties = vColl.properties();
 
         assertTrue(properties.isSmart);
-        console.warn("isDisjointness of " + collName + ":");
-        console.warn(properties.isDisjoint); // prints true
-        assertEqual(properties.isDisjoint, isDisjoint); // todo: why true?
+        assertEqual(properties.isDisjoint, isDisjoint);
         assertEqual(properties.smartGraphAttribute, 'value');
         assertEqual(properties.numberOfShards, 5);
         assertEqual(properties.replicationFactor, 1);
@@ -1437,8 +1435,6 @@
       for (const collName of [verticesNonSat, verticesSat, orphans]) {
         const vColl = db._collection(collName);
         const properties = vColl.properties();
-        console.warn("collection name:");
-        console.warn(collName);
         assertFalse(properties.isSmart);
         assertEqual(properties.isDisjoint, false);
         assertEqual(properties.smartGraphAttribute, undefined);
@@ -1557,16 +1553,14 @@
       const collVerticesSat     = db._collection(verticesSat);
       const collOrphans         = db._collection(orphans);
 
-      // only self-loops are saved as the others have different values of the 'value' key, which is the smartGraphAttribute field
+      // see explanation in the documentation to createHybridDisjointSmartGraphSingleServer() in file dump-set-common.inc
       assertEqual(eCollSatA.count(), 100);
       assertEqual(eCollAB.count(), 50);
-
-      // console.warn("HYBRID DISJOINT EDGES:");
-      // console.warn(eColl.toArray());
 
       assertEqual(collVerticesANonSat.count(), 50);
       assertEqual(collVerticesBNonSat.count(), 50);
       assertEqual(collVerticesSat.count(), 50);
+      // |verticesSat| + |verticesANonSat|. Faked: not really orphans but this is not tested
       assertEqual(collOrphans.count(), 100);
 
       for (const edge of eCollSatA.toArray().concat(eCollAB.toArray())) {

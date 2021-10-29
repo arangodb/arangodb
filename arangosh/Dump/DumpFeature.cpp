@@ -784,8 +784,6 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
                             std::string const& baseUrl,
                             std::string const& dbName,
                             uint64_t batchId) {
-    LOG_DEVEL << "BASE URL: " << baseUrl;
-
   std::unique_ptr<httpclient::SimpleHttpResult> response(
       client.request(rest::RequestType::GET, baseUrl, nullptr, 0));
   auto check = ::arangodb::HttpResponseChecker::check(client.getErrorMessage(), response.get());
@@ -870,8 +868,6 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
       return ::ErrorMalformedJsonResponse;
     }
     VPackSlice const parameters = collection.get("parameters");
-
-    LOG_DEVEL << "dumping: collection" << collection.toJson();
 
     if (!parameters.isObject()) {
       return ::ErrorMalformedJsonResponse;
