@@ -22,9 +22,12 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "./RefactoredSingleServerEdgeCursor.h"
-#include <Aql/AstNode.h>
+#include "RefactoredSingleServerEdgeCursor.h"
 
+#include "Aql/AstNode.h"
+#include "Aql/Ast.h"
+#include "Aql/AqlValueMaterializer.h"
+#include "Aql/NonConstExpression.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
@@ -41,6 +44,7 @@
 #endif
 
 using namespace arangodb;
+using namespace arangodb::aql;
 using namespace arangodb::graph;
 
 namespace {
@@ -60,15 +64,9 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
 }  // namespace
 
 template <class Step>
-RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(
-    transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-    std::optional<size_t> memberToUpdate, aql::Expression* expression, size_t cursorID)
-    : _idxHandle(std::move(idx)),
-      _expression(expression),
-      _indexCondition(condition),
-      _cursorID(cursorID),
-      _cursor(nullptr),
-      _conditionMemberToUpdate(memberToUpdate) {}
+RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(IndexAccessor* accessor)
+    : _accessor(accessor),
+      _cursor(nullptr) {}
 
 template <class Step>
 RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(LookupInfo&& other) = default;
@@ -78,23 +76,23 @@ RefactoredSingleServerEdgeCursor<Step>::LookupInfo::~LookupInfo() = default;
 
 template <class Step>
 aql::Expression* RefactoredSingleServerEdgeCursor<Step>::LookupInfo::getExpression() {
-  return _expression;
+  return _accessor->getExpression();
 }
 
 template <class Step>
 size_t RefactoredSingleServerEdgeCursor<Step>::LookupInfo::getCursorID() const {
-  return _cursorID;
+  return _accessor->cursorId();
 }
 
 template <class Step>
 void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     VertexType vertex, transaction::Methods* trx, arangodb::aql::Variable const* tmpVar) {
-  auto& node = _indexCondition;
+  auto* node = _accessor->getCondition();
   // We need to rewire the search condition for the new vertex
   TRI_ASSERT(node->numMembers() > 0);
-  if (_conditionMemberToUpdate.has_value()) {
+  if (_accessor->getMemberToUpdate().has_value()) {
     // We have to inject _from/_to iff the condition needs it
-    auto dirCmp = node->getMemberUnchecked(_conditionMemberToUpdate.value());
+    auto dirCmp = node->getMemberUnchecked(_accessor->getMemberToUpdate().value());
     TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
     TRI_ASSERT(dirCmp->numMembers() == 2);
 
@@ -111,7 +109,7 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     // We only get into this case iff the index used does
     // not cover _from resp. _to.
     // inject _from/_to value
-    auto expressionNode = _expression->nodeForModification();
+    auto expressionNode = _accessor->getExpression()->nodeForModification();
 
     TRI_ASSERT(expressionNode->numMembers() > 0);
     auto dirCmp = expressionNode->getMemberUnchecked(expressionNode->numMembers() - 1);
@@ -137,8 +135,8 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
   } else {
     // rearming not supported - we need to throw away the index iterator
     // and create a new one
-    _cursor = trx->indexScanForCondition(_idxHandle, node, tmpVar, ::defaultIndexIteratorOptions, ReadOwnWrites::no,
-                                         static_cast<int>(_conditionMemberToUpdate.has_value()? _conditionMemberToUpdate.value(): -1),
+    _cursor = trx->indexScanForCondition(_accessor->indexHandle(), node, tmpVar, ::defaultIndexIteratorOptions, ReadOwnWrites::no,
+                                         static_cast<int>(_accessor->getMemberToUpdate().has_value()? _accessor->getMemberToUpdate().value(): -1),
                                          nullptr);
   }
 }
@@ -153,8 +151,8 @@ IndexIterator& RefactoredSingleServerEdgeCursor<Step>::LookupInfo::cursor() {
 template <class Step>
 RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
     transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
-    std::vector<IndexAccessor> const& globalIndexConditions,
-    std::unordered_map<uint64_t, std::vector<IndexAccessor>> const& depthBasedIndexConditions,
+    std::vector<IndexAccessor>& globalIndexConditions,
+    std::unordered_map<uint64_t, std::vector<IndexAccessor>>& depthBasedIndexConditions,
     arangodb::aql::FixedVarExpressionContext& expressionContext, bool requiresFullDocument)
     : _tmpVar(tmpVar),
       _trx(trx),
@@ -165,26 +163,60 @@ RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
   _lookupInfo.reserve(globalIndexConditions.size());
   _depthLookupInfo.reserve(depthBasedIndexConditions.size());
 
-  for (auto const& idxCond : globalIndexConditions) {
-    _lookupInfo.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
-                             idxCond.getMemberToUpdate(),
-                             idxCond.getExpression(), idxCond.cursorId());
+  for (auto& idxCond : globalIndexConditions) {
+    _lookupInfo.emplace_back(&idxCond);
   }
-  for (auto const& obj : depthBasedIndexConditions) {
+  for (auto& obj : depthBasedIndexConditions) {
     // Need to reset cursor ID.
     // The cursorID relates to the used collection
     // not the condition
     auto& [depth, idxCondArray] = obj;
 
     std::vector<LookupInfo> tmpLookupVec;
-    for (auto const& idxCond : idxCondArray) {
-      tmpLookupVec.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
-                                idxCond.getMemberToUpdate(),
-                                idxCond.getExpression(), idxCond.cursorId());
+    for (auto& idxCond : idxCondArray) {
+      tmpLookupVec.emplace_back(&idxCond);
     }
     _depthLookupInfo.try_emplace(depth, std::move(tmpLookupVec));
   }
 }
+
+template <class Step>
+void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::calculateIndexExpressions(Ast* ast, ExpressionContext& ctx) {
+  if (!_accessor->hasNonConstParts()) {
+    return;
+  }
+
+  // The following are needed to evaluate expressions with local data from
+  // the current incoming item:
+  auto& nonConstPart = _accessor->nonConstPart();
+  for (auto& toReplace : nonConstPart._expressions) {
+    auto exp = toReplace->expression.get();
+    bool mustDestroy;
+    AqlValue a = exp->execute(&ctx, mustDestroy);
+    AqlValueGuard guard(a, mustDestroy);
+
+    AqlValueMaterializer materializer(&(ctx.trx().vpackOptions()));
+    VPackSlice slice = materializer.slice(a, false);
+    AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
+
+    AstNode* tmp = _accessor->getCondition();
+    for (size_t x = 0; x < toReplace->indexPath.size(); x++) {
+      size_t idx = toReplace->indexPath[x];
+      AstNode* old = tmp->getMember(idx);
+      // modify the node in place
+      TEMPORARILY_UNLOCK_NODE(tmp);
+      if (x + 1 < toReplace->indexPath.size()) {
+        AstNode* cpy = old;
+        tmp->changeMember(idx, cpy);
+        tmp = cpy;
+      } else {
+        // insert the actual expression value
+        tmp->changeMember(idx, evaluatedNode);
+      }
+    }
+  }
+}
+
 
 template <class Step>
 RefactoredSingleServerEdgeCursor<Step>::~RefactoredSingleServerEdgeCursor() {}
@@ -320,6 +352,19 @@ auto RefactoredSingleServerEdgeCursor<Step>::getLookupInfos(uint64_t depth)
     return _lookupInfo;
   }
   return depthInfo->second;
+}
+
+template <class Step>
+void RefactoredSingleServerEdgeCursor<Step>::prepareIndexExpressions(aql::Ast* ast) {
+  for (auto& it : _lookupInfo) {
+    it.calculateIndexExpressions(ast, _expressionCtx);
+  }
+
+  for (auto& [unused, infos] : _depthLookupInfo) {
+    for (auto& info : infos) {
+      info.calculateIndexExpressions(ast, _expressionCtx);
+    }
+  }
 }
 
 template class arangodb::graph::RefactoredSingleServerEdgeCursor<SingleServerProviderStep>;

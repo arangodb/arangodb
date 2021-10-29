@@ -41,7 +41,7 @@ class Methods;
 class TransactionState;
 
 /// @brief collection used in a transaction
-class RocksDBTransactionCollection final : public TransactionCollection {
+class RocksDBTransactionCollection : public TransactionCollection {
  public:
   RocksDBTransactionCollection(TransactionState* trx, DataSourceId cid,
                                AccessMode::Type accessType);

@@ -310,7 +310,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   void lookupInRocksDB(VPackStringRef fromTo) {
     // Bad (slow) case: read from RocksDB
     
-    auto* mthds = RocksDBTransactionState::toMethods(_trx);
+    auto* mthds = RocksDBTransactionState::toMethods(_trx, _collection->id());
     
     // create iterator only on demand, so we save the allocation in case
     // the reads can be satisfied from the cache
@@ -636,7 +636,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   RocksDBTransactionState::toState(trx)->prepareForParallelReads();
 
   auto rocksColl = toRocksDBCollection(_collection);
-  auto* mthds = RocksDBTransactionState::toMethods(trx);
+  auto* mthds = RocksDBTransactionState::toMethods(trx, _collection.id());
   auto bounds = RocksDBKeyBounds::EdgeIndex(objectId());
 
   uint64_t expectedCount = rocksColl->meta().numberDocuments();
@@ -724,7 +724,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
   VPackBuilder builder;
 
   // intentional copy of the read options
-  auto* mthds = RocksDBTransactionState::toMethods(trx);
+  auto* mthds = RocksDBTransactionState::toMethods(trx, _collection.id());
   rocksdb::Slice const end = upper;
   rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   options.iterate_upper_bound = &end;    // safe to use on rocksb::DB directly

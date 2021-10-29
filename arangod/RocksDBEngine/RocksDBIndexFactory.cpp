@@ -124,8 +124,8 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
                    velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_FULLTEXT_INDEX)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
-        !definition.hasKey("objectId")) {
-      normalized.add("objectId",
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
                      velocypack::Value(std::to_string(TRI_NewTickServer())));
     }
 
@@ -154,8 +154,8 @@ struct GeoIndexFactory : public DefaultIndexFactory {
                    velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
-        !definition.hasKey("objectId")) {
-      normalized.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId, VPackValue(std::to_string(TRI_NewTickServer())));
     }
 
     return IndexFactory::enhanceJsonIndexGeo(definition, normalized, isCreation, 1, 2);
@@ -183,8 +183,8 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
                    velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
-        !definition.hasKey("objectId")) {
-      normalized.add("objectId",
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
                      velocypack::Value(std::to_string(TRI_NewTickServer())));
     }
 
@@ -213,8 +213,8 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
                    velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
-        !definition.hasKey("objectId")) {
-      normalized.add("objectId",
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
                      velocypack::Value(std::to_string(TRI_NewTickServer())));
     }
 
@@ -244,8 +244,8 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
                    velocypack::Value(Index::oldtypeName(type)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
-        !definition.hasKey("objectId")) {
-      normalized.add("objectId",
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
                      velocypack::Value(std::to_string(TRI_NewTickServer())));
     }
     if (isCreation) { 
@@ -284,8 +284,8 @@ struct ZkdIndexFactory : public DefaultIndexFactory {
                        arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_ZKD_INDEX)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
-        !definition.hasKey("objectId")) {
-      normalized.add("objectId",
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
                      arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
     }
 
@@ -315,8 +315,8 @@ struct TtlIndexFactory : public DefaultIndexFactory {
                    velocypack::Value(Index::oldtypeName(_type)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
-        !definition.hasKey("objectId")) {
-      normalized.add("objectId",
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
                      velocypack::Value(std::to_string(TRI_NewTickServer())));
     }
     // a TTL index never uses index estimates

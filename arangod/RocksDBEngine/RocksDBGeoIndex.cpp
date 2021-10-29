@@ -55,7 +55,7 @@ class RDBNearIterator final : public IndexIterator {
         // geo index never needs to observe own writes since it cannot be used for an UPSERT subquery
         _index(index),
         _near(std::move(params)) {
-    RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx);
+    RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx, _collection->id());
     _iter = mthds->NewIterator(_index->columnFamily(), {});
     TRI_ASSERT(_index->columnFamily()->GetID() ==
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex)
