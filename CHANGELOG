@@ -1,9 +1,13 @@
-v3.8.2 (XXXX-XX-XX)
+v3.8.3 (XXXX-XX-XX)
 -------------------
 
 * arangorestore: Fix the order (regarding distributeShardsLike) in which
   collections are being created during restore, which could result in an error
   and make manual intervention necessary.
+
+
+v3.8.2 (XXXX-XX-XX)
+-------------------
 
 * Updated ArangoDB Starter to 0.15.3.
 
