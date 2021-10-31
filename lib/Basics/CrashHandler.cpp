@@ -245,7 +245,10 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
     unsigned char const* s = reinterpret_cast<unsigned char const*>(&x);
     appendHexValue(s, sizeof(unsigned char const*), p, false);
   }
-
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+  // FIXME: implement ARM64 context output
+  appendNullTerminatedString(" ARM64 CPU context: is not available ", p);
+#else
   auto ctx = static_cast<ucontext_t*>(ucontext);
   if (ctx) {
     auto appendRegister = [ctx, &p](const char* prefix, int reg) {
@@ -273,6 +276,7 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
     appendRegister(", r14: 0x", REG_R14);
     appendRegister(", r15: 0x", REG_R15);
   }
+#endif
 #endif
 
   return p - s;
