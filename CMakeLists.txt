@@ -4,9 +4,6 @@
 # General
 # ------------------------------------------------------------------------------
 
-# Initialises toolchains
-PROJECT(arangodb NONE)
-
 cmake_minimum_required(VERSION 3.9)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
@@ -28,13 +25,6 @@ if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"
 endif ()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
-
-message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
-  set(BUILDING_FOR_ARM64 ON)
-else()
-  set(BUILDING_FOR_ARM64 OFF)
-endif()
 
 if (APPLE)
   if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
@@ -703,6 +693,13 @@ endif ()
 ################################################################################
 ## TARGET ARCHITECTURE
 ################################################################################
+
+message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
+  set(BUILDING_FOR_ARM64 ON)
+else()
+  set(BUILDING_FOR_ARM64 OFF)
+endif()
 
 set(ARANGODB_SSE42_FLAGS "")
 if (WINDOWS)
