@@ -24,7 +24,7 @@ else()
 endif()
 
 # test for arm
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
    set(BASE_FLAGS
      ${BASE_FLAGS}
      "-D__ARM_NEON__"
