@@ -552,6 +552,9 @@ function createSmartGraph() {
   db[orphans].save(vDocs);
 }
 
+/**
+ * A cycle of length 100 with a symmetric edge relation and self-loops on every vertex
+ */
 function createSmartGraphSingleServer() {
   if (!isEnterprise) {
     return;
@@ -579,6 +582,9 @@ function createSmartGraphSingleServer() {
   db[orphans].save(docs.vDocs);
 }
 
+/**
+ * Two disjoint cycles of length 50 each with a symmetric edge relation and self-loops on every vertex
+ */
 function createDisjointGraphSingleServer() {
   if (!isEnterprise) {
     return;
@@ -610,6 +616,10 @@ function createDisjointGraphSingleServer() {
   db[orphans].save(docs1.vDocs);
   db[orphans].save(docs2.vDocs);
 }
+
+/**
+ * Two disjoint cycles of length 50 each with a symmetric edge relation and self-loops on every vertex
+ */
 
 function createSatelliteGraphSingleServer() {
   if (!isEnterprise) {
@@ -1104,10 +1114,6 @@ exports.createSatelliteGraphSingleServer = createSatelliteGraphSingleServer;
 exports.createDisjointGraphSingleServer = createDisjointGraphSingleServer;
 exports.createHybridSmartGraphSingleServer = createHybridSmartGraphSingleServer;
 exports.createHybridDisjointSmartGraphSingleServer = createHybridDisjointSmartGraphSingleServer;
-// todo: hybrid disjoint
-// A -> B -> C
-// A smart, B satellite, C smart: A-B-C okay,
-// A-C okay only if the same attribute
 
 exports.createSmartArangoSearch = createSmartArangoSearch;
 exports.createSatelliteCollections = createSatelliteCollections;
