@@ -725,8 +725,10 @@ else ()
 
   # Detect target architecture properties. This honors
   # any target architecture set via -DTARGET_ARCHITECTURE=...
-  include(OptimizeForArchitecture)
-  OptimizeForArchitecture()
+  if (NOT BUILDING_FOR_ARM64)
+    include(OptimizeForArchitecture)
+    OptimizeForArchitecture()
+  endif ()
 
   if (USE_SSE4_2)
     set(ARANGODB_SSE42_FLAGS "-msse4.2")
