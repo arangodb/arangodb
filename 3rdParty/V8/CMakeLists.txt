@@ -92,7 +92,9 @@ list(APPEND V8_GYP_ARGS
   -DV8_ROOT=${V8_RELATIVE_SOURCE_DIR}
   #$ ${V8_REL_TARGET_PATH}
   -Dv8_target_arch=${V8_PROC_ARCH}
+  -Dtarget_arch=${V8_PROC_ARCH}
   -Dv8_host_arch=${V8_PROC_ARCH}
+  -Dhost_arch=${V8_PROC_ARCH}
   -Dbyteorder=${ENDIANESS}
   -Dv8_enable_i18n_support=1
   -DV8_SRC_ROOT=${GYP_FILES_DIR}/
