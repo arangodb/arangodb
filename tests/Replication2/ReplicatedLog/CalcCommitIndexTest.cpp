@@ -31,7 +31,7 @@ using namespace arangodb::replication2::replicated_log;
 
 struct CalcCommitIndexTest : ::testing::Test {};
 
-TEST_F(CalcCommitIndexTest, write_concern_1_single_pariticpant) {
+TEST_F(CalcCommitIndexTest, write_concern_1_single_participant) {
 
   auto participants = std::vector{
   ParticipantStateTuple{LogIndex{50}, "A", {}},
