@@ -28,6 +28,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
+#include "Basics/signals.h"
 #include "Basics/voc-errors.h"
 
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -39,10 +40,6 @@
 
 #ifdef ARANGODB_HAVE_THREAD_POLICY
 #include <mach/mach.h>
-#endif
-
-#ifdef TRI_HAVE_SIGNAL_H
-#include <signal.h>
 #endif
 
 #include "Basics/tri-strings.h"
@@ -68,9 +65,7 @@ struct thread_data_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void* ThreadStarter(void* data) {
-  sigset_t all;
-  sigfillset(&all);
-  pthread_sigmask(SIG_SETMASK, &all, nullptr);
+  arangodb::signals::maskAllSignals();
 
   // this will automatically free the thread struct when leaving this function
   std::unique_ptr<thread_data_t> d(static_cast<thread_data_t*>(data));

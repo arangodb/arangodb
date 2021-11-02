@@ -91,16 +91,6 @@ static bool supportsStdRegex() {
   return false;
 }
 
-static void abortHandler(int signum) {
-  TRI_PrintBacktrace();
-#ifdef _WIN32
-  exit(255 + signum);
-#else
-  signal(signum, SIG_DFL);
-  kill(getpid(), signum);
-#endif
-}
-
 #ifndef _WIN32
 static void ReopenLog(int) { LogAppender::reopen(); }
 #endif
@@ -221,24 +211,6 @@ int ArangoGlobalContext::exit(int ret) {
 void ArangoGlobalContext::installHup() {
 #ifndef _WIN32
   signal(SIGHUP, ReopenLog);
-#endif
-}
-
-void ArangoGlobalContext::installSegv() { signal(SIGSEGV, abortHandler); }
-
-void ArangoGlobalContext::maskAllSignals() {
-#ifdef TRI_HAVE_POSIX_THREADS
-  sigset_t all;
-  sigfillset(&all);
-  pthread_sigmask(SIG_SETMASK, &all, nullptr);
-#endif
-}
-
-void ArangoGlobalContext::unmaskStandardSignals() {
-#ifdef TRI_HAVE_POSIX_THREADS
-  sigset_t all;
-  sigfillset(&all);
-  pthread_sigmask(SIG_UNBLOCK, &all, nullptr);
 #endif
 }
 

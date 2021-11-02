@@ -46,9 +46,6 @@ class ArangoGlobalContext {
   std::string const& getBinaryPath() const { return _binaryPath; }
   int exit(int ret);
   void installHup();
-  void installSegv();
-  void maskAllSignals();
-  void unmaskStandardSignals();
   void runStartupChecks();
   bool useEventLog() { return _useEventLog; }
 
