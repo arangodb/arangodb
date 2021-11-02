@@ -133,7 +133,8 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
       // track local limit violation
       _global.trackLocalViolation();
       // now we can safely signal an exception
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_RESOURCE_LIMIT, "query would use more memory than allowed");
     }
 
     // instance's own memory usage counter has been updated successfully once we got here.

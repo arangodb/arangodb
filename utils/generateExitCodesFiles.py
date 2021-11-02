@@ -112,8 +112,7 @@ def genCHeaderFile(errors):
   wiki = "/// Exit codes and meanings\n"\
        + "/// The following codes might be returned when exiting ArangoDB:\n"
 
-  header =   "#ifndef ARANGODB_BASICS_EXIT_CODES_H\n"\
-           + "#define ARANGODB_BASICS_EXIT_CODES_H 1\n"\
+  header =   "#pragma once\n"\
            + "\n"\
            + "#include \"Basics/error.h\"\n"\
            + "\n"\
@@ -130,8 +129,6 @@ def genCHeaderFile(errors):
            + "\n"
 
   header = header\
-         + "\n"\
-         + "#endif\n"\
          + "\n"
 
   return header

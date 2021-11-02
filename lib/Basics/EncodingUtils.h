@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGOD_BASICS_ENCODING_UTILS_H
-#define ARANGOD_BASICS_ENCODING_UTILS_H 1
 
 #include <velocypack/Buffer.h>
 
@@ -38,5 +36,3 @@ bool gzipDeflate(uint8_t* compressed, size_t compressedLength,
 
 }  // namespace encoding
 }  // namespace arangodb
-
-#endif
