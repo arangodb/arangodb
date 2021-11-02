@@ -44,11 +44,6 @@
 // central tendency of the measurement samples with the "half sample mode",
 // which is more robust to outliers and skewed data than the mean or median.
 
-// WARNING if included from multiple translation units compiled with distinct
-// flags: this header requires textual inclusion and a predefined NB_NAMESPACE
-// macro that is unique to the current compile flags. We must also avoid
-// standard library headers such as vector and functional that define functions.
-
 #include <stddef.h>
 #include <stdint.h>
 
@@ -78,6 +73,16 @@ namespace platform {
 // means the tick counter frequency is independent of CPU throttling or sleep.
 // This call may be expensive, callers should cache the result.
 double InvariantTicksPerSecond();
+
+// Returns current timestamp [in seconds] relative to an unspecified origin.
+// Features: monotonic (no negative elapsed time), steady (unaffected by system
+// time changes), high-resolution (on the order of microseconds).
+double Now();
+
+// Returns ticks elapsed in back to back timer calls, i.e. a function of the
+// timer resolution (minimum measurable difference) and overhead.
+// This call is expensive, callers should cache the result.
+uint64_t TimerResolution();
 
 }  // namespace platform
 

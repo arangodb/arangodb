@@ -1323,7 +1323,7 @@ bool write_fields(
     field_writer->write(
       field_meta.name,
       field_meta.index_features,
-      field_meta.features,
+      features,
       *terms);
   }
 

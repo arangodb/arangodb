@@ -23,34 +23,19 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <cmath>  // isfinite
 #include <cstddef>
 #include <string>
-#include <utility>  // std::forward
+#include <utility>  // std::tuple
 
+#include "gtest/gtest.h"
 #include "hwy/aligned_allocator.h"
 #include "hwy/base.h"
 #include "hwy/highway.h"
-
-#ifndef HWY_TEST_STANDALONE
-#if HWY_ARCH_RVV
-// TODO(janwas): remove once gTest is supported.
-#define HWY_TEST_STANDALONE 1
-#else
-#define HWY_TEST_STANDALONE 0
-#endif
-#endif
-
-#if !HWY_TEST_STANDALONE
-#include "gtest/gtest.h"
-#endif
 
 namespace hwy {
 
 // The maximum vector size used in tests when defining test data. DEPRECATED.
 constexpr size_t kTestMaxVectorSize = 64;
-
-#if !HWY_TEST_STANDALONE
 
 // googletest before 1.10 didn't define INSTANTIATE_TEST_SUITE_P() but instead
 // used INSTANTIATE_TEST_CASE_P which is now deprecated.
@@ -86,7 +71,8 @@ class TestWithParamTarget : public testing::TestWithParam<uint32_t> {
 
 // Function to convert the test parameter of a TestWithParamTarget for
 // displaying it in the gtest test name.
-std::string TestParamTargetName(const testing::TestParamInfo<uint32_t>& info) {
+static inline std::string TestParamTargetName(
+    const testing::TestParamInfo<uint32_t>& info) {
   return TargetName(info.param);
 }
 
@@ -170,66 +156,9 @@ std::string TestParamTargetNameAndT(
   static_assert(true, "For requiring trailing semicolon")
 
 #define HWY_BEFORE_TEST(suite)                      \
-  namespace hwy {                                   \
   class suite : public hwy::TestWithParamTarget {}; \
   HWY_TARGET_INSTANTIATE_TEST_SUITE_P(suite);       \
   static_assert(true, "For requiring trailing semicolon")
-
-#define HWY_AFTER_TEST() \
-  } /* namespace hwy */       \
-  static_assert(true, "For requiring trailing semicolon")
-
-#else
-
-// Cannot be a function, otherwise the HWY_EXPORT table defined here will not
-// be visible to HWY_DYNAMIC_DISPATCH.
-#define HWY_EXPORT_AND_TEST_P(suite, func_name)            \
-  HWY_EXPORT(func_name);                                   \
-  SetSupportedTargetsForTest(0);                           \
-  for (uint32_t target : SupportedAndGeneratedTargets()) { \
-    SetSupportedTargetsForTest(target);                    \
-    fprintf(stderr, "=== %s for %s:\n", #func_name,        \
-            TargetName(static_cast<int>(target)));         \
-    HWY_DYNAMIC_DISPATCH(func_name)();                     \
-  }                                                        \
-  /* Disable the mask after the test. */                   \
-  SetSupportedTargetsForTest(0);                           \
-  static_assert(true, "For requiring trailing semicolon")
-
-#define HWY_BEFORE_TEST(suite) \
-  namespace hwy {              \
-  void RunAll() {              \
-    static_assert(true, "For requiring trailing semicolon")
-
-#define HWY_AFTER_TEST()               \
-  } /* RunAll*/                             \
-  } /* namespace hwy */                     \
-  int main(int /*argc*/, char** /*argv*/) { \
-    hwy::RunAll();                          \
-    fprintf(stderr, "Success.\n");          \
-    return 0;                               \
-  }                                         \
-  static_assert(true, "For requiring trailing semicolon")
-
-// TODO(janwas): this only works for tests with a single TEST.
-#define TEST(suite, name) void main()
-#endif
-
-// Calls test for each enabled and available target.
-template <class Func, typename... Args>
-HWY_NOINLINE void RunTest(const Func& func, Args&&... args) {
-  SetSupportedTargetsForTest(0);
-  auto targets = SupportedAndGeneratedTargets();
-
-  for (uint32_t target : targets) {
-    SetSupportedTargetsForTest(target);
-    fprintf(stderr, "Testing for target %s.\n",
-            TargetName(static_cast<int>(target)));
-    func(std::forward<Args>(args)...);
-  }
-  // Disable the mask after the test.
-  SetSupportedTargetsForTest(0);
-}
 
 // 64-bit random generator (Xorshift128+). Much smaller state than std::mt19937,
 // which triggers a compiler bug.
@@ -266,15 +195,21 @@ static HWY_INLINE uint32_t Random32(RandomState* rng) {
   return static_cast<uint32_t>((*rng)());
 }
 
+static HWY_INLINE uint64_t Random64(RandomState* rng) {
+  return (*rng)();
+}
+
 // Prevents the compiler from eliding the computations that led to "output".
 // Works by indicating to the compiler that "output" is being read and modified.
 // The +r constraint avoids unnecessary writes to memory, but only works for
 // built-in types.
 template <class T>
 inline void PreventElision(T&& output) {
-#ifndef _MSC_VER
+#if HWY_COMPILER_MSVC
+  (void)output;
+#else   // HWY_COMPILER_MSVC
   asm volatile("" : "+r"(output) : : "memory");
-#endif
+#endif  // HWY_COMPILER_MSVC
 }
 
 // Returns a name for the vector/part/scalar. The type prefix is u/i/f for
@@ -283,23 +218,34 @@ inline void PreventElision(T&& output) {
 // understanding which instantiation of a generic test failed.
 template <typename T>
 static inline std::string TypeName(T /*unused*/, size_t N) {
-  std::string prefix(IsFloat<T>() ? "f" : (IsSigned<T>() ? "i" : "u"));
-  prefix += std::to_string(sizeof(T) * 8);
-
-  // Scalars: omit the xN suffix.
-  if (N == 1) return prefix;
-
-  return prefix + 'x' + std::to_string(N);
+  const char prefix = IsFloat<T>() ? 'f' : (IsSigned<T>() ? 'i' : 'u');
+  char name[64];
+  // Omit the xN suffix for scalars.
+  if (N == 1) {
+    snprintf(name, sizeof(name), "%c%zu", prefix, sizeof(T) * 8);
+  } else {
+    snprintf(name, sizeof(name), "%c%zux%zu", prefix, sizeof(T) * 8, N);
+  }
+  return name;
 }
 
 // String comparison
 
 template <typename T1, typename T2>
-inline bool BytesEqual(const T1* p1, const T2* p2, const size_t size) {
+inline bool BytesEqual(const T1* p1, const T2* p2, const size_t size,
+                       size_t* pos = nullptr) {
   const uint8_t* bytes1 = reinterpret_cast<const uint8_t*>(p1);
   const uint8_t* bytes2 = reinterpret_cast<const uint8_t*>(p2);
   for (size_t i = 0; i < size; ++i) {
-    if (bytes1[i] != bytes2[i]) return false;
+    if (bytes1[i] != bytes2[i]) {
+      fprintf(stderr, "Mismatch at byte %zu of %zu: %d != %d (%s, %s)\n", i,
+              size, bytes1[i], bytes2[i], TypeName(T1(), 1).c_str(),
+              TypeName(T2(), 1).c_str());
+      if (pos != nullptr) {
+        *pos = i;
+      }
+      return false;
+    }
   }
   return true;
 }
@@ -327,20 +273,41 @@ HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
 
+template <typename T, HWY_IF_LANE_SIZE(T, 1)>
+HWY_NOINLINE void PrintValue(T value) {
+  uint8_t byte;
+  CopyBytes<1>(&value, &byte);  // endian-safe: we ensured sizeof(T)=1.
+  fprintf(stderr, "0x%02X,", byte);
+}
+
+#if HWY_CAP_FLOAT16
+HWY_NOINLINE void PrintValue(float16_t value) {
+  uint16_t bits;
+  CopyBytes<2>(&value, &bits);
+  fprintf(stderr, "0x%02X,", bits);
+}
+#endif
+
+template <typename T, HWY_IF_NOT_LANE_SIZE(T, 1)>
+HWY_NOINLINE void PrintValue(T value) {
+  fprintf(stderr, "%g,", double(value));
+}
+
 // Prints lanes around `lane`, in memory order.
-template <class D>
-HWY_NOINLINE void Print(const D d, const char* caption, const Vec<D> v,
-                        intptr_t lane = 0) {
+template <class D, class V = Vec<D>>
+HWY_NOINLINE void Print(const D d, const char* caption, VecArg<V> v,
+                        size_t lane_u = 0, size_t max_lanes = 7) {
   using T = TFromD<D>;
   const size_t N = Lanes(d);
   auto lanes = AllocateAligned<T>(N);
   Store(v, d, lanes.get());
-  const size_t begin = static_cast<size_t>(std::max<intptr_t>(0, lane - 2));
-  const size_t end = std::min(begin + 5, N);
+  const intptr_t lane = intptr_t(lane_u);
+  const size_t begin = static_cast<size_t>(HWY_MAX(0, lane - 2));
+  const size_t end = HWY_MIN(begin + max_lanes, N);
   fprintf(stderr, "%s %s [%zu+ ->]:\n  ", TypeName(T(), N).c_str(), caption,
           begin);
   for (size_t i = begin; i < end; ++i) {
-    fprintf(stderr, "%s,", std::to_string(lanes[i]).c_str());
+    PrintValue(lanes[i]);
   }
   if (begin >= end) fprintf(stderr, "(out of bounds)");
   fprintf(stderr, "\n");
@@ -381,12 +348,12 @@ MakeUnsigned<TF> ComputeUlpDelta(TF x, TF y) {
   const TU ux = BitCast<TU>(x);
   const TU uy = BitCast<TU>(y);
   // Avoid unsigned->signed cast: 2's complement is only guaranteed by C++20.
-  return std::max(ux, uy) - std::min(ux, uy);
+  return HWY_MAX(ux, uy) - HWY_MIN(ux, uy);
 }
 
 template <typename T, HWY_IF_NOT_FLOAT(T)>
 HWY_NOINLINE bool IsEqual(const T expected, const T actual) {
-  return expected == actual;
+  return memcmp(&expected, &actual, sizeof(T)) == 0;
 }
 
 template <typename T, HWY_IF_FLOAT(T)>
@@ -401,10 +368,12 @@ HWY_NOINLINE void AssertEqual(const T expected, const T actual,
                               const char* filename = "", const int line = -1,
                               const size_t lane = 0) {
   if (!IsEqual(expected, actual)) {
-    const std::string expected_str = std::to_string(expected);
-    const std::string actual_str = std::to_string(actual);
-    NotifyFailure(filename, line, type_name.c_str(), lane, expected_str.c_str(),
-                  actual_str.c_str());
+    char expected_str[100];
+    snprintf(expected_str, sizeof(expected_str), "%g", double(expected));
+    char actual_str[100];
+    snprintf(actual_str, sizeof(actual_str), "%g", double(actual));
+    NotifyFailure(filename, line, type_name.c_str(), lane, expected_str,
+                  actual_str);
   }
 }
 
@@ -418,7 +387,7 @@ static HWY_NOINLINE HWY_MAYBE_UNUSED void AssertStringEqual(
 
 // Compare expected vector to vector.
 template <class D, class V>
-HWY_NOINLINE void AssertVecEqual(D d, const V expected, const V actual,
+HWY_NOINLINE void AssertVecEqual(D d, VecArg<V> expected, VecArg<V> actual,
                                  const char* filename, const int line) {
   using T = TFromD<D>;
   const size_t N = Lanes(d);
@@ -431,43 +400,91 @@ HWY_NOINLINE void AssertVecEqual(D d, const V expected, const V actual,
       fprintf(stderr, "\n\n");
       Print(d, "expect", expected, i);
       Print(d, "actual", actual, i);
+
+      char expected_str[100];
+      snprintf(expected_str, sizeof(expected_str), "%g",
+               double(expected_lanes[i]));
+      char actual_str[100];
+      snprintf(actual_str, sizeof(actual_str), "%g", double(actual_lanes[i]));
+
       NotifyFailure(filename, line, hwy::TypeName(T(), N).c_str(), i,
-                    std::to_string(expected_lanes[i]).c_str(),
-                    std::to_string(actual_lanes[i]).c_str());
+                    expected_str, actual_str);
     }
   }
 }
 
 // Compare expected lanes to vector.
 template <class D>
-HWY_NOINLINE void AssertVecEqual(D d, const TFromD<D>* expected, Vec<D> actual,
-                                 const char* filename, int line) {
+HWY_NOINLINE void AssertVecEqual(D d, const TFromD<D>* expected,
+                                 VecArg<Vec<D>> actual, const char* filename,
+                                 int line) {
   AssertVecEqual(d, LoadU(d, expected), actual, filename, line);
 }
 
+// Only checks the valid mask elements (those whose index < Lanes(d)).
 template <class D>
-void AssertMaskEqual(D d, Mask<D> a, Mask<D> b, const char* filename,
-                     int line) {
+HWY_NOINLINE void AssertMaskEqual(D d, VecArg<Mask<D>> a, VecArg<Mask<D>> b,
+                                  const char* filename, int line) {
   AssertVecEqual(d, VecFromMask(d, a), VecFromMask(d, b), filename, line);
 
   const std::string type_name = TypeName(TFromD<D>(), Lanes(d));
-  AssertEqual(CountTrue(a), CountTrue(b), type_name, filename, line, 0);
-  AssertEqual(AllTrue(a), AllTrue(b), type_name, filename, line, 0);
-  AssertEqual(AllFalse(a), AllFalse(b), type_name, filename, line, 0);
+  AssertEqual(CountTrue(d, a), CountTrue(d, b), type_name, filename, line, 0);
+  AssertEqual(AllTrue(d, a), AllTrue(d, b), type_name, filename, line, 0);
+  AssertEqual(AllFalse(d, a), AllFalse(d, b), type_name, filename, line, 0);
 
-  // TODO(janwas): StoreMaskBits
+  // TODO(janwas): remove RVV once implemented (cast or vse1)
+#if HWY_TARGET != HWY_RVV && HWY_TARGET != HWY_SCALAR
+  const size_t N = Lanes(d);
+  const Repartition<uint8_t, D> d8;
+  const size_t N8 = Lanes(d8);
+  auto bits_a = AllocateAligned<uint8_t>(HWY_MAX(8, N8));
+  auto bits_b = AllocateAligned<uint8_t>(HWY_MAX(8, N8));
+  memset(bits_a.get(), 0, N8);
+  memset(bits_b.get(), 0, N8);
+  const size_t num_bytes_a = StoreMaskBits(d, a, bits_a.get());
+  const size_t num_bytes_b = StoreMaskBits(d, b, bits_b.get());
+  AssertEqual(num_bytes_a, num_bytes_b, type_name, filename, line, 0);
+  size_t i = 0;
+  // First check whole bytes (if that many elements are still valid)
+  for (; i < N / 8; ++i) {
+    if (bits_a[i] != bits_b[i]) {
+      fprintf(stderr, "Mismatch in byte %zu: %d != %d\n", i, bits_a[i],
+              bits_b[i]);
+      Print(d8, "expect", Load(d8, bits_a.get()), 0, N8);
+      Print(d8, "actual", Load(d8, bits_b.get()), 0, N8);
+      hwy::Abort(filename, line, "Masks not equal");
+    }
+  }
+  // Then the valid bit(s) in the last byte.
+  const size_t remainder = N % 8;
+  if (remainder != 0) {
+    const int mask = (1 << remainder) - 1;
+    const int valid_a = bits_a[i] & mask;
+    const int valid_b = bits_b[i] & mask;
+    if (valid_a != valid_b) {
+      fprintf(stderr, "Mismatch in last byte %zu: %d != %d\n", i, valid_a,
+              valid_b);
+      Print(d8, "expect", Load(d8, bits_a.get()), 0, N8);
+      Print(d8, "actual", Load(d8, bits_b.get()), 0, N8);
+      hwy::Abort(filename, line, "Masks not equal");
+    }
+  }
+#endif
+}
+
+// Only sets valid elements (those whose index < Lanes(d)). This helps catch
+// tests that are not masking off the (undefined) upper mask elements.
+//
+// TODO(janwas): with HWY_NOINLINE GCC zeros the upper half of AVX2 masks.
+template <class D>
+HWY_INLINE Mask<D> MaskTrue(const D d) {
+  return FirstN(d, Lanes(d));
 }
 
 template <class D>
-HWY_NOINLINE Mask<D> MaskTrue(const D d) {
-  const auto v0 = Zero(d);
-  return Eq(v0, v0);
-}
-
-template <class D>
-HWY_NOINLINE Mask<D> MaskFalse(const D d) {
-  // Lt is only for signed types and we cannot yet cast mask types.
-  return Eq(Zero(d), Set(d, 1));
+HWY_INLINE Mask<D> MaskFalse(const D d) {
+  const auto zero = Zero(RebindToSigned<D>());
+  return RebindMask(d, Lt(zero, zero));
 }
 
 #ifndef HWY_ASSERT_EQ
@@ -488,97 +505,179 @@ HWY_NOINLINE Mask<D> MaskFalse(const D d) {
 
 // Helpers for instantiating tests with combinations of lane types / counts.
 
-// For all powers of two in [kMinLanes, N * kMinLanes] (so that recursion stops
-// at N == 0)
-template <typename T, size_t N, size_t kMinLanes, class Test>
+// For ensuring we do not call tests with D such that widening D results in 0
+// lanes. Example: assume T=u32, VLEN=256, and fraction=1/8: there is no 1/8th
+// of a u64 vector in this case.
+template <class D, HWY_IF_NOT_LANE_SIZE_D(D, 8)>
+HWY_INLINE size_t PromotedLanes(const D d) {
+  return Lanes(RepartitionToWide<decltype(d)>());
+}
+// Already the widest possible T, cannot widen.
+template <class D, HWY_IF_LANE_SIZE_D(D, 8)>
+HWY_INLINE size_t PromotedLanes(const D d) {
+  return Lanes(d);
+}
+
+// For all power of two N in [kMinLanes, kMul * kMinLanes] (so that recursion
+// stops at kMul == 0). Note that N may be capped or a fraction.
+template <typename T, size_t kMul, size_t kMinLanes, class Test,
+          bool kPromote = false>
 struct ForeachSizeR {
   static void Do() {
-    static_assert(N != 0, "End of recursion");
-    Test()(T(), Simd<T, N * kMinLanes>());
-    ForeachSizeR<T, N / 2, kMinLanes, Test>::Do();
+    const Simd<T, kMul * kMinLanes> d;
+
+    // Skip invalid fractions (e.g. 1/8th of u32x4).
+    const size_t lanes = kPromote ? PromotedLanes(d) : Lanes(d);
+    if (lanes == 0) return;
+
+    Test()(T(), d);
+
+    static_assert(kMul != 0, "Recursion should have ended already");
+    ForeachSizeR<T, kMul / 2, kMinLanes, Test, kPromote>::Do();
   }
 };
 
 // Base case to stop the recursion.
-template <typename T, size_t kMinLanes, class Test>
-struct ForeachSizeR<T, 0, kMinLanes, Test> {
+template <typename T, size_t kMinLanes, class Test, bool kPromote>
+struct ForeachSizeR<T, 0, kMinLanes, Test, kPromote> {
   static void Do() {}
 };
 
 // These adapters may be called directly, or via For*Types:
 
-// Calls Test for all powers of two in [kMinLanes, kMaxLanes / kDivLanes].
-// kMaxLanes is used for HWY_GATHER_LANES etc; use a large default because we
-// don't have access to T in the template argument list.
-template <class Test, size_t kDivLanes = 1, size_t kMinLanes = 1,
-          size_t kMaxLanes = 1ul << 30>
-struct ForPartialVectors {
+// Calls Test for all power of two N in [1, Lanes(d) / kFactor]. This is for
+// ops that widen their input, e.g. Combine (not supported by HWY_SCALAR).
+template <class Test, size_t kFactor = 2>
+struct ForExtendableVectors {
   template <typename T>
   void operator()(T /*unused*/) const {
-#if HWY_TARGET == HWY_RVV
-    // Only m1..8 for now, can ignore kMaxLanes because HWY_*_LANES are full.
-    ForeachSizeR<T, 8 / kDivLanes, HWY_LANES(T), Test>::Do();
+#if HWY_TARGET == HWY_SCALAR
+    // not supported
 #else
-    ForeachSizeR<T, HWY_MIN(kMaxLanes, HWY_LANES(T)) / kDivLanes / kMinLanes,
-                 kMinLanes, Test>::Do();
+    constexpr bool kPromote = true;
+#if HWY_TARGET == HWY_RVV
+    ForeachSizeR<T, 8 / kFactor, HWY_LANES(T), Test, kPromote>::Do();
+    // TODO(janwas): also capped
+    // ForeachSizeR<T, (16 / sizeof(T)) / kFactor, 1, Test, kPromote>::Do();
+#elif HWY_TARGET == HWY_SVE || HWY_TARGET == HWY_SVE2
+    // Capped
+    ForeachSizeR<T, (16 / sizeof(T)) / kFactor, 1, Test, kPromote>::Do();
+    // Fractions
+    ForeachSizeR<T, 8 / kFactor, HWY_LANES(T) / 8, Test, kPromote>::Do();
+#else
+    ForeachSizeR<T, HWY_LANES(T) / kFactor, 1, Test, kPromote>::Do();
 #endif
+#endif  // HWY_SCALAR
   }
 };
 
-// Calls Test for all vectors that can be demoted log2(kFactor) times.
-template <class Test, size_t kFactor>
-struct ForDemoteVectors {
+// Calls Test for all power of two N in [kFactor, Lanes(d)]. This is for ops
+// that narrow their input, e.g. UpperHalf.
+template <class Test, size_t kFactor = 2>
+struct ForShrinkableVectors {
   template <typename T>
   void operator()(T /*unused*/) const {
-#if HWY_TARGET == HWY_RVV
-    // Only m1..8 for now.
+#if HWY_TARGET == HWY_SCALAR
+    // not supported
+#elif HWY_TARGET == HWY_RVV
     ForeachSizeR<T, 8 / kFactor, kFactor * HWY_LANES(T), Test>::Do();
+    // TODO(janwas): also capped
+#elif HWY_TARGET == HWY_SVE || HWY_TARGET == HWY_SVE2
+    // Capped
+    ForeachSizeR<T, (16 / sizeof(T)) / kFactor, kFactor, Test>::Do();
+    // Fractions
+    ForeachSizeR<T, 8 / kFactor, kFactor * HWY_LANES(T) / 8, Test>::Do();
+#elif HWY_TARGET == HWY_SCALAR
+    // not supported
 #else
-    ForeachSizeR<T, HWY_LANES(T), 1, Test>::Do();
+    ForeachSizeR<T, HWY_LANES(T) / kFactor, kFactor, Test>::Do();
 #endif
   }
 };
 
-// Calls Test for all powers of two in [128 bits, max bits].
+// Calls Test for all power of two N in [16 / sizeof(T), Lanes(d)]. This is for
+// ops that require at least 128 bits, e.g. AES or 64x64 = 128 mul.
 template <class Test>
 struct ForGE128Vectors {
   template <typename T>
   void operator()(T /*unused*/) const {
-#if HWY_TARGET == HWY_RVV
+#if HWY_TARGET == HWY_SCALAR
+    // not supported
+#elif HWY_TARGET == HWY_RVV
     ForeachSizeR<T, 8, HWY_LANES(T), Test>::Do();
+    // TODO(janwas): also capped
+    // ForeachSizeR<T, 1, (16 / sizeof(T)), Test>::Do();
+#elif HWY_TARGET == HWY_SVE || HWY_TARGET == HWY_SVE2
+    // Capped
+    ForeachSizeR<T, 1, 16 / sizeof(T), Test>::Do();
+    // Fractions
+    ForeachSizeR<T, 8, HWY_LANES(T) / 8, Test>::Do();
 #else
     ForeachSizeR<T, HWY_LANES(T) / (16 / sizeof(T)), (16 / sizeof(T)),
                  Test>::Do();
-
 #endif
   }
 };
 
-// Calls Test for all powers of two in [128 bits, max bits/2].
+// Calls Test for all power of two N in [8 / sizeof(T), Lanes(d)]. This is for
+// ops that require at least 64 bits, e.g. casts.
 template <class Test>
-struct ForExtendableVectors {
+struct ForGE64Vectors {
   template <typename T>
   void operator()(T /*unused*/) const {
-#if HWY_TARGET == HWY_RVV
-    ForeachSizeR<T, 4, HWY_LANES(T), Test>::Do();
+#if HWY_TARGET == HWY_SCALAR
+    // not supported
+#elif HWY_TARGET == HWY_RVV
+    ForeachSizeR<T, 8, HWY_LANES(T), Test>::Do();
+    // TODO(janwas): also capped
+    // ForeachSizeR<T, 1, (8 / sizeof(T)), Test>::Do();
+#elif HWY_TARGET == HWY_SVE || HWY_TARGET == HWY_SVE2
+    // Capped
+    ForeachSizeR<T, 1, 8 / sizeof(T), Test>::Do();
+    // Fractions
+    ForeachSizeR<T, 8, HWY_LANES(T) / 8, Test>::Do();
 #else
-    ForeachSizeR<T, HWY_LANES(T) / 2 / (16 / sizeof(T)), (16 / sizeof(T)),
+    ForeachSizeR<T, HWY_LANES(T) / (8 / sizeof(T)), (8 / sizeof(T)),
                  Test>::Do();
 #endif
   }
 };
 
-// Calls Test for full vectors only.
+// Calls Test for all N that can be promoted (not the same as Extendable because
+// HWY_SCALAR has one lane). Also used for ZipLower, but not ZipUpper.
+template <class Test, size_t kFactor = 2>
+struct ForPromoteVectors {
+  template <typename T>
+  void operator()(T /*unused*/) const {
+#if HWY_TARGET == HWY_SCALAR
+    ForeachSizeR<T, 1, 1, Test, /*kPromote=*/true>::Do();
+#else
+    return ForExtendableVectors<Test, kFactor>()(T());
+#endif
+  }
+};
+
+// Calls Test for all N than can be demoted (not the same as Shrinkable because
+// HWY_SCALAR has one lane). Also used for LowerHalf, but not UpperHalf.
+template <class Test, size_t kFactor = 2>
+struct ForDemoteVectors {
+  template <typename T>
+  void operator()(T /*unused*/) const {
+#if HWY_TARGET == HWY_SCALAR
+    ForeachSizeR<T, 1, 1, Test>::Do();
+#else
+    return ForShrinkableVectors<Test, kFactor>()(T());
+#endif
+  }
+};
+
+// Calls Test for all power of two N in [1, Lanes(d)]. This is the default
+// for ops that do not narrow nor widen their input, nor require 128 bits.
 template <class Test>
-struct ForFullVectors {
+struct ForPartialVectors {
   template <typename T>
   void operator()(T t) const {
-#if HWY_TARGET == HWY_RVV
-    ForeachSizeR<T, 8, HWY_LANES(T), Test>::Do();
-    (void)t;
-#else
-    Test()(t, HWY_FULL(T)());
-#endif
+    ForExtendableVectors<Test, 1>()(t);
   }
 };
 
