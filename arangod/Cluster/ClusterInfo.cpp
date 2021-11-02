@@ -221,8 +221,6 @@ inline std::string analyzersPath(std::string const& dbName) {
   return "Plan/Analyzers/" + dbName;
 }
 
-// todo: rename to CreateAgencyOperationCreateCollection
-//  (nothing about orders, may be misleading)
 static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const& dbName,
                                                               std::string const& collection,
                                                               VPackSlice const& info) {
