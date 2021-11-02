@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGODB3_RESTLOGHANDLER_H
-#define ARANGODB3_RESTLOGHANDLER_H
+
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -69,4 +69,3 @@ class RestLogHandler : public RestVocbaseBaseHandler {
 
 };
 }  // namespace arangodb
-#endif  // ARANGODB3_RESTLOGHANDLER_H

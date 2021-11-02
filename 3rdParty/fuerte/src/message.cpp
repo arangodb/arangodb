@@ -87,11 +87,6 @@ void RequestHeader::acceptType(std::string const& type) {
   addMeta(fu_accept_key, type);
 }
 
-void RequestHeader::addParameter(std::string const& key,
-                                 std::string const& value) {
-  parameters.try_emplace(key, value);
-}
-
 /// @brief analyze path and split into components
 /// strips /_db/<name> prefix, sets db name and fills parameters
 void RequestHeader::parseArangoPath(std::string const& p) {
@@ -276,19 +271,19 @@ asio_ns::const_buffer Response::payload() const {
 }
 
 size_t Response::payloadSize() const {
-  if (_payloadOffset > _payload.byteSize()) {
+  auto payloadByteSize = _payload.byteSize();
+  if (_payloadOffset > payloadByteSize) {
     return 0;
   }
-  return _payload.byteSize() - _payloadOffset;
+  return payloadByteSize - _payloadOffset;
 }
 
 std::shared_ptr<velocypack::Buffer<uint8_t>> Response::copyPayload() const {
   auto buffer = std::make_shared<velocypack::Buffer<uint8_t>>();
-  if (payloadSize() == 0) {
-    return buffer;
+  if (payloadSize() > 0) {
+    buffer->append(_payload.data() + _payloadOffset,
+                   _payload.byteSize() - _payloadOffset);
   }
-  buffer->append(_payload.data() + _payloadOffset,
-                 _payload.byteSize() - _payloadOffset);
   return buffer;
 }
 
