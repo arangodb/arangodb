@@ -88,7 +88,6 @@ class CalculationExecutorTest
   RegisterId outRegID;
   RegisterId inRegID;
   RegisterInfos registerInfos;
-  CalculationExecutorInfos executorInfos;
 
   CalculationExecutorTest()
       : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
@@ -103,10 +102,8 @@ class CalculationExecutorTest
         inRegID(0),
         registerInfos(RegIdSet{inRegID}, RegIdSet{outRegID},
                       1 /*in width*/, 2 /*out width*/,
-                      RegIdSet{} /*to clear*/, RegIdSetStack{{}} /*to keep*/),
-        executorInfos(outRegID /*out reg*/, *fakedQuery.get() /*query*/, expr /*expression*/,
-                      std::vector<Variable const*>{&var} /*expression input variables*/,
-                      std::vector<RegisterId>({inRegID}) /*expression input registers*/) {}
+                      RegIdSet{} /*to clear*/, RegIdSetStack{{}} /*to keep*/) {
+        }
 
   auto getSplit() -> CalculationExecutorSplitType {
     auto [split] = GetParam();
@@ -114,7 +111,8 @@ class CalculationExecutorTest
   }
 
   auto buildInfos() -> CalculationExecutorInfos {
-    return CalculationExecutorInfos{0, *fakedQuery.get(), expr, {&var}, {0}};
+    std::vector<std::pair<VariableId, RegisterId>> varToRegs{std::make_pair(var.id, inRegID)};
+    return CalculationExecutorInfos{outRegID, *fakedQuery.get(), expr, std::move(varToRegs)};
   }
 };
 
@@ -134,7 +132,7 @@ TEST_P(CalculationExecutorTest, reference_empty_input) {
 
   makeExecutorTestHelper<2, 2>()
       .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
-                                                                    std::move(executorInfos))
+                                                                    buildInfos())
       .setInputValue({})
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -151,7 +149,7 @@ TEST_P(CalculationExecutorTest, reference_some_input) {
 
   makeExecutorTestHelper<2, 2>()
       .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
-                                                                    std::move(executorInfos))
+                                                                    buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -177,7 +175,7 @@ TEST_P(CalculationExecutorTest, reference_some_input_skip) {
 
   makeExecutorTestHelper<2, 2>()
       .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
-                                                                    std::move(executorInfos))
+                                                                    buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -200,7 +198,7 @@ TEST_P(CalculationExecutorTest, reference_some_input_limit) {
 
   makeExecutorTestHelper<2, 2>()
       .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
-                                                                    std::move(executorInfos))
+                                                                    buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -225,7 +223,7 @@ TEST_P(CalculationExecutorTest, reference_some_input_limit_fullcount) {
 
   makeExecutorTestHelper<2, 2>()
       .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
-                                                                    std::move(executorInfos))
+                                                                    buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -248,7 +246,7 @@ TEST_P(CalculationExecutorTest, condition_some_input) {
 
   makeExecutorTestHelper<2, 2>()
       .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
-                                                                    std::move(executorInfos))
+                                                                    buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -274,7 +272,7 @@ TEST_P(CalculationExecutorTest, condition_some_input_skip) {
 
   makeExecutorTestHelper<2, 2>()
       .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
-                                                                    std::move(executorInfos))
+                                                                    buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -297,7 +295,7 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit) {
 
   makeExecutorTestHelper<2, 2>()
       .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
-                                                                    std::move(executorInfos))
+                                                                    buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -322,7 +320,7 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit_fullcount) {
 
   makeExecutorTestHelper<2, 2>()
       .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
-                                                                    std::move(executorInfos))
+                                                                    buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -346,7 +344,7 @@ TEST_P(CalculationExecutorTest, DISABLED_v8condition_some_input) {
 
   makeExecutorTestHelper<2, 2>()
       .addConsumer<CalculationExecutor<CalculationType::V8Condition>>(std::move(registerInfos),
-                                                                      std::move(executorInfos))
+                                                                      buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
