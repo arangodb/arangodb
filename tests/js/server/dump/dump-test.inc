@@ -736,24 +736,24 @@
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test custom analyzers restoring
       ////////////////////////////////////////////////////////////////////////////////
-      // testAnalyzers: function() {
-      //   // TODO: This test fails and needs to be fixed (!)
-      //   assertNotEqual(null, db._collection("_analyzers"));
-      //   assertEqual((isEnterprise && isCluster)?
-      //               2 : // plus 1 for smartgraph in enerprise
-      //               1,  // only 1 stored custom analyzers
-      //               db._analyzers.count());
-      //
-      //   let analyzer = analyzers.analyzer("custom");
-      //   assertEqual(db._name() + "::custom", analyzer.name());
-      //   assertEqual("delimiter", analyzer.type());
-      //   assertEqual(Object.keys(analyzer.properties()).length, 1);
-      //   assertEqual(" ", analyzer.properties().delimiter);
-      //   assertEqual(1, analyzer.features().length);
-      //   assertEqual("frequency", analyzer.features()[0]);
-      //
-      //   assertNull(analyzers.analyzer("custom_dst"));
-      // },
+      testAnalyzers: function () {
+        // TODO: This test fails and needs to be fixed (!)
+        assertNotEqual(null, db._collection("_analyzers"));
+        assertEqual((isEnterprise && isCluster) ?
+            2 : // plus 1 for smartgraph in enerprise
+            1,  // only 1 stored custom analyzers
+          db._analyzers.count());
+
+        let analyzer = analyzers.analyzer("custom");
+        assertEqual(db._name() + "::custom", analyzer.name());
+        assertEqual("delimiter", analyzer.type());
+        assertEqual(Object.keys(analyzer.properties()).length, 1);
+        assertEqual(" ", analyzer.properties().delimiter);
+        assertEqual(1, analyzer.features().length);
+        assertEqual("frequency", analyzer.features()[0]);
+
+        assertNull(analyzers.analyzer("custom_dst"));
+      },
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test link on analyzers collection
