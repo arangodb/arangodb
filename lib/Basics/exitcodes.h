@@ -1,5 +1,4 @@
-#ifndef ARANGODB_BASICS_EXIT_CODES_H
-#define ARANGODB_BASICS_EXIT_CODES_H 1
+#pragma once
 
 #include "Basics/error.h"
 
@@ -100,6 +99,4 @@ constexpr int TRI_EXIT_TZDATA_INITIALIZATION_FAILED                             
 /// Will be returned if i.e. ulimit is too restrictive
 constexpr int TRI_EXIT_RESOURCES_TOO_LOW                                        = 28;
 
-
-#endif
 

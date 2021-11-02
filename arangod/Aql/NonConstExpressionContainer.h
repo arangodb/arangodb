@@ -60,7 +60,16 @@ struct NonConstExpressionContainer {
   NonConstExpressionContainer& operator=(NonConstExpressionContainer&&) = default;
 
   std::vector<std::unique_ptr<NonConstExpression>> _expressions;
-  std::unordered_map<VariableId, RegisterId> _varToRegisterMapping; 
+
+  // This is a 1 to 1 mapping of Variables to Registers.
+  // This could be done by an unordered_map as well.
+  // However in terms of reading, a linear scan on vectors does outperform
+  // an unordered_map find, for a small number of elements.
+  // On my tests below 20 elements vector was faster, otherwise map.
+  // As it is very unlikely to have 20 active variables this variant shall
+  // give a better overall read performance.
+  std::vector<std::pair<VariableId, RegisterId>> _varToRegisterMapping; 
+
   bool _hasV8Expression = false;
 
   // Serializes this container into a velocypack builder.

@@ -19,8 +19,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGODB3_ROCKSDBPERSISTEDLOG_H
-#define ARANGODB3_ROCKSDBPERSISTEDLOG_H
+
+#pragma once
 
 #include <rocksdb/db.h>
 
@@ -131,5 +131,3 @@ class RocksDBPersistedLog : public replication2::replicated_log::PersistedLog,
 };
 
 }  // namespace arangodb
-
-#endif  // ARANGODB3_ROCKSDBPERSISTEDLOG_H

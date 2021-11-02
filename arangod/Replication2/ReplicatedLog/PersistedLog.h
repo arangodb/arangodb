@@ -19,8 +19,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGODB3_PERSISTEDLOG_H
-#define ARANGODB3_PERSISTEDLOG_H
+
+#pragma once
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
@@ -57,5 +57,3 @@ struct PersistedLog {
 };
 
 }  // namespace arangodb::replication2
-
-#endif  // ARANGODB3_PERSISTEDLOG_H
