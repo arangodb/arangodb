@@ -356,7 +356,7 @@ int rsaPrivSign(std::string const& pem , std::string const& msg,
     }
     rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa, nullptr, nullptr);
     EVP_PKEY* pKey = EVP_PKEY_new();
-    if (pkey == nullptr) {
+    if (pKey == nullptr) {
       error.append("Failed to initialize public key.");
       return 1;
     }
