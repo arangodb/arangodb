@@ -77,28 +77,30 @@ void LogThread::wakeup() {
 bool LogThread::hasMessages() { return (!MESSAGES->empty()); }
 
 void LogThread::run() {
-  LogMessage* msg;
-
   while (!isStopping() && Logger::_active.load()) {
-    while (_messages.pop(msg)) {
-      try {
-        LogAppender::log(msg);
-      } catch (...) {
-      }
-
-      delete msg;
-    }
+    processPendingMessages();
 
     // cppcheck-suppress redundantPointerOp
     CONDITION_LOCKER(guard, *CONDITION);
     guard.wait(25 * 1000);
   }
 
+  processPendingMessages();
+}
+
+bool LogThread::processPendingMessages() {
+  bool worked = false;
+  LogMessage* msg = nullptr;
+
   while (_messages.pop(msg)) {
+    worked = true;
+    TRI_ASSERT(msg != nullptr);
     try {
       LogAppender::log(msg);
     } catch (...) {
     }
+
     delete msg;
   }
+  return worked;
 }

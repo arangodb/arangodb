@@ -59,6 +59,9 @@ class LogThread final : public Thread {
   bool hasMessages();
   // wake up the log thread from the outside
   void wakeup();
+  // handle all queued messages - normally this should not be called
+  // by anyone, except from the crash handler
+  bool processPendingMessages();
 
  private:
   static arangodb::basics::ConditionVariable* CONDITION;
