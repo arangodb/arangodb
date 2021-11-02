@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000, unused:false */
-/*global assertEqual, assertUndefined, arango */
+/*global assertEqual, assertTrue, assertUndefined, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup collections for dump/reload tests
@@ -655,18 +655,12 @@ function createHybridSmartGraphSingleServer() {
   const verticesSat = "UnitTestDumpHybridSmartVerticesSatSingleServer";
   const edges = "UnitTestDumpHybridSmartEdgesSingleServer";
   const orphans = "UnitTestDumpHybridSmartOrphansSingleServer";
-
-  if (sgm._exists(hybridGraphName)) {
-    sgm._drop(hybridGraphName, true);
-  }
-  db._drop(edges);
-  db._drop(verticesNonSat);
-  db._drop(verticesSat);
-  db._drop(orphans);
-
   const relSatNonSat = sgm._relation(edges, verticesSat, verticesNonSat);
 
-  sgm._create(hybridGraphName, [relSatNonSat], [orphans], {satellites: [verticesSat]});
+  const g = sgm._create(hybridGraphName, [relSatNonSat], [orphans], {
+    satellites: [verticesSat],
+    smartGraphAttribute: 'value'
+  });
 
   // create vertices
   const size = 50;
@@ -853,18 +847,7 @@ function createGraphWithoutData(names, options = undefined) {
   db._useDatabase("UnitTestsDumpSrc");
 
   if (!names) {
-    const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
-    const edges = "UnitTestDumpSmartEdgesWithoutData";
-    const vertices = "UnitTestDumpSmartVerticesWithoutData";
-    const orphans = "UnitTestDumpSmartOrphansWithoutData";
-
-    names = {
-      smartGraphName: smartGraphName,
-      edges: edges,
-      fromVertices: [vertices],
-      toVertices: [vertices],
-      orphans: [orphans]
-    };
+    assertTrue(false, "Names property is not set!");
   }
 
   // set default options if not given as a parameter
@@ -911,6 +894,28 @@ function createGraphWithoutData(names, options = undefined) {
   );
 }
 
+function createSmartGraphWithoutData() {
+  // External method for dump-setup-mixed.js to create a default SmartGraph
+  // Using helper graph creation method defined above: createGraphWithoutData
+  if (!isEnterprise) {
+    return;
+  }
+
+  const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
+  const edges = "UnitTestDumpSmartEdgesWithoutData";
+  const vertices = "UnitTestDumpSmartVerticesWithoutData";
+  const orphans = "UnitTestDumpSmartOrphansWithoutData";
+
+  const names = {
+    smartGraphName: smartGraphName,
+    edges: edges,
+    fromVertices: [vertices],
+    toVertices: [vertices],
+    orphans: [orphans]
+  };
+
+  createGraphWithoutData(names);
+}
 
 /**
  * @brief Only if enterprise mode:
@@ -1093,7 +1098,7 @@ exports.createEmptySmartGraph = createEmptySmartGraph;
 exports.createEmptySatelliteGraph = createEmptySatelliteGraph;
 exports.createEmptyDisjointGraph = createEmptyDisjointGraph;
 
-exports.createSmartGraphWithoutData = createGraphWithoutData;
+exports.createSmartGraphWithoutData = createSmartGraphWithoutData;
 exports.createSatelliteGraphWithoutData = createSatelliteGraphWithoutData;
 exports.createDisjointGraphWithoutData = createDisjointGraphWithoutData;
 
