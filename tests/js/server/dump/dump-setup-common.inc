@@ -439,7 +439,7 @@ function chooseGraphModule(kind) {
 
 /**
  * @brief Only if enterprise mode:
- *        Creates an empty SmartGraph sharded by `value`, with no edge relations.
+ *        Creates an empty SmartGraph with no edge relations with given options.
  *        @param kind: one of "SmartGraph", "Disjoint", "Satellite"
  *        @param options: a document
  */
@@ -487,7 +487,7 @@ function createEmptySmartGraph() {
 
 /**
  * @brief Only if enterprise mode:
- *        Creates an empty Satellite SmartGraph with no edge relations.
+ *        Creates an empty Satellite with no edge relations.
  */
 function createEmptySatelliteGraph() {
   createEmptyGraph("Satellite", {
@@ -562,7 +562,7 @@ function createSmartGraphSingleServer() {
   const vertices = "UnitTestDumpSmartVerticesSingleServer";
   const orphans = "UnitTestDumpSmartOrphansSingleServer";
 
-  createSmartGraphWithoutData({
+  createGraphWithoutData({
     smartGraphName: smartGraphName,
     edges: edges,
     fromVertices: [vertices],
@@ -589,7 +589,7 @@ function createDisjointGraphSingleServer() {
   const vertices = "UnitTestDumpDisjointVerticesSingleServer";
   const orphans = "UnitTestDumpDisjointOrphansSingleServer";
 
-  createSmartGraphWithoutData(
+  createGraphWithoutData(
     {
       smartGraphName: smartGraphName,
       edges: edges,
@@ -621,7 +621,7 @@ function createSatelliteGraphSingleServer() {
   const edges = "UnitTestDumpSatelliteEdgesSingleServer";
   const orphans = "UnitTestDumpSatelliteOrphansSingleServer";
 
-  createSmartGraphWithoutData({
+  createGraphWithoutData({
       smartGraphName: graphName,
       edges: edges,
       fromVertices: [vertices],
@@ -685,6 +685,20 @@ function createHybridSmartGraphSingleServer() {
   db[orphans].save(docsNonSat.vDocs);
 }
 
+/**
+ * @brief Creates a graph with one satellite vertex collection (verticesSat), two non-satellite (smart)
+ * vertex collections (verticesANonSat and verticesBNonSat) connected to other collections, an orphan collection
+ * and two edge relations: edgeSatA from verticesSat to verticesANonSat and edgesAB
+ * from verticesANonSat to verticesBNonSat. The size of every vertex collection is 50. In each vertex collection,
+ * the vertices are enumerated by 'value' (which is the smartGraphAttribute) from 0 to 49. Edges from edgeSatA go
+ * from vertex i (in verticesSat) to vertex i (in verticesANonSat) and from vertex i to vertex (i+1) % 50. In total,
+ * we have 50 + 50 = 100 edges in this collection.
+ * Edges from edgeAB are constructed with the same function but go only  from vertex i to vertex i because both vertex
+ * collections are not satellite and vertices with different values of 'value' (i.e., i and (i+1) % 50) cannot be
+ * connected in a disjoint graph. Thus in total we have 50 edges in this collection.
+ *
+ * This function is too special and does not use createGraphWithoutData().
+ */
 function createHybridDisjointSmartGraphSingleServer() {
   if (!isEnterprise) {
     return;
@@ -704,6 +718,7 @@ function createHybridDisjointSmartGraphSingleServer() {
   db._drop(edgesSatA);
   db._drop(edgesAB);
   db._drop(verticesANonSat);
+  db._drop(verticesBNonSat);
   db._drop(verticesSat);
   db._drop(orphans);
 
@@ -712,7 +727,7 @@ function createHybridDisjointSmartGraphSingleServer() {
 
   sgm._create(hybridGraphName, [relSatANonSat, relAB], [orphans], {
     satellites: [verticesSat],
-    isDisjoint: true/*the only difference to simple hybrid*/,
+    isDisjoint: true,
     smartGraphAttribute: 'value'
   });
 
@@ -749,7 +764,7 @@ function createSatelliteGraphWithoutData() {
     return;
   }
 
-  createSmartGraphWithoutData({
+  createGraphWithoutData({
       smartGraphName: "UnitTestDumpSatelliteGraphWithoutData",
       edges: "UnitTestDumpSatelliteEdgesWithoutData",
       fromVertices: ["UnitTestDumpSatelliteVerticesWithoutData"],
@@ -765,7 +780,7 @@ function createDisjointGraphWithoutData() {
     return;
   }
 
-  createSmartGraphWithoutData({
+  createGraphWithoutData({
       smartGraphName: "UnitTestDumpDisjointGraphWithoutData",
       edges: "UnitTestDumpDisjointEdgesWithoutData",
       fromVertices: ["UnitTestDumpDisjointVerticesWithoutData"],
@@ -821,14 +836,17 @@ function fillEDocs(savedVDocsColls = []) {
  *        Creates a SmartGraph, and a single edge relation: if \a toVertices is given and not "", then from
  *        \a fromvertices to \a toVertices, otherwise from \a fromVertices to \a toVertices.
  *        If the graph or any of given collections exist, they are dropped first.
- * @param names: a document that can contain the following keys:
- * smartGraphName, edges: the name for the edge collection, fromVertices: the collection of the tails of the edges,
- * orphans: vertices not incident to any edges, toVertices: the collection of the heads of the edges
- * @param options: a document that can contain the following keys:
+ * @param names a document that can contain the following keys:
+ * smartGraphName: the name of the graph,
+ * edges: the name for the edge collection,
+ * fromVertices: an array of collection names for edge tails,
+ * toVertices: an array of collection names for edge headsm
+ * orphans: an array of collection names for vertices not incident to any edge.
+ * @param options a document that can contain the following keys:
  * numberOfShards (default: 5), smartGraphAttribute (default: "values"), isDisjoint (default: false),
  * isSatellite (default: false), satellites (not contained by default), isSmart (default: true)
  */
-function createSmartGraphWithoutData(names, options = undefined) {
+function createGraphWithoutData(names, options = undefined) {
   if (!isEnterprise) {
     return;
   }
@@ -1075,7 +1093,7 @@ exports.createEmptySmartGraph = createEmptySmartGraph;
 exports.createEmptySatelliteGraph = createEmptySatelliteGraph;
 exports.createEmptyDisjointGraph = createEmptyDisjointGraph;
 
-exports.createSmartGraphWithoutData = createSmartGraphWithoutData;
+exports.createSmartGraphWithoutData = createGraphWithoutData;
 exports.createSatelliteGraphWithoutData = createSatelliteGraphWithoutData;
 exports.createDisjointGraphWithoutData = createDisjointGraphWithoutData;
 
