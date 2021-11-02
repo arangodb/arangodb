@@ -1520,7 +1520,6 @@
         }
       ].sort(cmp));
 
-
       // check orphan collections
       assertEqual(graph.orphanCollections, [orphans]);
 
@@ -1530,19 +1529,21 @@
       const verticesSatProps = db._collection(verticesSat).properties();
       const orphansProps = db._collection(orphans).properties();
 
-      // properties common for all vertex collections
+      // properties common for all vertex collections (smart & satellite)
       for (const properties of [verticesANonSatProps, verticesBNonSatProps, verticesSatProps, orphansProps]) {
         assertEqual(properties.numberOfShards, 1);
         assertEqual(properties.shardingStrategy, 'enterprise-compat');
       }
-      // properties common for all vertex collection but verticesSatProps
+
+      // properties common for all vertex non-satellite collection
       for (const properties of [verticesANonSatProps, verticesBNonSatProps, orphansProps]) {
         assertTrue(properties.isSmart);
         assertTrue(properties.isDisjoint);
         assertEqual(verticesANonSatProps.smartGraphAttribute, 'value');
         assertEqual(properties.replicationFactor, 1);
       }
-      // properties only for verticesSatProps
+
+      // properties only for verticesSatProps (satellite collection)
       assertFalse(verticesSatProps.isSmart);
       assertFalse(verticesSatProps.isDisjoint);
       assertEqual(verticesSatProps.smartGraphAttribute, undefined);
