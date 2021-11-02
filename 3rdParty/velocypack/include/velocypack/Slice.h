@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <functional>
 #include <type_traits>
+#include <limits>
 
 #if __cplusplus >= 201703L
 #include <string_view>
