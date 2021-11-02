@@ -26,13 +26,6 @@ endif ()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 
-message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
-  set(BUILDING_FOR_ARM64 ON)
-else()
-  set(BUILDING_FOR_ARM64 OFF)
-endif()
-
 if (APPLE)
   if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
     if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR "ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
@@ -701,6 +694,32 @@ endif ()
 ## TARGET ARCHITECTURE
 ################################################################################
 
+#
+# we assume we know the compiler for the *target*
+#
+# It is sensible to just query that compiler for what processor it
+# compiles for as it's the most reliable source of information
+# we're going to get!
+#
+# (what's happening when someone fucks around with flags to try and
+# force targets?)
+#
+# message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
+# if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
+#   set(BUILDING_FOR_ARM64 ON)
+# else()
+#   set(BUILDING_FOR_ARM64 OFF)
+# endif()
+
+
+# TargetArch (supposedly) queries the compiler for the target architecture
+# it compiles to
+include(TargetArch)
+# TODO is it correct to call this CMAKE_...? It seems to suggest that
+# this comes out of CMAKE or influences CMAKE
+target_architecture(CMAKE_TARGET_ARCHITECTURES)
+message(FATAL_ERROR "Target Arch ${CMAKE_TARGET_ARCHITECTURES}")
+
 set(ARANGODB_SSE42_FLAGS "")
 if (WINDOWS)
   add_definitions("-DNO_SSE42")
@@ -709,6 +728,7 @@ else ()
 
   target_architecture(CMAKE_TARGET_ARCHITECTURES)
   list(LENGTH CMAKE_TARGET_ARCHITECTURES cmake_target_arch_len)
+  message(STATUS "zis is very akkurat: ${CMAKE_TARGET_ARCHITECTURES}")
 
   if (NOT "${cmake_target_arch_len}" EQUAL "1")
     set(CMAKE_TARGET_ARCHITECTURE_UNIVERSAL TRUE)
@@ -722,8 +742,13 @@ else ()
 
   # Detect target architecture properties. This honors
   # any target architecture set via -DTARGET_ARCHITECTURE=...
-  include(OptimizeForArchitecture)
-  OptimizeForArchitecture()
+  if (CMAKE_TARGET_ARCHITECTURE MATCHES "x86_64")
+    message(STATUS "watiwat")
+    include(OptimizeForArchitecture)
+    OptimizeForArchitecture()
+  else ()
+    message(STATUS "nixinix")
+  endif ()
 
   if (USE_SSE4_2)
     set(ARANGODB_SSE42_FLAGS "-msse4.2")
