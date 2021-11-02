@@ -1417,7 +1417,6 @@
       assertTrue(!!g.exists(hybridGraphName));
 
       const graph = g.document(hybridGraphName);
-      print(graph);
       assertTrue(graph.isSmart);
       assertFalse(graph.isSatellite);
       assertEqual(graph.replicationFactor, 1);
