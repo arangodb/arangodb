@@ -794,8 +794,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
 
   auto [newCommitIndex, commitFailReason] =
       algorithms::calculateCommitIndex(indexes,
-                                       algorithms::CalculateCommitIndexOptions{quorum_size, quorum_size, quorum_size},
-                                       _inMemoryLog.getLastIndex(), _commitIndex);
+                                       algorithms::CalculateCommitIndexOptions{quorum_size, quorum_size, indexes.size()},
+                                       _commitIndex, _inMemoryLog.getLastIndex());
   _lastCommitFailReason = commitFailReason;
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
