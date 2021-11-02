@@ -867,14 +867,8 @@ function createGraphWithoutData(names, options = undefined) {
 
   // drop the graph and collections (if any)
   if (graphModule._exists(names.smartGraphName)) {
-    graphModule._drop(names.smartGraphName, true);
+    assertTrue(false, "Graph already exists. Please check setup configuration.");
   }
-  db._drop(names.edges);
-  db._drop(names.fromVertices);
-  if (names.toVertices !== names.fromVertices) {
-    db._drop(names.toVertices);
-  }
-  db._drop(names.orphans);
 
   graphModule._create(
     names.smartGraphName,
