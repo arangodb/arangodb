@@ -877,7 +877,7 @@ function createGraphWithoutData(names, options = undefined) {
   const kind = options.isSatellite ? "Satellite" : "SmartGraph";
   const graphModule = chooseGraphModule(kind);
 
-  assertCollectionsAreNew([names.edges, names.fromVertices, names.toVertices, names.orphans])
+  assertCollectionsAreNew([names.edges, names.fromVertices, names.toVertices, names.orphans]);
 
   // note: throw an error if the graph already exists (which shouldn't happen)
   graphModule._create(
