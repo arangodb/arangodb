@@ -76,7 +76,7 @@ https://github.com/lz4/lz4
 
 ## rocksdb
 
-(6.25.0, upstream commit d497cdfbb27b036d43a280d44ed806b2c6d6bcc2)
+(6.26.0, upstream commit f72fd5856585774063ac3fc8926f70626963d488)
 
 Our branch is maintained at:
 https://github.com/arangodb-helper/rocksdb
@@ -96,6 +96,26 @@ On Upgrade:
     +#set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
     +#set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
     +#set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
+
+The following other change has been made to CMakeLists.txt to allow compiling on ARM:
+```
+diff --git a/arangod/RocksDBEngine/CMakeLists.txt b/arangod/RocksDBEngine/CMakeLists.txt
+index 58205d5ca90..cb3f2c276d9 100644
+--- a/arangod/RocksDBEngine/CMakeLists.txt
++++ b/arangod/RocksDBEngine/CMakeLists.txt
+@@ -9,11 +9,6 @@ if(CMAKE_SYSTEM_NAME MATCHES "Cygwin")
+   add_definitions(-fno-builtin-memcmp -DCYGWIN)
+ elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+   add_definitions(-DOS_MACOSX)
+-  if(CMAKE_SYSTEM_PROCESSOR MATCHES arm)
+-    add_definitions(-DIOS_CROSS_COMPILE -DROCKSDB_LITE)
+-    # no debug info for IOS, that will make our library big
+-    add_definitions(-DNDEBUG)
+-  endif()
+ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
+   add_definitions(-DOS_LINUX)
+ elseif(CMAKE_SYSTEM_NAME MATCHES "SunOS")
+```
 
 We also made the following modification to gtest (included in a subdirectory of
 RocksDB):
