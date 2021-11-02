@@ -1417,11 +1417,12 @@
       assertTrue(!!g.exists(hybridGraphName));
 
       const graph = g.document(hybridGraphName);
-      assertEqual(graph.isSmart, undefined);
+      print(graph);
+      assertTrue(graph.isSmart);
       assertFalse(graph.isSatellite);
-      assertEqual(graph.replicationFactor, undefined);
-      assertEqual(graph.numberOfShards, undefined);
-      assertEqual(graph.smartGraphAttribute, undefined);
+      assertEqual(graph.replicationFactor, 1);
+      assertEqual(graph.numberOfShards, 1);
+      assertEqual(graph.smartGraphAttribute, 'value');
 
       assertEqual(graph.edgeDefinitions, [
         {
@@ -1432,31 +1433,43 @@
       ]);
       assertEqual(graph.orphanCollections, [orphans]);
 
-      for (const collName of [verticesNonSat, verticesSat, orphans]) {
+      // Test smart collections
+      for (const collName of [verticesNonSat, orphans]) {
+        const vColl = db._collection(collName);
+        const properties = vColl.properties();
+        assertTrue(properties.isSmart);
+        assertEqual(properties.isDisjoint, false);
+        assertEqual(properties.smartGraphAttribute, 'value');
+        assertEqual(properties.numberOfShards, 1);
+        assertEqual(properties.replicationFactor, 1);
+        assertEqual(properties.shardingStrategy, 'enterprise-compat');
+      }
+
+      // Test satellite collections
+      for (const collName of [verticesSat]) {
         const vColl = db._collection(collName);
         const properties = vColl.properties();
         assertFalse(properties.isSmart);
         assertEqual(properties.isDisjoint, false);
         assertEqual(properties.smartGraphAttribute, undefined);
         assertEqual(properties.numberOfShards, 1);
+        assertEqual(properties.replicationFactor, 'satellite');
         assertEqual(properties.shardingStrategy, 'enterprise-compat');
       }
-      assertEqual(db._collection(verticesSat).properties().replicationFactor, 1);
-      assertEqual(db._collection(verticesNonSat).properties().replicationFactor, 1);
 
+      // Test edge collection
       const eColl = db._collection(edges);
       const properties = eColl.properties();
-
       assertFalse(properties.isSmart);
-      assertEqual(properties.isDisjoint, false);
+      assertFalse(properties.isDisjoint);
       assertEqual(properties.numberOfShards, 1);
-      assertEqual(properties.replicationFactor, 1);
+      assertEqual(properties.replicationFactor, 'satellite');
       assertEqual(properties.shardingStrategy, 'enterprise-compat');
 
       // test data
       const collVerticesNonSat = db._collection(verticesNonSat);
-      const collVerticesSat     = db._collection(verticesSat);
-      const collOrphans         = db._collection(orphans);
+      const collVerticesSat = db._collection(verticesSat);
+      const collOrphans = db._collection(orphans);
 
       // only self-loops are saved as the others have different values of the 'value' key, which is the smartGraphAttribute field
       assertEqual(eColl.count(), 100);
