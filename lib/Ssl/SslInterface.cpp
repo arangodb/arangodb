@@ -350,17 +350,21 @@ int rsaPrivSign(std::string const& pem , std::string const& msg,
   BIO* keybio = BIO_new_mem_buf(pem.c_str(), -1);
   RSA* rsa;
     rsa = RSA_new();
+    if (rsa == nullptr) {
+      error.append("Failed to initialize RSA algorithm.");
+      return 1;
+    }
     rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa, nullptr, nullptr);
-    EVP_PKEY *pKey = EVP_PKEY_new();
+    EVP_PKEY* pKey = EVP_PKEY_new();
+    if (pkey == nullptr) {
+      error.append("Failed to initialize public key.");
+      return 1;
+    }
     EVP_PKEY_assign_RSA(pKey, rsa);
     auto cleanupKeys = scopeGuard([&]() noexcept {
       EVP_PKEY_free(pKey);
       BIO_free_all(keybio);
     });
-    if (pKey == nullptr) {
-      error.append("Failed to create private key object");
-      return 1;
-    }
 
     auto* ctx = EVP_MD_CTX_new();
     auto cleanupContext = scopeGuard([&]() noexcept {
