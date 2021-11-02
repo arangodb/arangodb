@@ -1,8 +1,8 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
-* Change error message for queries that use too much memory from "resource
-  limit exceeded" to "query would use more memory than allowed".
+* Change error message for queries that use too much memory from "resource limit
+  exceeded" to "query would use more memory than allowed".
 
 * arangorestore: Fix the order (regarding distributeShardsLike) in which
   collections are being created during restore, which could result in an error
