@@ -1445,13 +1445,13 @@
       assertEqual(db._collection(verticesNonSat).properties().replicationFactor, 1);
 
       const eColl = db._collection(edges);
-      const properties = eColl.properties();
+      const propertiesOfeColl = eColl.properties();
 
-      assertFalse(properties.isSmart);
-      assertEqual(properties.isDisjoint, false);
-      assertEqual(properties.numberOfShards, 1);
-      assertEqual(properties.replicationFactor, 1);
-      assertEqual(properties.shardingStrategy, 'enterprise-compat');
+      assertFalse(propertiesOfeColl.isSmart);
+      assertEqual(propertiesOfeColl.isDisjoint, false);
+      assertEqual(propertiesOfeColl.numberOfShards, 1);
+      assertEqual(propertiesOfeColl.replicationFactor, 1);
+      assertEqual(propertiesOfeColl.shardingStrategy, 'enterprise-compat');
 
       // test data
       const collVerticesNonSat = db._collection(verticesNonSat);
