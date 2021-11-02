@@ -859,7 +859,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
   std::unordered_set<std::string> followersToBeRemoved;
   OperationOptions options(ExecContext::current());
 
-  if (dropCollections) {  // todo: make another function out of this
+  if (dropCollections) {
     // Puts the collection with name \p colName to \p leadersToBeRemoved (if \p
     // distributeShardsLike is not defined) or to \p followersToBeRemoved (if it
     // is defined) or does nothing if there is no collection with this name.
