@@ -112,9 +112,6 @@ struct RequestHeader final : public MessageHeader {
   void acceptType(ContentType type) { _acceptType = type; }
   void acceptType(std::string const& type);
 
-  // query parameter helpers
-  void addParameter(std::string const& key, std::string const& value);
-
   /// @brief analyze path and split into components
   /// strips /_db/<name> prefix, sets db name and fills parameters
   void parseArangoPath(std::string const&);

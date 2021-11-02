@@ -50,6 +50,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabaseFeature.h"
@@ -925,7 +926,8 @@ void RocksDBEngine::start() {
 
   _logPersistor = std::make_shared<RocksDBLogPersistor>(
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-      _db, std::make_shared<SchedulerExecutor>(server()));
+      _db, std::make_shared<SchedulerExecutor>(server()),
+      server().getFeature<ReplicatedLogFeature>().options());
 
   _settingsManager->retrieveInitialValues();
 
@@ -1035,8 +1037,8 @@ std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
-  if (!info.hasKey("objectId")) {
-    builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
+  if (!info.hasKey(StaticStrings::ObjectId)) {
+    builder.add(StaticStrings::ObjectId, VPackValue(std::to_string(TRI_NewTickServer())));
   }
   if (!info.get(StaticStrings::CacheEnabled).isBool()) {
     builder.add(StaticStrings::CacheEnabled, VPackValue(false));
@@ -1455,7 +1457,7 @@ void RocksDBEngine::processTreeRebuilds() {
 
     {
       MUTEX_LOCKER(locker, _rebuildCollectionsLock);
-      if (_rebuildCollections.empty() || 
+      if (_rebuildCollections.empty() ||
           _runningRebuilds >= maxParallelRebuilds) {
         // nothing to do, or too much to do
         return;
@@ -1486,17 +1488,23 @@ void RocksDBEngine::processTreeRebuilds() {
             auto collection = vocbase->lookupCollectionByUuid(candidate.second);
             if (collection != nullptr && !collection->deleted()) {
               LOG_TOPIC("b96bc", INFO, Logger::ENGINES)
-                  << "starting background rebuild of revision tree for collection " << collection->name();
+                  << "starting background rebuild of revision tree for collection " << candidate.first << "/" << collection->name();
               Result res = static_cast<RocksDBCollection*>(collection->getPhysical())->rebuildRevisionTree();
               if (res.ok()) {
                 ++_metricsTreeRebuildsSuccess;
                 LOG_TOPIC("2f997", INFO, Logger::ENGINES)
-                    << "successfully rebuilt revision tree for collection " << collection->name();
+                    << "successfully rebuilt revision tree for collection " << candidate.first << "/" << collection->name();
               } else {
                 ++_metricsTreeRebuildsFailure;
-                LOG_TOPIC("a1fc2", ERR, Logger::ENGINES)
-                    << "failure during revision tree rebuilding for collection " << collection->name() 
-                    << ": " << res.errorMessage();
+                if (res.is(TRI_ERROR_LOCK_TIMEOUT)) {
+                  LOG_TOPIC("bce3a", WARN, Logger::ENGINES)
+                      << "failure during revision tree rebuilding for collection " << candidate.first << "/" << collection->name() 
+                      << ": " << res.errorMessage();
+                } else {
+                  LOG_TOPIC("a1fc2", ERR, Logger::ENGINES)
+                      << "failure during revision tree rebuilding for collection " << candidate.first << "/" << collection->name() 
+                      << ": " << res.errorMessage();
+                }
                 {
                  // mark as to-be-done again
                   MUTEX_LOCKER(locker, _rebuildCollectionsLock);
@@ -1564,7 +1572,7 @@ void RocksDBEngine::processCompactions() {
     RocksDBKeyBounds bounds = RocksDBKeyBounds::Empty();
     {
       WRITE_LOCKER(locker, _pendingCompactionsLock);
-      if (_pendingCompactions.empty() || 
+      if (_pendingCompactions.empty() ||
           _runningCompactions >= _maxParallelCompactions) {
         // nothing to do, or too much to do
         LOG_TOPIC("d5108", TRACE, Logger::ENGINES) 
@@ -2183,7 +2191,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
   }
       
   LOG_TOPIC("01e20", TRACE, Logger::ENGINES)
-      << "found " << files.size() << " WAL file(s), with " 
+      << "found " << files.size() << " WAL file(s), with "
       << archivedFiles << " files in the archive, " 
       << "number of prunable files: " << _prunableWalFiles.size();
 
@@ -2343,7 +2351,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     RocksDBValue value(RocksDBEntryType::Collection, it->value());
 
     uint64_t const objectId =
-        basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
+        basics::VelocyPackHelper::stringUInt64(value.slice(), StaticStrings::ObjectId);
 
     auto const cnt = RocksDBMetadata::loadCollectionCount(_db, objectId);
     uint64_t const numberDocuments = cnt._added - cnt._removed;
@@ -2355,7 +2363,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
       for (VPackSlice it : VPackArrayIterator(indexes)) {
         // delete index documents
         uint64_t objectId =
-            basics::VelocyPackHelper::stringUInt64(it, "objectId");
+            basics::VelocyPackHelper::stringUInt64(it, StaticStrings::ObjectId);
         res = RocksDBMetadata::deleteIndexEstimate(db, objectId);
         if (res.fail()) {
           return;
@@ -3079,7 +3087,7 @@ HealthData RocksDBEngine::healthCheck() {
   
     if (TRI_GetDiskSpaceInfo(_basePath, totalSpace, freeSpace).ok() &&
         totalSpace >= 1024 * 1024) {
-    
+
       // only carry out the following if we get a disk size of at least 1MB back.
       // everything else seems to be very unreasonable and not trustworthy.
       double diskFreePercentage = double(freeSpace) / double(totalSpace);
@@ -3091,7 +3099,7 @@ HealthData RocksDBEngine::healthCheck() {
            (_requiredDiskFreeBytes > 0 && freeSpace < _requiredDiskFreeBytes))) {
         std::stringstream ss;
         ss << "free disk space capacity has reached critical level, "
-           << "bytes free: " << freeSpace 
+           << "bytes free: " << freeSpace
            << ", % free: " << std::setprecision(1) << std::fixed << (diskFreePercentage * 100.0);
         // go into failed state
         _healthData.res.reset(TRI_ERROR_FAILED, ss.str());
@@ -3101,7 +3109,7 @@ HealthData RocksDBEngine::healthCheck() {
         if (lastLogWarningLongAgo) {
           LOG_TOPIC("54e7f", WARN, Logger::ENGINES)
               << "free disk space capacity is low, "
-              << "bytes free: " << freeSpace 
+              << "bytes free: " << freeSpace
               << ", % free: " << std::setprecision(1) << std::fixed << (diskFreePercentage * 100.0);
           _lastHealthLogWarningTimestamp = now;
         }

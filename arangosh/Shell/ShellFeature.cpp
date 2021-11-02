@@ -30,6 +30,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
+#include "Shell/ShellConsoleFeature.h"
 #include "Shell/V8ShellFeature.h"
 
 using namespace arangodb::basics;
@@ -83,7 +84,7 @@ void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opti
   _positionals = options->processingResult()._positionals;
 
   ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
-  ConsoleFeature& console = server().getFeature<ConsoleFeature>();
+  ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
 
   if (client.endpoint() == "none") {
     client.disable();

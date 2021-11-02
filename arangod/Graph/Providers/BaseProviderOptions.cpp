@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Graph/Providers/BaseProviderOptions.h"
+#include "Aql/NonConstExpression.h"
+#include "Aql/NonConstExpressionContainer.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -29,11 +31,13 @@ using namespace arangodb::graph;
 IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
                              aql::AstNode* condition, std::optional<size_t> memberToUpdate,
                              std::unique_ptr<arangodb::aql::Expression> expression,
+                             std::optional<aql::NonConstExpressionContainer> nonConstPart,
                              size_t cursorId)
     : _idx(idx),
       _indexCondition(condition),
       _memberToUpdate(memberToUpdate),
-      _cursorId(cursorId) {
+      _cursorId(cursorId),
+      _nonConstContainer(std::move(nonConstPart)) {
   if (expression != nullptr) {
     _expression = std::move(expression);
   }
@@ -55,6 +59,15 @@ std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
 
 size_t IndexAccessor::cursorId() const { return _cursorId; }
 
+bool IndexAccessor::hasNonConstParts() const {
+  return _nonConstContainer.has_value() && !_nonConstContainer->_expressions.empty();
+}
+
+aql::NonConstExpressionContainer const& IndexAccessor::nonConstPart() const {
+  TRI_ASSERT(hasNonConstParts());
+  return _nonConstContainer.value();
+}
+
 BaseProviderOptions::BaseProviderOptions(
     aql::Variable const* tmpVar,
     std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&& indexInfo,
@@ -71,8 +84,8 @@ aql::Variable const* BaseProviderOptions::tmpVar() const {
 }
 
 // first is global index information, second is depth-based index information.
-std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> const&
-BaseProviderOptions::indexInformations() const {
+std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&
+BaseProviderOptions::indexInformations() {
   return _indexInformation;
 }
 
