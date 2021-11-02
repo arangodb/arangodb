@@ -706,16 +706,6 @@ function createHybridDisjointSmartGraphSingleServer() {
   const edgesAB = "UnitTestDumpHybridSDisjointmartEdgesABSingleServer";
   const orphans = "UnitTestDumpHybridSDisjointmartOrphansSingleServer";
 
-  if (sgm._exists(hybridGraphName)) {
-    sgm._drop(hybridGraphName, true);
-  }
-  db._drop(edgesSatA);
-  db._drop(edgesAB);
-  db._drop(verticesANonSat);
-  db._drop(verticesBNonSat);
-  db._drop(verticesSat);
-  db._drop(orphans);
-
   const relSatANonSat = sgm._relation(edgesSatA, verticesSat, verticesANonSat);
   const relAB = sgm._relation(edgesAB, verticesANonSat, verticesBNonSat);
 
