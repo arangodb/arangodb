@@ -50,6 +50,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
+#include "Basics/CrashHandler.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterUpgradeFeature.h"
@@ -136,7 +137,7 @@ using namespace arangodb::application_features;
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
-    context.installSegv();
+    CrashHandler::installCrashHandler();
     context.runStartupChecks();
 
     std::string name = context.binaryName();

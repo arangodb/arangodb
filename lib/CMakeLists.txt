@@ -122,6 +122,7 @@ add_library(arango STATIC
   Basics/LocalTaskQueue.cpp
   Basics/Mutex.cpp
   Basics/Nonce.cpp
+  Basics/PhysicalMemory.cpp
   Basics/ReadWriteLock.cpp
   Basics/Result.cpp
   Basics/FileResult.cpp
@@ -141,6 +142,7 @@ add_library(arango STATIC
   Basics/CleanupFunctions.cpp
   Basics/conversions.cpp
   Basics/csv.cpp
+  Basics/CrashHandler.cpp
   Basics/datetime.cpp
   Basics/debugging.cpp
   Basics/EncodingUtils.cpp
@@ -154,6 +156,7 @@ add_library(arango STATIC
   Basics/memory.cpp
   Basics/prime-numbers.cpp
   Basics/process-utils.cpp
+  Basics/signals.cpp
   Basics/socket-utils.cpp
   Basics/system-functions.cpp
   Basics/terminal-utils.cpp
@@ -239,6 +242,11 @@ if (USE_MAINTAINER_MODE)
   add_dependencies(arango exitcodefiles)
 endif ()
 
+if (USE_LIBUNWIND)
+  target_link_libraries(arango ${LIBUNWIND_LIB})
+  target_include_directories(arango PRIVATE "${LIBUNWIND_HOME}/include")
+  add_dependencies(arango libunwind_build)
+endif ()
 
 # Enterprise
 if (USE_ENTERPRISE)

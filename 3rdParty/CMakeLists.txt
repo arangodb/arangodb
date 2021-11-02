@@ -39,6 +39,17 @@ set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
 add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
 
 ################################################################################
+## LIBUNWIND
+################################################################################
+
+if (USE_LIBUNWIND)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libunwind)
+  include_directories(SYSTEM "${LIBUNWIND_HOME}/include")
+  set(LIBUNWIND_HOME "${LIBUNWIND_HOME}" PARENT_SCOPE)
+  set(LIBUNWIND_LIB "${LIBUNWIND_LIB}" PARENT_SCOPE)
+endif ()
+
+################################################################################
 ## JEMALLOC
 ################################################################################
 
@@ -207,7 +218,6 @@ endif()
 
 set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
-set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
 
 find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR

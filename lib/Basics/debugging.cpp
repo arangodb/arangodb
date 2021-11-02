@@ -30,6 +30,7 @@
 
 #include "debugging.h"
 
+#include "Basics/CrashHandler.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
@@ -94,26 +95,49 @@ arangodb::basics::ReadWriteLock failurePointsLock;
 std::set<std::string, ::Comparer> failurePoints(comparer);
 }  // namespace
 
-/// @brief cause a segmentation violation
+/// @brief intentionally cause a segmentation violation or other failures
 /// this is used for crash and recovery tests
 void TRI_TerminateDebugging(char const* message) {
-  LOG_TOPIC("bde58", WARN, arangodb::Logger::FIXME) << "" << message << ": summon Baal!";
-  // make sure the latest log messages are flushed
-  TRI_FlushDebugging();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  CrashHandler::setHardKill();
 
-  // and now crash
-#ifdef _WIN32
-  auto hSelf = GetCurrentProcess();
-  TerminateProcess(hSelf, -999);
-  // TerminateProcess is async, alright wait here  for selfdestruct (we will never exit wait)
-  WaitForSingleObject(hSelf, INFINITE);
-#else
-  kill(getpid(), SIGKILL);  //to kill the complete process tree.
-  std::this_thread::sleep_for(std::chrono::seconds(5));
+  // there are some reserved crash messages we use in testing the
+  // crash handler
+  velocypack::StringRef const s(message);
+  if (s == "CRASH-HANDLER-TEST-ABORT") {
+    // intentionally crashes the program!
+    std::abort();
+  } else if (s == "CRASH-HANDLER-TEST-TERMINATE") {
+    // intentionally crashes the program!
+    std::terminate();
+  } else if (s == "CRASH-HANDLER-TEST-TERMINATE-ACTIVE") {
+    // intentionally crashes the program!
+    // note: when using ASan/UBSan, this actually does not crash
+    // the program but continues.
+    auto f = []() noexcept {
+      // intentionally crashes the program!
+      return std::string(nullptr);
+    };
+    f();
+    // we will get here at least with ASan/UBSan.
+    std::terminate();
+  } else if (s == "CRASH-HANDLER-TEST-SEGFAULT") {
+    std::unique_ptr<int> x;
+    // intentionally crashes the program!
+    int a = *x;
+    *x = 2;
+    TRI_ASSERT(a == 1);
+  } else if (s == "CRASH-HANDLER-TEST-ASSERT") {
+    int a = 1;
+    // intentionally crashes the program!
+    TRI_ASSERT(a == 2);
+  }
+
 #endif
-
-  // ensure the process is terminated
-  TRI_ASSERT(false);
+ 
+  // intentional crash - no need for a backtrace here
+  CrashHandler::disableBacktraces();
+  CrashHandler::crash(message);  
 }
 
 /// @brief check whether we should fail at a specific failure point
@@ -147,7 +171,6 @@ void TRI_ClearFailurePointsDebugging() {
 
   ::failurePoints.clear();
 }
-
 #endif
 
 /// @brief appends a backtrace to the string provided
@@ -288,20 +311,6 @@ void TRI_LogBacktrace() {
   }
 #endif
 #endif
-}
-
-/// @brief flushes the logger and shuts it down
-void TRI_FlushDebugging() {
-  Logger::flush();
-  Logger::shutdown();
-}
-
-/// @brief flushes the logger and shuts it down
-void TRI_FlushDebugging(char const* file, int line, char const* message) {
-  LOG_TOPIC("36a91", FATAL, arangodb::Logger::FIXME)
-      << "assertion failed in " << file << ":" << line << ": " << message;
-  Logger::flush();
-  Logger::shutdown();
 }
 
 template<> char const conpar<true>::open = '{';

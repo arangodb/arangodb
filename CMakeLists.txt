@@ -472,9 +472,20 @@ else ()
   )
 endif ()
 
+if (LINUX)
+  option(
+    USE_LIBUNWIND
+    "use libunwind for stack traces"
+    ON
+  )
+else ()
+  SET(USE_LIBUNWIND OFF)
+endif ()
+
 if (CROSS_COMPILING)
 # currently off, need additional params to configure like --host=triple <params>
   SET(USE_JEMALLOC OFF)
+  SET(USE_LIBUNWIND OFF)
 endif()
 
 ################################################################################
@@ -1172,6 +1183,15 @@ endif ()
 if (USE_JEMALLOC_PROF)
   add_definitions("-DUSE_MEMORY_PROFILE=1")
 endif ()
+
+# ------------------------------------------------------------------------------
+# LIBUNWIND
+# ------------------------------------------------------------------------------
+
+if (USE_LIBUNWIND)
+  add_definitions("-DARANGODB_HAVE_LIBUNWIND=1")
+endif ()
+
 
 # ------------------------------------------------------------------------------
 # RocksDB
