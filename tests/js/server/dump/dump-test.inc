@@ -1562,8 +1562,8 @@
       // test data
       const collVerticesANonSat = db._collection(verticesANonSat);
       const collVerticesBNonSat = db._collection(verticesBNonSat);
-      const collVerticesSat     = db._collection(verticesSat);
-      const collOrphans         = db._collection(orphans);
+      const collVerticesSat = db._collection(verticesSat);
+      const collOrphans = db._collection(orphans);
 
       // see explanation in the documentation to createHybridDisjointSmartGraphSingleServer() in file dump-set-common.inc
       assertEqual(eCollSatA.count(), 100);
