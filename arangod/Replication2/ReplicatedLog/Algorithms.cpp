@@ -422,27 +422,26 @@ algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
       << " > " << _replicationFactor;
 }
 
-auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple>& indexes,
+auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple> const& indexes,
                                       CalculateCommitIndexOptions const opt,
                                       LogIndex currentCommitIndex, LogIndex spearhead)
-    -> std::pair<LogIndex, CommitFailReason> {
+    -> std::tuple<LogIndex, CommitFailReason, std::vector<ParticipantId>> {
   TRI_ASSERT(indexes.size() == opt._replicationFactor)
       << "number of participants != replicationFactor (" << indexes.size()
       << " < " << opt._replicationFactor << ")";
-
 
   // number of failed participants
   auto nrFailed = std::count_if(std::begin(indexes), std::end(indexes),
                                 [](auto& p) { return p.isFailed(); });
   auto actualWriteConcern =
-      std::max(opt._writeConcern, std::min(opt._replicationFactor - nrFailed,
-                                          opt._softWriteConcern));
+      std::max(opt._writeConcern,
+               std::min(opt._replicationFactor - nrFailed, opt._softWriteConcern));
   // vector of participants that are neither excluded nor
   // have failed
   auto eligible = std::vector<ParticipantStateTuple>{};
   eligible.reserve(indexes.size());
   std::copy_if(std::begin(indexes), std::end(indexes), std::back_inserter(eligible),
-                             [](auto& p) { return !p.isFailed() && !p.isExcluded(); });
+               [](auto& p) { return !p.isFailed() && !p.isExcluded(); });
 
   // the minimal commit index caused by forced participants
   // if there are no forced participants, this component is just
@@ -464,23 +463,28 @@ auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple>& indexe
     // because of the check above
     TRI_ASSERT(nth != std::end(eligible));
 
-    std::nth_element(std::begin(eligible), nth, std::end(eligible), [](auto& left, auto& right) {
-      return left.index > right.index;
-    });
+    std::nth_element(std::begin(eligible), nth, std::end(eligible),
+                     [](auto& left, auto& right) {
+                       return left.index > right.index;
+                     });
     auto const minNonExcludedCommitIndex = nth->index;
 
     auto commitIndex = std::min(minForcedCommitIndex, minNonExcludedCommitIndex);
 
+    auto quorum = std::vector<ParticipantId>{};
+    std::transform(std::begin(eligible), std::next(nth),
+                   std::back_inserter(quorum), [](auto& p) { return p.id; });
+
     if (spearhead == commitIndex) {
-      return {commitIndex, CommitFailReason::withNothingToCommit()};
+      return {commitIndex, CommitFailReason::withNothingToCommit(), quorum};
     } else if (minForcedCommitIndex < minNonExcludedCommitIndex) {
-      return {currentCommitIndex, CommitFailReason::withForcedParticipantNotInQuorum()};
+      return {currentCommitIndex, CommitFailReason::withForcedParticipantNotInQuorum(), {}};
     } else {
-      return {commitIndex, CommitFailReason::withQuorumSizeNotReached()};
+      return {commitIndex, CommitFailReason::withQuorumSizeNotReached(), quorum};
     }
   }
 
   // This case happens when all servers are either excluded or failed;
   // this certainly means we could not reach a quorum
-  return {currentCommitIndex, CommitFailReason::withQuorumSizeNotReached()};
+  return {currentCommitIndex, CommitFailReason::withQuorumSizeNotReached(), {}};
 }

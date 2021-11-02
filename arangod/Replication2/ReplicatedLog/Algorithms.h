@@ -111,9 +111,9 @@ struct CalculateCommitIndexOptions {
   CalculateCommitIndexOptions(std::size_t writeConcern, std::size_t softWriteConcern, std::size_t replicationFactor);
 };
 
-auto calculateCommitIndex(std::vector<ParticipantStateTuple>& indexes,
+auto calculateCommitIndex(std::vector<ParticipantStateTuple> const& indexes,
                           CalculateCommitIndexOptions const opt,
                           LogIndex commitIndex, LogIndex spearhead)
-    -> std::pair<LogIndex, replicated_log::CommitFailReason>;
+    -> std::tuple<LogIndex, replicated_log::CommitFailReason, std::vector<ParticipantId>>;
 
 }  // namespace arangodb::replication2::algorithms

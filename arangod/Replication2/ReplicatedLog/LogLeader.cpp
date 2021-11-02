@@ -792,7 +792,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
     _largestCommonIndex = newLargestCommonIndex;
   }
 
-  auto [newCommitIndex, commitFailReason] =
+  auto [newCommitIndex, commitFailReason, quorum] =
       algorithms::calculateCommitIndex(indexes,
                                        algorithms::CalculateCommitIndexOptions{quorum_size, quorum_size, indexes.size()},
                                        _commitIndex, _inMemoryLog.getLastIndex());
@@ -803,12 +803,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
       << ", current commit index = " << _commitIndex;
   TRI_ASSERT(newCommitIndex >= _commitIndex);
   if (newCommitIndex > _commitIndex) {
-    std::vector<ParticipantId> quorum;
-    auto last = indexes.begin();
-    std::advance(last, quorum_size);
-    std::transform(indexes.begin(), last, std::back_inserter(quorum),
-                   [](auto& p) { return p.id; });
-
     auto const quorum_data =
         std::make_shared<QuorumData>(newCommitIndex, _self._currentTerm, std::move(quorum));
     return updateCommitIndexLeader(newCommitIndex, quorum_data);

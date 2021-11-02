@@ -36,7 +36,7 @@ TEST_F(CalcCommitIndexTest, write_concern_1_single_participant) {
       ParticipantStateTuple{LogIndex{50}, "A", {}},
   };
 
-  auto [index, reason] =
+  auto [index, reason, quorum] =
       algorithms::calculateCommitIndex(participants,
                                        CalculateCommitIndexOptions{1, 1, 1},
                                        LogIndex{1}, LogIndex{50});
@@ -49,7 +49,7 @@ TEST_F(CalcCommitIndexTest, write_concern_2_3_participants) {
                                   ParticipantStateTuple{LogIndex{25}, "B", {}},
                                   ParticipantStateTuple{LogIndex{35}, "C", {}}};
 
-  auto [index, reason] =
+  auto [index, reason, quorum] =
       algorithms::calculateCommitIndex(participants,
                                        CalculateCommitIndexOptions{2, 2, 3},
                                        LogIndex{1}, LogIndex{50});
@@ -65,7 +65,7 @@ TEST_F(CalcCommitIndexTest, write_concern_3_3_participants) {
       ParticipantStateTuple{LogIndex{35}, "C", {}},
   };
 
-  auto [index, reason] =
+  auto [index, reason, quorum] =
       algorithms::calculateCommitIndex(participants,
                                        CalculateCommitIndexOptions{3, 3, 3},
                                        LogIndex{1}, LogIndex{50});
@@ -81,7 +81,7 @@ TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
                                   ParticipantStateTuple{LogIndex{25}, "B", {}},
                                   ParticipantStateTuple{LogIndex{35}, "C", {}}};
 
-  auto [index, reason] =
+  auto [index, reason, quorum] =
       algorithms::calculateCommitIndex(participants,
                                        CalculateCommitIndexOptions{3, 3, 3},
                                        LogIndex{1}, LogIndex{50});
@@ -99,7 +99,7 @@ TEST_F(CalcCommitIndexTest, excluded_and_forced) {
       ParticipantStateTuple{LogIndex{35}, "C", {}},
   };
 
-  auto [index, reason] =
+  auto [index, reason, quorum] =
       algorithms::calculateCommitIndex(participants,
                                        CalculateCommitIndexOptions{2, 2, 3},
                                        LogIndex{1}, LogIndex{50});
@@ -116,7 +116,7 @@ TEST_F(CalcCommitIndexTest, all_excluded) {
       ParticipantStateTuple{LogIndex{35}, "C", {ParticipantFlag::Excluded}},
   };
 
-  auto [index, reason] =
+  auto [index, reason, quorum] =
       algorithms::calculateCommitIndex(participants,
                                        CalculateCommitIndexOptions{3, 3, 3},
                                        LogIndex{1}, LogIndex{50});
@@ -133,7 +133,7 @@ TEST_F(CalcCommitIndexTest, all_forced) {
       ParticipantStateTuple{LogIndex{35}, "C", {ParticipantFlag::Forced}},
   };
 
-  auto [index, reason] =
+  auto [index, reason, quorum] =
       algorithms::calculateCommitIndex(participants,
                                        CalculateCommitIndexOptions{3, 3, 3},
                                        LogIndex{1}, LogIndex{50});
@@ -152,7 +152,7 @@ TEST_F(CalcCommitIndexTest, not_enough_eligible) {
       ParticipantStateTuple{LogIndex{15}, "E", {}},
   };
 
-  auto [index, reason] =
+  auto [index, reason, quorum] =
       algorithms::calculateCommitIndex(participants,
                                        CalculateCommitIndexOptions{2, 3, 5},
                                        LogIndex{1}, LogIndex{50});
@@ -171,7 +171,7 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit) {
       ParticipantStateTuple{LogIndex{15}, "E", {}},
   };
 
-  auto [index, reason] =
+  auto [index, reason, quorum] =
       algorithms::calculateCommitIndex(participants,
                                        CalculateCommitIndexOptions{2, 3, 5},
                                        LogIndex{15}, LogIndex{15});
