@@ -32,6 +32,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/NonConstExpressionContainer.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Transaction/Methods.h"
@@ -63,10 +64,8 @@ class IndexExecutorInfos {
                      Collection const* collection, Variable const* outVariable,
                      bool produceResult, Expression* filter,
                      arangodb::aql::Projections projections,
-                     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
-                     std::vector<Variable const*>&& expInVars,
-                     std::vector<RegisterId>&& expInRegs, bool hasV8Expression,
-                     bool count, ReadOwnWrites readOwnWrites, AstNode const* condition,
+                     NonConstExpressionContainer&& nonConstExpressions, bool count,
+                     ReadOwnWrites readOwnWrites, AstNode const* condition,
                      std::vector<transaction::Methods::IndexHandle> indexes,
                      Ast* ast, IndexIteratorOptions options,
                      IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
@@ -99,8 +98,7 @@ class IndexExecutorInfos {
 
   Ast* getAst() const noexcept;
 
-  std::vector<Variable const*> const& getExpInVars() const noexcept;
-  std::vector<RegisterId> const& getExpInRegs() const noexcept;
+  std::vector<std::pair<VariableId, RegisterId>> const& getVarsToRegister() const noexcept;
 
   // setter
   void setHasMultipleExpansions(bool flag);
@@ -145,10 +143,8 @@ class IndexExecutorInfos {
   Variable const* _outVariable;
   Expression* _filter;
   arangodb::aql::Projections _projections;
-  std::vector<Variable const*> _expInVars;  // input variables for expresseion
-  std::vector<RegisterId> _expInRegs;       // input registers for expression
 
-  std::vector<std::unique_ptr<NonConstExpression>> _nonConstExpression;
+  NonConstExpressionContainer _nonConstExpressions;
 
   RegisterId _outputRegisterId;
 
@@ -160,11 +156,10 @@ class IndexExecutorInfos {
   bool _hasMultipleExpansions;
 
   bool _produceResult;
+
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call. Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
-  bool _hasV8Expression;
-
   bool _count;
   ReadOwnWrites const _readOwnWrites;
 };
@@ -245,8 +240,8 @@ class IndexExecutor {
 
  private:
   bool advanceCursor();
-  void executeExpressions(InputAqlItemRow& input);
-  void initIndexes(InputAqlItemRow& input);
+  void executeExpressions(InputAqlItemRow const& input);
+  void initIndexes(InputAqlItemRow const& input);
 
   CursorReader& getCursor();
 
