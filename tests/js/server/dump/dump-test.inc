@@ -1398,7 +1398,6 @@
 
         // only self-loops are saved as the others have different values of the 'value' key, which is the smartGraphAttribute field
         assertEqual(eColl.count(), 100);
-
         assertEqual(vColl.count(), 100);
         assertEqual(oColl.count(), 100);
 
