@@ -30,6 +30,7 @@
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServerServerBased.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionLocation.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/GraphNode.h"
@@ -370,6 +371,8 @@ struct DistributedQueryInstanciator final
   bool before(ExecutionNode* en) override final {
     auto const nodeType = en->getType();
     if (_isCoordinator) {
+      // on coordinator
+      TRI_ASSERT(en->getAllowedLocation().canRunOnCoordinator());
       _coordinatorParts.addNode(en);
 
       switch (nodeType) {
@@ -396,6 +399,7 @@ struct DistributedQueryInstanciator final
       TRI_ASSERT((_lastGatherNode != nullptr) == (nodeType == ExecutionNode::GATHER));
     } else {
       // on dbserver
+      TRI_ASSERT(en->getAllowedLocation().canRunOnDBServer());
       _dbserverParts.addNode(en, _pushToSingleServer);
       // switch back from DB server to coordinator, if we are not pushing the
       // entire plan to the DB server

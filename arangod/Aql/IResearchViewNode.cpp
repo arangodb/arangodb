@@ -1186,7 +1186,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
 }
 
 aql::ExecutionLocation IResearchViewNode::getAllowedLocation() const {
-  return aql::ExecutionLocation(aql::ExecutionLocation::LocationType::DBSERVER);
+  // TODO: is this actually correct?
+  return aql::ExecutionLocation(aql::ExecutionLocation::LocationType::ANYWHERE);
 }
 
 std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const {
