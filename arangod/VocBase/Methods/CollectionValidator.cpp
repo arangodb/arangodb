@@ -15,7 +15,7 @@ Result CollectionValidator::validateCreationInfo() {
   bool extendedNames =
       _vocbase.server().getFeature<DatabaseFeature>().extendedNamesForCollections();
   if (!CollectionNameValidator::isAllowedName(_allowSystemCollectionCreation, extendedNames,
-                                              _info.name)) {  // todo check second false
+                                              _info.name)) {
     events::CreateCollection(_vocbase.name(), _info.name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
