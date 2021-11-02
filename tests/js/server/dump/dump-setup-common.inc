@@ -464,10 +464,6 @@ function createEmptyGraph(kind, options) {
       graphName = "UnitTestsDumpEmptyDisjointGraph";
   }
 
-  if (graphModule._exists(graphName)) {
-    graphModule._drop(graphName, true);
-  }
-
   graphModule._create(graphName, [], [], options);
 
 }
@@ -528,11 +524,8 @@ function createSmartGraph() {
   const edges = "UnitTestDumpSmartEdges";
   const vertices = "UnitTestDumpSmartVertices";
   const orphans = "UnitTestDumpSmartOrphans";
-  if (sgm._exists(smartGraphName)) {
-    sgm._drop(smartGraphName, true);
-  }
-  db._drop(edges);
-  db._drop(vertices);
+
+  assertCollectionsAreNew([edges, vertices, orphans]);
 
   sgm._create(smartGraphName, [sgm._relation(edges, vertices, vertices)],
     [orphans], {numberOfShards: 5, smartGraphAttribute: "value"});
@@ -666,13 +659,7 @@ function createHybridSmartGraphSingleServer() {
   const edges = "UnitTestDumpHybridSmartEdgesSingleServer";
   const orphans = "UnitTestDumpHybridSmartOrphansSingleServer";
 
-  if (sgm._exists(hybridGraphName)) {
-    sgm._drop(hybridGraphName, true);
-  }
-  db._drop(edges);
-  db._drop(verticesNonSat);
-  db._drop(verticesSat);
-  db._drop(orphans);
+  assertCollectionsAreNew([edges, verticesNonSat, verticesSat, orphans]);
 
   const relSatNonSat = sgm._relation(edges, verticesSat, verticesNonSat);
 
@@ -722,15 +709,7 @@ function createHybridDisjointSmartGraphSingleServer() {
   const edgesAB = "UnitTestDumpHybridSDisjointmartEdgesABSingleServer";
   const orphans = "UnitTestDumpHybridSDisjointmartOrphansSingleServer";
 
-  if (sgm._exists(hybridGraphName)) {
-    sgm._drop(hybridGraphName, true);
-  }
-  db._drop(edgesSatA);
-  db._drop(edgesAB);
-  db._drop(verticesANonSat);
-  db._drop(verticesBNonSat);
-  db._drop(verticesSat);
-  db._drop(orphans);
+  assertCollectionsAreNew([edgesSatA, edgesAB, verticesANonSat, verticesBNonSat, verticesSat, orphans]);
 
   const relSatANonSat = sgm._relation(edgesSatA, verticesSat, verticesANonSat);
   const relAB = sgm._relation(edgesAB, verticesANonSat, verticesBNonSat);
@@ -845,7 +824,6 @@ function fillEDocs(savedVDocsColls = []) {
  * @brief Only if enterprise mode:
  *        Creates a SmartGraph, and a single edge relation: if \a toVertices is given and not "", then from
  *        \a fromvertices to \a toVertices, otherwise from \a fromVertices to \a toVertices.
- *        If the graph or any of given collections exist, they are dropped first.
  * @param names a document that can contain the following keys:
  * smartGraphName: the name of the graph,
  * edges: the name for the edge collection,
@@ -902,17 +880,18 @@ function createGraphWithoutData(names, options = undefined) {
   const kind = options.isSatellite ? "Satellite" : "SmartGraph";
   const graphModule = chooseGraphModule(kind);
 
-  // drop the graph and collections (if any)
-  if (graphModule._exists(names.smartGraphName)) {
-    graphModule._drop(names.smartGraphName, true);
+  // throw an error if one of the collections already exists
+  for (let collection of db._collections()) {
+    switch (collection.name()) {
+      case names.edges :
+      case names.fromVertices :
+      case names.toVertices :
+      case names.orphans :
+        throw "Error in test: this collection name already exists: " + collection.name();
+    }
   }
-  db._drop(names.edges);
-  db._drop(names.fromVertices);
-  if (names.toVertices !== names.fromVertices) {
-    db._drop(names.toVertices);
-  }
-  db._drop(names.orphans);
 
+  // note: throw an error if the graph already exists (which shouldn't happen)
   graphModule._create(
     names.smartGraphName,
     [graphModule._relation(names.edges, names.fromVertices, names.toVertices)],
@@ -959,6 +938,17 @@ function createSmartArangoSearch() {
   });
 }
 
+function assertCollectionsAreNew(collectionNames) {
+  for (let existingCollection of db._collections()) {
+    const existingCollectionName = existingCollection.name();
+    for (let collectionName of collectionNames) {
+      if (existingCollectionName === collectionName) {
+        throw "Error in test: this collection name already exists: " + collectionName;
+      }
+    }
+  }
+}
+
 /**
  * @brief Only if enterprise mode:
  *        Creates a SatelliteCollection with 100 documents
@@ -969,7 +959,7 @@ function createSatelliteCollections() {
   }
 
   const satelliteCollectionName = "UnitTestDumpSatelliteCollection";
-  db._drop(satelliteCollectionName);
+  assertCollectionsAreNew([satelliteCollectionName]);
   db._create(satelliteCollectionName, {"replicationFactor": "satellite"});
 
   let vDocs = [];
@@ -1080,11 +1070,8 @@ function createSmartGraphRegressionTest() {
   const edges = "UnitTestRestoreSmartGraphRegressionEdges";
   const vertices = "UnitTestRestoreSmartGraphRegressionVertices";
   const gm = require("@arangodb/smart-graph");
-  if (gm._exists(smartGraphName)) {
-    gm._drop(smartGraphName, true);
-  }
-  db._drop(edges);
-  db._drop(vertices);
+
+  assertCollectionsAreNew([edges, vertices]);
 
   gm._create(smartGraphName, [gm._relation(edges, vertices, vertices)],
     [], {numberOfShards: 5, smartGraphAttribute: "cheesyness"});
