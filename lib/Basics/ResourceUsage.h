@@ -67,7 +67,8 @@ struct ResourceMonitor final {
 
     if (max > 0 && ADB_UNLIKELY(current > max)) {
       currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_RESOURCE_LIMIT, "query would use more memory than allowed");
     }
     
     size_t peak = currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
