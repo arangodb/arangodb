@@ -41,6 +41,7 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN 1..10 FILTER i > 1 FILTER i < 4 FILTER i < 10 SORT i RETURN i",  [ 2, 3 ] ],
         [ "LET a = NOOPT(9) FOR i IN 1..10 FILTER i > 1 FILTER i < 4 FILTER i < a SORT i RETURN i",  [ 2, 3 ] ],
         [ "LET a = NOOPT(9), b = NOOPT(0) FOR i IN 1..10 FILTER i >= b FILTER i > 1 FILTER i < 4 FILTER i < a SORT i RETURN i",  [ 2, 3 ] ],
+        [ "FOR i IN 1..10 FILTER i > 1 FILTER i < (RETURN 4)[0] SORT i RETURN i",  [ 2, 3 ] ],
       ];
 
       queries.forEach(function(query) {
@@ -59,11 +60,10 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN 1..10 FILTER i > 1 FILTER i < NOOPT(4) SORT i RETURN i",  [ 2, 3 ] ],
         [ "FOR i IN 1..10 FILTER i > NOOPT(1) FILTER i < 4 SORT i RETURN i",  [ 2, 3 ] ],
         [ "FOR i IN 1..10 FILTER i > NOOPT(1) FILTER i < NOOPT(4) SORT i RETURN i",  [ 2, 3 ] ],
-        [ "FOR i IN 1..10 FILTER i > 1 FILTER i < (RETURN 4)[0] SORT i RETURN i",  [ 2, 3 ] ],
       ];
 
       queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query[0], {}, { optimizer: { rules: [ "+all", "-move-calculations-up", "-move-calculations-up-2" ] } });
+        let result = AQL_EXPLAIN(query[0]);
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
         assertNotEqual(1, result.plan.nodes.filter(function(n) { return n.type === 'FilterNode'; }).length);
         result = AQL_EXECUTE(query[0]).json;
