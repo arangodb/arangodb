@@ -25,18 +25,13 @@
 
 namespace hwy {
 
-// API version (https://semver.org/)
+// API version (https://semver.org/); keep in sync with CMakeLists.txt.
 #define HWY_MAJOR 0
-#define HWY_MINOR 11
-#define HWY_PATCH 1
+#define HWY_MINOR 14
+#define HWY_PATCH 2
 
 //------------------------------------------------------------------------------
 // Shorthand for descriptors (defined in shared-inl.h) used to select overloads.
-
-// Because Highway functions take descriptor and/or vector arguments, ADL finds
-// these functions without requiring users in project::HWY_NAMESPACE to
-// qualify Highway functions with hwy::HWY_NAMESPACE. However, ADL rules for
-// templates require `using hwy::HWY_NAMESPACE::ShiftLeft;` etc. declarations.
 
 // HWY_FULL(T[,LMUL=1]) is a native vector/group. LMUL is the number of
 // registers in the group, and is ignored on targets that do not support groups.
@@ -49,7 +44,7 @@ namespace hwy {
   HWY_FULL_RECOMPOSER((__VA_ARGS__, HWY_FULL2, HWY_FULL1, ))
 #define HWY_FULL(...) HWY_CHOOSE_FULL(__VA_ARGS__())(__VA_ARGS__)
 
-// Vector of up to MAX_N lanes.
+// Vector of up to MAX_N lanes. Discouraged, when possible, use Half<> instead.
 #define HWY_CAPPED(T, MAX_N) \
   hwy::HWY_NAMESPACE::Simd<T, HWY_MIN(MAX_N, HWY_LANES(T))>
 
@@ -75,14 +70,22 @@ namespace hwy {
 #define HWY_STATIC_DISPATCH(FUNC_NAME) N_WASM::FUNC_NAME
 #elif HWY_STATIC_TARGET == HWY_NEON
 #define HWY_STATIC_DISPATCH(FUNC_NAME) N_NEON::FUNC_NAME
+#elif HWY_STATIC_TARGET == HWY_SVE
+#define HWY_STATIC_DISPATCH(FUNC_NAME) N_SVE::FUNC_NAME
+#elif HWY_STATIC_TARGET == HWY_SVE2
+#define HWY_STATIC_DISPATCH(FUNC_NAME) N_SVE2::FUNC_NAME
 #elif HWY_STATIC_TARGET == HWY_PPC8
 #define HWY_STATIC_DISPATCH(FUNC_NAME) N_PPC8::FUNC_NAME
+#elif HWY_STATIC_TARGET == HWY_SSSE3
+#define HWY_STATIC_DISPATCH(FUNC_NAME) N_SSSE3::FUNC_NAME
 #elif HWY_STATIC_TARGET == HWY_SSE4
 #define HWY_STATIC_DISPATCH(FUNC_NAME) N_SSE4::FUNC_NAME
 #elif HWY_STATIC_TARGET == HWY_AVX2
 #define HWY_STATIC_DISPATCH(FUNC_NAME) N_AVX2::FUNC_NAME
 #elif HWY_STATIC_TARGET == HWY_AVX3
 #define HWY_STATIC_DISPATCH(FUNC_NAME) N_AVX3::FUNC_NAME
+#elif HWY_STATIC_TARGET == HWY_AVX3_DL
+#define HWY_STATIC_DISPATCH(FUNC_NAME) N_AVX3_DL::FUNC_NAME
 #endif
 
 // Dynamic dispatch declarations.
@@ -143,10 +146,28 @@ FunctionCache<RetType, Args...> FunctionCacheFactory(RetType (*)(Args...)) {
 #define HWY_CHOOSE_NEON(FUNC_NAME) nullptr
 #endif
 
+#if HWY_TARGETS & HWY_SVE
+#define HWY_CHOOSE_SVE(FUNC_NAME) &N_SVE::FUNC_NAME
+#else
+#define HWY_CHOOSE_SVE(FUNC_NAME) nullptr
+#endif
+
+#if HWY_TARGETS & HWY_SVE2
+#define HWY_CHOOSE_SVE2(FUNC_NAME) &N_SVE2::FUNC_NAME
+#else
+#define HWY_CHOOSE_SVE2(FUNC_NAME) nullptr
+#endif
+
 #if HWY_TARGETS & HWY_PPC8
 #define HWY_CHOOSE_PCC8(FUNC_NAME) &N_PPC8::FUNC_NAME
 #else
 #define HWY_CHOOSE_PPC8(FUNC_NAME) nullptr
+#endif
+
+#if HWY_TARGETS & HWY_SSSE3
+#define HWY_CHOOSE_SSSE3(FUNC_NAME) &N_SSSE3::FUNC_NAME
+#else
+#define HWY_CHOOSE_SSSE3(FUNC_NAME) nullptr
 #endif
 
 #if HWY_TARGETS & HWY_SSE4
@@ -165,6 +186,12 @@ FunctionCache<RetType, Args...> FunctionCacheFactory(RetType (*)(Args...)) {
 #define HWY_CHOOSE_AVX3(FUNC_NAME) &N_AVX3::FUNC_NAME
 #else
 #define HWY_CHOOSE_AVX3(FUNC_NAME) nullptr
+#endif
+
+#if HWY_TARGETS & HWY_AVX3_DL
+#define HWY_CHOOSE_AVX3_DL(FUNC_NAME) &N_AVX3_DL::FUNC_NAME
+#else
+#define HWY_CHOOSE_AVX3_DL(FUNC_NAME) nullptr
 #endif
 
 #define HWY_DISPATCH_TABLE(FUNC_NAME) \
@@ -254,15 +281,18 @@ FunctionCache<RetType, Args...> FunctionCacheFactory(RetType (*)(Args...)) {
 #endif
 
 // These define ops inside namespace hwy::HWY_NAMESPACE.
-#if HWY_TARGET == HWY_SSE4
+#if HWY_TARGET == HWY_SSSE3 || HWY_TARGET == HWY_SSE4
 #include "hwy/ops/x86_128-inl.h"
 #elif HWY_TARGET == HWY_AVX2
 #include "hwy/ops/x86_256-inl.h"
-#elif HWY_TARGET == HWY_AVX3
+#elif HWY_TARGET == HWY_AVX3 || HWY_TARGET == HWY_AVX3_DL
 #include "hwy/ops/x86_512-inl.h"
 #elif HWY_TARGET == HWY_PPC8
+#error "PPC is not yet supported"
 #elif HWY_TARGET == HWY_NEON
 #include "hwy/ops/arm_neon-inl.h"
+#elif HWY_TARGET == HWY_SVE || HWY_TARGET == HWY_SVE2
+#include "hwy/ops/arm_sve-inl.h"
 #elif HWY_TARGET == HWY_WASM
 #include "hwy/ops/wasm_128-inl.h"
 #elif HWY_TARGET == HWY_RVV
@@ -273,65 +303,6 @@ FunctionCache<RetType, Args...> FunctionCacheFactory(RetType (*)(Args...)) {
 #pragma message("HWY_TARGET does not match any known target")
 #endif  // HWY_TARGET
 
-// Commonly used functions/types that must come after ops are defined.
-HWY_BEFORE_NAMESPACE();
-namespace hwy {
-namespace HWY_NAMESPACE {
-
-// The lane type of a vector type, e.g. float for Vec<Simd<float, 4>>.
-template <class V>
-using LaneType = decltype(GetLane(V()));
-
-// Vector type, e.g. Vec128<float> for Simd<float, 4>. Useful as the return type
-// of functions that do not take a vector argument, or as an argument type if
-// the function only has a template argument for D, or for explicit type names
-// instead of auto. This may be a built-in type.
-template <class D>
-using Vec = decltype(Zero(D()));
-
-// Mask type. Useful as the return type of functions that do not take a mask
-// argument, or as an argument type if the function only has a template argument
-// for D, or for explicit type names instead of auto.
-template <class D>
-using Mask = decltype(MaskFromVec(Zero(D())));
-
-// Returns the closest value to v within [lo, hi].
-template <class V>
-HWY_API V Clamp(const V v, const V lo, const V hi) {
-  return Min(Max(lo, v), hi);
-}
-
-// CombineShiftRightBytes (and ..Lanes) are not available for the scalar target.
-// TODO(janwas): implement for RVV
-#if HWY_TARGET != HWY_SCALAR && HWY_TARGET != HWY_RVV
-
-template <size_t kLanes, class V>
-HWY_API V CombineShiftRightLanes(const V hi, const V lo) {
-  return CombineShiftRightBytes<kLanes * sizeof(LaneType<V>)>(hi, lo);
-}
-
-#endif
-
-// Returns lanes with the most significant bit set and all other bits zero.
-template <class D>
-HWY_API Vec<D> SignBit(D d) {
-  using Unsigned = MakeUnsigned<TFromD<D>>;
-  const Unsigned bit = Unsigned(1) << (sizeof(Unsigned) * 8 - 1);
-  return BitCast(d, Set(Rebind<Unsigned, D>(), bit));
-}
-
-// Returns quiet NaN.
-template <class D>
-HWY_API Vec<D> NaN(D d) {
-  const RebindToSigned<D> di;
-  // LimitsMax sets all exponent and mantissa bits to 1. The exponent plus
-  // mantissa MSB (to indicate quiet) would be sufficient.
-  return BitCast(d, Set(di, LimitsMax<TFromD<decltype(di)>>()));
-}
-
-// NOLINTNEXTLINE(google-readability-namespace-comments)
-}  // namespace HWY_NAMESPACE
-}  // namespace hwy
-HWY_AFTER_NAMESPACE();
+#include "hwy/ops/generic_ops-inl.h"
 
 #endif  // HWY_HIGHWAY_PER_TARGET

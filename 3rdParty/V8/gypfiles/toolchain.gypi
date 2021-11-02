@@ -301,6 +301,9 @@
         'defines': [
           'V8_TARGET_ARCH_ARM64',
         ],
+        'xcode_settings': {
+          'ARCHS': [ 'arm64' ],
+        },
       }],
       ['v8_target_arch=="s390x"', {
         'defines': [

@@ -1,6 +1,10 @@
 master
 -------------------------
 
+* Add `classification_stream` capable of classifying input data based on FastText NN model.
+
+* Add `nearest_neighbors_stream` capable of generating synonyms based on FastText NN model.
+
 v1.1 (2021-10-13)
 -------------------------
 
