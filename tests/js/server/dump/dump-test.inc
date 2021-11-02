@@ -1320,7 +1320,7 @@
         const graph = g.document(smartGraphName);
         assertFalse(graph.isDisjoint);
         assertCommonSmartGraphProperties(graph);
-        assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false); // todo
+        assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
       },
 
       testSmartGraphSingleServer: function () {
