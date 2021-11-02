@@ -465,11 +465,10 @@ function createEmptyGraph(kind, options) {
   }
 
   if (graphModule._exists(graphName)) {
-    graphModule._drop(graphName, true);
+    assertTrue(false, "Graph already exists. Please check setup configuration.");
   }
 
   graphModule._create(graphName, [], [], options);
-
 }
 
 
