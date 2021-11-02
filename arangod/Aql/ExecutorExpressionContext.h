@@ -41,8 +41,7 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
   ExecutorExpressionContext(transaction::Methods& trx,
                             QueryContext& context,
                             AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
-                            std::vector<Variable const*> const& vars,
-                            std::vector<RegisterId> const& regs);
+                            std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister);
 
   ~ExecutorExpressionContext() override = default;
 
@@ -56,8 +55,7 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
  private:
   /// @brief temporary storage for expression data context
   InputAqlItemRow const& _inputRow;
-  std::vector<Variable const*> const& _vars;
-  std::vector<RegisterId> const& _regs;
+  std::vector<std::pair<VariableId, RegisterId>> const& _varsToRegister;
 };
 
 }  // namespace aql
