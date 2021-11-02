@@ -2958,8 +2958,6 @@ Result ClusterInfo::createCollectionsCoordinator(
         basics::VelocyPackHelper::getStringValue(info.json, StaticStrings::DistributeShardsLike,
                                                  StaticStrings::Empty);
     if (!otherCidString.empty() && conditions.find(otherCidString) == conditions.end()) {
-      // todo conditions is empty at this point, remove the second part of the if-condition.
-
       // Distribute shards like case.
       // Precondition: Master collection is not moving while we create this
       // collection We only need to add these once for every Master, we cannot
