@@ -175,7 +175,7 @@
                     "LET a = NOOPT(d.foo) " +
                     "LET e = SUM(FOR c IN " + vn + " LET p = CONCAT(c.foo, c.foo) RETURN p) " +
                     "SORT CONCAT(a, e) LIMIT 10 RETURN d";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = AQL_EXPLAIN(query, {}, { optimizer: { rules: [ "+all", "-move-calculations-up", "-move-calculations-up-2"] } }).plan;
         if (!isCluster) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = AQL_EXECUTE(query);
