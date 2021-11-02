@@ -82,6 +82,10 @@ jsunity.run(function dump_cluster_testsuite() {
       "testEmptySmartGraph",
       "testSmartGraphWithoutData",
       "testSmartGraphSingleServer",
+      "testSatelliteSmartGraphSingleServer",
+      "testDisjointGraphSingleServer",
+      "testHybridSmartGraphSingleServer",
+      "testHybridDisjointSmartGraphSingleServer"
 
     ].concat(enterpriseTests)
   );

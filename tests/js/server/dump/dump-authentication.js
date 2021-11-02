@@ -96,6 +96,10 @@ jsunity.run(function dump_single_testsuite() {
       "testEmptySmartGraph",
       "testSmartGraphWithoutData",
       "testSmartGraphSingleServer",
+      "testSatelliteSmartGraphSingleServer",
+      "testDisjointGraphSingleServer",
+      "testHybridSmartGraphSingleServer",
+      "testHybridDisjointSmartGraphSingleServer"
     ]
   );
 

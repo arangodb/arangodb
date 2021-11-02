@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000, unused:false */
-/*global assertEqual, assertUndefined, arango */
+/*global assertEqual, assertTrue, assertUndefined, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup collections for dump/reload tests
@@ -464,8 +464,11 @@ function createEmptyGraph(kind, options) {
       graphName = "UnitTestsDumpEmptyDisjointGraph";
   }
 
-  graphModule._create(graphName, [], [], options);
+  if (graphModule._exists(graphName)) {
+    assertTrue(false, "Graph already exists. Please check setup configuration.");
+  }
 
+  graphModule._create(graphName, [], [], options);
 }
 
 
@@ -524,7 +527,9 @@ function createSmartGraph() {
   const edges = "UnitTestDumpSmartEdges";
   const vertices = "UnitTestDumpSmartVertices";
   const orphans = "UnitTestDumpSmartOrphans";
-
+  if (sgm._exists(smartGraphName)) {
+    assertTrue(false, "Graph already exists. Please check setup configuration.");
+  }
   assertCollectionsAreNew([edges, vertices, orphans]);
 
   sgm._create(smartGraphName, [sgm._relation(edges, vertices, vertices)],
@@ -663,7 +668,10 @@ function createHybridSmartGraphSingleServer() {
 
   const relSatNonSat = sgm._relation(edges, verticesSat, verticesNonSat);
 
-  sgm._create(hybridGraphName, [relSatNonSat], [orphans], {satellites: [verticesSat]});
+  const g = sgm._create(hybridGraphName, [relSatNonSat], [orphans], {
+    satellites: [verticesSat],
+    smartGraphAttribute: 'value'
+  });
 
   // create vertices
   const size = 50;
@@ -841,18 +849,7 @@ function createGraphWithoutData(names, options = undefined) {
   db._useDatabase("UnitTestsDumpSrc");
 
   if (!names) {
-    const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
-    const edges = "UnitTestDumpSmartEdgesWithoutData";
-    const vertices = "UnitTestDumpSmartVerticesWithoutData";
-    const orphans = "UnitTestDumpSmartOrphansWithoutData";
-
-    names = {
-      smartGraphName: smartGraphName,
-      edges: edges,
-      fromVertices: [vertices],
-      toVertices: [vertices],
-      orphans: [orphans]
-    };
+    assertTrue(false, "Names property is not set!");
   }
 
   // set default options if not given as a parameter
@@ -880,16 +877,7 @@ function createGraphWithoutData(names, options = undefined) {
   const kind = options.isSatellite ? "Satellite" : "SmartGraph";
   const graphModule = chooseGraphModule(kind);
 
-  // throw an error if one of the collections already exists
-  for (let collection of db._collections()) {
-    switch (collection.name()) {
-      case names.edges :
-      case names.fromVertices :
-      case names.toVertices :
-      case names.orphans :
-        throw "Error in test: this collection name already exists: " + collection.name();
-    }
-  }
+  assertCollectionsAreNew([names.edges, names.fromVertices, names.toVertices, names.orphans])
 
   // note: throw an error if the graph already exists (which shouldn't happen)
   graphModule._create(
@@ -900,6 +888,28 @@ function createGraphWithoutData(names, options = undefined) {
   );
 }
 
+function createSmartGraphWithoutData() {
+  // External method for dump-setup-mixed.js to create a default SmartGraph
+  // Using helper graph creation method defined above: createGraphWithoutData
+  if (!isEnterprise) {
+    return;
+  }
+
+  const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
+  const edges = "UnitTestDumpSmartEdgesWithoutData";
+  const vertices = "UnitTestDumpSmartVerticesWithoutData";
+  const orphans = "UnitTestDumpSmartOrphansWithoutData";
+
+  const names = {
+    smartGraphName: smartGraphName,
+    edges: edges,
+    fromVertices: [vertices],
+    toVertices: [vertices],
+    orphans: [orphans]
+  };
+
+  createGraphWithoutData(names);
+}
 
 /**
  * @brief Only if enterprise mode:
@@ -1090,7 +1100,7 @@ exports.createEmptySmartGraph = createEmptySmartGraph;
 exports.createEmptySatelliteGraph = createEmptySatelliteGraph;
 exports.createEmptyDisjointGraph = createEmptyDisjointGraph;
 
-exports.createSmartGraphWithoutData = createGraphWithoutData;
+exports.createSmartGraphWithoutData = createSmartGraphWithoutData;
 exports.createSatelliteGraphWithoutData = createSatelliteGraphWithoutData;
 exports.createDisjointGraphWithoutData = createDisjointGraphWithoutData;
 
