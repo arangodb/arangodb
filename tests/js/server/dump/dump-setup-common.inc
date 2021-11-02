@@ -637,7 +637,7 @@ function createSatelliteGraphSingleServer() {
       orphans: [orphans]
     },
     {
-      isSatellite: true, isSmart: false/*needed: default is true*/,
+      isSatellite: true, isSmart: false /*needed: default is true - only for internal helper method api*/,
       replicationFactor: 'satellite'
     });
 
