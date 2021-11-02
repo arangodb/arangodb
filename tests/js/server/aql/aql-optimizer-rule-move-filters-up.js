@@ -100,9 +100,16 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 FOR l IN 1..10 LET a = MIN([1, l]) FILTER i == 1 LIMIT 1 RETURN a",
       ];
 
+
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        if (query !== queries[1]) { // because of the optimization rules for moving subqueries up,
+                                    // there's a dependency of the subquery on the variable i of the outer query,
+                                    // filter is not going to be moved up
+          assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        } else {
+          assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        }
       });
     },
 
@@ -114,14 +121,20 @@ function optimizerRuleTestSuite () {
     testPlans : function () {
       var plans = [ 
         [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "FilterNode", "SubqueryStartNode", "EnumerateListNode", "SubqueryEndNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SubqueryStartNode", "EnumerateListNode", "SubqueryEndNode", "CalculationNode", "FilterNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 FOR l IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "FilterNode", "EnumerateListNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i == 1 FILTER j == 2 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode" ] ]
       ];
 
       plans.forEach(function(plan) {
         var result = AQL_EXPLAIN(plan[0], { }, paramEnabled);
-        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
+        if (plan[0] !== plans[1][0]) { // because of the optimization rules for moving subqueries up,
+                                       // there's a dependency of the subquery on the variable i of the outer query,
+                                       // filter is not going to be moved up
+          assertNotEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
+        } else {
+          assertEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
+        }
         assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
     },
@@ -146,9 +159,16 @@ function optimizerRuleTestSuite () {
 
         assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
 
-        assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query[0]);
-        assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
 
+
+        assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query[0]);
+        if (query[0] !== queries[1][0]) { // because of the optimization rules for moving subqueries up,
+                                          // there's a dependency of the subquery on the variable i of the outer query,
+                                          // filter is not going to be moved up
+          assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
+        } else {
+          assertEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
+        }
         assertEqual(resultDisabled, query[1]);
         assertEqual(resultEnabled, query[1]);
       });

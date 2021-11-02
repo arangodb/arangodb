@@ -63,7 +63,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query[0]);
+        let result = AQL_EXPLAIN(query[0], {}, { optimizer: { rules: [ "+all", "-move-calculations-up", "-move-calculations-up-2" ] } });
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
         assertNotEqual(1, result.plan.nodes.filter(function(n) { return n.type === 'FilterNode'; }).length);
         result = AQL_EXECUTE(query[0]).json;

@@ -341,10 +341,10 @@ function lateDocumentMaterializationRuleTestSuite () {
                     "LET a = NOOPT(d.obj.b) " +
                     "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = CONCAT(c.obj.b, c.obj.a) RETURN p) " +
                     "SORT CONCAT(a, e) LIMIT 10 RETURN d";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ["-move-calculations-up", "-move-calculations-up-2"]}}).plan;
         if (!isCluster) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = AQL_EXECUTE(query);
+          let result = AQL_EXECUTE(query, {}, {optimizer: {rules: ["-move-calculations-up", "-move-calculations-up-2"]}});
           assertEqual(2, result.json.length);
           let expectedKeys = new Set(['c0', 'c2']);
           result.json.forEach(function(doc) {
