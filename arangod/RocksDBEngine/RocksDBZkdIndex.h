@@ -22,8 +22,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ZKD_INDEX_H
-#define ARANGOD_ROCKSDB_ZKD_INDEX_H
+#pragma once
 
 #include "RocksDBEngine/RocksDBIndex.h"
 
@@ -113,5 +112,3 @@ auto specializeCondition(arangodb::Index const* index, arangodb::aql::AstNode* c
 }
 
 }
-
-#endif  // ARANGOD_ROCKSDB_ZKD_INDEX_H
