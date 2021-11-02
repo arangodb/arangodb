@@ -102,13 +102,13 @@ auto operator<<(std::ostream& os, ParticipantFlag const& f) noexcept
  -> std::ostream&;
 
 struct CalculateCommitIndexOptions {
-  // TODO: Constructor that asserts relationships between
-  // members
-  std::size_t const _replicationFactor{0};
+  // Requirement (asserted by constructor in maintainer mode):
+  // _writeConcern <= _softWriteConcern <= _replicationFactor
   std::size_t const _writeConcern{0};       // might be called quorumSize in other places
   std::size_t const _softWriteConcern{0};
+  std::size_t const _replicationFactor{0};
 
-  CalculateCommitIndexOptions(std::size_t replicationFactor, std::size_t writeConcern, std::size_t softWriteConcern);
+  CalculateCommitIndexOptions(std::size_t writeConcern, std::size_t softWriteConcern, std::size_t replicationFactor);
 };
 
 auto calculateCommitIndex(std::vector<ParticipantStateTuple>& indexes,

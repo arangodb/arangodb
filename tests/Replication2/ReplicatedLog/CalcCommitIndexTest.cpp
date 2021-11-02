@@ -32,92 +32,150 @@ using namespace arangodb::replication2::replicated_log;
 struct CalcCommitIndexTest : ::testing::Test {};
 
 TEST_F(CalcCommitIndexTest, write_concern_1_single_participant) {
-
   auto participants = std::vector{
-  ParticipantStateTuple{LogIndex{50}, "A", {}},
+      ParticipantStateTuple{LogIndex{50}, "A", {}},
   };
 
-  auto [index, reason] = algorithms::calculateCommitIndex(participants, {1, 1, 1}, LogIndex{1}, LogIndex{50});
+  auto [index, reason] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{1, 1, 1},
+                                       LogIndex{1}, LogIndex{50});
   EXPECT_EQ(index, LogIndex{50});
   EXPECT_TRUE(std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 }
 
 TEST_F(CalcCommitIndexTest, write_concern_2_3_participants) {
+  auto participants = std::vector{ParticipantStateTuple{LogIndex{50}, "A", {}},
+                                  ParticipantStateTuple{LogIndex{25}, "B", {}},
+                                  ParticipantStateTuple{LogIndex{35}, "C", {}}};
 
-  auto participants = std::vector{
-  ParticipantStateTuple{LogIndex{50}, "A", {}},
-  ParticipantStateTuple{LogIndex{25}, "B", {}},
-  ParticipantStateTuple{LogIndex{35}, "C", {}}
-  };
-
-  auto [index, reason] = algorithms::calculateCommitIndex(participants, {2,2,2}, LogIndex{1}, LogIndex{50});
+  auto [index, reason] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{2, 2, 3},
+                                       LogIndex{1}, LogIndex{50});
   EXPECT_EQ(index, LogIndex{35});
-  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
 }
 
 TEST_F(CalcCommitIndexTest, write_concern_3_3_participants) {
-
   auto participants = std::vector{
-  ParticipantStateTuple{LogIndex{50}, "A", {}},
-  ParticipantStateTuple{LogIndex{25}, "B", {}},
-  ParticipantStateTuple{LogIndex{35}, "C", {}},
+      ParticipantStateTuple{LogIndex{50}, "A", {}},
+      ParticipantStateTuple{LogIndex{25}, "B", {}},
+      ParticipantStateTuple{LogIndex{35}, "C", {}},
   };
 
-  auto [index, reason] = algorithms::calculateCommitIndex(participants, {3,3,3}, LogIndex{1}, LogIndex{50});
+  auto [index, reason] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{3, 3, 3},
+                                       LogIndex{1}, LogIndex{50});
   EXPECT_EQ(index, LogIndex{25});
-  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
 }
 
 TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
   // Three participants but only two are included
 
-  auto participants = std::vector{
-  ParticipantStateTuple{LogIndex{50}, "A", {}},
-  ParticipantStateTuple{LogIndex{25}, "B", {}},
-  ParticipantStateTuple{LogIndex{35}, "C", {}}
-  };
+  auto participants = std::vector{ParticipantStateTuple{LogIndex{50}, "A", {ParticipantFlag::Excluded}},
+                                  ParticipantStateTuple{LogIndex{25}, "B", {}},
+                                  ParticipantStateTuple{LogIndex{35}, "C", {}}};
 
-  auto [index, reason] = algorithms::calculateCommitIndex(participants, {3,3,3}, LogIndex{1}, LogIndex{50});
-//  EXPECT_EQ(index, LogIndex{25});
-  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+  auto [index, reason] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{3, 3, 3},
+                                       LogIndex{1}, LogIndex{50});
+  EXPECT_EQ(index, LogIndex{1});
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
 }
 
 TEST_F(CalcCommitIndexTest, excluded_and_forced) {
-  // One participant is excluded *and* forced
+  // One participant is excluded *and* forced, which means we cannot make any progress
 
   auto participants = std::vector{
-  ParticipantStateTuple{LogIndex{50}, "A",  {}},
-  ParticipantStateTuple{LogIndex{25}, "B",  {}},
-  ParticipantStateTuple{LogIndex{35}, "C",  {}},
+      ParticipantStateTuple{LogIndex{50}, "A", {}},
+      ParticipantStateTuple{LogIndex{25}, "B", {ParticipantFlag::Excluded, ParticipantFlag::Forced}},
+      ParticipantStateTuple{LogIndex{35}, "C", {}},
   };
 
-  auto [index, reason] = algorithms::calculateCommitIndex(participants, {3,3,3}, LogIndex{1}, LogIndex{50});
-  EXPECT_EQ(index, LogIndex{25});
-  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+  auto [index, reason] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{2, 2, 3},
+                                       LogIndex{1}, LogIndex{50});
+  EXPECT_EQ(index, LogIndex{1});
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(reason.value));
 }
 
 TEST_F(CalcCommitIndexTest, all_excluded) {
   // all participants are excluded.
   auto participants = std::vector{
-  ParticipantStateTuple{LogIndex{50}, "A",  {}},
-  ParticipantStateTuple{LogIndex{25}, "B",  {}},
-  ParticipantStateTuple{LogIndex{35}, "C",  {}},
-};
+      ParticipantStateTuple{LogIndex{50}, "A", {ParticipantFlag::Excluded}},
+      ParticipantStateTuple{LogIndex{25}, "B", {ParticipantFlag::Excluded}},
+      ParticipantStateTuple{LogIndex{35}, "C", {ParticipantFlag::Excluded}},
+  };
 
-  auto [index, reason] = algorithms::calculateCommitIndex(participants, {3,3,3}, LogIndex{1}, LogIndex{50});
-  EXPECT_EQ(index, LogIndex{25});
-  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+  auto [index, reason] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{3, 3, 3},
+                                       LogIndex{1}, LogIndex{50});
+  EXPECT_EQ(index, LogIndex{1});
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
 }
 
 TEST_F(CalcCommitIndexTest, all_forced) {
   // all participants are excluded.
   auto participants = std::vector{
-  ParticipantStateTuple{LogIndex{50}, "A",  {}},
-  ParticipantStateTuple{LogIndex{25}, "B",  {}},
-  ParticipantStateTuple{LogIndex{35}, "C",  {}},
+      ParticipantStateTuple{LogIndex{50}, "A", {ParticipantFlag::Forced}},
+      ParticipantStateTuple{LogIndex{25}, "B", {ParticipantFlag::Forced}},
+      ParticipantStateTuple{LogIndex{35}, "C", {ParticipantFlag::Forced}},
   };
 
-  auto [index, reason] = algorithms::calculateCommitIndex(participants, {3,3,3}, LogIndex{1}, LogIndex{50});
+  auto [index, reason] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{3, 3, 3},
+                                       LogIndex{1}, LogIndex{50});
   EXPECT_EQ(index, LogIndex{25});
-  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+}
+
+TEST_F(CalcCommitIndexTest, not_enough_eligible) {
+  // all participants are excluded.
+  auto participants = std::vector{
+      ParticipantStateTuple{LogIndex{50}, "A", {}},
+      ParticipantStateTuple{LogIndex{35}, "B", {}},
+      ParticipantStateTuple{LogIndex{50}, "C", {ParticipantFlag::Excluded}},
+      ParticipantStateTuple{LogIndex{35}, "D", {}},
+      ParticipantStateTuple{LogIndex{15}, "E", {}},
+  };
+
+  auto [index, reason] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{2, 3, 5},
+                                       LogIndex{1}, LogIndex{50});
+  EXPECT_EQ(index, LogIndex{35});
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+}
+
+TEST_F(CalcCommitIndexTest, nothing_to_commit) {
+  // all participants are excluded.
+  auto participants = std::vector{
+      ParticipantStateTuple{LogIndex{15}, "A", {}},
+      ParticipantStateTuple{LogIndex{15}, "B", {}},
+      ParticipantStateTuple{LogIndex{15}, "C", {ParticipantFlag::Excluded}},
+      ParticipantStateTuple{LogIndex{15}, "D", {}},
+      ParticipantStateTuple{LogIndex{15}, "E", {}},
+  };
+
+  auto [index, reason] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{2, 3, 5},
+                                       LogIndex{15}, LogIndex{15});
+  EXPECT_EQ(index, LogIndex{15});
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 }

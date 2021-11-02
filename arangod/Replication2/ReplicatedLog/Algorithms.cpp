@@ -347,9 +347,10 @@ auto algorithms::operator<<(std::ostream& os, ParticipantStateTuple const& p) no
     -> std::ostream& {
   os << '{' << p.id << ':' << p.index <<
     ", ";
-  for (auto f : p.flags) {
-    os << f << ",";
-  }
+
+  auto of = std::ostream_iterator<ParticipantFlag>{os, ", "};
+  std::copy(std::begin(p.flags), std::end(p.flags), of);
+
   os<< '}';
   return os;
 }
@@ -410,14 +411,12 @@ auto operator<=(ParticipantStateTuple left, ParticipantStateTuple right) noexcep
  * */
 
 algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
-  std::size_t replicationFactor,
-  std::size_t writeConcern,
-  std::size_t softWriteConcern) :
-  _replicationFactor(replicationFactor), _writeConcern(writeConcern),
-  _softWriteConcern(softWriteConcern) {
+    std::size_t writeConcern, std::size_t softWriteConcern, std::size_t replicationFactor)
+  : _writeConcern(writeConcern),
+    _softWriteConcern(softWriteConcern),
+    _replicationFactor(replicationFactor) {
   TRI_ASSERT(_writeConcern <= _softWriteConcern)
-      << "writeConcern > softWriteConcern " << _writeConcern << " > "
-      << _softWriteConcern;
+      << "writeConcern > softWriteConcern " << _writeConcern << " > " << _softWriteConcern;
   TRI_ASSERT(_softWriteConcern <= _replicationFactor)
       << "softWriteConcern > opt.replicationFactor " << _softWriteConcern
       << " > " << _replicationFactor;
@@ -433,18 +432,16 @@ auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple>& indexe
 
 
   // number of failed participants
-  auto nrFailedServers = std::count_if(std::begin(indexes), std::end(indexes),
-                                       [](auto& p) { return p.isFailed(); });
+  auto nrFailed = std::count_if(std::begin(indexes), std::end(indexes),
+                                [](auto& p) { return p.isFailed(); });
   auto actualWriteConcern =
-      std::max(opt._writeConcern, std::min(opt._replicationFactor - nrFailedServers,
+      std::max(opt._writeConcern, std::min(opt._replicationFactor - nrFailed,
                                           opt._softWriteConcern));
-  TRI_ASSERT(actualWriteConcern > 0)
-      << "actualWriteConcern has to be at least 1";
-
   // vector of participants that are neither excluded nor
   // have failed
-  auto active = std::vector<ParticipantStateTuple>{};
-  std::copy_if(std::begin(indexes), std::end(indexes), std::back_inserter(active),
+  auto eligible = std::vector<ParticipantStateTuple>{};
+  eligible.reserve(indexes.size());
+  std::copy_if(std::begin(indexes), std::end(indexes), std::back_inserter(eligible),
                              [](auto& p) { return !p.isFailed() && !p.isExcluded(); });
 
   // the minimal commit index caused by forced participants
@@ -459,15 +456,15 @@ auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple>& indexe
     }
   }
 
-  if (actualWriteConcern <= active.size()) {
-    auto nth = std::begin(active);
+  if (actualWriteConcern <= eligible.size()) {
+    auto nth = std::begin(eligible);
 
-    // This should succeed because of the check above
     std::advance(nth, actualWriteConcern - 1);
 
-    TRI_ASSERT(nth != std::end(active));
+    // because of the check above
+    TRI_ASSERT(nth != std::end(eligible));
 
-    std::nth_element(std::begin(active), nth, std::end(active), [](auto& left, auto& right) {
+    std::nth_element(std::begin(eligible), nth, std::end(eligible), [](auto& left, auto& right) {
       return left.index > right.index;
     });
     auto const minNonExcludedCommitIndex = nth->index;
@@ -477,7 +474,9 @@ auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple>& indexe
     if (spearhead == commitIndex) {
       return {commitIndex, CommitFailReason::withNothingToCommit()};
     } else if (minForcedCommitIndex < minNonExcludedCommitIndex) {
-      return {commitIndex, CommitFailReason::withForcedParticipantNotInQuorum()};
+      return {currentCommitIndex, CommitFailReason::withForcedParticipantNotInQuorum()};
+    } else {
+      return {commitIndex, CommitFailReason::withQuorumSizeNotReached()};
     }
   }
 
