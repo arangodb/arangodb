@@ -47,39 +47,31 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
     bool waitForSync = false;
   };
 
-  auto persist(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
-               std::unique_ptr<arangodb::replication2::PersistedLogIterator> iter,
-               WriteOptions const& options) -> futures::Future<Result>;
-  auto persist(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
-               replication2::LogIndex stop, WriteOptions const& options)
-      -> futures::Future<Result>;
+  struct InsertEntries {
+    std::unique_ptr<arangodb::replication2::PersistedLogIterator> iter;
+  };
+
+  struct RemoveFront {
+    replication2::LogIndex stop;
+  };
+
+  using Action = std::variant<InsertEntries, RemoveFront>;
 
   struct PersistRequest {
     PersistRequest(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
-                   std::unique_ptr<arangodb::replication2::PersistedLogIterator> iter,
-                   futures::Promise<Result> promise)
-        : log(std::move(log)), action(InsertEntries{std::move(iter)}), promise(std::move(promise)) {}
-    PersistRequest(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
-                   replication2::LogIndex stop,
-                   futures::Promise<Result> promise)
-        : log(std::move(log)), action(RemoveFront{stop}), promise(std::move(promise)) {}
-
-    struct InsertEntries {
-      std::unique_ptr<arangodb::replication2::PersistedLogIterator> iter;
-    };
-
-    struct RemoveFront {
-      replication2::LogIndex stop;
-    };
+                   Action action, futures::Promise<Result> promise)
+        : log(std::move(log)), action(std::move(action)), promise(std::move(promise)) {}
 
     auto execute(rocksdb::WriteBatch& wb) -> Result;
 
     std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log;
-    std::variant<InsertEntries, RemoveFront> action;
+    Action action;
     futures::Promise<Result> promise;
   };
 
-  void persist(PersistRequest req, WriteOptions const& options);
+  auto persist(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
+               Action action, WriteOptions const& options)
+      ->futures::Future<Result>;
 
   struct Lane {
     Lane() = delete;
