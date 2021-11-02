@@ -1090,10 +1090,6 @@ exports.createSatelliteGraphSingleServer = createSatelliteGraphSingleServer;
 exports.createDisjointGraphSingleServer = createDisjointGraphSingleServer;
 exports.createHybridSmartGraphSingleServer = createHybridSmartGraphSingleServer;
 exports.createHybridDisjointSmartGraphSingleServer = createHybridDisjointSmartGraphSingleServer;
-// todo: hybrid disjoint
-// A -> B -> C
-// A smart, B satellite, C smart: A-B-C okay,
-// A-C okay only if the same attribute
 
 exports.createSmartArangoSearch = createSmartArangoSearch;
 exports.createSatelliteCollections = createSatelliteCollections;
