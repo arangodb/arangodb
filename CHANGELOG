@@ -3,6 +3,8 @@ devel
 
 * Add option to content-transfer encode gzip Foxx replies.
 
+* Simplify internal request compression/decompression handling code.
+
 * Single server license output checking fixed.
 
 * Added enterprise license feature visibility for arangosh.
