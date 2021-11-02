@@ -79,8 +79,14 @@ jsunity.run(function dump_single_testsuite() {
 
       // enterprise sharded graphs on single server tests
       "testEmptySmartGraph",
+      "testEmptySatelliteGraph",
+      "testEmptyDisjointGraph",
       "testSmartGraphWithoutData",
       "testSmartGraphSingleServer",
+      "testSatelliteSmartGraphSingleServer",
+      "testDisjointGraphSingleServer",
+      "testHybridSmartGraphSingleServer",
+      "testHybridDisjointSmartGraphSingleServer",
 
       // Hotbackup tests:
       "testLatestId"
