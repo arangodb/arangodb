@@ -528,10 +528,8 @@ function createSmartGraph() {
   const vertices = "UnitTestDumpSmartVertices";
   const orphans = "UnitTestDumpSmartOrphans";
   if (sgm._exists(smartGraphName)) {
-    sgm._drop(smartGraphName, true);
+    assertTrue(false, "Graph already exists. Please check setup configuration.");
   }
-  db._drop(edges);
-  db._drop(vertices);
 
   sgm._create(smartGraphName, [sgm._relation(edges, vertices, vertices)],
     [orphans], {numberOfShards: 5, smartGraphAttribute: "value"});
