@@ -32,13 +32,21 @@ namespace containers {
 
 template <class T, std::size_t BufSize = 64, std::size_t ElementAlignment = alignof(T)>
 using SmallVector = std::vector<T, detail::short_alloc<T, BufSize, ElementAlignment>>;
-  
+
+// helper class that combines a vector with a small-sized arena.
+// objects of this class are supposed to be created on the stack and are
+// neither copyable nor movable.
+// the interface is a subset of std::vector's interface.
 template <class T, std::size_t BufSize = 64, std::size_t ElementAlignment = alignof(T)>
 class SmallVectorWithArena {
  public:
   SmallVectorWithArena() noexcept
       : _vector{_arena} {
-    // reserve enough room in the arena to avoid early re-allocations later
+    // reserve enough room in the arena to avoid early re-allocations later.
+    // note that the initial allocation will take place in the arena, and not
+    // use any extra heap memory.
+    // later allocations can grow the vector beyond the size of the arena, and
+    // then heap allocations will need to be made.
     _vector.reserve(BufSize / sizeof(T));
   }
 
