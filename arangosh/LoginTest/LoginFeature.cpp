@@ -223,7 +223,7 @@ void LoginFeature::start() {
   }
   
   LdapAuthenticationHandler authHandler(server().getFeature<LdapFeature>());
-  authHandler.authenticate("foo", "bar");
+  auto result = authHandler.authenticate(slice.get("user").toString(), slice.get("passvoid").toString());
   // produce output
   std::ofstream ofs(_outputFile, std::ofstream::out);
 
@@ -233,6 +233,7 @@ void LoginFeature::start() {
     return;
   }
 
+  LOG_TOPIC("bb8a8", INFO, Logger::FIXME) << "auth result: '" << result.errorMessage() << "'";
   // reset stream
   // cppcheck-suppress *
   if (!toStdOut) {
