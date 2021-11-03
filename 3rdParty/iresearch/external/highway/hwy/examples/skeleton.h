@@ -18,15 +18,17 @@
 #ifndef HIGHWAY_HWY_EXAMPLES_SKELETON_H_
 #define HIGHWAY_HWY_EXAMPLES_SKELETON_H_
 
-// Tiny subset of Highway API: essentials for declaring an interface, without
-// any implementation details.
+#include <stddef.h>
+
+// Platform-specific definitions used for declaring an interface, independent of
+// the SIMD instruction set.
 #include "hwy/base.h"  // HWY_RESTRICT
 
 namespace skeleton {
 
-// Computes out[i] = in1[i] * kMultiplier + in2[i] for i < 256.
-void Skeleton(const float* HWY_RESTRICT in1, const float* HWY_RESTRICT in2,
-              float* HWY_RESTRICT out);
+// Computes base-2 logarithm by converting to float. Supports dynamic dispatch.
+void CallFloorLog2(const uint8_t* HWY_RESTRICT in, const size_t count,
+                   uint8_t* HWY_RESTRICT out);
 
 }  // namespace skeleton
 

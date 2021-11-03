@@ -71,8 +71,7 @@ function createDumpJsonFile (path, databaseName, id) {
 function restoreIntegrationSuite () {
   'use strict';
   const cn = 'UnitTestsRestore';
-  // detect the path of arangorestore. quite hacky, but works
-  const arangorestore = fs.join(global.ARANGOSH_PATH, 'arangorestore' + pu.executableExt);
+  const arangorestore = pu.ARANGORESTORE_BIN;
 
   assertTrue(fs.isFile(arangorestore), "arangorestore not found!");
 
