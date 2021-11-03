@@ -24,7 +24,7 @@
 #ifndef IRESEARCH_DOCUMENT_GENERATOR_H
 #define IRESEARCH_DOCUMENT_GENERATOR_H
 
-#include "analysis/analyzer.hpp"
+#include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
 #include "utils/iterator.hpp"
 #include "utils/utf8_path.hpp"
@@ -510,6 +510,163 @@ class json_doc_generator: public doc_generator_base {
   std::vector<document>::const_iterator prev_;
   std::vector<document>::const_iterator next_;
 }; // json_doc_generator
+
+// stream wrapper which sets payload equal to term value
+class token_stream_payload final : public irs::token_stream {
+ public:
+  explicit token_stream_payload(irs::token_stream* impl);
+  bool next();
+
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type);
+
+ private:
+  const irs::term_attribute* term_;
+  irs::payload pay_;
+  irs::token_stream* impl_;
+}; // token_stream_payload
+
+// field which uses text analyzer for tokenization and stemming
+template<typename T>
+class text_field : public tests::field_base {
+ public:
+  text_field(const std::string& name,
+             bool payload = false,
+             std::vector<irs::type_info::type_id> features = {})
+    : token_stream_(irs::analysis::analyzers::get("text",
+                                                   irs::type<irs::text_format::json>::get(),
+                                                   "{\"locale\":\"C\", \"stopwords\":[]}")) {
+    if (payload) {
+      if (!token_stream_->reset(value_)) {
+         throw irs::illegal_state();
+      }
+      pay_stream_.reset(new token_stream_payload(token_stream_.get()));
+    }
+    this->name(name);
+    this->features_ = std::move(features);
+    index_features_ = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+                      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+  }
+
+  text_field(const std::string& name,
+             const T& value,
+             bool payload = false,
+             std::vector<irs::type_info::type_id> features = {})
+    : token_stream_(irs::analysis::analyzers::get("text",
+                                                  irs::type<irs::text_format::json>::get(),
+                                                  "{\"locale\":\"C\", \"stopwords\":[]}")),
+      value_(value) {
+    if (payload) {
+      if (!token_stream_->reset(value_)) {
+        throw irs::illegal_state();
+      }
+      pay_stream_.reset(new token_stream_payload(token_stream_.get()));
+    }
+    this->name(name);
+    this->features_ = std::move(features);
+    index_features_ = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+                      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+  }
+
+  text_field(text_field&& other) = default;
+
+  irs::string_ref value() const { return value_; }
+  void value(const T& value) { value_ = value; }
+  void value(T&& value) { value_ = std::move(value); }
+
+  irs::token_stream& get_tokens() const {
+    token_stream_->reset(value_);
+
+    return pay_stream_
+      ? static_cast<irs::token_stream&>(*pay_stream_)
+      : *token_stream_;
+  }
+
+ private:
+  virtual bool write(irs::data_output&) const { return false; }
+
+  std::unique_ptr<token_stream_payload> pay_stream_;
+  irs::analysis::analyzer::ptr token_stream_;
+  T value_;
+}; // text_field
+
+// field which uses simple analyzer without tokenization
+class string_field : public tests::field_base {
+ public:
+  string_field(
+    const std::string& name,
+    irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
+    const std::vector<irs::type_info::type_id>& extra_features = {});
+  string_field(
+    const std::string& name,
+    const irs::string_ref& value,
+    irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
+    const std::vector<irs::type_info::type_id>& extra_features = {});
+
+  void value(const irs::string_ref& str);
+  irs::string_ref value() const { return value_; }
+
+  virtual irs::token_stream& get_tokens() const override;
+  virtual bool write(irs::data_output& out) const override;
+
+ private:
+  mutable irs::string_token_stream stream_;
+  std::string value_;
+}; // string_field
+
+// field which uses simple analyzer without tokenization
+class string_ref_field : public tests::field_base {
+ public:
+  string_ref_field(
+    const std::string& name,
+    irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
+    const std::vector<irs::type_info::type_id>& extra_features = {});
+  string_ref_field(
+    const std::string& name,
+    const irs::string_ref& value,
+    irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
+    const std::vector<irs::type_info::type_id>& extra_features = {});
+
+  void value(const irs::string_ref& str);
+  irs::string_ref value() const { return value_; }
+
+  virtual irs::token_stream& get_tokens() const override;
+  virtual bool write(irs::data_output& out) const override;
+
+ private:
+  mutable irs::string_token_stream stream_;
+  irs::string_ref value_;
+}; // string_field
+
+// document template for europarl.subset.text
+class europarl_doc_template: public delim_doc_generator::doc_template {
+ public:
+  typedef text_field<irs::string_ref> text_ref_field;
+
+  virtual void init();
+  virtual void value(size_t idx, const std::string& value);
+  virtual void end();
+  virtual void reset();
+
+ private:
+  std::string title_; // current title
+  std::string body_; // current body
+  irs::doc_id_t idval_ = 0;
+}; // europarl_doc_template
+
+void generic_json_field_factory(
+  tests::document& doc,
+  const std::string& name,
+  const json_doc_generator::json_value& data);
+
+void payloaded_json_field_factory(
+  tests::document& doc,
+  const std::string& name,
+  const json_doc_generator::json_value& data);
+
+void normalized_string_json_field_factory(
+  tests::document& doc,
+  const std::string& name,
+  const json_doc_generator::json_value& data);
 
 template<typename Indexed>
 bool insert(
