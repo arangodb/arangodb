@@ -41,6 +41,11 @@
 #include <iostream>
 #include <unordered_set>
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Ldap/LdapAuthenticationHandler.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -115,17 +120,17 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
 
 }  // namespace
 
-VPackFeature::VPackFeature(application_features::ApplicationServer& server, int* result)
-    : ApplicationFeature(server, "VPack"),
+LoginFeature::LoginFeature(application_features::ApplicationServer& server, int* result)
+    : ApplicationFeature(server, "Login"),
       _result(result),
-      _inputType("vpack"),
+      _inputType("json"),
       _outputType("json-pretty"),
       _failOnNonJson(true) {
   requiresElevatedPrivileges(false);
   setOptional(false);
 }
 
-void VPackFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+void LoginFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   std::unordered_set<std::string> const inputTypes{{"json", "json-hex", "vpack", "vpack-hex" }};
   std::unordered_set<std::string> const outputTypes{{"json", "json-pretty", "vpack", "vpack-hex" }};
 
@@ -158,7 +163,7 @@ void VPackFeature::collectOptions(std::shared_ptr<options::ProgramOptions> optio
                      .setIntroducedIn(30800);
 }
 
-void VPackFeature::start() {
+void LoginFeature::start() {
   *_result = EXIT_SUCCESS;
 
   bool toStdOut = false;
@@ -216,8 +221,9 @@ void VPackFeature::start() {
 
     slice = VPackSlice(reinterpret_cast<uint8_t const*>(input.data()));
   }
-
   
+  LdapAuthenticationHandler authHandler(server().getFeature<LdapFeature>());
+  authHandler.authenticate("foo", "bar");
   // produce output
   std::ofstream ofs(_outputFile, std::ofstream::out);
 

@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
     context.installHup();
 
     std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(argv[0], "Usage: arangovpack [<options>]",
+        new options::ProgramOptions(argv[0], "Usage: arangologin [<options>]",
                                     "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
@@ -66,13 +66,13 @@ int main(int argc, char* argv[]) {
     server.addFeature<GreetingsFeaturePhase>(true);
 
     // default is to use no config file
-    server.addFeature<ConfigFeature>("arangovpack", "none");
+    server.addFeature<ConfigFeature>("arangologin", "none");
     server.addFeature<LoggerFeature>(false);
     server.addFeature<RandomFeature>();
     server.addFeature<ShellColorsFeature>();
     server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(VPackFeature))});
-    server.addFeature<VPackFeature>(&ret);
+        std::vector<std::type_index>{std::type_index(typeid(LoginFeature))});
+    server.addFeature<LoginFeature>(&ret);
     server.addFeature<LdapFeature>();
     server.addFeature<VersionFeature>();
 
@@ -84,11 +84,11 @@ int main(int argc, char* argv[]) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("f8d39", ERR, arangodb::Logger::FIXME)
-          << "arangovpack terminated because of an unhandled exception: " << ex.what();
+          << "arangologin terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC("785f7", ERR, arangodb::Logger::FIXME)
-          << "arangovpack terminated because of an unhandled exception of "
+          << "arangologin terminated because of an unhandled exception of "
              "unknown type";
       ret = EXIT_FAILURE;
     }

@@ -29,9 +29,9 @@
 
 namespace arangodb {
 
-class VPackFeature final : public application_features::ApplicationFeature {
+class LoginFeature final : public application_features::ApplicationFeature {
  public:
-  VPackFeature(application_features::ApplicationServer& server, int* result);
+  LoginFeature(application_features::ApplicationServer& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void start() override;
