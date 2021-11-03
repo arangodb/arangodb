@@ -41,8 +41,7 @@ function KillSuite () {
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
   
-  // detect the path of arangosh. quite hacky, but works
-  const arangosh = fs.join(global.ARANGOSH_PATH, 'arangosh' + pu.executableExt);
+  const arangosh = pu.ARANGOSH_BIN;
 
   assertTrue(fs.isFile(arangosh), "arangosh executable not found!");
 

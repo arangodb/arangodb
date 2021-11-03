@@ -48,9 +48,9 @@ auto MockLog::read(replication2::LogIndex start) -> std::unique_ptr<PersistedLog
   return std::make_unique<MockLogContainerIterator<iteratorType>>(_storage, start);
 }
 
-auto MockLog::removeFront(replication2::LogIndex stop) -> Result {
+auto MockLog::removeFront(replication2::LogIndex stop) -> futures::Future<Result> {
   _storage.erase(_storage.begin(), _storage.lower_bound(stop));
-  return {};
+  return Result{};
 }
 
 auto MockLog::removeBack(replication2::LogIndex start) -> Result {
