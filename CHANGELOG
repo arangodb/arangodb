@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed SEARCH-260: Fix invalid sorting order of stored features in presence of 
+  primary sort.
+
 * Upgrade bundled version of RocksDB to 6.26.
 
 * Change error message for queries that use too much memory from "resource
