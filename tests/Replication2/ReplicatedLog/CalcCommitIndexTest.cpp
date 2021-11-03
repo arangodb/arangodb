@@ -382,3 +382,26 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit_failed) {
 
   EXPECT_EQ(quorum, expectedQuorum);
 }
+
+TEST_F(CalcCommitIndexTest, write_concern_0_forced_flag) {
+  // Everyone is at LogIndex{15}, so there is nothing to do
+  auto participants = std::vector{
+      ParticipantStateTuple{LogIndex{25}, "A", {ParticipantFlag::Forced}},
+      ParticipantStateTuple{LogIndex{15}, "B", {}},
+      ParticipantStateTuple{LogIndex{55}, "C", {}},
+  };
+
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{0, 0, 3},
+                                       LogIndex{15}, LogIndex{55});
+  EXPECT_EQ(index, LogIndex{25});
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
+
+  auto expectedQuorum = std::vector<ParticipantId>{};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
+}
