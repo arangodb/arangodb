@@ -36,7 +36,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Shell/ConsoleFeature.h"
+#include "Shell/ShellConsoleFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Ssl/ssl-helper.h"
@@ -203,9 +203,15 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (_endpoints.size() > _maxNumEndpoints) {
-    LOG_TOPIC("6e305", FATAL, arangodb::Logger::FIXME)
-        << "Maximum number of endpoints exceeded";
-    FATAL_ERROR_EXIT();
+    // this is the case if we have more endpoints than allowed.
+    // in versions before 3.9, it was allowed to specify `--server.endpoint`
+    // multiple times, and if this was done, only the last provided endpoint
+    // was used. to keep backward-compatibility, we now emulate this 
+    // behavior here.
+    TRI_ASSERT(_maxNumEndpoints == 1);
+    std::string selectedEndpoint = _endpoints.back();
+
+    _endpoints = { std::move(selectedEndpoint) };
   }
 
   // if a username is specified explicitly, assume authentication is desired
@@ -295,7 +301,7 @@ void ClientFeature::readPassword() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   try {
-    ConsoleFeature& console = server().getFeature<ConsoleFeature>();
+    ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
 
     if (console.isEnabled()) {
       _password = console.readPassword("Please specify a password: ");
@@ -305,7 +311,7 @@ void ClientFeature::readPassword() {
   }
 
   std::cout << "Please specify a password: " << std::flush;
-  _password = ConsoleFeature::readPassword();
+  _password = ShellConsoleFeature::readPassword();
   std::cout << std::endl << std::flush;
 }
 
@@ -313,7 +319,7 @@ void ClientFeature::readJwtSecret() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   try {
-    ConsoleFeature& console = server().getFeature<ConsoleFeature>();
+    ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
 
     if (console.isEnabled()) {
       _jwtSecret = console.readPassword("Please specify the JWT secret: ");
@@ -323,7 +329,7 @@ void ClientFeature::readJwtSecret() {
   }
 
   std::cout << "Please specify the JWT secret: " << std::flush;
-  _jwtSecret = ConsoleFeature::readPassword();
+  _jwtSecret = ShellConsoleFeature::readPassword();
   std::cout << std::endl << std::flush;
 }
 

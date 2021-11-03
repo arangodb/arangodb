@@ -140,10 +140,6 @@ class TailingSyncer : public Syncer {
   /// @brief perform a continuous sync with the leader
   Result runContinuousSync();
 
-  /// @brief fetch the open transactions we still need to complete
-  Result fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tick_t toTick,
-                               TRI_voc_tick_t& startTick);
-
   /// @brief save the current applier state
   virtual Result saveApplierState() = 0;
 

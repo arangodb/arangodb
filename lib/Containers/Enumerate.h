@@ -69,7 +69,7 @@ struct enumerate_iterator {
   using value_type = std::pair<C, typename std::iterator_traits<T>::value_type>;
   using pointer = std::pair<C, typename std::iterator_traits<T>::pointer>;
   using reference = std::pair<C, typename std::iterator_traits<T>::reference>;
-  using iterator_category = typename std::iterator_traits<T>::iterator_category;
+  using iterator_category = std::forward_iterator_tag;
 
   reference operator*() const;
 

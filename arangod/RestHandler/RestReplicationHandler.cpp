@@ -271,8 +271,6 @@ std::string const RestReplicationHandler::LoggerTickRanges =
     "logger-tick-ranges";
 std::string const RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
 std::string const RestReplicationHandler::LoggerFollow = "logger-follow";
-std::string const RestReplicationHandler::OpenTransactions =
-    "determine-open-transactions";
 std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Barrier = "barrier";
 std::string const RestReplicationHandler::Inventory = "inventory";
@@ -354,11 +352,6 @@ RestStatus RestReplicationHandler::execute() {
       auto guard = scopeGuard([&rf]() noexcept { rf.trackTailingEnd(); });
 
       handleCommandLoggerFollow();
-    } else if (command == OpenTransactions) {
-      if (type != rest::RequestType::GET) {
-        goto BAD_CALL;
-      }
-      handleCommandDetermineOpenTransactions();
     } else if (command == Batch) {
       // access batch context in context manager
       // example call: curl -XPOST --dump - --data '{}'
@@ -2956,56 +2949,6 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
   }
 
   return true;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the revision tree for a given collection, if available
-/// @response serialized revision tree, binary
-//////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandRevisionTree() {
-  RevisionOperationContext ctx;
-  if (!prepareRevisionOperation(ctx)) {
-    return;
-  }
-
-  // shall we do a verification?
-  bool withVerification = _request->parsedValue("verification", false);
-
-  // return only populated nodes in the tree (can make the result a lot
-  // smaller and thus improve efficiency)
-  bool onlyPopulated = _request->parsedValue("onlyPopulated", false);
-
-  auto tree = ctx.collection->getPhysical()->revisionTree(ctx.batchId);
-  if (!tree) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "could not generate revision tree");
-    return;
-  }
-  
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder result(buffer);
-
-  if (withVerification) {
-    auto tree2 = ctx.collection->getPhysical()->computeRevisionTree(ctx.batchId);
-    if (!tree2) {
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "could not generate revision tree from collection");
-      return;
-    }
-
-    VPackObjectBuilder guard(&result);
-    result.add(VPackValue("computed"));
-    tree2->serialize(result, onlyPopulated);
-    result.add(VPackValue("stored"));
-    tree->serialize(result, onlyPopulated);
-    auto diff = tree->diff(*tree2);
-    result.add("equal", VPackValue(diff.empty()));
-  } else {
-    tree->serialize(result, onlyPopulated);
-  }
-
-  generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
 void RestReplicationHandler::handleCommandRebuildRevisionTree() {

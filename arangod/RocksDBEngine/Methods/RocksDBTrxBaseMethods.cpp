@@ -290,12 +290,14 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
                 _rocksTransaction->GetNumDeletes() == 0));
     // this is most likely the fill index case
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    for (auto& trxColl : _state->_collections) {
-      auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
-      TRI_ASSERT(!rcoll->hasOperations());
-      TRI_ASSERT(rcoll->stealTrackedOperations().empty());
-      TRI_ASSERT(rcoll->stealTrackedIndexOperations().empty());
-    }
+    // TODO - for ReplicatedRocksDBTransactionState this is no longer the case
+    // should we remove this or think of some other way to check the current state?
+    // for (auto& trxColl : _state->_collections) {
+    //   auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
+    //   TRI_ASSERT(!rcoll->hasOperations());
+    //   TRI_ASSERT(rcoll->stealTrackedOperations().empty());
+    //   TRI_ASSERT(rcoll->stealTrackedIndexOperations().empty());
+    // }
     // don't write anything if the transaction is empty
 #endif
     return Result();
@@ -337,7 +339,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   }
   TRI_ASSERT(numOperations > 0);
 
-  _state->prepareCollections();
+  rocksdb::SequenceNumber previousSeqNo = _state->prepareCollections();
 
   TRI_IF_FAILURE("TransactionChaos::randomSync") {
     if (RandomGenerator::interval(uint32_t(1000)) > 950) {
@@ -375,6 +377,8 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   // first write operation in the WAL
   rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetId();
   TRI_ASSERT(postCommitSeq != 0);
+  TRI_ASSERT(postCommitSeq >= previousSeqNo);
+
   if (ADB_LIKELY(numOps > 0)) {
     // we now need to add 1 for each write operation carried out in the trx
     // to get to the transaction's last operation's seqno

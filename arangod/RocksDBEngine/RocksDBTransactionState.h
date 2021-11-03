@@ -60,7 +60,7 @@ class LogicalCollection;
 class RocksDBTransactionMethods;
 
 /// @brief transaction type
-class RocksDBTransactionState final : public TransactionState {
+class RocksDBTransactionState : public TransactionState {
   friend class RocksDBTrxBaseMethods;
 
  public:
@@ -77,32 +77,18 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
 
-  /// @returns tick of last operation in a transaction
-  /// @note the value is guaranteed to be valid only after
-  ///       transaction is committed
-  TRI_voc_tick_t lastOperationTick() const noexcept override;
-  
-  /// @brief number of commits, including intermediate commits
-  uint64_t numCommits() const override;
-  
-  bool hasOperations() const noexcept;
+  virtual bool hasOperations() const noexcept = 0;
 
-  uint64_t numOperations() const noexcept;
+  virtual uint64_t numOperations() const noexcept = 0;
 
   bool hasFailedOperations() const override {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
 
-  void beginQuery(bool isModificationQuery) override;
-  void endQuery(bool isModificationQuery) noexcept override;
-
-  bool iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const;
+  bool iteratorMustCheckBounds(DataSourceId cid, ReadOwnWrites readOwnWrites) const;
 
   void prepareOperation(DataSourceId cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType);
-
-  /// @brief undo the effects of the previous prepareOperation call
-  void rollbackOperation(TRI_voc_document_operation_e operationType);
 
   /// @brief add an operation for a transaction collection
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
@@ -112,14 +98,11 @@ class RocksDBTransactionState final : public TransactionState {
                       bool& hasPerformedIntermediateCommit);
 
   /// @brief return wrapper around rocksdb transaction
-  RocksDBTransactionMethods* rocksdbMethods() {
-    TRI_ASSERT(_rocksMethods);
-    return _rocksMethods.get();
-  }
+  virtual RocksDBTransactionMethods* rocksdbMethods(DataSourceId collectionId) const = 0;
   
   /// @brief acquire a database snapshot if we do not yet have one.
   /// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
-  bool ensureSnapshot();
+  virtual bool ensureSnapshot() = 0;
   
   static RocksDBTransactionState* toState(transaction::Methods* trx) {
     TRI_ASSERT(trx != nullptr);
@@ -128,11 +111,11 @@ class RocksDBTransactionState final : public TransactionState {
     return static_cast<RocksDBTransactionState*>(state);
   }
 
-  static RocksDBTransactionMethods* toMethods(transaction::Methods* trx) {
+  static RocksDBTransactionMethods* toMethods(transaction::Methods* trx, DataSourceId collectionId) {
     TRI_ASSERT(trx != nullptr);
     TransactionState* state = trx->state();
     TRI_ASSERT(state != nullptr);
-    return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
+    return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods(collectionId);
   }
 
   /// @brief make some internal preparations for accessing this state in
@@ -161,7 +144,7 @@ class RocksDBTransactionState final : public TransactionState {
 
   bool isOnlyExclusiveTransaction() const;
 
-  rocksdb::SequenceNumber beginSeq() const;
+  virtual rocksdb::SequenceNumber beginSeq() const = 0;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// @brief only needed for RocksDBTransactionStateGuard
@@ -169,8 +152,12 @@ class RocksDBTransactionState final : public TransactionState {
   void unuse() noexcept;
 #endif
 
+ protected:
+  virtual Result doCommit() = 0;
+  virtual Result doAbort() = 0;
+
  private:
-  void prepareCollections();
+  rocksdb::SequenceNumber prepareCollections();
   void commitCollections(rocksdb::SequenceNumber lastWritten);
   void cleanupCollections();
   
@@ -181,9 +168,6 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// @brief cache transaction to unblock banished keys
   cache::Transaction* _cacheTx;
-
-  /// @brief wrapper to use outside this class to access rocksdb
-  std::unique_ptr<RocksDBTransactionMethods> _rocksMethods;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::atomic<uint32_t> _users;

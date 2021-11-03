@@ -380,7 +380,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
 
   if (_engine->getQuery().queryOptions().profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
-        << "[query#" << idString << "] remote request received: " << operation
+        << "[query#" << _engine->getQuery().id() << "] remote request received: " << operation
         << " registryId=" << idString;
   }
 

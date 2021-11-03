@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
@@ -31,23 +32,19 @@
 namespace arangodb {
 class RocksDBTransactionState;
 
-namespace transaction {
-class Methods;
-}
-
 class RocksDBSavePoint {
  public:
-  RocksDBSavePoint(RocksDBTransactionState* state,
-                   transaction::Methods* trx, 
+  RocksDBSavePoint(DataSourceId collectionId,
+                   RocksDBTransactionState& state,
                    TRI_voc_document_operation_e operationType);
 
   ~RocksDBSavePoint();
 
-  void prepareOperation(DataSourceId cid, RevisionId rid);
+  void prepareOperation(RevisionId rid);
   
   /// @brief acknowledges the current savepoint, so there
   /// will be no rollback when the destructor is called
-  [[nodiscard]] Result finish(DataSourceId cid, RevisionId rid);
+  [[nodiscard]] Result finish(RevisionId rid);
   
   TRI_voc_document_operation_e operationType() const {
     return _operationType;
@@ -62,8 +59,9 @@ class RocksDBSavePoint {
   void rollback();
 
  private:
-  RocksDBTransactionState* _state;
-  transaction::Methods* _trx;
+  RocksDBTransactionState& _state;
+  RocksDBTransactionMethods& _rocksMethods;
+  DataSourceId _collectionId;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   uint64_t _numCommitsAtStart;
 #endif

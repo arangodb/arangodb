@@ -435,7 +435,7 @@ class index_test_case : public tests::index_test_base {
 
       // add insert/remove/import
       {
-        auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+        auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
         auto reader = irs::directory_reader::open(data_dir);
 
         ASSERT_TRUE(insert(*writer,
@@ -2619,7 +2619,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
   for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc)) {}
 
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     std::thread thread0([&writer, docs, &first_doc]() {
@@ -2702,7 +2702,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
   {
     std::condition_variable cond;
     std::mutex mutex;
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A || name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A || name==B", "C");
     auto writer = open_writer();
     auto lock = irs::make_unique_lock(mutex);
     std::atomic<bool> stop(false);
@@ -2771,7 +2771,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
 
   // remove added docs, add same docs again commit separate thread after end of add
   {
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A || name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A || name==B", "C");
     auto writer = open_writer();
 
     // initial add docs
@@ -2905,7 +2905,7 @@ TEST_P(index_test_case, document_context) {
 
   // during replace across commit blocks (single doc)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -2948,7 +2948,7 @@ TEST_P(index_test_case, document_context) {
 
   // during replace across commit blocks (functr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3034,7 +3034,7 @@ TEST_P(index_test_case, document_context) {
 
   // holding document_context after remove across commit does not block
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3090,7 +3090,7 @@ TEST_P(index_test_case, document_context) {
 
   // holding document_context after replace across commit does not block (single doc)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3147,7 +3147,7 @@ TEST_P(index_test_case, document_context) {
 
   // holding document_context after replace across commit does not block (functr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3440,7 +3440,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback removals
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3476,7 +3476,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback removals + some more
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3520,8 +3520,8 @@ TEST_P(index_test_case, document_context) {
 
   // rollback removals split over multiple segment_writers
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     irs::index_writer::init_options options;
     options.segment_docs_max = 1; // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
@@ -3594,7 +3594,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replace (single doc)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3634,7 +3634,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replace (single doc) + some more
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3682,8 +3682,8 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replacements (single doc) split over multiple segment_writers
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     irs::index_writer::init_options options;
     options.segment_docs_max = 1; // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
@@ -3754,7 +3754,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replace (functr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3797,7 +3797,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replace (functr) + some more
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3848,8 +3848,8 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replacements (functr) split over multiple segment_writers
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     irs::index_writer::init_options options;
     options.segment_docs_max = 1; // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
@@ -4309,7 +4309,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove 1st (as reference)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4342,7 +4342,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove 1st (as unique_ptr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4376,7 +4376,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove 1st (as shared_ptr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4410,7 +4410,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: remove + add
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4446,7 +4446,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove + readd
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4479,8 +4479,8 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove, old segment: remove
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4519,7 +4519,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + add, old segment: remove + remove + add
   {
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4557,7 +4557,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add, old segment: remove
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4615,7 +4615,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove, old segment: remove
   {
-    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A || name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A || name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4677,9 +4677,9 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove, old segment: add + remove old-old segment: remove
   {
-    auto query_doc2_doc6_doc9 = irs::iql::query_builder().build("name==B||name==F||name==I", std::locale::classic());
-    auto query_doc3_doc7 = irs::iql::query_builder().build("name==C||name==G", std::locale::classic());
-    auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+    auto query_doc2_doc6_doc9 = irs::iql::query_builder().build("name==B||name==F||name==I", "C");
+    auto query_doc3_doc7 = irs::iql::query_builder().build("name==C||name==G", "C");
+    auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4799,7 +4799,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update (as reference)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4832,7 +4832,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update (as unique_ptr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4865,7 +4865,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update (as shared_ptr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4898,7 +4898,7 @@ TEST_P(index_test_case, doc_update) {
 
   // old segment update
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4955,9 +4955,9 @@ TEST_P(index_test_case, doc_update) {
 
   // 3x updates (same segment)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5000,9 +5000,9 @@ TEST_P(index_test_case, doc_update) {
 
   // 3x updates (different segments)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5048,7 +5048,7 @@ TEST_P(index_test_case, doc_update) {
 
   // no matching documnts
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5082,7 +5082,7 @@ TEST_P(index_test_case, doc_update) {
 
   // update + delete (same segment)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5123,7 +5123,7 @@ TEST_P(index_test_case, doc_update) {
 
   // update + delete (different segments)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5182,7 +5182,7 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update (same segment)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5220,7 +5220,7 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update (different segments)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5257,8 +5257,8 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update then update (2nd - update of modified doc) (same segment)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5297,8 +5297,8 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update then update (2nd - update of modified doc) (different segments)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5358,7 +5358,7 @@ TEST_P(index_test_case, doc_update) {
     auto doc2 = gen.next();
     auto doc3 = gen.next();
     auto doc4 = gen.next();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
 
     irs::index_writer::init_options opts;
     opts.features.emplace(irs::type<irs::offset>::id(), nullptr);
@@ -5434,7 +5434,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update with single-doc functr
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5469,7 +5469,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update with multiple-doc functr
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
     std::vector<tests::document const*> docs = { doc2, doc3 };
     size_t i = 0;
@@ -5510,7 +5510,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update with multiple-doc functr + rollback due to exception
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
     std::vector<tests::document const*> docs = { doc2, doc3 };
     size_t i = 0;
@@ -5610,7 +5610,7 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 1 segment no live-docs
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     irs::memory_directory data_dir;
     auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
@@ -5698,7 +5698,7 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 1 sparse segment
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     irs::memory_directory data_dir;
     auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
@@ -5786,7 +5786,7 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 2 sparse segments
   {
-    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B||name==C", std::locale::classic());
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B||name==C", "C");
     irs::memory_directory data_dir;
     auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
@@ -5836,7 +5836,7 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 2 mixed segments
   {
-    auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+    auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
     irs::memory_directory data_dir;
     auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
@@ -5889,7 +5889,7 @@ TEST_P(index_test_case, import_reader) {
 
   // new: add + add + delete, old: import
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     irs::memory_directory data_dir;
     auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
@@ -6014,7 +6014,7 @@ TEST_P(index_test_case, refresh_reader) {
   // modify state (delete doc2)
   {
     auto writer = open_writer(irs::OM_APPEND);
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
 
     writer->documents().remove(std::move(query_doc2.filter));
     writer->commit();
@@ -6135,7 +6135,7 @@ TEST_P(index_test_case, refresh_reader) {
   // modify state (delete doc1)
   {
     auto writer = open_writer(irs::OM_APPEND);
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
 
     writer->documents().remove(std::move(query_doc1.filter));
     writer->commit();
@@ -7162,7 +7162,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     writer->documents().remove(*query_doc1.filter);
     writer->commit();
     ASSERT_EQ(3, irs::directory_cleaner::clean(dir())); // segments_1 + stale segment meta + unused column store
@@ -7411,7 +7411,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   // long running transaction + segment removal
   {
     SetUp(); // recreate directory
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
 
     tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
@@ -7563,7 +7563,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   // long running transaction + document removal
   {
     SetUp(); // recreate directory
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
 
     tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
@@ -7695,7 +7695,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   // long running transaction + document removal
   {
     SetUp(); // recreate directory
-    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", std::locale::classic());
+    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", "C");
 
     tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
@@ -8886,7 +8886,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9011,7 +9011,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes
   {
     SetUp();
-    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", std::locale::classic());
+    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9144,8 +9144,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with delete committed and pending
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9283,8 +9283,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     writer->commit();
 
     // remove one doc from new and old segment to make conolidation do something
-    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
-    auto query_doc5 = irs::iql::query_builder().build("name==E", std::locale::classic());
+    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
+    auto query_doc5 = irs::iql::query_builder().build("name==E", "C");
     writer->documents().remove(*query_doc3.filter);
     writer->documents().remove(*query_doc5.filter);
     writer->commit();
@@ -9302,7 +9302,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // repeatable consolidation of already consolidated segment
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9375,8 +9375,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // repeatable consolidation of already consolidated segment during two phase commit
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9453,7 +9453,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // check commit rollback and consolidation
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9526,7 +9526,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes + inserts
   {
     SetUp();
-    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", std::locale::classic());
+    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9684,7 +9684,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes + inserts
   {
     SetUp();
-    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", std::locale::classic());
+    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9842,7 +9842,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes + inserts
   {
     SetUp();
-    auto query_doc3_doc4 = irs::iql::query_builder().build("name==C||name==D", std::locale::classic());
+    auto query_doc3_doc4 = irs::iql::query_builder().build("name==C||name==D", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -11194,7 +11194,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
   // consolidate with uncommitted (inserts + deletes)
   {
-    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", std::locale::classic());
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -11347,7 +11347,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
   // consolidate with committed (inserts) + uncomitted (deletes)
   {
-    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", std::locale::classic());
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -11470,7 +11470,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
   // consolidate with committed (inserts + deletes)
   {
-    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", std::locale::classic());
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -11791,7 +11791,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty new segment
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11807,7 +11807,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old segment
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11824,7 +11824,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment new
   {
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11872,7 +11872,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment new
   {
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11919,7 +11919,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment old
   {
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11967,7 +11967,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment old
   {
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12026,7 +12026,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // do defragment old segment with uncommited removal (i.e. do not consider uncomitted removals)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12053,7 +12053,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // do not defragment old segment with uncommited removal (i.e. do not consider uncomitted removals)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12089,7 +12089,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge new+old segment
   {
-    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12144,7 +12144,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge new+old segment
   {
-    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12199,7 +12199,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old segment
   {
-    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12255,7 +12255,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old segment
   {
-    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12311,7 +12311,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old+old segment
   {
-    auto query_doc1_doc3_doc5 = irs::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
+    auto query_doc1_doc3_doc5 = irs::iql::query_builder().build("name==A||name==C||name==E", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12380,7 +12380,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old+old segment
   {
-    auto query_doc1_doc3_doc5 = irs::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
+    auto query_doc1_doc3_doc5 = irs::iql::query_builder().build("name==A||name==C||name==E", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12924,7 +12924,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
   // valid docs count policy (merge)
   {
-    auto query_doc2_doc3_doc4 = irs::iql::query_builder().build("name==B||name==C||name==D", std::locale::classic());
+    auto query_doc2_doc3_doc4 = irs::iql::query_builder().build("name==B||name==C||name==D", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -12980,7 +12980,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
   // valid docs count policy (not modified)
   {
-    auto query_doc2_doc3_doc4 = irs::iql::query_builder().build("name==B||name==C||name==D", std::locale::classic());
+    auto query_doc2_doc3_doc4 = irs::iql::query_builder().build("name==B||name==C||name==D", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -13061,7 +13061,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
   // valid segment fill policy (merge)
   {
-    auto query_doc2_doc4 = irs::iql::query_builder().build("name==B||name==D", std::locale::classic());
+    auto query_doc2_doc4 = irs::iql::query_builder().build("name==B||name==D", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -13114,7 +13114,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
   // valid segment fill policy (not modified)
   {
-    auto query_doc2_doc4 = irs::iql::query_builder().build("name==B||name==D", std::locale::classic());
+    auto query_doc2_doc4 = irs::iql::query_builder().build("name==B||name==D", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -13492,13 +13492,13 @@ TEST_P(index_test_case, writer_insert_immediate_remove) {
     doc2->stored.begin(), doc2->stored.end()
   ));
 
-  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
   writer->documents().remove(*(query_doc1.filter.get()));
   writer->commit();
 
   // remove for initial segment to trigger consolidation
   // consolidation is needed to force opening all file handles and make cached readers indeed hold reference to a file
-  auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+  auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
   writer->documents().remove(*(query_doc3.filter.get()));
   writer->commit();
 
@@ -13558,15 +13558,15 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
     doc2->stored.begin(), doc2->stored.end()
   ));
 
-  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
   writer->documents().remove(*(query_doc1.filter.get()));
-  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
   writer->documents().remove(*(query_doc2.filter.get()));
   writer->commit();
 
   // remove for initial segment to trigger consolidation
   // consolidation is needed to force opening all file handles and make cached readers indeed hold reference to a file
-  auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+  auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
   writer->documents().remove(*(query_doc3.filter.get()));
   writer->commit();
 
@@ -13615,9 +13615,9 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment) {
   ASSERT_GT(count, 0);
 
   // Remove all documents from segment
-  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
   writer->documents().remove(*(query_doc1.filter.get()));
-  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
   writer->documents().remove(*(query_doc2.filter.get()));
   writer->commit();
   {
@@ -13675,18 +13675,18 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
   writer->commit(); //  segment 2
 
 
-  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
   writer->documents().remove(*(query_doc1.filter.get()));
-  auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+  auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
   writer->documents().remove(*(query_doc3.filter.get()));
   writer->commit();
 
   // this consolidation should bring us to one consolidated segment without removes.
   ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
   // Remove all documents from 'new' segment
-  auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+  auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
   writer->documents().remove(*(query_doc4.filter.get()));
-  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
   writer->documents().remove(*(query_doc2.filter.get()));
   writer->commit();
   {

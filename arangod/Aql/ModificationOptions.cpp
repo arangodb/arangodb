@@ -47,8 +47,6 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice)
   ignoreErrors = basics::VelocyPackHelper::getBooleanValue(obj, "ignoreErrors", false); 
   ignoreDocumentNotFound =
       basics::VelocyPackHelper::getBooleanValue(obj, "ignoreDocumentNotFound", false);
-  readCompleteInput =
-      basics::VelocyPackHelper::getBooleanValue(obj, "readCompleteInput", true);
   consultAqlWriteFilter =
       basics::VelocyPackHelper::getBooleanValue(obj, "consultAqlWriteFilter", false);
   exclusive = basics::VelocyPackHelper::getBooleanValue(obj, "exclusive", false);
@@ -72,7 +70,9 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   // our own attributes
   builder.add("ignoreErrors", VPackValue(ignoreErrors));
   builder.add("ignoreDocumentNotFound", VPackValue(ignoreDocumentNotFound));
-  builder.add("readCompleteInput", VPackValue(readCompleteInput));
+  // "readCompleteInput" was removed in 3.9. We'll leave it here only to be
+  // downwards-compatible. TODO: remove attribute in 3.10
+  builder.add("readCompleteInput", VPackValue(false));
   builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
   builder.add("exclusive", VPackValue(exclusive));
 }

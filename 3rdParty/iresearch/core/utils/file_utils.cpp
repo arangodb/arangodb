@@ -751,6 +751,7 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
       return handle_t(nullptr);
   }
   DWORD dwFlags = FILE_ATTRIBUTE_NORMAL | (static_cast<DWORD>(advice));
+  // cppcheck-suppress unreadVariable
   HANDLE hFile = INVALID_HANDLE_VALUE;
   int try_count = CREATE_FILE_TRIES;
   do {

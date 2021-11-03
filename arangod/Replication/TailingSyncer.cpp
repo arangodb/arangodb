@@ -1545,16 +1545,10 @@ Result TailingSyncer::runContinuousSync() {
       // important: we must not resume tailing in the middle of a RocksDB transaction,
       // as this would mean we would be missing the transaction begin marker. this would
       // cause "unexpected transaction errors"
-      if (_state.leader.engine == "rocksdb") {
-        fromTick = safeResumeTick;
-      }
+      fromTick = safeResumeTick;
     }
 
-    Result res = fetchOpenTransactions(safeResumeTick, fromTick, fetchTick);
-
-    if (res.fail()) {
-      return res;
-    }
+    fetchTick = fromTick;
   }
 
   if (fetchTick > fromTick) {
@@ -1566,6 +1560,28 @@ Result TailingSyncer::runContinuousSync() {
               ", fetch tick " + StringUtils::itoa(fetchTick) +
               ", open transactions: " + StringUtils::itoa(_ongoingTransactions.size()) +
               ", parallel: yes");
+
+  // when we leave this method, we must unregister ourselves from the leader,
+  // otherwise the leader may keep WAL logs around for us for too long
+  auto unregister = scopeGuard([&]() noexcept {
+    if (ServerState::instance()->isRunningInCluster()) {
+      try {
+        _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+          std::unique_ptr<httpclient::SimpleHttpResult> response;
+          std::string const url = tailingBaseUrl("tail") +
+                                  "serverId=" + _state.localServerIdString +
+                                  "&syncerId=" + syncerId().toString();
+          // simply send the request, but don't care about the response. if it
+          // fails, there is not much we can do from here.
+          auto headers = replutils::createHeaders();
+          response.reset(client->request(rest::RequestType::DELETE_REQ, url, nullptr, 0, headers));
+        });
+      } catch (...) {
+        // this must be exception-safe, but if an exception occurs, there is not
+        // much we can do
+      }
+    }
+  });
 
   // the shared status will wait in its destructor until all posted
   // requests have been completed/canceled!
@@ -1677,122 +1693,6 @@ Result TailingSyncer::runContinuousSync() {
   return Result(TRI_ERROR_INTERNAL);
 }
 
-/// @brief fetch the open transactions we still need to complete
-Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tick_t toTick,
-                                            TRI_voc_tick_t& startTick) {
-  std::string const baseUrl = tailingBaseUrl("open-transactions");
-  std::string const url = baseUrl + "serverId=" + _state.localServerIdString +
-                          "&from=" + StringUtils::itoa(fromTick) +
-                          "&to=" + StringUtils::itoa(toTick);
-
-  {
-    std::string const progress = "fetching initial leader state with from tick " +
-                                 StringUtils::itoa(fromTick) + ", to tick " +
-                                 StringUtils::itoa(toTick);
-
-    setProgress(progress);
-  }
-
-  // send request
-  std::unique_ptr<httpclient::SimpleHttpResult> response;
-  _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
-    auto headers = replutils::createHeaders();
-    response.reset(client->request(rest::RequestType::GET, url, nullptr, 0, headers));
-  });
-
-  if (replutils::hasFailed(response.get())) {
-    return replutils::buildHttpError(response.get(), url, _state.connection);
-  }
-
-  bool fromIncluded = false;
-
-  bool found;
-  std::string header =
-      response->getHeaderField(StaticStrings::ReplicationHeaderFromPresent, found);
-
-  if (found) {
-    fromIncluded = StringUtils::boolean(header);
-  }
-
-  // fetch the tick from where we need to start scanning later
-  header = response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded, found);
-  if (!found) {
-    // we changed the API in 3.3 to use last included
-    header = response->getHeaderField(StaticStrings::ReplicationHeaderLastTick, found);
-    if (!found) {
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from leader at ") +
-                        _state.leader.endpoint + ": required header " +
-                        StaticStrings::ReplicationHeaderLastTick +
-                        " is missing in determine-open-transactions response");
-    }
-  }
-
-  TRI_voc_tick_t readTick = StringUtils::uint64(header);
-
-  if (!fromIncluded && fromTick > 0) {
-    Result r = handleRequiredFromPresentFailure(fromTick, readTick, "initial");
-    TRI_ASSERT(_ongoingTransactions.empty());
-
-    if (r.fail()) {
-      return r;
-    }
-  }
-
-  startTick = readTick;
-  if (startTick == 0) {
-    startTick = toTick;
-  }
-
-  VPackBuilder builder;
-  Result r = replutils::parseResponse(builder, response.get());
-
-  if (r.fail()) {
-    return Result(
-        TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-        std::string("got invalid response from leader at ") + _state.leader.endpoint +
-            ": invalid response type for initial data. expecting array");
-  }
-
-  VPackSlice const slice = builder.slice();
-  if (!slice.isArray()) {
-    return Result(
-        TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-        std::string("got invalid response from leader at ") + _state.leader.endpoint +
-            ": invalid response type for initial data. expecting array");
-  }
-
-  for (VPackSlice it : VPackArrayIterator(slice)) {
-    if (!it.isString()) {
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from leader at ") +
-                        _state.leader.endpoint +
-                        ": invalid response type for initial data. expecting "
-                        "array of ids");
-    }
-    auto ref = it.stringRef();
-    _ongoingTransactions.try_emplace(TransactionId{NumberUtils::atoi_zero<TransactionId::BaseType>(
-                                         ref.data(), ref.data() + ref.size())},
-                                     nullptr);
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(!hasMultipleOngoingTransactions());
-#endif
-
-  {
-    std::string const progress =
-        "fetched initial leader state for from tick " +
-        StringUtils::itoa(fromTick) + ", to tick " + StringUtils::itoa(toTick) +
-        ", got start tick: " + StringUtils::itoa(readTick) +
-        ", open transactions: " + std::to_string(_ongoingTransactions.size());
-
-    setProgress(progress);
-  }
-
-  return Result();
-}
-
 /// @brief fetch data for the continuous synchronization
 /// @param fetchTick tick from which we want results
 /// @param lastScannedTick tick which the server MAY start scanning from
@@ -1803,7 +1703,7 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
                                    TRI_voc_tick_t fetchTick, TRI_voc_tick_t lastScannedTick,
                                    TRI_voc_tick_t firstRegularTick) {
   try {
-    std::string const url =
+    std::string url =
         tailingBaseUrl("tail") +
         "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
         "&from=" + StringUtils::itoa(fetchTick) +
@@ -1813,7 +1713,13 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
         "&serverId=" + _state.localServerIdString +
         "&includeSystem=" + (_state.applier._includeSystem ? "true" : "false") +
         "&includeFoxxQueues=" + (_state.applier._includeFoxxQueues ? "true" : "false");
-    
+
+    if (syncerId().value > 0) {
+      // we must only send the syncerId along if it is != 0, otherwise we will
+      // trigger an error on the leader
+      url += "&syncerId=" + syncerId().toString();
+    }
+
     // send request
     setProgress(std::string("fetching leader log from tick ") + StringUtils::itoa(fetchTick) +
                 ", last scanned tick " + StringUtils::itoa(lastScannedTick) +

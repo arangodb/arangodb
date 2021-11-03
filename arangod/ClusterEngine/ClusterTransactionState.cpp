@@ -28,6 +28,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "ClusterEngine/ClusterTransactionCollection.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -66,10 +67,11 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   // set hints
   _hints = hints;
+  auto& stats = _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics;
 
   auto cleanup = scopeGuard([&]() noexcept {
     updateStatus(transaction::Status::ABORTED);
-    ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted;
+    ++stats._transactionsAborted;
   });
 
   Result res = useCollections();
@@ -79,7 +81,11 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   // all valid
   updateStatus(transaction::Status::RUNNING);
-  ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted;
+  if (isReadOnlyTransaction()) {
+    ++stats._readTransactions;
+  } else {
+    ++stats._transactionsStarted;
+  }
 
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
   setRegistered();
@@ -147,4 +153,9 @@ uint64_t ClusterTransactionState::numCommits() const {
   // there are no intermediate commits for a cluster transaction, so we can
   // return 1 for a committed transaction and 0 otherwise
   return _status == transaction::Status::COMMITTED ? 1 : 0;
+}
+
+std::unique_ptr<TransactionCollection> ClusterTransactionState::createTransactionCollection(
+    DataSourceId cid, AccessMode::Type accessType) {
+  return std::make_unique<ClusterTransactionCollection>(this, cid, accessType);
 }

@@ -190,6 +190,22 @@ include_directories(${ROCKSDB_INCLUDE_DIR})
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 
 ################################################################################
+# llhttp
+################################################################################
+
+SET(LLHTTP_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/llhttp/src/api.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/llhttp/src/http.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/llhttp/src/llhttp.c
+)
+
+add_library(llhttp STATIC
+  ${LLHTTP_SOURCES}
+)
+
+target_include_directories(llhttp PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/llhttp/include")
+
+################################################################################
 ## NGHTTP2
 ################################################################################
 
@@ -252,10 +268,9 @@ add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/vst.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/VstConnection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http_parser/http_parser.c
   )
 
-target_link_libraries(fuerte nghttp2)
+target_link_libraries(fuerte llhttp nghttp2)
 
 include(CheckTypeSize)
 check_type_size("ssize_t" SIZEOF_SSIZE_T)

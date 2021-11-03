@@ -29,12 +29,10 @@
 #include <limits>
 #include <memory>
 #include <mutex>
-//#include <queue>
 #include <shared_mutex>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-//#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -380,7 +378,9 @@ MerkleTree<Hasher, BranchingBits>::deserialize(velocypack::Slice slice) {
   std::uint64_t summaryHash = read.getNumber<std::uint64_t>();
 
   velocypack::Slice nodes = slice.get(StaticStrings::RevisionTreeNodes);
-  if (!nodes.isArray() || nodes.length() < nodeCountAtDepth(depth)) {
+  if (!nodes.isArray() || nodes.length() > nodeCountAtDepth(depth)) {
+    // note: we can have less nodes than nodeCountAtDepth because of
+    // "skip" nodes
     return nullptr;
   }
 
@@ -393,6 +393,12 @@ MerkleTree<Hasher, BranchingBits>::deserialize(velocypack::Slice slice) {
   std::uint64_t index = 0;
   for (velocypack::Slice nodeSlice : velocypack::ArrayIterator(nodes)) {
     TRI_ASSERT(nodeSlice.isObject());
+
+    arangodb::velocypack::Slice skipSlice = nodeSlice.get("skip");
+    if (!skipSlice.isNone()) {
+      index += skipSlice.getNumber<std::uint64_t>();
+      continue;
+    }
 
     arangodb::velocypack::Slice countSlice = nodeSlice.get(StaticStrings::RevisionTreeCount);
     arangodb::velocypack::Slice hashSlice = nodeSlice.get(StaticStrings::RevisionTreeHash);
@@ -823,20 +829,37 @@ void MerkleTree<Hasher, BranchingBits>::serialize(velocypack::Builder& output,
   output.add(StaticStrings::RevisionTreeHash, velocypack::Value(meta().summary.hash));
   
   velocypack::ArrayBuilder nodeArrayGuard(&output, StaticStrings::RevisionTreeNodes);
-  
+ 
+  std::uint64_t toSkip = 0;
   std::uint64_t last = nodeCountAtDepth(depth);
   for (std::uint64_t index = 0; index < last; ++index) {
     Node const& src = this->node(index);
-    if (onlyPopulated && src.empty()) {
-      // return an empty object. this is still worse than returning nothing at all,
-      // but otherwise we would need to return the index number of each populaed node,
-      // which is likely more data
-      output.openObject();
-      output.close();
+    if (onlyPopulated) {
+      if (src.empty()) {
+        // node is empty. simply count how many empty nodes we have in a run
+        ++toSkip;
+      } else {
+        // check if we have a run of empty nodes...
+        if (toSkip == 1) {
+          // return an empty object. this is still worse than returning nothing at all,
+          // but otherwise we would need to return the index number of each populated node,
+          // which is likely more data
+          output.add(velocypack::Slice::emptyObjectSlice());
+        } else if (toSkip > 1) {
+          // cheat and only return the number of empty buckets
+          output.openObject();
+          output.add("skip", velocypack::Value(toSkip));
+          output.close();
+        }
+        toSkip = 0;
+        src.toVelocyPack(output);
+      }
     } else {
       src.toVelocyPack(output);
     }
   }
+  // if onlyPopulated = true, we intentionally don't serialize any
+  // to-skip nodes at the end, because they are optional
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
@@ -875,7 +898,7 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
   switch (format) {
     case BinaryFormat::OnlyPopulated: {
       // make a minimum allocation that will be enough for the meta data and a 
-      // few notes. if we need more space, the string can grow as needed
+      // few nodes. if we need more space, the string can grow as needed
       output.reserve(64);
       serializeMeta(output, /*usePadding*/ false);
       serializeNodes(output, /*all*/ false);
@@ -1227,6 +1250,8 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(
     node.count -= count;
   }
   node.hash ^= value;
+    
+  TRI_ASSERT(node.count > 0 || node.hash == 0);
 
   return true;
 }

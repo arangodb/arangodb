@@ -19,8 +19,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGODB3_PERSISTEDLOG_H
-#define ARANGODB3_PERSISTEDLOG_H
+
+#pragma once
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
@@ -30,9 +30,6 @@
 #include <memory>
 
 namespace arangodb::replication2::replicated_log {
-
-// ReplicatedLog-internal iterator over PersistingLogEntries
-struct PersistedLogIterator : TypedLogIterator<PersistingLogEntry> {};
 
 /**
  * @brief Interface to persist a replicated log locally. Implemented by
@@ -60,5 +57,3 @@ struct PersistedLog {
 };
 
 }  // namespace arangodb::replication2
-
-#endif  // ARANGODB3_PERSISTEDLOG_H

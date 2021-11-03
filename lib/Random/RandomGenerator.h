@@ -24,6 +24,7 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 #include <memory>
 
 namespace arangodb {
@@ -72,6 +73,25 @@ class RandomGenerator {
     COMBINED = 4,
     WINDOWS_CRYPT = 5  // uses the built in cryptographic services offered and
                        // recommended by microsoft (e.g. CryptGenKey(...) )
+  };
+
+  // satisfies UniformRandomBitGenerator
+  // Note: As the RandomGenerator::interval(a, b) functions all take signed
+  //       integers only, we cannot use the unsigned T at its fullest.
+  template <typename T, T min_value = 0, T max_value = std::numeric_limits<std::make_signed_t<T>>::max()>
+  struct UniformRandomGenerator {
+    using result_type = T;
+    using internal_type = std::make_signed_t<T>;
+
+    static_assert(std::is_unsigned_v<T>);
+    static_assert(max_value <= std::numeric_limits<internal_type>::max());
+
+    constexpr static auto min() noexcept -> result_type { return min_value; }
+    constexpr static auto max() noexcept -> result_type { return max_value; }
+
+    constexpr auto operator()() -> result_type {
+      return RandomGenerator::interval(static_cast<internal_type>(min()), static_cast<internal_type>(max()));
+    }
   };
 
  public:

@@ -20,15 +20,17 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGODB3_RESTLOGHANDLER_H
-#define ARANGODB3_RESTLOGHANDLER_H
+
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
 
+namespace replication2 {
 struct ReplicatedLogMethods;
+}
 
 class RestLogHandler : public RestVocbaseBaseHandler {
  public:
@@ -44,16 +46,26 @@ class RestLogHandler : public RestVocbaseBaseHandler {
   }
 
  private:
-  RestStatus executeByMethod(ReplicatedLogMethods const& methods);
-  RestStatus handleGetRequest(ReplicatedLogMethods const& methods);
-  RestStatus handlePostRequest(ReplicatedLogMethods const& methods);
-  RestStatus handleDeleteRequest(ReplicatedLogMethods const& methods);
+  RestStatus executeByMethod(replication2::ReplicatedLogMethods const& methods);
+  RestStatus handleGetRequest(replication2::ReplicatedLogMethods const& methods);
+  RestStatus handlePostRequest(replication2::ReplicatedLogMethods const& methods);
+  RestStatus handleDeleteRequest(replication2::ReplicatedLogMethods const& methods);
 
-  RestStatus handleGet(ReplicatedLogMethods const& methods);
-  RestStatus handleGetTail(ReplicatedLogMethods const& methods, replication2::LogId);
-  RestStatus handleGetLog(ReplicatedLogMethods const& methods, replication2::LogId);
-  RestStatus handleGetReadEntry(ReplicatedLogMethods const& methods, replication2::LogId);
+  RestStatus handlePost(replication2::ReplicatedLogMethods const& methods, velocypack::Slice specSlice);
+  RestStatus handlePostInsert(replication2::ReplicatedLogMethods const& methods,
+                              replication2::LogId logId, velocypack::Slice payload);
+  RestStatus handlePostInsertMulti(replication2::ReplicatedLogMethods const& methods,
+                                   replication2::LogId logId, velocypack::Slice payload);
+  RestStatus handlePostRelease(replication2::ReplicatedLogMethods const& methods, replication2::LogId logId);
+
+  RestStatus handleGet(replication2::ReplicatedLogMethods const& methods);
+  RestStatus handleGetPoll(replication2::ReplicatedLogMethods const& methods, replication2::LogId);
+  RestStatus handleGetHead(replication2::ReplicatedLogMethods const& methods, replication2::LogId);
+  RestStatus handleGetTail(replication2::ReplicatedLogMethods const& methods, replication2::LogId);
+  RestStatus handleGetSlice(replication2::ReplicatedLogMethods const& methods, replication2::LogId);
+  RestStatus handleGetLog(replication2::ReplicatedLogMethods const& methods, replication2::LogId);
+  RestStatus handleGetEntry(replication2::ReplicatedLogMethods const& methods, replication2::LogId);
+
 
 };
 }  // namespace arangodb
-#endif  // ARANGODB3_RESTLOGHANDLER_H

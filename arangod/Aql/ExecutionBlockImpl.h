@@ -286,7 +286,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // position of the callStack as "skipped".
   // as soon as we reach a place where there is no skip
   // ordered in the outer shadow rows, this call
-  // will fall back to shadowRowForwardning.
+  // will fall back to shadowRowForwarding.
   [[nodiscard]] auto sideEffectShadowRowForwarding(AqlCallStack& stack,
                                                    SkipResult& skipResult) -> ExecState;
 

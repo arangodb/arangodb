@@ -109,7 +109,7 @@ class GraphProviderTest : public ::testing::Test {
       auto indexCondition = singleServer->buildOutboundCondition(query.get(), tmpVar);
 
       std::vector<IndexAccessor> usedIndexes{};
-      usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr, 0});
+      usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr, std::nullopt, 0});
 
       _expressionContext =
           std::make_unique<arangodb::aql::FixedVarExpressionContext>(*_trx.get(), *query,

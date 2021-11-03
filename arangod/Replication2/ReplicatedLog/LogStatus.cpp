@@ -59,7 +59,7 @@ auto FollowerStatus::fromVelocyPack(velocypack::Slice slice) -> FollowerStatus {
   FollowerStatus status;
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
   status.largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
-  status.local = LogStatistics::fromVelocyPack(slice);
+  status.local = LogStatistics::fromVelocyPack(slice.get("local"));
   if (auto leader = slice.get(StaticStrings::Leader); !leader.isNone()) {
     status.leader = leader.copyString();
   }
@@ -74,6 +74,8 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   builder.add("commitLagMS", VPackValue(commitLagMS.count()));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
+  builder.add(VPackValue("lastCommitStatus"));
+  lastCommitStatus.toVelocyPack(builder);
   {
     VPackObjectBuilder ob2(&builder, StaticStrings::Follower);
     for (auto const& [id, stat] : follower) {
@@ -88,8 +90,11 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
   LeaderStatus status;
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
   status.local = LogStatistics::fromVelocyPack(slice.get("local"));
+  status.largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
   status.commitLagMS = std::chrono::duration<double, std::milli>{
       slice.get("commitLagMS").extract<double>()};
+  status.lastCommitStatus =
+      CommitFailReason::fromVelocyPack(slice.get("lastCommitStatus"));
   for (auto [key, value] : VPackObjectIterator(slice.get(StaticStrings::Follower))) {
     auto id = ParticipantId{key.copyString()};
     auto stat = FollowerStatistics::fromVelocyPack(value);

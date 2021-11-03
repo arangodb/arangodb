@@ -88,7 +88,7 @@ option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
 option(USE_MICROBENCH "Build micro-benchmark project" OFF)
-option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party code" ON) 
+option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party code" ON)
 
 add_option_gprof(FALSE)
 
