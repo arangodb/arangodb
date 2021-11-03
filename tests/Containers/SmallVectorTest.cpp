@@ -55,7 +55,7 @@ TEST(SmallVectorTest, test_in_arena) {
 
   // this will overflow the arena
   values.push_back(1);
-  EXPECT_EQ(values.capacity(), 8);
+  EXPECT_GT(values.capacity(), 4);
   
   for (size_t i = 0; i < 4; ++i) {
     EXPECT_NE(&values[i], &arena[i]);
@@ -78,7 +78,7 @@ TEST(SmallVectorTest, test_data) {
 
   // this will overflow the arena
   values.push_back(4);
-  EXPECT_EQ(values.capacity(), 8);
+  EXPECT_GT(values.capacity(), 4);
   
   for (size_t i = 0; i < 5; ++i) {
     EXPECT_EQ(i, values.data()[i]);
@@ -102,7 +102,7 @@ TEST(SmallVectorTest, test_capacity) {
 
     values.push_back(666);
     EXPECT_EQ(values.size(), 5);
-    EXPECT_EQ(values.capacity(), 8);
+    EXPECT_GT(values.capacity(), 4);
   }
   
   {
@@ -120,7 +120,29 @@ TEST(SmallVectorTest, test_capacity) {
 
     values.push_back(666);
     EXPECT_EQ(values.size(), 17);
-    EXPECT_EQ(values.capacity(), 32);
+    EXPECT_GT(values.capacity(), 16);
+  }
+  
+  {
+    arangodb::containers::SmallVectorWithArena<uint32_t, 64> values;
+  
+    EXPECT_EQ(values.size(), 0);
+    EXPECT_EQ(values.capacity(), 64 / sizeof(uint32_t));
+    EXPECT_TRUE(values.empty());
+    values.reserve(1024);
+
+    EXPECT_EQ(values.capacity(), 1024);
+    EXPECT_EQ(values.size(), 0);
+    
+    for (size_t i = 0; i < 1024; ++i) {
+      values.push_back(static_cast<uint32_t>(i));
+      EXPECT_EQ(values.size(), i + 1);
+      EXPECT_EQ(values.capacity(), 1024);
+    }
+
+    values.push_back(666);
+    EXPECT_EQ(values.size(), 1025);
+    EXPECT_GT(values.capacity(), 1024);
   }
 }
 
