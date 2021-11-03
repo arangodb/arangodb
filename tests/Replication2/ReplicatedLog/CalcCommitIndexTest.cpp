@@ -25,6 +25,8 @@
 
 #include "Replication2/ReplicatedLog/Algorithms.h"
 
+#include <algorithm>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::algorithms;
@@ -43,7 +45,12 @@ TEST_F(CalcCommitIndexTest, write_concern_1_single_participant) {
                                        LogIndex{1}, LogIndex{50});
   EXPECT_EQ(index, LogIndex{50});
   EXPECT_TRUE(std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
-  EXPECT_EQ(quorum, std::vector<ParticipantId>{"A"});
+
+  auto expectedQuorum = std::vector<ParticipantId>{"A"};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
 }
 
 TEST_F(CalcCommitIndexTest, write_concern_2_3_participants) {
@@ -58,7 +65,12 @@ TEST_F(CalcCommitIndexTest, write_concern_2_3_participants) {
   EXPECT_EQ(index, LogIndex{35});
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
-  EXPECT_EQ(quorum, (std::vector<ParticipantId>{"A", "C"}));
+
+  auto expectedQuorum = std::vector<ParticipantId>{"A", "C"};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
 }
 
 TEST_F(CalcCommitIndexTest, write_concern_3_3_participants) {
@@ -76,7 +88,11 @@ TEST_F(CalcCommitIndexTest, write_concern_3_3_participants) {
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
 
-  EXPECT_EQ(quorum, (std::vector<ParticipantId>{"A", "C", "B"}));
+  auto expectedQuorum = std::vector<ParticipantId>{"A", "C", "B"};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
 }
 
 TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
@@ -93,7 +109,12 @@ TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
   EXPECT_EQ(index, LogIndex{1});
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
-  EXPECT_EQ(quorum, (std::vector<ParticipantId>{}));
+
+  auto expectedQuorum = std::vector<ParticipantId>{};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
 }
 
 TEST_F(CalcCommitIndexTest, excluded_and_forced) {
@@ -112,7 +133,12 @@ TEST_F(CalcCommitIndexTest, excluded_and_forced) {
   EXPECT_EQ(index, LogIndex{1});
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(reason.value));
-  EXPECT_EQ(quorum, (std::vector<ParticipantId>{}));
+
+  auto expectedQuorum = std::vector<ParticipantId>{};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
 }
 
 TEST_F(CalcCommitIndexTest, all_excluded) {
@@ -130,7 +156,12 @@ TEST_F(CalcCommitIndexTest, all_excluded) {
   EXPECT_EQ(index, LogIndex{1});
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
-  EXPECT_EQ(quorum, (std::vector<ParticipantId>{}));
+
+  auto expectedQuorum = std::vector<ParticipantId>{};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
 }
 
 TEST_F(CalcCommitIndexTest, all_forced) {
@@ -148,7 +179,12 @@ TEST_F(CalcCommitIndexTest, all_forced) {
   EXPECT_EQ(index, LogIndex{25});
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
-  EXPECT_EQ(quorum, (std::vector<ParticipantId>{"A", "C", "B"}));
+
+  auto expectedQuorum = std::vector<ParticipantId>{"A", "C", "B"};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
 }
 
 TEST_F(CalcCommitIndexTest, not_enough_eligible) {
@@ -168,7 +204,12 @@ TEST_F(CalcCommitIndexTest, not_enough_eligible) {
   EXPECT_EQ(index, LogIndex{35});
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
-  EXPECT_EQ(quorum, (std::vector<ParticipantId>{"B", "A", "D"}));
+
+  auto expectedQuorum = std::vector<ParticipantId>{"B", "A", "D"};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
 }
 
 TEST_F(CalcCommitIndexTest, nothing_to_commit) {
@@ -188,5 +229,9 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit) {
   EXPECT_EQ(index, LogIndex{15});
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
-  EXPECT_EQ(quorum, (std::vector<ParticipantId>{"D", "E", "A"}));
+  auto expectedQuorum = std::vector<ParticipantId>{"D", "E", "A"};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
 }
