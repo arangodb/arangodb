@@ -2131,7 +2131,7 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   StringUtils::tolowerInPlace(ls);
   StringUtils::tolowerInPlace(ts);
-  
+
   std::string prefix;
   if (ls == "fatal") {
     prefix = "FATAL! ";
@@ -3945,6 +3945,42 @@ static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief private key signing of a message
+///
+/// @FUN{internal.rsaprivsign(@FA{text})}
+///
+/// RSA signs a message @FA{text}.
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_RsaPrivSign(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 2 || !args[0]->IsString()|| !args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("privsign(<private key pem>, <to sign>)");
+  }
+
+  std::string key = TRI_ObjectToString(isolate, args[0]);
+  std::string message = TRI_ObjectToString(isolate, args[1]);
+  std::string sign;
+  std::string error;
+
+  auto res = SslInterface::rsaPrivSign(key, message, sign, error);
+
+  if (res == 0) {
+    sign = StringUtils::encodeBase64(sign);
+  } else {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, error);
+  }
+
+  v8::Handle<v8::String> signStr = TRI_V8_PAIR_STRING(isolate, sign.c_str(), (int)sign.size());
+
+  TRI_V8_RETURN(signStr);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sleeps
 ///
 /// @FUN{internal.sleep(@FA{seconds})}
@@ -3965,7 +4001,7 @@ static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   double n = correctTimeoutToExecutionDeadlineS(TRI_ObjectToDouble(isolate, args[0]));
-  
+
   TRI_GET_GLOBALS();
   Result res = ::doSleep(n, v8g->_server);
   if (res.fail()) {
@@ -5821,6 +5857,7 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
                                JS_ReadDecrypt);
 #endif
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SHA1"), JS_Sha1);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RSAPRIVSIGN"), JS_RsaPrivSign);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_SHA224"), JS_Sha224);
   TRI_AddGlobalFunctionVocbase(isolate,
@@ -5860,8 +5897,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
 
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_ERROR_NUMBER_TO_HTTP_CODE"), JS_ErrorNumberToHttpCode);
-  
-  TRI_AddGlobalFunctionVocbase(isolate, 
+
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "IS_ALLOWED_DATABASE_NAME"), JS_IsAllowedDatabaseName);
   // .............................................................................
   // create the global variables
