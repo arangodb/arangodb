@@ -48,7 +48,7 @@ struct MockLog : replication2::replicated_log::PersistedLog {
                    WriteOptions const&) -> futures::Future<Result> override;
   auto read(replication2::LogIndex start)
       -> std::unique_ptr<replication2::PersistedLogIterator> override;
-  auto removeFront(replication2::LogIndex stop) -> Result override;
+  auto removeFront(replication2::LogIndex stop) -> futures::Future<Result> override;
   auto removeBack(replication2::LogIndex start) -> Result override;
   auto drop() -> Result override;
 
