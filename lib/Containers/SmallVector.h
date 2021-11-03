@@ -105,6 +105,10 @@ class SmallVectorWithArena {
   bool empty() const noexcept {
     return _vector.empty();
   }
+
+  T const* data() const noexcept {
+    return _vector.data();
+  }
   
   T const& operator[](std::size_t pos) const noexcept {
     return _vector[pos];
@@ -162,4 +166,3 @@ class SmallVectorWithArena {
 
 }  // namespace containers
 }  // namespace arangodb
-
