@@ -62,6 +62,30 @@ TEST(SmallVectorTest, test_in_arena) {
   }
 }
 
+TEST(SmallVectorTest, test_data) {
+  arangodb::containers::SmallVectorWithArena<uint64_t, 32> values;
+
+  EXPECT_EQ(values.capacity(), 4);
+
+  // all values must be stored in the arena
+  for (size_t i = 0; i < 4; ++i) {
+    values.push_back(i);
+  }
+
+  for (size_t i = 0; i < 4; ++i) {
+    EXPECT_EQ(i, values.data()[i]);
+  }
+
+  // this will overflow the arena
+  values.push_back(4);
+  EXPECT_EQ(values.capacity(), 8);
+  
+  for (size_t i = 0; i < 5; ++i) {
+    EXPECT_EQ(i, values.data()[i]);
+  }
+}
+
+
 TEST(SmallVectorTest, test_capacity) {
   {
     arangodb::containers::SmallVectorWithArena<uint64_t, 32> values;
