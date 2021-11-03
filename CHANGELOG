@@ -1,6 +1,9 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed SEARCH-260: Fix invalid sorting order of stored features in presence of 
+  primary sort.
+
 * Change error message for queries that use too much memory from "resource limit
   exceeded" to "query would use more memory than allowed".
 
