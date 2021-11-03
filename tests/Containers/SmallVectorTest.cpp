@@ -113,7 +113,7 @@ TEST(SmallVectorTest, test_capacity) {
     EXPECT_TRUE(values.empty());
     
     for (size_t i = 0; i < 16; ++i) {
-      values.push_back(i);
+      values.push_back(static_cast<uint32_t>(i));
       EXPECT_EQ(values.size(), i + 1);
       EXPECT_EQ(values.capacity(), 16);
     }
