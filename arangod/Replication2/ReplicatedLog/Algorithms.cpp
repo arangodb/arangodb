@@ -455,6 +455,11 @@ auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple> const& 
     }
   }
 
+  // While actualWriteConcern == 0 is silly we still allow it.
+  if (actualWriteConcern == 0) {
+    return {spearhead, CommitFailReason::withNothingToCommit(), {}};
+  }
+
   if (actualWriteConcern <= eligible.size()) {
     auto nth = std::begin(eligible);
 

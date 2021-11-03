@@ -73,6 +73,27 @@ TEST_F(CalcCommitIndexTest, write_concern_2_3_participants) {
   EXPECT_EQ(quorum, expectedQuorum);
 }
 
+TEST_F(CalcCommitIndexTest, write_concern_0_3_participants) {
+  auto participants = std::vector{ParticipantStateTuple{LogIndex{50}, "A", {}},
+                                  ParticipantStateTuple{LogIndex{25}, "B", {}},
+                                  ParticipantStateTuple{LogIndex{35}, "C", {}}};
+
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{0, 0, 3},
+                                       LogIndex{1}, LogIndex{50});
+  EXPECT_EQ(index, LogIndex{50});
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
+
+  auto expectedQuorum = std::vector<ParticipantId>{};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
+}
+
+
 TEST_F(CalcCommitIndexTest, write_concern_3_3_participants) {
   auto participants = std::vector{
       ParticipantStateTuple{LogIndex{50}, "A", {}},
