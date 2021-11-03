@@ -25,15 +25,13 @@
 #define IRESEARCH_FIELD_DATA_H
 
 #include <vector>
-#include <tuple>
 
-#include "field_meta.hpp"
-#include "postings.hpp"
 #include "formats/formats.hpp"
-
+#include "index/field_meta.hpp"
+#include "index/postings.hpp"
+#include "index/sorted_column.hpp"
 #include "index/index_features.hpp"
 #include "index/iterators.hpp"
-
 #include "utils/block_pool.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
@@ -62,6 +60,17 @@ class doc_iterator;
 class sorting_doc_iterator;
 }
 
+// represents a mapping between cached column data
+// and a pointer to column identifier
+struct cached_column {
+  cached_column(field_id* id, column_info info) noexcept
+    : id{id}, stream{info} {
+  }
+
+  field_id* id;
+  sorted_column stream;
+};
+
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
@@ -69,6 +78,7 @@ class IRESEARCH_API field_data : util::noncopyable {
     const features_t& features,
     const field_features_t& field_features,
     const feature_column_info_provider_t& feature_columns,
+    std::deque<cached_column>& cached_columns,
     columnstore_writer& columns,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
@@ -93,10 +103,7 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   void compute_features() const {
     for (auto& entry : features_) {
-      auto& [type, handler, writer] = entry;
-      UNUSED(type);
-
-      handler(stats_, doc(), writer);
+      entry.handler(stats_, doc(), entry.writer);
     }
   }
 
@@ -110,10 +117,17 @@ class IRESEARCH_API field_data : util::noncopyable {
   friend class detail::sorting_doc_iterator;
   friend class fields_data;
 
-  using feature_info = std::tuple<
-    type_info::type_id,
-    feature_handler_f,
-    columnstore_writer::values_writer_f>;
+  struct feature_info {
+    feature_info(
+        feature_handler_f handler,
+        columnstore_writer::values_writer_f writer)
+      : handler{handler},
+        writer{std::move(writer)} {
+    }
+
+    feature_handler_f handler;
+    columnstore_writer::values_writer_f writer;
+  };
 
   using process_term_f = void(field_data::*)(
     posting&, doc_id_t,
@@ -134,7 +148,6 @@ class IRESEARCH_API field_data : util::noncopyable {
   }
 
   mutable std::vector<feature_info> features_;
-  mutable columnstore_writer::values_writer_f norms_;
   mutable field_meta meta_;
   postings terms_;
   byte_block_pool::inserter* byte_writer_;
@@ -185,25 +198,21 @@ class IRESEARCH_API fields_data: util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory actively in-use by this instance
   //////////////////////////////////////////////////////////////////////////////
-  size_t memory_active() const noexcept {
-    return byte_writer_.pool_offset()
-      + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
-      + fields_map_.size() * sizeof(fields_map::value_type)
-      + fields_.size() * sizeof(decltype(fields_)::value_type);
-  }
+  size_t memory_active() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory reserved by this instance
   //////////////////////////////////////////////////////////////////////////////
-  size_t memory_reserved() const noexcept {
-    return sizeof(fields_data) +
-           byte_pool_.size() +
-           int_pool_.size();
-  }
+  size_t memory_reserved() const noexcept;
 
   size_t size() const { return fields_.size(); }
   void flush(field_writer& fw, flush_state& state);
   void reset() noexcept;
+
+  void flush_features(
+    columnstore_writer& writer,
+    const doc_map& docmap,
+    sorted_column::flush_buffer_t& buffer);
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -211,6 +220,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
   const field_features_t* field_features_;
   const feature_column_info_provider_t* feature_columns_;
   std::deque<field_data> fields_; // pointers remain valid
+  std::deque<cached_column> cached_features_; // pointers remain valid
   fields_map fields_map_;
   postings_ref_t sorted_postings_;
   std::vector<const field_data*> sorted_fields_;
