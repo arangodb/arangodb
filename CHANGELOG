@@ -15,6 +15,8 @@ devel
   versions. When this flag is not used, it is considered to have the default 
   behavior (that is, set to false). 
 
+* Upgrade bundled version of RocksDB to 6.26.
+
 * Change error message for queries that use too much memory from "resource
   limit exceeded" to "query would use more memory than allowed".
 
