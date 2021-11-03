@@ -525,6 +525,78 @@ if (USE_FAIL_ON_WARNINGS)
 endif ()
 
 ################################################################################
+## arangologin
+################################################################################
+
+if (MSVC AND NOT(SKIP_PACKAGING))
+  generate_product_version(ProductVersionFiles_arangologin
+    NAME arangologin
+    FILE_DESCRIPTION ${ARANGO_LOGIN_FRIENDLY_STRING}
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
+    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
+    VERSION_REVISION ${BUILD_ID}
+  )
+endif ()
+add_executable(${BIN_ARANGOLOGIN}
+  ${ADDITIONAL_LOGIN_ARANGO_SOURCES}
+  ${ProductVersionFiles_arangoLOGIN}
+  LoginTest/LoginFeature.cpp
+  LoginTest/arangologin.cpp
+)
+target_include_directories(${BIN_ARANGOLOGIN} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+if (USE_ENTERPRISE)
+  target_include_directories(arangologin PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  add_definitions(-DUSE_ENTERPRISE=1)
+
+  if (MSVC)
+    target_link_libraries(${BIN_ARANGOLOGIN}
+      Wldap32.lib
+    )
+  else()
+    target_link_libraries(${BIN_ARANGOLOGIN}
+      ${LDAP_LIB}
+      ${LBER_LIB}
+      ${OPENSSL_LIBRARIES}
+    )
+  endif()
+endif()
+
+target_link_libraries(${BIN_ARANGOLOGIN}
+  arango
+  ${MSVC_LIBS}
+  ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
+  arango_shell
+)
+
+install(
+  TARGETS ${BIN_ARANGOLOGIN}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+install_config(arangoLOGIN)
+
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(${BIN_ARANGOLOGIN} zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(${BIN_ARANGOLOGIN} zlibstatic) # v8_build includes ICU build
+endif ()
+
+if (USE_JEMALLOC)
+  add_dependencies(${BIN_ARANGOLOGIN} jemalloc_build)
+endif ()
+
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+   target_compile_options(${BIN_ARANGOLOGIN} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(${BIN_ARANGOLOGIN} PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
+
+################################################################################
 ## foxx-manager
 ################################################################################
 

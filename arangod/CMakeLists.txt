@@ -906,6 +906,7 @@ add_library(arango_agency STATIC
 add_library(arangoserver STATIC
   ${LIB_ARANGOSERVER_SOURCES}
   ${ADDITIONAL_LIB_ARANGOSERVER_SOURCES}
+  ${ADDITIONAL_LOGIN_ARANGO_SOURCES}
 )
 
 add_library(arango_network STATIC
