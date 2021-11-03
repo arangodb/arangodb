@@ -140,6 +140,8 @@ TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
 
 TEST_F(CalcCommitIndexTest, excluded_and_forced) {
   // One participant is excluded *and* forced, which means we cannot make any progress
+  // beyond LogIndex{25}
+  // (Note that participants "A" and "C" can still form a quorum for LogIndex{25}!)
 
   auto participants = std::vector{
       ParticipantStateTuple{LogIndex{50}, "A", {}},
@@ -151,7 +153,7 @@ TEST_F(CalcCommitIndexTest, excluded_and_forced) {
       algorithms::calculateCommitIndex(participants,
                                        CalculateCommitIndexOptions{2, 2, 3},
                                        LogIndex{1}, LogIndex{50});
-  EXPECT_EQ(index, LogIndex{1});
+  EXPECT_EQ(index, LogIndex{25});
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(reason.value));
 
@@ -186,7 +188,7 @@ TEST_F(CalcCommitIndexTest, all_excluded) {
 }
 
 TEST_F(CalcCommitIndexTest, all_forced) {
-  // all participants are excluded.
+  // all participants are forced.
   auto participants = std::vector{
       ParticipantStateTuple{LogIndex{50}, "A", {ParticipantFlag::Forced}},
       ParticipantStateTuple{LogIndex{25}, "B", {ParticipantFlag::Forced}},
@@ -209,7 +211,8 @@ TEST_F(CalcCommitIndexTest, all_forced) {
 }
 
 TEST_F(CalcCommitIndexTest, not_enough_eligible) {
-  // all participants are excluded.
+  // Cannot reach quorum size, as participant "C" with
+  // LogIndex{50} is excluded
   auto participants = std::vector{
       ParticipantStateTuple{LogIndex{50}, "A", {}},
       ParticipantStateTuple{LogIndex{35}, "B", {}},
@@ -234,7 +237,7 @@ TEST_F(CalcCommitIndexTest, not_enough_eligible) {
 }
 
 TEST_F(CalcCommitIndexTest, nothing_to_commit) {
-  // all participants are excluded.
+  // Everyone is at LogIndex{15}, so there is nothing to do
   auto participants = std::vector{
       ParticipantStateTuple{LogIndex{15}, "A", {}},
       ParticipantStateTuple{LogIndex{15}, "B", {}},
@@ -250,7 +253,130 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit) {
   EXPECT_EQ(index, LogIndex{15});
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
-  auto expectedQuorum = std::vector<ParticipantId>{"D", "E", "A"};
+  auto expectedQuorum = std::vector<ParticipantId>{"A", "E", "D"};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
+}
+
+TEST_F(CalcCommitIndexTest, failed_participant) {
+  // One participant has failed, which means we cannot make any progress
+  // beyond LogIndex{25}
+
+  auto participants = std::vector{
+      ParticipantStateTuple{LogIndex{50}, "A", {ParticipantFlag::Failed}},
+      ParticipantStateTuple{LogIndex{25}, "B", {}},
+      ParticipantStateTuple{LogIndex{35}, "C", {}},
+  };
+
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{2, 2, 3},
+                                       LogIndex{1}, LogIndex{50});
+  EXPECT_EQ(index, LogIndex{25});
+  EXPECT_TRUE(
+    std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+
+  auto expectedQuorum = std::vector<ParticipantId>{"B", "C"};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
+}
+
+TEST_F(CalcCommitIndexTest, failed_and_forced) {
+  // One participant is failed *and* forced, which means we cannot make any progress
+  // beyond LogIndex{25}
+  // (Note that participants "A" and "C" can still form a quorum for LogIndex{25}!)
+
+  auto participants = std::vector{
+      ParticipantStateTuple{LogIndex{50}, "A", {}},
+      ParticipantStateTuple{LogIndex{25}, "B", {ParticipantFlag::Failed, ParticipantFlag::Forced}},
+      ParticipantStateTuple{LogIndex{35}, "C", {}},
+  };
+
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{2, 2, 3},
+                                       LogIndex{1}, LogIndex{50});
+  EXPECT_EQ(index, LogIndex{25});
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(reason.value));
+
+  auto expectedQuorum = std::vector<ParticipantId>{};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
+}
+
+TEST_F(CalcCommitIndexTest, failed_with_soft_write_concern) {
+  // Everyone is at LogIndex{15}, so there is nothing to do
+  auto participants = std::vector{
+      ParticipantStateTuple{LogIndex{55}, "A", {ParticipantFlag::Failed}},
+      ParticipantStateTuple{LogIndex{15}, "B", {}},
+      ParticipantStateTuple{LogIndex{25}, "C", {ParticipantFlag::Failed}},
+      ParticipantStateTuple{LogIndex{5}, "D", {}},
+      ParticipantStateTuple{LogIndex{17}, "E", {}},
+  };
+
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{2, 4, 5},
+                                       LogIndex{15}, LogIndex{15});
+  EXPECT_EQ(index, LogIndex{5});
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+  auto expectedQuorum = std::vector<ParticipantId>{"B", "D", "E"};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
+}
+
+TEST_F(CalcCommitIndexTest, smallest_failed) {
+  // Everyone is at LogIndex{15}, so there is nothing to do
+  auto participants = std::vector{
+      ParticipantStateTuple{LogIndex{55}, "A", {ParticipantFlag::Failed}},
+      ParticipantStateTuple{LogIndex{15}, "B", {}},
+      ParticipantStateTuple{LogIndex{25}, "C", {}},
+      ParticipantStateTuple{LogIndex{5}, "D", {ParticipantFlag::Failed}},
+      ParticipantStateTuple{LogIndex{17}, "E", {}},
+  };
+
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{2, 4, 5},
+                                       LogIndex{15}, LogIndex{55});
+  EXPECT_EQ(index, LogIndex{15});
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+  auto expectedQuorum = std::vector<ParticipantId>{"B", "C", "E"};
+  std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
+  std::sort(std::begin(quorum), std::end(quorum));
+
+  EXPECT_EQ(quorum, expectedQuorum);
+}
+
+TEST_F(CalcCommitIndexTest, nothing_to_commit_failed) {
+  // Everyone is at LogIndex{15}, so there is nothing to do
+  auto participants = std::vector{
+      ParticipantStateTuple{LogIndex{55}, "A", {ParticipantFlag::Failed}},
+      ParticipantStateTuple{LogIndex{15}, "B", {}},
+      ParticipantStateTuple{LogIndex{25}, "C", {}},
+      ParticipantStateTuple{LogIndex{5}, "D", {ParticipantFlag::Failed}},
+      ParticipantStateTuple{LogIndex{17}, "E", {}},
+  };
+
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{2, 4, 5},
+                                       LogIndex{15}, LogIndex{15});
+  EXPECT_EQ(index, LogIndex{15});
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
+  auto expectedQuorum = std::vector<ParticipantId>{"B", "C", "E"};
   std::sort(std::begin(expectedQuorum), std::end(expectedQuorum));
   std::sort(std::begin(quorum), std::end(quorum));
 

@@ -463,6 +463,7 @@ auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple> const& 
   if (actualWriteConcern <= eligible.size()) {
     auto nth = std::begin(eligible);
 
+    TRI_ASSERT(actualWriteConcern > 0);
     std::advance(nth, actualWriteConcern - 1);
 
     // because of the check above
@@ -483,7 +484,7 @@ auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple> const& 
     if (spearhead == commitIndex) {
       return {commitIndex, CommitFailReason::withNothingToCommit(), quorum};
     } else if (minForcedCommitIndex < minNonExcludedCommitIndex) {
-      return {currentCommitIndex, CommitFailReason::withForcedParticipantNotInQuorum(), {}};
+      return {commitIndex, CommitFailReason::withForcedParticipantNotInQuorum(), {}};
     } else {
       return {commitIndex, CommitFailReason::withQuorumSizeNotReached(), quorum};
     }
