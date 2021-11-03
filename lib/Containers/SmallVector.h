@@ -98,6 +98,10 @@ class SmallVectorWithArena {
     return _vector.size();
   }
 
+  std::size_t capacity() const noexcept {
+    return _vector.capacity();
+  }
+
   bool empty() const noexcept {
     return _vector.empty();
   }
