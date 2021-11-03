@@ -44,8 +44,7 @@ function checkDumpJsonFile (dbName, path, id) {
 function dumpIntegrationSuite () {
   'use strict';
   const cn = 'UnitTestsDump';
-  // detect the path of arangodump. quite hacky, but works
-  const arangodump = fs.join(global.ARANGOSH_PATH, 'arangodump' + pu.executableExt);
+  const arangodump = pu.ARANGODUMP_BIN;
 
   assertTrue(fs.isFile(arangodump), "arangodump not found!");
 
