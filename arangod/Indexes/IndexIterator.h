@@ -69,8 +69,40 @@ class IndexIterator {
   friend class MultiIndexIterator;
 
  public:
+  class CoveringData {
+   public:
+    virtual VPackSlice at(size_t i) = 0;
+    virtual bool isArray() const noexcept = 0;
+    virtual VPackSlice value() const {
+      TRI_ASSERT(false);
+      return VPackSlice::noneSlice();
+    }
+  };
+
+  class SliceArrayCoveringData final : public CoveringData {
+   public:
+    explicit SliceArrayCoveringData(VPackSlice slice) : _slice(slice) {}
+
+    VPackSlice at(size_t i) override {
+      TRI_ASSERT(_slice.isArray());
+      return _slice.at(i);
+    }
+
+    VPackSlice value() const override {
+      return _slice;
+    }
+
+    bool isArray() const noexcept override {
+      return _slice.isArray();
+    }
+
+   private:
+    VPackSlice _slice;
+  };
+
   typedef std::function<bool(LocalDocumentId const& token)> LocalDocumentIdCallback;
   typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice doc)> DocumentCallback;
+  typedef std::function<bool(LocalDocumentId const& token, CoveringData const* covering)> CoveringCallback;
   typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice extra)> ExtraCallback;
 
  public:
@@ -110,7 +142,7 @@ class IndexIterator {
   /// @brief Calls cb for the next batchSize many elements, index-only
   /// projections returns true if there are more documents (hasMore) and false
   /// if there are none
-  bool nextCovering(IndexIterator::DocumentCallback const& callback, uint64_t batchSize);
+  bool nextCovering(IndexIterator::CoveringCallback const& callback, uint64_t batchSize);
 
   /// @brief convenience function to retrieve all results
   void all(IndexIterator::LocalDocumentIdCallback const& callback) {
@@ -175,7 +207,7 @@ class IndexIterator {
 
   // extract index attribute values directly from the index while index scanning
   // must only be called if hasCovering()
-  virtual bool nextCoveringImpl(DocumentCallback const& callback, size_t limit);
+  virtual bool nextCoveringImpl(CoveringCallback const& callback, size_t limit);
 
   virtual void resetImpl() {}
 
@@ -210,7 +242,7 @@ class EmptyIndexIterator final : public IndexIterator {
   bool nextImpl(LocalDocumentIdCallback const&, size_t) override { return false; }
   bool nextDocumentImpl(DocumentCallback const&, size_t) override { return false; }
   bool nextExtraImpl(ExtraCallback const&, size_t) override { return false; }
-  bool nextCoveringImpl(DocumentCallback const&, size_t) override { return false; }
+  bool nextCoveringImpl(CoveringCallback const&, size_t) override { return false; }
   
   void resetImpl() override { _hasMore = false; }
 
@@ -259,7 +291,7 @@ class MultiIndexIterator final : public IndexIterator {
   bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override;
   bool nextDocumentImpl(DocumentCallback const& callback, size_t limit) override;
   bool nextExtraImpl(ExtraCallback const& callback, size_t limit) override;
-  bool nextCoveringImpl(DocumentCallback const& callback, size_t limit) override;
+  bool nextCoveringImpl(CoveringCallback const& callback, size_t limit) override;
   
   /// @brief Reset the cursor
   ///        This will reset ALL internal iterators and start all over again

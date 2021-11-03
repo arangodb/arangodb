@@ -213,6 +213,8 @@ class IndexExecutor {
     IndexIterator::LocalDocumentIdCallback _documentNonProducer;
     IndexIterator::DocumentCallback _documentProducer;
     IndexIterator::DocumentCallback _documentSkipper;
+    IndexIterator::CoveringCallback _coveringProducer;
+    IndexIterator::CoveringCallback _coveringSkipper;
   };
 
  public:

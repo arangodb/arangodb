@@ -360,7 +360,7 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
       break;
     }
     case Type::LateMaterialized:
-      _documentProducer =
+      _coveringProducer =
           checkUniqueness
               ? ::getCallback<true>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs())
               : ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs());
@@ -388,7 +388,9 @@ IndexExecutor::CursorReader::CursorReader(CursorReader&& other) noexcept
       _checkUniqueness(other._checkUniqueness),
       _documentNonProducer(std::move(other._documentNonProducer)),
       _documentProducer(std::move(other._documentProducer)),
-      _documentSkipper(std::move(other._documentSkipper)) {}
+      _documentSkipper(std::move(other._documentSkipper)),
+      _coveringProducer(std::move(other._coveringProducer)),
+      _coveringSkipper(std::move(other._coveringSkipper)){}
 
 bool IndexExecutor::CursorReader::hasMore() const {
   return _cursor->hasMore();
@@ -412,14 +414,13 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
       return _cursor->next(_documentNonProducer, output.numRowsLeft());
     case Type::Covering:
     case Type::LateMaterialized:
-      TRI_ASSERT(_documentProducer != nullptr);
-      return _cursor->nextCovering(_documentProducer, output.numRowsLeft());
+      TRI_ASSERT(_coveringProducer != nullptr);
+      return _cursor->nextCovering(_coveringProducer, output.numRowsLeft());
     case Type::Document:
       TRI_ASSERT(_documentProducer != nullptr);
       return _cursor->nextDocument(_documentProducer, output.numRowsLeft());
     case Type::Count: {
       uint64_t counter = 0;
-
       if (_checkUniqueness) {
         _cursor->all([&](LocalDocumentId const& token) -> bool {
           if (_context.checkUniqueness(token)) {
@@ -460,8 +461,8 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
     switch (_type) {
       case Type::Covering:
       case Type::LateMaterialized:
-        TRI_ASSERT(_documentSkipper != nullptr);
-        _cursor->nextCovering(_documentSkipper, toSkip);
+        TRI_ASSERT(_coveringSkipper != nullptr);
+        _cursor->nextCovering(_coveringSkipper, toSkip);
         break;
       case Type::NoResult:
       case Type::Document:

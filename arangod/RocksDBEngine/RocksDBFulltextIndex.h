@@ -92,8 +92,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
                                                       aql::Variable const* reference,
                                                       IndexIteratorOptions const& opts,
                                                       ReadOwnWrites readOwnWrites,
-                                                      int,
-                                                      aql::Projections const*) override;
+                                                      int) override;
 
   arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
   Result executeQuery(transaction::Methods* trx, FulltextQuery const& query,

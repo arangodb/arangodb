@@ -115,7 +115,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
                                                       arangodb::aql::Variable const* reference,
                                                       IndexIteratorOptions const& opts,
                                                       ReadOwnWrites readOwnWrites,
-                                                      int, aql::Projections const*) override;
+                                                      int) override;
 
   void afterTruncate(TRI_voc_tick_t tick,
                      arangodb::transaction::Methods* trx) override;

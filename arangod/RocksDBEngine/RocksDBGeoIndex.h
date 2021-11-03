@@ -62,8 +62,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
                                                       arangodb::aql::Variable const* reference,
                                                       IndexIteratorOptions const& opts,
                                                       ReadOwnWrites readOwnWrites,
-                                                      int,
-                                                      aql::Projections const*) override;
+                                                      int) override;
 
   bool canBeDropped() const override { return true; }
 

@@ -87,7 +87,7 @@ bool IndexIterator::nextExtra(ExtraCallback const& callback,
   return _hasMore;
 }
 
-bool IndexIterator::nextCovering(DocumentCallback const& callback,
+bool IndexIterator::nextCovering(CoveringCallback const& callback,
                                  uint64_t batchSize) {
   TRI_ASSERT(hasCovering());
 
@@ -174,7 +174,7 @@ bool IndexIterator::nextExtraImpl(ExtraCallback const&, size_t /*limit*/) {
 /// @brief default implementation for nextCovering
 /// specialized index iterators can implement this method with some
 /// sensible behavior
-bool IndexIterator::nextCoveringImpl(DocumentCallback const&, size_t /*limit*/) {
+bool IndexIterator::nextCoveringImpl(CoveringCallback const&, size_t /*limit*/) {
   TRI_ASSERT(hasCovering());
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested next covering values from an index iterator that does not support it");
 }
@@ -252,11 +252,11 @@ bool MultiIndexIterator::nextExtraImpl(ExtraCallback const& callback, size_t lim
 ///        If one iterator is exhausted, the next one is used.
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
-bool MultiIndexIterator::nextCoveringImpl(DocumentCallback const& callback, size_t limit) {
+bool MultiIndexIterator::nextCoveringImpl(CoveringCallback const& callback, size_t limit) {
   TRI_ASSERT(hasCovering());
   auto cb = [&limit, &callback](LocalDocumentId const& token,
-                                arangodb::velocypack::Slice slice) {
-    if (callback(token, slice)) {
+                                CoveringData const* data) {
+    if (callback(token, data)) {
       --limit;
       return true;
     }

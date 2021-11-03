@@ -101,7 +101,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                                                       arangodb::aql::Variable const* reference,
                                                       IndexIteratorOptions const& opts,
                                                       ReadOwnWrites readOwnWrites,
-                                                      int, aql::Projections const*) override;
+                                                      int) override;
 
   arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
                                               arangodb::aql::Variable const* reference) const override;

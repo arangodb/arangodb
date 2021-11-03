@@ -60,7 +60,7 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
                                                       const aql::Variable* reference,
                                                       const IndexIteratorOptions& opts,
                                                       ReadOwnWrites readOwnWrites,
-                                                      int, aql::Projections const*) override;
+                                                      int) override;
 };
 
 class RocksDBZkdIndex final : public RocksDBZkdIndexBase {
@@ -81,7 +81,7 @@ class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
                                                       const aql::Variable* reference,
                                                       const IndexIteratorOptions& opts,
                                                       ReadOwnWrites readOwnWrites,
-                                                      int, aql::Projections const*) override;
+                                                      int) override;
 };
 
 namespace zkd {

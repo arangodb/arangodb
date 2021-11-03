@@ -28,6 +28,7 @@
 #include "Aql/Projections.h"
 #include "Aql/IResearchViewNode.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "IResearchDocument.h"
@@ -94,83 +95,46 @@ class IResearchSnapshotState final : public TransactionState::Cookie {
   std::map<aql::AstNode const*, proxy_query::proxy_cache> _immutablePartCache;
 };
 
-// FIXME: this is the duplicate of what is used for StoredValues in ArangoSearch View
-struct ColumnIterator {
-  irs::doc_iterator::ptr itr;
-  const irs::payload* value{};
-};
-
 class IResearchInvertedIndexIterator final : public IndexIterator  {
  public:
   IResearchInvertedIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                                  aql::AstNode const& condition, IResearchInvertedIndex* index,
                                  aql::Variable const* variable, int64_t mutableConditionIdx,
-                                 std::string_view extraFieldName, aql::Projections const* projections)
+                                 std::string_view extraFieldName)
     : IndexIterator(collection, trx, ReadOwnWrites::no), _index(index),
-      _variable(variable), _mutableConditionIdx(mutableConditionIdx), _extraName(extraFieldName) {
+      _variable(variable), _mutableConditionIdx(mutableConditionIdx),
+      _projections(index->_meta) {
     resetFilter(condition);
     if (!extraFieldName.empty()) {
-      TRI_ASSERT(projections == nullptr || projections->empty());
-      TRI_ASSERT(extraFieldName == "_from" || extraFieldName == "_to");
+      TRI_ASSERT(arangodb::StaticStrings::FromString == extraFieldName ||
+                 arangodb::StaticStrings::ToString == extraFieldName);
       auto columnSize = index->_meta._sort.fields().size();
       // extra is expected to be the _from/_to attribute. So don't bother with the full
       // path inspection
       for (size_t i = 0; i < columnSize; ++i) {
         if (index->_meta._sort.fields()[i].size() == 1 &&
             index->_meta._sort.fields()[i].front().name == extraFieldName) {
-          _projections.emplace_back(irs::string_ref::EMPTY, i);
+          _extraIndex = static_cast<int64_t>(i);
           break;
         }
       }
-      if (_projections.empty()) { // try to find in other stored
-        for (size_t columnIndex = 0; _projections.empty() &&
-                                     columnIndex < index->_meta._storedValues.columns().size();
+      if (_extraIndex < 0) { // try to find in other stored
+        for (size_t columnIndex = 0; 
+             columnIndex < index->_meta._storedValues.columns().size();
              ++columnIndex) {
           auto const& column = index->_meta._storedValues.columns()[columnIndex];
-          columnSize = column.fields.size();
-          for (size_t i = 0; i < columnSize; ++i) {
+          auto const size = column.fields.size();
+          for (size_t i = 0; i < size; ++i) {
             if (column.fields[i].second.size() == 1 &&
                 column.fields[i].second.front().name == extraFieldName) {
-              _projections.emplace_back(column.name, i);
+              _extraIndex = i + columnSize;
               break;
             }
           }
-        }
-      }
-    }
-    auto projectionsCount = projections ? projections->size() : 0;
-    for (size_t i = 0; i < projectionsCount; ++i) {
-      TRI_ASSERT(extraFieldName.empty());
-      size_t columnIndex{0};
-      size_t fieldIndex{0};
-      auto columnSize = index->_meta._sort.fields().size();
-      auto const& projection = (*projections)[i];
-      if (projection.coveringIndexPosition < columnSize) { // cover from sort
-        _projections.emplace_back(irs::string_ref::EMPTY, projection.coveringIndexPosition);
-      } else {
-        fieldIndex = columnSize;
-        while (fieldIndex < projection.coveringIndexPosition &&
-               columnIndex < index->_meta._storedValues.columns().size()) {
-          columnSize = index->_meta._storedValues.columns()[columnIndex].fields.size();
-          if (fieldIndex + columnSize >= projection.coveringIndexPosition) {
-            // we found a column
-            _projections.emplace_back(index->_meta._storedValues.columns()[columnIndex].name,
-                                      projection.coveringIndexPosition - fieldIndex);
+          if (_extraIndex >= 0) {
             break;
-          } else {
-            ++columnIndex;
-            fieldIndex += columnSize;
-            TRI_ASSERT(columnIndex < index->_meta._storedValues.columns().size());
-            if (ADB_UNLIKELY(columnIndex >= index->_meta._storedValues.columns().size())) {
-              LOG_TOPIC("04235", WARN, arangodb::iresearch::TOPIC)
-                << "Failed to find stored column for desired projection position "
-                << projection.coveringIndexPosition << " while creating iterator for index "
-                << index->id().id();
-              i = projectionsCount + 1; // terminate the cycle. Fallback to non-covering state
-              _projections.clear();
-              break;
-            }
           }
+          columnSize += size;
         }
       }
     }
@@ -178,9 +142,9 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
 
   char const* typeName() const override { return "inverted-index-iterator"; }
 
-  /// @brief The default index has no extra information
-  bool hasExtra() const override { return !_extraName.empty() &&
-                                          _projections.size() == 1; }
+  bool hasExtra() const override { return _extraIndex >=0; }
+
+  bool hasCovering() const { return !_projections.empty(); }
 
  protected:
   bool nextExtraImpl(ExtraCallback const& callback, size_t limit) override {
@@ -197,8 +161,12 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
     return nextImplInternal<LocalDocumentIdCallback, false, false>(callback, limit);
   }
 
-  bool nextCoveringImpl(DocumentCallback const& callback, size_t limit) override {
-    return nextImplInternal<DocumentCallback, false, true>(callback, limit);
+  bool nextCoveringImpl(CoveringCallback const& callback, size_t limit) override {
+    return nextImplInternal<CoveringCallback, false, true>(callback, limit);
+  }
+
+  void skipImpl(uint64_t count, uint64_t& skipped) override {
+    TRI_ASSERT(FALSE); // FIXME: implement
   }
 
   // FIXME: Evaluate buffering iresearch reads
@@ -221,9 +189,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
         _pkDocItr = ::pkColumn(segmentReader);
         _pkValue = irs::get<irs::payload>(*_pkDocItr);
         if constexpr (withExtra || withCovering) {
-          for (auto& projection : _projections) {
-            projection.reset(segmentReader);
-          }
+          _projections.reset(segmentReader);
         }
         if (ADB_UNLIKELY(!_pkValue)) {
           _pkValue = &NoPayload;
@@ -236,23 +202,16 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
           bool const readSuccess = DocumentPrimaryKey::read(documentId,  _pkValue->value);
           if (readSuccess) {
             if constexpr (withExtra) {
-              TRI_ASSERT(!_projections.empty());
-              auto extraSlice = _projections[0].get(_doc->value);
+              TRI_ASSERT(_extraIndex >= 0);
+              _projections.seek(_doc->value);
+              auto extraSlice = _projections.at(_extraIndex);
               if (!extraSlice.isNone()) {
                 --limit;
                 callback(documentId, extraSlice);
               } 
             } else if constexpr (withCovering) {
-              // FIXME: it is faster to have "tuple of slices" implementation for callback
-              _coveringBuffer.reset(); // reassemble VPackArray as required by current API
-              VPackBuilder builder(_coveringBuffer);
-              {
-                VPackArrayBuilder array(&builder);
-                for (auto& projection : _projections) {
-                  builder.add(projection.get(_doc->value));
-                }
-              }
-              callback(documentId, builder.slice());
+              _projections.seek(_doc->value);
+              callback(documentId, &_projections);
             } else {
               --limit;
               callback(documentId);
@@ -405,14 +364,20 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   /// @brief  Struct represents value of a Projections[i]
   ///         After the document id has beend found "get" method
   ///         could be used to get Slice for the Projections
-  struct CoveringValue : ColumnIterator {
-    CoveringValue(irs::string_ref col, size_t idx)
-      : _column(col), _index(idx) {}
+  struct CoveringValue {
+    explicit CoveringValue(irs::string_ref col)
+      : _column(col) {}
+
+    CoveringValue(CoveringValue&& other) : _column(other._column) {
+
+    }
 
     void reset(irs::sub_reader const& rdr) {
       itr.reset();
       value = &NoPayload;
+      // FIXME: this is cheap. Keep it here?
       auto extraValuesReader = _column.empty() ? rdr.sort() : rdr.column_reader(_column);
+      // FIXME: this is expensive - move it to get and do lazily?
       if (ADB_LIKELY(extraValuesReader)) {
         itr = extraValuesReader->iterator();
         TRI_ASSERT(itr);
@@ -425,14 +390,14 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
       } 
     }
 
-    VPackSlice get(irs::doc_id_t doc) {
+    VPackSlice get(irs::doc_id_t doc, size_t index) {
       if (itr && doc == itr->seek(doc)) {
         size_t i = 0;
         auto const totalSize = value->value.size();
         if (ADB_LIKELY(totalSize > 0)) {
           size_t size = 0;
           VPackSlice slice(value->value.c_str());
-          while (i < _index) {
+          while (i < index) {
             size += slice.byteSize();
             TRI_ASSERT(size <= totalSize);
             if (ADB_UNLIKELY(size > totalSize)) {
@@ -449,8 +414,66 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
       return VPackSlice::noneSlice();
     }
 
+    irs::doc_iterator::ptr itr;
     irs::string_ref _column;
-    size_t _index;
+    const irs::payload* value{};
+  };
+
+  class CoveringVector final : public IndexIterator::CoveringData {
+   public:
+    explicit CoveringVector(InvertedIndexFieldMeta const& meta) {
+      size_t fields{meta._sort.fields().size()};
+      if (!meta._sort.empty()) {
+        _coverage.emplace_back(fields, CoveringValue(irs::string_ref::EMPTY));
+      }
+      for (auto const& column : meta._storedValues.columns()) {
+        fields += column.fields.size();
+        _coverage.emplace_back(fields, CoveringValue(column.name));
+      }
+    }
+
+    void reset(irs::sub_reader const& rdr) {
+      std::for_each(_coverage.begin(), _coverage.end(),
+                    [&rdr](decltype(_coverage)::value_type& v) {
+                      v.second.reset(rdr);
+                    });
+    }
+
+    void seek(irs::doc_id_t doc) {
+      _doc = doc;
+    }
+
+    VPackSlice at(size_t i) override {
+      return get(i);
+    }
+
+    bool isArray() const noexcept override {
+      return true;
+    }
+
+    bool empty() const {
+      return _coverage.empty();
+    }
+
+   private:
+    VPackSlice get(size_t i) {
+      TRI_ASSERT(irs::doc_limits::valid(_doc));
+      size_t column{0};
+      size_t prev{0};
+      // FIXME: check for the performance bottleneck!
+      while (column < _coverage.size() && _coverage[column].first > i) {
+        prev = _coverage[column].first;
+        ++column;
+      }
+      if (column < _coverage.size()) {
+        TRI_ASSERT(i < prev);
+        return _coverage[column].second.get(_doc, i - prev);
+      }
+      return VPackSlice::noneSlice();
+    }
+
+    std::vector<std::pair<size_t, CoveringValue>> _coverage;
+    irs::doc_id_t _doc{irs::doc_limits::invalid()};
   };
 
   VPackBuffer<uint8_t> _coveringBuffer;
@@ -466,8 +489,8 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   int64_t _mutableConditionIdx;
   irs::order::prepared _order;
 
-  std::vector<CoveringValue> _projections;
-  irs::string_ref _extraName;
+  CoveringVector _projections;
+  int64_t _extraIndex{-1};
 };
 } // namespace
 
@@ -635,12 +658,12 @@ bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
 
 std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iteratorForCondition(
     LogicalCollection* collection, transaction::Methods* trx, aql::AstNode const* node, aql::Variable const* reference,
-    IndexIteratorOptions const& opts, int mutableConditionIdx, aql::Projections const* projections) {
+    IndexIteratorOptions const& opts, int mutableConditionIdx) {
   if (node) {
     std::string_view extraFieldName(nullptr, 0);
-    if (mutableConditionIdx >= 0 && (!projections || projections->empty())) {
+    if (mutableConditionIdx >= 0) {
       TRI_ASSERT(mutableConditionIdx < static_cast<int64_t>(node->numMembers()));
-      // we are in traversal. So try to find extra. If we are searching for '_to' then
+      // Check if we are in traversal. If so try to find extra. If we are searching for '_to' then
       // "next" step (and our extra) is '_from' and vice versa
       auto mutableCondition = node->getMember(mutableConditionIdx);
       if (mutableCondition->type == aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
@@ -650,16 +673,16 @@ std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iter
         if (attributeAccess->type == aql::AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS &&
             attributeAccess->value.type == aql::AstNodeValueType::VALUE_TYPE_STRING) {
           auto fieldName = attributeAccess->getStringRef();
-          if (fieldName == "_from") {
-            extraFieldName = "_to";
-          } else if (fieldName == "_to") {
-            extraFieldName = "_from";
+          if (fieldName == arangodb::StaticStrings::FromString) {
+            extraFieldName = arangodb::StaticStrings::ToString;
+          } else if (fieldName == arangodb::StaticStrings::ToString) {
+            extraFieldName = arangodb::StaticStrings::FromString;
           }
         }
       }
     }
     return std::make_unique<IResearchInvertedIndexIterator>(collection, trx, *node, this, reference, mutableConditionIdx,
-                                                            extraFieldName, projections);
+                                                            extraFieldName);
   } else {
     TRI_ASSERT(false);
     //sorting  case

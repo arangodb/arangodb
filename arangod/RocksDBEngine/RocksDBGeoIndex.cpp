@@ -343,7 +343,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites, int, aql::Projections const*) {
+    ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(readOwnWrites == ReadOwnWrites::no); // geo index never needs to observe own writes
