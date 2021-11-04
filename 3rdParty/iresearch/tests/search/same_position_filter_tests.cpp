@@ -39,10 +39,10 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         resource("phrase_sequential.json"),
         [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
           if (data.is_string()) { // field
-            doc.insert(std::make_shared<tests::templates::text_field<std::string>>(name, data.str), true, false);
+            doc.insert(std::make_shared<tests::text_field<std::string>>(name, data.str), true, false);
           } else if (data.is_number()) { // seq
             const auto value = std::to_string(data.as_number<uint64_t>());
-            doc.insert(std::make_shared<tests::templates::string_field>(name, value), false, true);
+            doc.insert(std::make_shared<tests::string_field>(name, value), false, true);
           }
       });
       add_segment(gen);
@@ -185,7 +185,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
     tests::json_doc_generator gen(
       resource("same_position.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
-        typedef tests::templates::text_field<std::string> text_field;
+        typedef tests::text_field<std::string> text_field;
         if (data.is_string()) {
           // a || b || c
           doc.indexed.push_back(std::make_shared<text_field>(name, data.str));
