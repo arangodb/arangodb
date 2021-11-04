@@ -99,6 +99,8 @@ struct Index {
   std::vector<std::string> _location;
   std::vector<std::string> _latitude;
   std::vector<std::string> _longitude;
+
+  bool _legacyPolygons;   // indicate if geoJson is parsed with legacy polygons
 };
 
 }  // namespace geo_index

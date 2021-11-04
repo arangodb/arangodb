@@ -49,7 +49,7 @@ namespace geo_index {
 
 Index::Index(VPackSlice const& info,
              std::vector<std::vector<basics::AttributeName>> const& fields)
-    : _variant(Variant::NONE) {
+    : _variant(Variant::NONE), _legacyPolygons(false) {
   _coverParams.fromVelocyPack(info);
 
   if (fields.size() == 1) {
@@ -90,11 +90,17 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
       return geo::utils::indexCellsLatLng(loc, /*geojson*/ true, cells, centroid);
     }
     geo::ShapeContainer shape;
-    Result r = geo::geojson::parseRegion(loc, shape, false);
+    Result r = geo::geojson::parseRegion(loc, shape, _legacyPolygons);
     if (r.ok()) {
       S2RegionCoverer coverer(_coverParams.regionCovererOpts());
       cells = shape.covering(&coverer);
+      LOG_DEVEL << "Cell covering in geo index for geo shape: " << loc.toJson();
+      for (auto const& c : cells) {
+        LOG_DEVEL << "Cell token: " << c.ToToken();
+      }
       centroid = shape.centroid();
+      S2LatLng guck(centroid);
+      LOG_DEVEL << "Centroid: " << guck.lat().radians() << ", " << guck.lng().radians();
       if (!S2LatLng(centroid).is_valid()) {
         return TRI_ERROR_BAD_PARAMETER;
       }
