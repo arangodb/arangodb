@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed SEARCH-261: Fix possible race between file creation and directory cleaner.
+
 * Fixed SEARCH-260: Fix invalid sorting order of stored features in presence of 
   primary sort.
 
