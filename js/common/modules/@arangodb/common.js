@@ -549,8 +549,9 @@ exports.enterpriseLicenseVisibility = function() {
       console.warn("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license.");
       return;
     case "expired":
+      let readonly = new Date(1000 * (license.features.expires + 3600 * 24 * 14));
       console.error("Your server's license has expired.");
-      console.error("Its operation will be restricted to read-only mode on " + expires + "!");
+      console.error("Its operation will be restricted to read-only mode on " + readonly + "!");
       console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.");
       return;
     case "read-only":
