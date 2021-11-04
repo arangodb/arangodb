@@ -384,6 +384,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.term = term;
     status.largestCommonIndex = leaderData._largestCommonIndex;
     status.lastCommitStatus = leaderData._lastCommitFailReason;
+    status.leadershipEstablished = leaderData._leadershipEstablished;
     for (FollowerInfo const& f : leaderData._follower) {
       auto lastRequestLatencyMS =
           std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency);

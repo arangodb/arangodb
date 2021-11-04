@@ -45,6 +45,7 @@ struct LeaderStatus {
   LogStatistics local;
   LogTerm term;
   LogIndex largestCommonIndex;
+  bool leadershipEstablished{false};
   std::unordered_map<ParticipantId, FollowerStatistics> follower;
   // now() - insertTP of last uncommitted entry
   std::chrono::duration<double, std::milli> commitLagMS;
