@@ -364,17 +364,17 @@ FORCE_INLINE T shift_unpack_32(uint32_t in, U& out) noexcept {
 //////////////////////////////////////////////////////////////////////////////
 /// @class bytes_output
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API bytes_output final : public data_output {
+class IRESEARCH_API bytes_output : public data_output {
  public:
   explicit bytes_output(bstring& buf) noexcept
     : buf_(&buf) {
   }
 
-  virtual void write_byte(byte_type b) override {
+  virtual void write_byte(byte_type b) override final {
     (*buf_) += b;
   }
 
-  virtual void write_bytes(const byte_type* b, size_t size) override {
+  virtual void write_bytes(const byte_type* b, size_t size) override final {
     buf_->append(b, size);
   }
 
