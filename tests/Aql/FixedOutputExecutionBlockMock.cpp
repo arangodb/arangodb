@@ -70,7 +70,7 @@ std::pair<ExecutionState, arangodb::Result> FixedOutputExecutionBlockMock::initi
 }
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> FixedOutputExecutionBlockMock::execute(
-    AqlCallStack const& stack) {
+    AqlCallStack stack) {
   SkipResult skipped{};
   for (size_t i = 1; i < stack.subqueryLevel(); ++i) {
     // For every additional subquery level we need to increase the skipped subquery level

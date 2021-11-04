@@ -43,7 +43,7 @@ class FixedOutputExecutionBlockMock final : public arangodb::aql::ExecutionBlock
       arangodb::aql::InputAqlItemRow const& input) override;
 
   std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr> execute(
-      arangodb::aql::AqlCallStack const& stack) override;
+      arangodb::aql::AqlCallStack stack) override;
 
  private:
   arangodb::aql::RegisterInfos _infos;
