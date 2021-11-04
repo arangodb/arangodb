@@ -81,6 +81,14 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
         currentSize = 0;
       }
     }
+    {
+      // Add first entry in term
+      currentSize += PersistingLogEntry{LogTerm{5}, LogIndex{1}, std::nullopt}.approxByteSize();
+      if (currentSize >= _optionsMock->_maxNetworkBatchSize) {
+        numRequests += 1;
+        currentSize = 0;
+      }
+    }
     // Some pending entries still need to be submitted
     if (currentSize > 0) {
       numRequests += 1;
@@ -94,14 +102,14 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
   });
 
   auto followerLog = makeReplicatedLog(LogId{1});
-  auto follower = followerLog->becomeFollower("follower", LogTerm{4}, "leader");
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
+  auto follower = followerLog->becomeFollower("follower", LogTerm{5}, "leader");
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{5}, {follower}, 2);
 
   {
     if (_payloads.size() > 0) {
       auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant());
       EXPECT_EQ(stats.local.spearHead,
-                TermIndexPair(LogTerm{4}, LogIndex{_payloads.size()}));
+                TermIndexPair(LogTerm{5}, LogIndex{_payloads.size() + 1}));
       EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
 
       EXPECT_EQ(stats.follower.at("follower").spearHead.index,
@@ -131,13 +139,13 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
 
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant());
-    EXPECT_EQ(stats.local.spearHead.index, LogIndex{_payloads.size()});
-    EXPECT_EQ(stats.local.commitIndex, LogIndex{_payloads.size()});
+    EXPECT_EQ(stats.local.spearHead.index, LogIndex{_payloads.size() + 1});
+    EXPECT_EQ(stats.local.commitIndex, LogIndex{_payloads.size() + 1});
   }
   {
     auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant());
-    EXPECT_EQ(stats.local.spearHead.index, LogIndex{_payloads.size()});
-    EXPECT_EQ(stats.local.commitIndex, LogIndex{_payloads.size()});
+    EXPECT_EQ(stats.local.spearHead.index, LogIndex{_payloads.size() + 1});
+    EXPECT_EQ(stats.local.commitIndex, LogIndex{_payloads.size() + 1});
   }
 }
 
