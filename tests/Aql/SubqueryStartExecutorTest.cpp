@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "AqlExecutorTestCase.h"
+#include "FixedOutputExecutionBlockMock.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
@@ -462,41 +463,7 @@ TEST_P(SubqueryStartExecutorTest, fullbypass_in_outer_subquery) {
   }
 }
 
-class DumpExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
- public:
-  DumpExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
-                         arangodb::aql::ExecutionNode const* node,
-                         std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data)
-      : ExecutionBlock(engine, node), _infos{::blocksToInfos(data)}, _blockData{std::move(data)} {}
-
-  std::pair<arangodb::aql::ExecutionState, arangodb::Result> initializeCursor(
-      arangodb::aql::InputAqlItemRow const& input) override {
-    // Nothing to do
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  }
-
-  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr> execute(
-      arangodb::aql::AqlCallStack const& stack) override {
-    SkipResult skipped{};
-    for (size_t i = 1; i < stack.subqueryLevel(); ++i) {
-      skipped.incrementSubquery();
-    }
-    LOG_DEVEL << skipped.subqueryDepth() << " vs. " << stack.subqueryLevel();
-    if (_blockData.empty()) {
-      return {ExecutionState::DONE, skipped, nullptr};
-    }
-    // This Block is very dump, it does NOT care what you ask it for. it will just deliver what it has in the queue
-    auto block = _blockData.front();
-    _blockData.pop_front();
-    ExecutionState state =
-        _blockData.empty() ? ExecutionState::DONE : ExecutionState::HASMORE;
-    return {state, skipped, block};
-  }
-
- private:
-  arangodb::aql::RegisterInfos _infos;
-  std::deque<arangodb::aql::SharedAqlItemBlockPtr> _blockData;
-};
+class SubqueryStartSpecficTest : public AqlExecutorTestCase<false> {};
 
 TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
   // NOTE: This is a regression test for DEVSUP-899, the below is
@@ -538,8 +505,8 @@ TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
                                     {{0, 0}}));
 
   MockTypedNode inputNode{fakedQuery->plan(), ExecutionNodeId{1}, ExecutionNode::FILTER};
-  DumpExecutionBlockMock dependency{fakedQuery->rootEngine(), &inputNode,
-                                    std::move(inputData)};
+  FixedOutputExecutionBlockMock dependency{fakedQuery->rootEngine(), &inputNode,
+                                           std::move(inputData)};
   MockTypedNode sqNode{fakedQuery->plan(), ExecutionNodeId{42}, ExecutionNode::SUBQUERY_START};
   ExecutionBlockImpl<SubqueryStartExecutor> testee{fakedQuery->rootEngine(), &sqNode,
                                                    MakeBaseInfos(2), MakeBaseInfos(2)};
@@ -552,7 +519,7 @@ TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
   // InnerSubquery (Produce all)
   callStack.pushCall(AqlCallList{AqlCall{0}, AqlCall{0}});
 
-  for (size_t i = 0; i < 10; ++i) {
+  for (size_t i = 0; i < 9; ++i) {
     auto [state, skipped, block] = testee.execute(callStack);
     // We will always get 3 rows
     ASSERT_EQ(block->numRows(), 3);
@@ -568,8 +535,8 @@ TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
     // Third is Depth 1
     ASSERT_TRUE(block->isShadowRow(2));
     ShadowAqlItemRow third(block, 2);
-    EXPECT_EQ(second.getDepth(), 1);
-    if (i == 9) {
+    EXPECT_EQ(third.getDepth(), 1);
+    if (i == 8) {
       EXPECT_EQ(state, ExecutionState::DONE);
     } else {
       EXPECT_EQ(state, ExecutionState::HASMORE);
