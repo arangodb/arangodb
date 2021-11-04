@@ -577,12 +577,12 @@ TEST_P(format_test_case, fields_read_write) {
   tests::json_doc_generator gen(
     resource("fst_prefixes.json"),
     [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name,
         data.str
       ));
 
-      auto ref = irs::ref_cast<irs::byte_type>((doc.indexed.end() - 1).as<tests::templates::string_field>().value());
+      auto ref = irs::ref_cast<irs::byte_type>((doc.indexed.end() - 1).as<tests::string_field>().value());
       sorted_terms.emplace(ref);
       unsorted_terms.emplace_back(ref);
   });
@@ -1495,12 +1495,12 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
     virtual void init() {
       clear();
       reserve(3);
-      insert(std::make_shared<tests::templates::string_field>("id"));
-      insert(std::make_shared<tests::templates::string_field>("name"));
+      insert(std::make_shared<tests::string_field>("id"));
+      insert(std::make_shared<tests::string_field>("name"));
     }
 
     virtual void value(size_t idx, const irs::string_ref& /*value*/) {
-      auto& field = indexed.get<tests::templates::string_field>(idx);
+      auto& field = indexed.get<tests::string_field>(idx);
 
       // amount of data written per doc_id is < sizeof(doc_id)
       field.value(irs::string_ref("x", idx)); // length 0 or 1
@@ -1586,9 +1586,9 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
       for (const document* doc; i < seg.docs_count && (doc = gen.next());) {
         ++i;
         ASSERT_TRUE(id_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::templates::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_TRUE(name_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::templates::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
       }
     }
   }
@@ -1747,12 +1747,12 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
     virtual void init() {
       clear();
       reserve(2);
-      insert(std::make_shared<tests::templates::string_field>("id"));
-      insert(std::make_shared<tests::templates::string_field>("name"));
+      insert(std::make_shared<tests::string_field>("id"));
+      insert(std::make_shared<tests::string_field>("name"));
     }
 
     virtual void value(size_t idx, const irs::string_ref& value) {
-      auto& field = indexed.get<tests::templates::string_field>(idx);
+      auto& field = indexed.get<tests::string_field>(idx);
       field.value(value);
     }
     virtual void end() {}
@@ -1904,9 +1904,9 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
       for (const document* doc; i < seg_1.docs_count && (doc = gen.next());) {
         ++i;
         ASSERT_TRUE(id_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::templates::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_TRUE(name_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::templates::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
       }
 
       // check 2nd segment (same as 1st)
@@ -1951,9 +1951,9 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
       for (const document* doc; i < seg_3.docs_count && (doc = gen.next());) {
         ++i;
         ASSERT_TRUE(id_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::templates::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_TRUE(name_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::templates::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
       }
     }
   }
@@ -1996,12 +1996,10 @@ TEST_P(format_test_case, columns_rw_typed) {
     resource("simple_sequential_33.json"),
     [&values](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<templates::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<string_field>(
+        name, data.str));
 
-      auto& field = (doc.indexed.end() - 1).as<templates::string_field>();
+      auto& field = (doc.indexed.end() - 1).as<string_field>();
       values.emplace_back(field.name(), field.value());
     } else if (data.is_null()) {
       doc.insert(std::make_shared<tests::binary_field>());

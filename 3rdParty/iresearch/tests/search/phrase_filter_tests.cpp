@@ -36,12 +36,12 @@ void analyzed_json_field_factory(
     tests::document& doc,
     const std::string& name,
     const tests::json_doc_generator::json_value& data) {
-  typedef templates::text_field<std::string> text_field;
+  typedef text_field<std::string> text_field;
  
-  class string_field : public templates::string_field {
+  class string_field : public tests::string_field {
    public:
     string_field(const std::string& name, const irs::string_ref& value)
-      : templates::string_field(name, value, irs::IndexFeatures::FREQ) {
+      : tests::string_field(name, value, irs::IndexFeatures::FREQ) {
     }
   }; // string_field
 
