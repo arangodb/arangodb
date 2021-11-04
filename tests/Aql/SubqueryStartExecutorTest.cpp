@@ -502,6 +502,10 @@ TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
   // NOTE: This is a regression test for DEVSUP-899, the below is
   // a partial execution of the query where the issue got triggered
   std::deque<arangodb::aql::SharedAqlItemBlockPtr> inputData{};
+
+  // The issue under test is a split after a datarow, but before the
+  // shadowRow (entry 5)
+  // This caused the SubqueryStartExecutor to not reset that it has returned done.
   inputData.push_back(buildBlock<2>(manager(),
                                     {{1, NoneEntry{}},
                                      {NoneEntry{}, NoneEntry{}},
