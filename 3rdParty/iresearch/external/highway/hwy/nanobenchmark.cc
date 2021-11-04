@@ -29,127 +29,42 @@
 #include <string>
 #include <vector>
 
+#if defined(_WIN32) || defined(_WIN64)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif  // NOMINMAX
+#include <windows.h>
+#endif
+
+#if defined(__MACH__)
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#endif
+
+#if defined(__HAIKU__)
+#include <OS.h>
+#endif
+
 #include "hwy/base.h"
-#if HWY_ARCH_PPC
+#if HWY_ARCH_PPC && defined(__GLIBC__)
 #include <sys/platform/ppc.h>  // NOLINT __ppc_get_timebase_freq
 #elif HWY_ARCH_X86
 
-#ifdef _MSC_VER
+#if HWY_COMPILER_MSVC
 #include <intrin.h>
 #else
 #include <cpuid.h>  // NOLINT
-#endif              // _MSC_VER
+#endif              // HWY_COMPILER_MSVC
 
 #endif  // HWY_ARCH_X86
 
 namespace hwy {
-namespace platform {
 namespace {
-
-#if HWY_ARCH_X86
-
-void Cpuid(const uint32_t level, const uint32_t count,
-           uint32_t* HWY_RESTRICT abcd) {
-#if HWY_COMPILER_MSVC
-  int regs[4];
-  __cpuidex(regs, level, count);
-  for (int i = 0; i < 4; ++i) {
-    abcd[i] = regs[i];
-  }
-#else
-  uint32_t a;
-  uint32_t b;
-  uint32_t c;
-  uint32_t d;
-  __cpuid_count(level, count, a, b, c, d);
-  abcd[0] = a;
-  abcd[1] = b;
-  abcd[2] = c;
-  abcd[3] = d;
-#endif
-}
-
-std::string BrandString() {
-  char brand_string[49];
-  std::array<uint32_t, 4> abcd;
-
-  // Check if brand string is supported (it is on all reasonable Intel/AMD)
-  Cpuid(0x80000000U, 0, abcd.data());
-  if (abcd[0] < 0x80000004U) {
-    return std::string();
-  }
-
-  for (int i = 0; i < 3; ++i) {
-    Cpuid(0x80000002U + i, 0, abcd.data());
-    memcpy(brand_string + i * 16, abcd.data(), sizeof(abcd));
-  }
-  brand_string[48] = 0;
-  return brand_string;
-}
-
-// Returns the frequency quoted inside the brand string. This does not
-// account for throttling nor Turbo Boost.
-double NominalClockRate() {
-  const std::string& brand_string = BrandString();
-  // Brand strings include the maximum configured frequency. These prefixes are
-  // defined by Intel CPUID documentation.
-  const char* prefixes[3] = {"MHz", "GHz", "THz"};
-  const double multipliers[3] = {1E6, 1E9, 1E12};
-  for (size_t i = 0; i < 3; ++i) {
-    const size_t pos_prefix = brand_string.find(prefixes[i]);
-    if (pos_prefix != std::string::npos) {
-      const size_t pos_space = brand_string.rfind(' ', pos_prefix - 1);
-      if (pos_space != std::string::npos) {
-        const std::string digits =
-            brand_string.substr(pos_space + 1, pos_prefix - pos_space - 1);
-        return std::stod(digits) * multipliers[i];
-      }
-    }
-  }
-
-  return 0.0;
-}
-
-#endif  // HWY_ARCH_X86
-
-}  // namespace
-
-// Returns tick rate. Invariant means the tick counter frequency is independent
-// of CPU throttling or sleep. May be expensive, caller should cache the result.
-double InvariantTicksPerSecond() {
-#if HWY_ARCH_PPC
-  return __ppc_get_timebase_freq();
-#elif HWY_ARCH_X86
-  // We assume the TSC is invariant; it is on all recent Intel/AMD CPUs.
-  return NominalClockRate();
-#else
-  // Fall back to clock_gettime nanoseconds.
-  return 1E9;
-#endif
-}
-
-}  // namespace platform
-namespace {
-
-// Prevents the compiler from eliding the computations that led to "output".
-template <class T>
-inline void PreventElision(T&& output) {
-#if HWY_COMPILER_MSVC == 0
-  // Works by indicating to the compiler that "output" is being read and
-  // modified. The +r constraint avoids unnecessary writes to memory, but only
-  // works for built-in types (typically FuncOutput).
-  asm volatile("" : "+r"(output) : : "memory");
-#else
-  // MSVC does not support inline assembly anymore (and never supported GCC's
-  // RTL constraints). Self-assignment with #pragma optimize("off") might be
-  // expected to prevent elision, but it does not with MSVC 2015. Type-punning
-  // with volatile pointers generates inefficient code on MSVC 2017.
-  static std::atomic<T> dummy(T{});
-  dummy.store(output, std::memory_order_relaxed);
-#endif
-}
-
 namespace timer {
+
+// Ticks := platform-specific timer values (CPU cycles on x86). Must be
+// unsigned to guarantee wraparound on overflow.
+using Ticks = uint64_t;
 
 // Start/Stop return absolute timestamps and must be placed immediately before
 // and after the region to measure. We provide separate Start/Stop functions
@@ -202,9 +117,9 @@ namespace timer {
 
 // Returns a 64-bit timestamp in unit of 'ticks'; to convert to seconds,
 // divide by InvariantTicksPerSecond.
-inline uint64_t Start64() {
-  uint64_t t;
-#if HWY_ARCH_PPC
+inline Ticks Start() {
+  Ticks t;
+#if HWY_ARCH_PPC && defined(__GLIBC__)
   asm volatile("mfspr %0, %1" : "=r"(t) : "i"(268));
 #elif HWY_ARCH_X86 && HWY_COMPILER_MSVC
   _ReadWriteBarrier();
@@ -228,18 +143,25 @@ inline uint64_t Start64() {
       : "rdx", "memory", "cc");
 #elif HWY_ARCH_RVV
   asm volatile("rdcycle %0" : "=r"(t));
-#else
-  // Fall back to OS - unsure how to reliably query cntvct_el0 frequency.
+#elif defined(_WIN32) || defined(_WIN64)
+  LARGE_INTEGER counter;
+  (void)QueryPerformanceCounter(&counter);
+  t = counter.QuadPart;
+#elif defined(__MACH__)
+  t = mach_absolute_time();
+#elif defined(__HAIKU__)
+  t = system_time_nsecs();  // since boot
+#else  // POSIX
   timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  t = ts.tv_sec * 1000000000LL + ts.tv_nsec;
+  t = static_cast<Ticks>(ts.tv_sec * 1000000000LL + ts.tv_nsec);
 #endif
   return t;
 }
 
-inline uint64_t Stop64() {
+inline Ticks Stop() {
   uint64_t t;
-#if HWY_ARCH_PPC
+#if HWY_ARCH_PPC && defined(__GLIBC__)
   asm volatile("mfspr %0, %1" : "=r"(t) : "i"(268));
 #elif HWY_ARCH_X86 && HWY_COMPILER_MSVC
   _ReadWriteBarrier();
@@ -261,61 +183,7 @@ inline uint64_t Stop64() {
       // "cc" = flags modified by SHL.
       : "rcx", "rdx", "memory", "cc");
 #else
-  t = Start64();
-#endif
-  return t;
-}
-
-// Returns a 32-bit timestamp with about 4 cycles less overhead than
-// Start64. Only suitable for measuring very short regions because the
-// timestamp overflows about once a second.
-inline uint32_t Start32() {
-  uint32_t t;
-#if HWY_ARCH_X86 && HWY_COMPILER_MSVC
-  _ReadWriteBarrier();
-  _mm_lfence();
-  _ReadWriteBarrier();
-  t = static_cast<uint32_t>(__rdtsc());
-  _ReadWriteBarrier();
-  _mm_lfence();
-  _ReadWriteBarrier();
-#elif HWY_ARCH_X86_64
-  asm volatile(
-      "lfence\n\t"
-      "rdtsc\n\t"
-      "lfence"
-      : "=a"(t)
-      :
-      // "memory" avoids reordering. rdx = TSC >> 32.
-      : "rdx", "memory");
-#elif HWY_ARCH_RVV
-  asm volatile("rdcycle %0" : "=r"(t));
-#else
-  t = static_cast<uint32_t>(Start64());
-#endif
-  return t;
-}
-
-inline uint32_t Stop32() {
-  uint32_t t;
-#if HWY_ARCH_X86 && HWY_COMPILER_MSVC
-  _ReadWriteBarrier();
-  unsigned aux;
-  t = static_cast<uint32_t>(__rdtscp(&aux));
-  _ReadWriteBarrier();
-  _mm_lfence();
-  _ReadWriteBarrier();
-#elif HWY_ARCH_X86_64
-  // Use inline asm because __rdtscp generates code to store TSC_AUX (ecx).
-  asm volatile(
-      "rdtscp\n\t"
-      "lfence"
-      : "=a"(t)
-      :
-      // "memory" avoids reordering. rcx = TSC_AUX. rdx = TSC >> 32.
-      : "rcx", "rdx", "memory");
-#else
-  t = static_cast<uint32_t>(Stop64());
+  t = Start();
 #endif
   return t;
 }
@@ -440,21 +308,130 @@ T MedianAbsoluteDeviation(const T* values, const size_t num_values,
 }
 
 }  // namespace robust_statistics
+}  // namespace
+namespace platform {
+namespace {
 
-// Ticks := platform-specific timer values (CPU cycles on x86). Must be
-// unsigned to guarantee wraparound on overflow. 32 bit timers are faster to
-// read than 64 bit.
-using Ticks = uint32_t;
+// Prevents the compiler from eliding the computations that led to "output".
+template <class T>
+inline void PreventElision(T&& output) {
+#if HWY_COMPILER_MSVC == 0
+  // Works by indicating to the compiler that "output" is being read and
+  // modified. The +r constraint avoids unnecessary writes to memory, but only
+  // works for built-in types (typically FuncOutput).
+  asm volatile("" : "+r"(output) : : "memory");
+#else
+  // MSVC does not support inline assembly anymore (and never supported GCC's
+  // RTL constraints). Self-assignment with #pragma optimize("off") might be
+  // expected to prevent elision, but it does not with MSVC 2015. Type-punning
+  // with volatile pointers generates inefficient code on MSVC 2017.
+  static std::atomic<T> dummy(T{});
+  dummy.store(output, std::memory_order_relaxed);
+#endif
+}
 
-// Returns timer overhead / minimum measurable difference.
-Ticks TimerResolution() {
+#if HWY_ARCH_X86
+
+void Cpuid(const uint32_t level, const uint32_t count,
+           uint32_t* HWY_RESTRICT abcd) {
+#if HWY_COMPILER_MSVC
+  int regs[4];
+  __cpuidex(regs, level, count);
+  for (int i = 0; i < 4; ++i) {
+    abcd[i] = regs[i];
+  }
+#else
+  uint32_t a;
+  uint32_t b;
+  uint32_t c;
+  uint32_t d;
+  __cpuid_count(level, count, a, b, c, d);
+  abcd[0] = a;
+  abcd[1] = b;
+  abcd[2] = c;
+  abcd[3] = d;
+#endif
+}
+
+std::string BrandString() {
+  char brand_string[49];
+  std::array<uint32_t, 4> abcd;
+
+  // Check if brand string is supported (it is on all reasonable Intel/AMD)
+  Cpuid(0x80000000U, 0, abcd.data());
+  if (abcd[0] < 0x80000004U) {
+    return std::string();
+  }
+
+  for (size_t i = 0; i < 3; ++i) {
+    Cpuid(static_cast<uint32_t>(0x80000002U + i), 0, abcd.data());
+    memcpy(brand_string + i * 16, abcd.data(), sizeof(abcd));
+  }
+  brand_string[48] = 0;
+  return brand_string;
+}
+
+// Returns the frequency quoted inside the brand string. This does not
+// account for throttling nor Turbo Boost.
+double NominalClockRate() {
+  const std::string& brand_string = BrandString();
+  // Brand strings include the maximum configured frequency. These prefixes are
+  // defined by Intel CPUID documentation.
+  const char* prefixes[3] = {"MHz", "GHz", "THz"};
+  const double multipliers[3] = {1E6, 1E9, 1E12};
+  for (size_t i = 0; i < 3; ++i) {
+    const size_t pos_prefix = brand_string.find(prefixes[i]);
+    if (pos_prefix != std::string::npos) {
+      const size_t pos_space = brand_string.rfind(' ', pos_prefix - 1);
+      if (pos_space != std::string::npos) {
+        const std::string digits =
+            brand_string.substr(pos_space + 1, pos_prefix - pos_space - 1);
+        return std::stod(digits) * multipliers[i];
+      }
+    }
+  }
+
+  return 0.0;
+}
+
+#endif  // HWY_ARCH_X86
+
+}  // namespace
+
+double InvariantTicksPerSecond() {
+#if HWY_ARCH_PPC && defined(__GLIBC__)
+  return double(__ppc_get_timebase_freq());
+#elif HWY_ARCH_X86
+  // We assume the TSC is invariant; it is on all recent Intel/AMD CPUs.
+  return NominalClockRate();
+#elif defined(_WIN32) || defined(_WIN64)
+  LARGE_INTEGER freq;
+  (void)QueryPerformanceFrequency(&freq);
+  return double(freq.QuadPart);
+#elif defined(__MACH__)
+  // https://developer.apple.com/library/mac/qa/qa1398/_index.html
+  mach_timebase_info_data_t timebase;
+  (void)mach_timebase_info(&timebase);
+  return double(timebase.denom) / timebase.numer * 1E9;
+#else
+  // TODO(janwas): ARM? Unclear how to reliably query cntvct_el0 frequency.
+  return 1E9;  // Haiku and clock_gettime return nanoseconds.
+#endif
+}
+
+double Now() {
+  static const double mul = 1.0 / InvariantTicksPerSecond();
+  return static_cast<double>(timer::Start()) * mul;
+}
+
+uint64_t TimerResolution() {
   // Nested loop avoids exceeding stack/L1 capacity.
-  Ticks repetitions[Params::kTimerSamples];
+  timer::Ticks repetitions[Params::kTimerSamples];
   for (size_t rep = 0; rep < Params::kTimerSamples; ++rep) {
-    Ticks samples[Params::kTimerSamples];
+    timer::Ticks samples[Params::kTimerSamples];
     for (size_t i = 0; i < Params::kTimerSamples; ++i) {
-      const Ticks t0 = timer::Start32();
-      const Ticks t1 = timer::Stop32();
+      const timer::Ticks t0 = timer::Start();
+      const timer::Ticks t1 = timer::Stop();
       samples[i] = t1 - t0;
     }
     repetitions[rep] = robust_statistics::Mode(samples);
@@ -462,40 +439,44 @@ Ticks TimerResolution() {
   return robust_statistics::Mode(repetitions);
 }
 
-static const Ticks timer_resolution = TimerResolution();
+}  // namespace platform
+namespace {
+
+static const timer::Ticks timer_resolution = platform::TimerResolution();
 
 // Estimates the expected value of "lambda" values with a variable number of
 // samples until the variability "rel_mad" is less than "max_rel_mad".
 template <class Lambda>
-Ticks SampleUntilStable(const double max_rel_mad, double* rel_mad,
-                        const Params& p, const Lambda& lambda) {
+timer::Ticks SampleUntilStable(const double max_rel_mad, double* rel_mad,
+                               const Params& p, const Lambda& lambda) {
   // Choose initial samples_per_eval based on a single estimated duration.
-  Ticks t0 = timer::Start32();
+  timer::Ticks t0 = timer::Start();
   lambda();
-  Ticks t1 = timer::Stop32();
-  Ticks est = t1 - t0;
+  timer::Ticks t1 = timer::Stop();
+  timer::Ticks est = t1 - t0;
   static const double ticks_per_second = platform::InvariantTicksPerSecond();
   const size_t ticks_per_eval =
       static_cast<size_t>(ticks_per_second * p.seconds_per_eval);
-  size_t samples_per_eval =
-      est == 0 ? p.min_samples_per_eval : ticks_per_eval / est;
-  samples_per_eval = std::max(samples_per_eval, p.min_samples_per_eval);
+  size_t samples_per_eval = est == 0
+                                ? p.min_samples_per_eval
+                                : static_cast<size_t>(ticks_per_eval / est);
+  samples_per_eval = HWY_MAX(samples_per_eval, p.min_samples_per_eval);
 
-  std::vector<Ticks> samples;
+  std::vector<timer::Ticks> samples;
   samples.reserve(1 + samples_per_eval);
   samples.push_back(est);
 
   // Percentage is too strict for tiny differences, so also allow a small
   // absolute "median absolute deviation".
-  const Ticks max_abs_mad = (timer_resolution + 99) / 100;
+  const timer::Ticks max_abs_mad = (timer_resolution + 99) / 100;
   *rel_mad = 0.0;  // ensure initialized
 
   for (size_t eval = 0; eval < p.max_evals; ++eval, samples_per_eval *= 2) {
     samples.reserve(samples.size() + samples_per_eval);
     for (size_t i = 0; i < samples_per_eval; ++i) {
-      t0 = timer::Start32();
+      t0 = timer::Start();
       lambda();
-      t1 = timer::Stop32();
+      t1 = timer::Stop();
       samples.push_back(t1 - t0);
     }
 
@@ -508,14 +489,14 @@ Ticks SampleUntilStable(const double max_rel_mad, double* rel_mad,
     NANOBENCHMARK_CHECK(est != 0);
 
     // Median absolute deviation (mad) is a robust measure of 'variability'.
-    const Ticks abs_mad = robust_statistics::MedianAbsoluteDeviation(
+    const timer::Ticks abs_mad = robust_statistics::MedianAbsoluteDeviation(
         samples.data(), samples.size(), est);
-    *rel_mad = static_cast<double>(int(abs_mad)) / est;
+    *rel_mad = static_cast<double>(abs_mad) / static_cast<double>(est);
 
     if (*rel_mad <= max_rel_mad || abs_mad <= max_abs_mad) {
       if (p.verbose) {
-        printf("%6zu samples => %5u (abs_mad=%4u, rel_mad=%4.2f%%)\n",
-               samples.size(), est, abs_mad, *rel_mad * 100.0);
+        printf("%6zu samples => %5zu (abs_mad=%4zu, rel_mad=%4.2f%%)\n",
+               samples.size(), size_t(est), size_t(abs_mad), *rel_mad * 100.0);
       }
       return est;
     }
@@ -539,40 +520,30 @@ InputVec UniqueInputs(const FuncInput* inputs, const size_t num_inputs) {
   return unique;
 }
 
-// Returns how often we need to call func for sufficient precision, or zero
-// on failure (e.g. the elapsed time is too long for a 32-bit tick count).
+// Returns how often we need to call func for sufficient precision.
 size_t NumSkip(const Func func, const uint8_t* arg, const InputVec& unique,
                const Params& p) {
   // Min elapsed ticks for any input.
-  Ticks min_duration = ~0u;
+  timer::Ticks min_duration = ~timer::Ticks(0);
 
   for (const FuncInput input : unique) {
-    // Make sure a 32-bit timer is sufficient.
-    const uint64_t t0 = timer::Start64();
-    PreventElision(func(arg, input));
-    const uint64_t t1 = timer::Stop64();
-    const uint64_t elapsed = t1 - t0;
-    if (elapsed >= (1ULL << 30)) {
-      fprintf(stderr, "Measurement failed: need 64-bit timer for input=%zu\n",
-              input);
-      return 0;
-    }
-
     double rel_mad;
-    const Ticks total = SampleUntilStable(
+    const timer::Ticks total = SampleUntilStable(
         p.target_rel_mad, &rel_mad, p,
-        [func, arg, input]() { PreventElision(func(arg, input)); });
-    min_duration = std::min(min_duration, total - timer_resolution);
+        [func, arg, input]() { platform::PreventElision(func(arg, input)); });
+    min_duration = HWY_MIN(min_duration, total - timer_resolution);
   }
 
   // Number of repetitions required to reach the target resolution.
   const size_t max_skip = p.precision_divisor;
   // Number of repetitions given the estimated duration.
   const size_t num_skip =
-      min_duration == 0 ? 0 : (max_skip + min_duration - 1) / min_duration;
+      min_duration == 0
+          ? 0
+          : static_cast<size_t>((max_skip + min_duration - 1) / min_duration);
   if (p.verbose) {
-    printf("res=%u max_skip=%zu min_dur=%u num_skip=%zu\n", timer_resolution,
-           max_skip, min_duration, num_skip);
+    printf("res=%zu max_skip=%zu min_dur=%zu num_skip=%zu\n",
+           size_t(timer_resolution), max_skip, size_t(min_duration), num_skip);
   }
   return num_skip;
 }
@@ -600,7 +571,8 @@ InputVec ReplicateInputs(const FuncInput* inputs, const size_t num_inputs,
 // randomly selected occurrences of "input_to_skip" removed.
 void FillSubset(const InputVec& full, const FuncInput input_to_skip,
                 const size_t num_skip, InputVec* subset) {
-  const size_t count = std::count(full.begin(), full.end(), input_to_skip);
+  const size_t count =
+      static_cast<size_t>(std::count(full.begin(), full.end(), input_to_skip));
   // Generate num_skip random indices: which occurrence to skip.
   std::vector<uint32_t> omit(count);
   std::iota(omit.begin(), omit.end(), 0);
@@ -636,16 +608,17 @@ void FillSubset(const InputVec& full, const FuncInput input_to_skip,
 }
 
 // Returns total ticks elapsed for all inputs.
-Ticks TotalDuration(const Func func, const uint8_t* arg, const InputVec* inputs,
-                    const Params& p, double* max_rel_mad) {
+timer::Ticks TotalDuration(const Func func, const uint8_t* arg,
+                           const InputVec* inputs, const Params& p,
+                           double* max_rel_mad) {
   double rel_mad;
-  const Ticks duration =
+  const timer::Ticks duration =
       SampleUntilStable(p.target_rel_mad, &rel_mad, p, [func, arg, inputs]() {
         for (const FuncInput input : *inputs) {
-          PreventElision(func(arg, input));
+          platform::PreventElision(func(arg, input));
         }
       });
-  *max_rel_mad = std::max(*max_rel_mad, rel_mad);
+  *max_rel_mad = HWY_MAX(*max_rel_mad, rel_mad);
   return duration;
 }
 
@@ -656,19 +629,20 @@ HWY_NOINLINE FuncOutput EmptyFunc(const void* /*arg*/, const FuncInput input) {
 
 // Returns overhead of accessing inputs[] and calling a function; this will
 // be deducted from future TotalDuration return values.
-Ticks Overhead(const uint8_t* arg, const InputVec* inputs, const Params& p) {
+timer::Ticks Overhead(const uint8_t* arg, const InputVec* inputs,
+                      const Params& p) {
   double rel_mad;
   // Zero tolerance because repeatability is crucial and EmptyFunc is fast.
   return SampleUntilStable(0.0, &rel_mad, p, [arg, inputs]() {
     for (const FuncInput input : *inputs) {
-      PreventElision(EmptyFunc(arg, input));
+      platform::PreventElision(EmptyFunc(arg, input));
     }
   });
 }
 
 }  // namespace
 
-int Unpredictable1() { return timer::Start64() != ~0ULL; }
+int Unpredictable1() { return timer::Start() != ~0ULL; }
 
 size_t Measure(const Func func, const uint8_t* arg, const FuncInput* inputs,
                const size_t num_inputs, Result* results, const Params& p) {
@@ -684,32 +658,35 @@ size_t Measure(const Func func, const uint8_t* arg, const FuncInput* inputs,
       ReplicateInputs(inputs, num_inputs, unique.size(), num_skip, p);
   InputVec subset(full.size() - num_skip);
 
-  const Ticks overhead = Overhead(arg, &full, p);
-  const Ticks overhead_skip = Overhead(arg, &subset, p);
+  const timer::Ticks overhead = Overhead(arg, &full, p);
+  const timer::Ticks overhead_skip = Overhead(arg, &subset, p);
   if (overhead < overhead_skip) {
-    fprintf(stderr, "Measurement failed: overhead %u < %u\n", overhead,
-            overhead_skip);
+    fprintf(stderr, "Measurement failed: overhead %zu < %zu\n",
+            size_t(overhead), size_t(overhead_skip));
     return 0;
   }
 
   if (p.verbose) {
-    printf("#inputs=%5zu,%5zu overhead=%5u,%5u\n", full.size(), subset.size(),
-           overhead, overhead_skip);
+    printf("#inputs=%5zu,%5zu overhead=%5zu,%5zu\n", full.size(), subset.size(),
+           size_t(overhead), size_t(overhead_skip));
   }
 
   double max_rel_mad = 0.0;
-  const Ticks total = TotalDuration(func, arg, &full, p, &max_rel_mad);
+  const timer::Ticks total = TotalDuration(func, arg, &full, p, &max_rel_mad);
 
   for (size_t i = 0; i < unique.size(); ++i) {
     FillSubset(full, unique[i], num_skip, &subset);
-    const Ticks total_skip = TotalDuration(func, arg, &subset, p, &max_rel_mad);
+    const timer::Ticks total_skip =
+        TotalDuration(func, arg, &subset, p, &max_rel_mad);
 
     if (total < total_skip) {
-      fprintf(stderr, "Measurement failed: total %u < %u\n", total, total_skip);
+      fprintf(stderr, "Measurement failed: total %zu < %zu\n", size_t(total),
+              size_t(total_skip));
       return 0;
     }
 
-    const Ticks duration = (total - overhead) - (total_skip - overhead_skip);
+    const timer::Ticks duration =
+        (total - overhead) - (total_skip - overhead_skip);
     results[i].input = unique[i];
     results[i].ticks = static_cast<float>(duration) * mul;
     results[i].variability = static_cast<float>(max_rel_mad);
