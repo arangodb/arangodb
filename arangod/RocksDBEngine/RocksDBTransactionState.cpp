@@ -215,7 +215,8 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
     cleanupTransaction();  // deletes trx
     ++statistics()._transactionsCommitted;
   } else {
-    abortTransaction(activeTrx);  // deletes trx
+    // what if this fails?
+    std::ignore = abortTransaction(activeTrx);  // deletes trx
   }
   TRI_ASSERT(!_cacheTx);
 
@@ -330,17 +331,35 @@ void RocksDBTransactionState::trackIndexRemove(DataSourceId cid, IndexId idxId, 
   }
 }
 
-bool RocksDBTransactionState::isOnlyExclusiveTransaction() const {
+bool RocksDBTransactionState::isOnlyExclusiveTransaction() const noexcept {
   if (!AccessMode::isWriteOrExclusive(_type)) {
     return false;
   }
-  for (TransactionCollection* coll : _collections) {
-    if (AccessMode::isWrite(coll->accessType())) {
-      return false;
-    }
-  }
-  return true;
+  return std::none_of(_collections.cbegin(), _collections.cend(), [](auto* coll) {
+    return AccessMode::isWrite(coll->accessType());
+  });
 }
+
+bool RocksDBTransactionState::hasFailedOperations() const {
+  return (_status == transaction::Status::ABORTED) && hasOperations();
+}
+
+RocksDBTransactionState* RocksDBTransactionState::toState(transaction::Methods* trx) {
+  TRI_ASSERT(trx != nullptr);
+  TransactionState* state = trx->state();
+  TRI_ASSERT(state != nullptr);
+  return static_cast<RocksDBTransactionState*>(state);
+}
+
+RocksDBTransactionMethods* RocksDBTransactionState::toMethods(transaction::Methods* trx, DataSourceId collectionId) {
+  TRI_ASSERT(trx != nullptr);
+  TransactionState* state = trx->state();
+  TRI_ASSERT(state != nullptr);
+  return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods(collectionId);
+}
+
+void RocksDBTransactionState::prepareForParallelReads() { _parallel = true; }
+bool RocksDBTransactionState::inParallelMode() const { return _parallel; }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 RocksDBTransactionStateGuard::RocksDBTransactionStateGuard(RocksDBTransactionState* state) noexcept
