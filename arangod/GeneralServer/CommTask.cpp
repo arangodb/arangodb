@@ -206,6 +206,7 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
       if (!::startsWith(path, "/_admin/shutdown") &&
           !::startsWith(path, "/_admin/cluster/health") &&
           !(path == "/_admin/compact") &&
+          !::startsWith(path, "/_admin/license") &&
           !::startsWith(path, "/_admin/log") &&
           !::startsWith(path, "/_admin/metrics") &&
           !::startsWith(path, "/_admin/server/") &&

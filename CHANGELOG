@@ -5,6 +5,11 @@ devel
 
 * Simplify internal request compression/decompression handling code.
 
+* Upgrade bundled version of RocksDB to 6.26.
+
+* Change error message for queries that use too much memory from "resource
+  limit exceeded" to "query would use more memory than allowed".
+
 * Single server license output checking fixed.
 
 * Added enterprise license feature visibility for arangosh.
