@@ -34,17 +34,42 @@ using namespace arangodb::replication2::algorithms;
 using namespace arangodb::replication2::replicated_log;
 
 struct CalcCommitIndexTest : ::testing::Test {
+  auto formatParticipantsAndQuorum(std::vector<ParticipantStateTuple> const& participants,
+                                   std::vector<ParticipantId> const& quorum) -> std::string {
+    std::stringstream buf;
+    buf << "participants: ";
+    for (auto const& p : participants) {
+      buf << p << ", ";
+    }
+    buf << "quorum: ";
+    for (auto const& p : quorum) {
+      buf << p << ", ";
+    }
+    return buf.str();
+  }
 
-  auto verifyQuorum(std::vector<ParticipantStateTuple> const& participants, std::vector<ParticipantId> const& quorum, LogIndex const& expectedLogIndex) {
+  auto formatParticipantId(ParticipantId const& pid) {
+    std::stringstream buf;
+    buf << "participantId: " << pid;
+    return buf.str();
+  }
 
+  auto verifyQuorum(std::vector<ParticipantStateTuple> const& participants,
+                    std::vector<ParticipantId> const& quorum,
+                    LogIndex const& expectedLogIndex) {
+    SCOPED_TRACE(formatParticipantsAndQuorum(participants, quorum));
     // every member of the quorum needs to have at least the expectedLogIndex,
     // must not be failed or excluded.
-    for(auto const& pid : quorum) {
-      auto p = std::find_if(std::begin(participants), std::end(participants), [pid](auto& pst) { return pst.id == pid; });
-      ASSERT_NE(p, std::end(participants));
-      EXPECT_GE(p->index, expectedLogIndex);
-      EXPECT_FALSE(p->isFailed());
-      EXPECT_FALSE(p->isExcluded());
+    for (auto const& participantId : quorum) {
+      SCOPED_TRACE(formatParticipantId(participantId));
+      auto participant = std::find_if(std::begin(participants), std::end(participants),
+                                      [participantId](auto& pst) {
+                                        return pst.id == participantId;
+                                      });
+      ASSERT_NE(participant, std::end(participants));
+      EXPECT_GE(participant->index, expectedLogIndex);
+      EXPECT_FALSE(participant->isFailed());
+      EXPECT_FALSE(participant->isExcluded());
     }
 
     // Check that every forced participant is part of the quorum.
@@ -90,7 +115,6 @@ TEST_F(CalcCommitIndexTest, write_concern_2_3_participants) {
                                        CalculateCommitIndexOptions{2, 2, 3},
                                        LogIndex{1}, LogIndex{50});
 
-
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
@@ -110,8 +134,7 @@ TEST_F(CalcCommitIndexTest, write_concern_0_3_participants) {
                                        CalculateCommitIndexOptions{0, 0, 3},
                                        LogIndex{1}, LogIndex{50});
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(
-      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
   EXPECT_EQ(quorum.size(), 0);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -129,6 +152,7 @@ TEST_F(CalcCommitIndexTest, write_concern_3_3_participants) {
       algorithms::calculateCommitIndex(participants,
                                        CalculateCommitIndexOptions{3, 3, 3},
                                        LogIndex{1}, LogIndex{50});
+
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
@@ -140,9 +164,10 @@ TEST_F(CalcCommitIndexTest, write_concern_3_3_participants) {
 TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
   // Three participants but only two are included
 
-  auto participants = std::vector{ParticipantStateTuple{LogIndex{50}, "A", {ParticipantFlag::Excluded}},
-                                  ParticipantStateTuple{LogIndex{25}, "B", {}},
-                                  ParticipantStateTuple{LogIndex{35}, "C", {}}};
+  auto participants =
+      std::vector{ParticipantStateTuple{LogIndex{50}, "A", {ParticipantFlag::Excluded}},
+                  ParticipantStateTuple{LogIndex{25}, "B", {}},
+                  ParticipantStateTuple{LogIndex{35}, "C", {}}};
   auto expectedLogIndex = LogIndex{1};
 
   auto [index, reason, quorum] =
@@ -155,7 +180,7 @@ TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
 
   EXPECT_EQ(quorum.size(), 0);
   verifyQuorum(participants, quorum, expectedLogIndex);
- }
+}
 
 TEST_F(CalcCommitIndexTest, excluded_and_forced) {
   // One participant is excluded *and* forced, which means we cannot make any progress
@@ -174,8 +199,8 @@ TEST_F(CalcCommitIndexTest, excluded_and_forced) {
                                        CalculateCommitIndexOptions{2, 2, 3},
                                        LogIndex{1}, LogIndex{50});
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(
-      std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(reason.value));
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(
+      reason.value));
 
   EXPECT_EQ(quorum.size(), 0);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -263,8 +288,7 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit) {
                                        CalculateCommitIndexOptions{2, 3, 5},
                                        LogIndex{15}, LogIndex{15});
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(
-      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
   EXPECT_EQ(quorum.size(), 3);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -287,7 +311,7 @@ TEST_F(CalcCommitIndexTest, failed_participant) {
                                        LogIndex{1}, LogIndex{50});
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
-    std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+      std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
 
   EXPECT_EQ(quorum.size(), 2);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -310,8 +334,8 @@ TEST_F(CalcCommitIndexTest, failed_and_forced) {
                                        CalculateCommitIndexOptions{2, 2, 3},
                                        LogIndex{1}, LogIndex{50});
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(
-      std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(reason.value));
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(
+      reason.value));
 
   EXPECT_EQ(quorum.size(), 0);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -374,8 +398,7 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit_failed) {
                                        CalculateCommitIndexOptions{2, 4, 5},
                                        LogIndex{15}, LogIndex{15});
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(
-      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
   EXPECT_EQ(quorum.size(), 3);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -395,8 +418,7 @@ TEST_F(CalcCommitIndexTest, write_concern_0_forced_flag) {
                                        CalculateCommitIndexOptions{0, 0, 3},
                                        LogIndex{15}, LogIndex{55});
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(
-      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
   EXPECT_EQ(quorum.size(), 0);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -422,8 +444,7 @@ TEST_F(CalcCommitIndexTest, DISABLED_more_forced_than_quorum_size) {
                                        CalculateCommitIndexOptions{2, 4, 5},
                                        LogIndex{15}, LogIndex{25});
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(
-      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
   EXPECT_EQ(quorum.size(), 4);
   verifyQuorum(participants, quorum, expectedLogIndex);
