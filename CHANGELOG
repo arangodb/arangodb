@@ -1,10 +1,11 @@
 devel
 -----
 
-* Fixed SEARCH-261: Fix possible race between file creation and directory cleaner.
+* Fixed SEARCH-261: Fix possible race between file creation and directory
+  cleaner (ArangoSearch).
 
-* Fixed SEARCH-260: Fix invalid sorting order of stored features in presence of 
-  primary sort.
+* Fixed SEARCH-260: Fix invalid sorting order of stored features in presence of
+  primary sort (ArangoSearch).
 
   the amount of move shards operations each time the button is clicked to 
   rebalance shards. When the button is clicked, the number of move shards 
