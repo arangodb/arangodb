@@ -43,6 +43,8 @@
 
 #include "utils/string_utils.hpp"
 
+#include "Logger/LogMacros.h"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
@@ -458,7 +460,9 @@ TEST_P(IResearchQueryScorerTest, test) {
         "RETURN { d, 'score' : customscorer(d, (FOR j IN testView SEARCH "
         "j.name == 'A' SORT BM25(j) RETURN j)[0].seq) }";
 
-    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+ //   auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query, nullptr, "{ \"optimizer\": { \"rules\": [\"-move-calculations-up\", \"-move-calculations-up-2\"]}}");
+
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_INTERNAL));
   }
 
