@@ -165,7 +165,8 @@ describe('FoxxApi commit', function () {
     expect(result.body).to.contain('doctype');
 
     result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'gzip'});
-    expect(result.body).to.be.instanceof(Buffer);
+    expect(result).to.have.property('body');
+    expect(result.body).to.be.a('string');
 
     result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {});
     expect(result.body).to.contain('doctype');

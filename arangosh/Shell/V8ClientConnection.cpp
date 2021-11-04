@@ -33,6 +33,7 @@
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/EncodingUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
@@ -1862,9 +1863,10 @@ bool canParseResponse(fu::Response const& response) {
          response.payload().size() > 0;
 }
 
+
+
 v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
                                         v8::Isolate* isolate) {
-
   if ((response.contentType() != fu::ContentType::VPack) &&
       (response.contentType() != fu::ContentType::Json) ) {
     return v8::Undefined(isolate);
@@ -1877,19 +1879,26 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
     // this uses more resources than neccessary; a better solution
     // would implement this inside fuerte.
     auto responseBody = response.payload();
-    StringBuffer inflateBuf;
-    StringBuffer buf;
-    buf.replaceText(reinterpret_cast<const char*>(responseBody.data()),
-                    responseBody.size());
-    buf.inflate(inflateBuf);
+    VPackBuffer<uint8_t> inflateBuf;
+    ErrorCode code = TRI_ERROR_NO_ERROR;
+    if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
+      code = arangodb::encoding::gzipInflate(
+        reinterpret_cast<uint8_t const*>(responseBody.data()), responseBody.size(), inflateBuf);
+    } else {
+      code = arangodb::encoding::gzipUncompress(
+        reinterpret_cast<uint8_t const*>(responseBody.data()), responseBody.size(), inflateBuf);
+    }
+    if (code != TRI_ERROR_NO_ERROR) {
+        std::string err("Error inflating compressed response body");
+        TRI_CreateErrorObject(isolate, code, err, true);
+        return v8::Undefined(isolate);
+    }
     if (response.contentType() == fu::ContentType::VPack) {
-      auto const& slices = VPackSlice(reinterpret_cast<uint8_t const*>(inflateBuf.c_str()));
+      auto const& slices = VPackSlice(inflateBuf.data());
       return TRI_VPackToV8(isolate, slices);
     } else {
       try {
-        auto parsedBody = VPackParser::fromJson(
-          inflateBuf.c_str(),
-          inflateBuf.size());
+        auto parsedBody = VPackParser::fromJson(inflateBuf.data(), inflateBuf.size());
         return TRI_VPackToV8(isolate, parsedBody->slice());
       } catch (std::exception const& ex) {
         std::string err("Error parsing the server JSON reply: ");
@@ -1933,13 +1942,22 @@ v8::Local<v8::Value> translateResultBodyToV8(fu::Response const& response,
     ) {
     if (response.contentEncoding() == fuerte::ContentEncoding::Deflate ||
         response.contentEncoding() == fuerte::ContentEncoding::Gzip)      {
-      StringBuffer inflateBuf;
-      StringBuffer buf;
-      buf.replaceText(reinterpret_cast<const char*>(responseBody.data()),
-                      responseBody.size());
-      buf.inflate(inflateBuf);
-
-      return TRI_V8_PAIR_STRING(isolate, inflateBuf.c_str(), inflateBuf.size());
+      auto responseBody = response.payload();
+      VPackBuffer<uint8_t> inflateBuf;
+      ErrorCode code = TRI_ERROR_NO_ERROR;
+      if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
+        code = arangodb::encoding::gzipInflate(
+          reinterpret_cast<uint8_t const*>(responseBody.data()), responseBody.size(), inflateBuf);
+      } else {
+        code = arangodb::encoding::gzipUncompress(
+          reinterpret_cast<uint8_t const*>(responseBody.data()), responseBody.size(), inflateBuf);
+      }
+      if (code != TRI_ERROR_NO_ERROR) {
+        std::string err("Error inflating compressed response body");
+        TRI_CreateErrorObject(isolate, code, err, true);
+        return v8::Undefined(isolate);
+      }
+      return TRI_V8_PAIR_STRING(isolate, inflateBuf.data(), inflateBuf.size());
     } else {
       const char* bodyStr = reinterpret_cast<const char*>(responseBody.data());
       return TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
