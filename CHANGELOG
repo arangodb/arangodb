@@ -1,6 +1,17 @@
 devel
 -----
 
+* Added Enterprise Sharded Graphs Simulation: Now it is possible to test
+  SmartGraphs and SatelliteGraphs on a single server instance and then to port
+  them to a cluster with multiple servers. All existing types of SmartGraphs
+  are eligible to this procedure: SmartGraphs themselves, Disjoint SmartGraphs,
+  Hybrid SmartGraphs and Hybrid Disjoint SmartGraphs. One can create a graph of
+  any of those types in the usual way, e.g., using `arangosh`, but on a single
+  server, then dump it, start a cluster (with multiple servers) and restore the
+  graph in the cluster. The graph and the collections will keep all properties
+  that are kept when the graph is already created in a cluster. This feature is
+  only available in the Enterprise Edition.
+
 * Upgrade bundled version of RocksDB to 6.26.
 
 * Change error message for queries that use too much memory from "resource
