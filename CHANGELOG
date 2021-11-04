@@ -1,8 +1,8 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
-* The audit log messages, when written, were not showing the log level of the
-  message, as in the example:
+* BTS-623: The audit log messages, when written, were not showing the log level
+  of the message, as in the example:
     `2021-10-21T02:28:42Z | hostname | audit-authentication | n/a | _system |
      127.0.0.1:52490 | n/a | credentials missing | /_admin/aardvark/favicon.ico`
   With the new flag `--audit.display-log-level`, the level of the audit log
