@@ -870,14 +870,15 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(AqlCallStack& 
     // Let client call again
     return ExecState::NEXTSUBQUERY;
   }
+  // we need to reset the ExecutorHasReturnedDone, it will
+  // return done after every subquery is fully collected.
+  _executorReturnedDone = false;
+
   auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
   if (shadowRow.isRelevant()) {
     // We need to consume the row, and write the Aggregate to it.
     _executor.consumeShadowRow(shadowRow, *_outputItemRow);
-    // we need to reset the ExecutorHasReturnedDone, it will
-    // return done after every subquery is fully collected.
-    _executorReturnedDone = false;
 
   } else {
     _outputItemRow->decreaseShadowRowDepth(shadowRow);
