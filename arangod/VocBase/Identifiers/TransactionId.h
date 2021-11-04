@@ -64,6 +64,10 @@ class TransactionId : public basics::Identifier {
 
   /// @brief create a legacy id
   static TransactionId createLegacy();
+
+  static TransactionId createLeader();
+
+  static TransactionId createFollower();
 };
 
 // TransactionId should not be bigger than the BaseType
