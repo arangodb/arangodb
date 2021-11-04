@@ -43,6 +43,8 @@
 
 #include "utils/string_utils.hpp"
 
+#include "Logger/LogMacros.h"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
