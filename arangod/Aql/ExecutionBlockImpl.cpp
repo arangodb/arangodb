@@ -872,14 +872,15 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(AqlCallStack
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
+  // The Subquery Start returns DONE after every row.
+  // This needs to be resetted as soon as a shadowRow has been produced
+  _executorReturnedDone = false;
+
   if (_lastRange.hasDataRow()) {
     // If we have a dataRow, the executor needs to write it's output.
     // If we get woken up by a dataRow during forwarding of ShadowRows
     // This will return false, and if so we need to call produce instead.
     auto didWrite = _executor.produceShadowRow(_lastRange, *_outputItemRow);
-    // The Subquery Start returns DONE after every row.
-    // This needs to be resetted as soon as a shadowRow has been produced
-    _executorReturnedDone = false;
     // Need to report that we have written a row in the call
 
     if (didWrite) {
