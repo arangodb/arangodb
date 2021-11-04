@@ -40,7 +40,7 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> Re
   for (auto const& b : blocks) {
     if (b != nullptr) {
       // Find the first non-nullptr block
-      regs = b->numRegisters();
+      regs = b->getNrRegs();
 
       break;
     }
@@ -51,7 +51,7 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> Re
   // for the rime being no test is showing this behavior.
   // Consider adding data first if the test fails
 
-  for (RegisterId::value_t r = 0; r < regs; ++r) {
+  for (RegisterId r = 0; r < regs; ++r) {
     toKeep.back().emplace(r);
   }
   return {readInput, writeOutput, regs, regs, toClear, toKeep};
@@ -70,7 +70,7 @@ std::pair<ExecutionState, arangodb::Result> FixedOutputExecutionBlockMock::initi
 }
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> FixedOutputExecutionBlockMock::execute(
-    AqlCallStack const& stack) {
+    AqlCallStack stack) {
   SkipResult skipped{};
   for (size_t i = 1; i < stack.subqueryLevel(); ++i) {
     // For every additional subquery level we need to increase the skipped subquery level
