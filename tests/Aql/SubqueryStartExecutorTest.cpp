@@ -421,3 +421,147 @@ TEST_P(SubqueryStartExecutorTest, fullbypass_in_outer_subquery) {
       .setInputSplitType(GetSplit())
       .run();
 }
+
+class SubqueryStartSpecficTest
+    : public AqlExecutorTestCase<true> {
+};
+
+namespace {
+  // NOTE copy pasted from Waiting ExecutionBlock mock, TODO unify
+static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> RegisterInfos {
+  auto readInput = RegIdSet{};
+  auto writeOutput = RegIdSet{};
+  RegIdSet toClear{};
+  RegIdSetStack toKeep{{}};
+  RegisterCount regs = 1;
+  for (auto const& b : blocks) {
+    if (b != nullptr) {
+      // Find the first non-nullptr block
+      regs = b->numRegisters();
+
+      break;
+    }
+  }
+  // if non found sorry blind guess the number of registers here.
+  // This can happen if you insert the data later into this Mock.
+  // If you do so this register planning is of
+  // for the rime being no test is showing this behavior.
+  // Consider adding data first if the test fails
+
+  for (RegisterId::value_t r = 0; r < regs; ++r) {
+    toKeep.back().emplace(r);
+  }
+  return {readInput, writeOutput, regs, regs, toClear, toKeep};
+}
+}
+
+class DumpExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
+ public:
+  DumpExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
+                         arangodb::aql::ExecutionNode const* node,
+                         std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data)
+      : ExecutionBlock(engine, node), _infos{::blocksToInfos(data)}, _blockData{std::move(data)} {}
+
+  std::pair<arangodb::aql::ExecutionState, arangodb::Result> initializeCursor(
+      arangodb::aql::InputAqlItemRow const& input) override {
+    // Nothing to do
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
+
+  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr> execute(
+      arangodb::aql::AqlCallStack const& stack) override {
+    SkipResult skipped{};
+    for (size_t i = 1; i < stack.subqueryLevel(); ++i) {
+      skipped.incrementSubquery();
+    }
+    LOG_DEVEL << skipped.subqueryDepth() << " vs. " << stack.subqueryLevel();
+    if (_blockData.empty()) {
+      return {ExecutionState::DONE, skipped, nullptr};
+    }
+    // This Block is very dump, it does NOT care what you ask it for. it will just deliver what it has in the queue
+    auto block = _blockData.front();
+    _blockData.pop_front();
+    ExecutionState state =
+        _blockData.empty() ? ExecutionState::DONE : ExecutionState::HASMORE;
+    return {state, skipped, block};
+  }
+
+ private:
+  arangodb::aql::RegisterInfos _infos;
+  std::deque<arangodb::aql::SharedAqlItemBlockPtr> _blockData;
+};
+
+TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
+  // NOTE: This is a regression test for DEVSUP-899, the below is
+  // a partial execution of the query where the issue got triggered
+  std::deque<arangodb::aql::SharedAqlItemBlockPtr> inputData{};
+  inputData.push_back(buildBlock<2>(manager(),
+                                    {{1, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {2, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {3, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {4, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {5, NoneEntry{}}},
+                                    {{1, 0}, {3, 0}, {5, 0}, {7, 0}}));
+
+  inputData.push_back(buildBlock<2>(manager(),
+                                    {{NoneEntry{}, NoneEntry{}},
+                                     {6, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {7, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}}},
+                                    {{0, 0}, {2, 0}, {4, 0}}));
+
+  inputData.push_back(
+      buildBlock<2>(manager(),
+                    {{8, NoneEntry{}}, {NoneEntry{}, NoneEntry{}}, {9, NoneEntry{}}},
+                    {{1, 0}}));
+
+  inputData.push_back(buildBlock<2>(manager(),
+                                    {
+                                        {NoneEntry{}, NoneEntry{}},
+                                    },
+                                    {{0, 0}}));
+
+  MockTypedNode inputNode{fakedQuery->plan(), ExecutionNodeId{1}, ExecutionNode::FILTER};
+  DumpExecutionBlockMock dependency{fakedQuery->rootEngine(), &inputNode,
+                                    std::move(inputData)};
+  MockTypedNode sqNode{fakedQuery->plan(), ExecutionNodeId{42}, ExecutionNode::SUBQUERY_START};
+  ExecutionBlockImpl<SubqueryStartExecutor> testee{fakedQuery->rootEngine(), &sqNode,
+                                                   MakeBaseInfos(2), MakeBaseInfos(2)};
+  testee.addDependency(&dependency);
+  // MainQuery (HardLimit 10)
+  AqlCallStack callStack{AqlCallList{AqlCall{0, false, 10, AqlCall::LimitType::HARD}}};
+  // outer subquery (Hardlimit 1)
+  callStack.pushCall(AqlCallList{AqlCall{0, false, 1, AqlCall::LimitType::HARD},
+                                 AqlCall{0, false, 1, AqlCall::LimitType::HARD}});
+  // InnerSubquery (Produce all)
+  callStack.pushCall(AqlCallList{AqlCall{0}, AqlCall{0}});
+
+  for (size_t i = 0; i < 10; ++i) {
+    auto [state, skipped, block] = testee.execute(callStack);
+    // We will always get 3 rows
+    ASSERT_EQ(block->numRows(), 3);
+    // Two of them Shadows
+    ASSERT_EQ(block->numShadowRows(), 2);
+
+    // First is relevant
+    EXPECT_FALSE(block->isShadowRow(0));
+    // Second is Depth 0
+    ASSERT_TRUE(block->isShadowRow(1));
+    ShadowAqlItemRow second(block, 1);
+    EXPECT_EQ(second.getDepth(), 0);
+    // Third is Depth 1
+    ASSERT_TRUE(block->isShadowRow(2));
+    ShadowAqlItemRow third(block, 2);
+    EXPECT_EQ(second.getDepth(), 1);
+    if (i == 9) {
+      EXPECT_EQ(state, ExecutionState::DONE);
+    } else {
+      EXPECT_EQ(state, ExecutionState::HASMORE);
+    }
+  }
+}
