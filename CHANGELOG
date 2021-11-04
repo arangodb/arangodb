@@ -1,11 +1,15 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
-* backport PR 14974: The `move-calculations-up` optimization rule is now also 
-  applied to subqueries, when they don't have dependencies on the outer nodes,
-  don't have modification nodes and don't read their own writes. This fixed the
-  execution of a query without the splicing-subqueries option being faster than
-  the execution of a query with this option.
+* BTS-624: The `move-calculations-up` optimization rule is now also applied to
+  subqueries, when they don't have dependencies on the outer nodes, don't have
+  modification nodes and don't read their own writes. This fixed the execution
+  of a query without the splicing-subqueries option being faster than the
+  execution of a query with this option (after version 3.8, this option cannot
+  be switched off).
+
+* Change error message for queries that use too much memory from "resource limit
+  exceeded" to "query would use more memory than allowed".
 
 * arangorestore: Fix the order (regarding distributeShardsLike) in which
   collections are being created during restore, which could result in an error
