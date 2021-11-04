@@ -63,15 +63,15 @@ struct RocksDBLogTest : testing::Test {
     TRI_RemoveDirectory(_path.c_str());
   }
 
-  auto createLog(LogId id) -> std::unique_ptr<RocksDBPersistedLog> {
+  auto createLog(LogId id) -> std::shared_ptr<RocksDBPersistedLog> {
     if (id > _maxLogId) {
       _maxLogId = id;
     }
 
-    return std::make_unique<RocksDBPersistedLog>(id, id.id(), _persistor);
+    return std::make_shared<RocksDBPersistedLog>(id, id.id(), _persistor);
   }
 
-  auto createUniqueLog() -> std::unique_ptr<RocksDBPersistedLog> {
+  auto createUniqueLog() -> std::shared_ptr<RocksDBPersistedLog> {
     return createLog(LogId{_maxLogId.id() + 1});
   }
 
@@ -180,7 +180,7 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
   }
 
   {
-    auto s = log->removeFront(LogIndex{1000});
+    auto s = log->removeFront(LogIndex{1000}).get();
     ASSERT_TRUE(s.ok());
   }
 
@@ -220,7 +220,7 @@ TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
   auto iter = log->read(LogIndex{1});
 
   {
-    auto s = log->removeFront(LogIndex{1000});
+    auto s = log->removeFront(LogIndex{1000}).get();
     ASSERT_TRUE(s.ok());
   }
 

@@ -1970,6 +1970,10 @@ bool TransactionStateMock::hasFailedOperations() const {
   return false;  // assume no failed operations
 }
 
+TRI_voc_tick_t TransactionStateMock::lastOperationTick() const noexcept {
+  return 0;
+}
+
 std::unique_ptr<arangodb::TransactionCollection> TransactionStateMock::createTransactionCollection(
     arangodb::DataSourceId cid, arangodb::AccessMode::Type accessType) {
   return std::make_unique<TransactionCollectionMock>(this, cid, accessType);
