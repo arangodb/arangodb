@@ -60,7 +60,7 @@ class TransactionCollection {
 
   std::string const& collectionName() const;
 
-  AccessMode::Type accessType() const { return _accessType; }
+  AccessMode::Type accessType() const noexcept { return _accessType; }
   
   Result updateUsage(AccessMode::Type accessType);
 

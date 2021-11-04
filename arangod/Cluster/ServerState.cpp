@@ -1190,3 +1190,11 @@ Result ServerState::propagateClusterReadOnly(bool mode) {
   setReadOnly(mode ? API_TRUE : API_FALSE);
   return Result();
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+bool ServerState::isGoogleTest() const noexcept { return _isGoogleTests; }
+
+void ServerState::setGoogleTest(bool isGoogleTests) noexcept {
+  _isGoogleTests = isGoogleTests;
+}
+#endif
