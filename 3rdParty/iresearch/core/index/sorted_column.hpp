@@ -23,7 +23,7 @@
 #ifndef IRESEARCH_SORTED_COLUMN_H
 #define IRESEARCH_SORTED_COLUMN_H
 
-#include "column_info.hpp"
+#include "index/column_info.hpp"
 #include "formats/formats.hpp"
 #include "store/store_utils.hpp"
 
@@ -31,17 +31,16 @@
 
 namespace iresearch {
 
-typedef std::vector<doc_id_t> doc_map;
+using doc_map = std::vector<doc_id_t>;
 
 class comparer;
 
-class sorted_column final : public column_output,
-                            private util::noncopyable {
+class sorted_column final : public column_output, private util::noncopyable {
  public:
-  typedef std::vector<std::pair<doc_id_t, doc_id_t>> flush_buffer_t;
+  using flush_buffer_t = std::vector<std::pair<doc_id_t, doc_id_t>> ;
 
   explicit sorted_column(const column_info& info)
-    : info_(info) {
+    : info_{info} {
   }
 
   void prepare(doc_id_t key) {
@@ -87,14 +86,12 @@ class sorted_column final : public column_output,
   std::pair<doc_map, field_id> flush(
     columnstore_writer& writer,
     doc_id_t max, // total number of docs in segment
-    const comparer& less
-  );
+    const comparer& less);
 
   field_id flush(
     columnstore_writer& writer,
     const doc_map& docmap,
-    flush_buffer_t& buffer
-  );
+    flush_buffer_t& buffer);
 
   size_t memory_active() const noexcept {
     return data_buf_.size() + index_.size()*sizeof(decltype(index_)::value_type);
@@ -119,20 +116,17 @@ class sorted_column final : public column_output,
   }
 
   void flush_already_sorted(
-    const columnstore_writer::values_writer_f& writer
-  );
+    const columnstore_writer::values_writer_f& writer);
 
   bool flush_dense(
     const columnstore_writer::values_writer_f& writer,
     const doc_map& docmap,
-    flush_buffer_t& buffer
-  );
+    flush_buffer_t& buffer);
 
   void flush_sparse(
     const columnstore_writer::values_writer_f& writer,
     const doc_map& docmap,
-    flush_buffer_t& buffer
-  );
+    flush_buffer_t& buffer);
 
   bstring data_buf_; // FIXME use memory_file or block_pool instead
   std::vector<std::pair<irs::doc_id_t, size_t>> index_; // doc_id + offset in 'data_buf_'
