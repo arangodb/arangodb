@@ -527,7 +527,7 @@ The ArangoDB software makes uses of the
 which is mainly developed by ArangoDB, too.
 The iresearch library itself makes use of several other components with
 different licenses. The full list of components and their licenses
-can be found [here](https://github.com/arangodb/arangodb/blob/devel/3rdParty/iresearch/THIRD_PARTY_README.md).
+can be found [here](https://github.com/arangodb/arangodb/blob/3.9/3rdParty/iresearch/THIRD_PARTY_README.md).
 
 ## Programs
 
