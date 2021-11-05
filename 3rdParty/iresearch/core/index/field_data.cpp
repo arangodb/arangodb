@@ -734,9 +734,9 @@ field_data::field_data(
     const string_ref& name,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
-    std::deque<cached_column>& cached_columns,
+    std::deque<cached_column>& cached_features,
     bool random_access)
-  : cached_columns_(&cached_columns),
+  : cached_features_(&cached_features),
     meta_(name, flags::empty_instance()),
     terms_(*byte_writer),
     byte_writer_(&byte_writer),
@@ -774,7 +774,7 @@ data_output& field_data::norms(columnstore_writer& writer) const {
       meta_.norm = handle.first;
     } else {
       meta_.norm = field_limits::invalid();
-      auto* column = &cached_columns_->emplace_back(&meta_.norm, NORM_COLUMN).stream;
+      auto* column = &cached_features_->emplace_back(&meta_.norm, NORM_COLUMN).stream;
 
       norms_ = [column](irs::doc_id_t doc) mutable
           -> columnstore_writer::column_output& {
