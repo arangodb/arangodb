@@ -55,6 +55,39 @@
 
 namespace {
 
+bool isIgnoredHiddenEnterpriseCollection(std::string const& cName) {
+  /*
+   * Note: As IResearchView.cpp L204 says:
+   * -> "create links on a best-effort basis, link creation failure does not cause view creation failure"
+   *
+   * Workaround: If we detect a collection which should not be created in the SingleServer case,
+   * let the link validation itself return a success.
+   *
+   * Nevertheless, the user will be notified that there has been an edge case. This should be fine.
+   * Another attempt could be to rewrite the links itself, but more code changes will then be
+   * necessary.
+   */
+#ifdef USE_ENTERPRISE
+  if (arangodb::ServerState::instance()->isSingleServer()) {
+    if (cName[0] == '_') {
+      if (strncmp(cName.c_str(), arangodb::StaticStrings::FullLocalPrefix.c_str(), 7) == 0 ||
+          strncmp(cName.c_str(), arangodb::StaticStrings::FullFromPrefix.c_str(), 6) == 0 ||
+          strncmp(cName.c_str(), arangodb::StaticStrings::FullToPrefix.c_str(), 4) == 0) {
+        LOG_TOPIC("d921a", INFO, arangodb::Logger::VIEWS)
+            << "Ignoring view '" << cName
+            << "'. Will only be initially created via SmartGraphs of a full "
+               "dump of a cluster."
+               "This view is supposed to be not restored in case you dump from "
+               "and cluster and "
+               "then restore into a single-server instance.";
+        return true;
+      }
+    }
+  }
+#endif
+  return false;
+}
+
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
@@ -698,7 +731,7 @@ namespace iresearch {
 
   normalized.add(arangodb::StaticStrings::IndexType, VPackValue(LINK_TYPE));
 
-  if (ServerState::instance()->isClusterRole() && 
+  if (ServerState::instance()->isClusterRole() &&
       isCreation &&
       !collectionName.empty() &&
       meta._collectionName.empty()) {
@@ -778,9 +811,16 @@ namespace iresearch {
         std::string("while validating arangosearch link definition, error: collection at offset ") + std::to_string(offset) + " is not a string" };
     }
 
+#if USE_ENTERPRISE
+    bool isIgnoredCollection =
+        isIgnoredHiddenEnterpriseCollection(collectionName.copyString());
+#else
+    bool isIgnoredCollection = false;
+#endif
+
     auto collection = resolver.getCollection(collectionName.copyString());
 
-    if (!collection) {
+    if (!isIgnoredCollection && !collection) {
       return {
         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
         std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not found" };
