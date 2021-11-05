@@ -64,7 +64,7 @@ void MaintenanceWorker::run() {
         try {
           switch (_loopState) {
             case eFIND_ACTION:
-              _curAction = _feature.findReadyAction(_labels, _minimalPriorityAllowed);
+              _curAction = _feature.findReadyAction(_minimalPriorityAllowed, _labels);
               more = (bool)_curAction;
               break;
 
