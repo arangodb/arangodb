@@ -72,6 +72,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/Methods/CollectionCreationInfo.h"
 
 #include <Containers/HashSet.h>
 #include <velocypack/Builder.h>
@@ -85,6 +86,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::cluster;
+using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 std::string const dataString("data");
@@ -3244,8 +3246,12 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
     }
   }
   patch.add(StaticStrings::ObjectId, VPackSlice::nullSlice());
-  patch.add("cid", VPackSlice::nullSlice());
+  patch.add(StaticStrings::DataSourceCid, VPackSlice::nullSlice());
   patch.add(StaticStrings::DataSourceId, VPackSlice::nullSlice());
+  if (ServerState::instance()->isSingleServer()) {
+    // needed in case we restore cluster related data into single server instance
+    patch.add(StaticStrings::DataSourcePlanId, VPackSlice::nullSlice());
+  }
   patch.close();
 
   VPackBuilder builder =
@@ -3253,11 +3259,35 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
                              /*mergeValues*/ true, /*nullMeansRemove*/ true);
   slice = builder.slice();
 
-  col = _vocbase.createCollection(slice);
+  // Initializing creation options
+  TRI_col_type_e collectionType =
+      Helper::getNumericValue<TRI_col_type_e, int>(slice, StaticStrings::DataSourceType,
+                                                   TRI_COL_TYPE_UNKNOWN);
+  std::vector<CollectionCreationInfo> infos{{name, collectionType, slice}};
+  bool isNewDatabase = false;
+  bool allowSystem = true;
+  bool isSingleServerEnterpriseCollection = false;
+  bool enforceReplicationFactor = false;
 
-  if (col == nullptr) {
+#ifdef USE_ENTERPRISE
+  if (slice.hasKey(StaticStrings::IsSmart) && slice.get(StaticStrings::IsSmart).isBoolean() &&
+      slice.get(StaticStrings::IsSmart).isTrue()) {
+    isSingleServerEnterpriseCollection = true;
+    enforceReplicationFactor = true;
+  }
+#endif
+
+  OperationOptions options(_context);
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
+  Result res = methods::Collections::create(_vocbase, options, infos, true,
+                      enforceReplicationFactor, isNewDatabase, nullptr, collections,
+                      allowSystem, isSingleServerEnterpriseCollection);
+
+  // TODO: This can be improved as soon as we restore all collections here in one go.
+  if (collections.size() == 0 || collections.front() == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
+  col = collections.front();
 
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(col->system() == (name[0] == '_'));
