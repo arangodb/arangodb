@@ -231,7 +231,7 @@ std::uint64_t PlainCache::freeMemoryFrom(std::uint32_t hash) {
     }
   }
 
-  cache::Table* table = _table.load(std::memory_order_relaxed);
+  std::shared_ptr<cache::Table> table = std::atomic_load_explicit(&_table, std::memory_order_relaxed);
   if (table) {
     std::int32_t size = table->idealSize();
     if (maybeMigrate) {
@@ -245,7 +245,9 @@ std::uint64_t PlainCache::freeMemoryFrom(std::uint32_t hash) {
 void PlainCache::migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
                                std::shared_ptr<Table> newTable) {
   // lock current bucket
-  Table::BucketLocker sourceGuard(sourcePtr, _table.load(), Cache::triesGuarantee);
+  std::shared_ptr<Table> table = std::atomic_load(&_table);
+
+  Table::BucketLocker sourceGuard(sourcePtr, table.get(), Cache::triesGuarantee);
   PlainBucket& source = sourceGuard.bucket<PlainBucket>();
 
   {
@@ -297,7 +299,7 @@ std::pair<Result, Table::BucketLocker> PlainCache::getBucket(std::uint32_t hash,
   Result status;
   Table::BucketLocker guard;
 
-  Table* table = _table.load(std::memory_order_relaxed);
+  std::shared_ptr<Table> table = std::atomic_load_explicit(&_table, std::memory_order_relaxed);
   if (isShutdown() || table == nullptr) {
     status.reset(TRI_ERROR_SHUTTING_DOWN);
     return std::make_pair(std::move(status), std::move(guard));
