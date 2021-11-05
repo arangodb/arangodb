@@ -32,6 +32,7 @@
 #include "formats/formats.hpp"
 
 #include "index/iterators.hpp"
+#include "index/sorted_column.hpp"
 
 #include "utils/block_pool.hpp"
 #include "utils/memory.hpp"
@@ -58,12 +59,24 @@ class doc_iterator;
 class sorting_doc_iterator;
 }
 
+// represents a mapping between cached column data
+// and a pointer to column identifier
+struct cached_column {
+  cached_column(field_id* id, column_info info) noexcept
+    : id{id}, stream{info} {
+  }
+
+  field_id* id;
+  sorted_column stream;
+};
+
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
     const string_ref& name,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
+    std::deque<cached_column>& cached_columns,
     bool random_access);
 
   doc_id_t doc() const noexcept { return last_doc_; }
@@ -86,6 +99,10 @@ class IRESEARCH_API field_data : util::noncopyable {
     return TERM_PROCESSING_TABLES[1] == proc_table_;
   }
 
+  bool has_norms() const noexcept {
+    return static_cast<bool>(norms_);
+  }
+
  private:
   friend class detail::term_iterator;
   friend class detail::doc_iterator;
@@ -104,6 +121,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   void new_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
   void add_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
 
+  std::deque<cached_column>* cached_features_;
   mutable columnstore_writer::values_writer_f norms_;
   mutable field_meta meta_;
   postings terms_;
@@ -179,12 +197,19 @@ class IRESEARCH_API fields_data: util::noncopyable {
   }
   const flags& features() { return features_; }
   void flush(field_writer& fw, flush_state& state);
+
+  void flush_features(
+    columnstore_writer& writer,
+    const doc_map& docmap,
+    sorted_column::flush_buffer_t& buffer);
+
   void reset() noexcept;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const comparer* comparator_;
   std::deque<field_data> fields_; // pointers remain valid
+  std::deque<cached_column> cached_features_; // pointers remain valid
   fields_map fields_map_;
   postings_ref_t sorted_postings_;
   std::vector<const field_data*> sorted_fields_;
