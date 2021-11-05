@@ -327,7 +327,7 @@ bool Table::slotFilled() noexcept {
   return ((static_cast<double>(i + 1) / static_cast<double>(_slotsTotal)) > Table::idealUpperRatio);
 }
 
-void Table::slotsFilled(std::size_t numSlots) noexcept {
+void Table::slotsFilled(std::uint64_t numSlots) noexcept {
   _slotsUsed.fetch_add(numSlots, std::memory_order_acq_rel);
 }
 
@@ -338,7 +338,7 @@ bool Table::slotEmptied() noexcept {
           (_logSize > Table::minLogSize));
 }
 
-void Table::slotsEmptied(std::size_t numSlots) noexcept {
+void Table::slotsEmptied(std::uint64_t numSlots) noexcept {
   size_t previous = _slotsUsed.fetch_sub(numSlots, std::memory_order_acq_rel);
   TRI_ASSERT(numSlots <= previous);
 }
