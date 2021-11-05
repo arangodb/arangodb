@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include <chrono>
+#include <compare>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
