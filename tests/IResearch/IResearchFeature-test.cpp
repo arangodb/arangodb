@@ -1671,7 +1671,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
@@ -1755,7 +1755,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
@@ -2449,7 +2449,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
@@ -2520,7 +2520,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
@@ -2600,7 +2600,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
 
   auto& engine = *static_cast<StorageEngineMock*>(

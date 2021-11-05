@@ -156,7 +156,7 @@ void writeTime(std::string& out,
       // UTC datestring with milliseconds
       arangodb::tp_sys_clock_ms secs(duration_cast<milliseconds>(tp.time_since_epoch()));
       auto days = floor<date::days>(secs);
-      auto ymd = year_month_day(days);
+      auto ymd = date::year_month_day(days);
       appendNumber(uint64_t(static_cast<int>(ymd.year())), out, 4);
       out.push_back('-');
       appendNumber(uint64_t(static_cast<unsigned>(ymd.month())), out, 2);

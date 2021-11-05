@@ -81,14 +81,14 @@ struct implement_compare {
   }
 };
 
-struct LogIndex : implement_compare<LogIndex> {
+struct LogIndex {
   constexpr LogIndex() noexcept : value{0} {}
   constexpr explicit LogIndex(std::uint64_t value) noexcept : value{value} {}
   std::uint64_t value;
 
   [[nodiscard]] auto saturatedDecrement(uint64_t delta = 1) const noexcept -> LogIndex;
 
-  [[nodiscard]] auto operator<=(LogIndex) const -> bool;
+  friend auto operator<=>(LogIndex const&, LogIndex const&) = default;
 
   [[nodiscard]] auto operator+(std::uint64_t delta) const -> LogIndex;
 
@@ -99,12 +99,11 @@ struct LogIndex : implement_compare<LogIndex> {
 
 auto operator<<(std::ostream&, LogIndex) -> std::ostream&;
 
-struct LogTerm : implement_compare<LogTerm> {
+struct LogTerm {
   constexpr LogTerm() noexcept : value{0} {}
   constexpr explicit LogTerm(std::uint64_t value) noexcept : value{value} {}
   std::uint64_t value;
-  [[nodiscard]] auto operator<=(LogTerm) const -> bool;
-
+  friend auto operator<=>(LogTerm const&, LogTerm const&) = default;
   friend auto operator<<(std::ostream&, LogTerm) -> std::ostream&;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
@@ -115,11 +114,9 @@ auto operator<<(std::ostream&, LogTerm) -> std::ostream&;
 [[nodiscard]] auto to_string(LogTerm term) -> std::string;
 [[nodiscard]] auto to_string(LogIndex index) -> std::string;
 
-struct TermIndexPair : implement_compare<TermIndexPair> {
+struct TermIndexPair {
   LogTerm term{};
   LogIndex index{};
-
-  friend auto operator<=(TermIndexPair, TermIndexPair) noexcept -> bool;
 
   TermIndexPair(LogTerm term, LogIndex index) noexcept;
   TermIndexPair() = default;
@@ -127,6 +124,7 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> TermIndexPair;
 
+  friend auto operator<=>(TermIndexPair const&, TermIndexPair const&) = default;
   friend auto operator<<(std::ostream&, TermIndexPair) -> std::ostream&;
 };
 

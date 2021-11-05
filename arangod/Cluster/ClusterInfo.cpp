@@ -6540,7 +6540,7 @@ AnalyzerModificationTransaction::~AnalyzerModificationTransaction() {
 }
 
 int32_t AnalyzerModificationTransaction::getPendingCount() noexcept {
-  return _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
+  return _pendingAnalyzerOperationsCount.load(std::memory_order_relaxed);
 }
 
 AnalyzersRevision::Revision AnalyzerModificationTransaction::buildingRevision() const noexcept {
@@ -6550,7 +6550,7 @@ AnalyzersRevision::Revision AnalyzerModificationTransaction::buildingRevision() 
 
 Result AnalyzerModificationTransaction::start() {
   auto const endTime = TRI_microtime() + 5.0; // arbitrary value.
-  int32_t count = _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
+  int32_t count = _pendingAnalyzerOperationsCount.load(std::memory_order_relaxed);
   // locking stage
   while (true) {
     // Do not let break out of cleanup mode.

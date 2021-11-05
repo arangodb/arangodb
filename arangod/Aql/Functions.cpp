@@ -280,8 +280,8 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
                       tp_sys_clock_ms const& tp, bool utc = true, bool registerWarning = true) {
   char formatted[24];
 
-  year_month_day ymd{floor<days>(tp)};
-  auto day_time = make_time(tp - sys_days(ymd));
+  date::year_month_day ymd{floor<date::days>(tp)};
+  auto day_time = make_time(tp - date::sys_days(ymd));
 
   auto y = static_cast<int>(ymd.year());
   // quick basic check here for dates outside the allowed range
@@ -402,8 +402,8 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
   bool isInteger = durationUnitsSlice.isInteger();
   double durationUnits = durationUnitsSlice.getNumber<double>();
   std::chrono::duration<double, std::ratio<1l, 1000l>> ms{};
-  year_month_day ymd{floor<days>(tp)};
-  auto day_time = make_time(tp - sys_days(ymd));
+  date::year_month_day ymd{floor<date::days>(tp)};
+  auto day_time = make_time(tp - date::sys_days(ymd));
 
   DateSelectionModifier flag = ::parseDateModifierFlag(durationType);
   double intPart = 0.0;
@@ -420,9 +420,9 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
     case YEAR:
       durationUnits = std::modf(durationUnits, &intPart);
       if (isSubtract) {
-        ymd -= years{static_cast<int64_t>(intPart)};
+        ymd -= date::years{static_cast<int64_t>(intPart)};
       } else {
-        ymd += years{static_cast<int64_t>(intPart)};
+        ymd += date::years{static_cast<int64_t>(intPart)};
       }
       if (isInteger || durationUnits == 0.0) {
         break;  // We are done
@@ -432,9 +432,9 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
     case MONTH:
       durationUnits = std::modf(durationUnits, &intPart);
       if (isSubtract) {
-        ymd -= months{static_cast<int64_t>(intPart)};
+        ymd -= date::months{static_cast<int64_t>(intPart)};
       } else {
-        ymd += months{static_cast<int64_t>(intPart)};
+        ymd += date::months{static_cast<int64_t>(intPart)};
       }
       if (isInteger || durationUnits == 0.0) {
         break;  // We are done
@@ -444,11 +444,11 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
     // After this fall through the date may actually a bit off
     case DAY:
       // From here on we do not need leap-day handling
-      ms = days{1};
+      ms = date::days{1};
       ms *= durationUnits;
       break;
     case WEEK:
-      ms = weeks{1};
+      ms = date::weeks{1};
       ms *= durationUnits;
       break;
     case HOUR:
@@ -476,11 +476,11 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
   tp_sys_clock_ms resTime;
   if (isSubtract) {
     resTime =
-        tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() -
+        tp_sys_clock_ms{date::sys_days(ymd) + day_time.to_duration() -
                         std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
   } else {
     resTime =
-        tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() +
+        tp_sys_clock_ms{date::sys_days(ymd) + day_time.to_duration() +
                         std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
   }
   return ::timeAqlValue(expressionContext, AFN, resTime);
@@ -490,8 +490,8 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionCont
                                                tp_sys_clock_ms const& tp,
                                                arangodb::velocypack::StringRef duration,
                                                char const* AFN, bool isSubtract) {
-  year_month_day ymd{floor<days>(tp)};
-  auto day_time = make_time(tp - sys_days(ymd));
+  date::year_month_day ymd{floor<date::days>(tp)};
+  auto day_time = make_time(tp - date::sys_days(ymd));
   
   arangodb::basics::ParsedDuration parsedDuration;
   if (!arangodb::basics::parseIsoDuration(duration, parsedDuration)) {
@@ -500,16 +500,16 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionCont
   }
 
   if (isSubtract) {
-    ymd -= years{parsedDuration.years};
-    ymd -= months{parsedDuration.months};
+    ymd -= date::years{parsedDuration.years};
+    ymd -= date::months{parsedDuration.months};
   } else {
-    ymd += years{parsedDuration.years};
-    ymd += months{parsedDuration.months};
+    ymd += date::years{parsedDuration.years};
+    ymd += date::months{parsedDuration.months};
   }
 
   milliseconds ms{0};
-  ms += weeks{parsedDuration.weeks};
-  ms += days{parsedDuration.days};
+  ms += date::weeks{parsedDuration.weeks};
+  ms += date::days{parsedDuration.days};
   ms += hours{parsedDuration.hours};
   ms += minutes{parsedDuration.minutes};
   ms += seconds{parsedDuration.seconds};
@@ -517,9 +517,9 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionCont
 
   tp_sys_clock_ms resTime;
   if (isSubtract) {
-    resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() - ms};
+    resTime = tp_sys_clock_ms{date::sys_days(ymd) + day_time.to_duration() - ms};
   } else {
-    resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() + ms};
+    resTime = tp_sys_clock_ms{date::sys_days(ymd) + day_time.to_duration() + ms};
   }
   return ::timeAqlValue(expressionContext, AFN, resTime);
 }
@@ -1018,15 +1018,15 @@ AqlValue dateFromParameters(ExpressionContext* expressionContext,
       }
     }
 
-    years y{extractFunctionParameterValue(parameters, 0).toInt64()};
-    months m{extractFunctionParameterValue(parameters, 1).toInt64()};
-    days d{extractFunctionParameterValue(parameters, 2).toInt64()};
+    date::years y{extractFunctionParameterValue(parameters, 0).toInt64()};
+    date::months m{extractFunctionParameterValue(parameters, 1).toInt64()};
+    date::days d{extractFunctionParameterValue(parameters, 2).toInt64()};
 
-    if ((y < years{0} || y > years{9999}) || (m < months{0}) || (d < days{0})) {
+    if ((y < date::years{0} || y > date::years{9999}) || (m < date::months{0}) || (d < date::days{0})) {
       registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
-    year_month_day ymd = year{y.count()} / m.count() / d.count();
+    date::year_month_day ymd = date::year{y.count()} / m.count() / d.count();
 
     // Parse the time
     hours h(0);
@@ -1057,7 +1057,7 @@ AqlValue dateFromParameters(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
 
-    time = sys_days(ymd).time_since_epoch();
+    time = date::sys_days(ymd).time_since_epoch();
     time += h;
     time += min;
     time += s;
@@ -3546,7 +3546,7 @@ AqlValue Functions::DateDayOfWeek(ExpressionContext* expressionContext,
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
-  weekday wd{floor<days>(tp)};
+  date::weekday wd{floor<date::days>(tp)};
 
   return AqlValue(AqlValueHintUInt(wd.c_encoding()));
 }
@@ -3560,7 +3560,7 @@ AqlValue Functions::DateYear(ExpressionContext* expressionContext, AstNode const
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
-  auto ymd = year_month_day(floor<days>(tp));
+  auto ymd = date::year_month_day(floor<date::days>(tp));
   // Not the library has operator (int) implemented...
   int64_t year = static_cast<int64_t>((int)ymd.year());
   return AqlValue(AqlValueHintInt(year));
@@ -3576,7 +3576,7 @@ AqlValue Functions::DateMonth(ExpressionContext* expressionContext,
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
-  auto ymd = year_month_day(floor<days>(tp));
+  auto ymd = date::year_month_day(floor<date::days>(tp));
   // The library has operator (unsigned) implemented
   uint64_t month = static_cast<uint64_t>((unsigned)ymd.month());
   return AqlValue(AqlValueHintUInt(month));
@@ -3592,7 +3592,7 @@ AqlValue Functions::DateDay(ExpressionContext* expressionContext, AstNode const&
     return AqlValue(AqlValueHintNull());
   }
 
-  auto ymd = year_month_day(floor<days>(tp));
+  auto ymd = date::year_month_day(floor<date::days>(tp));
   // The library has operator (unsigned) implemented
   uint64_t day = static_cast<uint64_t>((unsigned)ymd.day());
   return AqlValue(AqlValueHintUInt(day));
@@ -3608,7 +3608,7 @@ AqlValue Functions::DateHour(ExpressionContext* expressionContext, AstNode const
     return AqlValue(AqlValueHintNull());
   }
 
-  auto day_time = make_time(tp - floor<days>(tp));
+  auto day_time = date::make_time(tp - floor<date::days>(tp));
   uint64_t hours = day_time.hours().count();
   return AqlValue(AqlValueHintUInt(hours));
 }
@@ -3624,7 +3624,7 @@ AqlValue Functions::DateMinute(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto day_time = make_time(tp - floor<days>(tp));
+  auto day_time = date::make_time(tp - floor<date::days>(tp));
   uint64_t minutes = day_time.minutes().count();
   return AqlValue(AqlValueHintUInt(minutes));
 }
@@ -3640,7 +3640,7 @@ AqlValue Functions::DateSecond(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto day_time = make_time(tp - floor<days>(tp));
+  auto day_time = date::make_time(tp - floor<date::days>(tp));
   uint64_t seconds = day_time.seconds().count();
   return AqlValue(AqlValueHintUInt(seconds));
 }
@@ -3655,7 +3655,7 @@ AqlValue Functions::DateMillisecond(ExpressionContext* expressionContext,
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
-  auto day_time = make_time(tp - floor<days>(tp));
+  auto day_time = make_time(tp - floor<date::days>(tp));
   uint64_t millis = day_time.subseconds().count();
   return AqlValue(AqlValueHintUInt(millis));
 }
@@ -3671,11 +3671,11 @@ AqlValue Functions::DateDayOfYear(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto ymd = year_month_day(floor<days>(tp));
-  auto yyyy = year{ymd.year()};
+  auto ymd = date::year_month_day(floor<date::days>(tp));
+  auto yyyy = date::year{ymd.year()};
   // we construct the date with the first day in the year:
-  auto firstDayInYear = yyyy / jan / day{0};
-  uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
+  auto firstDayInYear = yyyy / jan / date::day{0};
+  uint64_t daysSinceFirst = duration_cast<date::days>(tp - date::sys_days(firstDayInYear)).count();
 
   return AqlValue(AqlValueHintUInt(daysSinceFirst));
 }
@@ -3691,7 +3691,7 @@ AqlValue Functions::DateIsoWeek(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  iso_week::year_weeknum_weekday yww{floor<days>(tp)};
+  iso_week::year_weeknum_weekday yww{floor<date::days>(tp)};
   // The (unsigned) operator is overloaded...
   uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
   return AqlValue(AqlValueHintUInt(isoWeek));
@@ -3708,7 +3708,7 @@ AqlValue Functions::DateLeapYear(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  year_month_day ymd{floor<days>(tp)};
+  date::year_month_day ymd{floor<date::days>(tp)};
 
   return AqlValue(AqlValueHintBool(ymd.year().is_leap()));
 }
@@ -3724,8 +3724,8 @@ AqlValue Functions::DateQuarter(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  year_month_day ymd{floor<days>(tp)};
-  month m = ymd.month();
+  date::year_month_day ymd{floor<date::days>(tp)};
+  date::month m = ymd.month();
 
   // Library has unsigned operator implemented.
   uint64_t part = static_cast<uint64_t>(ceil(unsigned(m) / 3.0f));
@@ -3745,8 +3745,8 @@ AqlValue Functions::DateDaysInMonth(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto ymd = year_month_day{floor<days>(tp)};
-  auto lastMonthDay = ymd.year() / ymd.month() / last;
+  auto ymd = date::year_month_day{floor<date::days>(tp)};
+  auto lastMonthDay = ymd.year() / ymd.month() / date::last;
 
   // The Library has operator unsigned implemented
   return AqlValue(AqlValueHintUInt(static_cast<uint64_t>(unsigned(lastMonthDay.day()))));
@@ -3776,13 +3776,13 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   std::string duration = durationType.slice().copyString();
   basics::StringUtils::tolowerInPlace(duration);
 
-  year_month_day ymd{floor<days>(tp)};
-  auto day_time = make_time(tp - sys_days(ymd));
+  date::year_month_day ymd{floor<date::days>(tp)};
+  auto day_time = make_time(tp - date::sys_days(ymd));
   milliseconds ms{0};
   if (duration == "y" || duration == "year" || duration == "years") {
-    ymd = year{ymd.year()} / jan / day{1};
+    ymd = date::year{ymd.year()} / jan / date::day{1};
   } else if (duration == "m" || duration == "month" || duration == "months") {
-    ymd = year{ymd.year()} / ymd.month() / day{1};
+    ymd = date::year{ymd.year()} / ymd.month() / date::day{1};
   } else if (duration == "d" || duration == "day" || duration == "days") {
     // this would be: ymd = year{ymd.year()}/ymd.month()/ymd.day();
     // However, we already split ymd to the precision of days,
@@ -3800,7 +3800,7 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
-  tp = tp_sys_clock_ms{sys_days(ymd) + ms};
+  tp = tp_sys_clock_ms{date::sys_days(ymd) + ms};
 
   return ::timeAqlValue(expressionContext, AFN, tp);
 }
@@ -3912,8 +3912,8 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
 
   std::string const tz = timeZoneParam.slice().copyString();
   auto const local =
-      local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
-  auto const zoned = make_zoned(tz, local);
+      date::local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
+  auto const zoned = date::make_zoned(tz, local);
   auto const info = zoned.get_info();
   auto const tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
   AqlValue aqlUtc = ::timeAqlValue(expressionContext, AFN, tp_utc);
@@ -4114,15 +4114,15 @@ AqlValue Functions::DateDiff(ExpressionContext* expressionContext, AstNode const
   switch (flag) {
     case YEAR:
       diff =
-          duration_cast<duration<double, std::ratio_multiply<std::ratio<146097, 400>, days::period>>>(diffDuration)
+          duration_cast<duration<double, std::ratio_multiply<std::ratio<146097, 400>, date::days::period>>>(diffDuration)
               .count();
       break;
     case MONTH:
-      diff = duration_cast<duration<double, std::ratio_divide<years::period, std::ratio<12>>>>(diffDuration)
+      diff = duration_cast<duration<double, std::ratio_divide<date::years::period, std::ratio<12>>>>(diffDuration)
                  .count();
       break;
     case WEEK:
-      diff = duration_cast<duration<double, std::ratio_multiply<std::ratio<7>, days::period>>>(diffDuration)
+      diff = duration_cast<duration<double, std::ratio_multiply<std::ratio<7>, date::days::period>>>(diffDuration)
                  .count();
       break;
     case DAY:
@@ -4187,10 +4187,10 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
   }
-  auto ymd1 = year_month_day{floor<days>(tp1)};
-  auto ymd2 = year_month_day{floor<days>(tp2)};
-  auto time1 = make_time(tp1 - floor<days>(tp1));
-  auto time2 = make_time(tp2 - floor<days>(tp2));
+  auto ymd1 = date::year_month_day{floor<date::days>(tp1)};
+  auto ymd2 = date::year_month_day{floor<date::days>(tp2)};
+  auto time1 = make_time(tp1 - floor<date::days>(tp1));
+  auto time2 = make_time(tp2 - floor<date::days>(tp2));
 
   // This switch has the following feature:
   // It is ordered by the Highest value of
