@@ -231,7 +231,7 @@ void Cache::requestMigrate(std::uint32_t requestedLogSize) {
   SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
   if (std::chrono::steady_clock::now().time_since_epoch().count() >
       _migrateRequestTime.load()) {
-    std::shared_ptr<cache::Table> table = std::atomic_load_explicit(&_table, std::memory_order_relaxed);
+    std::shared_ptr<cache::Table> table = this->table();
     TRI_ASSERT(table != nullptr);
 
     bool ok = false;
@@ -302,7 +302,7 @@ bool Cache::reportInsert(bool hadEviction) {
     if (total > 0 && total > evictions &&
         ((static_cast<double>(evictions) / static_cast<double>(total)) > _evictionRateThreshold)) {
       shouldMigrate = true;
-      std::shared_ptr<cache::Table> table = std::atomic_load_explicit(&_table, std::memory_order_relaxed);
+      std::shared_ptr<cache::Table> table = this->table();
       TRI_ASSERT(table != nullptr);
       table->signalEvictions();
     }
@@ -316,8 +316,7 @@ bool Cache::reportInsert(bool hadEviction) {
 Metadata& Cache::metadata() { return _metadata; }
 
 std::shared_ptr<Table> Cache::table() const {
-  // TODO: check if std::atomic_load_explicitt(&_table, std::memory_order_relaxed); works here!
-  return std::atomic_load(&_table);
+  return std::atomic_load_explicit(&_table, std::memory_order_acquire);
 }
 
 void Cache::shutdown() {
@@ -338,7 +337,7 @@ void Cache::shutdown() {
       std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
 
-    std::shared_ptr<cache::Table> table = std::atomic_load_explicit(&_table, std::memory_order_relaxed);
+    std::shared_ptr<cache::Table> table = this->table();
     if (table != nullptr) {
       std::shared_ptr<Table> extra = table->setAuxiliary(std::shared_ptr<Table>());
       if (extra) {
@@ -415,7 +414,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   newTable->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
   newTable->enable();
 
-  std::shared_ptr<cache::Table> table = std::atomic_load_explicit(&_table, std::memory_order_relaxed);
+  std::shared_ptr<cache::Table> table = this->table();
   TRI_ASSERT(table != nullptr);
   table->setAuxiliary(newTable);
 
@@ -428,7 +427,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   std::shared_ptr<Table> oldTable;
   {
     SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
-    oldTable = std::atomic_load(&_table);
+    oldTable = this->table();
     std::atomic_store_explicit(&_table, newTable, std::memory_order_relaxed);
     oldTable->setAuxiliary(std::shared_ptr<Table>());
   }
