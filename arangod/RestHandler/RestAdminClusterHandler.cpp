@@ -984,7 +984,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
 
         return waitForFuture(
           sendTransaction()
-          .thenValue([=](AsyncAgencyCommResult&& wr) {
+          .thenValue([=, this](AsyncAgencyCommResult&& wr) {
             if (!wr.ok()) {
               // Only if no longer pending or todo.
               if (wr.statusCode() == 412) {

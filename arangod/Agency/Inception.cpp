@@ -167,7 +167,7 @@ void Inception::gossip() {
         }
 
         network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
-                             buffer, reqOpts).thenValue([=](network::Response r) {
+                             buffer, reqOpts).thenValue([=, this](network::Response r) {
           ::handleGossipResponse(r, &_agent, version);
         });
       }
@@ -197,7 +197,7 @@ void Inception::gossip() {
         }
 
         network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
-                             buffer, reqOpts).thenValue([=](network::Response r) {
+                             buffer, reqOpts).thenValue([=, this](network::Response r) {
           ::handleGossipResponse(r, &_agent, version);
         });
       }

@@ -6270,7 +6270,7 @@ void ClusterInfo::SyncerThread::run() {
   using namespace std::chrono_literals;
 
   std::function<bool(VPackSlice const& result)> update =
-    [=](VPackSlice const& result) {
+    [=, this](VPackSlice const& result) {
       if (!result.isNumber()) {
         LOG_TOPIC("d068f", ERR, Logger::CLUSTER)
           << "Plan Version is not a number! " << result.toJson();

@@ -6925,7 +6925,7 @@ namespace fakeit {
     template<int q>
     struct Times : public Quantity {
 
-        Times<q>() : Quantity(q) { }
+        Times() : Quantity(q) { }
 
         template<typename R>
         static Quantifier<R> of(const R &value) {
