@@ -36,13 +36,15 @@ namespace arangodb {
 namespace maintenance {
 
 MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
+                                     int minimalPriorityAllowed,
                                      std::unordered_set<std::string> const& labels)
     : Thread(feature.server(), "MaintenanceWorker"),
       _feature(feature),
       _curAction(nullptr),
       _loopState(eFIND_ACTION),
       _directAction(false),
-      _labels(labels) {}
+      _labels(labels),
+      _minimalPriorityAllowed(minimalPriorityAllowed) {}
 
 MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
                                      std::shared_ptr<Action>& directAction)
@@ -50,7 +52,8 @@ MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
       _feature(feature),
       _curAction(directAction),
       _loopState(eRUN_FIRST),
-      _directAction(true) {}
+      _directAction(true),
+      _minimalPriorityAllowed(0) {}
 
 void MaintenanceWorker::run() {
   bool more(false);
@@ -61,7 +64,7 @@ void MaintenanceWorker::run() {
         try {
           switch (_loopState) {
             case eFIND_ACTION:
-              _curAction = _feature.findReadyAction(_labels);
+              _curAction = _feature.findReadyAction(_minimalPriorityAllowed, _labels);
               more = (bool)_curAction;
               break;
 
@@ -70,6 +73,8 @@ void MaintenanceWorker::run() {
                 _curAction->setState(EXECUTING);
               }
               _curAction->startStats();
+              LOG_TOPIC("fe241", DEBUG, Logger::MAINTENANCE)
+                << "Maintenance: starting to execute action: " << *_curAction;
               more = _curAction->first();
               break;
 
@@ -173,7 +178,6 @@ void MaintenanceWorker::nextState(bool actionMore) {
     // finish the current action
     if (_curAction) {
       _lastResult = _curAction->result();
-      _curAction->endStats();
 
       bool ok = _curAction->result().ok() && FAILED != _curAction->getState();
       recordJobStats(/*failed*/ !ok);
@@ -182,6 +186,12 @@ void MaintenanceWorker::nextState(bool actionMore) {
       if (ok) {
         _curAction->endStats();
         _curAction->setState(COMPLETE);
+        if (_curAction->requeueRequested()) {
+          LOG_TOPIC("a4352", DEBUG, Logger::MAINTENANCE)
+            << "Requeueing action " << *_curAction << " with new priority "
+            << _curAction->requeuePriority();
+          _feature.requeueAction(_curAction, _curAction->requeuePriority());
+        }
 
         // continue execution with "next" action tied to this one
         if (_curAction->getPostAction()) {
@@ -200,6 +210,12 @@ void MaintenanceWorker::nextState(bool actionMore) {
         do {
           failAction->setState(FAILED);
           failAction->endStats();
+          if (failAction->requeueRequested()) {
+            LOG_TOPIC("a4353", DEBUG, Logger::MAINTENANCE)
+              << "Requeueing action " << *failAction << " with new priority "
+              << failAction->requeuePriority();
+            _feature.requeueAction(failAction, failAction->requeuePriority());
+          }
           failAction = failAction->getPostAction();
         } while (failAction);
         _loopState = (_directAction ? eSTOP : eFIND_ACTION);

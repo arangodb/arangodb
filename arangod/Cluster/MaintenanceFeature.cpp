@@ -25,6 +25,7 @@
 #include <set>
 #include <random>
 
+#include "Cluster/Maintenance.h"
 #include "MaintenanceFeature.h"
 
 #include "Agency/AgencyComm.h"
@@ -50,6 +51,9 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Random/RandomGenerator.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -104,6 +108,39 @@ bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
 }
 
 }  // namespace
+
+arangodb::Result arangodb::maintenance::collectionCount(arangodb::LogicalCollection const& collection,
+                                                        uint64_t& c) {
+  std::string collectionName(collection.name());
+  transaction::StandaloneContext ctx(collection.vocbase());
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(), &ctx),
+    collectionName, AccessMode::Type::READ);
+
+  Result res = trx.begin();
+  if (res.fail()) {
+    LOG_TOPIC("5be16", ERR, Logger::MAINTENANCE) << "Failed to start count transaction: " << res;
+    return res;
+  }
+
+  OperationOptions options(ExecContext::current());
+  OperationResult opResult =
+      trx.count(collectionName, arangodb::transaction::CountType::Normal, options);
+  res = trx.finish(opResult.result);
+
+  if (res.fail()) {
+    LOG_TOPIC("26ed2", ERR, Logger::MAINTENANCE)
+        << "Failed to finish count transaction: " << res;
+    return res;
+  }
+
+  VPackSlice s = opResult.slice();
+  TRI_ASSERT(s.isNumber());
+  c = s.getNumber<uint64_t>();
+
+  return opResult.result;
+}
 
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Maintenance"),
@@ -259,8 +296,12 @@ void MaintenanceFeature::start() {
     if (loop == 0) {
       labels.emplace(ActionBase::FAST_TRACK);
     }
+    // The first two workers are not allowed to execute SLOW_OP_PRIORITY,
+    // all the others may:
+    int minPrio = (loop < 2) ? maintenance::NORMAL_PRIORITY 
+                             : maintenance::SLOW_OP_PRIORITY;
 
-    auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this, labels);
+    auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this, minPrio, labels);
 
     if (!newWorker->start(&_workerCompletion)) {
       LOG_TOPIC("4d8b8", ERR, Logger::MAINTENANCE)
@@ -618,7 +659,7 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
   return std::shared_ptr<Action>();
 }
 
-std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<std::string> const& labels) {
+std::shared_ptr<Action> MaintenanceFeature::findReadyAction(int minimalPriorityAllowed, std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
 
   while (!_isShuttingDown) {
@@ -634,14 +675,16 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
           _prioQueue.pop();
           continue;
         }
-        if (top->matches(labels)) {
+        if (top->matches(labels) && top->priority() >= minimalPriorityAllowed) {
           ret_ptr = top;
           _prioQueue.pop();
           return ret_ptr;
         }
         // We are not interested, this can only mean that we are fast track
-        // and the top action is not. Therefore, the whole queue does not
-        // contain any fast track, so we can idle.
+        // and the top action is not, or that the top action has a smaller
+        // priority than our minimalPriority. Therefore, the whole queue
+        // does not contain any fast track or high enough prio, so we can
+        // idle.
         break;
       }
 
@@ -1143,4 +1186,14 @@ MaintenanceFeature::ShardActionMap MaintenanceFeature::getShardLocks() const {
   LOG_TOPIC("aaed4", DEBUG, Logger::MAINTENANCE) << "Copy of shard action map taken.";
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
   return _shardActionMap;
+}
+
+Result MaintenanceFeature::requeueAction(std::shared_ptr<maintenance::Action>& action,
+    int newPriority) {
+  TRI_ASSERT(action->getState() == ActionState::COMPLETE ||
+             action->getState() == ActionState::FAILED);
+  auto newAction = std::make_shared<maintenance::Action>(*this, action->describe());
+  newAction->setPriority(newPriority);
+  registerAction(newAction, false);
+  return {};
 }

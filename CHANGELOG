@@ -1,6 +1,10 @@
 v3.8.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-637: Slow SynchronizeShard jobs which need to copy data could
+  block quick SynchronizeShard jobs which have the data and only need to
+  resync.
+
 * Change error message for queries that use too much memory from "resource limit
   exceeded" to "query would use more memory than allowed".
 

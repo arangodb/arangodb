@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -114,6 +115,27 @@ bool EnsureIndex::first() {
       body.add(COLLECTION, VPackValue(shard));
       auto const props = properties();
       body.add(VPackObjectIterator(props));
+    }
+
+    uint64_t docCount = 0;
+    if (arangodb::maintenance::collectionCount(*col, docCount).fail()) {
+      std::stringstream error;
+      error << "failed to get count of local collection " << shard << " in database " + database;
+      LOG_TOPIC("23561", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      result(TRI_ERROR_INTERNAL, error.str());
+      return false;
+    }
+
+    if (_priority != maintenance::SLOW_OP_PRIORITY && docCount > 100000) {
+      // This could be a larger job, let's reschedule ourselves with
+      // priority SLOW_OP_PRIORITY:
+      LOG_TOPIC("25a63", INFO, Logger::MAINTENANCE)
+        << "EnsureIndex action found a shard with more than 100000 documents, "
+           "will reschedule with slow priority, database: "
+        << database << ", shard: " << shard;
+      pleaseRequeueMe(maintenance::SLOW_OP_PRIORITY);
+      result(TRI_ERROR_ACTION_UNFINISHED, "EnsureIndex action rescheduled to slow operation priority");
+      return false;
     }
 
     VPackBuilder index;
