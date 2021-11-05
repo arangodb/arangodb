@@ -103,10 +103,10 @@ TEST_P(format_12_test_case, fields_read_write_wrong_encryption) {
         tests::document& doc,
         const std::string& name,
         const tests::json_doc_generator::json_value& data) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name, data.str));
 
-      auto ref = irs::ref_cast<irs::byte_type>((doc.indexed.end() - 1).as<tests::templates::string_field>().value());
+      auto ref = irs::ref_cast<irs::byte_type>((doc.indexed.end() - 1).as<tests::string_field>().value());
       sorted_terms.emplace(ref);
       unsorted_terms.emplace_back(ref);
   });

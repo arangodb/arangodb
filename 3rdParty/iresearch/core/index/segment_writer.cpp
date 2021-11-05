@@ -287,19 +287,17 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
   if (fields_.comparator()) {
     std::tie(docmap, sort_.id) = sort_.stream.flush(
-      *col_writer_,
-      doc_id_t(docs_cached()),
-      *fields_.comparator()
-    );
+        *col_writer_, doc_id_t(docs_cached()), *fields_.comparator());
 
     irs::sorted_column::flush_buffer_t buffer;
     for (auto& column : columns_) {
-
-      if (!field_limits::valid(column.id)) {
+      if (IRS_LIKELY(!field_limits::valid(column.id))) {
         // cached column
         column.id = column.stream.flush(*col_writer_, docmap, buffer);
       }
     }
+
+    fields_.flush_features(*col_writer_, docmap, buffer);
 
     meta.sort = sort_.id; // store sorted column id in segment meta
 
@@ -346,7 +344,7 @@ void segment_writer::reset() noexcept {
   docs_context_.clear();
   docs_mask_.clear();
   fields_.reset();
-  columns_.clear();
+  columns_.clear(); // FIXME(@gnusi): we loose all per-column buffers
   sort_.stream.clear();
 
   if (col_writer_) {
