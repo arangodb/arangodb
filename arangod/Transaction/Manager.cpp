@@ -359,16 +359,14 @@ ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase, VPackSl
 
 Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                                  VPackSlice trxOpts, bool isFollowerTransaction) {
+  TRI_ASSERT((ServerState::instance()->isSingleServer() && !isFollowerTransaction) ||
+             tid.isFollowerTransactionId() == isFollowerTransaction);
   transaction::Options options;
   std::vector<std::string> reads, writes, exclusives;
 
   Result res = buildOptions(trxOpts, options, reads, writes, exclusives);
   if (res.fail()) {
     return res;
-  }
-
-  if (isFollowerTransaction) {
-    options.isFollowerTransaction = true;
   }
 
   return ensureManagedTrx(vocbase, tid, reads, writes, exclusives, std::move(options));
@@ -562,20 +560,23 @@ ResultT<TransactionId> Manager::createManagedTrx(
   if (res.fail()) {
     return res;
   }
-  std::shared_ptr<TransactionState> state;
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   TRI_ASSERT(ServerState::isSingleServerOrCoordinator(role));
   TransactionId tid = ServerState::isSingleServer(role)
                           ? TransactionId::createSingleServer()
                           : TransactionId::createCoordinator();
-  try {
-    // now start our own transaction
+
+  auto maybeState = basics::catchToResultT([&] {
     StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
-    state = engine.createTransactionState(vocbase, tid, options);
-  } catch (basics::Exception const& e) {
-    return res.reset(e.code(), e.message());
+    // now start our own transaction
+    return engine.createTransactionState(vocbase, tid, options);
+  });
+  if (!maybeState.ok()) {
+    return std::move(maybeState).result();
   }
+  auto& state = maybeState.get();
+
   TRI_ASSERT(state != nullptr);
   TRI_ASSERT(state->id() == tid);
 
@@ -627,9 +628,17 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  if (tid.isFollowerTransactionId()) {
-    options.isFollowerTransaction = true;
-  }
+  // This method should not be used in a single server. Note that single-server
+  // transaction IDs will randomly be identified as follower transactions,
+  // leader transactions, legacy transactions or coordinator transactions;
+  // context is important.
+  TRI_ASSERT(!ServerState::instance()->isSingleServer() ||
+             ServerState::instance()->isGoogleTest());
+  // We should never have `options.isFollowerTransaction == true`, but
+  // `tid.isFollowerTransactionId() == false`.
+  TRI_ASSERT(options.isFollowerTransaction == tid.isFollowerTransactionId() ||
+             !options.isFollowerTransaction);
+  options.isFollowerTransaction = tid.isFollowerTransactionId();
 
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
       << "managed trx creating: " << tid.id();
@@ -661,14 +670,16 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     return res;
   }
 
-  std::shared_ptr<TransactionState> state;
-  try {
-    // now start our own transaction
+  auto maybeState = basics::catchToResultT([&] {
     StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
-    state = engine.createTransactionState(vocbase, tid, options);
-  } catch (basics::Exception const& e) {
-    return res.reset(e.code(), e.message());
+    // now start our own transaction
+    return engine.createTransactionState(vocbase, tid, options);
+  });
+  if (!maybeState.ok()) {
+    return std::move(maybeState).result();
   }
+  auto& state = maybeState.get();
+
   TRI_ASSERT(state != nullptr);
   TRI_ASSERT(state->id() == tid);
 

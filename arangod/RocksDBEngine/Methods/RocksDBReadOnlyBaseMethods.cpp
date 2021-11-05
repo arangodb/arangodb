@@ -29,9 +29,6 @@
 #include <rocksdb/status.h>
 
 using namespace arangodb;
-
-RocksDBReadOnlyBaseMethods::RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state)
-    : RocksDBTransactionMethods(state) {}
   
 void RocksDBReadOnlyBaseMethods::prepareOperation(DataSourceId cid, RevisionId rid,
                                               TRI_voc_document_operation_e operationType) {
