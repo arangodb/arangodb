@@ -737,20 +737,49 @@
       /// @brief test custom analyzers restoring
       ////////////////////////////////////////////////////////////////////////////////
       testAnalyzers: function () {
-        // TODO: This test fails and needs to be fixed (!)
+        /*
+         * createAnalyzers() creates -> "customInCreateAnalyzers" (CE && EE)
+         * createSmartArangoSearch() creates -> "smartCustom" (EE)
+         * createView() creates -> customInCreateView (CE && EE)
+         *
+         * => EE will lead to a total of 3x created analyzers
+         * => CE will lead to a total of 2x created analyzers
+         */
+        let createdAnalyzersInSrc = [
+          {
+            name: 'customInCreateView',
+            delimiter: " "
+          }, {
+            name: 'customInCreateAnalyzers',
+            delimiter: ","
+          }
+        ];
+        if (isEnterprise) {
+          createdAnalyzersInSrc.push({
+            name: "smartCustom",
+            delimiter: "smart"
+          });
+        }
+
+        let verifyAnalyzer = (analyzerName, delimiter) => {
+          let analyzer = analyzers.analyzer(analyzerName);
+          assertEqual(db._name() + "::" + analyzerName, analyzer.name());
+          assertEqual("delimiter", analyzer.type());
+          assertEqual(Object.keys(analyzer.properties()).length, 1);
+          assertEqual(delimiter, analyzer.properties().delimiter);
+          assertEqual(1, analyzer.features().length);
+          assertEqual("frequency", analyzer.features()[0]);
+        };
+
         assertNotEqual(null, db._collection("_analyzers"));
         assertEqual((isEnterprise && isCluster) ?
-            2 : // plus 1 for smartgraph in enerprise
-            1,  // only 1 stored custom analyzers
+            3 : // plus 1 for a SmartGraph in Enterprise
+            2,  // only 1 stored custom analyzers
           db._analyzers.count());
 
-        let analyzer = analyzers.analyzer("custom");
-        assertEqual(db._name() + "::custom", analyzer.name());
-        assertEqual("delimiter", analyzer.type());
-        assertEqual(Object.keys(analyzer.properties()).length, 1);
-        assertEqual(" ", analyzer.properties().delimiter);
-        assertEqual(1, analyzer.features().length);
-        assertEqual("frequency", analyzer.features()[0]);
+        _.each(createdAnalyzersInSrc, (analyzerObject) => {
+          verifyAnalyzer(analyzerObject.name, analyzerObject.delimiter);
+        });
 
         assertNull(analyzers.analyzer("custom_dst"));
       },

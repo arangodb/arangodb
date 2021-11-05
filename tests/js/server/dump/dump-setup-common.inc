@@ -332,7 +332,9 @@ function createPersistent() {
 
 function createView() {
   db._useDatabase("UnitTestsDumpSrc");
-  let analyzer = analyzers.save("custom", "delimiter", {delimiter: " "}, ["frequency"]);
+  const countBefore = db["_analyzers"].count();
+  let analyzer = analyzers.save("customInCreateView", "delimiter", {delimiter: " "}, ["frequency"]);
+  assertEqual(db["_analyzers"].count(), countBefore + 1);
 
   // setup a view
   try {
@@ -407,15 +409,19 @@ function createFoxx() {
   ));
   const FoxxManager = require('@arangodb/foxx/manager');
   FoxxManager.install(SERVICE_PATH, '/test');
-  db._useDatabase('UnitTestsDumpDst');
 }
 
 function createAnalyzers() {
-  // trigger analyzers cache population in dst database
-  // this one should be removed
+  db._useDatabase("UnitTestsDumpDst");
+  const countBeforeInDst = db._analyzers.count();
   analyzers.save("custom_dst", "delimiter", {delimiter: ","}, ["frequency"]);
-  // this one should be replaced
-  analyzers.save("custom", "delimiter", {delimiter: ","}, ["frequency"]);
+  assertEqual(db._analyzers.count(), countBeforeInDst + 1);
+  // ^-- Note: I guess this is just a test that non-database relevant analyzers will not get restored as well.
+
+  db._useDatabase("UnitTestsDumpSrc");
+  const countBeforeInSrc = db._analyzers.count();
+  analyzers.save("customInCreateAnalyzers", "delimiter", {delimiter: ","}, ["frequency"]);
+  assertEqual(db._analyzers.count(), countBeforeInSrc + 1);
 }
 
 /**
@@ -916,6 +922,7 @@ function createSmartGraphWithoutData() {
  *        Creates an arangosearch over smart edge collection
  */
 function createSmartArangoSearch() {
+  db._useDatabase("UnitTestsDumpSrc");
   if (!isEnterprise) {
     return;
   }
@@ -923,14 +930,12 @@ function createSmartArangoSearch() {
   db._dropView("UnitTestsDumpSmartView");
 
   let analyzers = require("@arangodb/analyzers");
-  try {
-    analyzers.remove("smartCustom");
-  } catch (err) {
-  }
-  let analyzer = analyzers.save("smartCustom", "delimiter", {delimiter: "smart"}, ["frequency"]);
+  const countBefore = db["_analyzers"].count();
+  analyzers.save("smartCustom", "delimiter", {delimiter: "smart"}, ["frequency"]);
+  assertEqual(db["_analyzers"].count(), countBefore + 1);
 
   db._createView("UnitTestsDumpSmartView", "arangosearch", {
-    // choose non default values to check if they are corretly dumped and imported
+    // choose non default values to check if they are correctly dumped and imported
     cleanupIntervalStep: 456,
     consolidationPolicy: {
       threshold: 0.3,
