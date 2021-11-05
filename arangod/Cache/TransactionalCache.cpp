@@ -278,7 +278,7 @@ uint64_t TransactionalCache::freeMemoryFrom(std::uint32_t hash) {
     }
   }
 
-  std::shared_ptr<cache::Table> table = std::atomic_load_explicit(&_table, std::memory_order_relaxed);
+  std::shared_ptr<cache::Table> table = this->table();
   if (table) {
     std::int32_t size = table->idealSize();
     if (maybeMigrate) {
@@ -295,7 +295,7 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
   std::uint64_t term = _manager->_transactions.term();
 
   // lock current bucket
-  std::shared_ptr<Table> table = std::atomic_load(&_table);
+  std::shared_ptr<Table> table = this->table();
 
   Table::BucketLocker sourceGuard(sourcePtr, table.get(), Cache::triesGuarantee);
   TransactionalBucket& source = sourceGuard.bucket<TransactionalBucket>();
@@ -399,7 +399,7 @@ std::tuple<Result, Table::BucketLocker> TransactionalCache::getBucket(
   Result status;
   Table::BucketLocker guard;
 
-  std::shared_ptr<Table> table = std::atomic_load_explicit(&_table, std::memory_order_relaxed);
+  std::shared_ptr<Table> table = this->table();
   if (isShutdown() || table == nullptr) {
     status.reset(TRI_ERROR_SHUTTING_DOWN);
     return std::make_tuple(std::move(status), std::move(guard));
