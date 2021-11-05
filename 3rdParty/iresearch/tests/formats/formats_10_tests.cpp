@@ -93,7 +93,6 @@ class format_10_test_case : public tests::format_test_case {
     auto dir = get_directory(*this);
 
     // attributes for term
-    irs::attribute_store attrs;
     auto codec = std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
     ASSERT_NE(nullptr, codec);
     auto writer = codec->get_postings_writer(false);
@@ -125,8 +124,6 @@ class format_10_test_case : public tests::format_test_case {
         /* write attributes to out */
 //      writer.encode(*out, attrs);
       }
-
-      attrs.clear();
 
       // begin field
       writer->begin_field(features);
@@ -783,7 +780,7 @@ TEST_P(format_10_test_case, postings_seek) {
     std::vector<irs::doc_id_t> docs;
     {
       std::string buf;
-      std::ifstream in(resource("postings.txt"));
+      std::ifstream in(resource("postings.txt").c_str());
       char* pend;
       while (std::getline(in, buf)) {
         docs.push_back(strtol(buf.c_str(), &pend, 10));
@@ -941,13 +938,11 @@ INSTANTIATE_TEST_SUITE_P(
   format_10_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0")
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values("1_0")),
+  format_10_test_case::to_string
 );
 
 // -----------------------------------------------------------------------------
@@ -959,13 +954,11 @@ INSTANTIATE_TEST_SUITE_P(
   format_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0")
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values("1_0")),
+  format_test_case::to_string
 );
 
 }

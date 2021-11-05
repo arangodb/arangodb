@@ -128,11 +128,11 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
     // insert into collections
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(arangodb::tests::testResourceDir);
-      resource /= irs::string_ref("simple_sequential.json");
+      resource /= std::string_view(arangodb::tests::testResourceDir);
+      resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -780,11 +780,11 @@ TEST_P(IResearchQueryOptionsTest, WaitForSync) {
     // insert into collections
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(arangodb::tests::testResourceDir);
-      resource /= irs::string_ref("simple_sequential.json");
+      resource /= std::string_view(arangodb::tests::testResourceDir);
+      resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -1115,8 +1115,8 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
     EXPECT_TRUE(arangodb::tests::assertRules(
         vocbase, queryString, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
-    auto const res = query.explain();
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto const res = query->explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();
     arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
@@ -1149,8 +1149,8 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
     EXPECT_TRUE(arangodb::tests::assertRules(
         vocbase, queryString, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
-    auto const res = query.explain();
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto const res = query->explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();
     arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));

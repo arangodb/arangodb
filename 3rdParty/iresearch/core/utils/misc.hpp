@@ -64,7 +64,7 @@ class finally {
   finally(Func&& func)
     : func_(std::forward<Func>(func)) {
   }
-  ~finally() noexcept(std::is_nothrow_invocable_v<Func>) {
+  ~finally() {
     func_();
   }
 

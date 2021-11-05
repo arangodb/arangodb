@@ -95,6 +95,8 @@ class ProgramOptions {
   ProgramOptions(char const* progname, std::string const& usage,
                  std::string const& more, char const* binaryPath);
 
+  std::string progname() const { return _progname; }
+
   // sets a value translator
   void setTranslator(std::function<std::string(std::string const&, char const*)> const& translator);
 

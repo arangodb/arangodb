@@ -101,7 +101,8 @@ enum class RocksDBSettingsType : char {
   Invalid = 0,
   Version = 'V',
   ServerTick = 'S',
-  Endianness = 'E'
+  Endianness = 'E',
+  ExtendedDatabaseNames = 'X',
 };
 
 /// @brief endianess value

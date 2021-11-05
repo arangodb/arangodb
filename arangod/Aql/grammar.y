@@ -1364,12 +1364,27 @@ upsert_statement:
     } T_INSERT expression update_or_replace expression in_or_into_collection options {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       forNode->changeMember(1, $9);
-
+      auto* forOptionsNode = parser->ast()->createNodeObject();
+      auto* upsertOptionsNode = parser->ast()->createNodeObject();
+      if ($10 != nullptr && $10->type == NODE_TYPE_OBJECT) {
+        for (size_t i = 0; i < $10->numMembers(); ++i) {
+          auto nodeMember = $10->getMember(i);
+          if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
+            std::string nodeMemberName = nodeMember->getString();
+            if (nodeMemberName == "indexHint" || nodeMemberName == "forceIndexHint") {
+              forOptionsNode->addMember(nodeMember);
+            } else {
+              upsertOptionsNode->addMember(nodeMember);
+            }
+          }
+        }
+        forNode->changeMember(2, forOptionsNode);
+      }
       if (!parser->configureWriteQuery($9, $10)) {
         YYABORT;
       }
 
-      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($7), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), $6, $8, $9, $10);
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($7), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), $6, $8, $9, upsertOptionsNode);
       parser->ast()->addOperation(node);
     }
   ;

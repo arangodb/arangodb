@@ -32,6 +32,8 @@ const db = require("internal").db;
 const request = require("@arangodb/request");
 const url = require('url');
 const _ = require("lodash");
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const dbs = ["testDatabase", "abc123", "maçã", "mötör", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "かわいい犬"];
 
 function getCoordinators() {
   const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
@@ -55,7 +57,7 @@ function getCoordinators() {
 
 const servers = getCoordinators();
 
-function CursorSyncSuite () {
+function CursorSyncSuite (databaseName) {
   'use strict';
   const cns = ["animals", "fruits"];
   const keys = [
@@ -64,8 +66,8 @@ function CursorSyncSuite () {
   ];
   let cs = [];
   let coordinators = [];
-  const baseCursorUrl = `/_api/cursor`;
-
+  const baseCursorUrl = `/_db/${encodeURIComponent(databaseName)}/_api/cursor`; 
+ 
   function sendRequest(method, endpoint, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
@@ -82,7 +84,6 @@ function CursorSyncSuite () {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
     }
-
     var resultBody = res.body;
     if (typeof resultBody === "string") {
       resultBody = JSON.parse(resultBody);
@@ -91,12 +92,17 @@ function CursorSyncSuite () {
   }
 
   return {
-    setUp: function() {
+    
+    setUpAll: function() {
       coordinators = getCoordinators();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
+    },
 
+    setUp: function() {
+      db._createDatabase(databaseName);
+      db._useDatabase(databaseName);
       cs = [];
       for (let i = 0; i < cns.length; i++) {
         db._drop(cns[i]);
@@ -114,7 +120,10 @@ function CursorSyncSuite () {
       db._drop(cns[0]);
       db._drop(cns[1]);
       cs = [];
-      coordinators = [];
+      db._useDatabase("_system");
+      if(databaseName !== "_system") {
+        db._dropDatabase(databaseName);
+      }
     },
 
     testCursorForwardingBasicPut: function() {
@@ -166,7 +175,6 @@ function CursorSyncSuite () {
         }
       };
       let result = sendRequest('POST', url, query, true);
-
       assertFalse(result === undefined || result === {});
       assertFalse(result.error);
       assertEqual(result.code, 201);
@@ -266,6 +274,14 @@ function CursorSyncSuite () {
   };
 }
 
-jsunity.run(CursorSyncSuite);
+dbs.forEach((databaseName) => {
+  let func = function() {
+   let suite = {};
+   deriveTestSuite(CursorSyncSuite(databaseName), suite, databaseName);
+    return suite;
+  };
+  Object.defineProperty(func, 'name', {value: "CursorSyncSuite" + databaseName, writable: false});
+  jsunity.run(func);
+});
 
 return jsunity.done();

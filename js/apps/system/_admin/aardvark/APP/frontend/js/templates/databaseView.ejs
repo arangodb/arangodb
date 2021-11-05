@@ -55,13 +55,13 @@
             <div class="borderBox"></div>
             <div class="iconSet">
               <% if (!readOnly) { %>
-                <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+                <span class="icon_arangodb_settings2 editDatabase" id="<%=_.escape(name)%>_edit-database" alt="Edit database" title="Edit database"></span>
               <% } %>
             </div>
             <i class="collection-type-icon fa fa-database defaultCursor"></i>
             <div class="tileBadge">
             </div>
-            <h5 class="collectionName" style="margin-left: 0; margin-right: 0;"><%=name %></h5>
+            <h5 class="collectionName" style="margin-left: 0; margin-right: 0;"><%=_.escape(name)%></h5>
           </div>
         </div>
       <%};%>

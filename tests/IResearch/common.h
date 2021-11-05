@@ -113,7 +113,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
 
-std::unique_ptr<arangodb::aql::Query> prepareQuery(
+std::shared_ptr<arangodb::aql::Query> prepareQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");

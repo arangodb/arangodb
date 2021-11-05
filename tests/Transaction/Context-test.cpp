@@ -129,9 +129,9 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   bindVars->close();
 
   {
-    arangodb::aql::Query query(ctx, queryString, bindVars);
+    auto query = arangodb::aql::Query::create(ctx, queryString, bindVars);
 
-    auto qres = query.executeSync();
+    auto qres = query->executeSync();
     ASSERT_TRUE(qres.ok());
     ASSERT_NE(nullptr, qres.data);
     VPackSlice aqlSlice = qres.data->slice();
@@ -145,9 +145,9 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   ASSERT_TRUE(result2.ok());
 
   {
-    arangodb::aql::Query query(ctx, queryString, bindVars);
+    auto query = arangodb::aql::Query::create(ctx, queryString, bindVars);
 
-    auto qres = query.executeSync();
+    auto qres = query->executeSync();
     ASSERT_TRUE(qres.ok());
     ASSERT_NE(nullptr, qres.data);
     VPackSlice aqlSlice = qres.data->slice();

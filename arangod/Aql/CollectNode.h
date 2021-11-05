@@ -155,7 +155,7 @@ class CollectNode : public ExecutionNode {
 
   /// @brief restrict the KEEP variables (which may also be the auto-collected
   /// variables of an unrestricted `INTO var`) to the passed `variables`.
-  void restrictKeepVariables(std::unordered_set<const Variable*> const& variables);
+  void restrictKeepVariables(containers::HashSet<Variable const*> const& variables);
 
   /// @brief return the variable map
   std::unordered_map<VariableId, std::string const> const& variableMap() const;

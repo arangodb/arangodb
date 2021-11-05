@@ -27,6 +27,7 @@
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/Utf8Helper.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Index.h"
@@ -46,6 +47,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -386,68 +388,43 @@ char const* Index::oldtypeName(Index::IndexType type) {
   return "";
 }
 
-/// @brief validate an index id
-bool Index::validateId(char const* key) {
-  char const* p = key;
-
-  while (1) {
-    char const c = *p;
-
-    if (c == '\0') {
-      return (p - key) > 0;
-    }
-    if (c >= '0' && c <= '9') {
-      ++p;
-      continue;
-    }
-
-    return false;
-  }
+/// @brief validate an index id (i.e. ^[0-9]+$)
+bool Index::validateId(std::string_view id) {
+  // totally empty id string is not allowed
+  return !id.empty() && std::all_of(id.begin(), id.end(), [](char c) {
+    return c >= '0' && c <= '9';
+  });
 }
-
-/// @brief validate an index name
-bool Index::validateName(char const* key) {
-  return TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(key, strlen(key)));
-}
-
-namespace {
-bool validatePrefix(char const* key, size_t* split) {
-  char const* p = key;
-
-  // find divider
-  while (1) {
-    char c = *p;
-
-    if (c == '\0') {
-      return false;
-    }
-
-    if (c == '/') {
-      break;
-    }
-
-    p++;
-  }
-
-  // store split position
-  *split = p - key;
-
-  return TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(key, *split));
-}
-}  // namespace
 
 /// @brief validate an index handle (collection name + / + index id)
-bool Index::validateHandle(char const* key, size_t* split) {
-  bool ok = validatePrefix(key, split);
-  // validate index id
-  return ok && validateId(key + *split + 1);
+bool Index::validateHandle(bool extendedNames, arangodb::velocypack::StringRef handle) noexcept {
+  std::size_t pos = handle.find('/');
+  if (pos == std::string::npos) {
+    // no prefix
+    return false;
+  }
+  // check collection name part
+  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames, handle.substr(0, pos))) {
+    return false;
+  }
+  // check remainder (index id)
+  handle = handle.substr(pos + 1);
+  return validateId(std::string_view(handle.data(), handle.size()));
 }
 
 /// @brief validate an index handle (collection name + / + index name)
-bool Index::validateHandleName(char const* key, size_t* split) {
-  bool ok = validatePrefix(key, split);
-  // validate index id
-  return ok && validateName(key + *split + 1);
+bool Index::validateHandleName(bool extendedNames, arangodb::velocypack::StringRef name) noexcept {
+  std::size_t pos = name.find('/');
+  if (pos == std::string::npos) {
+    // no prefix
+    return false;
+  }
+  // check collection name part
+  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames, name.substr(0, pos))) {
+    return false;
+  }
+  // check remainder (index name)
+  return IndexNameValidator::isAllowedName(extendedNames, name.substr(pos + 1));
 }
 
 /// @brief generate a new index id

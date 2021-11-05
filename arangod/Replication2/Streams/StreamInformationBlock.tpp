@@ -128,7 +128,9 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIteratorRange
                                    [](StreamEntry<Type> const& left, LogIndex index) {
                                      return left.first < index;
                                    })),
+          // cppcheck-suppress 	selfInitialization
           start(start),
+          // cppcheck-suppress 	selfInitialization
           stop(stop) {}
   };
   return std::make_unique<Iterator>(std::move(log), start, stop);

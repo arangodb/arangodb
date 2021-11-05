@@ -444,6 +444,35 @@ auto replicated_log::LogFollower::GuardedFollowerData::getCommittedLogIterator(L
 
 replicated_log::LogFollower::~LogFollower() {
   _logMetrics->replicatedLogFollowerNumber->fetch_sub(1);
+  tryHardToClearQueue();
+}
+
+auto replicated_log::LogFollower::tryHardToClearQueue() noexcept -> void {
+  bool finished = false;
+  auto consecutiveTriesWithoutProgress = 0;
+  do {
+    ++consecutiveTriesWithoutProgress;
+    auto followerDataGuard = _guardedFollowerData.getLockedGuard();
+    auto queueGuard = followerDataGuard->_waitForQueue.getLockedGuard();
+    auto& queue = queueGuard.get();
+    switch (assertQueueNotEmptyOrTryToClear(TryToClearParticipant::Follower,
+                                            _loggerContext, queue)) {
+      case TryToClearResult::NoProgress:
+        break;
+      case TryToClearResult::Partial:
+        consecutiveTriesWithoutProgress = 0;
+        break;
+      case TryToClearResult::Cleared:
+        finished = true;
+        break;
+    }
+    if (!finished && consecutiveTriesWithoutProgress > 10) {
+      LOG_CTX("a27a7", FATAL, _loggerContext)
+          << "We keep failing at destroying a log follower instance. Giving up "
+             "now.";
+      FATAL_ERROR_EXIT();
+    }
+  } while (!finished);
 }
 
 auto LogFollower::release(LogIndex doneWithIdx) -> Result {

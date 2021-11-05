@@ -35,11 +35,14 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
+#include "Utilities/NameValidator.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/Utf8Helper.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -63,7 +66,8 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice definition)
         "got an invalid view definition while constructing LogicalView");
   }
 
-  if (!TRI_vocbase_t::IsAllowedName(definition)) {
+  bool extendedNames = vocbase.server().getFeature<DatabaseFeature>().extendedNamesForViews();
+  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, name())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 

@@ -198,9 +198,13 @@ void read_compact(
   }
 
   // try direct buffer access
-  const byte_type* buf = cipher ? nullptr : in.read_buffer(buf_size, BufferHint::NORMAL);
+  const byte_type* buf = cipher ? nullptr : in.read_buffer(buf_size + bytes_io<uint64_t>::const_max_vsize, BufferHint::NORMAL);
 
-  if (!buf) {
+  uint64_t buff_size = 0;
+  if (buf) {
+    const byte_type* ptr = buf + buf_size;
+    buff_size = zvread<uint64_t>(ptr);
+  } else {
     irs::string_utils::oversize(encode_buf, buf_size);
 
 #ifdef IRESEARCH_DEBUG
@@ -217,10 +221,11 @@ void read_compact(
     }
 
     buf = encode_buf.c_str();
+    buff_size = irs::read_zvlong(in);
   }
 
   // ensure that we have enough space to store decompressed data
-  decode_buf.resize(irs::read_zvlong(in) + MAX_DATA_BLOCK_SIZE);
+  decode_buf.resize(buff_size + MAX_DATA_BLOCK_SIZE);
 
   const auto decoded = decompressor->decompress(
     buf, buf_size,
@@ -593,17 +598,16 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 
   if (version_ > Version::MIN) {
     bstring enc_header;
-    auto* enc = get_encryption(dir.attributes());
+    auto* enc = dir.attributes().encryption();
 
     const auto encrypt = irs::encrypt(filename, *data_out, enc, enc_header, data_out_cipher);
     assert(!encrypt || (data_out_cipher && data_out_cipher->block_size()));
     UNUSED(encrypt);
   }
 
-  alloc_ = &directory_utils::get_allocator(dir);
-
   // noexcept block
   dir_ = &dir;
+  alloc_ = &dir.attributes().allocator();
   data_out_ = std::move(data_out);
   data_out_cipher_ = std::move(data_out_cipher);
   filename_ = std::move(filename);
@@ -2384,7 +2388,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   encryption::stream::ptr cipher;
 
   if (version > writer::FORMAT_MIN) {
-    auto* enc = get_encryption(dir.attributes());
+    auto* enc = dir.attributes().encryption();
 
     if (irs::decrypt(filename, *stream, enc, cipher)) {
       assert(cipher && cipher->block_size());

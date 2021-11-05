@@ -104,6 +104,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
 #include "Ssl/ssl-helper.h"
+#include "Utilities/NameValidator.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -5589,6 +5590,27 @@ static void JS_ErrorNumberToHttpCode(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_RETURN_INTEGER(static_cast<Type>(code));
   TRI_V8_TRY_CATCH_END
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks wether database name is allowed or invalid
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_IsAllowedDatabaseName(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 2 || ! args[0]->IsString() || ! args[1]->IsBoolean()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("IsAllowedDatabaseName(<string>, <bool>)");
+  }
+
+  auto databaseName = TRI_ObjectToString(isolate, args[0]);
+  bool isExtendedName = TRI_ObjectToBoolean(isolate, args[1]);
+  bool result = arangodb::DatabaseNameValidator::isAllowedName(true, isExtendedName, arangodb::velocypack::StringRef(databaseName));
+
+  TRI_V8_RETURN_BOOL(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
@@ -5838,6 +5860,9 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
 
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_ERROR_NUMBER_TO_HTTP_CODE"), JS_ErrorNumberToHttpCode);
+  
+  TRI_AddGlobalFunctionVocbase(isolate, 
+                               TRI_V8_ASCII_STRING(isolate, "IS_ALLOWED_DATABASE_NAME"), JS_IsAllowedDatabaseName);
   // .............................................................................
   // create the global variables
   // .............................................................................

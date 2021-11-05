@@ -65,31 +65,6 @@ inline bool startsWith(std::string const& path, char const* other) {
           path.compare(0, size, other, size) == 0);
 }
 
-}  // namespace
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-CommTask::CommTask(GeneralServer& server,
-                   ConnectionInfo info)
-    : _server(server),
-      _connectionInfo(std::move(info)),
-      _connectionStatistics(ConnectionStatistics::acquire()),
-      _auth(AuthenticationFeature::instance()) {
-  TRI_ASSERT(_auth != nullptr);
-  _connectionStatistics.SET_START();
-}
-
-CommTask::~CommTask() {
-  _connectionStatistics.SET_END();
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-namespace {
 TRI_vocbase_t* lookupDatabaseFromRequest(application_features::ApplicationServer& server,
                                          GeneralRequest& req) {
   // get database name from request
@@ -127,7 +102,52 @@ bool resolveRequestContext(application_features::ApplicationServer& server,
   // the "true" means the request is the owner of the context
   return true;
 }
+
+bool queueTimeViolated(GeneralRequest const& req) {
+  // check if the client sent the "x-arango-queue-time-seconds" header
+  bool found = false;
+  std::string const& queueTimeValue = req.header(StaticStrings::XArangoQueueTimeSeconds, found);
+  if (found) {
+    // yes, now parse the sent time value. if the value sent by client cannot be
+    // parsed as a double, then it will be handled as if "0.0" was sent - i.e. no
+    // queuing time restriction
+    double requestedQueueTime = StringUtils::doubleDecimal(queueTimeValue);
+    if (requestedQueueTime > 0.0) {
+      // value is > 0.0, so now check the last dequeue time that the scheduler reported
+      double lastDequeueTime = static_cast<double>(
+          SchedulerFeature::SCHEDULER->getLastLowPriorityDequeueTime()) / 1000.0;
+
+      if (lastDequeueTime > requestedQueueTime) {
+        // the log topic should actually be REQUESTS here, but the default log level
+        // for the REQUESTS log topic is FATAL, so if we logged here in INFO level,
+        // it would effectively be suppressed. thus we are using the Scheduler's
+        // log topic here, which is somewhat related.
+        SchedulerFeature::SCHEDULER->trackQueueTimeViolation();
+        LOG_TOPIC("1bbcc", WARN, Logger::THREADS)
+            << "dropping incoming request because the client-specified maximum queue time requirement ("
+            << requestedQueueTime << "s) would be violated by current queue time (" << lastDequeueTime << "s)";
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 }  // namespace
+
+CommTask::CommTask(GeneralServer& server,
+                   ConnectionInfo info)
+    : _server(server),
+      _connectionInfo(std::move(info)),
+      _connectionStatistics(ConnectionStatistics::acquire()),
+      _auth(AuthenticationFeature::instance()) {
+  TRI_ASSERT(_auth != nullptr);
+  _connectionStatistics.SET_START();
+}
+
+CommTask::~CommTask() {
+  _connectionStatistics.SET_END();
+}
 
 /// Must be called before calling executeRequest, will send an error
 /// response if execution is supposed to be aborted
@@ -311,6 +331,12 @@ void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) 
     // use "IfNotSet" to not overwrite an existing response header
     res.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions, StaticStrings::NoSniff);
   }
+
+  // add "x-arango-queue-time-seconds" header
+  if (_server.server().getFeature<GeneralServerFeature>().returnQueueTimeHeader()) {
+    res.setHeaderNC(StaticStrings::XArangoQueueTimeSeconds, 
+                    std::to_string(static_cast<double>(SchedulerFeature::SCHEDULER->getLastLowPriorityDequeueTime()) / 1000.0));
+  }
 }
 
 /// Push this request into the execution pipeline
@@ -336,8 +362,17 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     LOG_TOPIC("2cece", WARN, Logger::REQUESTS)
         << "could not find corresponding request/response";
   }
-
+  
   rest::ContentType const respType = request->contentTypeResponse();
+
+  // check if "x-arango-queue-time-seconds" header was set, and its value
+  // is above the current dequeing time
+  if (::queueTimeViolated(*request)) {
+    sendErrorResponse(rest::ResponseCode::PRECONDITION_FAILED,
+                      respType, messageId, TRI_ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED);
+    return;
+  }
+
   // create a handler, this takes ownership of request and response
   auto& server = _server.server();
   auto& factory = server.getFeature<GeneralServerFeature>().handlerFactory();
@@ -351,7 +386,6 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                        VPackBuffer<uint8_t>());
     return;
   }
-
   // forward to correct server if necessary
   bool forwarded;
   auto res = handler->forwardRequest(forwarded);
@@ -507,7 +541,7 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       }
     });
   };
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb));
+  bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, std::move(cb));
 
   if (!ok) {
     sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
@@ -542,7 +576,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler), manager(&jobManager)] {
+    return SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, [handler = std::move(handler), manager(&jobManager)] {
       handler->trackQueueEnd();
       handler->trackTaskStart();
 
@@ -553,7 +587,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     });
   } else {
     // here the response will just be ignored
-    return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler)] {
+    return SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, [handler = std::move(handler)] {
       handler->trackQueueEnd();
       handler->trackTaskStart();
       
