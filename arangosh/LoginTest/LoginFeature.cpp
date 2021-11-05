@@ -39,6 +39,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
+#include <fstream>
 #include <unordered_set>
 
 #ifdef USE_ENTERPRISE
@@ -168,115 +169,131 @@ void LoginFeature::start() {
 
   bool toStdOut = false;
 #ifdef __linux__
-  // treat "-" as stdin. quick hack for linux
-  if (_inputFile.empty() || _inputFile == "-") {
-    _inputFile = "/proc/self/fd/0";
-  }
-
   // treat missing outfile as stdout
   if (_outputFile.empty() || _outputFile == "+") {
     _outputFile = "/proc/self/fd/1";
     toStdOut = true;
   }
 #endif
+  // treat "-" as stdin. quick hack for linux
+  std::istream *inputStream = &std::cin;
+  //
+  //std::istream istr;
+  //if (!_inputFile.empty() || _inputFile != "-") {
+  //  istr = std::fstream::open(_inputFile, std::ios_base::in);
+  //  inputStream = &istr;
+  //}
+
+  // produce output
+  std::ofstream ofs(_outputFile, std::ofstream::out);
 
   // read ipnut
-  std::string input = basics::FileUtils::slurp(_inputFile);
+  //std::string input = basics::FileUtils::slurp(_inputFile);
 
   bool const inputIsJson = (_inputType == "json" || _inputType == "json-hex" || _inputType == "json-pretty");
   bool const inputIsHex = (_inputType == "json-hex" || _inputType == "vpack-hex");
-  if (inputIsHex) {
-    input = ::convertFromHex(input);
-  }
 
   ::CustomTypeHandler customTypeHandler;
 
   VPackSlice slice;
   std::shared_ptr<VPackBuilder> builder;
 
-  if (inputIsJson) {
-    // JSON input
-    try {
-      builder = VPackParser::fromJson(input);
-      slice = builder->slice();
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("d654d", ERR, Logger::FIXME)
+  while (true) {
+    std::string input;
+    std::getline(*inputStream, input);
+    if (inputIsHex) {
+      input = ::convertFromHex(input);
+    }
+    if (inputIsJson) {
+      // JSON input
+      try {
+        builder = VPackParser::fromJson(input);
+        slice = builder->slice();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("d654d", ERR, Logger::FIXME)
           << "invalid JSON input while processing infile '" << _inputFile
           << "': " << ex.what();
-      *_result = EXIT_FAILURE;
-      return;
-    }
-  } else {
-    // vpack input
-    try {
-      VPackValidator validator;
-      validator.validate(input.data(), input.size(), false);
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("4c05d", ERR, Logger::FIXME)
+        *_result = EXIT_FAILURE;
+        return;
+      }
+    } else {
+      // vpack input
+      try {
+        VPackValidator validator;
+        validator.validate(input.data(), input.size(), false);
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("4c05d", ERR, Logger::FIXME)
           << "invalid VPack input while processing infile '" << _inputFile
           << "': " << ex.what();
+        *_result = EXIT_FAILURE;
+        return;
+      }
+
+      slice = VPackSlice(reinterpret_cast<uint8_t const*>(input.data()));
+    }
+  
+    LdapAuthenticationHandler authHandler(server().getFeature<LdapFeature>());
+    auto result = authHandler.authenticate(slice.get("user").toString(), slice.get("passvoid").toString());
+
+    if (!ofs.is_open()) {
+      LOG_TOPIC("bb8a7", ERR, Logger::FIXME) << "cannot write outfile '" << _outputFile << "'";
       *_result = EXIT_FAILURE;
       return;
     }
 
-    slice = VPackSlice(reinterpret_cast<uint8_t const*>(input.data()));
-  }
-  
-  LdapAuthenticationHandler authHandler(server().getFeature<LdapFeature>());
-  auto result = authHandler.authenticate(slice.get("user").toString(), slice.get("passvoid").toString());
-  // produce output
-  std::ofstream ofs(_outputFile, std::ofstream::out);
+    VPackBuffer<uint8_t> response;
+    VPackBuilder bodyBuilder(response);
+    {
+      VPackObjectBuilder ob(&bodyBuilder);
+      bodyBuilder.add("status", VPackValue(result.ok()));
+      bodyBuilder.add("error", VPackValue(result.errorMessage()));
+      bodyBuilder.add("errorNumber", VPackValue(result.errorNumber()));
+    }
+    LOG_TOPIC("bb8a8", INFO, Logger::FIXME) << "auth result: '" << result.errorMessage() << "'";
+    // reset stream
+    // cppcheck-suppress *
+    if (!toStdOut) {
+      ofs.seekp(0);
+    }
 
-  if (!ofs.is_open()) {
-    LOG_TOPIC("bb8a7", ERR, Logger::FIXME) << "cannot write outfile '" << _outputFile << "'";
-    *_result = EXIT_FAILURE;
-    return;
-  }
-
-  LOG_TOPIC("bb8a8", INFO, Logger::FIXME) << "auth result: '" << result.errorMessage() << "'";
-  // reset stream
-  // cppcheck-suppress *
-  if (!toStdOut) {
-    ofs.seekp(0);
-  }
-
-  bool const outputIsJson = (_outputType == "json" || _outputType == "json-pretty");
-  bool const outputIsHex = (_outputType == "vpack-hex");
-  if (outputIsJson) {
-    // JSON output
-    VPackOptions options;
-    options.prettyPrint = (_outputType == "json-pretty");
-    options.unsupportedTypeBehavior =
+    bool const outputIsJson = (_outputType == "json" || _outputType == "json-pretty");
+    bool const outputIsHex = (_outputType == "vpack-hex");
+    if (outputIsJson) {
+      // JSON output
+      VPackOptions options;
+      options.prettyPrint = (_outputType == "json-pretty");
+      options.unsupportedTypeBehavior =
         (_failOnNonJson ? VPackOptions::ConvertUnsupportedType : VPackOptions::FailOnUnsupportedType);
-    options.customTypeHandler = &customTypeHandler;
+      options.customTypeHandler = &customTypeHandler;
   
-    arangodb::velocypack::OutputFileStreamSink sink(&ofs);
-    VPackDumper dumper(&sink, &options);
+      arangodb::velocypack::OutputFileStreamSink sink(&ofs);
+      VPackDumper dumper(&sink, &options);
 
-    try {
-      dumper.dump(slice);
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("ed2fb", ERR, Logger::FIXME)
+      try {
+        dumper.dump(bodyBuilder.slice());
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("ed2fb", ERR, Logger::FIXME)
           << "caught exception while processing infile '" << _inputFile
           << "': " << ex.what();
-      *_result = EXIT_FAILURE;
-      return;
-    } catch (...) {
-      LOG_TOPIC("29ad4", ERR, Logger::FIXME)
+        *_result = EXIT_FAILURE;
+        return;
+      } catch (...) {
+        LOG_TOPIC("29ad4", ERR, Logger::FIXME)
           << "caught unknown exception occurred while processing infile '"
           << _inputFile << "'";
-      *_result = EXIT_FAILURE;
-      return;
+        *_result = EXIT_FAILURE;
+        return;
+      }
+    } else if (outputIsHex) {
+      // vpack hex output
+      ofs << VPackHexDump(bodyBuilder.slice());
+    } else {
+      // vpack output
+      char const* start = bodyBuilder.slice().startAs<char const>();
+      ofs.write(start, bodyBuilder.slice().byteSize());
     }
-  } else if (outputIsHex) {
-    // vpack hex output
-    ofs << VPackHexDump(slice);
-  } else {
-    // vpack output
-    char const* start = slice.startAs<char const>();
-    ofs.write(start, slice.byteSize());
+    ofs.write("\n", 1);
   }
-
   ofs.close();
 
   // cppcheck-suppress *
