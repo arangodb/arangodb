@@ -183,7 +183,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   std::unique_ptr<rocksdb::Iterator> _iter;
   RocksDBZkdIndexBase* _index = nullptr;
 
-  size_t _lookahead;
+  const size_t _lookahead;
 
   std::vector<zkd::CompareResult> _compareResult;
 };

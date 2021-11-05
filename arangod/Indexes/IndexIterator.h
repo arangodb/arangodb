@@ -287,7 +287,7 @@ struct IndexIteratorOptions {
   bool enableCache = true;
   /// @brief number of lookahead elements considered before computing the next
   /// intersection of the Z-curve with the search range
-  size_t lookahead = 2;
+  size_t lookahead = 1;
 };
   
 /// index estimate map, defined here because it was convenient
