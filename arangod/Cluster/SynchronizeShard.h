@@ -95,6 +95,8 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   /// @brief information about the leader, reused across multiple replication steps
   arangodb::replutils::LeaderInfo _leaderInfo;
   uint64_t _followingTermId;
+
+  bool _doNotIncrement = false;
 };
 
 }  // namespace maintenance

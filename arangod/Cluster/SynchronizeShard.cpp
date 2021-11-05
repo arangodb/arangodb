@@ -1408,8 +1408,17 @@ void SynchronizeShard::setState(ActionState state) {
       _feature.removeReplicationError(getDatabase(), getShard());
     } else {
       TRI_ASSERT(FAILED == state);
-      // increase failure counter for this shard
-      _feature.storeReplicationError(getDatabase(), getShard());
+      if (result().errorNumber() == TRI_ERROR_ACTION_UNFINISHED) {
+        // This has happened if we aborted the action because we assumed
+        // that it would take too long. In this case it has been rescheduled
+        // and thus we must not increase the shard version, otherwise the
+        // same action would be rediscovered and potentially executed
+        // concurrently! We also do not report the error in the agency.
+        _doNotIncrement = true;
+      } else {
+        // increase failure counter for this shard
+        _feature.storeReplicationError(getDatabase(), getShard());
+      }
     }
 
     // Acquire current version from agency and wait for it to have been dealt
@@ -1455,7 +1464,9 @@ void SynchronizeShard::setState(ActionState state) {
     if ( v > 0) {
       _feature.server().getFeature<ClusterFeature>().clusterInfo().waitForCurrentVersion(v).wait();
     }
-    _feature.incShardVersion(getShard());
+    if (!_doNotIncrement) {
+      _feature.incShardVersion(getShard());
+    }
   }
   ActionBase::setState(state);
 }
