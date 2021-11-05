@@ -40,8 +40,16 @@
 #include <queue>
 
 namespace arangodb {
+class LogicalCollection;
 namespace maintenance {
 enum ActionState;
+
+
+// The following is used in multiple Maintenance actions and therefore
+// made available here.
+arangodb::Result collectionCount(arangodb::LogicalCollection const& collection,
+                                 uint64_t& c);
+
 }
 
 template <typename T>
@@ -150,6 +158,13 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// @brief check if a database is dirty
   bool isDirty(std::string const& dbName) const;
+
+  /// @brief Requeue an action with a new priority. This will clone the
+  /// action to create a new action object with a different priority.
+  /// It is only allowed to requeue actions which are in states
+  /// ActionState::COMPLETE or ActionState::FAILED!
+  Result requeueAction(std::shared_ptr<maintenance::Action>& action,
+                       int newPriority);
 
  protected:
   std::shared_ptr<maintenance::Action> createAction(

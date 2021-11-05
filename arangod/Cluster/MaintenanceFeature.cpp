@@ -50,6 +50,9 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Random/RandomGenerator.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -104,6 +107,39 @@ bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
 }
 
 }  // namespace
+
+arangodb::Result arangodb::maintenance::collectionCount(arangodb::LogicalCollection const& collection,
+                                                        uint64_t& c) {
+  std::string collectionName(collection.name());
+  transaction::StandaloneContext ctx(collection.vocbase());
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(), &ctx),
+    collectionName, AccessMode::Type::READ);
+
+  Result res = trx.begin();
+  if (res.fail()) {
+    LOG_TOPIC("5be16", ERR, Logger::MAINTENANCE) << "Failed to start count transaction: " << res;
+    return res;
+  }
+
+  OperationOptions options(ExecContext::current());
+  OperationResult opResult =
+      trx.count(collectionName, arangodb::transaction::CountType::Normal, options);
+  res = trx.finish(opResult.result);
+
+  if (res.fail()) {
+    LOG_TOPIC("26ed2", ERR, Logger::MAINTENANCE)
+        << "Failed to finish count transaction: " << res;
+    return res;
+  }
+
+  VPackSlice s = opResult.slice();
+  TRI_ASSERT(s.isNumber());
+  c = s.getNumber<uint64_t>();
+
+  return opResult.result;
+}
 
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Maintenance"),
@@ -1149,4 +1185,14 @@ MaintenanceFeature::ShardActionMap MaintenanceFeature::getShardLocks() const {
   LOG_TOPIC("aaed4", DEBUG, Logger::MAINTENANCE) << "Copy of shard action map taken.";
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
   return _shardActionMap;
+}
+
+Result MaintenanceFeature::requeueAction(std::shared_ptr<maintenance::Action>& action,
+    int newPriority) {
+  TRI_ASSERT(action->getState() == ActionState::COMPLETE ||
+             action->getState() == ActionState::FAILED);
+  auto newAction = std::make_shared<maintenance::Action>(*this, action->describe());
+  newAction->setPriority(newPriority);
+  registerAction(newAction, false);
+  return {};
 }

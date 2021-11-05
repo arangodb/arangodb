@@ -30,10 +30,12 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
 #include "Network/Methods.h"
@@ -217,39 +219,6 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   return res;
 }
 
-static arangodb::Result collectionCount(arangodb::LogicalCollection const& collection,
-                                        uint64_t& c) {
-  std::string collectionName(collection.name());
-  transaction::StandaloneContext ctx(collection.vocbase());
-  SingleCollectionTransaction trx(
-    std::shared_ptr<transaction::Context>(
-      std::shared_ptr<transaction::Context>(), &ctx),
-    collectionName, AccessMode::Type::READ);
-
-  Result res = trx.begin();
-  if (res.fail()) {
-    LOG_TOPIC("5be16", ERR, Logger::MAINTENANCE) << "Failed to start count transaction: " << res;
-    return res;
-  }
-
-  OperationOptions options(ExecContext::current());
-  OperationResult opResult =
-      trx.count(collectionName, arangodb::transaction::CountType::Normal, options);
-  res = trx.finish(opResult.result);
-
-  if (res.fail()) {
-    LOG_TOPIC("26ed2", ERR, Logger::MAINTENANCE)
-        << "Failed to finish count transaction: " << res;
-    return res;
-  }
-
-  VPackSlice s = opResult.slice();
-  TRI_ASSERT(s.isNumber());
-  c = s.getNumber<uint64_t>();
-
-  return opResult.result;
-}
-
 arangodb::Result collectionReCount(LogicalCollection& collection,
                                    uint64_t& c) {
   Result res;
@@ -291,7 +260,7 @@ static arangodb::Result addShardFollower(
     }
 
     uint64_t docCount;
-    Result res = collectionCount(*collection, docCount);
+    Result res = arangodb::maintenance::collectionCount(*collection, docCount);
     if (res.fail()) {
        return res;
     }
@@ -424,6 +393,38 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
 
   LOG_TOPIC("4355c", DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
   return arangodb::Result();
+}
+
+arangodb::Result SynchronizeShard::collectionCountOnLeader(std::string const& leaderEndpoint,
+    uint64_t& docCountOnLeader) {
+  NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  network::RequestOptions options;
+  options.database = getDatabase();
+  options.timeout = network::Timeout(60);
+  options.skipScheduler = true; // hack to speed up future.get()
+  
+  auto response = network::sendRequest(pool, leaderEndpoint,
+                                  fuerte::RestVerb::Get,
+                                  "/_api/collection/" + getShard() + "/count",
+                                  VPackBuffer<uint8_t>(), options)
+                 .get();
+  auto res = response.combinedResult();
+  if (res.fail()) {
+    docCountOnLeader = 0;
+    return res;
+  }
+  VPackSlice body = response.slice();
+  TRI_ASSERT(body.isObject());
+  TRI_ASSERT(body.hasKey("count"));
+  VPackSlice count = body.get("count");
+  TRI_ASSERT(count.isNumber());
+  try {
+    docCountOnLeader = count.getNumber<uint64_t>();
+  } catch(std::exception const& exc) {
+    return {TRI_ERROR_INTERNAL, exc.what()};
+  }
+  return {};
 }
 
 arangodb::Result SynchronizeShard::getReadLock(
@@ -865,12 +866,32 @@ bool SynchronizeShard::first() {
     }
 
     auto ep = clusterInfo.getServerEndpoint(leader);
+    uint64_t docCountOnLeader = 0;
+    if (!collectionCountOnLeader(ep, docCountOnLeader).ok()) {
+      std::stringstream error;
+      error << "failed to get a count on leader " << database << "/" << shard;
+      LOG_TOPIC("1254a", ERR, Logger::MAINTENANCE) << "SynchronizeShard " << error.str();
+      result(TRI_ERROR_INTERNAL, error.str());
+      return false;
+    }
+
     uint64_t docCount = 0;
     if (!collectionCount(*collection, docCount).ok()) {
       std::stringstream error;
-      error << "failed to get a count on leader " << database << "/" << shard;
+      error << "failed to get a count here " << database << "/" << shard;
       LOG_TOPIC("da225", ERR, Logger::MAINTENANCE) << "SynchronizeShard " << error.str();
       result(TRI_ERROR_INTERNAL, error.str());
+      return false;
+    }
+
+    if (_priority != maintenance::SLOW_OP_PRIORITY &&
+        docCount != docCountOnLeader &&
+        ((docCount < docCountOnLeader && docCountOnLeader - docCount > 10000) ||
+         (docCount > docCountOnLeader && docCount - docCountOnLeader > 10000))) {
+      // This could be a larger job, let's reschedule ourselves with
+      // priority SLOW_OP_PRIORITY:
+      pleaseRequeueMe(maintenance::SLOW_OP_PRIORITY);
+      result(TRI_ERROR_ACTION_UNFINISHED, "SynchronizeShard action rescheduled to slow operation priority");
       return false;
     }
 

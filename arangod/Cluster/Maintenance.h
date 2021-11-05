@@ -53,6 +53,13 @@ constexpr int RESIGN_PRIORITY = 3;
 // For non fast track:
 constexpr int INDEX_PRIORITY = 2;
 constexpr int SYNCHRONIZE_PRIORITY = 1;
+constexpr int SLOW_OP_PRIORITY = 0;
+  // for jobs which know they are slow, this works as follows: a job starts
+  // with some priority, if it notices along the way that it is too slow
+  // (like a large index generation or a large synchronize shard op), then
+  // it aborts itself and reschedules itself with SLOW_OP_PRIORITY to let
+  // other, shorter, more urgent jobs move forward. There is always one
+  // maintenance thread which does not execute SLOW_OP_PRIORITY jobs.
 
 using Transactions = std::vector<std::pair<VPackBuilder, VPackBuilder>>;
 // database -> LogId -> LogStatus

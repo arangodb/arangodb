@@ -173,7 +173,12 @@ void MaintenanceWorker::nextState(bool actionMore) {
     // finish the current action
     if (_curAction) {
       _lastResult = _curAction->result();
-      _curAction->endStats();
+      if (_curAction->requeueRequested()) {
+        LOG_TOPIC("a4352", DEBUG, Logger::MAINTENANCE)
+          << "Requeueing action " << *_curAction << " with new priority "
+          << _curAction->requeuePriority();
+        _feature.requeueAction(_curAction, _curAction->requeuePriority());
+      }
 
       bool ok = _curAction->result().ok() && FAILED != _curAction->getState();
       recordJobStats(/*failed*/ !ok);
