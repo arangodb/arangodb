@@ -1194,6 +1194,7 @@ Result MaintenanceFeature::requeueAction(std::shared_ptr<maintenance::Action>& a
              action->getState() == ActionState::FAILED);
   auto newAction = std::make_shared<maintenance::Action>(*this, action->describe());
   newAction->setPriority(newPriority);
+  WRITE_LOCKER(wLock, _actionRegistryLock);
   registerAction(newAction, false);
   return {};
 }
