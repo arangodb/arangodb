@@ -81,7 +81,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   typedef std::map<ShardID, std::shared_ptr<maintenance::ActionDescription>> ShardActionMap;
 
   /// @brief Lowest limit for worker threads
-  static constexpr uint32_t const minThreadLimit = 2;
+  static constexpr uint32_t const minThreadLimit = 3;
 
   /// @brief Highest limit for worker threads
   static constexpr uint32_t const maxThreadLimit = 64;
@@ -191,6 +191,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// @brief Return pointer to next ready action, or nullptr
   std::shared_ptr<maintenance::Action> findReadyAction(
+      int minimalPriorityAllowed,
       std::unordered_set<std::string> const& options = std::unordered_set<std::string>());
 
   /// @brief Process specific ID for a new action

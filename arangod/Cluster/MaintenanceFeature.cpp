@@ -25,6 +25,7 @@
 #include <set>
 #include <random>
 
+#include "Cluster/Maintenance.h"
 #include "MaintenanceFeature.h"
 
 #include "Agency/AgencyComm.h"
@@ -293,8 +294,12 @@ void MaintenanceFeature::start() {
     if (loop == 0) {
       labels.emplace(ActionBase::FAST_TRACK);
     }
+    // The first two workers are not allowed to execute SLOW_OP_PRIORITY,
+    // all the others may:
+    int minPrio = (loop < 2) ? maintenance::NORMAL_PRIORITY 
+                             : maintenance::SLOW_OP_PRIORITY;
 
-    auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this, labels);
+    auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this, minPrio, labels);
 
     if (!newWorker->start(&_workerCompletion)) {
       LOG_TOPIC("4d8b8", ERR, Logger::MAINTENANCE)
@@ -660,7 +665,7 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
   return std::shared_ptr<Action>();
 }
 
-std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<std::string> const& labels) {
+std::shared_ptr<Action> MaintenanceFeature::findReadyAction(int minimalPriorityAllowed, std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
 
   while (!_isShuttingDown) {
@@ -676,14 +681,16 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
           _prioQueue.pop();
           continue;
         }
-        if (top->matches(labels)) {
+        if (top->matches(labels) && top->priority() >= minimalPriorityAllowed) {
           ret_ptr = top;
           _prioQueue.pop();
           return ret_ptr;
         }
         // We are not interested, this can only mean that we are fast track
-        // and the top action is not. Therefore, the whole queue does not
-        // contain any fast track, so we can idle.
+        // and the top action is not, or that the top action has a smaller
+        // priority than our minimalPriority. Therefore, the whole queue
+        // does not contain any fast track or high enough prio, so we can
+        // idle.
         break;
       }
 
