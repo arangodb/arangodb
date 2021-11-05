@@ -355,11 +355,15 @@ struct CommitFailReason {
     static auto fromVelocyPack(velocypack::Slice) -> QuorumSizeNotReached;
     void toVelocyPack(velocypack::Builder& builder) const;
   };
-  // later -- forced server not part of quorum
-  std::variant<NothingToCommit, QuorumSizeNotReached> value;
+  struct ForcedParticipantNotInQuorum {
+    static auto fromVelocyPack(velocypack::Slice) -> ForcedParticipantNotInQuorum;
+    void toVelocyPack(velocypack::Builder& builder) const;
+  };
+  std::variant<NothingToCommit, QuorumSizeNotReached, ForcedParticipantNotInQuorum> value;
 
   static auto withNothingToCommit() noexcept -> CommitFailReason;
   static auto withQuorumSizeNotReached() noexcept -> CommitFailReason;
+  static auto withForcedParticipantNotInQuorum() noexcept -> CommitFailReason;
 
   static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;
   void toVelocyPack(velocypack::Builder& builder) const;
