@@ -7,6 +7,9 @@ devel
 * Fixed SEARCH-260: Fix invalid sorting order of stored features in presence of
   primary sort (ArangoSearch).
 
+* APM-187: The "Rebalance Shards" button now is displayed in a new tab, and it
+  is displayed for any database in cluster mode. There is also a new flag for
+  arangod, `--cluster.max-number-of-move-shards` (default = 10), which limits
   the amount of move shards operations each time the button is clicked to 
   rebalance shards. When the button is clicked, the number of move shards 
   operations scheduled is shown, or that no operation was scheduled if the flag 
