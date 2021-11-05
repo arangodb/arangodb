@@ -522,7 +522,7 @@ TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
   for (size_t i = 0; i < 9; ++i) {
     auto [state, skipped, block] = testee.execute(callStack);
     // We will always get 3 rows
-    ASSERT_EQ(block->numRows(), 3);
+    ASSERT_EQ(block->size(), 3);
     // Two of them Shadows
     ASSERT_EQ(block->numShadowRows(), 2);
 
