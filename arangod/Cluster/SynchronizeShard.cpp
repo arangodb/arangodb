@@ -1395,9 +1395,18 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
 void SynchronizeShard::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
+    bool haveRequeued =
+      result().errorNumber() == TRI_ERROR_ACTION_UNFINISHED;
+    // This error happens if we abort the action because we assumed
+    // that it would take too long. In this case it has been rescheduled
+    // and we must not unlock the shard!
+    // We also do not report the error in the agency.
+
     // by all means we must unlock when we leave this scope
-    auto shardUnlocker = scopeGuard([this]() noexcept {
-      _feature.unlockShard(getShard());
+    auto shardUnlocker = scopeGuard([this, haveRequeued]() noexcept {
+      if (!haveRequeued) {
+        _feature.unlockShard(getShard());
+      }
     });
 
     if (COMPLETE == state) {
@@ -1408,14 +1417,7 @@ void SynchronizeShard::setState(ActionState state) {
       _feature.removeReplicationError(getDatabase(), getShard());
     } else {
       TRI_ASSERT(FAILED == state);
-      if (result().errorNumber() == TRI_ERROR_ACTION_UNFINISHED) {
-        // This has happened if we aborted the action because we assumed
-        // that it would take too long. In this case it has been rescheduled
-        // and thus we must not increase the shard version, otherwise the
-        // same action would be rediscovered and potentially executed
-        // concurrently! We also do not report the error in the agency.
-        _doNotIncrement = true;
-      } else {
+      if (!haveRequeued) {
         // increase failure counter for this shard
         _feature.storeReplicationError(getDatabase(), getShard());
       }
@@ -1464,9 +1466,7 @@ void SynchronizeShard::setState(ActionState state) {
     if ( v > 0) {
       _feature.server().getFeature<ClusterFeature>().clusterInfo().waitForCurrentVersion(v).wait();
     }
-    if (!_doNotIncrement) {
-      _feature.incShardVersion(getShard());
-    }
+    _feature.incShardVersion(getShard());
   }
   ActionBase::setState(state);
 }
