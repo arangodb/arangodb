@@ -73,6 +73,8 @@ void MaintenanceWorker::run() {
                 _curAction->setState(EXECUTING);
               }
               _curAction->startStats();
+              LOG_TOPIC("fe241", DEBUG, Logger::MAINTENANCE)
+                << "Maintenance: starting to execute action: " << *_curAction;
               more = _curAction->first();
               break;
 
