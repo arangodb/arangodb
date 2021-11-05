@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed potential undefined behavior in edge cache during cache migration tasks.
+  There was a short window of time in which an already freed Table could be
+  used by concurrently running edge lookups.
+
 * Fixed SEARCH-261: Fix possible race between file creation and directory
   cleaner (ArangoSearch).
 
