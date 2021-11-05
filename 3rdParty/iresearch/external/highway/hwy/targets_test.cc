@@ -16,9 +16,6 @@
 
 #include "hwy/tests/test_util-inl.h"
 
-// Currently requires gTest.
-#if !HWY_TEST_STANDALONE
-
 namespace fake {
 
 #define DECLARE_FUNCTION(TGT)                        \
@@ -26,10 +23,14 @@ namespace fake {
     uint32_t FakeFunction(int) { return HWY_##TGT; } \
   }
 
+DECLARE_FUNCTION(AVX3_DL)
 DECLARE_FUNCTION(AVX3)
 DECLARE_FUNCTION(AVX2)
 DECLARE_FUNCTION(SSE4)
+DECLARE_FUNCTION(SSSE3)
 DECLARE_FUNCTION(NEON)
+DECLARE_FUNCTION(SVE)
+DECLARE_FUNCTION(SVE2)
 DECLARE_FUNCTION(PPC8)
 DECLARE_FUNCTION(WASM)
 DECLARE_FUNCTION(RVV)
@@ -38,24 +39,28 @@ DECLARE_FUNCTION(SCALAR)
 HWY_EXPORT(FakeFunction);
 
 void CheckFakeFunction() {
-#define CHECK_ARRAY_ENTRY(TGT)                                          \
-  if ((HWY_TARGETS & HWY_##TGT) != 0) {                                 \
-    hwy::SetSupportedTargetsForTest(HWY_##TGT);                         \
-    /* Calling Update() first to make &HWY_DYNAMIC_DISPATCH() return */ \
-    /* the pointer to the already cached function. */                   \
-    hwy::chosen_target.Update();                                        \
-    EXPECT_EQ(HWY_##TGT, HWY_DYNAMIC_DISPATCH(FakeFunction)(42));       \
-    /* Calling DeInit() will test that the initializer function */      \
-    /* also calls the right function. */                                \
-    hwy::chosen_target.DeInit();                                        \
-    EXPECT_EQ(HWY_##TGT, HWY_DYNAMIC_DISPATCH(FakeFunction)(42));       \
-    /* Second call uses the cached value from the previous call. */     \
-    EXPECT_EQ(HWY_##TGT, HWY_DYNAMIC_DISPATCH(FakeFunction)(42));       \
+#define CHECK_ARRAY_ENTRY(TGT)                                              \
+  if ((HWY_TARGETS & HWY_##TGT) != 0) {                                     \
+    hwy::SetSupportedTargetsForTest(HWY_##TGT);                             \
+    /* Calling Update() first to make &HWY_DYNAMIC_DISPATCH() return */     \
+    /* the pointer to the already cached function. */                       \
+    hwy::chosen_target.Update();                                            \
+    EXPECT_EQ(uint32_t(HWY_##TGT), HWY_DYNAMIC_DISPATCH(FakeFunction)(42)); \
+    /* Calling DeInit() will test that the initializer function */          \
+    /* also calls the right function. */                                    \
+    hwy::chosen_target.DeInit();                                            \
+    EXPECT_EQ(uint32_t(HWY_##TGT), HWY_DYNAMIC_DISPATCH(FakeFunction)(42)); \
+    /* Second call uses the cached value from the previous call. */         \
+    EXPECT_EQ(uint32_t(HWY_##TGT), HWY_DYNAMIC_DISPATCH(FakeFunction)(42)); \
   }
+  CHECK_ARRAY_ENTRY(AVX3_DL)
   CHECK_ARRAY_ENTRY(AVX3)
   CHECK_ARRAY_ENTRY(AVX2)
   CHECK_ARRAY_ENTRY(SSE4)
+  CHECK_ARRAY_ENTRY(SSSE3)
   CHECK_ARRAY_ENTRY(NEON)
+  CHECK_ARRAY_ENTRY(SVE)
+  CHECK_ARRAY_ENTRY(SVE2)
   CHECK_ARRAY_ENTRY(PPC8)
   CHECK_ARRAY_ENTRY(WASM)
   CHECK_ARRAY_ENTRY(RVV)
@@ -87,14 +92,14 @@ TEST_F(HwyTargetsTest, DisabledTargetsTest) {
 
   DisableTargets(0);  // Reset the mask.
   uint32_t current_targets = SupportedTargets();
-  if ((current_targets & ~HWY_ENABLED_BASELINE) == 0) {
+  if ((current_targets & ~uint32_t(HWY_ENABLED_BASELINE)) == 0) {
     // We can't test anything else if the only compiled target is the baseline.
     return;
   }
   // Get the lowest bit in the mask (the best target) and disable that one.
   uint32_t lowest_target = current_targets & (~current_targets + 1);
   // The lowest target shouldn't be one in the baseline.
-  HWY_ASSERT((lowest_target & ~HWY_ENABLED_BASELINE) != 0);
+  HWY_ASSERT((lowest_target & ~uint32_t(HWY_ENABLED_BASELINE)) != 0);
   DisableTargets(lowest_target);
 
   // Check that the other targets are still enabled.
@@ -104,4 +109,8 @@ TEST_F(HwyTargetsTest, DisabledTargetsTest) {
 
 }  // namespace hwy
 
-#endif  // HWY_TEST_STANDALONE
+// Ought not to be necessary, but without this, no tests run on RVV.
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

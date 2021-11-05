@@ -21,6 +21,11 @@ attribute after which the documents count as expired. Can be set to `0` to let
 documents expire as soon as the server time passes the point in time stored in
 the document attribute, or to a higher number to delay the expiration.
 
+@RESTBODYPARAM{inBackground,boolean,optional,}
+The optional attribute **inBackground** can be set to *true* to create the index
+in the background, which will not write-lock the underlying collection for
+as long as if the index is built in the foreground. The default value is *false*.
+
 @RESTDESCRIPTION
 Creates a TTL index for the collection *collection-name* if it
 does not already exist. The call expects an object containing the index

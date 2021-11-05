@@ -167,7 +167,7 @@ class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
 
   virtual int_type underflow() override;
 
-  operator index_input&() { return *in_; }
+  operator index_input&() { return *in_; } // cppcheck-suppress syntaxError
 
   index_input* internal() const { return in_; }
 

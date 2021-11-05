@@ -28,6 +28,8 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
+#include "Replication2/Mocks/FakeFollower.h"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -35,47 +37,6 @@ using namespace arangodb::replication2::test;
 
 struct LeaderAppendEntriesTest : ReplicatedLogTest {};
 
-struct FakeFollower : AbstractFollower {
-  FakeFollower(ParticipantId id) : participantId(std::move(id)) {}
-
-  [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override {
-    return participantId;
-  };
-
-  virtual auto appendEntries(AppendEntriesRequest request)
-      -> futures::Future<AppendEntriesResult> override {
-    return requests.emplace_back(std::move(request)).promise.getFuture();
-  }
-
-  void resolveRequest(AppendEntriesResult result) {
-    requests.front().promise.setValue(std::move(result));
-    requests.pop_front();
-  }
-
-  template<typename E>
-  void resolveRequestWithException(E&& e) {
-    requests.front().promise.setException(std::forward<E>(e));
-    requests.pop_front();
-  }
-
-  auto currentRequest() const -> AppendEntriesRequest const& {
-    return requests.front().request;
-  }
-
-  auto hasPendingRequests() const -> bool {
-    return !requests.empty();
-  }
-
-  struct AsyncRequest {
-    explicit AsyncRequest(AppendEntriesRequest request)
-        : request(std::move(request)) {}
-    AppendEntriesRequest request;
-    futures::Promise<AppendEntriesResult> promise;
-  };
-
-  std::deque<AsyncRequest> requests;
-  ParticipantId participantId;
-};
 
 TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
   auto leaderLog = makeReplicatedLog(LogId{1});
@@ -244,6 +205,24 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
   auto follower = std::make_shared<FakeFollower>("follower");
   auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
 
+  // The first entry written by the leader has always set the waitForSync flag
+  leader->triggerAsyncReplication();
+  ASSERT_TRUE(follower->hasPendingRequests());
+  {
+    auto req = follower->currentRequest();
+    EXPECT_EQ(req.messageId, MessageId{1});
+    // Note that the leader inserts an empty log entry in becomeLeader already
+    EXPECT_EQ(req.entries.size(), 1);
+    EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
+    EXPECT_EQ(req.leaderTerm, LogTerm{4});
+    EXPECT_EQ(req.leaderCommit, LogIndex{0});
+    EXPECT_TRUE(req.waitForSync);
+  }
+
+  follower->handleAllRequestsWithOk();
+
   auto const firstIdx =
       leader->insert(LogPayload::createFromString("first entry"), false,
           LogLeader::doNotTriggerAsyncReplication);
@@ -254,14 +233,14 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{1});
+    EXPECT_EQ(req.messageId, MessageId{4});
     // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 2);
+    EXPECT_EQ(req.entries.size(), 1);
     EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
-    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
-    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{1});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
-    EXPECT_EQ(req.leaderCommit, LogIndex{0});
+    EXPECT_EQ(req.leaderCommit, LogIndex{1});
     EXPECT_FALSE(req.waitForSync);
   }
 }

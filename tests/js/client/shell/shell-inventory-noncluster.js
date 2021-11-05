@@ -323,7 +323,7 @@ function inventorySuite () {
         a = link.analyzerDefinitions[2];
         assertEqual("text_en", a.name);
         assertEqual("text", a.type);
-        assertEqual({locale: "en.utf-8", case: "lower", stopwords: [], accent: false, stemming: true}, a.properties);
+        assertEqual({locale: "en", case: "lower", stopwords: [], accent: false, stemming: true}, a.properties);
         assertEqual(["frequency", "norm", "position"], a.features.sort());
 
         view = results.views[1];

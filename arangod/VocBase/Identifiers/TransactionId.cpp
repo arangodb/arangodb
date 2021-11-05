@@ -62,4 +62,12 @@ TransactionId TransactionId::createLegacy() {
   return TransactionId(TRI_NewServerSpecificTickMod4() + 3);
 }
 
+TransactionId TransactionId::createLeader() {
+  return TransactionId(TRI_NewServerSpecificTickMod4() + 1);
+}
+
+TransactionId TransactionId::createFollower() {
+  return TransactionId(TRI_NewServerSpecificTickMod4() + 2);
+}
+
 }  // namespace arangodb

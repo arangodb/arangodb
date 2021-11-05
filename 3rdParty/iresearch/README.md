@@ -10,7 +10,7 @@
 -->
 
 # IResearch search engine
-### Version 1.1
+### Version 1.2
 
 ## Table of contents
 - [Overview](#overview)
@@ -100,32 +100,7 @@ versions/revisions of data in the said directory.
 v3.2 or later
 
 ### [Boost](http://www.boost.org/doc/libs/1_57_0/more/getting_started/index.html)
-v1.57.0 or later (locale system thread)
-
-#### install (*nix)
-> It looks like it is important to pass arguments to the bootstrap script in one 
-> line
-
-```bash
-./bootstrap.sh --with-libraries=locale,system,regex,thread
-./b2
-```
-
-#### install (MacOS)
-> Do not link Boost against 'iconv' because on MacOS it causes problems when
-> linking against Boost locale. Unfortunately this requires linking against ICU.
-
-```bash
-./bootstrap.sh --with-libraries=locale,system,regex,thread
-./b2 -sICU_PATH="${ICU_ROOT}" boost.locale.iconv=off boost.locale.icu=on
-```
-
-#### install (win32)
-```bash
-bootstrap.bat --with-libraries=test
-bootstrap.bat --with-libraries=thread
-b2 --build-type=complete stage address-model=64
-```
+v1.57.0 or later (headers only)
 
 #### set environment
 ```bash
@@ -405,14 +380,6 @@ PATH enviroment variable, manual adjustment may be needed.
 #### (*nix) install notes:
 Shared version of libiresearch is used. Install IResearch before running Pyresearch.
 
-## Included 3rd party dependencies
-Code for all included 3rd party dependencies is located in the "external" directory.
-#### [MurMurHash](https://sites.google.com/site/murmurhash)
-used for fast computation of hashes for byte arrays
-#### [OpenFST](http://www.openfst.org/twiki/bin/view/FST/WebHome)
-used to generate very compact term dictionary prefix tries which can to be loaded
-in memory even for huge dictionaries
-
 ## External 3rd party dependencies
 External 3rd party dependencies must be made available to the IResearch library separately.
 They may either be installed through the distribution package management system or build
@@ -430,11 +397,10 @@ v2.4 or later
 used for compilation of the IQL (index query language) grammar
 
 ### [ICU](http://site.icu-project.org/download)
-used by locale_utils as a back-end for locale facets
-used by analysis::text_analyzer for parsing, transforming and tokenising string data
+used by analyzers for parsing, transforming and tokenising string data
 
 ### [Snowball](http://snowball.tartarus.org)
-used by analysis::text_analyzer for computing word stems (i.e. roots) for more flexible matching
+used by analyzers for computing word stems (i.e. roots) for more flexible matching
 matching of words from languages not supported by 'snowball' are done verbatim
 
 ### [Google Test](https://code.google.com/p/googletest)
@@ -582,9 +548,9 @@ The following grammar is currently defined via Bison (the root is <query>):
 
 ## Supported compilers
 
-- GCC: 7.3-7.5, 8.1-8.4, 9.1-9.3
+- GCC: 7.3-7.5, 8.1-8.4, 9.1-9.3, 10
 - MSVC: 17 (VS 2015), 19 (VS 2017)
-- Apple Clang: 9
+- Apple Clang: 9-12
 
 ## License
 Copyright (c) 2017-2021 ArangoDB GmbH

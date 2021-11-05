@@ -156,16 +156,12 @@
             contentType: 'application/json',
             success: function (data) {
               if (window.location.hash === '#nodes') {
-                if (navi !== false) {
-                  arangoHelper.buildNodesSubNav('Overview', false);
-                }
+                arangoHelper.buildNodesSubNav('Overview', false);
                 self.continueRender(nodes, data);
               }
             },
             error: function (err) {
-              if (navi !== false) {
-                arangoHelper.buildNodesSubNav('Overview', true);
-              }
+              arangoHelper.buildNodesSubNav('Overview', true);
               self.renderFailure(err);
             }
           });

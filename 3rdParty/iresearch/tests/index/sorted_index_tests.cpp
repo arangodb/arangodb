@@ -21,22 +21,58 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "index/comparer.hpp"
+#include "index/norm.hpp"
 #include "iql/query_builder.hpp"
 #include "utils/index_utils.hpp"
 
+#include "tests_shared.hpp"
 #include "index_tests.hpp"
 
 namespace {
 
-class sorted_europarl_doc_template : public tests::templates::europarl_doc_template {
+class sorted_europarl_doc_template : public tests::europarl_doc_template {
  public:
-  explicit sorted_europarl_doc_template(const std::string& field)
-    : field_(field) {
+  explicit sorted_europarl_doc_template(
+      std::string field,
+      std::vector<irs::type_info::type_id> field_features)
+    : field_{std::move(field)},
+      field_features_{std::move(field_features)} {
   }
 
   virtual void init() override {
-    tests::templates::europarl_doc_template::init();
+    indexed.push_back(
+      std::make_shared<tests::string_field>(
+        "title", irs::IndexFeatures::ALL, field_features_));
+    indexed.push_back(
+      std::make_shared<text_ref_field>(
+        "title_anl", false, field_features_));
+    indexed.push_back(
+      std::make_shared<text_ref_field>(
+        "title_anl_pay", true, field_features_));
+    indexed.push_back(
+      std::make_shared<text_ref_field>(
+        "body_anl", false, field_features_));
+    indexed.push_back(
+      std::make_shared<text_ref_field>(
+        "body_anl_pay", true, field_features_));
+    {
+      insert(std::make_shared<tests::long_field>());
+      auto& field = static_cast<tests::long_field&>(indexed.back());
+      field.name("date");
+    }
+    insert(std::make_shared<tests::string_field>(
+      "datestr", irs::IndexFeatures::ALL, field_features_));
+    insert(std::make_shared<tests::string_field>(
+      "body", irs::IndexFeatures::ALL, field_features_));
+    {
+      insert(std::make_shared<tests::int_field>());
+      auto& field = static_cast<tests::int_field&>(indexed.back());
+      field.name("id");
+    }
+    insert(std::make_shared<tests::string_field>(
+      "idstr", irs::IndexFeatures::ALL, field_features_));
+
     auto fields = indexed.find(field_);
 
     if (!fields.empty()) {
@@ -46,15 +82,16 @@ class sorted_europarl_doc_template : public tests::templates::europarl_doc_templ
 
  private:
   std::string field_; // sorting field
+  std::vector<irs::type_info::type_id> field_features_;
 }; // sorted_europal_doc_template
 
 struct string_comparer : irs::comparer {
   virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
-    if (lhs.null() && rhs.null()) {
+    if (lhs.empty() && rhs.null()) {
       return false;
-    } else if (rhs.null()) {
+    } else if (rhs.empty()) {
       return true;
-    } else if (lhs.null()) {
+    } else if (lhs.empty()) {
       return false;
     }
 
@@ -82,15 +119,71 @@ struct long_comparer : irs::comparer {
   }
 };
 
+struct custom_feature {
+  static void compute(
+      const irs::field_stats& stats,
+      irs::doc_id_t doc,
+      // cppcheck-suppress constParameter
+      irs::columnstore_writer::values_writer_f& writer) {
+    writer(doc).write_int(doc);
+  }
+};
+
 class sorted_index_test_case : public tests::index_test_base {
  protected:
+  // old formats don't support pluggable features
+  static constexpr irs::string_ref kOldFormats[] {
+    "1_0", "1_1", "1_2", "1_3", "1_3simd" };
+
+  irs::field_features_t features() {
+    irs::field_features_t ftrs;
+    ftrs[irs::type<irs::norm>::id()] = &irs::norm::compute;
+
+    if (std::find(std::begin(kOldFormats),
+                  std::end(kOldFormats),
+                  codec()->type().name()) == std::end(kOldFormats)) {
+      ftrs[irs::type<irs::norm2>::id()] = &irs::norm2::compute;
+      ftrs[irs::type<custom_feature>::id()] = &custom_feature::compute;
+    }
+
+    return ftrs;
+  }
+
+  std::vector<irs::type_info::type_id> field_features() {
+    std::vector<irs::type_info::type_id> ftrs {
+      irs::type<irs::norm>::id() };
+
+    if (std::find(std::begin(kOldFormats),
+                  std::end(kOldFormats),
+                  codec()->type().name()) == std::end(kOldFormats)) {
+      ftrs.emplace_back(irs::type<irs::norm2>::id());
+    }
+
+    return ftrs;
+  }
+
   void assert_index(size_t skip = 0, irs::automaton_table_matcher* matcher = nullptr) const {
     index_test_base::assert_index(irs::IndexFeatures::NONE, skip, matcher);
-    index_test_base::assert_index(irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ, skip, matcher);
-    index_test_base::assert_index(irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, skip, matcher);
-    index_test_base::assert_index(irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS, skip, matcher);
-    index_test_base::assert_index(irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY, skip, matcher);
-    index_test_base::assert_index(irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY, skip, matcher);
+    index_test_base::assert_index(
+      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ, skip, matcher);
+    index_test_base::assert_index(
+      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ
+        | irs::IndexFeatures::POS,
+      skip, matcher);
+    index_test_base::assert_index(
+      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ
+        | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS,
+      skip, matcher);
+    index_test_base::assert_index(
+      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ
+        | irs::IndexFeatures::POS | irs::IndexFeatures::PAY,
+      skip, matcher);
+    index_test_base::assert_index(
+      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ
+        | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS
+        | irs::IndexFeatures::PAY,
+      skip, matcher);
+    index_test_base::assert_columnstore();
   }
 };
 
@@ -100,12 +193,11 @@ TEST_P(sorted_index_test_case, simple_sequential) {
   // build index
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [&sorted_column] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [&sorted_column, this] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        auto field = std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        );
+        auto field = std::make_shared<tests::string_field>(
+          name, data.str, irs::IndexFeatures::ALL,
+          field_features());
 
         doc.insert(field);
 
@@ -125,6 +217,8 @@ TEST_P(sorted_index_test_case, simple_sequential) {
 
   irs::index_writer::init_options opts;
   opts.comparator = &less;
+  opts.features = features();
+
   add_segment(gen, irs::OM_CREATE, opts); // add segment
 
   // check inverted index
@@ -254,20 +348,17 @@ TEST_P(sorted_index_test_case, simple_sequential) {
   }
 }
 
-//FIXME check norms
-
 TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
   const irs::string_ref sorted_column = "name";
 
   // build index
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [&sorted_column] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [&sorted_column, this] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        auto field = std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        );
+        auto field = std::make_shared<tests::string_field>(
+          name, data.str, irs::IndexFeatures::ALL,
+          field_features());
 
         doc.insert(field);
 
@@ -291,6 +382,8 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
   irs::index_writer::init_options opts;
   opts.comparator = &less;
+  opts.features = features();
+
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
   ASSERT_EQ(&less, writer->comparator());
@@ -446,16 +539,12 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
     // simulate consolidation
     index().clear();
-    index().emplace_back();
+    index().emplace_back(writer->field_features());
     auto& segment = index().back();
 
     gen.reset();
     while (auto* doc = gen.next()) {
-      segment.add(
-        doc->indexed.begin(),
-        doc->indexed.end(),
-        doc->sorted
-      );
+      segment.insert(*doc);
     }
 
     ASSERT_NE(nullptr, writer->comparator());
@@ -597,12 +686,11 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
   // build index
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [&sorted_column] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [&sorted_column, this] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        auto field = std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        );
+        auto field = std::make_shared<tests::string_field>(
+          name, data.str, irs::IndexFeatures::ALL,
+          field_features());
 
         doc.insert(field);
 
@@ -622,6 +710,8 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
   long_comparer less;
   irs::index_writer::init_options opts;
   opts.comparator = &less;
+  opts.features = features();
+
   add_segment(gen, irs::OM_CREATE, opts); // add segment
 
   assert_index();
@@ -751,13 +841,15 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
 }
 
 TEST_P(sorted_index_test_case, europarl) {
-  sorted_europarl_doc_template doc("date");
+  sorted_europarl_doc_template doc("date", field_features());
   tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
 
   long_comparer less;
 
   irs::index_writer::init_options opts;
   opts.comparator = &less;
+  opts.features = features();
+
   add_segment(gen, irs::OM_CREATE, opts); // add segment
 
   assert_index();
@@ -773,13 +865,15 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
     irs::string_ref value;
   } field;
 
-  tests::templates::string_ref_field same("same");
+  tests::string_ref_field same("same");
   same.value("A");
 
   // open writer
   string_comparer less;
   irs::index_writer::init_options opts;
   opts.comparator = &less;
+  opts.features = features();
+
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
   ASSERT_EQ(&less, writer->comparator());
@@ -845,12 +939,11 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
 TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [this] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        auto field = std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        );
+        auto field = std::make_shared<tests::string_field>(
+          name, data.str, irs::IndexFeatures::ALL,
+          field_features());
 
         doc.insert(field);
 
@@ -870,42 +963,33 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
   // open writer
   irs::index_writer::init_options opts;
   opts.comparator = &less;
+  opts.features = features();
+
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
   ASSERT_EQ(&less, writer->comparator());
 
-  // create index segment
-  {
-    // segment 0
-    {
-      ASSERT_TRUE(insert(*writer,
-        doc0->indexed.begin(), doc0->indexed.end(),
-        doc0->stored.begin(), doc0->stored.end(),
-        doc0->sorted
-      ));
-      ASSERT_TRUE(insert(*writer,
-        doc2->indexed.begin(), doc2->indexed.end(),
-        doc2->stored.begin(), doc2->stored.end(),
-        doc2->sorted
-      ));
-      writer->commit();
-    }
+  // segment 0
+  ASSERT_TRUE(insert(*writer,
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end(),
+   doc2->sorted));
+  writer->commit();
 
-    // segment 1
-    {
-      ASSERT_TRUE(insert(*writer,
-        doc1->indexed.begin(), doc1->indexed.end(),
-        doc1->stored.begin(), doc1->stored.end(),
-        doc1->sorted
-      ));
-      ASSERT_TRUE(insert(*writer,
-        doc3->indexed.begin(), doc3->indexed.end(),
-        doc3->stored.begin(), doc3->stored.end(),
-        doc3->sorted
-      ));
-      writer->commit();
-    }
-  }
+  // segment 1
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end(),
+    doc3->sorted));
+  writer->commit();
 
   // read documents
   {
@@ -996,17 +1080,38 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_FALSE(docsItr->next());
     }
   }
+
+  // create expected index
+  auto& expected_index = index();
+  expected_index.emplace_back(writer->field_features());
+  expected_index.back().insert(
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted.get());
+  expected_index.back().insert(
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end(),
+   doc2->sorted.get());
+  expected_index.back().insert(
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted.get());
+  expected_index.back().insert(
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end(),
+    doc3->sorted.get());
+  expected_index.back().sort(*writer->comparator());
+  assert_index();
 }
 
 TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_with_removals) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [this] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        auto field = std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        );
+        auto field = std::make_shared<tests::string_field>(
+          name, data.str, irs::IndexFeatures::ALL,
+          field_features());
 
         doc.insert(field);
 
@@ -1021,47 +1126,41 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
   auto* doc2 = gen.next(); // name == 'C'
   auto* doc3 = gen.next(); // name == 'D'
 
+  tests::string_field empty_field{"", irs::IndexFeatures::NONE};
+  ASSERT_FALSE(empty_field.value().null());
+  ASSERT_TRUE(empty_field.value().empty());
+
   string_comparer less;
 
   // open writer
   irs::index_writer::init_options opts;
   opts.comparator = &less;
+  opts.features = features();
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
   ASSERT_EQ(&less, writer->comparator());
 
-  // create index segment
-  {
-    // segment 0
-    {
-      ASSERT_TRUE(insert(*writer,
-        doc0->indexed.begin(), doc0->indexed.end(),
-        doc0->stored.begin(), doc0->stored.end(),
-        doc0->sorted
-      ));
-      ASSERT_TRUE(insert(*writer,
-        doc2->indexed.begin(), doc2->indexed.end(),
-        doc2->stored.begin(), doc2->stored.end(),
-        doc2->sorted
-      ));
-      writer->commit();
-    }
+  // segment 0
+  ASSERT_TRUE(insert(*writer,
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end(),
+    doc2->sorted));
+  writer->commit();
 
-    // segment 1
-    {
-      ASSERT_TRUE(insert(*writer,
-        doc1->indexed.begin(), doc1->indexed.end(),
-        doc1->stored.begin(), doc1->stored.end(),
-        doc1->sorted
-      ));
-      ASSERT_TRUE(insert(*writer,
-        doc3->indexed.begin(), doc3->indexed.end(),
-        doc3->stored.begin(), doc3->stored.end(),
-        doc3->sorted
-      ));
-      writer->commit();
-    }
-  }
+  // segment 1
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end(),
+    doc3->sorted));
+  writer->commit();
 
   // read documents
   {
@@ -1113,7 +1212,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
 
   // remove document
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==C", "C");
     writer->documents().remove(*query_doc1.filter);
     writer->commit();
   }
@@ -1201,17 +1300,35 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_FALSE(docsItr->next());
     }
   }
+
+  // create expected index
+  auto& expected_index = index();
+  expected_index.emplace_back(writer->field_features());
+  expected_index.back().insert(
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted.get());
+  expected_index.back().insert(
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted.get());
+  expected_index.back().insert(
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end(),
+    doc3->sorted.get());
+  expected_index.back().sort(*writer->comparator());
+
+  assert_index();
 }
 
 TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [this] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        auto field = std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        );
+        auto field = std::make_shared<tests::string_field>(
+          name, data.str, irs::IndexFeatures::ALL,
+          field_features());
 
         doc.insert(field);
 
@@ -1226,44 +1343,38 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
   auto* doc2 = gen.next(); // name == 'C'
   auto* doc3 = gen.next(); // name == 'D'
 
+  tests::string_field empty_field{"", irs::IndexFeatures::NONE};
+  ASSERT_FALSE(empty_field.value().null());
+  ASSERT_TRUE(empty_field.value().empty());
+
   string_comparer less;
   irs::index_writer::init_options opts;
   opts.comparator = &less;
+  opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
   ASSERT_NE(nullptr, writer->comparator());
 
-  // create index segment
-  {
-    // segment 0
-    {
-      ASSERT_TRUE(insert(*writer,
-        doc2->indexed.begin(), doc2->indexed.end(),
-        doc2->stored.begin(), doc2->stored.end()
-      ));
-      ASSERT_TRUE(insert(*writer,
-        doc0->indexed.begin(), doc0->indexed.end(),
-        doc0->stored.begin(), doc0->stored.end(),
-        doc0->sorted
-      ));
-      writer->commit();
-    }
+  // create segment 0
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted));
+  writer->commit();
 
-    // segment 1
-    {
-      ASSERT_TRUE(insert(*writer,
-        doc1->indexed.begin(), doc1->indexed.end(),
-        doc1->stored.begin(), doc1->stored.end(),
-        doc1->sorted
-      ));
-      ASSERT_TRUE(insert(*writer,
-        doc3->indexed.begin(), doc3->indexed.end(),
-        doc3->stored.begin(), doc3->stored.end()
-      ));
-      writer->commit();
-    }
-  }
+  // create segment 1
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end()));
+  writer->commit();
 
   // read documents
   {
@@ -1277,6 +1388,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_EQ(2, column->size());
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -1297,6 +1409,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       auto& segment = reader[1];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_EQ(2, column->size());
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -1332,6 +1445,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
     {
       auto& segment = reader[0];
       const auto* column = segment.sort();
+      ASSERT_EQ(4, column->size());
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto terms = segment.field("same");
@@ -1354,6 +1468,48 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       ASSERT_FALSE(docsItr->next());
     }
   }
+
+  // create expected index
+  auto& expected_index = index();
+  expected_index.emplace_back(writer->field_features());
+  expected_index.back().insert(
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end(),
+    &empty_field);
+  expected_index.back().insert(
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted.get());
+  expected_index.back().insert(
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted.get());
+  expected_index.back().insert(
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end(),
+    &empty_field);
+  expected_index.back().sort(*writer->comparator());
+
+  assert_index();
+}
+
+// Separate definition as MSVC parser fails to do conditional defines in macro expansion
+namespace {
+#ifdef IRESEARCH_SSE2
+const auto kSortedIndexTestCaseValues = ::testing::Values(
+    tests::format_info{"1_1", "1_0"},
+    tests::format_info{"1_2", "1_0"},
+    tests::format_info{"1_3", "1_0"},
+    tests::format_info{"1_4", "1_0"},
+    tests::format_info{"1_3simd", "1_0"},
+    tests::format_info{"1_4simd", "1_0"});
+#else
+const auto kSortedIndexTestCaseValues = ::testing::Values(
+    tests::format_info{"1_1", "1_0"},
+    tests::format_info{"1_2", "1_0"},
+    tests::format_info{"1_3", "1_0"},
+    tests::format_info{"1_4", "1_0"});
+#endif
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1364,10 +1520,7 @@ INSTANTIATE_TEST_SUITE_P(
       &tests::directory<&tests::memory_directory>,
       &tests::directory<&tests::fs_directory>,
       &tests::directory<&tests::mmap_directory>),
-    ::testing::Values(
-      tests::format_info{"1_1", "1_0"},
-      tests::format_info{"1_2", "1_0"})),
-  sorted_index_test_case::to_string
-);
+    kSortedIndexTestCaseValues),
+  sorted_index_test_case::to_string);
 
 }

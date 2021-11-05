@@ -63,9 +63,7 @@ const endpointToURL = (endpoint) => {
   return 'http' + endpoint.substr(pos);
 };
 
-// detect the path of arangosh. quite hacky, but works
-const arangosh = fs.join(global.ARANGOSH_PATH, 'arangosh' + pu.executableExt);
-
+const arangosh = pu.ARANGOSH_BIN;
 
 const debug = function (text) {
   console.warn(text);

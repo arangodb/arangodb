@@ -98,7 +98,7 @@ class IRESEARCH_API result {
   std::unique_ptr<char[]> copyState(const char* rhs);
 
   result(Code code, const string_ref& msg, const string_ref& msg2);
-  result(Code code);
+  explicit result(Code code);
 
   Code code_;
   std::unique_ptr<char[]> state_;

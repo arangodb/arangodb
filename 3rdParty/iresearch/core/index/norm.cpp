@@ -82,7 +82,6 @@ float_t norm::read() const {
   bytes_ref_input in(payload_->value);
   return read_zvfloat(in);
 }
-
 void norm::compute(
     const field_stats& stats,
     doc_id_t doc,

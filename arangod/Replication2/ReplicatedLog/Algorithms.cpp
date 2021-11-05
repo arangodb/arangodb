@@ -30,17 +30,58 @@
 #include "Random/RandomGenerator.h"
 
 #include <type_traits>
+#include <random>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::algorithms;
+using namespace arangodb::replication2::replicated_log;
 
-auto algorithms::checkReplicatedLog(DatabaseID const& database,
-                                    LogPlanSpecification const& spec,
-                                    LogCurrent const& current,
-                                    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
+namespace {
+auto createFirstTerm(DatabaseID const& database, LogPlanSpecification const& spec,
+                     std::unordered_map<ParticipantId, ParticipantRecord> const& info)
+    -> std::variant<std::monostate, LogPlanTermSpecification, LogCurrentSupervisionElection> {
+  // There is no term. Randomly select a set of participants and copy the
+  // targetConfig to create the first term.
+  std::vector<std::string_view> participants;
+  participants.reserve(info.size());
+  // where is std::transform_if ?
+  for (auto const& [name, record] : info) {
+    if (record.isHealthy) {
+      participants.emplace_back(name);
+    }
+  }
+
+  if (participants.size() < spec.targetConfig.replicationFactor) {
+    // not enough participants to form a term
+    return {};
+  }
+
+  {
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(participants.begin(), participants.end(), g);
+  }
+
+  LogPlanTermSpecification newTermSpec;
+  newTermSpec.term = LogTerm{1};
+  newTermSpec.config = spec.targetConfig;
+  for (std::size_t i = 0; i < spec.targetConfig.replicationFactor; i++) {
+    newTermSpec.participants.emplace(ParticipantId{participants[i]},
+                                     LogPlanTermSpecification::Participant{});
+  }
+  LOG_TOPIC("bb6e4", INFO, Logger::REPLICATION2)
+      << "creating first term for replicated log " << database << "/" << spec.id
+      << " with participants " << participants;
+  return newTermSpec;
+}
+
+auto checkCurrentTerm(DatabaseID const& database,
+                      LogPlanSpecification const& spec, LogCurrent const& current,
+                      std::unordered_map<ParticipantId, ParticipantRecord> const& info)
     -> std::variant<std::monostate, agency::LogPlanTermSpecification, agency::LogCurrentSupervisionElection> {
+
   auto const verifyServerRebootId = [&](ParticipantId const& id, RebootId rebootId) -> bool {
     if (auto it = info.find(id); it != std::end(info)) {
       return it->second.rebootId == rebootId;
@@ -57,117 +98,132 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
     return false;
   };
 
-  if (auto const& term = spec.currentTerm; term) {
-    if (auto const& leader = term->leader; leader) {
-      // check if leader is still valid
-      if (false == verifyServerRebootId(leader->serverId, leader->rebootId)) {
-        // create a new term with no leader
-        LogPlanTermSpecification newTermSpec = *term;
-        newTermSpec.leader = std::nullopt;
-        newTermSpec.term.value += 1;
-        LOG_TOPIC("bc357", WARN, Logger::REPLICATION2)
-            << "replicated log " << database << "/" << spec.id
-            << " - leader gone " << term->leader->serverId;
-        return newTermSpec;
-      }
-    } else {
-      // check if we can find a new leader
-      // wait for enough servers to report the current term
-      // a server is counted if:
-      //    - its reported term is the current term
-      //    - it is seen as healthy by the supervision
 
-      // if enough servers are found, declare the server with
-      // the "best" log as leader in a new term
-      agency::LogCurrentSupervisionElection election;
-      election.term = spec.currentTerm ? spec.currentTerm->term : LogTerm{0};
+  auto const& term = spec.currentTerm;
+  if (auto const& leader = term->leader; leader) {
+    // check if leader is still valid
+    if (false == verifyServerRebootId(leader->serverId, leader->rebootId)) {
+      // create a new term with no leader
+      LogPlanTermSpecification newTermSpec = *term;
+      newTermSpec.leader = std::nullopt;
+      newTermSpec.term.value += 1;
+      LOG_TOPIC("bc357", WARN, Logger::REPLICATION2)
+          << "replicated log " << database << "/" << spec.id
+          << " - leader gone " << term->leader->serverId;
+      return newTermSpec;
+    }
+  } else {
+    // check if we can find a new leader
+    // wait for enough servers to report the current term
+    // a server is counted if:
+    //    - its reported term is the current term
+    //    - it is seen as healthy by the supervision
 
-      auto newLeaderSet = std::vector<replication2::ParticipantId>{};
-      auto bestTermIndex = replication2::TermIndexPair{};
-      auto numberOfAvailableParticipants = std::size_t{0};
+    // if enough servers are found, declare the server with
+    // the "best" log as leader in a new term
+    agency::LogCurrentSupervisionElection election;
+    election.term = spec.currentTerm ? spec.currentTerm->term : LogTerm{0};
 
-      for (auto const& [participant, status] : current.localState) {
-        auto error = std::invoke([&, &status = status, &participant = participant]{
-          bool const isHealthy = isServerHealthy(participant);
-          if (!isHealthy) {
-            return agency::LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD;
-          } else if (status.term != spec.currentTerm->term) {
-            return agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED;
-          } else {
-            return agency::LogCurrentSupervisionElection::ErrorCode::OK;
-          }
-        });
+    auto newLeaderSet = std::vector<replication2::ParticipantId>{};
+    auto bestTermIndex = replication2::TermIndexPair{};
+    auto numberOfAvailableParticipants = std::size_t{0};
 
-        election.detail.emplace(participant, error);
-        if (error != agency::LogCurrentSupervisionElection::ErrorCode::OK) {
-          continue;
+    for (auto const& [participant, status] : current.localState) {
+      auto error = std::invoke([&, &status = status, &participant = participant]{
+        bool const isHealthy = isServerHealthy(participant);
+        if (!isHealthy) {
+          return agency::LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD;
+        } else if (status.term != spec.currentTerm->term) {
+          return agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED;
+        } else {
+          return agency::LogCurrentSupervisionElection::ErrorCode::OK;
         }
-
-        numberOfAvailableParticipants += 1;
-        if (status.spearhead >= bestTermIndex) {
-          if (status.spearhead != bestTermIndex) {
-            newLeaderSet.clear();
-          }
-          newLeaderSet.push_back(participant);
-          bestTermIndex = status.spearhead;
-        }
-      }
-
-      auto const requiredNumberOfAvailableParticipants = std::invoke([&spec = spec.currentTerm] {
-        return spec->participants.size() - spec->config.writeConcern + 1;
       });
 
-      LOG_TOPIC("8a53d", TRACE, Logger::REPLICATION2)
-          << "participant size = " << spec.currentTerm->participants.size()
-          << " writeConcern = " << spec.currentTerm->config.writeConcern
-          << " requiredNumberOfAvailableParticipants = " << requiredNumberOfAvailableParticipants;
+      election.detail.emplace(participant, error);
+      if (error != agency::LogCurrentSupervisionElection::ErrorCode::OK) {
+        continue;
+      }
 
-      TRI_ASSERT(requiredNumberOfAvailableParticipants > 0);
-
-      election.participantsRequired = requiredNumberOfAvailableParticipants;
-      election.participantsAvailable = numberOfAvailableParticipants;
-
-      if (numberOfAvailableParticipants >= requiredNumberOfAvailableParticipants) {
-        auto const numParticipants = newLeaderSet.size();
-        if (ADB_UNLIKELY(numParticipants == 0 ||
-                         numParticipants > std::numeric_limits<uint16_t>::max())) {
-          abortOrThrow(
-              TRI_ERROR_NUMERIC_OVERFLOW,
-              basics::StringUtils::concatT(
-                  "Number of participants out of range, should be between ", 1,
-                  " and ", std::numeric_limits<uint16_t>::max(), ", but is ", numParticipants),
-              ADB_HERE);
+      numberOfAvailableParticipants += 1;
+      if (status.spearhead >= bestTermIndex) {
+        if (status.spearhead != bestTermIndex) {
+          newLeaderSet.clear();
         }
-        auto const maxIdx = static_cast<uint16_t>(numParticipants - 1);
-        // Randomly select one of the best participants
-        auto const& newLeader = newLeaderSet.at(RandomGenerator::interval(maxIdx));
-        auto const& record = info.at(newLeader);
+        newLeaderSet.push_back(participant);
+        bestTermIndex = status.spearhead;
+      }
+    }
 
-        // we can elect a new leader
-        LogPlanTermSpecification newTermSpec = *spec.currentTerm;
-        newTermSpec.term.value += 1;
-        newTermSpec.leader = LogPlanTermSpecification::Leader{newLeader, record.rebootId};
-        LOG_TOPIC("458ad", INFO, Logger::REPLICATION2)
-            << "declaring " << newLeader << " as new leader for log "
-            << database << "/" << spec.id;
-        return newTermSpec;
+    auto const requiredNumberOfAvailableParticipants = std::invoke([&spec = spec.currentTerm] {
+      return spec->participants.size() - spec->config.writeConcern + 1;
+    });
 
-      } else {
-        // Check if something has changed
-        if (!current.supervision || !current.supervision->election ||
-            election != current.supervision->election) {
-          LOG_TOPIC("57de2", WARN, Logger::REPLICATION2)
-              << "replicated log " << database << "/" << spec.id
-              << " not enough participants available for leader election "
-              << numberOfAvailableParticipants << "/"
-              << requiredNumberOfAvailableParticipants;
-          return election;
-        }
+    LOG_TOPIC("8a53d", TRACE, Logger::REPLICATION2)
+        << "participant size = " << spec.currentTerm->participants.size()
+        << " writeConcern = " << spec.currentTerm->config.writeConcern
+        << " requiredNumberOfAvailableParticipants = " << requiredNumberOfAvailableParticipants;
+
+    TRI_ASSERT(requiredNumberOfAvailableParticipants > 0);
+
+    election.participantsRequired = requiredNumberOfAvailableParticipants;
+    election.participantsAvailable = numberOfAvailableParticipants;
+
+    if (numberOfAvailableParticipants >= requiredNumberOfAvailableParticipants) {
+      auto const numParticipants = newLeaderSet.size();
+      if (ADB_UNLIKELY(numParticipants == 0 ||
+                       numParticipants > std::numeric_limits<uint16_t>::max())) {
+        abortOrThrow(
+            TRI_ERROR_NUMERIC_OVERFLOW,
+            basics::StringUtils::concatT(
+                "Number of participants out of range, should be between ", 1,
+                " and ", std::numeric_limits<uint16_t>::max(), ", but is ", numParticipants),
+            ADB_HERE);
+      }
+      auto const maxIdx = static_cast<uint16_t>(numParticipants - 1);
+      // Randomly select one of the best participants
+      auto const& newLeader = newLeaderSet.at(RandomGenerator::interval(maxIdx));
+      auto const& record = info.at(newLeader);
+
+      // we can elect a new leader
+      LogPlanTermSpecification newTermSpec = *spec.currentTerm;
+      newTermSpec.term.value += 1;
+      newTermSpec.leader = LogPlanTermSpecification::Leader{newLeader, record.rebootId};
+      LOG_TOPIC("458ad", INFO, Logger::REPLICATION2)
+          << "declaring " << newLeader << " as new leader for log "
+          << database << "/" << spec.id;
+      return newTermSpec;
+
+    } else {
+      // Check if something has changed
+      if (!current.supervision || !current.supervision->election ||
+          election != current.supervision->election) {
+        LOG_TOPIC("57de2", WARN, Logger::REPLICATION2)
+            << "replicated log " << database << "/" << spec.id
+            << " not enough participants available for leader election "
+            << numberOfAvailableParticipants << "/"
+            << requiredNumberOfAvailableParticipants;
+        return election;
       }
     }
   }
 
   return std::monostate{};
+}
+
+}  // namespace
+
+auto algorithms::checkReplicatedLog(DatabaseID const& database,
+                                    LogPlanSpecification const& spec,
+                                    LogCurrent const& current,
+                                    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
+    -> std::variant<std::monostate, agency::LogPlanTermSpecification, agency::LogCurrentSupervisionElection> {
+
+  if (spec.currentTerm.has_value()) {
+    return checkCurrentTerm(database, spec, current, info);
+  } else {
+    return createFirstTerm(database, spec, info);
+  }
 }
 
 auto algorithms::to_string(ConflictReason r) noexcept -> std::string_view {
@@ -266,6 +322,175 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
       std::ignore = log->becomeFollower(serverId, spec->currentTerm->term, leaderString);
     }
 
-    return Result();
+    return {};
   });
+}
+
+auto algorithms::operator<<(std::ostream& os, ParticipantFlag const& p) noexcept
+    -> std::ostream& {
+  switch(p) {
+    case ParticipantFlag::Excluded: {
+      return os << "excluded";
+    } break;
+    case ParticipantFlag::Failed: {
+      return os << "failed";
+    } break;
+    case ParticipantFlag::Forced: {
+      return os << "forced";
+    } break;
+  }
+  return os;
+}
+
+// TODO: Make prettier
+auto algorithms::operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept
+    -> std::ostream& {
+  os << '{' << p.id << ':' << p.index <<
+    ", ";
+
+  auto of = std::ostream_iterator<ParticipantFlag>{os, ", "};
+  std::copy(std::begin(p.flags), std::end(p.flags), of);
+
+  os<< '}';
+  return os;
+}
+
+ParticipantStateTuple::ParticipantStateTuple(LogIndex index, ParticipantId id, ParticipantFlags flags)
+  : index(index), id(std::move(id)), flags(std::move(flags))
+{}
+
+auto ParticipantStateTuple::isExcluded() const noexcept -> bool {
+  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Excluded) != std::end(flags);
+};
+
+auto ParticipantStateTuple::isForced() const noexcept -> bool {
+  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Forced) != std::end(flags);
+};
+
+auto ParticipantStateTuple::isFailed() const noexcept -> bool {
+  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Failed) != std::end(flags);
+};
+
+auto operator<=(ParticipantStateTuple left, ParticipantStateTuple right) noexcept -> bool {
+  if (left.index < right.index) {
+    return true;
+  } else if (left.index==right.index) {
+    return left.id <= right.id;
+  } else {
+    return false;
+  }
+}
+
+
+/* Add flag for failed server to IndexParticipant struct
+ *
+ *  add struct for parameters:
+ *   replicationFactor
+ *   - writeConcern (==quorumSize)
+ *   - softWriteConcern (better name?)
+ *   -
+ *  TRI_ASSERT(indexes.size() == replicationFactor)
+ *  TRI_ASSERT(writeConcern <= softWriteConcern <= replicationFactor)
+ *
+ *   actualWriteConcern = max(writeConcern, x)
+ *     where x = min(replicationFactor - number of failedServers,
+ *                   softWriteConcern);
+ *
+ *  for purposes of computing actualwriteConcern, excluded and failed
+ *  servers are treated the same.
+ *
+ * writeConcern is the *minimum* number of confirmed copies necessary to
+ * proceed with a commit for any given LogIndex
+ *
+ * softWriteConcern allows for a number of failed servers to be tolerated
+ * for the purposes of commit
+ *
+ * replicationFactor is the (expected) number of participants in the
+ * replicated log
+ *
+ * */
+
+algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
+    std::size_t writeConcern, std::size_t softWriteConcern, std::size_t replicationFactor)
+  : _writeConcern(writeConcern),
+    _softWriteConcern(softWriteConcern),
+    _replicationFactor(replicationFactor) {
+  TRI_ASSERT(_writeConcern <= _softWriteConcern)
+      << "writeConcern > softWriteConcern " << _writeConcern << " > " << _softWriteConcern;
+  TRI_ASSERT(_softWriteConcern <= _replicationFactor)
+      << "softWriteConcern > opt.replicationFactor " << _softWriteConcern
+      << " > " << _replicationFactor;
+}
+
+auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple> const& indexes,
+                                      CalculateCommitIndexOptions const opt,
+                                      LogIndex currentCommitIndex, LogIndex spearhead)
+    -> std::tuple<LogIndex, CommitFailReason, std::vector<ParticipantId>> {
+  TRI_ASSERT(indexes.size() == opt._replicationFactor)
+      << "number of participants != replicationFactor (" << indexes.size()
+      << " < " << opt._replicationFactor << ")";
+
+  // number of failed participants
+  auto nrFailed = std::count_if(std::begin(indexes), std::end(indexes),
+                                [](auto& p) { return p.isFailed(); });
+  auto actualWriteConcern =
+      std::max(opt._writeConcern,
+               std::min(opt._replicationFactor - nrFailed, opt._softWriteConcern));
+  // vector of participants that are neither excluded nor
+  // have failed
+  auto eligible = std::vector<ParticipantStateTuple>{};
+  eligible.reserve(indexes.size());
+  std::copy_if(std::begin(indexes), std::end(indexes), std::back_inserter(eligible),
+               [](auto& p) { return !p.isFailed() && !p.isExcluded(); });
+
+  // the minimal commit index caused by forced participants
+  // if there are no forced participants, this component is just
+  // the spearhead (the furthest we could commit to)
+  auto minForcedCommitIndex = spearhead;
+  for (auto const& pt : indexes) {
+    if (pt.isForced()) {
+      if (pt.index < minForcedCommitIndex) {
+        minForcedCommitIndex = pt.index;
+      }
+    }
+  }
+
+  // While actualWriteConcern == 0 is silly we still allow it.
+  if (actualWriteConcern == 0) {
+    return {minForcedCommitIndex, CommitFailReason::withNothingToCommit(), {}};
+  }
+
+  if (actualWriteConcern <= eligible.size()) {
+    auto nth = std::begin(eligible);
+
+    TRI_ASSERT(actualWriteConcern > 0);
+    std::advance(nth, actualWriteConcern - 1);
+
+    // because of the check above
+    TRI_ASSERT(nth != std::end(eligible));
+
+    std::nth_element(std::begin(eligible), nth, std::end(eligible),
+                     [](auto& left, auto& right) {
+                       return left.index > right.index;
+                     });
+    auto const minNonExcludedCommitIndex = nth->index;
+
+    auto commitIndex = std::min(minForcedCommitIndex, minNonExcludedCommitIndex);
+
+    auto quorum = std::vector<ParticipantId>{};
+    std::transform(std::begin(eligible), std::next(nth),
+                   std::back_inserter(quorum), [](auto& p) { return p.id; });
+
+    if (spearhead == commitIndex) {
+      return {commitIndex, CommitFailReason::withNothingToCommit(), quorum};
+    } else if (minForcedCommitIndex < minNonExcludedCommitIndex) {
+      return {commitIndex, CommitFailReason::withForcedParticipantNotInQuorum(), {}};
+    } else {
+      return {commitIndex, CommitFailReason::withQuorumSizeNotReached(), quorum};
+    }
+  }
+
+  // This case happens when all servers are either excluded or failed;
+  // this certainly means we could not reach a quorum
+  return {currentCommitIndex, CommitFailReason::withQuorumSizeNotReached(), {}};
 }

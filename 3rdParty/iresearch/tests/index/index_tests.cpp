@@ -48,281 +48,6 @@ REGISTER_ATTRIBUTE(incompatible_attribute);
 
 incompatible_attribute::incompatible_attribute() noexcept { }
 
-namespace templates {
-
-// ----------------------------------------------------------------------------
-// --SECTION--                               token_stream_payload implemntation
-// ----------------------------------------------------------------------------
-
-token_stream_payload::token_stream_payload(irs::token_stream* impl)
-  : impl_(impl) {
-    assert(impl_);
-    term_ = irs::get<irs::term_attribute>(*impl_);
-    assert(term_);
-}
-
-irs::attribute* token_stream_payload::get_mutable(irs::type_info::type_id type) {
-  if (irs::type<irs::payload>::id() == type) {
-    return &pay_;
-  }
-
-  return impl_->get_mutable(type);
-}
-
-bool token_stream_payload::next() {
-  if (impl_->next()) {
-    pay_.value = term_->value;
-    return true;
-  }
-  pay_.value = irs::bytes_ref::NIL;
-  return false;
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                       string_field implemntation
-// ----------------------------------------------------------------------------
-
-string_field::string_field(
-    const std::string& name,
-    irs::IndexFeatures index_features,
-    const std::vector<irs::type_info::type_id>& extra_features) {
-  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
-  features_ = extra_features;
-  name_ = name;
-}
-
-string_field::string_field(
-    const std::string& name,
-    const irs::string_ref& value,
-    irs::IndexFeatures index_features,
-    const std::vector<irs::type_info::type_id>& extra_features)
-  : value_(value) {
-  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
-  features_ = extra_features;
-  name_ = name;
-}
-
-// reject too long terms
-void string_field::value(const irs::string_ref& str) {
-  const auto size_len = irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
-  const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
-  auto begin = str.begin();
-  auto end = str.begin() + max_len;
-  value_.assign(begin, end);
-}
-
-bool string_field::write(irs::data_output& out) const {
-  irs::write_string(out, value_);
-  return true;
-}
-
-irs::token_stream& string_field::get_tokens() const {
-  REGISTER_TIMER_DETAILED();
-
-  stream_.reset(value_);
-  return stream_;
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                   string_ref_field implemntation
-// ----------------------------------------------------------------------------
-
-string_ref_field::string_ref_field(
-    const std::string& name,
-    irs::IndexFeatures extra_index_features,
-    const std::vector<irs::type_info::type_id>& extra_features) {
-  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
-  features_ = extra_features;
-  name_ = name;
-}
-
-string_ref_field::string_ref_field(
-    const std::string& name,
-    const irs::string_ref& value,
-    irs::IndexFeatures extra_index_features,
-    const std::vector<irs::type_info::type_id>& extra_features)
-  : value_(value) {
-  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
-  features_ = extra_features;
-  name_ = name;
-}
-
-// truncate very long terms
-void string_ref_field::value(const irs::string_ref& str) {
-  const auto size_len = irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
-  const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
-
-  value_ = irs::string_ref(str.c_str(), max_len);
-}
-
-bool string_ref_field::write(irs::data_output& out) const {
-  irs::write_string(out, value_);
-  return true;
-}
-
-irs::token_stream& string_ref_field::get_tokens() const {
-  REGISTER_TIMER_DETAILED();
-
-  stream_.reset(value_);
-  return stream_;
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                            europarl_doc_template
-// ----------------------------------------------------------------------------
-
-void europarl_doc_template::init() {
-  clear();
-  indexed.push_back(std::make_shared<tests::templates::string_field>("title"));
-  indexed.push_back(std::make_shared<text_field>("title_anl", false));
-  indexed.push_back(std::make_shared<text_field>("title_anl_pay", true));
-  indexed.push_back(std::make_shared<text_field>("body_anl", false));
-  indexed.push_back(std::make_shared<text_field>("body_anl_pay", true));
-  {
-    insert(std::make_shared<tests::long_field>());
-    auto& field = static_cast<tests::long_field&>(indexed.back());
-    field.name("date");
-  }
-  insert(std::make_shared<tests::templates::string_field>("datestr"));
-  insert(std::make_shared<tests::templates::string_field>("body"));
-  {
-    insert(std::make_shared<tests::int_field>());
-    auto& field = static_cast<tests::int_field&>(indexed.back());
-    field.name("id");
-  }
-  insert(std::make_shared<string_field>("idstr"));
-}
-
-void europarl_doc_template::value(size_t idx, const std::string& value) {
-  static auto get_time = [](const std::string& src) {
-    std::istringstream ss(src);
-    std::tm tmb{};
-    char c;
-    ss >> tmb.tm_year >> c >> tmb.tm_mon >> c >> tmb.tm_mday;
-    return std::mktime( &tmb );
-  };
-
-  switch (idx) {
-    case 0: // title
-      title_ = value;
-      indexed.get<tests::templates::string_field>("title")->value(title_);
-      indexed.get<text_field>("title_anl")->value(title_);
-      indexed.get<text_field>("title_anl_pay")->value(title_);
-      break;
-    case 1: // dateA
-      indexed.get<tests::long_field>("date")->value(get_time(value));
-      indexed.get<tests::templates::string_field>("datestr")->value(value);
-      break;
-    case 2: // body
-      body_ = value;
-      indexed.get<tests::templates::string_field>("body")->value(body_);
-      indexed.get<text_field>("body_anl")->value(body_);
-      indexed.get<text_field>("body_anl_pay")->value(body_);
-      break;
-  }
-}
-
-void europarl_doc_template::end() {
-  ++idval_;
-  indexed.get<tests::int_field>("id")->value(idval_);
-  indexed.get<tests::templates::string_field>("idstr")->value(std::to_string(idval_));
-}
-
-void europarl_doc_template::reset() {
-  idval_ = 0;
-}
-
-} // templates
-
-void generic_json_field_factory(
-    tests::document& doc,
-    const std::string& name,
-    const json_doc_generator::json_value& data) {
-  if (json_doc_generator::ValueType::STRING == data.vt) {
-    doc.insert(std::make_shared<templates::string_field>(name, data.str));
-  } else if (json_doc_generator::ValueType::NIL == data.vt) {
-    doc.insert(std::make_shared<tests::binary_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
-  } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
-    doc.insert(std::make_shared<tests::binary_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
-  } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
-    doc.insert(std::make_shared<tests::binary_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
-  } else if (data.is_number()) {
-    // 'value' can be interpreted as a double
-    doc.insert(std::make_shared<tests::double_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-    field.name(name);
-    field.value(data.as_number<double_t>());
-  }
-}
-
-void payloaded_json_field_factory(
-    tests::document& doc,
-    const std::string& name,
-    const json_doc_generator::json_value& data) {
-  typedef templates::text_field<std::string> text_field;
-
-  if (json_doc_generator::ValueType::STRING == data.vt) {
-    // analyzed && pyaloaded
-    doc.indexed.push_back(std::make_shared<text_field>(
-      std::string(name.c_str()) + "_anl_pay",
-      data.str, true));
-
-    // analyzed field
-    doc.indexed.push_back(std::make_shared<text_field>(
-      std::string(name.c_str()) + "_anl",
-      data.str));
-
-    // not analyzed field
-    doc.insert(std::make_shared<templates::string_field>(name, data.str));
-  } else if (json_doc_generator::ValueType::NIL == data.vt) {
-    doc.insert(std::make_shared<tests::binary_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
-  } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
-    doc.insert(std::make_shared<tests::binary_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
-  } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
-    doc.insert(std::make_shared<tests::binary_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false()));
-  } else if (data.is_number()) {
-    // 'value' can be interpreted as a double
-    doc.insert(std::make_shared<tests::double_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-    field.name(name);
-    field.value(data.as_number<double_t>());
-  }
-}
-
-void normalized_string_json_field_factory(
-    tests::document& doc,
-    const std::string& name,
-    const json_doc_generator::json_value& data) {
-  if (json_doc_generator::ValueType::STRING == data.vt) {
-    doc.insert(
-      std::make_shared<templates::string_field>(
-        name,
-        data.str,
-        irs::IndexFeatures::NONE,
-        std::vector<irs::type_info::type_id>{ irs::type<irs::norm>::id() }));;
-  } else {
-    generic_json_field_factory(doc, name, data);
-  }
-}
-
 /*static*/ std::string index_test_base::to_string(
     const testing::TestParamInfo<index_test_context>& info) {
   auto [factory, codec] = info.param;
@@ -350,6 +75,51 @@ irs::format::ptr index_test_base::get_codec() const {
   return irs::formats::get(info.codec, info.module);
 }
 
+void index_test_base::write_segment(
+    irs::index_writer& writer,
+    tests::index_segment& segment,
+    tests::doc_generator_base& gen) {
+  // add segment
+  const document* src;
+
+  while ((src = gen.next())) {
+    segment.insert(*src);
+
+    ASSERT_TRUE(insert(
+      writer,
+      src->indexed.begin(), src->indexed.end(),
+      src->stored.begin(), src->stored.end(),
+      src->sorted));
+  }
+
+  if (writer.comparator()) {
+    segment.sort(*writer.comparator());
+  }
+}
+
+void index_test_base::add_segment(irs::index_writer& writer, tests::doc_generator_base& gen) {
+  index_.emplace_back(writer.field_features());
+  write_segment(writer, index_.back(), gen);
+  writer.commit();
+}
+
+void index_test_base::add_segments(
+    irs::index_writer& writer, std::vector<doc_generator_base::ptr>& gens) {
+  for (auto& gen : gens) {
+    index_.emplace_back(writer.field_features());
+    write_segment(writer, index_.back(), *gen);
+  }
+  writer.commit();
+}
+
+void index_test_base::add_segment(
+    tests::doc_generator_base& gen,
+    irs::OpenMode mode /*= irs::OM_CREATE*/,
+    const irs::index_writer::init_options& opts /*= {}*/) {
+  auto writer = open_writer(mode, opts);
+  add_segment(*writer, gen);
+}
+
 } // tests
 
 class index_test_case : public tests::index_test_base {
@@ -368,7 +138,7 @@ class index_test_case : public tests::index_test_base {
       resource("simple_sequential.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+        doc.insert(std::make_shared<tests::string_field>(name, data.str));
       }
     });
 
@@ -435,7 +205,7 @@ class index_test_case : public tests::index_test_base {
 
       // add insert/remove/import
       {
-        auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+        auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
         auto reader = irs::directory_reader::open(data_dir);
 
         ASSERT_TRUE(insert(*writer,
@@ -553,8 +323,7 @@ class index_test_case : public tests::index_test_base {
     ASSERT_EQ(expected_index.size(), actual_reader.size());
 
     size_t thread_count = 16; // arbitrary value > 1
-    std::vector<tests::field_reader> expected_segments;
-    std::vector<const irs::term_reader*> expected_terms; // used to validate terms
+    std::vector<const tests::field*> expected_terms; // used to validate terms
     std::vector<irs::seek_term_iterator::ptr> expected_term_itrs; // used to validate docs
 
     auto& actual_segment = actual_reader[0];
@@ -562,10 +331,11 @@ class index_test_case : public tests::index_test_base {
     ASSERT_FALSE(!actual_terms);
 
     for (size_t i = 0; i < thread_count; ++i) {
-      expected_segments.emplace_back(expected_index[0]);
-      expected_terms.emplace_back(expected_segments.back().field("name_anl_pay"));
+      auto field = expected_index[0].fields().find("name_anl_pay");
+      ASSERT_NE(expected_index[0].fields().end(), field);
+      expected_terms.emplace_back(&field->second);
       ASSERT_TRUE(nullptr != expected_terms.back());
-      expected_term_itrs.emplace_back(expected_terms.back()->iterator(irs::SeekMode::NORMAL));
+      expected_term_itrs.emplace_back(expected_terms.back()->iterator());
       ASSERT_FALSE(!expected_term_itrs.back());
     }
 
@@ -589,7 +359,7 @@ class index_test_case : public tests::index_test_base {
             }
 
             auto act_term_itr = act_terms->iterator(irs::SeekMode::NORMAL);
-            auto exp_terms_itr = exp_terms->iterator(irs::SeekMode::NORMAL);
+            auto exp_terms_itr = exp_terms->iterator();
             ASSERT_FALSE(!act_term_itr);
             ASSERT_FALSE(!exp_terms_itr);
 
@@ -896,7 +666,7 @@ class index_test_case : public tests::index_test_base {
       resource("simple_sequential.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (tests::json_doc_generator::ValueType::STRING == data.vt) {
-          doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
         }
       });
       tests::document const* doc1 = gen.next();
@@ -1070,8 +840,7 @@ class index_test_case : public tests::index_test_base {
     for (auto* doc = gen.next(); doc; doc = gen.next()) {
       ASSERT_TRUE(insert(*writer,
         doc->indexed.end(), doc->indexed.end(), 
-        doc->stored.begin(), doc->stored.end()
-      ));
+        doc->stored.begin(), doc->stored.end()));
       expected_docs.push_back(doc);
     }
     writer->commit();
@@ -1096,7 +865,7 @@ class index_test_case : public tests::index_test_base {
             }
 
             auto* expected_doc = expected_docs[i];
-            auto expected_name = expected_doc->stored.get<tests::templates::string_field>("name")->value();
+            auto expected_name = expected_doc->stored.get<tests::string_field>("name")->value();
             if (expected_name != irs::to_string<irs::string_ref>(actual_value.c_str())) {
               return false;
             }
@@ -1154,17 +923,17 @@ class index_test_case : public tests::index_test_base {
       virtual void init() {
         clear();
         reserve(2);
-        insert(std::make_shared<tests::templates::string_field>("id"));
-        insert(std::make_shared<tests::templates::string_field>("label"));
+        insert(std::make_shared<tests::string_field>("id"));
+        insert(std::make_shared<tests::string_field>("label"));
       }
 
       virtual void value(size_t idx, const irs::string_ref& value) {
         switch(idx) {
          case 0:
-          indexed.get<tests::templates::string_field>("id")->value(value);
+          indexed.get<tests::string_field>("id")->value(value);
           break;
          case 1:
-          indexed.get<tests::templates::string_field>("label")->value(value);
+          indexed.get<tests::string_field>("label")->value(value);
         }
       }
     };
@@ -1211,7 +980,7 @@ class index_test_case : public tests::index_test_base {
             return false;
           }
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -1267,7 +1036,7 @@ class index_test_case : public tests::index_test_base {
             return false;
           }
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -1328,7 +1097,7 @@ class index_test_case : public tests::index_test_base {
             return false;
           }
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -2238,7 +2007,7 @@ class index_test_case : public tests::index_test_base {
 }; // index_test_case
 
 void index_test_case::docs_bit_union(irs::IndexFeatures features) {
-  tests::templates::string_ref_field field("0", features);
+  tests::string_ref_field field("0", features);
   const size_t N = irs::bits_required<uint64_t>(2) + 7;
 
   {
@@ -2454,6 +2223,34 @@ TEST_P(index_test_case, writer_begin_clear) {
   }
 }
 
+TEST_P(index_test_case, writer_commit_cleanup_interleaved) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  auto clean = [this]() {
+    irs::directory_utils::remove_all_unreferenced(dir());
+  };
+  tests::callback_directory synced_dir(dir(), std::move(clean));
+  auto writer = irs::index_writer::make(synced_dir, codec(), irs::OM_CREATE);
+  {
+    auto const*doc1 = gen.next();
+    ASSERT_TRUE(
+      insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      )
+    );
+    writer->commit();
+    // check index, it should contain expected number of docs
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.live_docs_count());
+    ASSERT_EQ(1, reader.docs_count());
+    ASSERT_NE(reader.begin(), reader.end());
+  }
+}
+
 TEST_P(index_test_case, writer_commit_clear) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
@@ -2505,7 +2302,7 @@ TEST_P(index_test_case, insert_null_empty_term) {
 
 TEST_P(index_test_case, europarl_docs) {
   {
-    tests::templates::europarl_doc_template doc;
+    tests::europarl_doc_template doc;
     tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
     add_segment(gen);
   }
@@ -2519,7 +2316,7 @@ TEST_P(index_test_case, docs_bit_union) {
 
 TEST_P(index_test_case, europarl_docs_automaton) {
   {
-    tests::templates::europarl_doc_template doc;
+    tests::europarl_doc_template doc;
     tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
     add_segment(gen);
   }
@@ -2610,7 +2407,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+      doc.insert(std::make_shared<tests::string_field>(name, data.str));
     }
   });
   std::vector<const tests::document*> docs;
@@ -2619,7 +2416,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
   for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc)) {}
 
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     std::thread thread0([&writer, docs, &first_doc]() {
@@ -2688,7 +2485,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name,
         data.str
       ));
@@ -2702,7 +2499,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
   {
     std::condition_variable cond;
     std::mutex mutex;
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A || name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A || name==B", "C");
     auto writer = open_writer();
     auto lock = irs::make_unique_lock(mutex);
     std::atomic<bool> stop(false);
@@ -2771,7 +2568,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
 
   // remove added docs, add same docs again commit separate thread after end of add
   {
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A || name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A || name==B", "C");
     auto writer = open_writer();
 
     // initial add docs
@@ -2820,7 +2617,7 @@ TEST_P(index_test_case, document_context) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name,
         data.str
       ));
@@ -2905,7 +2702,7 @@ TEST_P(index_test_case, document_context) {
 
   // during replace across commit blocks (single doc)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -2948,7 +2745,7 @@ TEST_P(index_test_case, document_context) {
 
   // during replace across commit blocks (functr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3034,7 +2831,7 @@ TEST_P(index_test_case, document_context) {
 
   // holding document_context after remove across commit does not block
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3090,7 +2887,7 @@ TEST_P(index_test_case, document_context) {
 
   // holding document_context after replace across commit does not block (single doc)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3147,7 +2944,7 @@ TEST_P(index_test_case, document_context) {
 
   // holding document_context after replace across commit does not block (functr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3440,7 +3237,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback removals
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3476,7 +3273,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback removals + some more
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3520,8 +3317,8 @@ TEST_P(index_test_case, document_context) {
 
   // rollback removals split over multiple segment_writers
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     irs::index_writer::init_options options;
     options.segment_docs_max = 1; // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
@@ -3594,7 +3391,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replace (single doc)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3634,7 +3431,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replace (single doc) + some more
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3682,8 +3479,8 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replacements (single doc) split over multiple segment_writers
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     irs::index_writer::init_options options;
     options.segment_docs_max = 1; // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
@@ -3754,7 +3551,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replace (functr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3797,7 +3594,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replace (functr) + some more
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -3848,8 +3645,8 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replacements (functr) split over multiple segment_writers
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     irs::index_writer::init_options options;
     options.segment_docs_max = 1; // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
@@ -4261,7 +4058,7 @@ TEST_P(index_test_case, doc_removal) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name,
         data.str
       ));
@@ -4309,7 +4106,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove 1st (as reference)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4342,7 +4139,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove 1st (as unique_ptr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4376,7 +4173,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove 1st (as shared_ptr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4410,7 +4207,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: remove + add
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4446,7 +4243,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove + readd
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4479,8 +4276,8 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove, old segment: remove
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4519,7 +4316,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + add, old segment: remove + remove + add
   {
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4557,7 +4354,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add, old segment: remove
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4615,7 +4412,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove, old segment: remove
   {
-    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A || name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A || name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4677,9 +4474,9 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove, old segment: add + remove old-old segment: remove
   {
-    auto query_doc2_doc6_doc9 = irs::iql::query_builder().build("name==B||name==F||name==I", std::locale::classic());
-    auto query_doc3_doc7 = irs::iql::query_builder().build("name==C||name==G", std::locale::classic());
-    auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+    auto query_doc2_doc6_doc9 = irs::iql::query_builder().build("name==B||name==F||name==I", "C");
+    auto query_doc3_doc7 = irs::iql::query_builder().build("name==C||name==G", "C");
+    auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4783,7 +4580,7 @@ TEST_P(index_test_case, doc_update) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name,
         data.str
       ));
@@ -4799,7 +4596,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update (as reference)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4832,7 +4629,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update (as unique_ptr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4865,7 +4662,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update (as shared_ptr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4898,7 +4695,7 @@ TEST_P(index_test_case, doc_update) {
 
   // old segment update
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -4955,9 +4752,9 @@ TEST_P(index_test_case, doc_update) {
 
   // 3x updates (same segment)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5000,9 +4797,9 @@ TEST_P(index_test_case, doc_update) {
 
   // 3x updates (different segments)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5048,7 +4845,7 @@ TEST_P(index_test_case, doc_update) {
 
   // no matching documnts
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5082,7 +4879,7 @@ TEST_P(index_test_case, doc_update) {
 
   // update + delete (same segment)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5123,7 +4920,7 @@ TEST_P(index_test_case, doc_update) {
 
   // update + delete (different segments)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5182,7 +4979,7 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update (same segment)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5220,7 +5017,7 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update (different segments)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5257,8 +5054,8 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update then update (2nd - update of modified doc) (same segment)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5297,8 +5094,8 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update then update (2nd - update of modified doc) (different segments)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
-    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5358,7 +5155,7 @@ TEST_P(index_test_case, doc_update) {
     auto doc2 = gen.next();
     auto doc3 = gen.next();
     auto doc4 = gen.next();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
 
     irs::index_writer::init_options opts;
     opts.features.emplace(irs::type<irs::offset>::id(), nullptr);
@@ -5434,7 +5231,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update with single-doc functr
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -5469,7 +5266,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update with multiple-doc functr
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
     std::vector<tests::document const*> docs = { doc2, doc3 };
     size_t i = 0;
@@ -5510,7 +5307,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update with multiple-doc functr + rollback due to exception
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
     std::vector<tests::document const*> docs = { doc2, doc3 };
     size_t i = 0;
@@ -5553,7 +5350,7 @@ TEST_P(index_test_case, import_reader) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+      doc.insert(std::make_shared<tests::string_field>(name, data.str));
     }
   });
 
@@ -5610,7 +5407,7 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 1 segment no live-docs
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     irs::memory_directory data_dir;
     auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
@@ -5698,7 +5495,7 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 1 sparse segment
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     irs::memory_directory data_dir;
     auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
@@ -5786,7 +5583,7 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 2 sparse segments
   {
-    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B||name==C", std::locale::classic());
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B||name==C", "C");
     irs::memory_directory data_dir;
     auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
@@ -5836,7 +5633,7 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 2 mixed segments
   {
-    auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+    auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
     irs::memory_directory data_dir;
     auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
@@ -5889,7 +5686,7 @@ TEST_P(index_test_case, import_reader) {
 
   // new: add + add + delete, old: import
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
     irs::memory_directory data_dir;
     auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
@@ -5958,7 +5755,7 @@ TEST_P(index_test_case, refresh_reader) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name,
         data.str
       ));
@@ -6014,7 +5811,7 @@ TEST_P(index_test_case, refresh_reader) {
   // modify state (delete doc2)
   {
     auto writer = open_writer(irs::OM_APPEND);
-    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
 
     writer->documents().remove(std::move(query_doc2.filter));
     writer->commit();
@@ -6135,7 +5932,7 @@ TEST_P(index_test_case, refresh_reader) {
   // modify state (delete doc1)
   {
     auto writer = open_writer(irs::OM_APPEND);
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
 
     writer->documents().remove(std::move(query_doc1.filter));
     writer->commit();
@@ -6210,7 +6007,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
   {
     {
       auto& index_ref = const_cast<tests::index_t&>(index());
-      index_ref.emplace_back();
+      index_ref.emplace_back(writer->field_features());
       gen0.reset();
       write_segment(*writer, index_ref.back(), gen0);
       writer->commit();
@@ -6218,7 +6015,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
 
     {
       auto& index_ref = const_cast<tests::index_t&>(index());
-      index_ref.emplace_back();
+      index_ref.emplace_back(writer->field_features());
       gen1.reset();
       write_segment(*writer, index_ref.back(), gen1);
       writer->commit();
@@ -6228,7 +6025,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
   // populate initial small segment
   {
     auto& index_ref = const_cast<tests::index_t&>(index());
-    index_ref.emplace_back();
+    index_ref.emplace_back(writer->field_features());
     gen0.reset();
     write_segment(*writer, index_ref.back(), gen0);
     gen1.reset();
@@ -6239,7 +6036,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
   // populate initial large segment
   {
     auto& index_ref = const_cast<tests::index_t&>(index());
-    index_ref.emplace_back();
+    index_ref.emplace_back(writer->field_features());
 
     for(size_t i = 100; i > 0; --i) {
       gen0.reset();
@@ -6255,7 +6052,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
   // 10 iterations, although 2 should be enough since index_wirter::flush_context_pool_.size() == 2
   for(size_t i = 10; i > 0; --i) {
     auto& index_ref = const_cast<tests::index_t&>(index());
-    index_ref.emplace_back();
+    index_ref.emplace_back(writer->field_features());
 
     // add varying sized segments
     for (size_t j = 0; j < i; ++j) {
@@ -6292,7 +6089,7 @@ TEST_P(index_test_case, segment_column_user_system) {
        const tests::json_doc_generator::json_value& data) {
       // add 2 identical fields (without storing) to trigger non-default norm value
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+        doc.insert(std::make_shared<tests::string_field>(name, data.str));
       }
   });
 
@@ -6303,7 +6100,7 @@ TEST_P(index_test_case, segment_column_user_system) {
 
   // add 2 identical fields (without storing) to trigger non-default norm value
   for (size_t i = 2; i; --i) {
-    doc0.insert(std::make_shared<tests::templates::string_field>(
+    doc0.insert(std::make_shared<tests::string_field>(
         "test-field",
         "test-value",
         irs::IndexFeatures::NONE,
@@ -6402,7 +6199,7 @@ TEST_P(index_test_case, import_concurrent) {
     resource("simple_sequential.json"),
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+        doc.insert(std::make_shared<tests::string_field>(name, data.str));
 
         if (name == "name") {
           names.emplace(data.str.data, data.str.size);
@@ -6500,7 +6297,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
     resource("simple_sequential.json"),
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -6626,7 +6423,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
     resource("simple_sequential.json"),
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -6765,7 +6562,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
     resource("simple_sequential.json"),
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -6907,7 +6704,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
     resource("simple_sequential.json"),
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name, data.str));
 
         if (name == "name") {
@@ -7040,7 +6837,7 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -7095,7 +6892,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -7130,8 +6927,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -7162,7 +6958,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     writer->documents().remove(*query_doc1.filter);
     writer->commit();
     ASSERT_EQ(3, irs::directory_cleaner::clean(dir())); // segments_1 + stale segment meta + unused column store
@@ -7180,8 +6976,8 @@ TEST_P(index_test_case, consolidate_single_segment) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc2);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7233,7 +7029,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
         const std::string& name,
         const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+        doc.insert(std::make_shared<tests::string_field>(name, data.str));
       }
   });
 
@@ -7338,13 +7134,13 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc3);
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc4);
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7411,7 +7207,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   // long running transaction + segment removal
   {
     SetUp(); // recreate directory
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
 
     tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
@@ -7481,8 +7277,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // segment 4
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit(); // commit transaction
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir)); // segments_3
 
@@ -7494,12 +7289,12 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc2);
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc3);
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc4);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7563,7 +7358,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   // long running transaction + document removal
   {
     SetUp(); // recreate directory
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
 
     tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
@@ -7641,10 +7436,10 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     // validate structure (does not take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7695,7 +7490,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   // long running transaction + document removal
   {
     SetUp(); // recreate directory
-    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", std::locale::classic());
+    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", "C");
 
     tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
@@ -7777,11 +7572,11 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     // validate structure (does not take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7850,7 +7645,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name, data.str));
       }
   });
@@ -8004,7 +7799,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -8077,9 +7872,9 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8162,12 +7957,12 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8278,13 +8073,13 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
-    expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
+    expected.back().insert(*doc5);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8343,7 +8138,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -8424,11 +8219,11 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   gen.reset();
   tests::index_t expected;
   for (size_t i = 0; i < SEGMENTS_COUNT/2; ++i) {
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     const auto* doc = gen.next();
-    expected.back().add(doc->indexed.begin(), doc->indexed.end());
+    expected.back().insert(*doc);
     doc = gen.next();
-    expected.back().add(doc->indexed.begin(), doc->indexed.end());
+    expected.back().insert(*doc);
   }
   tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -8477,7 +8272,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name, data.str));
       }
   });
@@ -8558,9 +8353,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8662,12 +8457,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8803,15 +8598,15 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
-    expected.back().add(doc6->indexed.begin(), doc6->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc5);
+    expected.back().insert(*doc6);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8886,7 +8681,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -8955,10 +8750,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -9011,7 +8806,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes
   {
     SetUp();
-    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", std::locale::classic());
+    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9084,11 +8879,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -9144,32 +8939,28 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with delete committed and pending
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
 
@@ -9215,11 +9006,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
     {
       auto reader = irs::directory_reader::open(dir(), codec());
@@ -9283,8 +9074,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     writer->commit();
 
     // remove one doc from new and old segment to make conolidation do something
-    auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
-    auto query_doc5 = irs::iql::query_builder().build("name==E", std::locale::classic());
+    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
+    auto query_doc5 = irs::iql::query_builder().build("name==E", "C");
     writer->documents().remove(*query_doc3.filter);
     writer->documents().remove(*query_doc5.filter);
     writer->commit();
@@ -9302,7 +9093,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // repeatable consolidation of already consolidated segment
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9375,8 +9166,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // repeatable consolidation of already consolidated segment during two phase commit
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9453,7 +9244,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // check commit rollback and consolidation
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9511,11 +9302,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
 
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
@@ -9526,7 +9317,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes + inserts
   {
     SetUp();
-    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", std::locale::classic());
+    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9585,8 +9376,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     writer->commit(); // commit transaction (will commit removal)
     ASSERT_EQ(4, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta + stale segment 2 meta + unused column store
 
@@ -9603,13 +9393,13 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc5);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -9684,7 +9474,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes + inserts
   {
     SetUp();
-    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", std::locale::classic());
+    auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9692,24 +9482,20 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
 
@@ -9720,8 +9506,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
 
     // check consolidating segments
     expected_consolidating_segments = { };
@@ -9761,13 +9546,13 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc5);
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -9842,7 +9627,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes + inserts
   {
     SetUp();
-    auto query_doc3_doc4 = irs::iql::query_builder().build("name==C||name==D", std::locale::classic());
+    auto query_doc3_doc4 = irs::iql::query_builder().build("name==C||name==D", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9850,12 +9635,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -9865,12 +9648,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
 
@@ -9882,8 +9663,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
 
     // check consolidating segments
     expected_consolidating_segments = { };
@@ -9941,11 +9721,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc5);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11194,7 +10974,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
   // consolidate with uncommitted (inserts + deletes)
   {
-    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", std::locale::classic());
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -11347,7 +11127,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
   // consolidate with committed (inserts) + uncomitted (deletes)
   {
-    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", std::locale::classic());
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -11470,7 +11250,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
   // consolidate with committed (inserts + deletes)
   {
-    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", std::locale::classic());
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -11768,7 +11548,7 @@ TEST_P(index_test_case, segment_consolidate) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -11791,7 +11571,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty new segment
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11807,7 +11587,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old segment
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11824,7 +11604,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment new
   {
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11848,8 +11628,8 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11872,7 +11652,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment new
   {
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11895,8 +11675,8 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11919,22 +11699,19 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment old
   {
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1_doc2.filter));
     writer->commit();
@@ -11943,8 +11720,8 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11967,22 +11744,19 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment old
   {
-    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1_doc2.filter));
     writer->commit();
@@ -11991,8 +11765,8 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12026,17 +11800,15 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // do defragment old segment with uncommited removal (i.e. do not consider uncomitted removals)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1.filter));
     writer->commit();
@@ -12053,17 +11825,15 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // do not defragment old segment with uncommited removal (i.e. do not consider uncomitted removals)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1.filter));
     ASSERT_TRUE(writer->consolidate(merge_if_masked));
@@ -12089,22 +11859,19 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge new+old segment
   {
-    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
@@ -12116,9 +11883,9 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12144,26 +11911,22 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge new+old segment
   {
-    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->documents().remove(std::move(query_doc1_doc3.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
@@ -12171,9 +11934,9 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12199,22 +11962,19 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old segment
   {
-    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
@@ -12227,9 +11987,9 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12255,26 +12015,22 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old segment
   {
-    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto query_doc1_doc3 = irs::iql::query_builder().build("name==A||name==C", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1_doc3.filter));
     writer->commit();
@@ -12283,9 +12039,9 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12311,35 +12067,29 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old+old segment
   {
-    auto query_doc1_doc3_doc5 = irs::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
+    auto query_doc1_doc3_doc5 = irs::iql::query_builder().build("name==A||name==C||name==E", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
-      doc6->stored.begin(), doc6->stored.end()
-    ));
+      doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1_doc3_doc5.filter));
     writer->commit();
@@ -12348,10 +12098,10 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
-    expected.back().add(doc6->indexed.begin(), doc6->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc4);
+    expected.back().insert(*doc6);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12380,35 +12130,29 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old+old segment
   {
-    auto query_doc1_doc3_doc5 = irs::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
+    auto query_doc1_doc3_doc5 = irs::iql::query_builder().build("name==A||name==C||name==E", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
-      doc6->stored.begin(), doc6->stored.end()
-    ));
+      doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1_doc3_doc5.filter));
     writer->commit();
@@ -12417,10 +12161,10 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
-    expected.back().add(doc6->indexed.begin(), doc6->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc4);
+    expected.back().insert(*doc6);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12453,16 +12197,13 @@ TEST_P(index_test_case, segment_consolidate) {
     // add 1st segment
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
-      doc6->stored.begin(), doc6->stored.end()
-    ));
+      doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
 
     // add 2nd segment
@@ -12470,10 +12211,7 @@ TEST_P(index_test_case, segment_consolidate) {
       resource("simple_sequential_upper_case.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
-          doc.insert(std::make_shared<tests::templates::string_field>(
-            name,
-            data.str
-          ));
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
         }
     });
 
@@ -12482,16 +12220,13 @@ TEST_P(index_test_case, segment_consolidate) {
     auto doc1_3 = gen.next();
     ASSERT_TRUE(insert(*writer,
       doc1_1->indexed.begin(), doc1_1->indexed.end(),
-      doc1_1->stored.begin(), doc1_1->stored.end()
-    ));
+      doc1_1->stored.begin(), doc1_1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc1_2->indexed.begin(), doc1_2->indexed.end(),
-      doc1_2->stored.begin(), doc1_2->stored.end()
-    ));
+      doc1_2->stored.begin(), doc1_2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc1_3->indexed.begin(), doc1_3->indexed.end(),
-      doc1_3->stored.begin(), doc1_3->stored.end()
-    ));
+      doc1_3->stored.begin(), doc1_3->stored.end()));
 
     // defragment segments
     writer->commit();
@@ -12544,16 +12279,13 @@ TEST_P(index_test_case, segment_consolidate) {
     // add 1st segment
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
-      doc6->stored.begin(), doc6->stored.end()
-    ));
+      doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
 
     // add 2nd segment
@@ -12561,10 +12293,7 @@ TEST_P(index_test_case, segment_consolidate) {
       resource("simple_sequential_upper_case.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
-          doc.insert(std::make_shared<tests::templates::string_field>(
-            name,
-            data.str
-          ));
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
         }
     });
 
@@ -12573,16 +12302,13 @@ TEST_P(index_test_case, segment_consolidate) {
     auto doc1_3 = gen.next();
     ASSERT_TRUE(insert(*writer,
       doc1_1->indexed.begin(), doc1_1->indexed.end(),
-      doc1_1->stored.begin(), doc1_1->stored.end()
-    ));
+      doc1_1->stored.begin(), doc1_1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc1_2->indexed.begin(), doc1_2->indexed.end(),
-      doc1_2->stored.begin(), doc1_2->stored.end()
-    ));
+      doc1_2->stored.begin(), doc1_2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc1_3->indexed.begin(), doc1_3->indexed.end(),
-      doc1_3->stored.begin(), doc1_3->stored.end()
-    ));
+      doc1_3->stored.begin(), doc1_3->stored.end()));
     writer->commit();
 
     // defragment segments
@@ -12635,10 +12361,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::string_field>(name, data.str));
     }
   });
 
@@ -12655,30 +12378,24 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
-      doc6->stored.begin(), doc6->stored.end()
-    ));
+      doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
     irs::index_utils::consolidate_bytes options;
     options.threshold = 1;
@@ -12739,25 +12456,20 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
     irs::index_utils::consolidate_bytes options;
     options.threshold = 0;
@@ -12818,13 +12530,11 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     irs::index_utils::consolidate_bytes_accum options;
     options.threshold = 1;
@@ -12861,13 +12571,11 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     irs::index_utils::consolidate_bytes_accum options;
     options.threshold = 0;
@@ -12924,31 +12632,26 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
   // valid docs count policy (merge)
   {
-    auto query_doc2_doc3_doc4 = irs::iql::query_builder().build("name==B||name==C||name==D", std::locale::classic());
+    auto query_doc2_doc3_doc4 = irs::iql::query_builder().build("name==B||name==C||name==D", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc2_doc3_doc4.filter));
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
     irs::index_utils::consolidate_docs_live options;
     options.threshold = 1;
@@ -12980,31 +12683,26 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
   // valid docs count policy (not modified)
   {
-    auto query_doc2_doc3_doc4 = irs::iql::query_builder().build("name==B||name==C||name==D", std::locale::classic());
+    auto query_doc2_doc3_doc4 = irs::iql::query_builder().build("name==B||name==C||name==D", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc2_doc3_doc4.filter));
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
     irs::index_utils::consolidate_docs_live options;
     options.threshold = 0;
@@ -13061,26 +12759,22 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
   // valid segment fill policy (merge)
   {
-    auto query_doc2_doc4 = irs::iql::query_builder().build("name==B||name==D", std::locale::classic());
+    auto query_doc2_doc4 = irs::iql::query_builder().build("name==B||name==D", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc2_doc4.filter));
     writer->commit();
@@ -13114,26 +12808,22 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
   // valid segment fill policy (not modified)
   {
-    auto query_doc2_doc4 = irs::iql::query_builder().build("name==B||name==D", std::locale::classic());
+    auto query_doc2_doc4 = irs::iql::query_builder().build("name==B||name==D", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc2_doc4.filter));
     writer->commit();
@@ -13196,7 +12886,7 @@ TEST_P(index_test_case, segment_options) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+      doc.insert(std::make_shared<tests::string_field>(name, data.str));
     }
   });
 
@@ -13290,8 +12980,7 @@ TEST_P(index_test_case, segment_options) {
 
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
 
     writer->commit();
 
@@ -13349,8 +13038,7 @@ TEST_P(index_test_case, segment_options) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     irs::index_writer::segment_options options;
     options.segment_memory_max = 1;
@@ -13358,8 +13046,7 @@ TEST_P(index_test_case, segment_options) {
 
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
 
     writer->commit();
 
@@ -13425,8 +13112,7 @@ TEST_P(index_test_case, writer_close) {
 
     ASSERT_TRUE(insert(*writer,
       doc->indexed.begin(), doc->indexed.end(),
-      doc->stored.begin(), doc->stored.end()
-    ));
+      doc->stored.begin(), doc->stored.end()));
     writer->commit();
   } // ensure writer is closed
 
@@ -13463,13 +13149,11 @@ TEST_P(index_test_case, writer_insert_immediate_remove) {
 
   ASSERT_TRUE(insert(*writer,
     doc4->indexed.begin(), doc4->indexed.end(),
-    doc4->stored.begin(), doc4->stored.end()
-  ));
+    doc4->stored.begin(), doc4->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc3->indexed.begin(), doc3->indexed.end(),
-    doc3->stored.begin(), doc3->stored.end()
-  ));
+    doc3->stored.begin(), doc3->stored.end()));
 
   writer->commit(); // index should be non-empty
 
@@ -13484,21 +13168,19 @@ TEST_P(index_test_case, writer_insert_immediate_remove) {
   // Create segment and immediately do a remove operation
   ASSERT_TRUE(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end()
-  ));
+    doc1->stored.begin(), doc1->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc2->indexed.begin(), doc2->indexed.end(),
-    doc2->stored.begin(), doc2->stored.end()
-  ));
+    doc2->stored.begin(), doc2->stored.end()));
 
-  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
   writer->documents().remove(*(query_doc1.filter.get()));
   writer->commit();
 
   // remove for initial segment to trigger consolidation
   // consolidation is needed to force opening all file handles and make cached readers indeed hold reference to a file
-  auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+  auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
   writer->documents().remove(*(query_doc3.filter.get()));
   writer->commit();
 
@@ -13530,13 +13212,11 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
 
   ASSERT_TRUE(insert(*writer,
     doc4->indexed.begin(), doc4->indexed.end(),
-    doc4->stored.begin(), doc4->stored.end()
-  ));
+    doc4->stored.begin(), doc4->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc3->indexed.begin(), doc3->indexed.end(),
-    doc3->stored.begin(), doc3->stored.end()
-  ));
+    doc3->stored.begin(), doc3->stored.end()));
 
   writer->commit(); // index should be non-empty
   size_t count = 0;
@@ -13550,23 +13230,21 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
   // Create segment and immediately do a remove operation for all added documents
   ASSERT_TRUE(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end()
-  ));
+    doc1->stored.begin(), doc1->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc2->indexed.begin(), doc2->indexed.end(),
-    doc2->stored.begin(), doc2->stored.end()
-  ));
+    doc2->stored.begin(), doc2->stored.end()));
 
-  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
   writer->documents().remove(*(query_doc1.filter.get()));
-  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
   writer->documents().remove(*(query_doc2.filter.get()));
   writer->commit();
 
   // remove for initial segment to trigger consolidation
   // consolidation is needed to force opening all file handles and make cached readers indeed hold reference to a file
-  auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+  auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
   writer->documents().remove(*(query_doc3.filter.get()));
   writer->commit();
 
@@ -13597,13 +13275,11 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment) {
 
   ASSERT_TRUE(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end()
-  ));
+    doc1->stored.begin(), doc1->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc2->indexed.begin(), doc2->indexed.end(),
-    doc2->stored.begin(), doc2->stored.end()
-  ));
+    doc2->stored.begin(), doc2->stored.end()));
 
   writer->commit(); // index should be non-empty
   size_t count = 0;
@@ -13615,9 +13291,9 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment) {
   ASSERT_GT(count, 0);
 
   // Remove all documents from segment
-  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
   writer->documents().remove(*(query_doc1.filter.get()));
-  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
   writer->documents().remove(*(query_doc2.filter.get()));
   writer->commit();
   {
@@ -13652,41 +13328,36 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
 
   ASSERT_TRUE(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end()
-  ));
+    doc1->stored.begin(), doc1->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc2->indexed.begin(), doc2->indexed.end(),
-    doc2->stored.begin(), doc2->stored.end()
-  ));
+    doc2->stored.begin(), doc2->stored.end()));
 
   writer->commit(); // segment 1
   
   ASSERT_TRUE(insert(*writer,
     doc3->indexed.begin(), doc3->indexed.end(),
-    doc3->stored.begin(), doc3->stored.end()
-  ));
+    doc3->stored.begin(), doc3->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc4->indexed.begin(), doc4->indexed.end(),
-    doc4->stored.begin(), doc4->stored.end()
-  ));
+    doc4->stored.begin(), doc4->stored.end()));
 
   writer->commit(); //  segment 2
 
-
-  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
   writer->documents().remove(*(query_doc1.filter.get()));
-  auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+  auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
   writer->documents().remove(*(query_doc3.filter.get()));
   writer->commit();
 
   // this consolidation should bring us to one consolidated segment without removes.
   ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
   // Remove all documents from 'new' segment
-  auto query_doc4 = irs::iql::query_builder().build("name==D", std::locale::classic());
+  auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
   writer->documents().remove(*(query_doc4.filter.get()));
-  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
   writer->documents().remove(*(query_doc2.filter.get()));
   writer->commit();
   {
@@ -13760,7 +13431,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
 
     // we don't write default norms
     {
-      const tests::templates::string_field field(
+      const tests::string_field field(
         static_cast<std::string>(empty.name()),
         "bar",
         empty.index_features(),
@@ -13771,7 +13442,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     }
 
     {
-      const tests::templates::string_field field(
+      const tests::string_field field(
         static_cast<std::string>(empty.name()),
         "bar",
         empty.index_features(),
@@ -14404,7 +14075,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+        doc.insert(std::make_shared<tests::string_field>(name, data.str));
       }
     });
 

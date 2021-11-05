@@ -417,10 +417,10 @@ _Enterprise Edition only_
 ### llhttp
 
 * Name: llhttp
-* Version: 1.1.1
-* Date: 2019-01-28 00:32:31Z
+* Version: 6.0.4
+* Date: 2021-06-26 22:27:35 -0700
 * Project Home: https://github.com/nodejs/llhttp
-* License: https://raw.githubusercontent.com/nodejs/llhttp/master/LICENSE-MIT
+* License: https://raw.githubusercontent.com/nodejs/llhttp/main/LICENSE-MIT
 * License Name: MIT License
 * License Id: MIT
 
@@ -474,10 +474,10 @@ _Enterprise Edition only_
 ### RocksDB
 
 * Name: RocksDB
-* Version: 6.8.0
-* Date: 2020-03-11 23:20:13Z
+* Version: 6.26.0 (f72fd5856585774063ac3fc8926f70626963d488)
+* Date: 2021-10-20 21:33:32 2021 -0700
 * GitHub: https://github.com/facebook/rocksdb
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.8/README.md
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.26/README.md
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 

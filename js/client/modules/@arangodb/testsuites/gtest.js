@@ -133,10 +133,10 @@ function gtestRunner (options) {
         argv.push('--gtest_filter='+options.testCase);
       } else {
         argv.push('--gtest_filter=-*_LongRunning');
-        let greylist =   readGreylist();
+        /*let greylist =   readGreylist();
         greylist.forEach(function(greyItem) {
           argv.push('--gtest_filter=-'+greyItem);
-        });
+        });*/
       }
       // all non gtest args have to come last
       argv.push('--log.line-number');

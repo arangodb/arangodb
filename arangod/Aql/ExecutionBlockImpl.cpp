@@ -159,24 +159,18 @@ class TestLambdaSkipExecutor;
 
 template <typename Executor>
 constexpr bool executorHasSideEffects =
-    is_one_of_v<Executor, ModificationExecutor<AllRowsFetcher, InsertModifier>,
+    is_one_of_v<Executor, 
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
-                ModificationExecutor<AllRowsFetcher, RemoveModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
-                ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
-                ModificationExecutor<AllRowsFetcher, UpsertModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
 
 template <typename Executor>
 constexpr bool executorCanReturnWaiting =
-    is_one_of_v<Executor, ModificationExecutor<AllRowsFetcher, InsertModifier>,
+    is_one_of_v<Executor, 
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
-                ModificationExecutor<AllRowsFetcher, RemoveModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
-                ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
-                ModificationExecutor<AllRowsFetcher, UpsertModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
 
 template <class Executor>
@@ -629,13 +623,9 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               TestLambdaSkipExecutor,
 #endif
-              ModificationExecutor<AllRowsFetcher, InsertModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
-              ModificationExecutor<AllRowsFetcher, RemoveModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
-              ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
-              ModificationExecutor<AllRowsFetcher, UpsertModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, TraversalExecutor,
               EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor,
               LimitExecutor, UnsortedGatherExecutor, SortingGatherExecutor, SortExecutor,
@@ -2302,11 +2292,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<UnsortedGatherExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<RegisterId>>;
 template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<std::string const&>>;
 
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, InsertModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, RemoveModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpsertModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
