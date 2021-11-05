@@ -154,7 +154,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static constexpr std::uint64_t triesFast = 200;
   static constexpr std::uint64_t triesSlow = 10000;
 
- protected:
   basics::ReadWriteSpinLock _taskLock;
   std::atomic<bool> _shutdown;
 
@@ -169,6 +168,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::uint64_t _id;
   Metadata _metadata;
 
+ private:
   // manage the actual table - note: MUST be used only with atomic_load and atomic_store!
   std::shared_ptr<Table> _table;
 
