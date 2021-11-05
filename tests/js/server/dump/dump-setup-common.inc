@@ -485,7 +485,7 @@ function createEmptyGraph(kind, options) {
 function createEmptySmartGraph() {
   createEmptyGraph("SmartGraph", {
     numberOfShards: 5,
-    replicationFactor: 1,
+    replicationFactor: 2,
     smartGraphAttribute: "value"
   });
 }
@@ -508,7 +508,7 @@ function createEmptySatelliteGraph() {
 function createEmptyDisjointGraph() {
   createEmptyGraph("Disjoint", {
     numberOfShards: 5,
-    replicationFactor: 1,
+    replicationFactor: 2,
     smartGraphAttribute: "value",
     isDisjoint: true
   });
@@ -607,14 +607,14 @@ function createDisjointGraphSingleServer() {
       toVertices: [vertices],
       orphans: [orphans]
     },
-    {isDisjoint: true}
+    {isDisjoint: true, replicationFactor: 2}
   );
 
   const size = 50;
 
   const docs1 = fillAndSaveVDocs(size, vertices);
   const docs2 = fillAndSaveVDocs(size, vertices);
-  const eDocs = fillEDocs([docs1.saved, docs2.saved]);
+  const eDocs = fillEDocs([docs1.saved, docs2.saved], true);
 
   db[edges].save(eDocs);
   db[orphans].save(docs1.vDocs);
@@ -676,7 +676,8 @@ function createHybridSmartGraphSingleServer() {
 
   const g = sgm._create(hybridGraphName, [relSatNonSat], [orphans], {
     satellites: [verticesSat],
-    smartGraphAttribute: 'value'
+    smartGraphAttribute: 'value',
+    replicationFactor: 2
   });
 
   // create vertices
@@ -731,7 +732,8 @@ function createHybridDisjointSmartGraphSingleServer() {
   sgm._create(hybridGraphName, [relSatANonSat, relAB], [orphans], {
     satellites: [verticesSat],
     isDisjoint: true,
-    smartGraphAttribute: 'value'
+    smartGraphAttribute: 'value',
+    replicationFactor: 2
   });
 
   // create vertices
@@ -750,13 +752,13 @@ function createHybridDisjointSmartGraphSingleServer() {
 
   db[edgesSatA].save(eDocs);
   eDocs = [];
-  // from A to B
+  // from A to A &&  B to B
   for (let i = 0; i < size; ++i) {
-    eDocs.push({_from: docsANonSat.saved[i], _to: docsBNonSat.saved[i], value: String(i)});
-    eDocs.push({_from: docsANonSat.saved[i], _to: docsBNonSat.saved[(i + 1) % size], value: String(i)});
+    eDocs.push({_from: docsANonSat.saved[i], _to: docsANonSat.saved[i], value: String(i)});
+    eDocs.push({_from: docsBNonSat.saved[i], _to: docsBNonSat.saved[i], value: String(i)});
   }
-  db[edgesAB].save(eDocs);
 
+  db[edgesAB].save(eDocs);
   db[orphans].save(docsSat.vDocs);
   db[orphans].save(docsANonSat.vDocs);
 }
@@ -790,7 +792,7 @@ function createDisjointGraphWithoutData() {
       toVertices: ["UnitTestDumpDisjointVerticesWithoutData"],
       orphans: ["UnitTestDumpDisjointOrphansWithoutData"]
     },
-    {isDisjoint: true}
+    {isDisjoint: true, replicationFactor: 2}
   );
 }
 
@@ -819,16 +821,19 @@ function fillAndSaveVDocs(size, verticesName) {
  * @param savedVDocsColls: an array of saved collections
  * @returns {*[]}
  */
-function fillEDocs(savedVDocsColls = []) {
+function fillEDocs(savedVDocsColls = [], isDisjoint = false) {
   let eDocs = [];
   for (let ell = 0; ell < savedVDocsColls.length; ++ell) {
     const savedColl = savedVDocsColls[ell];
     const size = savedColl.length;
 
     for (let i = 0; i < size; ++i) {
-      eDocs.push({_from: savedColl[(i + 1) % size], _to: savedColl[i], value: String(i)});
+      if (!isDisjoint) {
+        eDocs.push({_from: savedColl[(i + 1) % size], _to: savedColl[i], value: String(i)});
+        eDocs.push({_from: savedColl[i], _to: savedColl[(i + 1) % size], value: String(i)});
+      }
+
       eDocs.push({_from: savedColl[i], _to: savedColl[i], value: String(i)});
-      eDocs.push({_from: savedColl[i], _to: savedColl[(i + 1) % size], value: String(i)});
     }
   }
   return eDocs;
@@ -860,7 +865,11 @@ function createGraphWithoutData(names, options = undefined) {
 
   // set default options if not given as a parameter
   if (options === undefined) {
-    options = {numberOfShards: 5, smartGraphAttribute: "value"};
+    options = {
+      numberOfShards: 5,
+      smartGraphAttribute: "value",
+      replicationFactor: 2
+    };
   } else {
     if (options.numberOfShards === undefined) {
       options.numberOfShards = 5;

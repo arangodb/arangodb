@@ -3270,8 +3270,11 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   bool enforceReplicationFactor = false;
 
 #ifdef USE_ENTERPRISE
-  if (slice.hasKey(StaticStrings::IsSmart) && slice.get(StaticStrings::IsSmart).isBoolean() &&
-      slice.get(StaticStrings::IsSmart).isTrue()) {
+  if ((slice.hasKey(StaticStrings::IsSmart) && slice.get(StaticStrings::IsSmart).isBoolean() &&
+       slice.get(StaticStrings::IsSmart).isTrue()) ||
+      (slice.hasKey(StaticStrings::GraphIsSatellite) &&
+       slice.get(StaticStrings::GraphIsSatellite).isBoolean() &&
+       slice.get(StaticStrings::GraphIsSatellite).isTrue())) {
     isSingleServerEnterpriseCollection = true;
     enforceReplicationFactor = true;
   }
