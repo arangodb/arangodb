@@ -353,7 +353,7 @@ void Cache::shutdown() {
       _metadata.changeTable(0);
     }
     _manager->unregisterCache(_id);
-    std::atomic_store_explicit(&_table, std::shared_ptr<cache::Table>(), std::memory_order_relaxed);
+    std::atomic_store_explicit(&_table, std::shared_ptr<cache::Table>(), std::memory_order_release);
   }
 }
 
@@ -428,7 +428,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   {
     SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
     oldTable = this->table();
-    std::atomic_store_explicit(&_table, newTable, std::memory_order_relaxed);
+    std::atomic_store_explicit(&_table, newTable, std::memory_order_release);
     oldTable->setAuxiliary(std::shared_ptr<Table>());
   }
 
