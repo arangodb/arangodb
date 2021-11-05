@@ -3,6 +3,20 @@ v3.9.0 (XXXX-XX-XX)
 
 * Upgrade bundled version of RocksDB to 6.26.
 
+* BTS-623: The audit log messages, when written, were not showing the log level
+  of the message, as in the example:
+    `2021-10-21T02:28:42Z | hostname | audit-authentication | n/a | _system |
+     127.0.0.1:52490 | n/a | credentials missing | /_admin/aardvark/favicon.ico`
+  With the new flag `--audit.display-log-level`, the level of the audit log
+  message can be displayed in the log text.  When set to true, this behavior is
+  expected, as in the example:
+    `2021-10-21T02:28:42Z | DEBUG | hostname | audit-authentication | n/a |
+     _system | 127.0.0.1:52490 | n/a | credentials missing |
+     /_admin/aardvark/favicon.ico`
+  The default value for the flag is false for compatibility with former
+  versions. When this flag is not used, it is considered to have the default
+  behavior (that is, set to false).
+
 * Fixed SEARCH-261: Fix possible race between file creation and directory
   cleaner (ArangoSearch).
 
