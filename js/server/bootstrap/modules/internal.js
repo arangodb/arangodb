@@ -32,7 +32,6 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   var exports = require('internal');
-  var console = require('console');
   var fs = require('fs');
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -62,6 +61,13 @@
 
   exports.ArangoView = global.ArangoView;
   delete global.ArangoView;
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ArangoView
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.ArangoReplicatedLog = global.ArangoReplicatedLog;
+  delete global.ArangoReplicatedLog;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoUsers
@@ -536,6 +542,10 @@
   if (global.MAX_NUMBER_OF_SHARDS) {
     exports.maxNumberOfShards = global.MAX_NUMBER_OF_SHARDS;
     delete global.MAX_NUMBER_OF_SHARDS;
+  }
+  if (global.MAX_NUMBER_OF_MOVE_SHARDS) {
+    exports.maxNumberOfMoveShards = global.MAX_NUMBER_OF_MOVE_SHARDS;
+    delete global.MAX_NUMBER_OF_MOVE_SHARDS;
   }
   if (global.FORCE_ONE_SHARD) {
     exports.forceOneShard = global.FORCE_ONE_SHARD;

@@ -46,7 +46,7 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
       persistedLog->setEntry(entry);
     }
     return std::make_shared<TestReplicatedLog>(std::make_unique<LogCore>(persistedLog),
-                                               _logMetricsMock, defaultLogger());
+                                               _logMetricsMock, _optionsMock, defaultLogger());
   });
 
   // create different log that has only one entry
@@ -54,7 +54,7 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     auto persistedLog = makePersistedLog(LogId{2});
     persistedLog->setEntry(entries[0]);
     return std::make_shared<TestReplicatedLog>(std::make_unique<LogCore>(persistedLog),
-                                               _logMetricsMock, defaultLogger());
+                                               _logMetricsMock, _optionsMock, defaultLogger());
   });
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");

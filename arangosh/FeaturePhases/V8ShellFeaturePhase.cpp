@@ -26,7 +26,7 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
-#include "Shell/ConsoleFeature.h"
+#include "Shell/ShellConsoleFeature.h"
 #include "Shell/V8ShellFeature.h"
 
 namespace arangodb {
@@ -37,7 +37,7 @@ V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer& server)
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 
-  startsAfter<ConsoleFeature>();
+  startsAfter<ShellConsoleFeature>();
   startsAfter<V8ShellFeature>();
   startsAfter<V8PlatformFeature>();
   startsAfter<V8SecurityFeature>();

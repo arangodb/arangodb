@@ -166,7 +166,7 @@
         ['OS=="win"', {
           'gomadir': 'c:\\goma\\goma-win',
         }, {
-          'gomadir': '<!(/bin/echo -n ${HOME}/goma)',
+          'gomadir': '<!(printf "%s" ${HOME}/goma)',
         }],
         ['host_arch!="ppc" and host_arch!="ppc64" and host_arch!="ppc64le" and host_arch!="s390" and host_arch!="s390x"', {
           'host_clang%': 1,
@@ -402,15 +402,15 @@
       ['host_clang==1', {
         'conditions':[
           ['OS=="android"', {
-            'host_ld': '<!(which ld)',
-            'host_ranlib': '<!(which ranlib)',
+            'host_ld': '<!(<(PYTHON_EXECUTABLE)  -c "import distutils.spawn; print(distutils.spawn.find_executable(\\"ld\\"))")',
+            'host_ranlib': '<!(<(PYTHON_EXECUTABLE)  -c "import distutils.spawn; print(distutils.spawn.find_executable(\\"ranlib\\"))")',
           }],
         ],
         'host_cc': '<(clang_dir)/bin/clang',
         'host_cxx': '<(clang_dir)/bin/clang++',
       }, {
-        'host_cc': '<!(which gcc)',
-        'host_cxx': '<!(which g++)',
+        'host_cc': '<!(<(PYTHON_EXECUTABLE)  -c "import distutils.spawn; print(distutils.spawn.find_executable(\\"gcc\\"))")',
+        'host_cxx': '<!(<(PYTHON_EXECUTABLE)  -c "import distutils.spawn; print(distutils.spawn.find_executable(\\"g++\\"))")',
       }],
     ],
     # Default ARM variable settings.
@@ -1306,10 +1306,10 @@
       # Hardcode the compiler names in the Makefile so that
       # it won't depend on the environment at make time.
       'make_global_settings': [
-        ['LD', '<!(/bin/echo -n <(android_toolchain)/../*/bin/ld)'],
-        ['RANLIB', '<!(/bin/echo -n <(android_toolchain)/../*/bin/ranlib)'],
-        ['CC', '<!(/bin/echo -n <(android_toolchain)/*-gcc)'],
-        ['CXX', '<!(/bin/echo -n <(android_toolchain)/*-g++)'],
+        ['LD', '<!(printf "%s" <(android_toolchain)/../*/bin/ld)'],
+        ['RANLIB', '<!(printf "%s" <(android_toolchain)/../*/bin/ranlib)'],
+        ['CC', '<!(printf "%s" <(android_toolchain)/*-gcc)'],
+        ['CXX', '<!(printf "%s" <(android_toolchain)/*-g++)'],
         ['LD.host', '<(host_ld)'],
         ['RANLIB.host', '<(host_ranlib)'],
         ['CC.host', '<(host_cc)'],
@@ -1369,8 +1369,8 @@
       # Set default ARM cross tools on linux.  These can be overridden
       # using CC,CXX,CC.host and CXX.host environment variables.
       'make_global_settings': [
-        ['CC', '<!(which arm-linux-gnueabihf-gcc)'],
-        ['CXX', '<!(which arm-linux-gnueabihf-g++)'],
+        ['CC', '<!(<(PYTHON_EXECUTABLE)  -c "import distutils.spawn; print(distutils.spawn.find_executable(\\"arm-linux-gnueabihf-gcc\\"))")'],
+        ['CXX', '<!(<(PYTHON_EXECUTABLE)  -c "import distutils.spawn; print(distutils.spawn.find_executable(\\"arm-linux-gnueabihf-g++\\"))")'],
         ['CC.host', '<(host_cc)'],
         ['CXX.host', '<(host_cxx)'],
       ],

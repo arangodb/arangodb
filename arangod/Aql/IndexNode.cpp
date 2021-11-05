@@ -33,6 +33,8 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexExecutor.h"
+#include "Aql/NonConstExpressionContainer.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
@@ -268,118 +270,19 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node) cons
   return node;
 }
 
-void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
-                               std::vector<RegisterId>& inRegs,
-                               std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions) const {
-  // instantiate expressions:
-  auto instantiateExpression = [&](AstNode* a, std::vector<size_t>&& idxs) -> void {
-    // all new AstNodes are registered with the Ast in the Query
-    auto e = std::make_unique<Expression>(_plan->getAst(), a);
-
-    TRI_IF_FAILURE("IndexBlock::initialize") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    hasV8Expression |= e->willUseV8();
-
-    VarSet innerVars;
-    e->variables(innerVars);
-
-    nonConstExpressions.emplace_back(
-        std::make_unique<NonConstExpression>(std::move(e), std::move(idxs)));
-
-    for (auto const& v : innerVars) {
-      inVars.emplace_back(v);
-      auto it = getRegisterPlan()->varInfo.find(v->id);
-      TRI_ASSERT(it != getRegisterPlan()->varInfo.cend());
-      TRI_ASSERT(it->second.registerId.isValid());
-      inRegs.emplace_back(it->second.registerId);
-    }
-  };
-
+NonConstExpressionContainer IndexNode::initializeOnce() const {
   if (_condition->root() != nullptr) {
-    auto outVariable = _outVariable;
-    std::function<bool(AstNode const*)> hasOutVariableAccess = [&](AstNode const* node) -> bool {
-      if (node->isAttributeAccessForVariable(outVariable, true)) {
-        return true;
-      }
-
-      bool accessedInSubtree = false;
-      for (size_t i = 0; i < node->numMembers() && !accessedInSubtree; i++) {
-        accessedInSubtree = hasOutVariableAccess(node->getMemberUnchecked(i));
-      }
-
-      return accessedInSubtree;
-    };
-
-    auto instFCallArgExpressions = [&](AstNode* fcall, std::vector<size_t>&& indexPath) {
-      TRI_ASSERT(1 == fcall->numMembers());
-      indexPath.emplace_back(0);  // for the arguments array
-      AstNode* array = fcall->getMemberUnchecked(0);
-      for (size_t k = 0; k < array->numMembers(); k++) {
-        AstNode* child = array->getMemberUnchecked(k);
-        if (!child->isConstant() && !hasOutVariableAccess(child)) {
-          std::vector<size_t> idx = indexPath;
-          idx.emplace_back(k);
-          instantiateExpression(child, std::move(idx));
-
-          TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-        }
-      }
-    };
-
-    // conditions can be of the form (a [<|<=|>|=>] b) && ...
-    // in case of a geo spatial index a might take the form
-    // of a GEO_* function. We might need to evaluate fcall arguments
-    for (size_t i = 0; i < _condition->root()->numMembers(); ++i) {
-      auto andCond = _condition->root()->getMemberUnchecked(i);
-      for (size_t j = 0; j < andCond->numMembers(); ++j) {
-        auto leaf = andCond->getMemberUnchecked(j);
-
-        // FCALL at this level is most likely a geo index
-        if (leaf->type == NODE_TYPE_FCALL) {
-          instFCallArgExpressions(leaf, {i, j});
-          continue;
-        } else if (leaf->numMembers() != 2) {
-          continue;
-        }
-
-        // We only support binary conditions
-        TRI_ASSERT(leaf->numMembers() == 2);
-        AstNode* lhs = leaf->getMember(0);
-        AstNode* rhs = leaf->getMember(1);
-
-        if (lhs->isAttributeAccessForVariable(outVariable, false)) {
-          // Index is responsible for the left side, check if right side
-          // has to be evaluated
-          if (!rhs->isConstant()) {
-            if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
-              rhs = makeUnique(rhs);
-            }
-            instantiateExpression(rhs, {i, j, 1});
-            TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-            }
-          }
-        } else {
-          // Index is responsible for the right side, check if left side
-          // has to be evaluated
-
-          if (lhs->type == NODE_TYPE_FCALL && !options().evaluateFCalls) {
-            // most likely a geo index condition
-            instFCallArgExpressions(lhs, {i, j, 0});
-          } else if (!lhs->isConstant()) {
-            instantiateExpression(lhs, {i, j, 0});
-            TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-            }
-          }
-        }
-      }
+    auto idx = _indexes.at(0);
+    if (!idx) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "The index id cannot be empty.");
     }
+
+    return utils::extractNonConstPartsOfIndexCondition(
+        _plan->getAst(), getRegisterPlan()->varInfo, options().evaluateFCalls,
+        idx->sparse() || idx->isSorted(), _condition->root(), _outVariable);
   }
+  return {};
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -396,19 +299,9 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                                        std::to_string(maxWait) + ")");
   }
 
-  bool hasV8Expression = false;
-  /// @brief _inVars, a vector containing for each expression above
-  /// a vector of Variable*, used to execute the expression
-  std::vector<Variable const*> inVars;
-
-  /// @brief _inRegs, a vector containing for each expression above
-  /// a vector of RegisterId, used to execute the expression
-  std::vector<RegisterId> inRegs;
-
   /// @brief _nonConstExpressions, list of all non const expressions, mapped
   /// by their _condition node path indexes
-  std::vector<std::unique_ptr<NonConstExpression>> nonConstExpressions;
-  initializeOnce(hasV8Expression, inVars, inRegs, nonConstExpressions);
+  auto nonConstExpressions = initializeOnce();
 
   auto const outVariable = isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
   auto const outRegister = variableToRegisterId(outVariable);
@@ -452,10 +345,9 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   auto executorInfos =
       IndexExecutorInfos(outRegister, engine.getQuery(), this->collection(),
                          _outVariable, isProduceResult(), this->_filter.get(),
-                         this->projections(),
-                         std::move(nonConstExpressions), std::move(inVars),
-                         std::move(inRegs), hasV8Expression, doCount(), canReadOwnWrites(),
-                         _condition->root(), this->getIndexes(), _plan->getAst(), this->options(),
+                         this->projections(), std::move(nonConstExpressions),
+                         doCount(), canReadOwnWrites(), _condition->root(),
+                         this->getIndexes(), _plan->getAst(), this->options(),
                          _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(&engine, this,
@@ -589,7 +481,3 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable, IndexId 
                                                   indVars.second.indexFieldNum);
   }
 }
-
-NonConstExpression::NonConstExpression(std::unique_ptr<Expression> exp,
-                                       std::vector<size_t>&& idxPath)
-    : expression(std::move(exp)), indexPath(std::move(idxPath)) {}

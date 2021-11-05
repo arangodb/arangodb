@@ -26,6 +26,13 @@ endif ()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 
+message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
+  set(BUILDING_FOR_ARM64 ON)
+else()
+  set(BUILDING_FOR_ARM64 OFF)
+endif()
+
 if (APPLE)
   if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
     if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR "ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
@@ -526,6 +533,14 @@ find_package(PythonInterp 3 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
+execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} -c "import distutils.spawn"
+    RESULT_VARIABLE EXIT_CODE
+    OUTPUT_QUIET
+    )
+if (NOT "${EXIT_CODE}" EQUAL "0")
+  message(FATAL_ERROR "python distutils package is required! ")
+endif()
 
 # FIXME the build containers seem to have a
 # /usr/bin/ch(mod|own) to prevent the search
@@ -705,12 +720,10 @@ else ()
 
   include(VcMacros)
 
-  option(USE_OPTIMIZE_FOR_ARCHITECTURE "try to determine CPU architecture" ON)
-
-  if (USE_OPTIMIZE_FOR_ARCHITECTURE)
-    include(OptimizeForArchitecture)
-    OptimizeForArchitecture()
-  endif ()
+  # Detect target architecture properties. This honors
+  # any target architecture set via -DTARGET_ARCHITECTURE=...
+  include(OptimizeForArchitecture)
+  OptimizeForArchitecture()
 
   if (USE_SSE4_2)
     set(ARANGODB_SSE42_FLAGS "-msse4.2")
@@ -738,11 +751,11 @@ set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
 ################################################################################
 
 # Allow to prohibit assembler optimization code explicitly
-if (MSVC)
+if (MSVC OR BUILDING_FOR_ARM64)
   SET(ASM_OPTIMIZATIONS_DEFAULT OFF)
-else (MSVC)
+else (MSVC OR BUILDING_FOR_ARM64)
   SET(ASM_OPTIMIZATIONS_DEFAULT ON)
-endif (MSVC)
+endif (MSVC OR BUILDING_FOR_ARM64)
 
 option(ASM_OPTIMIZATIONS "whether hand-optimized assembler code should be used"
   ${ASM_OPTIMIZATIONS_DEFAULT})

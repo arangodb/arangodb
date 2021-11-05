@@ -74,7 +74,7 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())),
       _rangeBound(_bounds.end()) {
-  RocksDBTransactionMethods* methods = RocksDBTransactionState::toMethods(&trx);
+  RocksDBTransactionMethods* methods = RocksDBTransactionState::toMethods(&trx, collection.id());
 
   rocksdb::ColumnFamilyHandle* cf = _bounds.columnFamily();
   _cmp = cf->GetComparator();

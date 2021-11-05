@@ -565,6 +565,7 @@ uint64_t RandomGenerator::interval(uint64_t right) {
   if (right == 0) {
     return 0;
   }
+  ensureDeviceIsInitialized();
   uint64_t value;
 
   if (right == UINT64_MAX) {

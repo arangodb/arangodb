@@ -53,10 +53,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
 RestHandler::RestHandler(application_features::ApplicationServer& server,
                          GeneralRequest* request, GeneralResponse* response)
     :
@@ -66,10 +62,18 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
       _statistics(),
       _handlerId(0),
       _state(HandlerState::PREPARE),
+      _trackedAsOngoingLowPrio(false),
       _lane(RequestLane::UNDEFINED),
       _canceled(false) {}
 
-RestHandler::~RestHandler() = default;
+RestHandler::~RestHandler() {
+  if (_trackedAsOngoingLowPrio) {
+    // someone forgot to call trackTaskEnd 🤔
+    TRI_ASSERT(PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW);
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -120,16 +124,21 @@ void RestHandler::trackQueueEnd() noexcept {
 }
 
 void RestHandler::trackTaskStart() noexcept {
+  TRI_ASSERT(!_trackedAsOngoingLowPrio);
+
   if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     SchedulerFeature::SCHEDULER->trackBeginOngoingLowPriorityTask();
+    _trackedAsOngoingLowPrio = true;
   }
 }
 
 void RestHandler::trackTaskEnd() noexcept {
-  if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
+  if (_trackedAsOngoingLowPrio) {
+    TRI_ASSERT(PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW);
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
+    _trackedAsOngoingLowPrio = false;
 
     // update the time the last low priority item spent waiting in the queue.
 
@@ -295,7 +304,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   return std::move(future).thenValue(cb);
 }
 
-void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
+void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
   try {
     if (eptr) {
       std::rethrow_exception(eptr);
@@ -303,33 +312,33 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11929", WARN, arangodb::Logger::FIXME)
-    << "maintainer mode: caught exception in " << name() << ": " << ex.what();
+      << "maintainer mode: caught exception in " << name() << ": " << ex.what();
 #endif
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("fdcbc", WARN, arangodb::Logger::FIXME)
-    << "maintainer mode: caught velocypack exception in " << name() << ": "
-    << ex.what();
+      << "maintainer mode: caught velocypack exception in " << name() << ": "
+      << ex.what();
 #endif
     bool const isParseError =
-    (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
-     ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
+      (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
+       ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
     Exception err(isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
                   std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("5c9f6", WARN, arangodb::Logger::FIXME)
-    << "maintainer mode: caught memory exception in " << name() << ": "
-    << ex.what();
+      << "maintainer mode: caught memory exception in " << name() << ": "
+      << ex.what();
 #endif
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("252ea", WARN, arangodb::Logger::FIXME)
-    << "maintainer mode: caught exception in " << name() << ": " << ex.what();
+      << "maintainer mode: caught exception in " << name() << ": " << ex.what();
 #endif
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
@@ -340,6 +349,10 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
+} catch (...) {
+  // we can only get here if putting together an error response or an 
+  // error log message failed with an exception. there is nothing we
+  // can do here to signal this problem.
 }
 
 void RestHandler::runHandlerStateMachine() {
@@ -412,7 +425,7 @@ void RestHandler::runHandlerStateMachine() {
 // -----------------------------------------------------------------------------
 
 void RestHandler::prepareEngine() {
-  // set end immediately so we do not get netative statistics
+  // set end immediately so we do not get negative statistics
   _statistics.SET_REQUEST_START_END();
 
   if (_canceled) {

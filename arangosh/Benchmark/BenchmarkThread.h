@@ -47,6 +47,7 @@
 #include "Rest/HttpRequest.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
+#include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
@@ -160,10 +161,10 @@ class BenchmarkThread : public arangodb::Thread {
     // test the connection
     std::unique_ptr<httpclient::SimpleHttpResult> result(
         _httpClient->request(rest::RequestType::GET, "/_api/version", nullptr, 0, _headers));
-
-    if (!result || !result->isComplete()) {
+    auto check = arangodb::HttpResponseChecker::check(_httpClient->getErrorMessage(), result.get());
+    if (check.fail()) {
       LOG_TOPIC("5cda7", FATAL, arangodb::Logger::BENCH)
-          << "could not connect to server";
+          << check.errorMessage();
       FATAL_ERROR_EXIT();
     }
 
@@ -296,6 +297,7 @@ class BenchmarkThread : public arangodb::Thread {
     std::unique_ptr<httpclient::SimpleHttpResult> result(
         _httpClient->request(rest::RequestType::POST, "/_api/batch",
                              _payloadBuffer.data(), _payloadBuffer.size(), _headers));
+
     double delta = TRI_microtime() - start;
     trackTime(delta);
 
@@ -351,7 +353,8 @@ class BenchmarkThread : public arangodb::Thread {
     char const* type = (batch ? "batch" : "single");
     TRI_ASSERT(numOperations > 0);
 
-    if (result != nullptr && result->isComplete() && !result->wasHttpError()) {
+    auto check = arangodb::HttpResponseChecker::check(_httpClient->getErrorMessage(), result);
+    if (check.ok()) {
       if (batch) {
         // for batch requests we have to check the error header in addition
         auto const& headers = result->getHeaderFields();
@@ -375,14 +378,10 @@ class BenchmarkThread : public arangodb::Thread {
       _operationsCounter->incIncompleteFailures(numOperations);
     }
     if (++_warningCount < maxWarnings) {
-      if (result != nullptr && result->wasHttpError()) {
+      if (check.fail()) {
         LOG_TOPIC("fb835", WARN, arangodb::Logger::BENCH)
             << type << " request for URL '" << _requestData.url
-            << "' failed with HTTP code " << result->getHttpReturnCode() << ": "
-            << std::string(result->getBody().c_str(), result->getBody().length());
-      } else {
-        LOG_TOPIC("f5982", WARN, arangodb::Logger::BENCH)
-            << type << " operation failed because server did not reply";
+            << check.errorMessage();
       }
     } else if (_warningCount == maxWarnings) {
       LOG_TOPIC("6daf1", WARN, arangodb::Logger::BENCH)
