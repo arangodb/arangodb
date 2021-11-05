@@ -1284,7 +1284,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
 
     // Always ignore `shadowCollections` they were accidentially dumped in
     // arangodb versions earlier than 3.3.6
-    toMerge.add("shadowCollections", arangodb::velocypack::Slice::nullSlice());
+    toMerge.add(StaticStrings::ShadowCollections, arangodb::velocypack::Slice::nullSlice());
     toMerge.close();  // TopLevel
 
     VPackSlice const type = parameters.get("type");
