@@ -647,7 +647,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         VPackSlice pdb = pb.get(
           std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES, dbname});
         if (pdb.isNone() || pdb.isEmptyObject()) {
-          LOG_TOPIC("12274", INFO, Logger::MAINTENANCE)
+          LOG_TOPIC("12274", DEBUG, Logger::MAINTENANCE)
             << "Dropping databases: pdb is "
             << std::string(pdb.isNone() ? "non Slice" : pdb.toJson());
           needDrop = true;
@@ -949,7 +949,7 @@ arangodb::Result arangodb::maintenance::executePlan(
         }
       } catch (std::exception const& exc) {
         feature.unlockShard(shardName);
-        LOG_TOPIC("86762", INFO, Logger::MAINTENANCE)
+        LOG_TOPIC("86762", WARN, Logger::MAINTENANCE)
             << "Exception caught when adding action, unlocking shard "
             << shardName << " again: " << exc.what();
       }
@@ -1839,7 +1839,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
           }
         } catch (std::exception const& exc) {
           feature.unlockShard(shardName);
-          LOG_TOPIC("86763", INFO, Logger::MAINTENANCE)
+          LOG_TOPIC("86763", WARN, Logger::MAINTENANCE)
             << "Exception caught when adding synchronize shard action, unlocking shard "
             << shardName << " again: " << exc.what();
         }

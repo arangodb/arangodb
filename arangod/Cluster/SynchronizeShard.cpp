@@ -1100,7 +1100,7 @@ bool SynchronizeShard::first() {
     // This wrap is just to not write the stream if not needed.
     std::stringstream msg;
     AppendShardInformationToMessage(database, shard, planId, startTime, msg);
-    LOG_TOPIC("e6780", INFO, Logger::MAINTENANCE) << "synchronizeOneShard: done, " << msg.str();
+    LOG_TOPIC("e6780", DEBUG, Logger::MAINTENANCE) << "synchronizeOneShard: done, " << msg.str();
   }
   return false;
 }
