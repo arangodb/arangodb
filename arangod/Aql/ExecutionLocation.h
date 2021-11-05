@@ -39,6 +39,16 @@ class ExecutionLocation {
     return _location == LocationType::ANYWHERE || _location == LocationType::COORDINATOR;
   }
 
+  /**
+   * @brief A strict ExecutionLocation needs to be
+   * concidered to determine positioning of nodes
+   * If it is not strict we can easily ignore the
+   * Node in the location planning.
+   */
+  bool isStrict() const {
+    return _location != LocationType::ANYWHERE;
+  }
+
   friend auto operator<<(std::ostream& out, ExecutionLocation const& location) -> std::ostream&;
 
  private:

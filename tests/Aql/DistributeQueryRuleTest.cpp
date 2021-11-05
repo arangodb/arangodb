@@ -81,13 +81,22 @@ TEST_F(DistributeQueryRuleTest, single_enumerate_collection) {
   auto queryString = "FOR x IN collection RETURN x";
   auto plan = prepareQuery(queryString);
 
-  LOG_DEVEL << plan->toJson();
-
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
   planSlice = planSlice.get("nodes");
   assertNodesMatch(planSlice, {"SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ReturnNode"} );
 }
+
+TEST_F(DistributeQueryRuleTest, no_collection_access) {
+  auto queryString = "FOR x IN [1,2,3] RETURN x";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode"} );
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb

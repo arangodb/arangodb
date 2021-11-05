@@ -8420,16 +8420,86 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
   struct NodePositioner : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
     bool before(arangodb::aql::ExecutionNode* n) override {
       auto loc = n->getAllowedLocation();
-      LOG_DEVEL << n->getTypeString() << " can be executed on " << loc;
+      if (loc.isStrict()) {
+        relevantNodes.emplace_back(n);
+      }
       // Always continue walking
       return false;
     };
 
     void after(arangodb::aql::ExecutionNode* n) override {
     };
+
+    std::vector<ExecutionNode*> relevantNodes;
   } walker{};
 
   plan->root()->walk(walker);
+
+  /*
+   * This Lambda can be moved out as a static method.
+   * i just kept them in here for simplicity to move this rule into a seperate file
+   * there is nothing from the scope  required.
+   */
+  /**
+   * TODO: I think this is still a bit unclear. Reformulate
+   * @brief This method defines the logic to decide if two adjacent snippets can
+   * be merged. It will get the relevant Connected Nodes as input, and will return
+   * the node that defines the next Sharding upstream
+   */
+  auto JoinSnippets = [](ExecutionPlan& plan, ExecutionNode* lower, ExecutionNode* upper) -> ExecutionNode* {
+    auto lowerLoc = lower->getAllowedLocation();
+    auto upperLoc = upper->getAllowedLocation();
+    TRI_ASSERT(lowerLoc.isStrict());
+    TRI_ASSERT(upperLoc.isStrict());
+    if (lowerLoc.canRunOnCoordinator() && upperLoc.canRunOnCoordinator()) {
+      // Both on Coordinator, already joined in between nothing to do
+      return upper;
+    }
+
+    if (lowerLoc.canRunOnCoordinator() && upperLoc.canRunOnDBServer()) {
+      // TODO: we could collect our vocbase once in the walker above, it cannot be changed anyways.
+      TRI_vocbase_t* vocbase = extractVocbaseFromNode(upper);
+
+      // Lower is on Coordinator
+      // Add GATHER REMOTE right above the lowerNode to keep most computations on DBServer, take sharding from upperNode
+      // TODO: We may need to get more clever with the GATHER node here, regarding parallelism
+      // TODO: We may need to improve the gather / even omit the gather, if we figure out Upper
+      // only has a single Shard
+
+      // NOTE: InsertGatherNode does NOT insert anthing, it just creates the GatherNode
+      // NOTE: No idea what subqueries should be used for. yet. (TODO)
+      SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
+      SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+      auto gatherNode = insertGatherNode(plan, upper, subqueries);
+      TRI_ASSERT(gatherNode);
+
+      auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
+      TRI_ASSERT(remoteNode);
+
+      // Now need to relink:
+      // dependency <- lower
+      // =>
+      // dependency <- remote <- gather <- lower
+      auto dependencyNode = lower->getFirstDependency();
+      remoteNode->addDependency(dependencyNode);
+      gatherNode->addDependency(remoteNode);
+      lower->replaceDependency(dependencyNode, gatherNode);
+    }
+
+    return upper;
+  };
+
+  auto& relevantNodes = walker.relevantNodes;
+  TRI_ASSERT(!relevantNodes.empty());
+
+  auto* previous = relevantNodes.front();
+  // We start on purpose at i = 1, to guarantee that we have a previous node
+  for (size_t i = 1; i < relevantNodes.size(); ++i) {
+    auto* node = relevantNodes[i];
+    TRI_ASSERT(previous);
+    TRI_ASSERT(node);
+    previous = JoinSnippets(*plan, previous, node);
+  }
 
   bool modified = true;
   opt->addPlan(std::move(plan), rule, modified);
