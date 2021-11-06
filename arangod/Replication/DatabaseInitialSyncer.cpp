@@ -1291,6 +1291,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   {
     std::string url = baseUrl + "/" + RestReplicationHandler::Tree +
                       "?collection=" + urlEncode(leaderColl) +
+                      "&onlyPopulated=true" + 
                       "&to=" + std::to_string(maxTick) +
                       "&serverId=" + _state.localServerIdString +
                       "&batchId=" + std::to_string(_config.batch.id);
