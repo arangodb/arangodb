@@ -109,11 +109,11 @@ class Store {
   std::vector<bool> applyLogEntries(arangodb::velocypack::Builder const& query,
                                     index_t index, term_t term, bool inform);
 
-  /// @brief Read specified query from store
-  std::vector<bool> read(query_t const& query, query_t& result) const;
+  /// @brief Read multiple entries from store
+  std::vector<bool> readMultiple(query_t const& query, query_t& result) const;
 
   /// @brief Read individual entry specified in slice into builder
-  bool read(arangodb::velocypack::Slice const&, arangodb::velocypack::Builder&) const;
+  bool read(arangodb::velocypack::Slice query, arangodb::velocypack::Builder&) const;
 
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;

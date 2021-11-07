@@ -117,7 +117,7 @@ auto AsyncAgencyStorePoolConnection::handleRead(VPackSlice body)
   VPackBuffer<uint8_t> responseBuffer;
   {
     auto result = std::make_shared<arangodb::velocypack::Builder>(responseBuffer);
-    auto const success = _cache.store().read(bodyBuilder, result);
+    auto const success = _cache.store().readMultiple(bodyBuilder, result);
     auto const code =
         std::find(success.begin(), success.end(), false) == success.end()
             ? fuerte::StatusOK

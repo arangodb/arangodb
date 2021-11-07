@@ -101,11 +101,12 @@ query_t AgencyCache::dump() const {
   }
 
   auto ret = std::make_shared<VPackBuilder>();
-  { VPackObjectBuilder o(ret.get());
+  { 
+    VPackObjectBuilder o(ret.get());
     std::shared_lock g(_storeLock);
     ret->add("index", VPackValue(_commitIndex));
     ret->add(VPackValue("cache"));
-    _readDB.read(query, ret);
+    _readDB.readMultiple(query, ret);
   }
   return ret;
 }
@@ -125,7 +126,7 @@ std::tuple<query_t, index_t> AgencyCache::read(std::vector<std::string> const& p
   std::shared_lock g(_storeLock);
 
   if (_commitIndex > 0) {
-    _readDB.read(query, result);
+    _readDB.readMultiple(query, result);
   }
   return std::tuple(std::move(result), _commitIndex);
 }
@@ -735,7 +736,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
           }}
         auto [entry, created] = db_res.try_emplace(i, std::make_shared<VPackBuilder>());
         if (created) {
-          _readDB.read(query, entry->second);
+          _readDB.readMultiple(query, entry->second);
         } else {
           LOG_TOPIC("31ae3", ERR, Logger::CLUSTER)
             << "Failed to communicate updated database " << i
@@ -766,7 +767,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
     }
     if (_commitIndex > 0) { // Databases
       rest_res = std::make_shared<VPackBuilder>();
-      _readDB.read(query, rest_res);
+      _readDB.readMultiple(query, rest_res);
     }
   }
 

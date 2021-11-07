@@ -51,7 +51,7 @@ class StoreTestAPI : public ::testing::Test {
     try {
       consensus::query_t q {VPackParser::fromJson(json)};
       auto result {std::make_shared<VPackBuilder>()};
-      _store.read(q, result);
+      _store.readMultiple(q, result);
       return result;
     }
     catch(std::exception& ex) {

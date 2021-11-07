@@ -642,7 +642,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
 }
 
 /// Read queries into result
-std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
+std::vector<bool> Store::readMultiple(query_t const& queries, query_t& result) const {
   std::vector<bool> success;
   if (queries->slice().isArray()) {
     VPackArrayBuilder r(result.get());
@@ -656,7 +656,7 @@ std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
 }
 
 /// Read single query into ret
-bool Store::read(VPackSlice const& query, Builder& ret) const {
+bool Store::read(VPackSlice query, Builder& ret) const {
   bool success = true;
   bool showHidden = false;
 
