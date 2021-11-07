@@ -141,7 +141,7 @@ bool Agent::id(std::string const& id) {
 }
 
 /// Merge command line and persisted comfigurations
-bool Agent::mergeConfiguration(VPackSlice const& persisted) {
+bool Agent::mergeConfiguration(VPackSlice persisted) {
   auto res = _config.merge(persisted);  // Concurrency managed in merge
   syncActiveAndAcknowledged();
   return res;
@@ -910,7 +910,7 @@ void Agent::advanceCommitIndex() {
 }
 
 std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
-  index_t const& index, double const& timeout) {
+  index_t index, double timeout) {
 
   using namespace std::chrono;
 
@@ -2004,7 +2004,7 @@ Store const& Agent::transient() const {
 }
 
 /// Rebuild from persisted state
-void Agent::setPersistedState(VPackSlice const& compaction) {
+void Agent::setPersistedState(VPackSlice compaction) {
   // Catch up with compacted state, this is only called at startup
   _spearhead = compaction;
 
@@ -2226,8 +2226,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
   return out;
 }
 
-void Agent::resetRAFTTimes(double min_timeout, double max_timeout) {
-  _config.pingTimes(min_timeout, max_timeout);
+void Agent::resetRAFTTimes(double minTimeout, double maxTimeout) {
+  _config.pingTimes(minTimeout, maxTimeout);
 }
 
 void Agent::ready(bool b) {
@@ -2386,19 +2386,15 @@ void Agent::removeTrxsOngoing(Slice trxs) noexcept {
   }
 }
 
-bool Agent::isTrxOngoing(std::string& id) {
-  try {
-    MUTEX_LOCKER(guard, _trxsLock);
-    auto it = _ongoingTrxs.find(id);
-    return it != _ongoingTrxs.end();
-  } catch (...) {
-    return false;
-  }
+bool Agent::isTrxOngoing(std::string const& id) const noexcept {
+  MUTEX_LOCKER(guard, _trxsLock);
+  auto it = _ongoingTrxs.find(id);
+  return it != _ongoingTrxs.end();
 }
 
 Inception const* Agent::inception() const { return _inception.get(); }
 
-void Agent::updateConfiguration(Slice const& slice) {
+void Agent::updateConfiguration(Slice slice) {
   _config.updateConfiguration(slice);
   // updateConfiguration causes the list of peers to change potentially
   syncActiveAndAcknowledged();
