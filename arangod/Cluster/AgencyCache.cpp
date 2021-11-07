@@ -733,7 +733,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
               query->add(VPackValue(g + i));
             }
           }}
-        auto [entry,created] = db_res.try_emplace(i, std::make_shared<VPackBuilder>());
+        auto [entry, created] = db_res.try_emplace(i, std::make_shared<VPackBuilder>());
         if (created) {
           _readDB.read(query, entry->second);
         } else {
