@@ -1,6 +1,11 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* When enabling the cluster supervision maintenance mode via the web UI, there
+  is now the possibility to select a duration for the maintenance mode.
+  Previous versions of ArangoDB always enabled the maintenance mode for one
+  hour, without allowing any choice here.
+
 * BTS-623: The audit log messages, when written, were not showing the log level
   of the message, as in the example:
     `2021-10-21T02:28:42Z | hostname | audit-authentication | n/a | _system |
