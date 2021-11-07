@@ -50,11 +50,10 @@ class StoreTestAPI : public ::testing::Test {
   {
     try {
       consensus::query_t q {VPackParser::fromJson(json)};
-      auto result {std::make_shared<VPackBuilder>()};
-      _store.readMultiple(q, result);
+      auto result = std::make_shared<VPackBuilder>();
+      _store.readMultiple(q->slice(), *result);
       return result;
-    }
-    catch(std::exception& ex) {
+    } catch (std::exception& ex) {
       throw std::runtime_error(std::string(ex.what()) + " while trying to read " + json);
     }
   }

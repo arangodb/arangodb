@@ -642,12 +642,12 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
 }
 
 /// Read queries into result
-std::vector<bool> Store::readMultiple(query_t const& queries, query_t& result) const {
+std::vector<bool> Store::readMultiple(VPackSlice queries, Builder& result) const {
   std::vector<bool> success;
-  if (queries->slice().isArray()) {
-    VPackArrayBuilder r(result.get());
-    for (auto const& query : VPackArrayIterator(queries->slice())) {
-      success.push_back(read(query, *result));
+  if (queries.isArray()) {
+    VPackArrayBuilder r(&result);
+    for (auto const& query : VPackArrayIterator(queries)) {
+      success.push_back(read(query, result));
     }
   } else {
     LOG_TOPIC("fec72", ERR, Logger::AGENCY) << "Read queries to stores must be arrays";
