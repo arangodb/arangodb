@@ -74,7 +74,7 @@ class Store {
                  std::string const& name = "root");
 
   /// @brief Destruct
-  virtual ~Store();
+  ~Store();
 
   /// @brief Copy constructor
   Store(Store const& other);
