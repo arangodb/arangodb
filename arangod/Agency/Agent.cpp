@@ -470,7 +470,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
     return priv_rpc_ret_t(false, t);
   }
 
-  VPackSlice payload = queries->slice();
+  VPackSlice const payload = queries->slice();
 
   // Update commit index
   if (payload.type() != VPackValueType::Array) {
@@ -522,7 +522,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
   bool ok = true;
   index_t lastIndex = 0;  // Index of last entry in our log
   try {
-    lastIndex = _state.logFollower(queries);
+    lastIndex = _state.logFollower(payload);
     if (lastIndex < payload[nqs - 1].get("index").getNumber<index_t>()) {
       // We could not log all the entries in this query, we need to report
       // this to the leader!
@@ -1389,12 +1389,13 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
     auto const start = high_resolution_clock::now();
     // Apply to spearhead and get indices for log entries
     // Avoid keeping lock indefinitely
+    VPackBuilder chunk;
     for (size_t i = 0, l = 0; i < npacks; ++i) {
-      query_t chunk = std::make_shared<Builder>();
+      chunk.clear();
       {
-        VPackArrayBuilder b(chunk.get());
+        VPackArrayBuilder b(&chunk);
         for (size_t j = 0; j < _config.maxAppendSize() && l < ntrans; ++j, ++l) {
-          chunk->add(slice.at(l));
+          chunk.add(slice.at(l));
         }
       }
 
@@ -1414,8 +1415,8 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       _tiLock.assertNotLockedByCurrentThread();
       MUTEX_LOCKER(ioLocker, _ioLock);
 
-      applied = _spearhead.applyTransactions(chunk, wmode);
-      auto tmp = _state.logLeaderMulti(chunk, applied, currentTerm);
+      applied = _spearhead.applyTransactions(chunk.slice(), wmode);
+      auto tmp = _state.logLeaderMulti(chunk.slice(), applied, currentTerm);
       indices.insert(indices.end(), tmp.begin(), tmp.end());
     }
     _write_hist_msec.count(

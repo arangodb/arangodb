@@ -128,13 +128,13 @@ index_t Store::applyTransactions(std::vector<log_t> const& queries) {
 
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success
-std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
+std::vector<apply_ret_t> Store::applyTransactions(VPackSlice query,
                                                   Agent::WriteMode const& wmode) {
   std::vector<apply_ret_t> success;
 
-  if (query->slice().isArray()) {
+  if (query.isArray()) {
     try {
-      for (auto const& i : VPackArrayIterator(query->slice())) {
+      for (auto const& i : VPackArrayIterator(query)) {
         if (!wmode.privileged()) {
           bool found = false;
           for (auto const& o : VPackObjectIterator(i[0])) {
@@ -193,7 +193,7 @@ std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
 }
 
 /// Apply single transaction
-check_ret_t Store::applyTransaction(Slice const& query) {
+check_ret_t Store::applyTransaction(VPackSlice query) {
   check_ret_t ret(true);
 
   MUTEX_LOCKER(storeLocker, _storeLock);
@@ -324,8 +324,8 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 
     for (auto const& url : urls) {
 
-      auto buffer = std::make_shared<VPackBufferUInt8>();
-      VPackBuilder body(*buffer);  // host
+      VPackBufferUInt8 buffer;
+      VPackBuilder body(buffer);  // host
       {
         VPackObjectBuilder b(&body);
         body.add("term", VPackValue(term));
@@ -335,7 +335,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 
         // key -> (modified -> op)
         // using the map to make sure no double key entries end up in document
-        std::map<std::string,std::map<std::string, std::string>> result;
+        std::map<std::string, std::map<std::string, std::string>> result;
         for (auto it = ret.first; it != ret.second; ++it) {
           result[it->second->key][it->second->modified] = it->second->oper;
         }
@@ -362,7 +362,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
         LOG_TOPIC("9dbfc", TRACE, Logger::AGENCY) << "Sending callback to " << url;
         Agent* agent = _agent;
         try {
-          network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path, *buffer, reqOpts).thenValue(
+          network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path, buffer, reqOpts).thenValue(
             [=](network::Response r) {
                 if (r.fail()) {
                   LOG_TOPIC("9dbf1", TRACE, Logger::AGENCY)
@@ -377,7 +377,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
                     if (r.statusCode() == 404 && _agent != nullptr) {
                       LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY)
                           << "dropping dead callback at " << url;
-                      agent->trashStoreCallback(url, VPackSlice(buffer->data()));
+                      agent->trashStoreCallback(url, VPackSlice(buffer.data()));
                     }
                   } else {
                     LOG_TOPIC("9dbfb", TRACE, Logger::AGENCY) << "Successfully sent callback to " << url;
@@ -401,7 +401,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 }
 
 /// Check precodition object
-check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
+check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
   TRI_ASSERT(slice.isObject());
   check_ret_t ret;
   ret.open();

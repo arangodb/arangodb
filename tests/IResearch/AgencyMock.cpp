@@ -134,9 +134,7 @@ auto AsyncAgencyStorePoolConnection::handleRead(VPackSlice body)
 
 auto AsyncAgencyStorePoolConnection::handleWrite(VPackSlice body)
     -> std::unique_ptr<fuerte::Response> {
-  auto bodyBuilder = std::make_shared<VPackBuilder>(body);
-
-  auto [success, index] = _cache.applyTestTransaction(bodyBuilder);
+  auto [success, index] = _cache.applyTestTransaction(body);
 
   auto const code =
       std::find_if(success.begin(), success.end(),
