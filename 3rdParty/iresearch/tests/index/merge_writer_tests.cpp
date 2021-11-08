@@ -157,9 +157,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
   }
 
   doc1.insert(
-    std::make_shared<tests::templates::string_field>("doc_string", string1));
+    std::make_shared<tests::string_field>("doc_string", string1));
 
-  doc2.insert(std::make_shared<tests::templates::string_field>("doc_string", string2));
+  doc2.insert(std::make_shared<tests::string_field>("doc_string", string2));
   doc2.insert(std::make_shared<tests::int_field>());
   {
     auto& field = doc2.indexed.back<tests::int_field>();
@@ -167,15 +167,15 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
     field.value(42 * 2);
   }
 
-  doc3.insert(std::make_shared<tests::templates::string_field>("doc_string", string3));
+  doc3.insert(std::make_shared<tests::string_field>("doc_string", string3));
   doc3.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc3.indexed.back<tests::int_field>();
     field.name("doc_int");
     field.value(42 * 3);
   }
 
-  doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4));
-  doc4.insert(std::make_shared<tests::templates::string_field>("another_column", "another_value"));
+  doc4.insert(std::make_shared<tests::string_field>("doc_string", string4));
+  doc4.insert(std::make_shared<tests::string_field>("another_column", "another_value"));
 
   auto codec_ptr = codec();
   irs::memory_directory dir;
@@ -566,16 +566,16 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
     field.name("doc_int");
     field.value(42 * 1);
   }
-  doc1.insert(std::make_shared<tests::templates::string_field>("doc_string", string1));
+  doc1.insert(std::make_shared<tests::string_field>("doc_string", string1));
 
-  doc2.insert(std::make_shared<tests::templates::string_field>("doc_string", string2));
+  doc2.insert(std::make_shared<tests::string_field>("doc_string", string2));
   doc2.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc2.indexed.back<tests::int_field>();
     field.name("doc_int");
     field.value(42 * 2);
   }
   
-  doc3.insert(std::make_shared<tests::templates::string_field>("doc_string", string3));
+  doc3.insert(std::make_shared<tests::string_field>("doc_string", string3));
   doc3.insert(std::make_shared<tests::int_field>()); 
   {
     auto& field = doc3.indexed.back<tests::int_field>();
@@ -583,7 +583,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
     field.value(42 * 3);
   }
 
-  doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4));
+  doc4.insert(std::make_shared<tests::string_field>("doc_string", string4));
 
   auto codec_ptr = codec();
   ASSERT_NE(nullptr, codec_ptr);
@@ -1075,13 +1075,13 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     field.name("doc_long");
     field.value(12345 * 3);
   }
-  doc1.insert(std::make_shared<tests::templates::string_field>("doc_string", string1));
-  doc2.insert(std::make_shared<tests::templates::string_field>("doc_string", string2));
-  doc3.insert(std::make_shared<tests::templates::string_field>("doc_string", string3));
-  doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4));
-  doc1.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>("doc_text", text1));
-  doc2.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>("doc_text", text2));
-  doc3.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>("doc_text", text3));
+  doc1.insert(std::make_shared<tests::string_field>("doc_string", string1));
+  doc2.insert(std::make_shared<tests::string_field>("doc_string", string2));
+  doc3.insert(std::make_shared<tests::string_field>("doc_string", string3));
+  doc4.insert(std::make_shared<tests::string_field>("doc_string", string4));
+  doc1.indexed.push_back(std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text1));
+  doc2.indexed.push_back(std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text2));
+  doc3.indexed.push_back(std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text3));
 
   irs::index_writer::init_options opts;
   opts.features.emplace(
@@ -2533,8 +2533,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
   tests::document doc1; // string
   tests::document doc2; // text
 
-  doc1.insert(std::make_shared<tests::templates::string_field>(field, data));
-  doc2.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>(field, data, true));
+  doc1.insert(std::make_shared<tests::string_field>(field, data));
+  doc2.indexed.push_back(std::make_shared<tests::text_field<irs::string_ref>>(field, data, true));
 
 // FIXME
 //  ASSERT_TRUE(irs::is_subset_of(doc1.indexed.get(field)->features(), doc2.indexed.get(field)->features()));
@@ -2617,17 +2617,17 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   tests::document doc3;
   tests::document doc4;
 
-  doc1.insert(std::make_shared<tests::templates::string_field>(field2, value2));
-  doc1.insert(std::make_shared<tests::templates::string_field>(field, data1));
+  doc1.insert(std::make_shared<tests::string_field>(field2, value2));
+  doc1.insert(std::make_shared<tests::string_field>(field, data1));
   doc1.sorted = doc1.indexed.find(field)[0];
-  doc2.insert(std::make_shared<tests::templates::string_field>(field2, value2));
-  doc2.insert(std::make_shared<tests::templates::string_field>(field, data2));
+  doc2.insert(std::make_shared<tests::string_field>(field2, value2));
+  doc2.insert(std::make_shared<tests::string_field>(field, data2));
   doc2.sorted = doc2.indexed.find(field)[0];
-  doc3.insert(std::make_shared<tests::templates::string_field>(field2, value2));
-  doc3.insert(std::make_shared<tests::templates::string_field>(field, data3));
+  doc3.insert(std::make_shared<tests::string_field>(field2, value2));
+  doc3.insert(std::make_shared<tests::string_field>(field, data3));
   doc3.sorted = doc3.indexed.find(field)[0];
-  doc4.insert(std::make_shared<tests::templates::string_field>(field2, value2));
-  doc4.insert(std::make_shared<tests::templates::string_field>(field, data4));
+  doc4.insert(std::make_shared<tests::string_field>(field2, value2));
+  doc4.insert(std::make_shared<tests::string_field>(field, data4));
   doc4.sorted = doc4.indexed.find(field)[0];
 
   auto codec_ptr = codec();
@@ -2900,13 +2900,13 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     field.name("doc_long");
     field.value(12345 * 3);
   }
-  doc1.insert(std::make_shared<tests::templates::string_field>("doc_string", string1));
-  doc2.insert(std::make_shared<tests::templates::string_field>("doc_string", string2));
-  doc3.insert(std::make_shared<tests::templates::string_field>("doc_string", string3));
-  doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4));
-  doc1.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>("doc_text", text1));
-  doc2.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>("doc_text", text2));
-  doc3.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>("doc_text", text3));
+  doc1.insert(std::make_shared<tests::string_field>("doc_string", string1));
+  doc2.insert(std::make_shared<tests::string_field>("doc_string", string2));
+  doc3.insert(std::make_shared<tests::string_field>("doc_string", string3));
+  doc4.insert(std::make_shared<tests::string_field>("doc_string", string4));
+  doc1.indexed.push_back(std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text1));
+  doc2.indexed.push_back(std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text2));
+  doc3.indexed.push_back(std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text3));
 
   irs::index_writer::init_options opts;
   opts.features.emplace(

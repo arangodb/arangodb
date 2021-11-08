@@ -67,11 +67,7 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 transaction::Context::Context(TRI_vocbase_t& vocbase)
     : _vocbase(vocbase),
       _customTypeHandler(),
-      _builders{_arena},
-      _stringBuffer(),
-      _strings{_strArena},
       _options(arangodb::velocypack::Options::Defaults),
-      _resolver(nullptr),
       _transaction{TransactionId::none(), false, false} {}
 
 /// @brief destroy the context
@@ -120,7 +116,7 @@ std::unique_ptr<VPackCustomTypeHandler> transaction::Context::createCustomTypeHa
 /// @brief temporarily lease a StringBuffer object
 basics::StringBuffer* transaction::Context::leaseStringBuffer(size_t initialSize) {
   if (_stringBuffer == nullptr) {
-    _stringBuffer.reset(new basics::StringBuffer(initialSize, false));
+    _stringBuffer = std::make_unique<basics::StringBuffer>(initialSize, false);
   } else {
     _stringBuffer->reset();
   }
