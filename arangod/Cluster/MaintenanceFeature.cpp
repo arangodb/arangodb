@@ -248,10 +248,18 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
         << "maintenance-slow-threads limited to "
         << _maintenanceThreadsSlowMax;
   }
-  LOG_TOPIC("42531", INFO, Logger::MAINTENANCE)
-    << "Using " << _maintenanceThreadsMax
-    << " threads for maintenance, of which "
-    << _maintenanceThreadsSlowMax << " may to slow operations.";
+  if (_maintenanceThreadsSlowMax == 0) {
+    _maintenanceThreadsSlowMax = 1;
+    LOG_TOPIC("54252", WARN, Logger::MAINTENANCE)
+        << "maintenance-slow-threads raised to "
+        << _maintenanceThreadsSlowMax;
+  }
+  if (ServerState::instance()->isDBServer()) {
+    LOG_TOPIC("42531", INFO, Logger::MAINTENANCE)
+      << "Using " << _maintenanceThreadsMax
+      << " threads for maintenance, of which "
+      << _maintenanceThreadsSlowMax << " may to slow operations.";
+  }
 }
 
 void MaintenanceFeature::initializeMetrics() {
