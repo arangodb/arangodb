@@ -1,6 +1,8 @@
 devel
 -----
 
+* Remove unsupported `--server.default-api-compatibility` startup option.
+
 * Fixed potential undefined behavior in edge cache during cache migration tasks.
   There was a short window of time in which an already freed Table could be
   used by concurrently running edge lookups.
