@@ -100,10 +100,10 @@ struct trans_ret_t {
   size_t failed;
   query_t result;
   trans_ret_t() : accepted(false), redirect(""), maxind(0), failed(0) {}
-  trans_ret_t(bool a, std::string const& id)
-      : accepted(a), redirect(id), maxind(0), failed(0) {}
-  trans_ret_t(bool a, std::string const& id, index_t mi, size_t f, query_t const& res)
-      : accepted(a), redirect(id), maxind(mi), failed(f), result(res) {}
+  trans_ret_t(bool a, std::string id)
+      : accepted(a), redirect(std::move(id)), maxind(0), failed(0) {}
+  trans_ret_t(bool a, std::string id, index_t mi, size_t f, query_t res)
+      : accepted(a), redirect(std::move(id)), maxind(mi), failed(f), result(std::move(res)) {}
 };
 
 struct log_t {

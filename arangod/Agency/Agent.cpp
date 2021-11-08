@@ -1181,7 +1181,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
-    return trans_ret_t(false, leader);
+    return trans_ret_t(false, std::move(leader));
   }
 
   {
@@ -1252,7 +1252,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
     advanceCommitIndex();
   }
 
-  return trans_ret_t(true, id(), maxind, failed, ret);
+  return trans_ret_t(true, id(), maxind, failed, std::move(ret));
 }
 
 // Non-persistent write to non-persisted key-value store
@@ -1263,7 +1263,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
-    return trans_ret_t(false, leader);
+    return trans_ret_t(false, std::move(leader));
   }
 
   {
@@ -1297,7 +1297,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
     }
   }
 
-  return trans_ret_t(true, id(), 0, 0, ret);
+  return trans_ret_t(true, id(), 0, 0, std::move(ret));
 }
 
 write_ret_t Agent::inquire(query_t const& query) {
