@@ -69,7 +69,7 @@ struct LogActionContext {
       -> std::shared_ptr<replication2::replicated_log::AbstractFollower> = 0;
 };
 
-auto updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId, RebootId rebootId,
+auto updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
                          LogId logId, agency::LogPlanSpecification const* spec) noexcept
     -> arangodb::Result;
 

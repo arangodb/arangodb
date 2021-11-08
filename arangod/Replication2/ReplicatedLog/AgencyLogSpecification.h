@@ -79,7 +79,6 @@ struct LogCurrentLocalState {
   LogCurrentLocalState(LogTerm, TermIndexPair) noexcept;
 };
 
-
 struct LogCurrentSupervisionElection {
   enum class ErrorCode {
     OK = 0,

@@ -1038,7 +1038,7 @@ auto replicated_log::LogLeader::isLeadershipEstablished() const noexcept -> bool
 }
 
 void replicated_log::LogLeader::establishLeadership() {
-
+  LOG_CTX("f3aa8", INFO, _logContext) << "trying to establish leadership";
   auto waitForIndex = _guardedLeaderData.doUnderLock([](GuardedLeaderData& data) {
     auto const lastIndex = data._inMemoryLog.getLastTermIndexPair();
     TRI_ASSERT(lastIndex.term != data._self._currentTerm);
@@ -1059,7 +1059,7 @@ void replicated_log::LogLeader::establishLeadership() {
       try {
         result.throwIfFailed();
         self->_guardedLeaderData.getLockedGuard()->_leadershipEstablished = true;
-        LOG_CTX("536f4", DEBUG, self->_logContext) << "leadership established";
+        LOG_CTX("536f4", INFO, self->_logContext) << "leadership established";
       } catch (std::exception const& err) {
         LOG_CTX("5ceda", FATAL, self->_logContext)
             << "failed to establish leadership: " << err.what();

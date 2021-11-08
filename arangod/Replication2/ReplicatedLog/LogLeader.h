@@ -270,7 +270,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     [[nodiscard]] auto calculateCommitLag() const noexcept
         -> std::chrono::duration<double, std::milli>;
 
-    auto insertInternal(std::optional<LogPayload>, bool waitForSync, std::optional<InMemoryLogEntry::clock::time_point> insertTp) -> LogIndex;
+    auto insertInternal(std::optional<LogPayload>, bool waitForSync,
+                        std::optional<InMemoryLogEntry::clock::time_point> insertTp)
+        -> LogIndex;
 
 
     LogLeader& _self;
