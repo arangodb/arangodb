@@ -248,6 +248,10 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
         << "maintenance-slow-threads limited to "
         << _maintenanceThreadsSlowMax;
   }
+  LOG_TOPIC("42531", INFO, Logger::MAINTENANCE)
+    << "Using " << _maintenanceThreadsMax
+    << " threads for maintenance, of which "
+    << _maintenanceThreadsSlowMax << " may to slow operations.";
 }
 
 void MaintenanceFeature::initializeMetrics() {
