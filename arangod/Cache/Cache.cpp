@@ -65,16 +65,16 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, std::uint64_t id,
       _manager(manager),
       _id(id),
       _metadata(std::move(metadata)),
-      _tableShrdPtr(std::move(table)),
-      _table(_tableShrdPtr.get()),
+      _table(std::move(table)),
       _bucketClearer(bucketClearer(&_metadata)),
       _slotsPerBucket(slotsPerBucket),
       _insertsTotal(),
       _insertEvictions(),
       _migrateRequestTime(std::chrono::steady_clock::now().time_since_epoch().count()),
       _resizeRequestTime(std::chrono::steady_clock::now().time_since_epoch().count()) {
-  _tableShrdPtr->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
-  _tableShrdPtr->enable();
+  TRI_ASSERT(_table != nullptr);
+  _table->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
+  _table->enable();
   if (_enableWindowedStats) {
     try {
       _findStats.reset(new StatBuffer(_findStatsCapacity));
@@ -231,7 +231,7 @@ void Cache::requestMigrate(std::uint32_t requestedLogSize) {
   SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
   if (std::chrono::steady_clock::now().time_since_epoch().count() >
       _migrateRequestTime.load()) {
-    cache::Table* table = _table.load(std::memory_order_relaxed);
+    std::shared_ptr<cache::Table> table = this->table();
     TRI_ASSERT(table != nullptr);
 
     bool ok = false;
@@ -246,7 +246,7 @@ void Cache::requestMigrate(std::uint32_t requestedLogSize) {
   }
 }
 
-void Cache::freeValue(CachedValue* value) {
+void Cache::freeValue(CachedValue* value) noexcept {
   while (!value->isFreeable()) {
     std::this_thread::yield();
   }
@@ -260,7 +260,7 @@ bool Cache::reclaimMemory(std::uint64_t size) {
   return (_metadata.softUsageLimit >= _metadata.usage);
 }
 
-std::uint32_t Cache::hashKey(void const* key, std::size_t keySize) const {
+std::uint32_t Cache::hashKey(void const* key, std::size_t keySize) const noexcept {
   return (std::max)(static_cast<std::uint32_t>(1), fasthash32(key, keySize, 0xdeadbeefUL));
 }
 
@@ -302,7 +302,7 @@ bool Cache::reportInsert(bool hadEviction) {
     if (total > 0 && total > evictions &&
         ((static_cast<double>(evictions) / static_cast<double>(total)) > _evictionRateThreshold)) {
       shouldMigrate = true;
-      cache::Table* table = _table.load(std::memory_order_relaxed);
+      std::shared_ptr<cache::Table> table = this->table();
       TRI_ASSERT(table != nullptr);
       table->signalEvictions();
     }
@@ -316,7 +316,7 @@ bool Cache::reportInsert(bool hadEviction) {
 Metadata& Cache::metadata() { return _metadata; }
 
 std::shared_ptr<Table> Cache::table() const {
-  return std::atomic_load(&_tableShrdPtr);
+  return std::atomic_load_explicit(&_table, std::memory_order_acquire);
 }
 
 void Cache::shutdown() {
@@ -337,23 +337,23 @@ void Cache::shutdown() {
       std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
 
-    cache::Table* table = _table.load(std::memory_order_relaxed);
+    std::shared_ptr<cache::Table> table = this->table();
     if (table != nullptr) {
-      std::shared_ptr<Table> extra = table->setAuxiliary(std::shared_ptr<Table>(nullptr));
+      std::shared_ptr<Table> extra = table->setAuxiliary(std::shared_ptr<Table>());
       if (extra) {
         extra->clear();
         _manager->reclaimTable(extra);
       }
       table->clear();
+      _manager->reclaimTable(table);
     }
 
-    _manager->reclaimTable(std::atomic_load(&_tableShrdPtr));
     {
       SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
       _metadata.changeTable(0);
     }
     _manager->unregisterCache(_id);
-    _table.store(nullptr, std::memory_order_relaxed);
+    std::atomic_store_explicit(&_table, std::shared_ptr<cache::Table>(), std::memory_order_release);
   }
 }
 
@@ -414,7 +414,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   newTable->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
   newTable->enable();
 
-  cache::Table* table = _table.load(std::memory_order_relaxed);
+  std::shared_ptr<cache::Table> table = this->table();
   TRI_ASSERT(table != nullptr);
   table->setAuxiliary(newTable);
 
@@ -427,13 +427,13 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   std::shared_ptr<Table> oldTable;
   {
     SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
-    _table.store(newTable.get(), std::memory_order_relaxed);
-    oldTable = std::atomic_exchange(&_tableShrdPtr, newTable);
-    std::shared_ptr<Table> confirm =
-        oldTable->setAuxiliary(std::shared_ptr<Table>(nullptr));
+    oldTable = this->table();
+    std::atomic_store_explicit(&_table, newTable, std::memory_order_release);
+    oldTable->setAuxiliary(std::shared_ptr<Table>());
   }
 
   // clear out old table and release it
+  TRI_ASSERT(oldTable != nullptr);
   oldTable->clear();
   _manager->reclaimTable(oldTable);
 

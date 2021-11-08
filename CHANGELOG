@@ -1,15 +1,19 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
-* DEVSUP-899: Fixed Subquery execution
-  in a very rare case a subquery, nested in another subquery, was not
-  executed, which is fixed now. Technical details:
-  If we have two subqueries: `Outer` and `Nested` the Outer will define
-  the input for Nested. And Outer has the pattern: 1 input, subqueryDone, 1
-  input, subqueryDone [...] and our internal batching did cut a batch like
-  this: [<...>, input (A)] | [subqueryDone, input (B), subqueryDone, <...>]
-  than Nested on input (B) was not executed. As soon as we have more than 1
-  input per Outer, or a different cutting position, all was good.
+* DEVSUP-899: Fixed Subquery execution in a very rare case a subquery, nested in
+  another subquery, was not executed, which is fixed now.
+  Technical details:
+  If we have two subqueries: `Outer` and `Nested` the Outer will define the
+  input for Nested. And Outer has the pattern: 1 input, subqueryDone, 1 input,
+  subqueryDone [...] and our internal batching did cut a batch like this:
+  [<...>, input (A)] | [subqueryDone, input (B), subqueryDone, <...>] than
+  Nested on input (B) was not executed. As soon as we have more than 1 input per
+  Outer, or a different cutting position, all was good.
+
+* Fixed potential undefined behavior in edge cache during cache migration tasks.
+  There was a short window of time in which an already freed Table could be used
+  by concurrently running edge lookups.
 
 * Change error message for queries that use too much memory from "resource limit
   exceeded" to "query would use more memory than allowed".
