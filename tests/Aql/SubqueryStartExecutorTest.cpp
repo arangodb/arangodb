@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "AqlExecutorTestCase.h"
+#include "FixedOutputExecutionBlockMock.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
@@ -459,5 +460,86 @@ TEST_P(SubqueryStartExecutorTest, fullbypass_in_outer_subquery) {
         .run();
   } else {
     // The feature is not available in 3.7 or earlier.
+  }
+}
+
+class SubqueryStartSpecficTest : public AqlExecutorTestCase<false> {};
+
+TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
+  // NOTE: This is a regression test for DEVSUP-899, the below is
+  // a partial execution of the query where the issue got triggered
+  std::deque<arangodb::aql::SharedAqlItemBlockPtr> inputData{};
+
+  // The issue under test is a split after a datarow, but before the
+  // shadowRow (entry 5)
+  // This caused the SubqueryStartExecutor to not reset that it has returned done.
+  inputData.push_back(buildBlock<2>(manager(),
+                                    {{1, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {2, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {3, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {4, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {5, NoneEntry{}}},
+                                    {{1, 0}, {3, 0}, {5, 0}, {7, 0}}));
+
+  inputData.push_back(buildBlock<2>(manager(),
+                                    {{NoneEntry{}, NoneEntry{}},
+                                     {6, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {7, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}}},
+                                    {{0, 0}, {2, 0}, {4, 0}}));
+
+  inputData.push_back(
+      buildBlock<2>(manager(),
+                    {{8, NoneEntry{}}, {NoneEntry{}, NoneEntry{}}, {9, NoneEntry{}}},
+                    {{1, 0}}));
+
+  inputData.push_back(buildBlock<2>(manager(),
+                                    {
+                                        {NoneEntry{}, NoneEntry{}},
+                                    },
+                                    {{0, 0}}));
+
+  MockTypedNode inputNode{fakedQuery->plan(), ExecutionNodeId{1}, ExecutionNode::FILTER};
+  FixedOutputExecutionBlockMock dependency{fakedQuery->rootEngine(), &inputNode,
+                                           std::move(inputData)};
+  MockTypedNode sqNode{fakedQuery->plan(), ExecutionNodeId{42}, ExecutionNode::SUBQUERY_START};
+  ExecutionBlockImpl<SubqueryStartExecutor> testee{fakedQuery->rootEngine(), &sqNode,
+                                                   MakeBaseInfos(2), MakeBaseInfos(2)};
+  testee.addDependency(&dependency);
+  // MainQuery (HardLimit 10)
+  AqlCallStack callStack{AqlCallList{AqlCall{0, false, 10, AqlCall::LimitType::HARD}}};
+  // outer subquery (Hardlimit 1)
+  callStack.pushCall(AqlCallList{AqlCall{0, false, 1, AqlCall::LimitType::HARD},
+                                 AqlCall{0, false, 1, AqlCall::LimitType::HARD}});
+  // InnerSubquery (Produce all)
+  callStack.pushCall(AqlCallList{AqlCall{0}, AqlCall{0}});
+
+  for (size_t i = 0; i < 9; ++i) {
+    auto [state, skipped, block] = testee.execute(callStack);
+    // We will always get 3 rows
+    ASSERT_EQ(block->size(), 3);
+    // Two of them Shadows
+    ASSERT_EQ(block->numShadowRows(), 2);
+
+    // First is relevant
+    EXPECT_FALSE(block->isShadowRow(0));
+    // Second is Depth 0
+    ASSERT_TRUE(block->isShadowRow(1));
+    ShadowAqlItemRow second(block, 1);
+    EXPECT_EQ(second.getDepth(), 0);
+    // Third is Depth 1
+    ASSERT_TRUE(block->isShadowRow(2));
+    ShadowAqlItemRow third(block, 2);
+    EXPECT_EQ(third.getDepth(), 1);
+    if (i == 8) {
+      EXPECT_EQ(state, ExecutionState::DONE);
+    } else {
+      EXPECT_EQ(state, ExecutionState::HASMORE);
+    }
   }
 }
