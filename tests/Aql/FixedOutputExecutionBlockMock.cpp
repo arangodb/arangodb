@@ -32,6 +32,9 @@ using namespace arangodb::tests::aql;
 namespace {
 // NOTE copy pasted from Waiting ExecutionBlock mock
 static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> RegisterInfos {
+  // If there are no blocks injected, we have nothing to analyze.
+  // This Mock does only work with predefined data output.
+  TRI_ASSERT(!blocks.empty());
   auto readInput = RegIdSet{};
   auto writeOutput = RegIdSet{};
   RegIdSet toClear{};
@@ -45,11 +48,6 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> Re
       break;
     }
   }
-  // if non found sorry blind guess the number of registers here.
-  // This can happen if you insert the data later into this Mock.
-  // If you do so this register planning is of
-  // for the rime being no test is showing this behavior.
-  // Consider adding data first if the test fails
 
   for (RegisterId::value_t r = 0; r < regs; ++r) {
     toKeep.back().emplace(r);
