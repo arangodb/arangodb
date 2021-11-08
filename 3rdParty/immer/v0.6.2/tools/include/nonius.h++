@@ -659,7 +659,7 @@ namespace nonius {
             }
         };
         template <typename Sig>
-        using ResultOf = typename std::result_of<Sig>::type;
+        using ResultOf = typename std::invoke_result<Sig>::type;
 
         // invoke and not return void :(
         template <typename Fun, typename... Args>
