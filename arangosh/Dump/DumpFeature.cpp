@@ -222,9 +222,12 @@ bool isIgnoredHiddenEnterpriseCollection(arangodb::DumpFeature::Options const& o
                                          std::string const& name) {
 #ifdef USE_ENTERPRISE
   if (!options.force && name[0] == '_') {
-    if (strncmp(name.c_str(), arangodb::StaticStrings::FullLocalPrefix.c_str(), 7) == 0 ||
-        strncmp(name.c_str(), arangodb::StaticStrings::FullFromPrefix.c_str(), 6) == 0 ||
-        strncmp(name.c_str(), arangodb::StaticStrings::FullToPrefix.c_str(), 4) == 0) {
+    if (strncmp(name.c_str(), arangodb::StaticStrings::FullLocalPrefix.c_str(),
+                arangodb::StaticStrings::FullLocalPrefix.size()) == 0 ||
+        strncmp(name.c_str(), arangodb::StaticStrings::FullFromPrefix.c_str(),
+                arangodb::StaticStrings::FullFromPrefix.size()) == 0 ||
+        strncmp(name.c_str(), arangodb::StaticStrings::FullToPrefix.c_str(),
+                arangodb::StaticStrings::FullToPrefix.size()) == 0) {
       LOG_TOPIC("d921a", INFO, arangodb::Logger::DUMP)
           << "Dump is ignoring collection '" << name
           << "'. Will be created via SmartGraphs of a full dump. If you want "
