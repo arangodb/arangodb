@@ -149,6 +149,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
       _firstRun(true),
       _maintenanceThreadsMax((std::max)(static_cast<uint32_t>(minThreadLimit),
                                         static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1))),
+      _maintenanceThreadsSlowMax(_maintenanceThreadsMax / 2),
       _secondsActionsBlock(2),
       _secondsActionsLinger(3600),
       _isShuttingDown(false),
@@ -185,6 +186,15 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                                    arangodb::options::Flags::Dynamic));
 
   options->addOption(
+      "--server.maintenance-slow-threads",
+      "maximum number of threads available for slow maintenance actions (long SynchronizeShard and long EnsureIndex)",
+      new UInt32Parameter(&_maintenanceThreadsSlowMax),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnDBServer,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Dynamic));
+
+  options->addOption(
       "--server.maintenance-actions-block",
       "minimum number of seconds finished Actions block duplicates",
       new Int32Parameter(&_secondsActionsBlock),
@@ -211,6 +221,17 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
 }  // MaintenanceFeature::collectOptions
 
 void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  // Explanation: There must always be at least 3 maintenance threads.
+  // The first one only does actions which are labelled "fast track".
+  // The next few threads do "slower" actions, but never work on very slow
+  // actions which came into being by rescheduling. If they stumble on
+  // an actions which seems to take long, they give up and reschedule
+  // with a special slow priority, such that the action is eventually
+  // executed by the slow threads. We can configure both the total number
+  // of threads as well as the number of slow threads. The number of slow
+  // threads must always be at most N-2 if N is the total number of threads.
+  // The default for the slow threads is N/2, unless the user has used
+  // an override.
   if (_maintenanceThreadsMax < minThreadLimit) {
     LOG_TOPIC("37726", WARN, Logger::MAINTENANCE)
         << "Need at least" << minThreadLimit << "maintenance-threads";
@@ -220,6 +241,19 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
         << "maintenance-threads limited to " << maxThreadLimit;
     _maintenanceThreadsMax = maxThreadLimit;
   }
+  if (!options->processingResult().touched("server.maintenance-slow-threads")) {
+    _maintenanceThreadsSlowMax = _maintenanceThreadsMax / 2;
+  }
+  if (_maintenanceThreadsSlowMax + 2 > _maintenanceThreadsMax) {
+    _maintenanceThreadsSlowMax = _maintenanceThreadsMax - 2;
+    LOG_TOPIC("54251", WARN, Logger::MAINTENANCE)
+        << "maintenance-slow-threads limited to "
+        << _maintenanceThreadsSlowMax;
+  }
+  LOG_TOPIC("42531", INFO, Logger::MAINTENANCE)
+    << "Using " << _maintenanceThreadsMax
+    << " threads for maintenance, of which "
+    << _maintenanceThreadsSlowMax << " may to slow operations.";
 }
 
 void MaintenanceFeature::initializeMetrics() {
@@ -298,8 +332,9 @@ void MaintenanceFeature::start() {
     }
     // The first two workers are not allowed to execute SLOW_OP_PRIORITY,
     // all the others may:
-    int minPrio = (loop < 2) ? maintenance::NORMAL_PRIORITY 
-                             : maintenance::SLOW_OP_PRIORITY;
+    int minPrio = loop < _maintenanceThreadsMax - _maintenanceThreadsSlowMax
+                  ? maintenance::NORMAL_PRIORITY 
+                  : maintenance::SLOW_OP_PRIORITY;
 
     auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this, minPrio, labels);
 

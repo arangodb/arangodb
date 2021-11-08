@@ -205,7 +205,7 @@ class Manager {
 
   // actual tables to lease out
 
-  std::array<std::stack<std::shared_ptr<Table>>, 32> _tables;
+  std::array<std::stack<std::shared_ptr<Table>, std::vector<std::shared_ptr<Table>>>, 32> _tables;
 
   // global statistics
   std::uint64_t _globalSoftLimit;

@@ -37,8 +37,8 @@ var replication = require("@arangodb/replication");
 let compareTicks = replication.compareTicks;
 var console = require("console");
 var internal = require("internal");
-var masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
+var leaderEndpoint = arango.getEndpoint();
+const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 var isCluster = arango.getRole() === 'COORDINATOR';
 var isSingle = arango.getRole() === 'SINGLE';
 const havePreconfiguredReplication = isSingle && replication.globalApplier.stateAll()["_system"].state.running === true;
@@ -51,13 +51,13 @@ function ReplicationSuite() {
   'use strict';
   var cn = "UnitTestsReplication";
 
-  var connectToMaster = function() {
-    reconnectRetry(masterEndpoint, db._name(), "root", "");
+  var connectToLeader = function() {
+    reconnectRetry(leaderEndpoint, db._name(), "root", "");
     db._flushCache();
   };
 
-  var connectToSlave = function() {
-    reconnectRetry(slaveEndpoint, db._name(), "root", "");
+  var connectToFollower = function() {
+    reconnectRetry(followerEndpoint, db._name(), "root", "");
     db._flushCache();
   };
 
@@ -74,14 +74,14 @@ function ReplicationSuite() {
     return db._collection(name).count();
   };
 
-  var compare = function(masterFunc, slaveFuncFinal) {
+  var compare = function(leaderFunc, followerFuncFinal) {
     db._useDatabase("_system"); 
     db._flushCache();
     if (isSingle) {
-      connectToSlave();
+      connectToFollower();
       if (!havePreconfiguredReplication) {
         let syncResult = replication.setupReplicationGlobal({
-          endpoint: masterEndpoint,
+          endpoint: leaderEndpoint,
           username: "root",
           password: "",
           verbose: true,
@@ -94,8 +94,8 @@ function ReplicationSuite() {
       }
     }
     let state = {};
-    connectToMaster();
-    masterFunc(state);
+    connectToLeader();
+    leaderFunc(state);
     
     // use lastLogTick as of now
     if (!isCluster) {
@@ -115,7 +115,7 @@ function ReplicationSuite() {
 
     db._useDatabase("_system");
 
-    connectToSlave();
+    connectToFollower();
     if (isCluster) {
       let count = 0;
       let lastLogTick = 0;
@@ -144,33 +144,33 @@ function ReplicationSuite() {
       var printed = false;
 
       while (true) {
-        let slaveState = replication.globalApplier.state();
+        let followerState = replication.globalApplier.state();
 
-        if (slaveState.state.lastError.errorNum > 0) {
-          console.topic("replication=error", "slave has errored:", JSON.stringify(slaveState.state.lastError));
-          throw JSON.stringify(slaveState.state.lastError);
+        if (followerState.state.lastError.errorNum > 0) {
+          console.topic("replication=error", "follower has errored:", JSON.stringify(followerState.state.lastError));
+          throw JSON.stringify(followerState.state.lastError);
         }
 
-        if (!slaveState.state.running) {
-          console.topic("replication=error", "slave is not running");
+        if (!followerState.state.running) {
+          console.topic("replication=error", "follower is not running");
           break;
         }
 
-        if (compareTicks(slaveState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
-            compareTicks(slaveState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) { // ||
-          console.topic("replication=debug", "slave has caught up. state.lastLogTick:", state.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
+        if (compareTicks(followerState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
+            compareTicks(followerState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) { // ||
+          console.topic("replication=debug", "follower has caught up. state.lastLogTick:", state.lastLogTick, "followerState.lastAppliedContinuousTick:", followerState.state.lastAppliedContinuousTick, "followerState.lastProcessedContinuousTick:", followerState.state.lastProcessedContinuousTick);
           break;
         }
         
         if (!printed) {
-          console.topic("replication=debug", "waiting for slave to catch up");
+          console.topic("replication=debug", "waiting for follower to catch up");
           printed = true;
         }
         internal.wait(0.5, false);
       }
     }
     db._flushCache();
-    slaveFuncFinal(state);
+    followerFuncFinal(state);
   };
 
   return {
@@ -181,9 +181,9 @@ function ReplicationSuite() {
 
     tearDown: function() {
       db._useDatabase("_system");
-      connectToMaster();
+      connectToLeader();
 
-      connectToSlave();
+      connectToFollower();
       if (isSingle && !havePreconfiguredReplication) {
         print("deleting replication");
         replication.globalApplier.forget();
@@ -191,7 +191,7 @@ function ReplicationSuite() {
     },
     
     testFuzzGlobal: function() {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function(state) {
