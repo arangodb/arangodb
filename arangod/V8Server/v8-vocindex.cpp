@@ -265,11 +265,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   VPackBuilder filtered = methods::Collections::filterInput(propSlice);
   propSlice = filtered.slice();
 
-  bool allowSystem = false;
-  if (propSlice.hasKey(StaticStrings::DataSourceSystem) &&
-      propSlice.get(StaticStrings::DataSourceSystem).isBoolean()) {
-    allowSystem = propSlice.get(StaticStrings::DataSourceSystem).getBoolean();
-  }
+  bool allowSystem =
+      VelocyPackHelper::getBooleanValue(propSlice, StaticStrings::DataSourceSystem, false);
 
   v8::Handle<v8::Value> result;
   std::shared_ptr<LogicalCollection> coll;
