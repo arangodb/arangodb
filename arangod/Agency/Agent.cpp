@@ -1297,7 +1297,7 @@ write_ret_t Agent::inquire(query_t const& query) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
-    return write_ret_t(false, leader);
+    return write_ret_t(false, std::move(leader));
   }
 
   write_ret_t ret;
@@ -1318,7 +1318,7 @@ write_ret_t Agent::inquire(query_t const& query) {
     std::this_thread::sleep_for(std::chrono::duration<double>(0.1));
     leader = _constituent.leaderID();
     if (leader != id()) {
-      return write_ret_t(false, leader);
+      return write_ret_t(false, std::move(leader));
     }
   }
 
@@ -1351,7 +1351,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   auto leader = _constituent.leaderID();
   if ((!loaded() && wmode != WriteMode(true, true)) || (multihost && leader != id())) {
     ++_write_no_leader;
-    return write_ret_t(false, leader);
+    return write_ret_t(false, std::move(leader));
   }
 
   if (!wmode.discardStartup()) {
@@ -1437,7 +1437,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   }
 
   ++_write_ok;
-  return write_ret_t(true, id(), applied, indices);
+  return write_ret_t(true, id(), std::move(applied), std::move(indices));
 }
 
 /// Read from store
@@ -1449,7 +1449,7 @@ read_ret_t Agent::read(query_t const& query) {
   auto leader = _constituent.leaderID();
   if (!loaded() || (size() > 1 && leader != id())) {
     ++_read_no_leader;
-    return read_ret_t(false, leader);
+    return read_ret_t(false, std::move(leader));
   }
 
   {
@@ -1476,7 +1476,7 @@ read_ret_t Agent::read(query_t const& query) {
   std::vector<bool> success = _readDB.readMultiple(query->slice(), *result);
 
   ++_read_ok;
-  return read_ret_t(true, leader, std::move(success), std::move(result));
+  return read_ret_t(true, std::move(leader), std::move(success), std::move(result));
 }
 
 
