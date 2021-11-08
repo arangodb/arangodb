@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed potential undefined behavior in edge cache during cache migration tasks.
+  There was a short window of time in which an already freed Table could be
+  used by concurrently running edge lookups.
+
 * DEVSUP-899: Fixed Subquery execution
   in a very rare case a subquery, nested in another subquery, was not
   executed, which is fixed now. Technical details:
