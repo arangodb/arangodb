@@ -76,7 +76,7 @@ bool isIgnoredHiddenEnterpriseCollection(std::string const& cName) {
                   arangodb::StaticStrings::FullFromPrefix.size()) == 0 ||
           strncmp(cName.c_str(), arangodb::StaticStrings::FullToPrefix.c_str(),
                   arangodb::StaticStrings::FullToPrefix.size()) == 0) {
-        LOG_TOPIC("d921b", INFO, arangodb::Logger::VIEWS)
+        LOG_TOPIC("d921b", DEBUG, arangodb::Logger::VIEWS)
             << "Ignoring link to '" << cName
             << "'. Will only be initially created via SmartGraphs of a full "
                "dump of a cluster."
