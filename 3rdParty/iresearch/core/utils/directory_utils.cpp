@@ -369,17 +369,20 @@ void ref_tracking_directory::clear_refs() const noexcept {
 }
 
 index_output::ptr ref_tracking_directory::create(
-  const std::string& name
-) noexcept {
+    const std::string& name) noexcept {
   try {
+    // Do not change the order of calls!
+    // The cleaner should "see" the file in directory
+    // ONLY if there is a tracking reference present!
+    auto ref = attribute_->add(name);
     auto result = impl_.create(name);
 
     // only track ref on successful call to impl_
     if (result) {
-      auto ref = attribute_->add(name);
-
       auto lock = make_lock_guard(mutex_);
-      refs_.emplace(ref);
+      refs_.emplace(std::move(ref));
+    } else {
+      attribute_->remove(name);
     }
 
     return result;
@@ -390,29 +393,32 @@ index_output::ptr ref_tracking_directory::create(
 }
 
 index_input::ptr ref_tracking_directory::open(
-  const std::string& name,
-  IOAdvice advice
-) const noexcept {
+    const std::string& name,
+    IOAdvice advice) const noexcept {
   if (!track_open_) {
     return impl_.open(name, advice);
   }
 
-  auto result = impl_.open(name, advice);
+  try {
+    // Do not change the order of calls!
+    // The cleaner should "see" the file in directory
+    // ONLY if there is a tracking reference present!
+    auto ref = attribute_->add(name);
+    auto result = impl_.open(name, advice);
 
-  // only track ref on successful call to impl_
-  if (result) {
-    try {
-      auto ref = attribute_->add(name);
+    // only track ref on successful call to impl_
+    if (result) {
       auto lock = make_lock_guard(mutex_);
-
-      refs_.emplace(ref);
-    } catch (...) {
-
-      return nullptr;
+      refs_.emplace(std::move(ref));
+    } else {
+      attribute_->remove(name);
     }
+
+    return result;
+  } catch (...) {
   }
 
-  return result;
+  return nullptr;
 }
 
 bool ref_tracking_directory::remove(const std::string& name) noexcept {
