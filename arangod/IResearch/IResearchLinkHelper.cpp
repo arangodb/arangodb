@@ -74,12 +74,11 @@ bool isIgnoredHiddenEnterpriseCollection(std::string const& cName) {
           strncmp(cName.c_str(), arangodb::StaticStrings::FullFromPrefix.c_str(), 6) == 0 ||
           strncmp(cName.c_str(), arangodb::StaticStrings::FullToPrefix.c_str(), 4) == 0) {
         LOG_TOPIC("d921b", INFO, arangodb::Logger::VIEWS)
-            << "Ignoring view '" << cName
+            << "Ignoring link to '" << cName
             << "'. Will only be initially created via SmartGraphs of a full "
                "dump of a cluster."
-               "This view is supposed to be not restored in case you dump from "
-               "and cluster and "
-               "then restore into a single-server instance.";
+               "This link is not supposed to be restored in case you dump from "
+               "a cluster and then restore into a single-server instance.";
         return true;
       }
     }
