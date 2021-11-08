@@ -323,10 +323,9 @@ class MerkleTree {
    * @brief Serialize the tree for transport or storage in portable format
    *
    * @param output    VPackBuilder for output
-   * @param depth     Maximum depth to serialize
+   * @param onlyPopulated  Only return populated buckets
    */
-  void serialize(velocypack::Builder& output,
-                 std::uint64_t depth = std::numeric_limits<std::uint64_t>::max()) const;
+  void serialize(velocypack::Builder& output, bool onlyPopulated) const;
 
   /**
    * @brief Provides a partition of the keyspace

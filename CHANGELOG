@@ -5,6 +5,16 @@ v3.8.3 (XXXX-XX-XX)
   block quick SynchronizeShard jobs which have the data and only need to
   resync.
 
+* Fixed potential undefined behavior in edge cache during cache migration tasks.
+  There was a short window of time in which an already freed Table could be used
+  by concurrently running edge lookups.
+
+* Improve performance of getting-in-sync protocol when using revision trees (for
+  collections created with 3.8). The protocol optimization allows skipping the
+  unused parts of the revision trees in the data transfer, which can
+  substantially reduce the amount of data to be transfered for small and medium
+  collections when trying to get back into sync.
+
 * Change error message for queries that use too much memory from "resource limit
   exceeded" to "query would use more memory than allowed".
 

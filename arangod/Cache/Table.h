@@ -104,7 +104,7 @@ class Table : public std::enable_shared_from_this<Table> {
   struct Subtable {
     Subtable(std::shared_ptr<Table> source, GenericBucket* buckets,
              std::uint64_t size, std::uint32_t mask, std::uint32_t shift);
-    void* fetchBucket(std::uint32_t hash);
+    void* fetchBucket(std::uint32_t hash) noexcept;
 
     std::vector<BucketLocker> lockAllBuckets();
 
@@ -114,9 +114,9 @@ class Table : public std::enable_shared_from_this<Table> {
    private:
     std::shared_ptr<Table> _source;
     GenericBucket* _buckets;
-    std::uint64_t _size;
-    std::uint32_t _mask;
-    std::uint32_t _shift;
+    std::uint64_t const _size;
+    std::uint32_t const _mask;
+    std::uint32_t const _shift;
   };
 
  public:
@@ -210,7 +210,12 @@ class Table : public std::enable_shared_from_this<Table> {
   /// value will be true, and the cache should request migration to a larger
   /// table.
   //////////////////////////////////////////////////////////////////////////////
-  bool slotFilled();
+  bool slotFilled() noexcept;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Report that multiple slots were filled
+  //////////////////////////////////////////////////////////////////////////////
+  void slotsFilled(std::uint64_t numSlots) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Report that a slot was emptied.
@@ -219,7 +224,12 @@ class Table : public std::enable_shared_from_this<Table> {
   /// return value will be true, and the cache should request migration to a
   /// smaller table.
   //////////////////////////////////////////////////////////////////////////////
-  bool slotEmptied();
+  bool slotEmptied() noexcept;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Report that multiple slots were emptied
+  //////////////////////////////////////////////////////////////////////////////
+  void slotsEmptied(std::uint64_t numSlots) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Report that there have been too many evictions.
