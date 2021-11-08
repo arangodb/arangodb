@@ -49,7 +49,7 @@
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkStats.h"
-#include "Benchmark/BenchmarkThread.h"
+//#include "Benchmark/BenchmarkThread.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -143,6 +143,10 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--histogram.percentiles", "which percentiles to calculate",
                      new VectorParameter<DoubleParameter>(&_percentiles),
                      arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
+  options->addOption("--histogram.generate", "display histogram",
+                     new BooleanParameter(&_generateHistogram),
+                     arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst))
+                      .setIntroducedIn(31000);
 
   options->addOption("--async", "send asynchronous requests", new BooleanParameter(&_async));
 
@@ -238,6 +242,24 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--verbose", "print out replies if the HTTP header indicates DB errors", false);
 }
 
+void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (options->processingResult().touched("--histogram.interval-size")) {
+    LOG_TOPIC("8b53b", WARN, arangodb::Logger::BENCH)
+        << "For flag '--histogram.interval-size " << _histogramIntervalSize
+        << "': histogram is disabled by default. Enable it with flag '--histogram.generate = true'.";
+  }
+  if (options->processingResult().touched("--histogram.num-intervals")) {
+      LOG_TOPIC("02916", WARN, arangodb::Logger::BENCH)
+        << "For flag '--histogram.num-intervals " << _histogramNumIntervals
+        << "': histogram is disabled by default. Enable it with flag '--histogram.generate = true'.";
+  }
+  if (options->processingResult().touched("--histogram.percentiles")) {
+    LOG_TOPIC("ad47b", WARN, arangodb::Logger::BENCH)
+        << "For flag '--histogram.percentiles " << _percentiles
+        << "': histogram is disabled by default. Enable it with flag '--histogram.generate = true'.";
+  }
+}
+
 void BenchFeature::status(std::string const& value) {
   if (!_quiet) {
     LOG_TOPIC("a6905", INFO, arangodb::Logger::BENCH) << value;
@@ -249,6 +271,50 @@ std::atomic<int> BenchFeature::_started;
 void BenchFeature::updateStartCounter() { ++_started; }
 
 int BenchFeature::getStartCounter() { return _started; }
+
+void BenchFeature::setupHistogram(std::stringstream& pp, VPackBuilder& builder) {
+  builder.add("histogram", VPackValue(VPackValueType::Object));
+  pp << "Interval/Percentile:";
+  for (auto percentile : _percentiles) {
+    pp << std::fixed << std::right << std::setw(13) << std::setprecision(2)
+        << percentile << "%";
+  }
+  pp << std::endl;
+
+}
+void BenchFeature::updateStatsValues(std::stringstream& pp, VPackBuilder& builder,
+                                     const std::vector<std::unique_ptr<BenchmarkThread>>& threads,
+                                     BenchmarkStats& totalStats) {
+  for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
+    if (_duration != 0) {
+      _realOperations += threads[i]->_counter;
+    }
+
+    totalStats.add(threads[i]->stats());
+    if (_generateHistogram) {
+      double scope;
+      auto res = threads[i]->getPercentiles(_percentiles, scope);
+
+      builder.add(std::to_string(i), VPackValue(VPackValueType::Object));
+      size_t j = 0;
+
+      pp << " " << std::right << std::fixed << std::setw(17)
+         << std::setprecision(4) << (threads[i]->_histogramIntervalSize * 1000)
+         << std::setw(0) << "ms";
+
+      builder.add("IntervalSize", VPackValue(threads[i]->_histogramIntervalSize));
+
+      for (auto time : res) {
+        builder.add(std::to_string(_percentiles[j]), VPackValue(time));
+        pp << "   " << std::right << std::fixed << std::setw(9)
+           << std::setprecision(4) << (time * 1000) << std::setw(0) << "ms";
+        j++;
+      }
+      pp << std::endl;
+      builder.close();
+    }
+  }
+}
 
 void BenchFeature::start() {
   std::sort(_percentiles.begin(), _percentiles.end());
@@ -294,6 +360,7 @@ void BenchFeature::start() {
     delete result;
     client.setDatabaseName(connectDB);
   }
+
   int ret = EXIT_SUCCESS;
 
   *_result = ret;
@@ -338,19 +405,15 @@ void BenchFeature::start() {
   // aggregated stats for all runs
   BenchmarkStats totalStats;
 
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
-  builder->add("histogram", VPackValue(VPackValueType::Object));
+  VPackBuilder builder;
+  builder.openObject();
   std::vector<std::unique_ptr<BenchmarkThread>> threads;
   bool ok = true;
   std::vector<BenchRunResult> results;
   std::stringstream pp;
-  pp << "Interval/Percentile:";
-  for (auto percentile : _percentiles) {
-    pp << std::fixed << std::right << std::setw(12) << std::setprecision(2)
-       << percentile << "%";
+  if (_generateHistogram) {
+    setupHistogram(pp, builder);
   }
-  pp << std::endl;
 
   for (uint64_t j = 0; j < _runs; j++) {
     status("starting threads...");
@@ -370,7 +433,7 @@ void BenchFeature::start() {
       auto thread = std::make_unique<BenchmarkThread>(
           server(), benchmark.get(), &startCondition, &BenchFeature::updateStartCounter,
           static_cast<int>(i), _batchSize, &operationsCounter, client,
-          _keepAlive, _async, _histogramIntervalSize, _histogramNumIntervals);
+          _keepAlive, _async, _histogramIntervalSize, _histogramNumIntervals, _generateHistogram);
       thread->setOffset(i * realStep);
       thread->start();
       threads.push_back(std::move(thread));
@@ -437,42 +500,24 @@ void BenchFeature::start() {
         requestTime,
     });
 
-    for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
-      if (_duration != 0) {
-        _realOperations += threads[i]->_counter;
-      }
+    updateStatsValues(pp, builder, threads, totalStats);
 
-      totalStats.add(threads[i]->stats());
-
-      double scope;
-      auto res = threads[i]->getPercentiles(_percentiles, scope);
-
-      builder->add(std::to_string(i), VPackValue(VPackValueType::Object));
-      size_t j = 0;
-
-      pp << " " << std::left << std::setfill('0') << std::fixed << std::setw(8)
-         << std::setprecision(6) << (threads[i]->_histogramIntervalSize * 1000)
-         << std::setw(0) << "ms         ";
-
-      builder->add("IntervalSize", VPackValue(threads[i]->_histogramIntervalSize));
-
-      for (auto time : res) {
-        builder->add(std::to_string(_percentiles[j]), VPackValue(time));
-        pp << "   " << std::left << std::setfill('0') << std::fixed << std::setw(8)
-           << std::setprecision(6) << (time * 1000) << std::setw(0) << "ms";
-        j++;
-      }
-
-      builder->close();
-      pp << std::endl;
-    }
     threads.clear();
+  }
+  if (_generateHistogram) {
+    builder.close();
   }
 
   std::cout << std::endl;
-  builder->close();
 
-  report(client, results, totalStats, pp.str(), *builder);
+  report(client, results, totalStats, pp.str(), builder);
+
+  builder.close();
+
+  if (!_jsonReportFile.empty()) {
+    auto json = builder.toJson();
+    TRI_WriteFile(_jsonReportFile.c_str(), json.c_str(), json.length());
+  }
 
   if (!ok) {
     std::cout << "At least one of the runs produced failures!" << std::endl;
@@ -487,10 +532,13 @@ void BenchFeature::start() {
   *_result = ret;
 }
 
-bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results,
+void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results,
                           BenchmarkStats const& stats,
                           std::string const& histogram, VPackBuilder& builder) {
-  std::cout << std::endl;
+
+  if (_generateHistogram) {
+    std::cout << histogram << std::endl;
+  }
 
   std::cout << "Total number of operations: " << _realOperations << ", runs: " << _runs
             << ", keep alive: " << (_keepAlive ? "yes" : "no")
@@ -522,6 +570,7 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
             [](BenchRunResult a, BenchRunResult b) { return a._time < b._time; });
 
   BenchRunResult output{0, 0, 0, 0};
+
   if (_runs > 1) {
     size_t size = results.size();
 
@@ -561,31 +610,24 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
   printResult(output, builder);
   builder.close();
 
-  std::cout << "Min request time: " << std::setprecision(6)
+  std::cout << "Min request time: " << std::setprecision(4)
             << (stats.min * 1000) << "ms" << std::endl
-            << "Avg request time: " << std::setprecision(6)
+            << "Avg request time: " << std::setprecision(4)
             << (stats.avg() * 1000) << "ms" << std::endl
-            << "Max request time: " << std::setprecision(6)
+            << "Max request time: " << std::setprecision(4)
             << (stats.max * 1000) << "ms" << std::endl
             << std::endl;
-
-  std::cout << histogram;
 
   builder.add("min", VPackValue(stats.min));
   builder.add("avg", VPackValue(stats.avg()));
   builder.add("max", VPackValue(stats.max));
-  builder.close();
 
-  if (!_jsonReportFile.empty()) {
-    auto json = builder.toJson();
-    TRI_WriteFile(_jsonReportFile.c_str(), json.c_str(), json.length());
+
+
+  if (!_junitReportFile.empty()) {
+    writeJunitReport(output);
   }
 
-  if (_junitReportFile.empty()) {
-    return true;
-  }
-
-  return writeJunitReport(output);
 }
 
 bool BenchFeature::writeJunitReport(BenchRunResult const& result) {

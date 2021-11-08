@@ -64,7 +64,7 @@ class BenchmarkThread : public arangodb::Thread {
                   void (*callback)(), size_t threadNumber, uint64_t const batchSize,
                   BenchmarkCounter<uint64_t>* operationsCounter,
                   ClientFeature& client, bool keepAlive, bool async,
-                  double histogramIntervalSize, uint64_t histogramNumIntervals)
+                  double histogramIntervalSize, uint64_t histogramNumIntervals, bool generateHistogram)
       : Thread(server, "BenchmarkThread"),
         _operation(operation),
         _startCondition(condition),
@@ -80,6 +80,7 @@ class BenchmarkThread : public arangodb::Thread {
         _keepAlive(keepAlive),
         _async(async),
         _useVelocyPack(_batchSize == 0),
+        _generateHistogram(generateHistogram),
         _httpClient(nullptr),
         _offset(0),
         _counter(0),
@@ -93,17 +94,19 @@ class BenchmarkThread : public arangodb::Thread {
   void trackTime(double time) {
     _stats.track(time);
 
-    if (_histogramScope == 0.0) {
-      _histogramScope = time * 20;
-      _histogramIntervalSize = _histogramScope / _histogramNumIntervals;
-    }
+    if (_generateHistogram) {
+      if (_histogramScope == 0.0) {
+        _histogramScope = time * 20;
+        _histogramIntervalSize = _histogramScope / _histogramNumIntervals;
+      }
 
-    uint64_t bucket = static_cast<uint64_t>(lround(time / _histogramIntervalSize));
-    if (bucket >= _histogramNumIntervals) {
-      bucket = _histogramNumIntervals - 1;
-    }
+      uint64_t bucket = static_cast<uint64_t>(lround(time / _histogramIntervalSize));
+      if (bucket >= _histogramNumIntervals) {
+        bucket = _histogramNumIntervals - 1;
+      }
 
-    ++_histogram[bucket];
+      ++_histogram[bucket];
+    }
   }
 
   std::vector<double> getPercentiles(std::vector<double> const& which,
@@ -298,7 +301,6 @@ class BenchmarkThread : public arangodb::Thread {
                              _payloadBuffer.data(), _payloadBuffer.size(), _headers));
     double delta = TRI_microtime() - start;
     trackTime(delta);
-
     processResponse(result.get(), /*batch*/ true, numOperations);
 
     _httpClient->recycleResult(std::move(result));
@@ -340,7 +342,6 @@ class BenchmarkThread : public arangodb::Thread {
         _httpClient->request(_requestData.type, _requestData.url, p, length, _headers));
     double delta = TRI_microtime() - start;
     trackTime(delta);
-
     processResponse(result.get(), /*batch*/ false, 1);
 
     _httpClient->recycleResult(std::move(result));
@@ -444,6 +445,9 @@ class BenchmarkThread : public arangodb::Thread {
 
   /// @brief send velocypack-encoded data
   bool const _useVelocyPack;
+
+  /// @brief show the histogram or not
+  bool const _generateHistogram;
 
   /// @brief underlying http client
   std::unique_ptr<arangodb::httpclient::SimpleHttpClient> _httpClient;
