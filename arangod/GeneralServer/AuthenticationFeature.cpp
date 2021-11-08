@@ -74,13 +74,6 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                         "server.authentication-unix-sockets");
   options->addOldOption("server.authenticate-system-only",
                         "server.authentication-system-only");
-  options->addOldOption("server.allow-method-override",
-                        "http.allow-method-override");
-  options->addOldOption("server.hide-product-header",
-                        "http.hide-product-header");
-  options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
-  options->addOldOption("server.default-api-compatibility", "");
-  options->addOldOption("no-server", "server.rest-server");
 
   options->addOption("--server.authentication",
                      "enable authentication for ALL client requests",

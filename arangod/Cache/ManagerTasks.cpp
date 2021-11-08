@@ -31,62 +31,95 @@ namespace arangodb::cache {
 
 FreeMemoryTask::FreeMemoryTask(Manager::TaskEnvironment environment,
                                Manager& manager, std::shared_ptr<Cache> cache)
-    : _environment(environment), _manager(manager), _cache(cache) {}
+    : _environment(environment), _manager(manager), _cache(std::move(cache)) {}
 
 FreeMemoryTask::~FreeMemoryTask() = default;
 
 bool FreeMemoryTask::dispatch() {
   _manager.prepareTask(_environment);
-  return _manager.post([self = shared_from_this()]() -> void { self->run(); });
+  try {
+    if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
+      return true;
+    }
+    _manager.unprepareTask(_environment);
+    return false;
+  } catch (std::exception const&) {
+    _manager.unprepareTask(_environment);
+    throw;
+  }
 }
 
 void FreeMemoryTask::run() {
-  using basics::SpinLocker;
+  try {
+    using basics::SpinLocker;
 
-  bool ran = _cache->freeMemory();
+    bool ran = _cache->freeMemory();
 
-  if (ran) {
-    std::uint64_t reclaimed = 0;
-    SpinLocker guard(SpinLocker::Mode::Write, _manager._lock);
-    Metadata& metadata = _cache->metadata();
-    {
-      SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
-      reclaimed = metadata.hardUsageLimit - metadata.softUsageLimit;
-      metadata.adjustLimits(metadata.softUsageLimit, metadata.softUsageLimit);
-      metadata.toggleResizing();
+    if (ran) {
+      std::uint64_t reclaimed = 0;
+      SpinLocker guard(SpinLocker::Mode::Write, _manager._lock);
+      Metadata& metadata = _cache->metadata();
+      {
+        SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
+        TRI_ASSERT(metaGuard.isLocked());
+        reclaimed = metadata.hardUsageLimit - metadata.softUsageLimit;
+        metadata.adjustLimits(metadata.softUsageLimit, metadata.softUsageLimit);
+        metadata.toggleResizing();
+      }
+      _manager._globalAllocation -= reclaimed;
     }
-    _manager._globalAllocation -= reclaimed;
-  }
 
-  _manager.unprepareTask(_environment);
+    _manager.unprepareTask(_environment);
+  } catch (std::exception const&) {
+    // always count down at the end
+    _manager.unprepareTask(_environment);
+    throw;
+  }
 }
 
 MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager& manager,
                          std::shared_ptr<Cache> cache, std::shared_ptr<Table> table)
-    : _environment(environment), _manager(manager), _cache(cache), _table(table) {}
+    : _environment(environment), _manager(manager), 
+      _cache(std::move(cache)), _table(std::move(table)) {}
 
 MigrateTask::~MigrateTask() = default;
 
 bool MigrateTask::dispatch() {
   _manager.prepareTask(_environment);
-  return _manager.post([self = shared_from_this()]() -> void { self->run(); });
+  try {
+    if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
+      return true;
+    }
+    _manager.unprepareTask(_environment);
+    return false;
+  } catch (std::exception const&) {
+    _manager.unprepareTask(_environment);
+    throw;
+  }
 }
 
 void MigrateTask::run() {
-  using basics::SpinLocker;
+  try {
+    using basics::SpinLocker;
 
-  // do the actual migration
-  bool ran = _cache->migrate(_table);
+    // do the actual migration
+    bool ran = _cache->migrate(_table);
 
-  if (!ran) {
-    Metadata& metadata = _cache->metadata();
-    {
-      SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
-      metadata.toggleMigrating();
+    if (!ran) {
+      Metadata& metadata = _cache->metadata();
+      {
+        SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
+        TRI_ASSERT(metaGuard.isLocked());
+        metadata.toggleMigrating();
+      }
+      _manager.reclaimTable(_table, false);
     }
-    _manager.reclaimTable(_table, false);
-  }
 
-  _manager.unprepareTask(_environment);
+    _manager.unprepareTask(_environment);
+  } catch (std::exception const&) {
+    // always count down at the end
+    _manager.unprepareTask(_environment);
+    throw;
+  }
 }
 }
