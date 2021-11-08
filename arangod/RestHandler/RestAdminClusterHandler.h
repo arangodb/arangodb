@@ -29,6 +29,7 @@
 
 #include <velocypack/Slice.h>
 
+#include <cstdint>
 #include <map>
 #include <utility>
 
@@ -68,7 +69,9 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleNumberOfServers();
   RestStatus handleMaintenance();
 
-  RestStatus setMaintenance(bool state);
+  // timeout can be used to set an arbitrary timeout for the maintenance
+  // duration. it will be ignored if "state" is not true. 
+  RestStatus setMaintenance(bool state, uint64_t timeout);
   RestStatus handlePutMaintenance();
   RestStatus handleGetMaintenance();
 
@@ -126,7 +129,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   typedef futures::Future<futures::Unit> FutureVoid;
 
   FutureVoid waitForSupervisionState(bool state,
-                                     clock::time_point startTime = clock::time_point());
+                                     std::string const& reactivationTime,
+                                     clock::time_point startTime);
 
   struct RemoveServerContext {
     size_t tries;
