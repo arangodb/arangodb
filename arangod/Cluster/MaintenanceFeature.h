@@ -422,6 +422,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief tunable option for thread pool size
   uint32_t _maintenanceThreadsMax;
 
+  /// @brief tunable option for number of slow threads
+  uint32_t _maintenanceThreadsSlowMax;
+
   /// @brief tunable option for number of seconds COMPLETE or FAILED actions block
   ///  duplicates from adding to _actionRegistry
   int32_t _secondsActionsBlock;

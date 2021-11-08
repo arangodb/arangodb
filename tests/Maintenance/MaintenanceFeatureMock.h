@@ -96,6 +96,7 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
 
     // begin with no threads to allow queue validation
     _maintenanceThreadsMax = 0;
+    _maintenanceThreadsSlowMax = 0;
     as.addReporter(_progressHandler);
     initializeMetrics();
   }
@@ -117,6 +118,7 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
     }  // while
 
     _maintenanceThreadsMax = threads;
+    _maintenanceThreadsSlowMax = threads / 2;
     start();
   }  // setMaintenanceThreadsMax
 
