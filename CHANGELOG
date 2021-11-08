@@ -6,6 +6,12 @@ v3.8.3 (XXXX-XX-XX)
   Previous versions of ArangoDB always enabled the maintenance mode for one
   hour, without allowing any choice here.
 
+* Fixed SEARCH-261: Fix possible race between file creation and directory
+  cleaner (ArangoSearch).
+
+* Fixed SEARCH-260: Fix invalid sorting order of stored features in presence of
+  primary sort (ArangoSearch).
+
 * DEVSUP-899: Fixed Subquery execution in a very rare case a subquery, nested in
   another subquery, was not executed, which is fixed now.
   Technical details:
