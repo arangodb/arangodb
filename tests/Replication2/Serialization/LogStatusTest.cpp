@@ -52,31 +52,52 @@ static inline auto operator"" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
-TEST(LogStatusTest, FirstSimpleTest) {
-  TermIndexPair pair;
-  pair.index = LogIndex{12};
-  pair.term = LogTerm{5};
+namespace arangodb::replication2::replicated_log {
+
+[[maybe_unused]] static inline auto operator==(LogStatistics const& left, LogStatistics const& right) {
+  return left.spearHead == right.spearHead && left.commitIndex == right.commitIndex &&
+         left.firstIndex == right.firstIndex;
+}
+
+}
+
+TEST(LogStatusTest, term_index_pair_vpack) {
+  auto spearHead = TermIndexPair{LogTerm{2}, LogIndex{1}};
   VPackBuilder builder;
-  pair.toVelocyPack(builder);
-  TermIndexPair newPair = TermIndexPair::fromVelocyPack(builder.slice());
-  EXPECT_EQ(pair, newPair);
+  spearHead.toVelocyPack(builder);
+  auto slice = builder.slice();
+  auto fromVPack = TermIndexPair::fromVelocyPack(slice);
+  EXPECT_EQ(spearHead, fromVPack);
+
+  auto jsonBuffer = R"({
+    "term": 2,
+    "index": 1
+  })"_vpack;
+  auto jsonSlice = velocypack::Slice(jsonBuffer.data());
+  EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
+            << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 }
-/*
-TEST(LogStatusTest, SecondSimpleTest) {
-  auto jsonBuffer = "{\"term\":5, \"index\":12, \"foo\":[12]}"_vpack;
-  auto json = velocypack::Slice(jsonBuffer.data());
-  TermIndexPair pair = TermIndexPair::fromVelocyPack(json);
+
+TEST(LogStatusTest, log_statistics_vpack) {
+  LogStatistics statistics;
+  statistics.spearHead = TermIndexPair{LogTerm{2}, LogIndex{1}};
+  statistics.commitIndex = LogIndex{1};
+  statistics.firstIndex = LogIndex{1};
   VPackBuilder builder;
-  pair.toVelocyPack(builder);
-  EXPECT_TRUE(VelocyPackHelper::equal(json, builder.slice(), true)) << "expected = " << json.toJson() << " found = " << builder.toJson();
+  statistics.toVelocyPack(builder);
+  auto slice = builder.slice();
+  auto fromVPack = LogStatistics::fromVelocyPack(slice);
+  EXPECT_EQ(statistics, fromVPack);
+
+  auto jsonBuffer = R"({
+    "commitIndex": 1,
+    "firstIndex": 1,
+    "spearhead": {
+      "term": 2,
+      "index": 1
+    }
+  })"_vpack;
+  auto jsonSlice = velocypack::Slice(jsonBuffer.data());
+  EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
+      << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 }
- */
-/*
-"local": {
-"commitIndex": 2,
-"firstIndex": 1,
-"spearhead": {
-"term": 2,
-"index": 2
-}
-*/
