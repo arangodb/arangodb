@@ -1,5 +1,6 @@
 - [Other Licenses](#other-licenses)
   * [C/C++ Libraries](#cc-libraries)
+  * [Libraries used by iresearch](#libraries-used-by-iresearch)
   * [Programs](#programs)
   * [Data files](#data-files)
   * [JavaScript](#javascript)
@@ -93,16 +94,6 @@ _Enterprise Edition only_
 * License: https://raw.githubusercontent.com/night-shift/fpconv/master/license
 * License Name: MIT License
 * License Id: MIT
-
-### frozen
-
-* Name: frozen
-* Version: c5bfada
-* Date: 2020-04-09 12:05:27Z
-* Project Home: https://github.com/serge-sans-paille/frozen
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/iresearch/external/frozen/LICENSE
-* License Name: Apache License 2.0
-* License Id: Apache-2.0
 
 ### function2
 
@@ -244,26 +235,6 @@ _Enterprise Edition only_
 * License Name: PCRE LICENCE
 * License Id: PCRE
 
-#### rapidjson
-
-* Name: RapidJSON
-* Version: 68c96e9
-* Date: 2017-05-27 08:26:35Z
-* Project Home: https://rapidjson.org/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/iresearch/external/rapidjson/rapidjson/encodings.h
-* License Name: MIT license
-* License Id: MIT
-
-### simdcomp
-
-* Name: simdcomp
-* Version: 4e8f8b6
-* Date: 2018-03-25 14:38:21Z
-* Project Home: https://github.com/lemire/simdcomp
-* License: https://github.com/lemire/simdcomp/LICENSE
-* License Name: BSD 3-clause "New" or "Revised" License
-* License Id: BSD-3-Clause
-
 #### SipHash
 
 * Name: SipHash
@@ -375,6 +346,15 @@ _Enterprise Edition only_
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
+### immer
+
+* Name: immer
+* Version: 0.6.2
+* Date: 2019-06-05 14:46:00 +0200
+* Project Home: https://github.com/arximboldi/immer
+* License: https://github.com/arximboldi/immer/blob/v0.6.2/LICENSE
+* License Name: Boost Software License 1.0
+
 ### jemalloc
 
 * Name: jemalloc
@@ -424,16 +404,6 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
-### lz4 (lib)
-
-* Name: lz4
-* Version: 1.9.1
-* Date: 2017-12-18 15:04:59Z
-* Project Home: https://github.com/lz4/lz4
-* License: https://raw.githubusercontent.com/lz4/lz4/dev/LICENSE
-* License Name: BSD 2-clause "Simplified" License
-* License Id: BSD-2-Clause
-
 ### libmusl
 
 * Name: libmusl
@@ -456,8 +426,8 @@ _Enterprise Edition only_
 ### OpenLDAP
 
 * Name: OpenLDAP
-* Version: 2.4.58
-* Date: 2021-03-16
+* Version: 2.4.59
+* Date: 2021-06-03
 * License: https://www.openldap.org/software/release/copyright.html
 * License Name: BSD Style License
 * License Id: OpenLDAP
@@ -466,7 +436,7 @@ _Enterprise Edition only_
 
 * Name: OpenSSL
 * Version: 1.1.1
-* Date: 2021-05-25
+* Date: 2021-08-24
 * License: https://spdx.org/licenses/OpenSSL.html
 * License Name: Apache Style License
 * License Id: OpenSSL
@@ -511,16 +481,6 @@ _Enterprise Edition only_
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
-### snowball
-
-* Name: snowball
-* Version: 293ff61
-* Date: 2019-12-14 12:22:30Z
-* Project Home: https://snowballstem.org/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/snowball/COPYING
-* License Name: BSD 3-clause "New" or "Revised" License
-* License Id: BSD-3-Clause
-
 ### taocpp::json
 
 * Name: taoJSON
@@ -559,6 +519,15 @@ _Enterprise Edition only_
 * Project Home: https://github.com/madler/zlib/
 * License: https://raw.githubusercontent.com/madler/zlib/master/README
 * License Comment: free as-is license
+
+## Libraries used by iresearch
+
+The ArangoDB software makes uses of the 
+[iresearch library](https://github.com/iresearch-toolkit/iresearch),
+which is mainly developed by ArangoDB, too.
+The iresearch library itself makes use of several other components with
+different licenses. The full list of components and their licenses
+can be found [here](https://github.com/arangodb/arangodb/blob/devel/3rdParty/iresearch/THIRD_PARTY_README.md).
 
 ## Programs
 
