@@ -188,6 +188,11 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   }
 
   template <typename MetricBuilder>
+  bool remove(MetricBuilder&& builder) {
+    return doRemove(builder);
+  }
+
+  template <typename MetricBuilder>
   auto addShared(MetricBuilder&& builder)
       -> std::shared_ptr<typename MetricBuilder::metric_t> {
     return std::static_pointer_cast<typename MetricBuilder::metric_t>(doAdd(builder));
@@ -199,7 +204,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
  private:
   auto doAdd(metrics::Builder& builder) -> std::shared_ptr<::Metric>;
-
+  bool doRemove(const metrics::Builder& builder);
 
   registry_type _registry;
 
