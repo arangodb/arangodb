@@ -6,6 +6,8 @@ v3.9.0 (XXXX-XX-XX)
   replication. This request is unnecessary with the RocksDB storage
   engine.
 
+* Upgrade bundled version of RocksDB to 6.26.
+
 * BTS-623: The audit log messages, when written, were not showing the log level
   of the message, as in the example:
     `2021-10-21T02:28:42Z | hostname | audit-authentication | n/a | _system |

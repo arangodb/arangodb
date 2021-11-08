@@ -923,7 +923,7 @@ void RocksDBEngine::start() {
 
   _logPersistor = std::make_shared<RocksDBLogPersistor>(
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-      _db, std::make_shared<SchedulerExecutor>(server()));
+      _db->GetRootDB(), std::make_shared<SchedulerExecutor>(server()));
 
   _settingsManager->retrieveInitialValues();
 
