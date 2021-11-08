@@ -175,10 +175,17 @@ class IRESEARCH_API fields_data: util::noncopyable {
   /// @return approximate amount of memory actively in-use by this instance
   //////////////////////////////////////////////////////////////////////////////
   size_t memory_active() const noexcept {
+    const auto column_cache_active = std::accumulate(
+      cached_features_.begin(), cached_features_.end(), size_t{0},
+      [](size_t lhs, const cached_column& rhs) noexcept {
+        return lhs + rhs.stream.memory_active();
+    });
+
     return byte_writer_.pool_offset()
       + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
       + fields_map_.size() * sizeof(fields_map::value_type)
-      + fields_.size() * sizeof(decltype(fields_)::value_type);
+      + fields_.size() * sizeof(decltype(fields_)::value_type)
+      + column_cache_active;
   }
 
   //////////////////////////////////////////////////////////////////////////////
