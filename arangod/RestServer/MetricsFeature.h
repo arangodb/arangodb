@@ -43,6 +43,14 @@
     
 #define DECLARE_LEGACY_GAUGE(x, type, help) DECLARE_GAUGE(x, type, help)
 
+#define DECLARE_GUARD_METRIC(x, type, help)                   \
+  struct x : arangodb::metrics::GuardMetricBuilder<x, type> { \
+    x() {                                                     \
+      _name = #x;                                             \
+      _help = help;                                           \
+    }                                                         \
+  }
+
 #define DECLARE_HISTOGRAM(x, scale, help)                   \
   struct x : arangodb::metrics::HistogramBuilder<x, scale> { \
     x() { _name = #x; _help = help; } \
@@ -135,6 +143,17 @@ struct GaugeBuilder : GenericBuilder<Derived> {
   }
 
   char const* type() const override { return "gauge"; }
+};
+
+template <typename Derived, typename T>
+struct GuardMetricBuilder : GenericBuilder<Derived> {
+  using metric_t = ::GuardMetric<T>;
+
+  std::shared_ptr<::Metric> build() const final {
+    return std::make_shared<metric_t>(T{}, this->name(), this->_help, this->_labels);
+  }
+
+  char const* type() const final { return "untyped"; }
 };
 
 template <class Derived, class Scale>
