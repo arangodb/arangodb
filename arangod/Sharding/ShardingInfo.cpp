@@ -124,9 +124,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
 #ifdef USE_ENTERPRISE
     else if (replicationFactorSlice.isString() &&
              replicationFactorSlice.copyString() == StaticStrings::Satellite) {
-      auto pair = markAsSatellite();
-      isError = pair.first;
-      isASatellite = pair.second;
+        std::tie(isError, isASatellite) = markAsSatellite();
     }
 
     if (isSmart && isASatellite) {
