@@ -1,5 +1,8 @@
 # options
-message(STATUS "Building examples: ${BuildVelocyPackExamples}")
+  
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
+
+message(STATUS "VelocyPack building examples: ${BuildVelocyPackExamples}")
 if(BuildVelocyPackExamples)
     set(Examples
         exampleAliases
