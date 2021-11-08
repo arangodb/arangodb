@@ -86,7 +86,7 @@ Manager::Manager(PostFn schedulerPost, std::uint64_t globalLimit, bool enableWin
       _spareTableAllocation(0),
       _globalAllocation(_fixedAllocation),
       _transactions(),
-      _schedulerPost(schedulerPost),
+      _schedulerPost(std::move(schedulerPost)),
       _resizeAttempt(0),
       _outstandingTasks(0),
       _rebalancingTasks(0),
@@ -577,9 +577,11 @@ void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
 
 void Manager::freeUnusedTables() {
   TRI_ASSERT(_lock.isLockedWrite());
-  for (std::size_t i = 0; i < 32; i++) {
+  constexpr std::size_t tableEntries = std::tuple_size<decltype(_tables)>::value;
+
+  for (std::size_t i = 0; i < tableEntries; i++) {
     while (!_tables[i].empty()) {
-      auto table = _tables[i].top();
+      auto table = std::move(_tables[i].top());
       _globalAllocation -= table->memoryUsage();
       TRI_ASSERT(_globalAllocation >= _fixedAllocation);
       _tables[i].pop();
@@ -659,6 +661,7 @@ std::shared_ptr<Table> Manager::leaseTable(std::uint32_t logSize) {
   TRI_ASSERT(_lock.isLockedWrite());
 
   std::shared_ptr<Table> table;
+  TRI_ASSERT(_tables.size() >= logSize);
   if (_tables[logSize].empty()) {
     if (increaseAllowed(Table::allocationSize(logSize), true)) {
       try {
@@ -671,6 +674,7 @@ std::shared_ptr<Table> Manager::leaseTable(std::uint32_t logSize) {
     }
   } else {
     table = _tables[logSize].top();
+    TRI_ASSERT(table != nullptr);
     _spareTableAllocation -= table->memoryUsage();
     _tables[logSize].pop();
   }
@@ -679,7 +683,7 @@ std::shared_ptr<Table> Manager::leaseTable(std::uint32_t logSize) {
 }
 
 void Manager::reclaimTable(std::shared_ptr<Table> table, bool internal) {
-  TRI_ASSERT(table.get() != nullptr);
+  TRI_ASSERT(table != nullptr);
   SpinLocker guard(SpinLocker::Mode::Write, _lock, !internal);
 
   std::uint32_t logSize = table->logSize();

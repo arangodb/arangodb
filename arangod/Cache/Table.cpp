@@ -57,7 +57,7 @@ void Table::GenericBucket::unlock() {
 }
 
 void Table::GenericBucket::clear() {
-  _state.lock(std::numeric_limits<std::uint64_t>::max(), [this]() -> void {
+  _state.lock(std::numeric_limits<std::uint64_t>::max(), [this]() noexcept -> void {
     _state.clear();
     for (size_t i = 0; i < paddingSize; i++) {
       _padding[i] = static_cast<std::uint8_t>(0);
@@ -73,14 +73,15 @@ bool Table::GenericBucket::isMigrated() const {
 
 Table::Subtable::Subtable(std::shared_ptr<Table> source, GenericBucket* buckets,
                           std::uint64_t size, std::uint32_t mask, std::uint32_t shift)
-    : _source(source), _buckets(buckets), _size(size), _mask(mask), _shift(shift) {}
+    : _source(std::move(source)), _buckets(buckets), _size(size), _mask(mask), _shift(shift) {}
 
-void* Table::Subtable::fetchBucket(std::uint32_t hash) {
+void* Table::Subtable::fetchBucket(std::uint32_t hash) noexcept {
   return &(_buckets[(hash & _mask) >> _shift]);
 }
 
 std::vector<Table::BucketLocker> Table::Subtable::lockAllBuckets() {
   std::vector<Table::BucketLocker> guards;
+  guards.reserve(_size);
   for (std::uint64_t i = 0; i < _size; i++) {
     guards.emplace_back(&(_buckets[i]), _source.get(), Cache::triesGuarantee);
   }
@@ -258,7 +259,7 @@ void* Table::primaryBucket(uint64_t index) {
 
 std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(std::uint32_t index) {
   if (!isEnabled()) {
-    return std::unique_ptr<Subtable>(nullptr);
+    return std::unique_ptr<Subtable>();
   }
   GenericBucket* base;
   std::uint64_t size;
@@ -320,15 +321,25 @@ bool Table::isEnabled(std::uint64_t maxTries) {
   return guard.isLocked() && !_disabled;
 }
 
-bool Table::slotFilled() {
+bool Table::slotFilled() noexcept {
   size_t i = _slotsUsed.fetch_add(1, std::memory_order_acq_rel);
   return ((static_cast<double>(i + 1) / static_cast<double>(_slotsTotal)) > Table::idealUpperRatio);
 }
 
-bool Table::slotEmptied() {
+void Table::slotsFilled(std::uint64_t numSlots) noexcept {
+  _slotsUsed.fetch_add(numSlots, std::memory_order_acq_rel);
+}
+
+bool Table::slotEmptied() noexcept {
   size_t i = _slotsUsed.fetch_sub(1, std::memory_order_acq_rel);
+  TRI_ASSERT(i > 0);
   return (((static_cast<double>(i - 1) / static_cast<double>(_slotsTotal)) < Table::idealLowerRatio) &&
           (_logSize > Table::minLogSize));
+}
+
+void Table::slotsEmptied(std::uint64_t numSlots) noexcept {
+  size_t previous = _slotsUsed.fetch_sub(numSlots, std::memory_order_acq_rel);
+  TRI_ASSERT(numSlots <= previous);
 }
 
 void Table::signalEvictions() {

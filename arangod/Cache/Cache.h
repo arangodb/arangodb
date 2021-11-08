@@ -149,7 +149,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static constexpr std::uint64_t triesFast = 200;
   static constexpr std::uint64_t triesSlow = 10000;
 
- protected:
   basics::ReadWriteSpinLock _taskLock;
   std::atomic<bool> _shutdown;
 
@@ -164,10 +163,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::uint64_t _id;
   Metadata _metadata;
 
-  // manage the actual table
-  std::shared_ptr<Table> _tableShrdPtr;
-  /// keep a pointer to the current table, which can be atomically set
-  std::atomic<Table*> _table;
+ private:
+  // manage the actual table - note: MUST be used only with atomic_load and atomic_store!
+  std::shared_ptr<Table> _table;
 
   Table::BucketClearer _bucketClearer;
   std::size_t _slotsPerBucket;
@@ -196,10 +194,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
   void requestGrow();
   void requestMigrate(std::uint32_t requestedLogSize = 0);
 
-  static void freeValue(CachedValue* value);
+  static void freeValue(CachedValue* value) noexcept;
   bool reclaimMemory(std::uint64_t size);
 
-  std::uint32_t hashKey(void const* key, std::size_t keySize) const;
+  std::uint32_t hashKey(void const* key, std::size_t keySize) const noexcept;
   void recordStat(Stat stat);
 
   bool reportInsert(bool hadEviction);
