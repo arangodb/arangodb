@@ -2010,23 +2010,9 @@ OperationResult transaction::Methods::countLocal(std::string const& collectionNa
   DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
 
-  //  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
-  //
-  //  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-  //    return OperationResult(lockResult);
-  //  }
-
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::READ));
 
   uint64_t num = collection->numberDocuments(this, type);
-
-  //  if (lockResult.is(TRI_ERROR_LOCKED)) {
-  //    Result res = unlockRecursive(cid, AccessMode::Type::READ);
-  //
-  //    if (res.fail()) {
-  //      return OperationResult(res);
-  //    }
-  //  }
 
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(num));
