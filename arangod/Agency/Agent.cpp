@@ -419,6 +419,7 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
 }
 
 void Agent::logsForTrigger() {
+  auto builder = std::make_shared<VPackBuilder>();
   // Wake up poll rest handlers:
   // Get everything from _lowestPromise
   // Create one builder pass shared pointer to all rest handlers
@@ -426,7 +427,6 @@ void Agent::logsForTrigger() {
   // Delete all promises.
   // Reset _lowestPromise.
   std::lock_guard lck(_promLock);
-  auto builder = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder e(builder.get());
     auto const logs = _state.get(_lowestPromise, _commitIndex.load(std::memory_order_relaxed));
@@ -446,7 +446,8 @@ void Agent::logsForTrigger() {
       }
     }
   }
-  triggerPollsNoLock(builder);
+  
+  triggerPollsNoLock(std::move(builder));
   _lowestPromise = std::numeric_limits<index_t>::max();
 }
 
@@ -790,9 +791,18 @@ void Agent::resign(term_t otherTerm) {
   _constituent.follow(otherTerm, NO_LEADER);
 
   // Wake up all polls with resignation letter
+  auto qu = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder qb(qu.get());
+    qu->add("error", VPackValue(true));
+    qu->add("code", VPackValue(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE));
+    qu->add(VPackValue("result"));
+    VPackArrayBuilder arr(qu.get());
+  }
+
   {
     std::lock_guard lck(_promLock);
-    triggerPollsNoLock();
+    triggerPollsNoLock(std::move(qu));
   }
 
   endPrepareLeadership();
@@ -1493,9 +1503,9 @@ void Agent::clearExpiredPolls() {
     empty->add(VPackValue("log"));
     VPackArrayBuilder a(empty.get());
   }
+  
   std::lock_guard lck(_promLock);
-
-  triggerPollsNoLock(empty, std::chrono::steady_clock::now());
+  triggerPollsNoLock(std::move(empty), std::chrono::steady_clock::now());
 }
 
 
@@ -1503,22 +1513,14 @@ void Agent::clearExpiredPolls() {
 /// Wake up everybody with query and delete with empty.
 /// If qu is nullptr, we're resigning.
 void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
-
-  if (qu == nullptr) { // We have resigned
-    qu = std::make_shared<VPackBuilder>();
-    VPackObjectBuilder qb(qu.get());
-    qu->add("error", VPackValue(true));
-    qu->add("code", VPackValue(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE));
-    qu->add(VPackValue("result"));
-    VPackArrayBuilder arr(qu.get());
-  }
-
   auto* scheduler = SchedulerFeature::SCHEDULER;
   auto pit = _promises.begin();
   while (pit != _promises.end()) {
     if (pit->first < tp) {
       auto pp = std::make_shared<futures::Promise<query_t>>(std::move(pit->second));
-      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [pp, qu] { pp->setValue(qu); });
+      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [pp = std::move(pp), qu] { 
+        pp->setValue(qu); 
+      });
       pit = _promises.erase(pit);
     } else {
       ++pit;
