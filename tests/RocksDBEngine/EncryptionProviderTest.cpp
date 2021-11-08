@@ -57,7 +57,7 @@ TEST(EncryptionProviderTest, simple) {
   arangodb::enterprise::EncryptionProvider evpprovider(rocksdb::Slice(SAMPLE_KEY, 32), /*allow*/false);
 
   // hand-rolled CTR mode with the openssl software-only AES_encrypt
-  arangodb::enterprise::AES256BlockCipher cipher(rocksdb::Slice(SAMPLE_KEY, 32));
+  auto cipher = std::make_shared<arangodb::enterprise::AES256BlockCipher>(rocksdb::Slice(SAMPLE_KEY, 32));
   rocksdb::CTREncryptionProvider softprovider(cipher);
   
   ASSERT_EQ(hwprovider.GetPrefixLength(), softprovider.GetPrefixLength());
@@ -135,7 +135,7 @@ TEST(EncryptionProviderTest, microbenchmark) {
   arangodb::enterprise::EncryptionProvider evpprovider(rocksdb::Slice(SAMPLE_KEY, 32), /*allow*/false);
 
   // this is the hand-rolled CTR mode with the openssl software-only AES_encrypt
-  arangodb::enterprise::AES256BlockCipher cipher(rocksdb::Slice(SAMPLE_KEY, 32));
+  auto cipher = std::make_shared<arangodb::enterprise::AES256BlockCipher>(rocksdb::Slice(SAMPLE_KEY, 32));
   rocksdb::CTREncryptionProvider softprovider(cipher);
   
   ASSERT_EQ(hwprovider.GetPrefixLength(), softprovider.GetPrefixLength());
