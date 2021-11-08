@@ -33,6 +33,14 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+/**
+ * @brief FixedOutputExecutionBlockMock
+ *
+ * This Mock is used to simulate specific predefined output to `execute` calls.
+ * The given data will be returned from front to back on each call.
+ * This way we can generate specific situations and test how the requester does
+ * react to it.
+ */
 class FixedOutputExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
  public:
   FixedOutputExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
