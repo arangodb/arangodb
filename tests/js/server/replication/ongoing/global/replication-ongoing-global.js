@@ -83,7 +83,6 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
   applierConfiguration.username = 'root';
   applierConfiguration.password = '';
   applierConfiguration.includeSystem = false;
-  applierConfiguration.force32mode = false;
   applierConfiguration.requireFromPresent = true;
 
   var syncResult = replication.syncGlobal({
