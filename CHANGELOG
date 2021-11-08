@@ -1,6 +1,11 @@
 v3.8.3 (XXXX-XX-XX)
 -------------------
 
+* When enabling the cluster supervision maintenance mode via the web UI, there
+  is now the possibility to select a duration for the maintenance mode.
+  Previous versions of ArangoDB always enabled the maintenance mode for one
+  hour, without allowing any choice here.
+
 * Fixed SEARCH-261: Fix possible race between file creation and directory
   cleaner (ArangoSearch).
 
