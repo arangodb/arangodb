@@ -59,7 +59,9 @@ class AsyncLinkHandle final {
   bool empty() const { return _link.empty(); }
   auto lock() { return _link.lock(); }
   auto try_lock() noexcept { return _link.try_lock(); }
-  bool terminationRequested() const noexcept { return _asyncTerminate.load(); }
+  bool terminationRequested() const noexcept {
+    return _asyncTerminate.load(std::memory_order_seq_cst);
+  }
 
   AsyncLinkHandle(AsyncLinkHandle const&) = delete;
   AsyncLinkHandle(AsyncLinkHandle&&) = delete;
@@ -72,7 +74,7 @@ class AsyncLinkHandle final {
   void reset();
 
   AsyncValue<IResearchLink> _link;
-  std::atomic<bool> _asyncTerminate{false};  // trigger termination of long-running async jobs
+  std::atomic_bool _asyncTerminate{false};  // trigger termination of long-running async jobs
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -351,7 +353,7 @@ class IResearchLink {
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
     TRI_voc_tick_t _recoveryTick{0};  // the tick at which data store was recovered
-    std::atomic<bool> _inRecovery{false};  // data store is in recovery
+    std::atomic_bool _inRecovery{false};  // data store is in recovery
     explicit operator bool() const noexcept { return _directory && _writer; }
 
     void resetDataStore() noexcept {  // reset all underlying readers to release file handles

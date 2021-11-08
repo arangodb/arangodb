@@ -254,7 +254,7 @@ struct Task {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief total number of loaded links
 ////////////////////////////////////////////////////////////////////////////////
-std::atomic<size_t> sLinksCount{0};  // TODO Why?
+std::atomic_size_t sLinksCount{0};  // TODO Why?
 
 }  // namespace
 
@@ -264,11 +264,11 @@ namespace arangodb::iresearch {
 /// @struct MaintenanceState
 ////////////////////////////////////////////////////////////////////////////////
 struct MaintenanceState {
-  std::atomic<size_t> pendingCommits{0};
-  std::atomic<size_t> nonEmptyCommits{0};
-  std::atomic<size_t> pendingConsolidations{0};
-  std::atomic<size_t> noopConsolidationCount{0};
-  std::atomic<size_t> noopCommitCount{0};
+  std::atomic_size_t pendingCommits{0};
+  std::atomic_size_t nonEmptyCommits{0};
+  std::atomic_size_t pendingConsolidations{0};
+  std::atomic_size_t noopConsolidationCount{0};
+  std::atomic_size_t noopCommitCount{0};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -297,25 +297,25 @@ void CommitTask::finalize(IResearchLink* link, IResearchLink::CommitResult code)
   constexpr size_t kMaxPendingConsolidations = 3;
 
   if (code != IResearchLink::CommitResult::NO_CHANGES) {
-    ++state->pendingCommits;
+    state->pendingCommits.fetch_add(1, std::memory_order_seq_cst);
     schedule(commitIntervalMsec);
 
     if (code == IResearchLink::CommitResult::DONE) {
-      state->noopCommitCount = 0;
-      state->noopConsolidationCount = 0;
+      state->noopCommitCount.store(0, std::memory_order_seq_cst);
+      state->noopConsolidationCount.store(0, std::memory_order_seq_cst);
 
-      if (state->pendingConsolidations < kMaxPendingConsolidations &&
-          ++state->nonEmptyCommits > kMaxNonEmptyCommits) {
+      if (state->pendingConsolidations.load(std::memory_order_seq_cst) < kMaxPendingConsolidations &&
+          state->nonEmptyCommits.fetch_add(1, std::memory_order_seq_cst) >= kMaxNonEmptyCommits) {
         link->scheduleConsolidation(consolidationIntervalMsec);
-        state->nonEmptyCommits = 0;
+        state->nonEmptyCommits.store(0, std::memory_order_seq_cst);
       }
     }
   } else {
-    state->nonEmptyCommits = 0;
-    ++state->noopCommitCount;
+    state->nonEmptyCommits.store(0, std::memory_order_seq_cst);
+    state->noopCommitCount.fetch_add(1, std::memory_order_seq_cst);
 
-    for (auto count = state->pendingCommits.load(); count < 1;) {
-      if (state->pendingCommits.compare_exchange_weak(count, 1)) {
+    for (auto count = state->pendingCommits.load(std::memory_order_seq_cst); count < 1;) {
+      if (state->pendingCommits.compare_exchange_weak(count, 1, std::memory_order_seq_cst)) {
         schedule(commitIntervalMsec);
         break;
       }
@@ -325,7 +325,7 @@ void CommitTask::finalize(IResearchLink* link, IResearchLink::CommitResult code)
 
 void CommitTask::operator()() {
   const char runId = 0;
-  --state->pendingCommits;
+  state->pendingCommits.fetch_sub(1, std::memory_order_seq_cst);
 
   if (link->terminationRequested()) {
     LOG_TOPIC("eba1a", DEBUG, iresearch::TOPIC)
@@ -342,7 +342,7 @@ void CommitTask::operator()() {
         << "', runId '" << size_t(&runId) << "'";
 
     // blindly reschedule commit task
-    ++state->pendingCommits;
+    state->pendingCommits.fetch_add(1, std::memory_order_seq_cst);
     schedule(commitIntervalMsec);
     return;
   }
@@ -468,7 +468,7 @@ struct ConsolidationTask : Task<ConsolidationTask> {
 
 void ConsolidationTask::operator()() {
   const char runId = 0;
-  --state->pendingConsolidations;
+  state->pendingConsolidations.fetch_sub(1, std::memory_order_seq_cst);
 
   if (link->terminationRequested()) {
     LOG_TOPIC("eba2a", DEBUG, iresearch::TOPIC)
@@ -485,7 +485,7 @@ void ConsolidationTask::operator()() {
         << "', run id '" << size_t(&runId) << "'";
 
     // blindly reschedule consolidation task
-    ++state->pendingConsolidations;
+    state->pendingConsolidations.fetch_add(1, std::memory_order_seq_cst);
     schedule(consolidationIntervalMsec);
     return;
   }
@@ -498,8 +498,10 @@ void ConsolidationTask::operator()() {
 
   auto reschedule = scopeGuard([this]() noexcept {
     try {
-      for (auto count = state->pendingConsolidations.load(); count < 1;) {
-        if (state->pendingConsolidations.compare_exchange_weak(count, count + 1)) {
+      for (auto count = state->pendingConsolidations.load(std::memory_order_seq_cst);
+           count < 1;) {
+        if (state->pendingConsolidations.compare_exchange_weak(count, count + 1,
+                                                               std::memory_order_seq_cst)) {
           schedule(consolidationIntervalMsec);
           break;
         }
@@ -536,9 +538,9 @@ void ConsolidationTask::operator()() {
   constexpr size_t kMaxNoopCommits = 10;
   constexpr size_t kMaxNoopConsolidations = 10;
 
-  if (state->noopCommitCount < kMaxNoopCommits &&
-      state->noopConsolidationCount < kMaxNoopConsolidations) {
-    ++state->pendingConsolidations;
+  if (state->noopCommitCount.load(std::memory_order_seq_cst) < kMaxNoopCommits &&
+      state->noopConsolidationCount.load(std::memory_order_seq_cst) < kMaxNoopConsolidations) {
+    state->pendingConsolidations.fetch_add(1, std::memory_order_seq_cst);
     schedule(consolidationIntervalMsec);
   }
 
@@ -555,9 +557,9 @@ void ConsolidationTask::operator()() {
 
   if (res.ok()) {
     if (emptyConsolidation) {
-      ++state->noopConsolidationCount;
+      state->noopConsolidationCount.fetch_add(1, std::memory_order_seq_cst);
     } else {
-      state->noopConsolidationCount = 0;
+      state->noopConsolidationCount.store(0, std::memory_order_seq_cst);
     }
     LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
         << "successful consolidation of arangosearch link '" << linkPtr->id()
@@ -583,13 +585,15 @@ void ConsolidationTask::operator()() {
 // -----------------------------------------------------------------------------
 
 AsyncLinkHandle::AsyncLinkHandle(IResearchLink* link) : _link{link} {
-  ++sLinksCount;
+  sLinksCount.fetch_add(1, std::memory_order_seq_cst);
 }
 
-AsyncLinkHandle::~AsyncLinkHandle() { --sLinksCount; }
+AsyncLinkHandle::~AsyncLinkHandle() {
+  sLinksCount.fetch_sub(1, std::memory_order_seq_cst);
+}
 
 void AsyncLinkHandle::reset() {
-  _asyncTerminate.store(true);  // mark long-running async jobs for termination
+  _asyncTerminate.store(true, std::memory_order_seq_cst);  // mark long-running async jobs for termination
   _link.reset();  // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 }
 
@@ -1293,9 +1297,9 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback,
   }
 
   switch (_engine->recoveryState()) {
-    case RecoveryState::BEFORE:       // link is being opened before recovery
-    case RecoveryState::DONE: {       // link is being created after recovery
-      _dataStore._inRecovery = true;  // will be adjusted in post-recovery callback
+    case RecoveryState::BEFORE:  // link is being opened before recovery
+    case RecoveryState::DONE: {  // link is being created after recovery
+      _dataStore._inRecovery.store(true, std::memory_order_seq_cst);  // will be adjusted in post-recovery callback
       _dataStore._recoveryTick = _engine->recoveryTick();
       break;
     }
@@ -1305,7 +1309,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback,
       // actual data in linked collections, we can treat recovery as done
       _createdInRecovery = true;
 
-      _dataStore._inRecovery = false;
+      _dataStore._inRecovery.store(false, std::memory_order_seq_cst);
       _dataStore._recoveryTick = _engine->releasedTick();
       break;
     }
@@ -1468,7 +1472,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback,
         }
 
         // recovery finished
-        dataStore._inRecovery = link->_engine->inRecovery();
+        dataStore._inRecovery.store(link->_engine->inRecovery(), std::memory_order_seq_cst);
 
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
             << "starting sync for arangosearch link '" << link->id() << "'";
@@ -1503,7 +1507,7 @@ void IResearchLink::scheduleCommit(std::chrono::milliseconds delay) {
   task.id = id();
   task.state = _maintenanceState;
 
-  ++_maintenanceState->pendingCommits;
+  _maintenanceState->pendingCommits.fetch_add(1, std::memory_order_seq_cst);
   task.schedule(delay);
 }
 
@@ -1517,7 +1521,7 @@ void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
     return !link->terminationRequested();
   };
 
-  ++_maintenanceState->pendingConsolidations;
+  _maintenanceState->pendingConsolidations.fetch_add(1, std::memory_order_seq_cst);
   task.schedule(delay);
 }
 
@@ -1528,7 +1532,8 @@ Result IResearchLink::insert(transaction::Methods& trx,
 
   auto& state = *(trx.state());
 
-  if (_dataStore._inRecovery && _engine->recoveryTick() <= _dataStore._recoveryTick) {
+  if (_dataStore._inRecovery.load(std::memory_order_seq_cst) &&
+      _engine->recoveryTick() <= _dataStore._recoveryTick) {
     LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
         << "skipping 'insert', operation tick '" << _engine->recoveryTick()
         << "', recovery tick '" << _dataStore._recoveryTick << "'";
@@ -1608,7 +1613,7 @@ Result IResearchLink::insert(transaction::Methods& trx,
     // FIXME try to preserve optimization
     //// optimization for single-document insert-only transactions
     // if (trx.isSingleOperationTransaction()  // only for single-document transactions
-    //     && !_dataStore._inRecovery) {
+    //     && !_dataStore._inRecovery.load(std::memory_order_seq_cst)) {
     //   auto ctx = _dataStore._writer->documents();
     //   return insertImpl(ctx);
     // }
@@ -1728,7 +1733,8 @@ Result IResearchLink::remove(transaction::Methods& trx,
 
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::INDEX_CREATION));
 
-  if (_dataStore._inRecovery && _engine->recoveryTick() <= _dataStore._recoveryTick) {
+  if (_dataStore._inRecovery.load(std::memory_order_seq_cst) &&
+      _engine->recoveryTick() <= _dataStore._recoveryTick) {
     LOG_TOPIC("7d228", TRACE, iresearch::TOPIC)
         << "skipping 'removal', operation tick '" << _engine->recoveryTick()
         << "', recovery tick '" << _dataStore._recoveryTick << "'";
