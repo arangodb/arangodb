@@ -1166,7 +1166,8 @@ field_data* fields_data::emplace(const hashed_string_ref& name) {
 
   if (!it->second) {
     try {
-      fields_.emplace_back(name, byte_writer_, int_writer_, (nullptr != comparator_));
+      fields_.emplace_back(name, byte_writer_, int_writer_,
+                           cached_features_, (nullptr != comparator_));
     } catch (...) {
       fields_map_.erase(it);
     }
