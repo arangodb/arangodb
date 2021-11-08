@@ -1,6 +1,8 @@
 devel
 -----
 
+* remove the not anymore supported --server.default-api-compatibility option
+
 * Fixed SEARCH-261: Fix possible race between file creation and directory
   cleaner (ArangoSearch).
 
