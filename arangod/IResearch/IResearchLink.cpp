@@ -297,25 +297,25 @@ void CommitTask::finalize(IResearchLink* link, IResearchLink::CommitResult code)
   constexpr size_t kMaxPendingConsolidations = 3;
 
   if (code != IResearchLink::CommitResult::NO_CHANGES) {
-    state->pendingCommits.fetch_add(1, std::memory_order_seq_cst);
+    state->pendingCommits.fetch_add(1, std::memory_order_release);
     schedule(commitIntervalMsec);
 
     if (code == IResearchLink::CommitResult::DONE) {
-      state->noopCommitCount.store(0, std::memory_order_seq_cst);
-      state->noopConsolidationCount.store(0, std::memory_order_seq_cst);
+      state->noopCommitCount.store(0, std::memory_order_release);
+      state->noopConsolidationCount.store(0, std::memory_order_release);
 
-      if (state->pendingConsolidations.load(std::memory_order_seq_cst) < kMaxPendingConsolidations &&
-          state->nonEmptyCommits.fetch_add(1, std::memory_order_seq_cst) >= kMaxNonEmptyCommits) {
+      if (state->pendingConsolidations.load(std::memory_order_acquire) < kMaxPendingConsolidations &&
+          state->nonEmptyCommits.fetch_add(1, std::memory_order_acq_rel) >= kMaxNonEmptyCommits) {
         link->scheduleConsolidation(consolidationIntervalMsec);
-        state->nonEmptyCommits.store(0, std::memory_order_seq_cst);
+        state->nonEmptyCommits.store(0, std::memory_order_release);
       }
     }
   } else {
-    state->nonEmptyCommits.store(0, std::memory_order_seq_cst);
-    state->noopCommitCount.fetch_add(1, std::memory_order_seq_cst);
+    state->nonEmptyCommits.store(0, std::memory_order_release);
+    state->noopCommitCount.fetch_add(1, std::memory_order_release);
 
-    for (auto count = state->pendingCommits.load(std::memory_order_seq_cst); count < 1;) {
-      if (state->pendingCommits.compare_exchange_weak(count, 1, std::memory_order_seq_cst)) {
+    for (auto count = state->pendingCommits.load(std::memory_order_acquire); count < 1;) {
+      if (state->pendingCommits.compare_exchange_weak(count, 1, std::memory_order_acq_rel)) {
         schedule(commitIntervalMsec);
         break;
       }
@@ -325,7 +325,7 @@ void CommitTask::finalize(IResearchLink* link, IResearchLink::CommitResult code)
 
 void CommitTask::operator()() {
   const char runId = 0;
-  state->pendingCommits.fetch_sub(1, std::memory_order_seq_cst);
+  state->pendingCommits.fetch_sub(1, std::memory_order_release);
 
   if (link->terminationRequested()) {
     LOG_TOPIC("eba1a", DEBUG, iresearch::TOPIC)
@@ -342,7 +342,7 @@ void CommitTask::operator()() {
         << "', runId '" << size_t(&runId) << "'";
 
     // blindly reschedule commit task
-    state->pendingCommits.fetch_add(1, std::memory_order_seq_cst);
+    state->pendingCommits.fetch_add(1, std::memory_order_release);
     schedule(commitIntervalMsec);
     return;
   }
@@ -468,7 +468,7 @@ struct ConsolidationTask : Task<ConsolidationTask> {
 
 void ConsolidationTask::operator()() {
   const char runId = 0;
-  state->pendingConsolidations.fetch_sub(1, std::memory_order_seq_cst);
+  state->pendingConsolidations.fetch_sub(1, std::memory_order_release);
 
   if (link->terminationRequested()) {
     LOG_TOPIC("eba2a", DEBUG, iresearch::TOPIC)
@@ -485,7 +485,7 @@ void ConsolidationTask::operator()() {
         << "', run id '" << size_t(&runId) << "'";
 
     // blindly reschedule consolidation task
-    state->pendingConsolidations.fetch_add(1, std::memory_order_seq_cst);
+    state->pendingConsolidations.fetch_add(1, std::memory_order_release);
     schedule(consolidationIntervalMsec);
     return;
   }
@@ -498,10 +498,10 @@ void ConsolidationTask::operator()() {
 
   auto reschedule = scopeGuard([this]() noexcept {
     try {
-      for (auto count = state->pendingConsolidations.load(std::memory_order_seq_cst);
+      for (auto count = state->pendingConsolidations.load(std::memory_order_acquire);
            count < 1;) {
         if (state->pendingConsolidations.compare_exchange_weak(count, count + 1,
-                                                               std::memory_order_seq_cst)) {
+                                                               std::memory_order_acq_rel)) {
           schedule(consolidationIntervalMsec);
           break;
         }
@@ -538,9 +538,9 @@ void ConsolidationTask::operator()() {
   constexpr size_t kMaxNoopCommits = 10;
   constexpr size_t kMaxNoopConsolidations = 10;
 
-  if (state->noopCommitCount.load(std::memory_order_seq_cst) < kMaxNoopCommits &&
-      state->noopConsolidationCount.load(std::memory_order_seq_cst) < kMaxNoopConsolidations) {
-    state->pendingConsolidations.fetch_add(1, std::memory_order_seq_cst);
+  if (state->noopCommitCount.load(std::memory_order_acquire) < kMaxNoopCommits &&
+      state->noopConsolidationCount.load(std::memory_order_acquire) < kMaxNoopConsolidations) {
+    state->pendingConsolidations.fetch_add(1, std::memory_order_release);
     schedule(consolidationIntervalMsec);
   }
 
@@ -557,9 +557,9 @@ void ConsolidationTask::operator()() {
 
   if (res.ok()) {
     if (emptyConsolidation) {
-      state->noopConsolidationCount.fetch_add(1, std::memory_order_seq_cst);
+      state->noopConsolidationCount.fetch_add(1, std::memory_order_release);
     } else {
-      state->noopConsolidationCount.store(0, std::memory_order_seq_cst);
+      state->noopConsolidationCount.store(0, std::memory_order_release);
     }
     LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
         << "successful consolidation of arangosearch link '" << linkPtr->id()
@@ -585,15 +585,15 @@ void ConsolidationTask::operator()() {
 // -----------------------------------------------------------------------------
 
 AsyncLinkHandle::AsyncLinkHandle(IResearchLink* link) : _link{link} {
-  sLinksCount.fetch_add(1, std::memory_order_seq_cst);
+  sLinksCount.fetch_add(1, std::memory_order_release);
 }
 
 AsyncLinkHandle::~AsyncLinkHandle() {
-  sLinksCount.fetch_sub(1, std::memory_order_seq_cst);
+  sLinksCount.fetch_sub(1, std::memory_order_release);
 }
 
 void AsyncLinkHandle::reset() {
-  _asyncTerminate.store(true, std::memory_order_seq_cst);  // mark long-running async jobs for termination
+  _asyncTerminate.store(true, std::memory_order_release);  // mark long-running async jobs for termination
   _link.reset();  // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 }
 
@@ -1299,7 +1299,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback,
   switch (_engine->recoveryState()) {
     case RecoveryState::BEFORE:  // link is being opened before recovery
     case RecoveryState::DONE: {  // link is being created after recovery
-      _dataStore._inRecovery.store(true, std::memory_order_seq_cst);  // will be adjusted in post-recovery callback
+      _dataStore._inRecovery.store(true, std::memory_order_release);  // will be adjusted in post-recovery callback
       _dataStore._recoveryTick = _engine->recoveryTick();
       break;
     }
@@ -1309,7 +1309,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback,
       // actual data in linked collections, we can treat recovery as done
       _createdInRecovery = true;
 
-      _dataStore._inRecovery.store(false, std::memory_order_seq_cst);
+      _dataStore._inRecovery.store(false, std::memory_order_release);
       _dataStore._recoveryTick = _engine->releasedTick();
       break;
     }
@@ -1472,7 +1472,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback,
         }
 
         // recovery finished
-        dataStore._inRecovery.store(link->_engine->inRecovery(), std::memory_order_seq_cst);
+        dataStore._inRecovery.store(link->_engine->inRecovery(), std::memory_order_release);
 
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
             << "starting sync for arangosearch link '" << link->id() << "'";
@@ -1507,7 +1507,7 @@ void IResearchLink::scheduleCommit(std::chrono::milliseconds delay) {
   task.id = id();
   task.state = _maintenanceState;
 
-  _maintenanceState->pendingCommits.fetch_add(1, std::memory_order_seq_cst);
+  _maintenanceState->pendingCommits.fetch_add(1, std::memory_order_release);
   task.schedule(delay);
 }
 
@@ -1521,7 +1521,7 @@ void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
     return !link->terminationRequested();
   };
 
-  _maintenanceState->pendingConsolidations.fetch_add(1, std::memory_order_seq_cst);
+  _maintenanceState->pendingConsolidations.fetch_add(1, std::memory_order_release);
   task.schedule(delay);
 }
 
@@ -1532,7 +1532,7 @@ Result IResearchLink::insert(transaction::Methods& trx,
 
   auto& state = *(trx.state());
 
-  if (_dataStore._inRecovery.load(std::memory_order_seq_cst) &&
+  if (_dataStore._inRecovery.load(std::memory_order_acquire) &&
       _engine->recoveryTick() <= _dataStore._recoveryTick) {
     LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
         << "skipping 'insert', operation tick '" << _engine->recoveryTick()
@@ -1613,7 +1613,7 @@ Result IResearchLink::insert(transaction::Methods& trx,
     // FIXME try to preserve optimization
     //// optimization for single-document insert-only transactions
     // if (trx.isSingleOperationTransaction()  // only for single-document transactions
-    //     && !_dataStore._inRecovery.load(std::memory_order_seq_cst)) {
+    //     && !_dataStore._inRecovery.load(std::memory_order_acquire)) {
     //   auto ctx = _dataStore._writer->documents();
     //   return insertImpl(ctx);
     // }
@@ -1733,7 +1733,7 @@ Result IResearchLink::remove(transaction::Methods& trx,
 
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::INDEX_CREATION));
 
-  if (_dataStore._inRecovery.load(std::memory_order_seq_cst) &&
+  if (_dataStore._inRecovery.load(std::memory_order_acquire) &&
       _engine->recoveryTick() <= _dataStore._recoveryTick) {
     LOG_TOPIC("7d228", TRACE, iresearch::TOPIC)
         << "skipping 'removal', operation tick '" << _engine->recoveryTick()

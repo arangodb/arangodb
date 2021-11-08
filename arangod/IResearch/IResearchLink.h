@@ -60,7 +60,7 @@ class AsyncLinkHandle final {
   auto lock() { return _link.lock(); }
   auto try_lock() noexcept { return _link.try_lock(); }
   bool terminationRequested() const noexcept {
-    return _asyncTerminate.load(std::memory_order_seq_cst);
+    return _asyncTerminate.load(std::memory_order_acquire);
   }
 
   AsyncLinkHandle(AsyncLinkHandle const&) = delete;
