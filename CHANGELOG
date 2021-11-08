@@ -8,7 +8,8 @@ v3.9.0 (XXXX-XX-XX)
   not set to true, but other histogram flags are addressed, e.g. 
   `--histogram.interval-size 500`, everything will still run normally, but a 
   warning message will be displayed saying that the histogram is switched off 
-  and setting this flag would not be of use.
+  and setting this flag would not be of use. When the flag is set to true, the
+  histogram is displayed before the summary in the output.
 
 * Fixed potential undefined behavior in edge cache during cache migration tasks.
   There was a short window of time in which an already freed Table could be used
