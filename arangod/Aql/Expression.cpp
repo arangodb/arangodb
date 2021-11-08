@@ -823,12 +823,10 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(AstNode const* node,
     // use stack-based allocation for the first few function call
     // parameters. this saves a few heap allocations per function
     // call invocation
-    ::arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
-    VPackFunctionParameters parameters{arena};
+    ::arangodb::containers::SmallVectorWithArena<AqlValue> parameters;
 
     // same here
-    ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type arena2;
-    ::arangodb::containers::SmallVector<uint64_t> destroyParameters{arena2};
+    ::arangodb::containers::SmallVectorWithArena<uint64_t> destroyParameters;
 
     explicit FunctionParameters(size_t n) {
       parameters.reserve(n);
@@ -865,7 +863,7 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(AstNode const* node,
   TRI_ASSERT(params.parameters.size() == params.destroyParameters.size());
   TRI_ASSERT(params.parameters.size() == n);
 
-  AqlValue a = func->implementation(_expressionContext, *node, params.parameters);
+  AqlValue a = func->implementation(_expressionContext, *node, params.parameters.vector());
   mustDestroy = true;  // function result is always dynamic
 
   return a;
