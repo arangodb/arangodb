@@ -8,7 +8,8 @@ devel
   true, but other histogram flags are addressed, e.g. 
   `--histogram.interval-size 500`, everything will still run normally, but a 
   warning message will be displayed saying that the histogram is switched off 
-  and setting this flag would not be of use.
+  and setting this flag would not be of use. When the flag is set to true, the
+  histogram is displayed before the summary in the output.
 
 * DEVSUP-899: Fixed Subquery execution
   in a very rare case a subquery, nested in another subquery, was not
