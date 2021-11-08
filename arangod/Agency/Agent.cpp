@@ -296,7 +296,7 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
 }
 
 // Check if log is committed up to index.
-bool Agent::isCommitted(index_t index) {
+bool Agent::isCommitted(index_t index) const {
   if (size() == 1) {  // single host agency
     return true;
   }
