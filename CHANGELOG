@@ -6,6 +6,16 @@ v3.8.3 (XXXX-XX-XX)
   Previous versions of ArangoDB always enabled the maintenance mode for one
   hour, without allowing any choice here.
 
+* DEVSUP-899: Fixed Subquery execution in a very rare case a subquery, nested in
+  another subquery, was not executed, which is fixed now.
+  Technical details:
+  If we have two subqueries: `Outer` and `Nested` the Outer will define the
+  input for Nested. And Outer has the pattern: 1 input, subqueryDone, 1 input,
+  subqueryDone [...] and our internal batching did cut a batch like this:
+  [<...>, input (A)] | [subqueryDone, input (B), subqueryDone, <...>] than
+  Nested on input (B) was not executed. As soon as we have more than 1 input per
+  Outer, or a different cutting position, all was good.
+
 * Fixed potential undefined behavior in edge cache during cache migration tasks.
   There was a short window of time in which an already freed Table could be used
   by concurrently running edge lookups.
