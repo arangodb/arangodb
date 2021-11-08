@@ -1,6 +1,10 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed potential undefined behavior in edge cache during cache migration tasks.
+  There was a short window of time in which an already freed Table could be used
+  by concurrently running edge lookups.
+
 * Upgrade bundled version of RocksDB to 6.26.
 
 * BTS-623: The audit log messages, when written, were not showing the log level
