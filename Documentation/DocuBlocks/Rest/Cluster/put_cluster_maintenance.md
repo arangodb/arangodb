@@ -14,9 +14,10 @@ To enable the maintenance mode the request body must contain the string `"on"`
 maintenance mode for 60 minutes, i.e. the supervision maintenance will reactivate itself
 after 60 minutes.
 
-To enable the maintenance mode for a different duration than 60 minutes, it is possible to send
-the desired duration value (in seconds) as the request body. For example, sending `"7200"`
-(including the quotes) will enable the maintenance mode for 7200 seconds, i.e. 2 hours.
+To enable the maintenance mode the request body must contain the string `"on"`
+(Please note it _must_ be lowercase as well as include the quotes). This will enable the
+maintenance mode for 60 minutes, i.e. the supervision maintenance will reactivate itself
+after 60 minutes.
 
 To disable the maintenance mode the request body must contain the string `"off"` 
 (Please note it _must_ be lowercase as well as include the quotes).
