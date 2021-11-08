@@ -115,16 +115,14 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
         isError = false;
 #ifdef USE_ENTERPRISE
       } else if (_replicationFactor == 0) {
-        auto pair = markAsSatellite();
-        isError = pair.first;
-        isASatellite = pair.second;
+        std::tie(isError, isASatellite) = makeSatellite();
 #endif
       }
     }
 #ifdef USE_ENTERPRISE
     else if (replicationFactorSlice.isString() &&
              replicationFactorSlice.copyString() == StaticStrings::Satellite) {
-        std::tie(isError, isASatellite) = markAsSatellite();
+        std::tie(isError, isASatellite) = makeSatellite();
     }
 
     if (isSmart && isASatellite) {
@@ -428,7 +426,7 @@ void ShardingInfo::setWriteConcernAndReplicationFactor(size_t writeConcern,
 
 bool ShardingInfo::isSatellite() const { return _replicationFactor == 0; }
 
-std::pair<bool, bool> ShardingInfo::markAsSatellite() {
+std::pair<bool, bool> ShardingInfo::makeSatellite() {
   _replicationFactor = 0;
   _writeConcern = 0;
   _numberOfShards = 1;
