@@ -73,7 +73,7 @@ bool isIgnoredHiddenEnterpriseCollection(std::string const& cName) {
       if (strncmp(cName.c_str(), arangodb::StaticStrings::FullLocalPrefix.c_str(), 7) == 0 ||
           strncmp(cName.c_str(), arangodb::StaticStrings::FullFromPrefix.c_str(), 6) == 0 ||
           strncmp(cName.c_str(), arangodb::StaticStrings::FullToPrefix.c_str(), 4) == 0) {
-        LOG_TOPIC("d921a", INFO, arangodb::Logger::VIEWS)
+        LOG_TOPIC("d921b", INFO, arangodb::Logger::VIEWS)
             << "Ignoring view '" << cName
             << "'. Will only be initially created via SmartGraphs of a full "
                "dump of a cluster."
