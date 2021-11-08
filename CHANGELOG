@@ -1,6 +1,50 @@
 devel
 -----
 
+* Remove unsupported `--server.default-api-compatibility` startup option.
+
+* Fixed potential undefined behavior in edge cache during cache migration tasks.
+  There was a short window of time in which an already freed Table could be
+  used by concurrently running edge lookups.
+
+* DEVSUP-899: Fixed Subquery execution
+  in a very rare case a subquery, nested in another subquery, was not
+  executed, which is fixed now. Technical details:
+  If we have two subqueries: `Outer` and `Nested` the Outer will define
+  the input for Nested. And Outer has the pattern: 1 input, subqueryDone, 1
+  input, subqueryDone [...] and our internal batching did cut a batch like
+  this: [<...>, input (A)] | [subqueryDone, input (B), subqueryDone, <...>]
+  than Nested on input (B) was not executed. As soon as we have more than 1
+  input per Outer, or a different cutting position, all was good.
+
+* Fixed SEARCH-261: Fix possible race between file creation and directory
+  cleaner (ArangoSearch).
+
+* Fixed SEARCH-260: Fix invalid sorting order of stored features in presence of
+  primary sort (ArangoSearch).
+
+* APM-187: The "Rebalance Shards" button now is displayed in a new tab, and it
+  is displayed for any database in cluster mode. There is also a new flag for
+  arangod, `--cluster.max-number-of-move-shards` (default = 10), which limits
+  the amount of move shards operations each time the button is clicked to 
+  rebalance shards. When the button is clicked, the number of move shards 
+  operations scheduled is shown, or that no operation was scheduled if the flag 
+  `--cluster.max-number-of-move-shards` has a value of 0.
+  
+* BTS-623: The audit log messages, when written, were not showing the log level
+  of the message, as in the example:
+    `2021-10-21T02:28:42Z | hostname | audit-authentication | n/a | _system |
+     127.0.0.1:52490 | n/a | credentials missing | /_admin/aardvark/favicon.ico`
+  With the new flag `--audit.display-log-level`, the level of the audit log
+  message can be displayed in the log text.  When set to true, this behavior is
+  expected, as in the example:
+    `2021-10-21T02:28:42Z | DEBUG | hostname | audit-authentication | n/a |
+     _system | 127.0.0.1:52490 | n/a | credentials missing |
+     /_admin/aardvark/favicon.ico`
+  The default value for the flag is false for compatibility with former
+  versions. When this flag is not used, it is considered to have the default
+  behavior (that is, set to false).
+
 * Upgrade bundled version of RocksDB to 6.26.
 
 * Change error message for queries that use too much memory from "resource
