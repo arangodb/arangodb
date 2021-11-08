@@ -348,6 +348,31 @@ void RocksDBTrxMethods::initializeReadWriteBatch() {
     void LogData(const rocksdb::Slice& blob) override {
       wbwi.PutLogData(blob);
     }
+  
+    rocksdb::Status MarkBeginPrepare(bool = false) override {
+      TRI_ASSERT(false);
+      return rocksdb::Status::InvalidArgument("MarkBeginPrepare() handler not defined.");
+    }
+  
+    rocksdb::Status MarkEndPrepare(rocksdb::Slice const& /*xid*/) override {
+      TRI_ASSERT(false);
+      return rocksdb::Status::InvalidArgument("MarkEndPrepare() handler not defined.");
+    }
+    
+    rocksdb::Status MarkNoop(bool /*empty_batch*/) override {
+      return rocksdb::Status::OK();
+    }
+    
+    rocksdb::Status MarkRollback(rocksdb::Slice const& /*xid*/) override {
+      TRI_ASSERT(false);
+      return rocksdb::Status::InvalidArgument(
+          "MarkRollbackPrepare() handler not defined.");
+    }
+    
+    rocksdb::Status MarkCommit(rocksdb::Slice const& /*xid*/) override {
+      TRI_ASSERT(false);
+      return rocksdb::Status::InvalidArgument("MarkCommit() handler not defined.");
+    }
 
     rocksdb::ColumnFamilyHandle* familyId(uint32_t id) {
       for (auto const& it : RocksDBColumnFamilyManager::allHandles()) {
