@@ -192,6 +192,35 @@ template<typename T> class Gauge : public Metric {
   std::atomic<T> _g;
 };
 
+template <typename T>
+class GuardMetric final : public Metric {
+ public:
+  GuardMetric(T&& metric, std::string const& name, std::string const& help,
+              std::string const& labels)
+      : Metric(name, help, labels), _metric{std::move(metric)} {}
+
+  std::string type() const final { return "untyped"; }
+
+  void toPrometheus(std::string& result, std::string const& globals,
+                    std::string const&) const final {
+    load().toPrometheus(result, globals, labels());
+  }
+
+  void store(T&& metric) {
+    std::lock_guard guard{_m};
+    _metric = std::move(metric);
+  }
+
+ private:
+  T load() const {
+    std::lock_guard guard{_m};
+    return _metric;
+  }
+
+  mutable std::mutex _m;
+  T _metric;
+};
+
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
 enum ScaleType { Fixed, Linear, Logarithmic };
