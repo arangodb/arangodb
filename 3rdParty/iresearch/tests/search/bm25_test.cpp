@@ -92,14 +92,14 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
       [&extra_features](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
           doc.insert(
-            std::make_shared<templates::string_field>(
+            std::make_shared<string_field>(
               name, data.str, irs::IndexFeatures::NONE,
               extra_features),
             true, false);
         } else if (data.is_number()) { // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
           doc.insert(
-            std::make_shared<templates::string_field>(
+            std::make_shared<string_field>(
               name, value, irs::IndexFeatures::NONE,
               extra_features),
             false, true);
@@ -329,12 +329,12 @@ TEST_P(bm25_test_case, test_phrase) {
       tests::document& doc,
       const std::string& name,
       const tests::json_doc_generator::json_value& data) {
-    typedef templates::text_field<std::string> text_field;
+    typedef text_field<std::string> text_field;
 
-    class string_field : public templates::string_field {
+    class string_field : public tests::string_field {
      public:
       string_field(const std::string& name, const irs::string_ref& value)
-        : templates::string_field(name, value) {
+        : tests::string_field(name, value) {
         this->index_features_ = irs::IndexFeatures::FREQ;
       }
     }; // string_field
@@ -476,10 +476,10 @@ TEST_P(bm25_test_case, test_query) {
       resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
-          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
         } else if (data.is_number()) { // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
-          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+          doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
     });
     add_segment(gen);
@@ -539,10 +539,10 @@ TEST_P(bm25_test_case, test_query) {
       resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
-          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
         } else if (data.is_number()) { // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
-          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+          doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
     });
     auto writer = open_writer(irs::OM_CREATE);
@@ -625,10 +625,10 @@ TEST_P(bm25_test_case, test_query) {
       resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
-          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
         } else if (data.is_number()) { // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
-          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+          doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
     });
     auto writer = open_writer(irs::OM_CREATE);
@@ -721,10 +721,10 @@ TEST_P(bm25_test_case, test_query) {
       resource("simple_sequential.json"),
       [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
-          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
         } else if (data.is_number()) { // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
-          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+          doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
     });
     auto writer = open_writer(irs::OM_CREATE);
@@ -1388,10 +1388,10 @@ TEST_P(bm25_test_case, test_order) {
       resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
-          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
         } else if (data.is_number()) { // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
-          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+          doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
     });
     add_segment(gen);

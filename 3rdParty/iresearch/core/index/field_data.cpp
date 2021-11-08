@@ -733,6 +733,7 @@ field_data::field_data(
     const features_t& features,
     const field_features_t& field_features,
     const feature_column_info_provider_t& feature_columns,
+    std::deque<cached_column>& cached_features,
     columnstore_writer& columns,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
@@ -745,7 +746,7 @@ field_data::field_data(
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
     last_doc_(doc_limits::invalid()) {
   features_.reserve(field_features.size());
-  for (type_info::type_id feature : features) {
+  for (const type_info::type_id feature : features) {
     const auto it = field_features.find(feature);
 
     if (IRS_UNLIKELY(it == field_features.end())) {
@@ -755,10 +756,23 @@ field_data::field_data(
 
     if (it->second) {
       assert(feature_columns);
-      auto [id, handler] = columns.push_column(feature_columns(feature));
-      features_.emplace_back(feature, it->second, std::move(handler));
 
-      meta_.features[feature] = id;
+      if (random_access) {
+        // sorted index case
+        auto* id = &meta_.features[feature];
+        *id = field_limits::invalid();
+        auto& stream = cached_features.emplace_back(id, feature_columns(feature));
+
+        features_.emplace_back(
+            it->second,
+            [stream = &stream.stream](doc_id_t doc) mutable -> column_output& {
+              stream->prepare(doc);
+              return *stream; });
+      } else {
+        auto [id, handler] = columns.push_column(feature_columns(feature));
+        features_.emplace_back(it->second, std::move(handler));
+        meta_.features[feature] = id;
+      }
     } else {
       meta_.features[feature] = field_limits::invalid();
     }
@@ -1099,9 +1113,9 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
     const auto res = terms_.emplace(term->value);
 
     if (nullptr == res.first) {
-      IR_FRMT_ERROR("field '%s' has invalid term of size '" IR_SIZE_T_SPECIFIER "'",
-                    meta_.name.c_str(), term->value.size());
-      IR_FRMT_TRACE("field '%s' has invalid term '%s'",
+      IR_FRMT_WARN("skipping too long term of size '" IR_SIZE_T_SPECIFIER "' in field '%s'",
+                    term->value.size(), meta_.name.c_str());
+      IR_FRMT_TRACE("field '%s' contains too long term '%s'",
                     meta_.name.c_str(), ref_cast<char>(term->value).c_str());
       continue;
     }
@@ -1157,7 +1171,7 @@ field_data* fields_data::emplace(
     try {
       fields_.emplace_back(
         name, features, *field_features_,
-        *feature_columns_, columns,
+        *feature_columns_, cached_features_, columns,
         byte_writer_, int_writer_,
         index_features, (nullptr != comparator_));
     } catch (...) {
@@ -1217,8 +1231,39 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 void fields_data::reset() noexcept {
   byte_writer_ = byte_pool_.begin(); // reset position pointer to start of pool
   fields_.clear();
+  cached_features_.clear(); // FIXME(@gnusi): we loose all per-column buffers
   fields_map_.clear();
   int_writer_ = int_pool_.begin(); // reset position pointer to start of pool
+}
+
+void fields_data::flush_features(
+    columnstore_writer& writer,
+    const doc_map& docmap,
+    sorted_column::flush_buffer_t& buffer) {
+  for (auto& feature : cached_features_) {
+    assert(feature.id);
+    if (IRS_LIKELY(!field_limits::valid(*feature.id))) {
+      *feature.id = feature.stream.flush(writer, docmap, buffer);
+    }
+  }
+}
+
+size_t fields_data::memory_active() const noexcept {
+  return byte_writer_.pool_offset()
+    + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
+    + fields_map_.size() * sizeof(fields_map::value_type)
+    + fields_.size() * sizeof(decltype(fields_)::value_type)
+    + std::accumulate(
+        std::begin(cached_features_),
+        std::end(cached_features_),
+        size_t{0},
+        [](const auto lhs, const auto& rhs) {
+          return lhs + rhs.stream.memory_active(); });
+}
+
+size_t fields_data::memory_reserved() const noexcept {
+  // FIXME(@gnusi): revisit the implementation
+  return byte_pool_.size() + int_pool_.size();
 }
 
 // use base irs::position type for ancestors
