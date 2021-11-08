@@ -1,6 +1,11 @@
 devel
 -----
 
+* When enabling the cluster supervision maintenance mode via the web UI, there
+  is now the possibility to select a duration for the maintenance mode.
+  Previous versions of ArangoDB always enabled the maintenance mode for one
+  hour, without allowing any choice here.
+
 * Remove unsupported `--server.default-api-compatibility` startup option.
 
 * Fixed potential undefined behavior in edge cache during cache migration tasks.
