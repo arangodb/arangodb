@@ -263,10 +263,6 @@
             }
           });
 
-          _.each(self.shardDistribution[collectionName].Plan[shardName].followers, function (follower) {
-            delete obj[follower];
-          });
-
           if (from) {
             delete obj[arangoHelper.getDatabaseShortName(leader)];
           }
