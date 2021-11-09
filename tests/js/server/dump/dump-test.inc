@@ -93,7 +93,7 @@
     function assertCommonSmartGraphProperties(graph) {
       assertTrue(graph.isSmart);
       assertFalse(graph.isSatellite);
-      assertEqual(graph.replicationFactor, 1);
+      assertEqual(graph.replicationFactor, 2);
       assertEqual(graph.numberOfShards, 5);
       assertEqual(graph.smartGraphAttribute, 'value');
     }
@@ -128,8 +128,10 @@
         assertEqual(properties.isDisjoint, isDisjoint);
         assertEqual(properties.smartGraphAttribute, 'value');
         assertEqual(properties.numberOfShards, 5);
-        assertEqual(properties.replicationFactor, 1);
-        assertEqual(properties.shardingStrategy, 'enterprise-compat');
+        assertEqual(properties.replicationFactor, 2);
+        if (isCluster) {
+          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+        }
       }
 
       const eColl = db._collection(edgeCollName);
@@ -137,9 +139,14 @@
 
       assertTrue(properties.isSmart);
       assertEqual(properties.isDisjoint, isDisjoint);
-      assertEqual(properties.numberOfShards, 0);
-      assertEqual(properties.replicationFactor, 1);
-      assertEqual(properties.shardingStrategy, 'enterprise-smart-edge-compat');
+
+      assertEqual(properties.replicationFactor, 2);
+      if (isCluster) {
+        assertEqual(properties.shardingStrategy, 'enterprise-smart-edge-compat');
+        assertEqual(properties.numberOfShards, 0);
+      } else {
+        assertEqual(properties.numberOfShards, 5);
+      }
     }
 
     function assertSatelliteCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName) {
@@ -160,7 +167,9 @@
         assertFalse(properties.isDisjoint);
         assertEqual(properties.numberOfShards, 1);
         assertEqual(properties.replicationFactor, 'satellite');
-        assertEqual(properties.shardingStrategy, 'enterprise-compat');
+        if (isCluster) {
+          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+        }
       }
 
       const eColl = db._collection(edgeCollName);
@@ -170,7 +179,9 @@
       assertFalse(properties.isDisjoint);
       assertEqual(properties.numberOfShards, 1);
       assertEqual(properties.replicationFactor, 'satellite');
-      assertEqual(properties.shardingStrategy, 'enterprise-compat');
+      if (isCluster) {
+        assertEqual(properties.shardingStrategy, 'enterprise-compat');
+      }
     }
 
     return {
@@ -1449,7 +1460,7 @@
         const graph = g.document(hybridGraphName);
         assertTrue(graph.isSmart);
         assertFalse(graph.isSatellite);
-        assertEqual(graph.replicationFactor, 1);
+        assertEqual(graph.replicationFactor, 2);
         assertEqual(graph.numberOfShards, 1);
         assertEqual(graph.smartGraphAttribute, 'value');
 
@@ -1470,8 +1481,10 @@
           assertEqual(properties.isDisjoint, false);
           assertEqual(properties.smartGraphAttribute, 'value');
           assertEqual(properties.numberOfShards, 1);
-          assertEqual(properties.replicationFactor, 1);
-          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          assertEqual(properties.replicationFactor, 2);
+          if (isCluster) {
+            assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          }
         }
 
         // Test satellite collections
@@ -1483,7 +1496,9 @@
           assertEqual(properties.smartGraphAttribute, undefined);
           assertEqual(properties.numberOfShards, 1);
           assertEqual(properties.replicationFactor, 'satellite');
-          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          if (isCluster) {
+            assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          }
         }
 
         // Test edge collection
@@ -1493,7 +1508,9 @@
         assertFalse(properties.isDisjoint);
         assertEqual(properties.numberOfShards, 1);
         assertEqual(properties.replicationFactor, 'satellite');
-        assertEqual(properties.shardingStrategy, 'enterprise-compat');
+        if (isCluster) {
+          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+        }
 
         // test data
         const collVerticesNonSat = db._collection(verticesNonSat);
@@ -1529,7 +1546,7 @@
         const graph = g.document(hybridGraphName);
         assertEqual(graph.isSmart, true);
         assertFalse(graph.isSatellite);
-        assertEqual(graph.replicationFactor, 1);
+        assertEqual(graph.replicationFactor, 2);
         assertEqual(graph.numberOfShards, 1);
         assertEqual(graph.smartGraphAttribute, 'value');
 
@@ -1562,7 +1579,9 @@
         // properties common for all vertex collections (smart & satellite)
         for (const properties of [verticesANonSatProps, verticesBNonSatProps, verticesSatProps, orphansProps]) {
           assertEqual(properties.numberOfShards, 1);
-          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          if (isCluster) {
+            assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          }
         }
 
         // properties common for all vertex non-satellite collection
@@ -1570,7 +1589,7 @@
           assertTrue(properties.isSmart);
           assertTrue(properties.isDisjoint);
           assertEqual(verticesANonSatProps.smartGraphAttribute, 'value');
-          assertEqual(properties.replicationFactor, 1);
+          assertEqual(properties.replicationFactor, 2);
         }
 
         // properties only for verticesSatProps (satellite collection)
@@ -1585,9 +1604,14 @@
         for (const properties of [eCollSatA.properties(), eCollAB.properties()]) {
           assertTrue(properties.isSmart);
           assertTrue(properties.isDisjoint);
-          assertEqual(properties.numberOfShards, 0);
-          assertEqual(properties.replicationFactor, 1);
-          assertEqual(properties.shardingStrategy, 'enterprise-smart-edge-compat');
+
+          if (isCluster) {
+            assertEqual(properties.numberOfShards, 0);
+            assertEqual(properties.shardingStrategy, 'enterprise-smart-edge-compat');
+          } else {
+            assertEqual(properties.numberOfShards, 1);
+          }
+          assertEqual(properties.replicationFactor, 2);
         }
 
         // test data
@@ -1598,7 +1622,7 @@
 
         // see explanation in the documentation to createHybridDisjointSmartGraphSingleServer() in file dump-set-common.inc
         assertEqual(eCollSatA.count(), 100);
-        assertEqual(eCollAB.count(), 50);
+        assertEqual(eCollAB.count(), 100);
 
         assertEqual(collVerticesANonSat.count(), 50);
         assertEqual(collVerticesBNonSat.count(), 50);
