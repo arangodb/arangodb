@@ -876,11 +876,11 @@ bool SynchronizeShard::first() {
     }
 
     uint64_t docCount = 0;
-    if (!collectionCount(*collection, docCount).ok()) {
+    if (Result res = collectionCount(*collection, docCount); res.fail()) {
       std::stringstream error;
-      error << "failed to get a count here " << database << "/" << shard;
+      error << "failed to get a count here " << database << "/" << shard << ": " << res.errorMessage();
       LOG_TOPIC("da225", ERR, Logger::MAINTENANCE) << "SynchronizeShard " << error.str();
-      result(TRI_ERROR_INTERNAL, error.str());
+      result(res.errorNumber(), error.str());
       return false;
     }
 
