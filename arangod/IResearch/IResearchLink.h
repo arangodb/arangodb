@@ -56,9 +56,9 @@ class AsyncLinkHandle final {
  public:
   explicit AsyncLinkHandle(IResearchLink* link);
   ~AsyncLinkHandle();
-  bool empty() const { return _link.empty(); }
-  auto lock() { return _link.lock(); }
-  auto try_lock() noexcept { return _link.try_lock(); }
+  bool empty() const noexcept { return _link.empty(); }
+  auto lock() noexcept { return _link.lock(); }
+  auto tryLock() noexcept { return _link.try_lock(); }
   bool terminationRequested() const noexcept {
     return _asyncTerminate.load(std::memory_order_acquire);
   }
@@ -296,9 +296,9 @@ class IResearchLink {
     size_t indexSize{};        // size of the index in bytes
   };
 
-  std::string getViewId() const;
+  const std::string& getViewId() const noexcept;
   std::string getDbName() const;
-  std::string getShardName() const;
+  const std::string& getShardName() const noexcept;
   std::string getCollectionName() const;
 
   struct LinkStats : Stats {
@@ -318,10 +318,22 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   bool createdInRecovery() const noexcept { return _createdInRecovery; }
 
+ public:  // TODO public only for tests, make protected
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get index stats for current snapshot
   ////////////////////////////////////////////////////////////////////////////////
   LinkStats stats() const;
+
+  // These methods only for tests
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get numbers of failed commit cleanup consolidation
+  ////////////////////////////////////////////////////////////////////////////////
+  std::tuple<uint64_t, uint64_t, uint64_t> numFailed() const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get average time of commit cleanuo consolidation
+  ////////////////////////////////////////////////////////////////////////////////
+  std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
 
  private:
   friend struct CommitTask;
@@ -372,27 +384,51 @@ class IResearchLink {
       _directory.reset();
     }
   };
-
+  struct UnsafeOpResult {
+    Result result;
+    uint64_t timeMs;
+  };
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run filesystem cleanup on the data store
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result cleanupUnsafe();
+  UnsafeOpResult cleanupUnsafe();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief mark the current data store state as the latest valid state
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result commitUnsafe(bool wait, CommitResult* code);
+  UnsafeOpResult commitUnsafe(bool wait, CommitResult* code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result consolidateUnsafe(IResearchViewMeta::ConsolidationPolicy const& policy,
-                           irs::merge_writer::flush_progress_t const& progress,
-                           bool& emptyConsolidation);
+  UnsafeOpResult consolidateUnsafe(IResearchViewMeta::ConsolidationPolicy const& policy,
+                                   irs::merge_writer::flush_progress_t const& progress,
+                                   bool& emptyConsolidation);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief run filesystem cleanup on the data store
+  /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
+  //////////////////////////////////////////////////////////////////////////////
+  Result cleanupUnsafeImpl();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief mark the current data store state as the latest valid state
+  /// @param wait even if other thread is committing
+  /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
+  //////////////////////////////////////////////////////////////////////////////
+  Result commitUnsafeImpl(bool wait, CommitResult* code);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief run segment consolidation on the data store
+  /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
+  //////////////////////////////////////////////////////////////////////////////
+  Result consolidateUnsafeImpl(IResearchViewMeta::ConsolidationPolicy const& policy,
+                               irs::merge_writer::flush_progress_t const& progress,
+                               bool& emptyConsolidation);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
@@ -416,21 +452,6 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   void removeStats();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Add statistic about failed commit
-  //////////////////////////////////////////////////////////////////////////////
-  void wasFailedCommit();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Add statistic about failed cleanup
-  //////////////////////////////////////////////////////////////////////////////
-  void wasFailedCleanup();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Add statistic about failed consolidation
-  //////////////////////////////////////////////////////////////////////////////
-  void wasFailedConsolidation();
-
   StorageEngine* _engine;
   VPackComparer _comparer;
   IResearchFeature* _asyncFeature;  // the feature where async jobs were registered (nullptr == no jobs registered)
@@ -446,13 +467,21 @@ class IResearchLink {
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback;  // for insert(...)/remove(...)
   std::string const _viewGuid;  // the identifier of the desired view (read-only, set via init())
   bool _createdInRecovery;  // link was created based on recovery marker
+
   GuardMetric<LinkStats>* _linkStats;
+
   Gauge<uint64_t>* _numFailedCommits;
   Gauge<uint64_t>* _numFailedCleanups;
   Gauge<uint64_t>* _numFailedConsolidations;
-  Gauge<uint64_t>* _allCommitTimeMs;
-  Gauge<uint64_t>* _allCleanupTimeMs;
-  Gauge<uint64_t>* _allConsolidationTimeMs;
+
+  std::atomic_uint64_t _commitTimeNum;
+  Gauge<uint64_t>* _avgCommitTimeMs;
+
+  std::atomic_uint64_t _cleanupTimeNum;
+  Gauge<uint64_t>* _avgCleanupTimeMs;
+
+  std::atomic_uint64_t _consolidationTimeNum;
+  Gauge<uint64_t>* _avgConsolidationTimeMs;
 };
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
