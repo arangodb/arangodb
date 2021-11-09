@@ -424,33 +424,32 @@ void CommitTask::operator()() {
     LOG_TOPIC("7e323", TRACE, iresearch::TOPIC)
         << "successful sync of arangosearch link '" << id << "', run id '"
         << size_t(&runId) << '\'';
-    if (code == IResearchLink::CommitResult::DONE) {
-      if (cleanupIntervalStep && cleanupIntervalCount++ > cleanupIntervalStep) {  // if enabled
-        cleanupIntervalCount = 0;
-
-        TRI_IF_FAILURE("IResearchCommitTask::cleanupUnsafe") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        res = linkPtr->cleanupUnsafe();  // run cleanup ('_asyncSelf' locked by async task)
-
-        if (res.ok()) {
-          LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
-              << "successful cleanup of arangosearch link '" << id
-              << "', run id '" << size_t(&runId) << '\'';
-        } else {
-          LOG_TOPIC("130de", WARN, iresearch::TOPIC)
-              << "error after cleaning up arangosearch link '" << id
-              << "', run id '" << size_t(&runId) << "': " << res.errorNumber()
-              << " " << res.errorMessage();
-        }
-      }
-    }
   } else {
     LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
         << "error after committing arangosearch link '" << linkPtr->id()
         << "', run id '" << size_t(&runId) << "': " << res.errorNumber() << " "
         << res.errorMessage();
+  }
+
+  if (cleanupIntervalStep && ++cleanupIntervalCount >= cleanupIntervalStep) {  // if enabled
+    cleanupIntervalCount = 0;
+
+    TRI_IF_FAILURE("IResearchCommitTask::cleanupUnsafe") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    res = linkPtr->cleanupUnsafe();  // run cleanup ('_asyncSelf' locked by async task)
+
+    if (res.ok()) {
+      LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
+          << "successful cleanup of arangosearch link '" << id << "', run id '"
+          << size_t(&runId) << '\'';
+    } else {
+      LOG_TOPIC("130de", WARN, iresearch::TOPIC)
+          << "error after cleaning up arangosearch link '" << id
+          << "', run id '" << size_t(&runId) << "': " << res.errorNumber()
+          << " " << res.errorMessage();
+    }
   }
 }
 
