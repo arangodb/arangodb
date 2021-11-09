@@ -336,7 +336,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/AsyncFollower.h
   Replication2/Mocks/FakeFollower.h
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
-  Replication2/ReplicatedLog/CalcCommitIndexTest.cpp Replication2/ReplicatedLog/EstablishLeadershipTest.cpp)
+  Replication2/ReplicatedLog/CalcCommitIndexTest.cpp Replication2/ReplicatedLog/EstablishLeadershipTest.cpp Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags

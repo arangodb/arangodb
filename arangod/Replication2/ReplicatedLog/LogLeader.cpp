@@ -774,8 +774,23 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectEligibleFollowerIndexe
     // This also includes log entries persisted on this server, i.e. our
     // LocalFollower is no exception.
     if (lastAckedEntry.term == this->_self._currentTerm) {
+
+      auto flags = std::invoke([&, &pid = pid]{
+                     if (auto f = activeParticipantConfig->participants.find(pid);
+                         f != std::end(activeParticipantConfig->participants)) {
+                        auto set = algorithms::ParticipantFlags{};
+                        if(f->second.excluded) {
+                          set.insert(algorithms::ParticipantFlag::Excluded);
+                        }
+                        if(f->second.forced) {
+                          set.insert(algorithms::ParticipantFlag::Forced);
+                        }
+                        return set;
+                     }
+                     return algorithms::ParticipantFlags{};
+                   });
       indexes.emplace_back(lastAckedEntry.index, follower->_impl->getParticipantId(),
-                           algorithms::ParticipantFlags{});
+                           std::move(flags));
     } else {
       LOG_CTX("54869", TRACE, _self._logContext)
           << "Will ignore follower "
@@ -1114,6 +1129,10 @@ void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<Partici
         << config->generation;
   });
 
+}
+
+auto replicated_log::LogLeader::getCommitIndex() const noexcept -> LogIndex {
+  return _guardedLeaderData.getLockedGuard()->_commitIndex;
 }
 
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const -> Result {

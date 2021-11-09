@@ -151,6 +151,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   // entry within its term has been committed.
   [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool;
 
+  // This function returns the current commit index. Do NOT pull this function,
+  // use waitFor(idx) instead. This function is used in tests.
+  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex;
+
   // Updates the flags of the participants.
   void updateParticipantsConfig(std::shared_ptr<ParticipantsConfig const> config);
 
