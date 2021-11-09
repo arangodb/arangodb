@@ -93,7 +93,13 @@ struct LogStatistics {
 
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice) -> LogStatistics;
+
+  friend auto operator==(LogStatistics const& left, LogStatistics const& right) noexcept -> bool;
+  friend auto operator!=(LogStatistics const& left, LogStatistics const& right) noexcept -> bool;
 };
+
+[[nodiscard]] auto operator==(LogStatistics const& left, LogStatistics const& right) noexcept -> bool;
+[[nodiscard]] auto operator!=(LogStatistics const& left, LogStatistics const& right) noexcept -> bool;
 
 struct AbstractFollower {
   virtual ~AbstractFollower() = default;

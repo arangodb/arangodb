@@ -51,48 +51,6 @@ static inline auto operator"" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
-namespace arangodb::replication2::replicated_log {
-[[maybe_unused]] static inline auto operator==(LogStatistics const& left,
-                                               LogStatistics const& right) {
-  return left.spearHead == right.spearHead &&
-         left.commitIndex == right.commitIndex &&
-         left.firstIndex == right.firstIndex;
-}
-
-[[maybe_unused]] static inline auto operator==(CommitFailReason const& left,
-                                               CommitFailReason const& right) {
-  return left.value.index() == right.value.index();
-}
-
-[[maybe_unused]] static inline auto operator==(FollowerStatistics const& left,
-                                               FollowerStatistics const& right) {
-  return left.lastErrorReason == right.lastErrorReason &&
-         left.lastRequestLatencyMS == right.lastRequestLatencyMS &&
-         left.internalState.value.index() == right.internalState.value.index();
-}
-
-[[maybe_unused]] static inline auto operator==(LeaderStatus const& left,
-                                               LeaderStatus const& right) {
-  bool result = left.local == right.local &&
-                left.term == right.term &&
-                left.largestCommonIndex == right.largestCommonIndex &&
-                left.commitLagMS == right.commitLagMS &&
-                left.lastCommitStatus == right.lastCommitStatus
-                && left.follower.size() == right.follower.size();
-  if (!result) {
-    return false;
-  }
-  for (auto const& [participantId, followerStatistics] : left.follower) {
-    auto search = right.follower.find(participantId);
-    if (search == right.follower.end() || !(search->second == followerStatistics)) {
-      result = false;
-      break;
-    }
-  }
-  return result;
-}
-}
-
 TEST(LogStatusTest, term_index_pair) {
   auto spearHead = TermIndexPair{LogTerm{2}, LogIndex{1}};
   VPackBuilder builder;
