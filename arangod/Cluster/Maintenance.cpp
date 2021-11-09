@@ -1627,6 +1627,9 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
         // If the leader is failed, we need not try to get in sync:
         if (failedServers.find(leader) != failedServers.end()) {
+          LOG_TOPIC("fe341", DEBUG, Logger::MAINTENANCE)
+            << "Not scheduling SynchronizeShard job for shard " << shname
+            << " since leader " << leader << " is in FailedServers list";
           continue;
         }
 
