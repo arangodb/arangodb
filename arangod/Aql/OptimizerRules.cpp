@@ -8484,7 +8484,50 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
       remoteNode->addDependency(dependencyNode);
       gatherNode->addDependency(remoteNode);
       lower->replaceDependency(dependencyNode, gatherNode);
+      return upper;
     }
+
+    if (lowerLoc.canRunOnDBServer() && upperLoc.canRunOnCoordinator()) {
+      // TODO: we could collect our vocbase once in the walker above, it cannot be changed anyways.
+      TRI_vocbase_t* vocbase = extractVocbaseFromNode(lower);
+
+      // Lower is on DBServer
+      // We need to add SCATTER REMOTE or DISTRIBUTE REMOTE right below the coordinator piece on upper.
+      // We continue with the "sharding" from upperNode, which is Coordinator.
+
+      // TODO We need to handle Scatter vs. Distribute Node here
+      auto* scatterNode = plan.createNode<ScatterNode>(&plan, plan.nextId(),
+                                                       ScatterNode::ScatterType::SHARD);
+      TRI_ASSERT(scatterNode);
+
+      auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
+      TRI_ASSERT(remoteNode);
+
+      // Now need to relink:
+      // upper <- parent 
+      // =>
+      // upper <- scatter <- remote <- parent
+
+      // At this stage in the planning every Node can only have a single parent
+      TRI_ASSERT(upper->hasParent());
+      TRI_ASSERT(upper->getParents().size() == 1);
+      auto parent = upper->getParents().front();
+
+      scatterNode->addDependency(upper);
+      remoteNode->addDependency(scatterNode);
+      parent->replaceDependency(upper, remoteNode);
+
+      return upper;
+    }
+
+    /*
+    if (lowerLoc.canRunOnDBServer() && upperLoc.canRunOnDBServer()) {
+      // TODO: we could collect our vocbase once in the walker above, it cannot be changed anyways.
+      TRI_vocbase_t* vocbase = extractVocbaseFromNode(upper);
+
+      // We are forced to go back to the coordinator once, but can immediatly move back to DBServer land
+    }
+    */
 
     return upper;
   };
