@@ -728,7 +728,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       url += "&flush=false";
     } else {
       // only flush WAL once
-      url += "&flush=true&flushWait=180";
+      url += "&flush=true";
       _config.flushed = true;
     }
 
@@ -942,9 +942,9 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     _config.progress.set(
         std::string("fetched leader collection dump for collection '") +
         coll->name() + "', type: " + typeString + ", id: " + leaderColl +
-        ", batch " + itoa(batch) + ", markers processed: " + itoa(cumulativeStats.numDumpDocuments) +
-        ", bytes received: " + itoa(cumulativeStats.numDumpBytesReceived) +
-        ", apply time: " + std::to_string(applyTime) + " s");
+        ", batch " + itoa(batch) + ", markers processed so far: " + itoa(cumulativeStats.numDumpDocuments) +
+        ", bytes received so far: " + itoa(cumulativeStats.numDumpBytesReceived) +
+        ", apply time for batch: " + std::to_string(applyTime) + " s");
 
     if (!res.ok()) {
       return res;

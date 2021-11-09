@@ -182,6 +182,9 @@ void DatabaseTailingSyncer::unregisterFromLeader() {
         std::string const url = tailingBaseUrl("tail") +
                                 "serverId=" + _state.localServerIdString +
                                 "&syncerId=" + syncerId().toString();
+        LOG_TOPIC("22640", DEBUG, Logger::REPLICATION) 
+            << "unregistering tailing syncer from leader, url: " << url;
+
         // simply send the request, but don't care about the response. if it
         // fails, there is not much we can do from here.
         response.reset(client->request(rest::RequestType::DELETE_REQ, url, nullptr, 0));

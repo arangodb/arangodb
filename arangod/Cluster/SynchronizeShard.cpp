@@ -802,62 +802,12 @@ bool SynchronizeShard::first() {
           "/" + resolver.getCollectionName(collection->id());
     }
 
-    // old "shortcut" code for getting in sync. This code takes a shortcut if the
-    // shard in question is supposed to be empty. in this case it will simply try
-    // to add itself as an in-sync follower, without running the full replication
-    // protocol. this shortcut relies on the collection counts being correct, and
-    // as these can be at least temporarily off, we need to disable it.
-#if 0
-    if (docCount == 0) {
-      // We have a short cut:
-      LOG_TOPIC("0932a", DEBUG, Logger::MAINTENANCE)
-          << "synchronizeOneShard: trying short cut to synchronize local shard "
-             "'"
-          << database << "/" << shard << "' for central '" << database << "/"
-          << planId << "'";
-
-      // now do a final sync-to-disk call. note that this can fail
-      auto& engine = vocbase->server().getFeature<EngineSelectorFeature>().engine();
-      Result res = engine.flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
-      if (res.fail()) {
-        LOG_TOPIC("a49d1", INFO, Logger::MAINTENANCE) << res.errorMessage();
-        result(res);
-        return false;
-      }
-
-      try {
-        NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-        network::ConnectionPool* pool = nf.pool();
-        auto asResult = addShardFollower(pool, ep, database, shard, 0, clientId,
-                                         SyncerId{}, _clientInfoString, 60.0);
-
-        if (asResult.ok()) {
-          if (Logger::isEnabled(LogLevel::DEBUG, Logger::MAINTENANCE)) {
-            std::stringstream msg;
-            msg << "SynchronizeShard: shortcut worked, done, ";
-            AppendShardInformationToMessage(database, shard, planId, startTime, msg);
-            LOG_TOPIC("f4a5b", DEBUG, Logger::MAINTENANCE) << msg.str();
-          }
-          collection->followers()->setTheLeader(leader);
-          return false;
-        }
-        if (asResult.errorNumber() != TRI_ERROR_REPLICATION_SHARD_NONEMPTY) {
-          // Stop action in this case
-          LOG_TOPIC("daaaa", INFO, Logger::MAINTENANCE) << "SynchronizeShard, error in addFollower (short cut): " << asResult.errorMessage();
-          result(asResult);
-          return false;
-        }
-        // Otherwise move on.
-      } catch (...) {
-      }
-    }
-#endif
-
     LOG_TOPIC("53337", DEBUG, Logger::MAINTENANCE)
         << "synchronizeOneShard: trying to synchronize local shard '" << database
         << "/" << shard << "' for central '" << database << "/" << planId << "'";
 
     std::shared_ptr<DatabaseTailingSyncer> tailingSyncer;
+
     try {
       // From here on we perform a number of steps, each of which can
       // fail. If it fails with an exception, it is caught, but this
@@ -942,36 +892,39 @@ bool SynchronizeShard::first() {
           sy, LAST_LOG_TICK, 0);
 
       // build configuration for WAL tailing
-      builder.clear();
       {
-        VPackObjectBuilder o(&builder);
-        builder.add(ENDPOINT, VPackValue(ep));
-        builder.add(DATABASE, VPackValue(getDatabase()));
-        builder.add(COLLECTION, VPackValue(getShard()));
-        builder.add(LEADER_ID, VPackValue(leader));
-        builder.add("requestTimeout", VPackValue(600.0));
-        builder.add("connectTimeout", VPackValue(30.0));
-      }
-      
-      ReplicationApplierConfiguration configuration =
-          ReplicationApplierConfiguration::fromVelocyPack(feature().server(), builder.slice(), getDatabase());
-      // will throw if invalid
-      configuration.validate();
-  
-      // build DatabaseTailingSyncer object for WAL tailing
-      TRI_ASSERT(tailingSyncer == nullptr);
-      tailingSyncer = DatabaseTailingSyncer::create(guard.database(), configuration, lastTick, /*useTick*/true);
+        builder.clear();
+        {
+          VPackObjectBuilder o(&builder);
+          builder.add(ENDPOINT, VPackValue(ep));
+          builder.add(DATABASE, VPackValue(getDatabase()));
+          builder.add(COLLECTION, VPackValue(getShard()));
+          builder.add(LEADER_ID, VPackValue(leader));
+          builder.add("requestTimeout", VPackValue(600.0));
+          builder.add("connectTimeout", VPackValue(30.0));
+        }
+        
+        ReplicationApplierConfiguration configuration =
+            ReplicationApplierConfiguration::fromVelocyPack(feature().server(), builder.slice(), getDatabase());
+        // will throw if invalid
+        configuration.validate();
+    
+        // build DatabaseTailingSyncer object for WAL tailing
+        TRI_ASSERT(tailingSyncer == nullptr);
+        tailingSyncer = DatabaseTailingSyncer::create(guard.database(), configuration, lastTick, /*useTick*/true);
 
-      if (!leader.empty()) {
-        // In the initial phase we still use the normal leaderId without a following
-        // term id:
-        tailingSyncer->setLeaderId(leader);
+        if (!leader.empty()) {
+          // In the initial phase we still use the normal leaderId without a following
+          // term id:
+          tailingSyncer->setLeaderId(leader);
+        }
       }
 
       ResultT<TRI_voc_tick_t> tickResult =
           catchupWithReadLock(ep, *collection, clientId, leader, lastTick, tailingSyncer);
 
       if (!tickResult.ok()) {
+        tailingSyncer->unregisterFromLeader();
         LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << tickResult.errorMessage();
         result(std::move(tickResult).result());
         return false;
@@ -982,6 +935,7 @@ bool SynchronizeShard::first() {
       Result res = catchupWithExclusiveLock(ep, *collection, clientId,
                                             leader, syncerId, lastTick, tailingSyncer);
       if (!res.ok()) {
+        tailingSyncer->unregisterFromLeader();
         LOG_TOPIC("be85f", INFO, Logger::MAINTENANCE) << res.errorMessage();
         result(res);
         return false;
