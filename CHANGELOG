@@ -5,6 +5,17 @@ devel
   block quick SynchronizeShard jobs which have the data and only need to
   resync.
 
+* When enabling the cluster supervision maintenance mode via the web UI, there
+  is now the possibility to select a duration for the maintenance mode.
+  Previous versions of ArangoDB always enabled the maintenance mode for one
+  hour, without allowing any choice here.
+
+* Remove unsupported `--server.default-api-compatibility` startup option.
+
+* Fixed potential undefined behavior in edge cache during cache migration tasks.
+  There was a short window of time in which an already freed Table could be
+  used by concurrently running edge lookups.
+
 * DEVSUP-899: Fixed Subquery execution
   in a very rare case a subquery, nested in another subquery, was not
   executed, which is fixed now. Technical details:
