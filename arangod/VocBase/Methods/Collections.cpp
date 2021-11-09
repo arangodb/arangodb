@@ -491,7 +491,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
   try {
     if (ServerState::instance()->isCoordinator()) {
       // Here we do have a cluster setup. In that case, we will create many collections in one go (batch-wise).
-      collections = ClusterMethods::createCollectionOnCoordinator(
+      collections = ClusterMethods::createCollectionsOnCoordinator(
           vocbase, infoSlice, false, createWaitsForSyncReplication,
           enforceReplicationFactor, isNewDatabase, colToDistributeShardsLike);
 

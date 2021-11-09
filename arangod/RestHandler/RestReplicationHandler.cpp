@@ -1310,7 +1310,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
       // in the replication case enforcing the replication factor is absolutely
       // not desired, so it is hardcoded to false
       auto cols =
-          ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
+          ClusterMethods::createCollectionsOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
                                                         createWaitsForSyncReplication,
                                                         false, false, nullptr);
       ExecContext const& exec = ExecContext::current();
