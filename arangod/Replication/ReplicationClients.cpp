@@ -211,6 +211,18 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
   }
 
   LOG_DEVEL << "PROGRESSTRACKER HAS " << _clients.size() << " CLIENTS LEFT";
+  if (!_clients.empty()) {
+    for (auto const& it : _clients) {
+      ReplicationClientProgress const& value = it.second;
+
+      LOG_DEVEL 
+          << "- server: " << value.clientId.id() 
+          << ", syncer: " << value.syncerId.toString() 
+          << ", lastServed:" << value.lastServedTick 
+          << ", lastSeen: " << value.lastSeenStamp 
+          << ", expire: " << value.expireStamp;
+    }
+  }
 }
 
 /// @brief return the lowest lastServedTick value for all clients
