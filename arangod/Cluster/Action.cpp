@@ -217,9 +217,6 @@ void Action::addNewFactoryForTest(std::string const& name,
   factories.emplace(name, std::move(factory));
 }
 
-void addNewFactoryForTest(std::string const& name,
-                          std::function<std::unique_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>&& creator);
-
 namespace std {
 ostream& operator<<(ostream& out, arangodb::maintenance::Action const& d) {
   out << d.toVelocyPack().toJson();
