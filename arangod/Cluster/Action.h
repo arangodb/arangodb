@@ -202,8 +202,8 @@ class Action {
     return _action->requeuePriority();
   }
 
-  void pleaseRequeueMe(int requeuePriority) {
-    _action->pleaseRequeueMe(requeuePriority);
+  void requeueMe(int requeuePriority) {
+    _action->requeueMe(requeuePriority);
   }
 
   void setPriority(int newPriority) {
