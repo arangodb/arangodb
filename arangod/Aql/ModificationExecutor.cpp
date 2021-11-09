@@ -222,8 +222,8 @@ template <typename FetcherType, typename ModifierType>
         }
       }
     }
-    auto maxOutputRows() -> std::size_t final { return _output.numRowsLeft(); }
-    auto needMoreOutput() -> bool final { return !_output.isFull(); }
+    auto maxOutputRows() -> std::size_t { return _output.numRowsLeft(); }
+    auto needMoreOutput() -> bool { return !_output.isFull(); }
   };
 
   auto produceData = ProduceData(output, _infos, *_modifier);
@@ -272,7 +272,7 @@ template <typename FetcherType, typename ModifierType>
       });
       _call.didSkip(skipped);
     }
-    auto maxOutputRows() -> std::size_t final {
+    auto maxOutputRows() -> std::size_t {
       if (_call.getLimit() == 0 && _call.hasHardLimit()) {
         // We need to produce all modification operations.
         // If we are bound by limits or not!
@@ -281,7 +281,7 @@ template <typename FetcherType, typename ModifierType>
         return _call.getOffset();
       }
     }
-    auto needMoreOutput() -> bool final { return _call.needSkipMore(); }
+    auto needMoreOutput() -> bool { return _call.needSkipMore(); }
   };
 
   TRI_ASSERT(call.getSkipCount() == 0);

@@ -121,7 +121,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 using namespace std::chrono;
-using namespace date;
 
 /*
 - always specify your user facing function name MYFUNC in error generators
@@ -281,7 +280,7 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   char formatted[24];
 
   date::year_month_day ymd{floor<date::days>(tp)};
-  auto day_time = make_time(tp - date::sys_days(ymd));
+  auto day_time = date::make_time(tp - date::sys_days(ymd));
 
   auto y = static_cast<int>(ymd.year());
   // quick basic check here for dates outside the allowed range
@@ -403,7 +402,7 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
   double durationUnits = durationUnitsSlice.getNumber<double>();
   std::chrono::duration<double, std::ratio<1l, 1000l>> ms{};
   date::year_month_day ymd{floor<date::days>(tp)};
-  auto day_time = make_time(tp - date::sys_days(ymd));
+  auto day_time = date::make_time(tp - date::sys_days(ymd));
 
   DateSelectionModifier flag = ::parseDateModifierFlag(durationType);
   double intPart = 0.0;
@@ -491,7 +490,7 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionCont
                                                arangodb::velocypack::StringRef duration,
                                                char const* AFN, bool isSubtract) {
   date::year_month_day ymd{floor<date::days>(tp)};
-  auto day_time = make_time(tp - date::sys_days(ymd));
+  auto day_time = date::make_time(tp - date::sys_days(ymd));
   
   arangodb::basics::ParsedDuration parsedDuration;
   if (!arangodb::basics::parseIsoDuration(duration, parsedDuration)) {
@@ -3655,7 +3654,7 @@ AqlValue Functions::DateMillisecond(ExpressionContext* expressionContext,
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
-  auto day_time = make_time(tp - floor<date::days>(tp));
+  auto day_time = date::make_time(tp - floor<date::days>(tp));
   uint64_t millis = day_time.subseconds().count();
   return AqlValue(AqlValueHintUInt(millis));
 }
@@ -3674,7 +3673,7 @@ AqlValue Functions::DateDayOfYear(ExpressionContext* expressionContext,
   auto ymd = date::year_month_day(floor<date::days>(tp));
   auto yyyy = date::year{ymd.year()};
   // we construct the date with the first day in the year:
-  auto firstDayInYear = yyyy / jan / date::day{0};
+  auto firstDayInYear = yyyy / date::jan / date::day{0};
   uint64_t daysSinceFirst = duration_cast<date::days>(tp - date::sys_days(firstDayInYear)).count();
 
   return AqlValue(AqlValueHintUInt(daysSinceFirst));
@@ -3757,8 +3756,6 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
                               AstNode const&,
                               VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_TRUNC";
-  using namespace std::chrono;
-  using namespace date;
 
   tp_sys_clock_ms tp;
 
@@ -3777,10 +3774,10 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   basics::StringUtils::tolowerInPlace(duration);
 
   date::year_month_day ymd{floor<date::days>(tp)};
-  auto day_time = make_time(tp - date::sys_days(ymd));
+  auto day_time = date::make_time(tp - date::sys_days(ymd));
   milliseconds ms{0};
   if (duration == "y" || duration == "year" || duration == "years") {
-    ymd = date::year{ymd.year()} / jan / date::day{1};
+    ymd = date::year{ymd.year()} / date::jan / date::day{1};
   } else if (duration == "m" || duration == "month" || duration == "months") {
     ymd = date::year{ymd.year()} / ymd.month() / date::day{1};
   } else if (duration == "d" || duration == "day" || duration == "days") {
@@ -3809,8 +3806,6 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
 AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_UTCTOLOCAL";
-  using namespace std::chrono;
-  using namespace date;
 
   tp_sys_clock_ms tp_utc;
 
@@ -3839,7 +3834,7 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode
 
   std::string const tz = timeZoneParam.slice().copyString();
   auto const utc = floor<milliseconds>(tp_utc);
-  auto const zoned = make_zoned(tz, utc);
+  auto const zoned = date::make_zoned(tz, utc);
   auto const info = zoned.get_info();
   auto const tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
   AqlValue aqlLocal =
@@ -3861,7 +3856,7 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode
     transaction::BuilderLeaser builder(trx);
     builder->openObject();
     builder->add("local", aqlLocal.slice());
-    builder->add("tzdb", VPackValue(get_tzdb().version));
+    builder->add("tzdb", VPackValue(date::get_tzdb().version));
     builder->add("zoneInfo", VPackValue(VPackValueType::Object));
     builder->add("name", VPackValue(info.abbrev));
     builder->add("begin", aqlBegin.slice());
@@ -3882,8 +3877,6 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode
 AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_LOCALTOUTC";
-  using namespace std::chrono;
-  using namespace date;
 
   tp_sys_clock_ms tp_local;
 
@@ -3933,7 +3926,7 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
     transaction::BuilderLeaser builder(trx);
     builder->openObject();
     builder->add("utc", aqlUtc.slice());
-    builder->add("tzdb", VPackValue(get_tzdb().version));
+    builder->add("tzdb", VPackValue(date::get_tzdb().version));
     builder->add("zoneInfo", VPackValue(VPackValueType::Object));
     builder->add("name", VPackValue(info.abbrev));
     builder->add("begin", aqlBegin.slice());
@@ -3954,9 +3947,7 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
 AqlValue Functions::DateTimeZone(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParameters const& parameters) {
-  using namespace date;
-
-  auto const* zone = current_zone();
+  auto const* zone = date::current_zone();
 
   if (zone != nullptr) {
     return AqlValue(zone->name());
@@ -3968,9 +3959,7 @@ AqlValue Functions::DateTimeZone(ExpressionContext* expressionContext,
 /// @brief function DATE_TIMEZONES
 AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext, AstNode const&,
                                   VPackFunctionParameters const& parameters) {
-  using namespace date;
-
-  auto& list = get_tzdb_list();
+  auto& list = date::get_tzdb_list();
   auto& db = list.front();
 
   transaction::Methods* trx = &expressionContext->trx();
@@ -4189,8 +4178,8 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
   }
   auto ymd1 = date::year_month_day{floor<date::days>(tp1)};
   auto ymd2 = date::year_month_day{floor<date::days>(tp2)};
-  auto time1 = make_time(tp1 - floor<date::days>(tp1));
-  auto time2 = make_time(tp2 - floor<date::days>(tp2));
+  auto time1 = date::make_time(tp1 - floor<date::days>(tp1));
+  auto time2 = date::make_time(tp2 - floor<date::days>(tp2));
 
   // This switch has the following feature:
   // It is ordered by the Highest value of
