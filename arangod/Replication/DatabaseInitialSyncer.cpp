@@ -231,7 +231,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                             config.leader.endpoint, url, ": ", r.errorMessage()));
     }
 
-    VPackSlice const docs = responseBuilder->slice();
+    VPackSlice docs = responseBuilder->slice();
     if (!docs.isArray()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     concatT("got invalid response from leader at ",
@@ -249,14 +249,14 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                           ": response document entry is not an object");
       }
 
-      VPackSlice const keySlice = leaderDoc.get(arangodb::StaticStrings::KeyString);
+      VPackSlice keySlice = leaderDoc.get(arangodb::StaticStrings::KeyString);
       if (!keySlice.isString()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
                           state.leader.endpoint + ": document key is invalid");
       }
 
-      VPackSlice const revSlice = leaderDoc.get(arangodb::StaticStrings::RevString);
+      VPackSlice revSlice = leaderDoc.get(arangodb::StaticStrings::RevString);
       if (!revSlice.isString()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
@@ -279,7 +279,9 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
           options.indexOperationMode = arangodb::IndexOperationMode::normal;
         }
 
+        double tInsert = TRI_microtime();
         Result res = physical->insert(&trx, leaderDoc, mdr, options);
+        stats.waitedForInsertions += TRI_microtime() - tInsert;
 
         options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
@@ -1631,8 +1633,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       }
       toRemove.clear();
 
-      res = ::fetchRevisions(*trx, _config, _state, *coll, leaderColl, toFetch,
-                             /*removed,*/ stats);
+      res = ::fetchRevisions(*trx, _config, _state, *coll, leaderColl, toFetch, stats);
       if (res.fail()) {
         return res;
       }

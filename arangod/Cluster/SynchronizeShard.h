@@ -32,12 +32,14 @@
 #include "VocBase/voc-types.h"
 
 #include <chrono>
+#include <memory>
 
 namespace arangodb {
 namespace network {
 class ConnectionPool;
 }
 
+class DatabaseTailingSyncer;
 class LogicalCollection;
 struct SyncerId;
 
@@ -78,14 +80,17 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
       std::string const& ep, 
       LogicalCollection const& collection,
       std::string const& clientId, 
-      std::string const& leader, TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
+      std::string const& leader, 
+      TRI_voc_tick_t lastLogTick, 
+      std::shared_ptr<DatabaseTailingSyncer> tailingSyncer);
 
   arangodb::Result catchupWithExclusiveLock(
       std::string const& ep, 
       LogicalCollection& collection, 
       std::string const& clientId,
       std::string const& leader, SyncerId syncerId,
-      TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
+      TRI_voc_tick_t lastLogTick, 
+      std::shared_ptr<DatabaseTailingSyncer> tailingSyncer);
 
   /// @brief Short, informative description of the replication client, passed to the server
   std::string _clientInfoString;
@@ -93,6 +98,9 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   /// @brief information about the leader, reused across multiple replication steps
   arangodb::replutils::LeaderInfo _leaderInfo;
   uint64_t _followingTermId;
+
+  /// @brief maximum tick until which we need to run WAL tailing for. 0 means "no restriction"
+  uint64_t _tailingUpperBoundTick;
 };
 
 }  // namespace maintenance

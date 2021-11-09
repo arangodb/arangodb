@@ -30,6 +30,9 @@
 #include "TailingSyncer.h"
 
 #include <memory>
+#include <string>
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 class DatabaseReplicationApplier;
@@ -55,17 +58,14 @@ class DatabaseTailingSyncer : public TailingSyncer {
   DatabaseReplicationApplier* applier() const {
     return static_cast<DatabaseReplicationApplier*>(_applier);
   }
-
+  
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
   Result syncCollectionFinalize(arangodb::replutils::LeaderInfo const& leaderInfo,
-                                std::string const& collectionName, char const* context) {
-    TRI_voc_tick_t dummy = 0;
-    bool dummyDidTimeout = false;
-    double dummyTimeout = 300.0;
-    return syncCollectionCatchupInternal(leaderInfo, collectionName, dummyTimeout, true,
-                                         dummy, dummyDidTimeout, context);
-  }
+                                std::string const& collectionName, 
+                                TRI_voc_tick_t fromTick,
+                                TRI_voc_tick_t toTick, 
+                                std::string const& context);
 
   /// @brief catch up with changes in a leader shard by doing the same
   /// as in syncCollectionFinalize, but potentially stopping earlier.
@@ -78,16 +78,19 @@ class DatabaseTailingSyncer : public TailingSyncer {
   /// `syncCollectionFinalize` to finish off the rest.
   /// Internally, both use `syncCollectionCatchupInternal`.
   Result syncCollectionCatchup(arangodb::replutils::LeaderInfo const& leaderInfo,
-                               std::string const& collectionName, double timeout,
-                               TRI_voc_tick_t& until, bool& didTimeout, char const* context) {
-    return syncCollectionCatchupInternal(leaderInfo, collectionName, timeout, false, until, didTimeout, context);
-  }
+                               std::string const& collectionName, TRI_voc_tick_t fromTick,
+                               double timeout, TRI_voc_tick_t& until, bool& didTimeout, 
+                               std::string const& context);
+  
+  void unregisterFromLeader();
 
  protected:
   Result syncCollectionCatchupInternal(arangodb::replutils::LeaderInfo const& leaderInfo, 
                                        std::string const& collectionName,
                                        double timeout, bool hard,
-                                       TRI_voc_tick_t& until, bool& didTimeout, char const* context);
+                                       TRI_voc_tick_t& until, bool& didTimeout, 
+                                       std::string const& context);
+
   /// @brief save the current applier state
   Result saveApplierState() override;
 
@@ -97,7 +100,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
   }
 
   /// @brief whether or not we should skip a specific marker
-  bool skipMarker(arangodb::velocypack::Slice const& slice) override;
+  bool skipMarker(arangodb::velocypack::Slice slice) override;
 
  private:
   /// @brief vocbase to use for this run
@@ -106,7 +109,12 @@ class DatabaseTailingSyncer : public TailingSyncer {
   /// @brief translation between globallyUniqueId and collection name
   std::unordered_map<std::string, std::string> _translations;
 
+  /// @brief upper bound tick used for tailing. "0" means "no restriction"
+  uint64_t _toTick;
+
   bool _queriedTranslations;
+
+  bool _unregisteredFromLeader;
 };
 }  // namespace arangodb
 
