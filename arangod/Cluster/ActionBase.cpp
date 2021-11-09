@@ -104,7 +104,6 @@ bool ActionBase::done() const {
   return (COMPLETE == _state || FAILED == _state) &&
          _actionDone.load() + std::chrono::seconds(_feature.getSecondsActionsBlock()) <=
              secs_since_epoch();
-
 }  // ActionBase::done
 
 ActionDescription const& ActionBase::describe() const { return _description; }

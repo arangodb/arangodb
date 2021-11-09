@@ -211,6 +211,9 @@ class Action {
     _action->setPriority(newPriority);
   }
 
+  static void addNewFactoryForTest(std::string const& name,
+      std::function<std::unique_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>&& factory);
+
  private:
   /// @brief actually create the concrete action
   void create(MaintenanceFeature&, ActionDescription const&);

@@ -172,6 +172,14 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
       }  // if
     }    // for
 
+    if (registry.end() != action) {
+      std::cerr << "Found more actions in registry than expected!";
+      good = false;
+    }
+    if (expected.end() != check) {
+      std::cerr << "Found fewer actions in registry than expected!";
+      good = false;
+    }
     return good;
 
   }  // verifyRegistryState
@@ -182,7 +190,7 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
 
     do {
       again = false;
-      std::this_thread::sleep_for(std::chrono::seconds(1));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
       VPackBuilder registryBuilder(toVelocyPack());
       VPackArrayIterator registry(registryBuilder.slice());
