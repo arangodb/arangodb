@@ -1,7 +1,6 @@
 v3.8.3 (XXXX-XX-XX)
 -------------------
 
-
 * Fixed BTS-637: Slow SynchronizeShard jobs which need to copy data could
   block quick SynchronizeShard jobs which have the data and only need to
   resync.
