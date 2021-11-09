@@ -119,7 +119,6 @@ using namespace std::chrono;
 SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescription const& desc)
   : ActionBase(feature, desc),
     ShardDefinition(desc.get(DATABASE), desc.get(SHARD)),
-    _leaderInfo(arangodb::replutils::LeaderInfo::createEmpty()),
     _followingTermId(0),
     _tailingUpperBoundTick(0) {
   std::stringstream error;
@@ -152,14 +151,6 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescriptio
   
 std::string const& SynchronizeShard::clientInfoString() const { 
   return _clientInfoString;
-}
-
-arangodb::replutils::LeaderInfo const& SynchronizeShard::leaderInfo() const {
-  return _leaderInfo;
-}
-
-void SynchronizeShard::setLeaderInfo(arangodb::replutils::LeaderInfo const& leaderInfo) {
-  _leaderInfo = leaderInfo;
 }
 
 SynchronizeShard::~SynchronizeShard() = default;
@@ -549,7 +540,8 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
 static arangodb::ResultT<SyncerId> replicationSynchronize(
     SynchronizeShard& job,
     std::shared_ptr<arangodb::LogicalCollection> const& col,
-    VPackSlice const& config,
+    VPackSlice config,
+    std::shared_ptr<DatabaseTailingSyncer> tailingSyncer,
     VPackBuilder& sy) {
 
   auto& vocbase = col->vocbase();
@@ -573,6 +565,12 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
     syncer->setLeaderId(leaderId);
   }
 
+  syncer->setOnSuccessCallback([tailingSyncer](DatabaseInitialSyncer& syncer) -> Result {
+    // store leader info for later, so that the next phases don't need to acquire it again.
+    // this saves an HTTP roundtrip to the leader when initializing the WAL tailing.
+    return tailingSyncer->inheritFromInitialSyncer(syncer);
+  });
+
   SyncerId syncerId{syncer->syncerId()};
 
   try {
@@ -583,11 +581,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
       LOG_TOPIC("3efff", DEBUG, Logger::REPLICATION)
           << "initial sync failed for " << database << "/" << col->name()
           << ": " << r.errorMessage();
-      THROW_ARANGO_EXCEPTION(r);
+      return r;
     }
-
-    // store leader info for later, so that the next phases don't need to acquire it again
-    job.setLeaderInfo(syncer->leaderInfo());
 
     {
       VPackObjectBuilder o(&sy);
@@ -807,6 +802,34 @@ bool SynchronizeShard::first() {
         << "/" << shard << "' for central '" << database << "/" << planId << "'";
 
     std::shared_ptr<DatabaseTailingSyncer> tailingSyncer;
+    VPackBuilder builder;
+    // build configuration for WAL tailing
+    {
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(ENDPOINT, VPackValue(ep));
+        builder.add(DATABASE, VPackValue(getDatabase()));
+        builder.add(COLLECTION, VPackValue(getShard()));
+        builder.add(LEADER_ID, VPackValue(leader));
+        builder.add("requestTimeout", VPackValue(600.0));
+        builder.add("connectTimeout", VPackValue(30.0));
+      }
+      
+      ReplicationApplierConfiguration configuration =
+          ReplicationApplierConfiguration::fromVelocyPack(feature().server(), builder.slice(), getDatabase());
+      // will throw if invalid
+      configuration.validate();
+  
+      // build DatabaseTailingSyncer object for WAL tailing
+      TRI_ASSERT(tailingSyncer == nullptr);
+      tailingSyncer = DatabaseTailingSyncer::create(guard.database(), configuration, /*lastTick*/ 0, /*useTick*/true);
+
+      if (!leader.empty()) {
+        // In the initial phase we still use the normal leaderId without a following
+        // term id:
+        tailingSyncer->setLeaderId(leader);
+      }
+    }
 
     try {
       // From here on we perform a number of steps, each of which can
@@ -851,7 +874,7 @@ bool SynchronizeShard::first() {
 
       VPackBuilder builder;
       ResultT<SyncerId> syncRes =
-          replicationSynchronize(*this, collection, config.slice(), builder);
+          replicationSynchronize(*this, collection, config.slice(), tailingSyncer, builder);
 
       auto const endTime = system_clock::now();
 
@@ -890,35 +913,6 @@ bool SynchronizeShard::first() {
       auto lastTick =
         arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_tick_t>(
           sy, LAST_LOG_TICK, 0);
-
-      // build configuration for WAL tailing
-      {
-        builder.clear();
-        {
-          VPackObjectBuilder o(&builder);
-          builder.add(ENDPOINT, VPackValue(ep));
-          builder.add(DATABASE, VPackValue(getDatabase()));
-          builder.add(COLLECTION, VPackValue(getShard()));
-          builder.add(LEADER_ID, VPackValue(leader));
-          builder.add("requestTimeout", VPackValue(600.0));
-          builder.add("connectTimeout", VPackValue(30.0));
-        }
-        
-        ReplicationApplierConfiguration configuration =
-            ReplicationApplierConfiguration::fromVelocyPack(feature().server(), builder.slice(), getDatabase());
-        // will throw if invalid
-        configuration.validate();
-    
-        // build DatabaseTailingSyncer object for WAL tailing
-        TRI_ASSERT(tailingSyncer == nullptr);
-        tailingSyncer = DatabaseTailingSyncer::create(guard.database(), configuration, lastTick, /*useTick*/true);
-
-        if (!leader.empty()) {
-          // In the initial phase we still use the normal leaderId without a following
-          // term id:
-          tailingSyncer->setLeaderId(leader);
-        }
-      }
 
       ResultT<TRI_voc_tick_t> tickResult =
           catchupWithReadLock(ep, *collection, clientId, leader, lastTick, tailingSyncer);
@@ -1051,7 +1045,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     try {
       didTimeout = false;
       std::string const context = "catching up delta changes for shard " + getDatabase() + "/" + collection.name();
-      res = tailingSyncer->syncCollectionCatchup(leaderInfo(), collection.name(), lastLogTick,
+      res = tailingSyncer->syncCollectionCatchup(collection.name(), lastLogTick,
                                                  timeout * 0.6, tickReached, didTimeout, context);
     } catch (std::exception const& ex) {
       res = {TRI_ERROR_INTERNAL, ex.what()};
@@ -1148,7 +1142,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
   try {
     std::string const context = "finalizing shard " + getDatabase() + "/" + collection.name();
-    res = tailingSyncer->syncCollectionFinalize(leaderInfo(), collection.name(), 
+    res = tailingSyncer->syncCollectionFinalize(collection.name(), 
                                                 lastLogTick, _tailingUpperBoundTick, context);
   } catch (std::exception const& ex) {
     res = {TRI_ERROR_INTERNAL, ex.what()};

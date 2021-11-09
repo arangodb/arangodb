@@ -157,6 +157,10 @@ class DatabaseInitialSyncer : public InitialSyncer {
   
   /// @brief return information about the leader
   replutils::LeaderInfo leaderInfo() const;
+  
+  void setOnSuccessCallback(std::function<Result(DatabaseInitialSyncer&)> const& cb) {
+    _onSuccess = cb;
+  }
 
  private:
   enum class FormatHint {
@@ -251,6 +255,8 @@ class DatabaseInitialSyncer : public InitialSyncer {
   Result batchFinish();
 
   Configuration _config;
+  
+  std::function<Result(DatabaseInitialSyncer&)> _onSuccess;
 
   /// @brief whether or not we are a coordinator/dbserver
   bool const _isClusterRole;

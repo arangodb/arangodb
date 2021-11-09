@@ -211,9 +211,10 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG_TOPIC("239fb", DEBUG, Logger::REPLICATION)
+      << "replication progress tracker has " << _clients.size() << " clients left";
+
   if (!_clients.empty()) {
-    LOG_TOPIC("239fb", TRACE, Logger::REPLICATION)
-        << "replication progress tracker has " << _clients.size() << " left";
     for (auto const& it : _clients) {
       ReplicationClientProgress const& value = it.second;
 

@@ -32,6 +32,7 @@
 #include "VocBase/voc-types.h"
 
 #include <chrono>
+#include <functional>
 #include <memory>
 
 namespace arangodb {
@@ -54,11 +55,8 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   bool first() override final;
 
   void setState(ActionState state) override final;
-
+  
   std::string const& clientInfoString() const;
-
-  arangodb::replutils::LeaderInfo const& leaderInfo() const;
-  void setLeaderInfo(arangodb::replutils::LeaderInfo const& leaderInfo);
 
  private:
   arangodb::Result getReadLock(network::ConnectionPool* pool,
@@ -95,8 +93,6 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   /// @brief Short, informative description of the replication client, passed to the server
   std::string _clientInfoString;
 
-  /// @brief information about the leader, reused across multiple replication steps
-  arangodb::replutils::LeaderInfo _leaderInfo;
   uint64_t _followingTermId;
 
   /// @brief maximum tick until which we need to run WAL tailing for. 0 means "no restriction"

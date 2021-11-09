@@ -492,6 +492,10 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
         << Logger::FIXED(TRI_microtime() - startTime, 6) << " s. status: "
         << (r.errorMessage().empty() ? "all good" : r.errorMessage());
 
+    if (_onSuccess) {
+      r = _onSuccess(*this);
+    }
+
     return r;
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(), ex.what());

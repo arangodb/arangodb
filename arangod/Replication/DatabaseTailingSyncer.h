@@ -35,6 +35,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class DatabaseInitialSyncer;
 class DatabaseReplicationApplier;
 
 class DatabaseTailingSyncer : public TailingSyncer {
@@ -61,8 +62,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
   
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
-  Result syncCollectionFinalize(arangodb::replutils::LeaderInfo const& leaderInfo,
-                                std::string const& collectionName, 
+  Result syncCollectionFinalize(std::string const& collectionName, 
                                 TRI_voc_tick_t fromTick,
                                 TRI_voc_tick_t toTick, 
                                 std::string const& context);
@@ -77,16 +77,16 @@ class DatabaseTailingSyncer : public TailingSyncer {
   /// by getting an exclusive lock on the leader and use
   /// `syncCollectionFinalize` to finish off the rest.
   /// Internally, both use `syncCollectionCatchupInternal`.
-  Result syncCollectionCatchup(arangodb::replutils::LeaderInfo const& leaderInfo,
-                               std::string const& collectionName, TRI_voc_tick_t fromTick,
+  Result syncCollectionCatchup(std::string const& collectionName, TRI_voc_tick_t fromTick,
                                double timeout, TRI_voc_tick_t& until, bool& didTimeout, 
                                std::string const& context);
   
+  Result inheritFromInitialSyncer(DatabaseInitialSyncer const& syncer);
+  Result registerOnLeader();
   void unregisterFromLeader();
 
  protected:
-  Result syncCollectionCatchupInternal(arangodb::replutils::LeaderInfo const& leaderInfo, 
-                                       std::string const& collectionName,
+  Result syncCollectionCatchupInternal(std::string const& collectionName,
                                        double timeout, bool hard,
                                        TRI_voc_tick_t& until, bool& didTimeout, 
                                        std::string const& context);

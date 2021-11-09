@@ -97,8 +97,7 @@ Result DatabaseTailingSyncer::saveApplierState() {
   return rv;
 }
     
-Result DatabaseTailingSyncer::syncCollectionCatchup(arangodb::replutils::LeaderInfo const& leaderInfo, 
-                                                    std::string const& collectionName,
+Result DatabaseTailingSyncer::syncCollectionCatchup(std::string const& collectionName,
                                                     TRI_voc_tick_t fromTick, double timeout,
                                                     TRI_voc_tick_t& until, bool& didTimeout, 
                                                     std::string const& context) {
@@ -108,7 +107,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchup(arangodb::replutils::LeaderI
   try {
     // always start from _initialTick
     _initialTick = fromTick;
-    Result res = syncCollectionCatchupInternal(leaderInfo, collectionName, timeout, false, until, didTimeout, context);
+    Result res = syncCollectionCatchupInternal(collectionName, timeout, false, until, didTimeout, context);
     if (res.fail()) {
       // if we failed, we can already unregister ourselves on the leader, so that
       // we don't block WAL pruning
@@ -125,8 +124,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchup(arangodb::replutils::LeaderI
   
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
-Result DatabaseTailingSyncer::syncCollectionFinalize(arangodb::replutils::LeaderInfo const& leaderInfo,
-                                                     std::string const& collectionName, 
+Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collectionName, 
                                                      TRI_voc_tick_t fromTick, TRI_voc_tick_t toTick,
                                                      std::string const& context) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
@@ -145,7 +143,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(arangodb::replutils::Leader
     TRI_voc_tick_t dummy = 0;
     bool dummyDidTimeout = false;
     double dummyTimeout = 300.0;
-    Result res = syncCollectionCatchupInternal(leaderInfo, collectionName, dummyTimeout, /*hard*/ true,
+    Result res = syncCollectionCatchupInternal(collectionName, dummyTimeout, /*hard*/ true,
                                                dummy, dummyDidTimeout, context);
 
     if (res.ok()) {
@@ -172,9 +170,51 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(arangodb::replutils::Leader
   }
 }
 
-void DatabaseTailingSyncer::unregisterFromLeader() {
-  TRI_ASSERT(ServerState::instance()->isDBServer());
+Result DatabaseTailingSyncer::inheritFromInitialSyncer(DatabaseInitialSyncer const& syncer) {
+  replutils::LeaderInfo const& leaderInfo = syncer.leaderInfo();
 
+  TRI_ASSERT(!leaderInfo.endpoint.empty());
+  TRI_ASSERT(leaderInfo.endpoint == _state.leader.endpoint);
+  TRI_ASSERT(leaderInfo.serverId.isSet());
+  TRI_ASSERT(!leaderInfo.engine.empty());
+  TRI_ASSERT(leaderInfo.version() > 0);
+
+  _state.leader.serverId = leaderInfo.serverId;;
+  _state.leader.engine = leaderInfo.engine;
+  _state.leader.majorVersion = leaderInfo.majorVersion;
+  _state.leader.minorVersion = leaderInfo.minorVersion;
+  
+  _initialTick = syncer.getLastLogTick();
+
+  return registerOnLeader();
+}
+
+Result DatabaseTailingSyncer::registerOnLeader() {
+  std::string const url = tailingBaseUrl("tail") +
+                          "chunkSize=1024" +
+                          "&from=" + StringUtils::itoa(_initialTick) +
+                          "&trackOnly=true" + 
+                          "&serverId=" + _state.localServerIdString +
+                          "&syncerId=" + syncerId().toString();
+  LOG_TOPIC("41510", DEBUG, Logger::REPLICATION) 
+      << "registering tailing syncer on leader, url: " << url;
+
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  // register ourselves on leader once - using a small WAL tail attempt
+  _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+
+    // simply send the request, but don't care about the response. if it
+    // fails, there is not much we can do from here.
+    response.reset(client->request(rest::RequestType::GET, url, nullptr, 0));
+  });
+    
+  if (replutils::hasFailed(response.get())) {
+    return replutils::buildHttpError(response.get(), url, _state.connection);
+  }
+  return {};
+}
+
+void DatabaseTailingSyncer::unregisterFromLeader() {
   if (!_unregisteredFromLeader) {
     try {
       _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
@@ -199,8 +239,7 @@ void DatabaseTailingSyncer::unregisterFromLeader() {
 
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
-Result DatabaseTailingSyncer::syncCollectionCatchupInternal(arangodb::replutils::LeaderInfo const& leaderInfo,
-                                                            std::string const& collectionName,
+Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& collectionName,
                                                             double timeout, bool hard,
                                                             TRI_voc_tick_t& until,
                                                             bool& didTimeout, std::string const& context) {
@@ -211,19 +250,6 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(arangodb::replutils:
   TRI_ASSERT(!_state.isChildSyncer);
   TRI_ASSERT(!_state.leader.endpoint.empty());
   
-  // fetch leader state just once
-  TRI_ASSERT(!leaderInfo.endpoint.empty());
-  TRI_ASSERT(leaderInfo.endpoint == _state.leader.endpoint);
-  TRI_ASSERT(leaderInfo.serverId.isSet());
-  TRI_ASSERT(!leaderInfo.engine.empty());
-  TRI_ASSERT(leaderInfo.version() > 0);
-
-  _state.leader.serverId = leaderInfo.serverId;;
-  _state.leader.engine = leaderInfo.engine;
-  _state.leader.majorVersion = leaderInfo.majorVersion;
-  _state.leader.minorVersion = leaderInfo.minorVersion;
-  // note: neither LeaderInfo::lastLogTick is not used during tailing syncing
-
   Result r;
 
   if (_state.leader.engine.empty()) {
