@@ -406,11 +406,17 @@ auto replicated_log::CommitFailReason::withQuorumSizeNotReached() noexcept -> Co
   return CommitFailReason(std::in_place, QuorumSizeNotReached{});
 }
 
+auto replicated_log::CommitFailReason::withForcedParticipantNotInQuorum() noexcept -> CommitFailReason {
+  return CommitFailReason(std::in_place, ForcedParticipantNotInQuorum{});
+}
+
 namespace {
 inline constexpr std::string_view ReasonFieldName = "reason";
 inline constexpr std::string_view NothingToCommitEnum = "NothingToCommit";
 inline constexpr std::string_view QuorumSizeNotReachedEnum =
     "QuorumSizeNotReached";
+inline constexpr std::string_view ForcedParticipantNotInQuorumEnum =
+    "ForcedParticipantNotInQuorum";
 }  // namespace
 
 auto replicated_log::CommitFailReason::NothingToCommit::fromVelocyPack(velocypack::Slice s)
@@ -442,12 +448,31 @@ void replicated_log::CommitFailReason::QuorumSizeNotReached::toVelocyPack(velocy
   builder.add(VPackStringRef(ReasonFieldName), VPackValue(QuorumSizeNotReachedEnum));
 }
 
+auto replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::fromVelocyPack(velocypack::Slice s)
+  -> ForcedParticipantNotInQuorum {
+  TRI_ASSERT(s.get(ReasonFieldName).isString())
+      << "Expected string, found: " << s.toJson();
+  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(VPackStringRef(ForcedParticipantNotInQuorumEnum)))
+      << "Expected string `" << ForcedParticipantNotInQuorumEnum
+      << "`, found: " << s.stringView();
+  return {};
+}
+
+void replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder obj(&builder);
+  builder.add(VPackStringRef(ReasonFieldName), VPackValue(ForcedParticipantNotInQuorumEnum));
+}
+
+
+
 auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s) -> CommitFailReason {
   auto reason = s.get(ReasonFieldName).stringView();
   if (reason == NothingToCommitEnum) {
     return CommitFailReason{std::in_place, NothingToCommit::fromVelocyPack(s)};
   } else if (reason == QuorumSizeNotReachedEnum) {
     return CommitFailReason{std::in_place, QuorumSizeNotReached::fromVelocyPack(s)};
+  } else if (reason == ForcedParticipantNotInQuorumEnum) {
+      return CommitFailReason{std::in_place, ForcedParticipantNotInQuorum::fromVelocyPack(s)};
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -467,6 +492,9 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
     }
     auto operator()(CommitFailReason::QuorumSizeNotReached const&) -> std::string {
       return "Required quorum size not yet reached";
+    }
+    auto operator()(CommitFailReason::ForcedParticipantNotInQuorum const&) -> std::string {
+      return "Forced participant not in quorum";
     }
   };
 

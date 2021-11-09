@@ -67,7 +67,7 @@ template <typename T>
 class Try;
 }
 namespace arangodb::replication2::algorithms {
-struct IndexParticipantPair;
+struct ParticipantStateTuple;
 }
 namespace arangodb::replication2::replicated_log {
 struct LogCore;
@@ -256,7 +256,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     [[nodiscard]] auto checkCommitIndex() -> ResolvedPromiseSet;
 
     [[nodiscard]] auto collectEligibleFollowerIndexes() const
-        -> std::pair<LogIndex, std::vector<algorithms::IndexParticipantPair>>;
+        -> std::pair<LogIndex, std::vector<algorithms::ParticipantStateTuple>>;
     [[nodiscard]] auto checkCompaction() -> Result;
 
     [[nodiscard]] auto updateCommitIndexLeader(LogIndex newIndex,

@@ -153,7 +153,7 @@ TEST(directory_reader_test, open) {
     test_base::resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (tests::json_doc_generator::ValueType::STRING == data.vt) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name,
         data.str
       ));

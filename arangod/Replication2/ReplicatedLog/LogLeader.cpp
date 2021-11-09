@@ -752,10 +752,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::getCommittedLogIterator(LogIn
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::collectEligibleFollowerIndexes() const
-    -> std::pair<LogIndex, std::vector<algorithms::IndexParticipantPair>> {
+    -> std::pair<LogIndex, std::vector<algorithms::ParticipantStateTuple>> {
 
   auto largestCommonIndex = _commitIndex;
-  std::vector<algorithms::IndexParticipantPair> indexes;
+  std::vector<algorithms::ParticipantStateTuple> indexes;
   indexes.reserve(_follower.size());
   for (auto const& [pid, follower] : _follower) {
     // The lastAckedEntry is the last index/term pair that we sent that this
@@ -774,7 +774,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectEligibleFollowerIndexe
     // This also includes log entries persisted on this server, i.e. our
     // LocalFollower is no exception.
     if (lastAckedEntry.term == this->_self._currentTerm) {
-      indexes.emplace_back(lastAckedEntry.index, follower->_impl->getParticipantId());
+      indexes.emplace_back(lastAckedEntry.index, follower->_impl->getParticipantId(),
+                           algorithms::ParticipantFlags{});
     } else {
       LOG_CTX("54869", TRACE, _self._logContext)
           << "Will ignore follower "
@@ -809,8 +810,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
     _largestCommonIndex = newLargestCommonIndex;
   }
 
-  auto [newCommitIndex, commitFailReason] =
-      algorithms::calculateCommitIndex(indexes, quorum_size, _inMemoryLog.getLastIndex());
+  auto [newCommitIndex, commitFailReason, quorum] =
+      algorithms::calculateCommitIndex(indexes,
+                                       algorithms::CalculateCommitIndexOptions{quorum_size, quorum_size, indexes.size()},
+                                       _commitIndex, _inMemoryLog.getLastIndex());
   _lastCommitFailReason = commitFailReason;
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
@@ -818,12 +821,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
       << ", current commit index = " << _commitIndex;
   TRI_ASSERT(newCommitIndex >= _commitIndex);
   if (newCommitIndex > _commitIndex) {
-    std::vector<ParticipantId> quorum;
-    auto last = indexes.begin();
-    std::advance(last, quorum_size);
-    std::transform(indexes.begin(), last, std::back_inserter(quorum),
-                   [](auto& p) { return p.id; });
-
     auto const quorum_data =
         std::make_shared<QuorumData>(newCommitIndex, _self._currentTerm, std::move(quorum));
     return updateCommitIndexLeader(newCommitIndex, quorum_data);

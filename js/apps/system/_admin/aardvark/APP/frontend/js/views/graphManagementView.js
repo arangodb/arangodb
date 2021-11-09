@@ -962,21 +962,6 @@
         }
 
         if (isSmart) {
-          tableContent.push(
-            window.modalView.createSelect2Entry(
-              'new-hybridSatelliteCollections',
-              'Satellite collections',
-              hybridSatelliteCollections,
-              'Collections that are part of a graph used in an edge definition and should be created as satellite collections.',
-              'Satellite Collections',
-              false,
-              false,
-              false,
-              null,
-              collList.sort(sorter)
-            )
-          );
-
           let isDisjoint = 'No';
           if (graph.get('isDisjoint')) {
             isDisjoint = 'Yes';
@@ -987,6 +972,21 @@
               'Disjoint SmartGraph',
               isDisjoint,
               'Disjoint SmartGraph: Creating edges between different SmartGraph components is not allowed.',
+            )
+          );
+
+          tableContent.push(
+            window.modalView.createSelect2Entry(
+              'new-hybridSatelliteCollections',
+              'New Satellite collections',
+              hybridSatelliteCollections,
+              'Collections that are part of the graph used in an newly created edge definition and should be created as satellite collections.',
+              'New Satellite Collections',
+              false,
+              false,
+              false,
+              null,
+              collList.sort(sorter)
             )
           );
         }
