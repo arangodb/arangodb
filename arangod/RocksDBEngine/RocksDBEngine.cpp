@@ -513,7 +513,7 @@ void RocksDBEngine::start() {
   transactionOptions.transaction_lock_timeout = opts._transactionLockTimeout;
 
   _options.allow_fallocate = opts._allowFAllocate;
-  _options.enable_pipelined_write = opts._enablePipelinedWrite;
+  _options.enable_pipelined_write = true; // default value in RocksDB is actually _false_
   _options.write_buffer_size = static_cast<size_t>(opts._writeBufferSize);
   _options.max_write_buffer_number = static_cast<int>(opts._maxWriteBufferNumber);
   // The following setting deserves an explanation: We found that if we leave the
