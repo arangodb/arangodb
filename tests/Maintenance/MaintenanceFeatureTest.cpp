@@ -144,7 +144,7 @@ class TestActionBasic : public ActionBase {
     }
     // Check if we need to reschedule:
     if (!more && _priority > 0 && _reschedule) {
-      pleaseRequeueMe(0);
+      requeueMe(0);
     }
     return more;
   }  // iteratorEndTest

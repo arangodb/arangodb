@@ -133,7 +133,7 @@ bool EnsureIndex::first() {
         << "EnsureIndex action found a shard with more than 100000 documents, "
            "will reschedule with slow priority, database: "
         << database << ", shard: " << shard;
-      pleaseRequeueMe(maintenance::SLOW_OP_PRIORITY);
+      requeueMe(maintenance::SLOW_OP_PRIORITY);
       result(TRI_ERROR_ACTION_UNFINISHED, "EnsureIndex action rescheduled to slow operation priority");
       return false;
     }
