@@ -98,16 +98,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options) -> std::shared_ptr<LogLeader>;
 
-  struct ParticipantSpec {
-    std::shared_ptr<AbstractFollower> impl;
-    ParticipantFlags flags;
-  };
-
-  using FollowersSpec = std::unordered_map<ParticipantId, ParticipantSpec>;
-
   [[nodiscard]] static auto construct(
       LogConfig config, std::unique_ptr<LogCore> logCore,
-      FollowersSpec const& followers,
+      std::vector<std::shared_ptr<AbstractFollower>> const& followers,
+      std::shared_ptr<ParticipantsConfig const> participantsConfig,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options) -> std::shared_ptr<LogLeader>;
@@ -157,6 +151,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   // entry within its term has been committed.
   [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool;
 
+  // Updates the flags of the participants.
+  void updateParticipantsConfig(std::shared_ptr<ParticipantsConfig const> config);
+
  protected:
   // Use the named constructor construct() to create a leader!
   LogLeader(LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
@@ -171,7 +168,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
 
   struct alignas(64) FollowerInfo {
     explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl, TermIndexPair lastLogIndex,
-                          LoggerContext const& logContext, ParticipantFlags flags);
+                          LoggerContext const& logContext);
 
     std::chrono::steady_clock::duration _lastRequestLatency{};
     std::chrono::steady_clock::time_point _lastRequestStartTP{};
@@ -184,7 +181,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason = AppendEntriesErrorReason::NONE;
     LoggerContext const logContext;
-    ParticipantFlags flags;
 
     enum class State {
       IDLE,
@@ -298,6 +294,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     bool _didResign{false};
     bool _leadershipEstablished{false};
     CommitFailReason _lastCommitFailReason;
+
+    std::shared_ptr<ParticipantsConfig const> activeParticipantConfig;
+    std::shared_ptr<ParticipantsConfig const> committedParticipantConfig;
   };
 
   LoggerContext const _logContext;
@@ -315,7 +314,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   void establishLeadership();
 
   [[nodiscard]] static auto instantiateFollowers(
-      LoggerContext, FollowersSpec const& follower,
+      LoggerContext, std::vector<std::shared_ptr<AbstractFollower>> const& followers,
       std::shared_ptr<LocalFollower> const& localFollower, TermIndexPair lastEntry)
       -> std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>;
 

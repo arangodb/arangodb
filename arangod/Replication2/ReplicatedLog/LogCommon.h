@@ -331,10 +331,19 @@ struct LogConfig {
 [[nodiscard]] auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 
 struct ParticipantFlags {
-  bool forced, excluded;
+  bool forced = false;
+  bool excluded = false;
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> ParticipantFlags;
+};
+
+struct ParticipantsConfig {
+  std::size_t generation;
+  std::unordered_map<ParticipantId, ParticipantFlags> participants;
+
+  void toVelocyPack(velocypack::Builder&) const;
+  static auto fromVelocyPack(velocypack::Slice) -> ParticipantsConfig;
 };
 
 // These settings are initialised by the ReplicatedLogFeature based on command line arguments

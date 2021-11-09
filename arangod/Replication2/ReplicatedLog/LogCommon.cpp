@@ -128,8 +128,8 @@ auto PersistingLogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
 auto PersistingLogEntry::approxByteSize() const noexcept -> std::size_t {
   auto size = approxMetaDataSize;
 
-  if(_payload.has_value()) {
-      size += _payload->byteSize();
+  if (_payload.has_value()) {
+    size += _payload->byteSize();
   }
 
   return size;
@@ -471,4 +471,37 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
   };
 
   return std::visit(ToStringVisitor{}, r.value);
+}
+
+void replication2::ParticipantFlags::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add("excluded", VPackValue(excluded));
+  builder.add("forced", VPackValue(forced));
+}
+
+auto replication2::ParticipantFlags::fromVelocyPack(velocypack::Slice s) -> ParticipantFlags {
+  auto const forced = s.get("forced").isTrue();
+  auto const excluded = s.get("excluded").isTrue();
+  return ParticipantFlags{forced, excluded};  // {.forced = forced, .excluded = excluded}
+}
+
+void replication2::ParticipantsConfig::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add("generation", VPackValue(generation));
+  VPackObjectBuilder pob(&builder, "participants");
+  for (auto const& [id, flags] : participants) {
+    builder.add(VPackValue(id));
+    flags.toVelocyPack(builder);
+  }
+}
+
+auto replication2::ParticipantsConfig::fromVelocyPack(velocypack::Slice s) -> ParticipantsConfig {
+  ParticipantsConfig config;
+  config.generation = s.get("generation").extract<std::size_t>();
+  for (auto [key, value] : VPackObjectIterator(s.get("participants"))) {
+    auto id = key.copyString();
+    auto flags = ParticipantFlags::fromVelocyPack(value);
+    config.participants.emplace(std::move(id), flags);
+  }
+  return config;
 }

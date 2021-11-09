@@ -110,21 +110,20 @@ replicated_log::LogLeader::~LogLeader() {
 }
 
 auto replicated_log::LogLeader::instantiateFollowers(
-    LoggerContext logContext, FollowersSpec const& follower,
+    LoggerContext logContext, std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     std::shared_ptr<LocalFollower> const& localFollower, TermIndexPair lastEntry)
     -> std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>> {
   auto initLastIndex = lastEntry.index.saturatedDecrement();
 
   std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>> followers_map;
-  followers_map.reserve(follower.size() + 1);
+  followers_map.reserve(followers.size() + 1);
   followers_map.emplace(localFollower->getParticipantId(),
-                        std::make_shared<FollowerInfo>(localFollower, lastEntry,
-                                                       logContext, ParticipantFlags{}));
-  for (auto const& [id, spec] : follower) {
+                        std::make_shared<FollowerInfo>(localFollower, lastEntry, logContext));
+  for (auto const& impl : followers) {
     auto const& [it, inserted] = followers_map.emplace(
-        id, std::make_shared<FollowerInfo>(spec.impl, TermIndexPair{LogTerm{0}, initLastIndex},
-                                           logContext, spec.flags));
-    TRI_ASSERT(inserted) << "duplicate participant id: " << id;
+        impl->getParticipantId(),
+        std::make_shared<FollowerInfo>(impl, TermIndexPair{LogTerm{0}, initLastIndex}, logContext));
+    TRI_ASSERT(inserted) << "duplicate participant id: " << impl->getParticipantId();
   }
   return followers_map;
 }
@@ -252,19 +251,22 @@ auto replicated_log::LogLeader::construct(
     ParticipantId id, LogTerm const term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options) -> std::shared_ptr<LogLeader> {
-  FollowersSpec spec;
+  auto participantsConfig = std::make_shared<ParticipantsConfig>();
+  participantsConfig->generation = 0;
   std::transform(followers.begin(), followers.end(),
-                 std::inserter(spec, spec.end()), [](auto impl) {
-                   return std::make_pair(impl->getParticipantId(),
-                                         ParticipantSpec{impl, ParticipantFlags{}});
+                 std::inserter(participantsConfig->participants,
+                               participantsConfig->participants.end()),
+                 [](auto& f) {
+                   return std::make_pair(f->getParticipantId(), ParticipantFlags{});
                  });
-  return construct(config, std::move(logCore), spec, std::move(id),
+  return construct(config, std::move(logCore), followers, participantsConfig, std::move(id),
                    term, logContext, std::move(logMetrics), std::move(options));
 }
 
 auto replicated_log::LogLeader::construct(
     LogConfig config, std::unique_ptr<LogCore> logCore,
-    FollowersSpec const& followers,
+    std::vector<std::shared_ptr<AbstractFollower>> const& followers,
+    std::shared_ptr<ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options) -> std::shared_ptr<LogLeader> {
@@ -273,7 +275,7 @@ auto replicated_log::LogLeader::construct(
     auto followerIds = std::vector<std::string>{};
     std::transform(followers.begin(), followers.end(), std::back_inserter(followerIds),
                    [](auto const& follower) -> std::string {
-                     return follower.first;
+                     return follower->getParticipantId();
                    });
     auto message = basics::StringUtils::concatT(
         "LogCore missing when constructing LogLeader, leader id: ", id,
@@ -320,6 +322,8 @@ auto replicated_log::LogLeader::construct(
 
     leaderDataGuard->_follower =
         instantiateFollowers(commonLogContext, followers, localFollower, lastIndex);
+    leaderDataGuard->activeParticipantConfig = participantsConfig;
+    leaderDataGuard->committedParticipantConfig = participantsConfig;
     leader->_localFollower = std::move(localFollower);
     TRI_ASSERT(leaderDataGuard->_follower.size() >= config.writeConcern)
         << "actual followers: " << leaderDataGuard->_follower.size()
@@ -1085,6 +1089,36 @@ void replicated_log::LogLeader::establishLeadership() {
   });
 }
 
+void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<ParticipantsConfig const> config) {
+  LOG_CTX("ac277", INFO, _logContext)
+      << "updating configuration to generation " << config->generation;
+  auto waitForIndex = _guardedLeaderData.doUnderLock([&](GuardedLeaderData& data) {
+    auto idx = data.insertInternal(std::nullopt, true, std::nullopt);
+    data.activeParticipantConfig = config;
+    return idx;
+  });
+
+  waitFor(waitForIndex).thenFinal([weak = weak_from_this(), config](futures::Try<WaitForResult>&& result) noexcept {
+    if (auto self = weak.lock(); self) {
+      try {
+        result.throwIfFailed();
+        self->_guardedLeaderData.getLockedGuard()->committedParticipantConfig = config;
+        LOG_CTX("536f5", INFO, self->_logContext)
+            << "configuration committed, generation " << config->generation;
+      } catch (std::exception const& err) {
+        LOG_CTX("5cedb", FATAL, self->_logContext)
+            << "failed to establish leadership: " << err.what();
+      }
+    }
+
+    LOG_TOPIC("a4fc1", TRACE, Logger::REPLICATION2)
+        << "leader is already gone, configuration change was not committed; "
+           "generation "
+        << config->generation;
+  });
+
+}
+
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const -> Result {
   auto res = _guardedLogCore.doUnderLock([&](auto& core) {
     LOG_CTX("23745", DEBUG, _logContext)
@@ -1105,10 +1139,8 @@ replicated_log::LogLeader::PreparedAppendEntryRequest::PreparedAppendEntryReques
 
 replicated_log::LogLeader::FollowerInfo::FollowerInfo(std::shared_ptr<AbstractFollower> impl,
                                                       TermIndexPair lastLogIndex,
-                                                      LoggerContext const& logContext,
-                                                      ParticipantFlags flags)
+                                                      LoggerContext const& logContext)
     : _impl(std::move(impl)),
       lastAckedEntry(lastLogIndex),
       logContext(logContext.with<logContextKeyLogComponent>("follower-info")
-                     .with<logContextKeyFollowerId>(_impl->getParticipantId())),
-      flags(flags) {}
+                     .with<logContextKeyFollowerId>(_impl->getParticipantId())) {}
