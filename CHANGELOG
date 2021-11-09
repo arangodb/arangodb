@@ -6,6 +6,9 @@ v3.8.3 (XXXX-XX-XX)
   Previous versions of ArangoDB always enabled the maintenance mode for one
   hour, without allowing any choice here.
 
+* Fixed arangodump not overwriting dump directory when flags `--all-databases`
+  and `--overwrite` are set to true.
+
 * Fixed SEARCH-261: Fix possible race between file creation and directory
   cleaner (ArangoSearch).
 

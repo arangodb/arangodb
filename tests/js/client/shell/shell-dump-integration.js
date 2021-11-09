@@ -34,6 +34,12 @@ let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 let isCluster = require("internal").isCluster();
 
+function checkDumpJsonFile (dbName, path, id) {
+  let data = JSON.parse(fs.readFileSync(fs.join(path, "dump.json")).toString());
+  assertEqual(dbName, data.properties.name);
+  assertEqual(id, data.properties.id);
+}
+
 function dumpIntegrationSuite () {
   'use strict';
   const cn = 'UnitTestsDump';
@@ -41,6 +47,15 @@ function dumpIntegrationSuite () {
   const arangodump = fs.join(global.ARANGOSH_PATH, 'arangodump' + pu.executableExt);
 
   assertTrue(fs.isFile(arangodump), "arangodump not found!");
+
+  let checkCollections = function (tree, path, subdir = "") {
+    db._collections().forEach((collectionObj) => {
+      const collectionName = collectionObj.name();
+      if (!collectionName.startsWith("_")) {
+        checkStructureFile(tree, path, true, collectionName, subdir);
+      }
+    });
+  };
 
   let addConnectionArgs = function(args) {
     let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
@@ -190,6 +205,9 @@ function dumpIntegrationSuite () {
       db._drop(cn + "Other");
       db._drop(cn + "Padded");
       db._drop(cn + "AutoIncrement");
+      for (let i = 1; i < 3; ++i) {
+        db._dropDatabase("databaseTest" + i);
+      }
     },
     
     testDumpOnlyOneShard: function () {
@@ -591,6 +609,41 @@ function dumpIntegrationSuite () {
         try {
           fs.removeDirectory(path);
         } catch (err) {}
+      }
+    },
+
+    testDumpAllDatabasesWithOverwrite: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--all-databases', 'true'];
+        runDump(path, args, 0);
+
+        // run the dump a second time, to overwrite all data in the target directory
+        args.push('--overwrite');
+        args.push('true');
+
+        for (let i = 1; i < 3; ++i) {
+          db._createDatabase("databaseTest" + i);
+          db._useDatabase("databaseTest" + i);
+          db._create("collectionTest" + i);
+          db._useDatabase("_system");
+        }
+
+        let tree = runDump(path, args, 0);
+        for (let i = 1; i < 3; ++i) {
+          db._useDatabase("databaseTest" + i);
+          assertEqual(-1, tree.indexOf("databaseTest" + i));
+          assertNotEqual(-1, tree.indexOf(db._id()));
+          checkDumpJsonFile("databaseTest" + i, fs.join(path, db._id()), db._id());
+          checkCollections(tree, path, db._id());
+          db._useDatabase("_system");
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+          db._useDatabase("_system");
+        } catch (err) {
+        }
       }
     },
   };
