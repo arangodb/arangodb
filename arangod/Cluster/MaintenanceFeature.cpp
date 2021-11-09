@@ -190,7 +190,8 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                                    arangodb::options::Flags::OnDBServer,
                                    arangodb::options::Flags::Hidden,
-                                   arangodb::options::Flags::Dynamic));
+                                   arangodb::options::Flags::Dynamic)).
+      setIntroducedIn(30803);
 
   options->addOption(
       "--server.maintenance-actions-block",
@@ -258,7 +259,7 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
     LOG_TOPIC("42531", INFO, Logger::MAINTENANCE)
       << "Using " << _maintenanceThreadsMax
       << " threads for maintenance, of which "
-      << _maintenanceThreadsSlowMax << " may to slow operations.";
+      << _maintenanceThreadsSlowMax << " may be used for slow operations.";
   }
 }
 
