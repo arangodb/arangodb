@@ -8371,7 +8371,7 @@ namespace fakeit {
 
             virtual ~StubbingChange() THROWS {
 
-                if (std::uncaught_exception()) {
+                if (std::uncaught_exceptions()) {
                     return;
                 }
 
@@ -8631,7 +8631,7 @@ namespace fakeit {
         friend class SequenceVerificationProgress;
 
         ~SequenceVerificationExpectation() THROWS {
-            if (std::uncaught_exception()) {
+            if (std::uncaught_exceptions()) {
                 return;
             }
             VerifyExpectation(_fakeit);
@@ -8993,7 +8993,7 @@ namespace fakeit {
             friend class VerifyNoOtherInvocationsVerificationProgress;
 
             ~VerifyNoOtherInvocationsExpectation() THROWS {
-                if (std::uncaught_exception()) {
+                if (std::uncaught_exceptions()) {
                     return;
                 }
 
