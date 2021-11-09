@@ -48,7 +48,7 @@ function dumpIntegrationSuite () {
 
   assertTrue(fs.isFile(arangodump), "arangodump not found!");
 
-  let checkCollections = function (tree, path, subdir = "") {
+  let checkCollections = function (tree, path, subdir="") {
     db._collections().forEach((collectionObj) => {
       const collectionName = collectionObj.name();
       if (!collectionName.startsWith("_")) {
@@ -61,8 +61,10 @@ function dumpIntegrationSuite () {
     let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
     args.push('--server.endpoint');
     args.push(endpoint);
-    args.push('--server.database');
-    args.push(arango.getDatabaseName());
+    if(args.indexOf("--all-databases") === -1) {
+      args.push('--server.database');
+      args.push(arango.getDatabaseName());
+    }
     args.push('--server.username');
     args.push(arango.connectedUser());
   };
@@ -75,7 +77,6 @@ function dumpIntegrationSuite () {
     args.push('--output-directory');
     args.push(path);
     addConnectionArgs(args);
-
     let actualRc = internal.executeExternalAndWait(arangodump, args);
     assertTrue(actualRc.hasOwnProperty("exit"));
     assertEqual(rc, actualRc.exit);
@@ -90,6 +91,7 @@ function dumpIntegrationSuite () {
 
   let structureFile = function(path, cn) {
     const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
+
     let structure = prefix + ".structure.json";
     if (!fs.isFile(fs.join(path, structure))) {
       // seems necessary in cluster
@@ -98,8 +100,15 @@ function dumpIntegrationSuite () {
     return structure;
   };
 
-  let checkStructureFile = function(tree, path, readable, cn) {
-    let structure = structureFile(path, cn);
+  let checkStructureFile = function(tree, path, readable, cn, subdir="") {
+    let structurePath = path;
+    if(subdir !== "") {
+      structurePath = fs.join(path, subdir);
+    }
+    let structure = structureFile(structurePath, cn);
+    if(subdir !== "") {
+      structure = fs.join(subdir, structure);
+    }
     assertTrue(fs.isFile(fs.join(path, structure)), structure);
     assertNotEqual(-1, tree.indexOf(structure));
 
@@ -205,9 +214,7 @@ function dumpIntegrationSuite () {
       db._drop(cn + "Other");
       db._drop(cn + "Padded");
       db._drop(cn + "AutoIncrement");
-      for (let i = 1; i < 3; ++i) {
-        db._dropDatabase("databaseTest" + i);
-      }
+
     },
     
     testDumpOnlyOneShard: function () {
@@ -616,18 +623,19 @@ function dumpIntegrationSuite () {
       let path = fs.getTempFile();
       try {
         let args = ['--all-databases', 'true'];
+        for (let i = 1; i < 3; ++i) {
+          db._createDatabase("databaseTest" + i);
+          db._useDatabase("databaseTest" + i);
+          db._create("collectionTest" + i);
+          db["collectionTest" + i].insert({});
+          db._useDatabase("_system");
+        }
         runDump(path, args, 0);
 
         // run the dump a second time, to overwrite all data in the target directory
         args.push('--overwrite');
         args.push('true');
 
-        for (let i = 1; i < 3; ++i) {
-          db._createDatabase("databaseTest" + i);
-          db._useDatabase("databaseTest" + i);
-          db._create("collectionTest" + i);
-          db._useDatabase("_system");
-        }
 
         let tree = runDump(path, args, 0);
         for (let i = 1; i < 3; ++i) {
@@ -635,8 +643,10 @@ function dumpIntegrationSuite () {
           assertEqual(-1, tree.indexOf("databaseTest" + i));
           assertNotEqual(-1, tree.indexOf(db._id()));
           checkDumpJsonFile("databaseTest" + i, fs.join(path, db._id()), db._id());
+      //    checkStructureFile(tree, path, true, "collectionTest" + i);
           checkCollections(tree, path, db._id());
           db._useDatabase("_system");
+          db._dropDatabase("databaseTest" + i);
         }
       } finally {
         try {
