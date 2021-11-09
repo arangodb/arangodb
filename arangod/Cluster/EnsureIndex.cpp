@@ -118,11 +118,11 @@ bool EnsureIndex::first() {
     }
 
     uint64_t docCount = 0;
-    if (arangodb::maintenance::collectionCount(*col, docCount).fail()) {
+    if (Result res = arangodb::maintenance::collectionCount(*col, docCount); res.fail()) {
       std::stringstream error;
-      error << "failed to get count of local collection " << shard << " in database " + database;
-      LOG_TOPIC("23561", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
-      result(TRI_ERROR_INTERNAL, error.str());
+      error << "failed to get count of local collection " << shard << " in database " << database << ": " << res.errorMessage();
+      LOG_TOPIC("23561", WARN, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      result(res.errorNumber(), error.str());      
       return false;
     }
 
