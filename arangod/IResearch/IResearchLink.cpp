@@ -50,6 +50,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -63,6 +64,9 @@ namespace {
 
 using namespace arangodb;
 using namespace arangodb::iresearch;
+
+DECLARE_GUARD_METRIC(arangodb_arangosearch_link_stats, IResearchLink::LinkStats,
+                     "Stats of documents in link");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the link state for a given TransactionState
@@ -250,6 +254,15 @@ struct Task {
   IResearchLink::AsyncLinkPtr link;
   IndexId id;
 };
+
+arangodb_arangosearch_link_stats getLinkStatMetric(const IResearchLink& link) {
+  arangodb_arangosearch_link_stats stats;
+  stats.addLabel("viewId", std::move(link.getViewId()));
+  stats.addLabel("collId", std::move(link.getCollectionName()));
+  stats.addLabel("shardName", std::move(link.getShardName()));
+  stats.addLabel("dbName", std::move(link.getDbName()));
+  return stats;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief total number of loaded links
@@ -605,7 +618,8 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _maintenanceState{std::make_shared<MaintenanceState>()},
       _id{iid},
       _lastCommittedTick{0},
-      _createdInRecovery{false} {
+      _createdInRecovery{false},
+      _linkStats{nullptr} {
   auto* key = this;
 
   // initialize transaction callback
@@ -859,6 +873,9 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
     TRI_ASSERT(_dataStore._reader != reader);
     _dataStore._reader = reader;
 
+    // update stats of the link
+    _linkStats->store(stats());
+
     // update last committed tick
     impl.tick(_lastCommittedTick);
 
@@ -963,6 +980,10 @@ Result IResearchLink::drop() {
   std::atomic_store(&_flushSubscription, {});  // reset together with '_asyncSelf'
   _asyncSelf->reset();  // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
+  if (_dataStore) {
+    removeStats();
+  }
+
   try {
     if (_dataStore) {
       _dataStore.resetDataStore();
@@ -1026,6 +1047,7 @@ Result IResearchLink::init(velocypack::Slice const& definition,
   TRI_ASSERT(meta._sortCompression);
   auto const primarySortCompression =
       meta._sortCompression ? meta._sortCompression : getDefaultCompression();
+  bool clusterWideLink{true};
   if (ServerState::instance()->isCoordinator()) {  // coordinator link
     if (!vocbase.server().hasFeature<ClusterFeature>()) {
       return {
@@ -1076,9 +1098,7 @@ Result IResearchLink::init(velocypack::Slice const& definition,
     if (vocbase.server().getFeature<ClusterFeature>().isEnabled()) {
       auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-      // cluster-wide link
-      auto clusterWideLink =
-          _collection.id() == _collection.planId() && _collection.isAStub();
+      clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
 
       // upgrade step for old link definition without collection name
       // this could be received from  agency while shard of the collection was moved (or added)
@@ -1231,6 +1251,15 @@ Result IResearchLink::init(velocypack::Slice const& definition,
   const_cast<std::string&>(_viewGuid) = std::move(viewId);
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
   _comparer.reset(_meta._sort);
+
+  // we should create stats for link only for Single Server or
+  // of for DB Server. But in case of DB Server we must check that
+  // link created for actual dataStore and not for ClusterInfo
+  if (ServerState::instance()->isSingleServer() || !clusterWideLink) {
+    _linkStats =
+        &_collection.vocbase().server().getFeature<arangodb::MetricsFeature>().add(
+            getLinkStatMetric(*this));
+  }
 
   return {};
 }
@@ -1868,10 +1897,13 @@ Result IResearchLink::unload() {
   std::atomic_store(&_flushSubscription, {});  // reset together with '_asyncSelf'
   _asyncSelf->reset();  // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
+  if (!_dataStore) {
+    return {};
+  }
+  removeStats();
+
   try {
-    if (_dataStore) {
-      _dataStore.resetDataStore();
-    }
+    _dataStore.resetDataStore();
   } catch (basics::Exception const& e) {
     return {e.code(), "caught exception while unloading arangosearch link '" +
                           std::to_string(id().id()) + "': " + e.what()};
@@ -1907,8 +1939,8 @@ AnalyzerPool::ptr IResearchLink::findAnalyzer(AnalyzerPool const& analyzer) cons
   return nullptr;
 }
 
-IResearchLink::Stats IResearchLink::stats() const {
-  Stats stats;
+IResearchLink::LinkStats IResearchLink::stats() const {
+  LinkStats stats;
 
   // '_dataStore' can be asynchronously modified
   auto lock = _asyncSelf->lock();
@@ -1925,8 +1957,8 @@ IResearchLink::Stats IResearchLink::stats() const {
     }
 
     stats.numSegments = reader->size();
-    stats.docsCount = reader->docs_count();
-    stats.liveDocsCount = reader->live_docs_count();
+    stats.numDocs = reader->docs_count();
+    stats.numLiveDocs = reader->live_docs_count();
     stats.numFiles = 1;  // +1 for segments file
 
     auto visitor = [&stats](std::string const& /*name*/,
@@ -1948,8 +1980,8 @@ void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {
   auto const stats = this->stats();
 
   builder.add("numBufferedDocs", VPackValue(stats.numBufferedDocs));
-  builder.add("numDocs", VPackValue(stats.docsCount));
-  builder.add("numLiveDocs", VPackValue(stats.liveDocsCount));
+  builder.add("numDocs", VPackValue(stats.numDocs));
+  builder.add("numLiveDocs", VPackValue(stats.numLiveDocs));
   builder.add("numSegments", VPackValue(stats.numSegments));
   builder.add("numFiles", VPackValue(stats.numFiles));
   builder.add("indexSize", VPackValue(stats.indexSize));
@@ -1961,6 +1993,38 @@ std::string_view IResearchLink::format() const noexcept {
 
 IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {
   return _meta._storedValues;
+}
+
+void IResearchLink::removeStats() {
+  if (_linkStats) {
+    _linkStats = nullptr;
+    _collection.vocbase().server().getFeature<arangodb::MetricsFeature>().remove(
+        getLinkStatMetric(*this));
+  }
+}
+
+std::string IResearchLink::getViewId() const { return _viewGuid; }
+
+std::string IResearchLink::getDbName() const {
+  return std::to_string(_collection.vocbase().id());
+}
+
+std::string IResearchLink::getShardName() const {
+  if (ServerState::instance()->isDBServer()) {
+    return _collection.name();
+  }
+  return {};
+}
+
+std::string IResearchLink::getCollectionName() const {
+  if (ServerState::instance()->isDBServer()) {
+    return _meta._collectionName;
+  }
+  if (ServerState::instance()->isSingleServer()) {
+    return std::to_string(_collection.id().id());
+  }
+  TRI_ASSERT(false);
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1986,6 +2050,35 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
   dataPath += std::to_string(link.id().id());
 
   return dataPath;
+}
+
+void IResearchLink::LinkStats::toPrometheus(std::string& result, const std::string& globals,
+                                            const std::string& labels) const {
+  std::string annotation;
+  annotation.reserve(2 + globals.size() + 2 + labels.size() + 2);
+  annotation.append("{ ");
+  annotation.append(globals);
+  if (!labels.empty()) {
+    if (!globals.empty()) {
+      annotation.append(", ");
+    }
+    annotation.append(labels);
+  }
+  annotation.append("} ");
+  result.reserve(6 * (39 + annotation.size() + 20 + 1));
+  auto writeMetric = [&result, &annotation](std::string_view metricName, size_t value) {
+    result.append(metricName);
+    result.append(annotation);
+    result.append(std::to_string(value));
+    result.push_back('\n');
+  };
+
+  writeMetric("arangodb_arangosearch_num_buffered_docs", numBufferedDocs);
+  writeMetric("arangodb_arangosearch_num_docs", numDocs);
+  writeMetric("arangodb_arangosearch_num_live_docs", numLiveDocs);
+  writeMetric("arangodb_arangosearch_num_segments", numSegments);
+  writeMetric("arangodb_arangosearch_num_files", numFiles);
+  writeMetric("arangodb_arangosearch_index_size", indexSize);
 }
 
 }  // namespace arangodb::iresearch

@@ -284,19 +284,29 @@ class IResearchLink {
   /// false otherwise
   bool setCollectionName(irs::string_ref name) noexcept;
 
- protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief index stats
   //////////////////////////////////////////////////////////////////////////////
   struct Stats {
-    size_t docsCount{};        // total number of documents
-    size_t liveDocsCount{};    // number of live documents
     size_t numBufferedDocs{};  // number of buffered docs
-    size_t indexSize{};        // size of the index in bytes
+    size_t numDocs{};          // number of documents
+    size_t numLiveDocs{};      // number of live documents
     size_t numSegments{};      // number of segments
     size_t numFiles{};         // number of files
+    size_t indexSize{};        // size of the index in bytes
   };
 
+  std::string getViewId() const;
+  std::string getDbName() const;
+  std::string getShardName() const;
+  std::string getCollectionName() const;
+
+  struct LinkStats : Stats {
+    void toPrometheus(std::string& result, const std::string& globals,
+                      const std::string& labels) const;
+  };
+
+ protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief construct an uninitialized IResearch link, must call init(...)
   /// after
@@ -311,7 +321,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get index stats for current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  Stats stats() const;
+  LinkStats stats() const;
 
  private:
   friend struct CommitTask;
@@ -401,6 +411,11 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   void scheduleConsolidation(std::chrono::milliseconds delay);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief remove statistic from MetricsFeature
+  //////////////////////////////////////////////////////////////////////////////
+  void removeStats();
+
   StorageEngine* _engine;
   VPackComparer _comparer;
   IResearchFeature* _asyncFeature;  // the feature where async jobs were registered (nullptr == no jobs registered)
@@ -416,6 +431,7 @@ class IResearchLink {
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback;  // for insert(...)/remove(...)
   std::string const _viewGuid;  // the identifier of the desired view (read-only, set via init())
   bool _createdInRecovery;  // link was created based on recovery marker
+  GuardMetric<LinkStats>* _linkStats;
 };
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
