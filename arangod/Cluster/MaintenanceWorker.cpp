@@ -99,6 +99,7 @@ void MaintenanceWorker::run() {
                 << " state:" << _loopState << " action:" << *_curAction;
 
             try {
+              _curAction->endStats();
               _curAction->setState(FAILED);
             } catch (...) {
               // even setState() can fail, e.g. with OOM
@@ -116,6 +117,7 @@ void MaintenanceWorker::run() {
                 << " state:" << _loopState << " action:" << *_curAction;
 
             try {
+              _curAction->endStats();
               _curAction->setState(FAILED);
             } catch (...) {
               // even setState() can fail, e.g. with OOM
@@ -208,8 +210,8 @@ void MaintenanceWorker::nextState(bool actionMore) {
 
         // fail all actions that would follow
         do {
-          failAction->setState(FAILED);
           failAction->endStats();
+          failAction->setState(FAILED);
           if (failAction->requeueRequested()) {
             LOG_TOPIC("a4353", DEBUG, Logger::MAINTENANCE)
               << "Requeueing action " << *failAction << " with new priority "

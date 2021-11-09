@@ -467,6 +467,7 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
 
   if (action) {
     if (maintenance::COMPLETE != action->getState()) {
+      action->endStats();
       action->setState(maintenance::FAILED);
     } else {
       result.reset(TRI_ERROR_BAD_PARAMETER,
