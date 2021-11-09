@@ -584,6 +584,9 @@ if (WINDOWS)
   set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"      CACHE STRING "base flags")
   set(BASE_C_FLAGS   ""                                  CACHE STRING "base C flags")
   set(BASE_CXX_FLAGS "/GR /EHsc /Zc:__cplusplus"         CACHE STRING "base C++flags")
+  # Increase the reserved stack size for all threads to 4MB
+  # Note: this is only _reserved_ memory, not necessarily _committed_ memory
+  set(BASE_LD_FLAGS  "/STACK:4194304"             CACHE STRING "base linker flags")
 else ()
   set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
   set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
