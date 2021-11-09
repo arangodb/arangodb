@@ -894,7 +894,7 @@ bool SynchronizeShard::first() {
         << "SynchronizeShard action found that leader's and follower's "
            "document count differ by more than 10000, will reschedule with "
            "slow priority, database: " << database << ", shard: " << shard;
-      pleaseRequeueMe(maintenance::SLOW_OP_PRIORITY);
+      requeueMe(maintenance::SLOW_OP_PRIORITY);
       result(TRI_ERROR_ACTION_UNFINISHED, "SynchronizeShard action rescheduled to slow operation priority");
       return false;
     }

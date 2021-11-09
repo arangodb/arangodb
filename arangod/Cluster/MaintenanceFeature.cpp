@@ -120,7 +120,7 @@ arangodb::Result arangodb::maintenance::collectionCount(arangodb::LogicalCollect
 
   Result res = trx.begin();
   if (res.fail()) {
-    LOG_TOPIC("5be16", ERR, Logger::MAINTENANCE) << "Failed to start count transaction: " << res;
+    LOG_TOPIC("5be16", WARN, Logger::MAINTENANCE) << "Failed to start count transaction: " << res;
     return res;
   }
 
@@ -130,7 +130,7 @@ arangodb::Result arangodb::maintenance::collectionCount(arangodb::LogicalCollect
   res = trx.finish(opResult.result);
 
   if (res.fail()) {
-    LOG_TOPIC("26ed2", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("26ed2", WARN, Logger::MAINTENANCE)
         << "Failed to finish count transaction: " << res;
     return res;
   }

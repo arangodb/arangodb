@@ -206,7 +206,7 @@ class ActionBase {
     return _requeuePriority;
   }
 
-  void pleaseRequeueMe(int requeuePriority) {
+  void requeueMe(int requeuePriority) {
     _requeueRequested = true;
     _requeuePriority = requeuePriority;
   }
