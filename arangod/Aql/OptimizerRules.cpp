@@ -8447,6 +8447,10 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
    * the node that defines the next Sharding upstream
    */
   auto JoinSnippets = [](ExecutionPlan& plan, ExecutionNode* lower, ExecutionNode* upper) -> ExecutionNode* {
+    auto createScatterNode = [](ExecutionPlan& plan) -> ExecutionNode* {
+      // TODO We need to handle Scatter vs. Distribute Node here
+      return plan.createNode<ScatterNode>(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD);
+    };
     auto lowerLoc = lower->getAllowedLocation();
     auto upperLoc = upper->getAllowedLocation();
     TRI_ASSERT(lowerLoc.isStrict());
@@ -8495,9 +8499,7 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
       // We need to add SCATTER REMOTE or DISTRIBUTE REMOTE right below the coordinator piece on upper.
       // We continue with the "sharding" from upperNode, which is Coordinator.
 
-      // TODO We need to handle Scatter vs. Distribute Node here
-      auto* scatterNode = plan.createNode<ScatterNode>(&plan, plan.nextId(),
-                                                       ScatterNode::ScatterType::SHARD);
+      auto scatterNode = createScatterNode(plan);
       TRI_ASSERT(scatterNode);
 
       auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
@@ -8520,14 +8522,40 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
       return upper;
     }
 
-    /*
     if (lowerLoc.canRunOnDBServer() && upperLoc.canRunOnDBServer()) {
       // TODO: we could collect our vocbase once in the walker above, it cannot be changed anyways.
       TRI_vocbase_t* vocbase = extractVocbaseFromNode(upper);
 
-      // We are forced to go back to the coordinator once, but can immediatly move back to DBServer land
+      auto scatterNode = createScatterNode(plan);
+      TRI_ASSERT(scatterNode);
+
+      auto scatterRemoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
+      TRI_ASSERT(scatterRemoteNode);
+
+      // NOTE: InsertGatherNode does NOT insert anthing, it just creates the GatherNode
+      // NOTE: No idea what subqueries should be used for. yet. (TODO)
+      SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
+      SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+      auto gatherNode = insertGatherNode(plan, upper, subqueries);
+      TRI_ASSERT(gatherNode);
+
+      auto gatherRemoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
+      TRI_ASSERT(gatherRemoteNode);
+
+      // Now need to relink:
+      // dependency <- lower
+      // =>
+      // dependency <- remote <- gather <- scatter <- remote <- lower
+      // NOTE: This is not necessarily the optimimal position.
+      // We can implement a more sophisticated algorithm to optimize the switch
+
+      auto dependencyNode = lower->getFirstDependency();
+      gatherRemoteNode->addDependency(dependencyNode);
+      gatherNode->addDependency(gatherRemoteNode);
+      scatterNode->addDependency(gatherNode);
+      scatterRemoteNode->addDependency(scatterNode);
+      lower->replaceDependency(dependencyNode, scatterRemoteNode);
     }
-    */
 
     return upper;
   };
