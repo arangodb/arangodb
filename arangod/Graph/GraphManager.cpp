@@ -633,15 +633,18 @@ Result GraphManager::ensureCollections(
   OperationOptions opOptions(ExecContext::current());
 
 #ifdef USE_ENTERPRISE
-  const bool sssg = ServerState::instance()->isSingleServer() && (graph.isSmart() || graph.isSatellite());
+  const bool isSingleServerEnterpriseCollection =
+      ServerState::instance()->isSingleServer() &&
+      (graph.isSmart() || graph.isSatellite());
 #else
-  const bool sssg = false;
+  const bool isSingleServerEnterpriseCollection = false;
 #endif
 
   Result finalResult =
       methods::Collections::create(ctx()->vocbase(), opOptions,
                                    collectionsToCreate.get(), waitForSync, true,
-                                   false, nullptr, created, false, sssg);
+                                   false, nullptr, created, false,
+                                   isSingleServerEnterpriseCollection);
 #ifdef USE_ENTERPRISE
   if (finalResult.ok()) {
     guard.cancel();

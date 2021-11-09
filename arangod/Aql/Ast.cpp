@@ -2817,8 +2817,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
   }
 
   AstNode* result = nullptr;
-  ::arangodb::containers::SmallVector<arangodb::velocypack::StringRef>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::velocypack::StringRef> attributeParts{a};
+  ::arangodb::containers::SmallVectorWithArena<arangodb::velocypack::StringRef> attributeParts;
 
   std::function<void(AstNode const*)> createCondition = [&](AstNode const* object) -> void {
     TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
