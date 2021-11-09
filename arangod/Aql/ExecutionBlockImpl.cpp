@@ -805,14 +805,16 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(AqlCallStack
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
+
+  // The Subquery Start returns DONE after every row.
+  // This needs to be resetted as soon as a shadowRow has been produced
+  _executorReturnedDone = false;
+
   if (_lastRange.hasDataRow()) {
     // If we have a dataRow, the executor needs to write it's output.
     // If we get woken up by a dataRow during forwarding of ShadowRows
     // This will return false, and if so we need to call produce instead.
     auto didWrite = _executor.produceShadowRow(_lastRange, *_outputItemRow);
-    // The Subquery Start returns DONE after every row.
-    // This needs to be resetted as soon as a shadowRow has been produced
-    _executorReturnedDone = false;
     // Need to report that we have written a row in the call
 
     if (didWrite) {
@@ -853,8 +855,6 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(AqlCallStack
       return ExecState::DONE;
     }
 
-    _executorReturnedDone = false;
-
     return ExecState::NEXTSUBQUERY;
   }
 }
@@ -870,14 +870,15 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(AqlCallStack& 
     // Let client call again
     return ExecState::NEXTSUBQUERY;
   }
+  // we need to reset the ExecutorHasReturnedDone, it will
+  // return done after every subquery is fully collected.
+  _executorReturnedDone = false;
+
   auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
   if (shadowRow.isRelevant()) {
     // We need to consume the row, and write the Aggregate to it.
     _executor.consumeShadowRow(shadowRow, *_outputItemRow);
-    // we need to reset the ExecutorHasReturnedDone, it will
-    // return done after every subquery is fully collected.
-    _executorReturnedDone = false;
 
   } else {
     _outputItemRow->decreaseShadowRowDepth(shadowRow);
