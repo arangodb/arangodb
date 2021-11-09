@@ -255,8 +255,10 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
       EXPECT_EQ(result.currentCommitIndex, LogIndex{3});
       EXPECT_EQ(result.quorum->index, LogIndex{3});
       EXPECT_EQ(result.quorum->term, LogTerm{2});
-      EXPECT_EQ(result.quorum->quorum,
-                (std::vector<ParticipantId>{"newLeader", "newFollower"}));
+      auto quorum = result.quorum->quorum;
+      std::sort(quorum.begin(), quorum.end());
+      EXPECT_EQ(quorum,
+                (std::vector<ParticipantId>{"newFollower", "newLeader"}));
     }
   }
 }

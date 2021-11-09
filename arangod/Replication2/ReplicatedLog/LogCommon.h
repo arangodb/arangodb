@@ -314,6 +314,7 @@ struct PersistedLogIterator : TypedLogIterator<PersistingLogEntry> {};
 
 struct LogConfig {
   std::size_t writeConcern = 1;
+  std::size_t softWriteConcern = 1;
   std::size_t replicationFactor = 1;
   bool waitForSync = false;
 
@@ -328,6 +329,13 @@ struct LogConfig {
 
 [[nodiscard]] auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 [[nodiscard]] auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
+
+struct ParticipantFlags {
+  bool forced, excluded;
+
+  void toVelocyPack(velocypack::Builder&) const;
+  static auto fromVelocyPack(velocypack::Slice) -> ParticipantFlags;
+};
 
 // These settings are initialised by the ReplicatedLogFeature based on command line arguments
 struct ReplicatedLogGlobalSettings {

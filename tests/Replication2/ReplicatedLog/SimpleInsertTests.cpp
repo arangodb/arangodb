@@ -174,7 +174,9 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       EXPECT_EQ(result.currentCommitIndex, LogIndex{2});
       EXPECT_EQ(result.quorum->index, LogIndex{2});
       EXPECT_EQ(result.quorum->term, LogTerm{1});
-      EXPECT_EQ(result.quorum->quorum, (std::vector<ParticipantId>{leaderId, followerId}));
+      auto quorum = result.quorum->quorum;
+      std::sort(quorum.begin(),  quorum.end());
+      EXPECT_EQ(result.quorum->quorum, (std::vector<ParticipantId>{followerId, leaderId}));
     }
 
     // Follower should have pending append entries
@@ -308,7 +310,7 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
 
   auto leaderId = ParticipantId{"leader"};
   auto followerId_1 = ParticipantId{"follower1"};
-  auto followerId_2 = ParticipantId{"follower1"};
+  auto followerId_2 = ParticipantId{"follower2"};
 
   auto follower_1 =
       std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock, followerId_1,
@@ -385,7 +387,9 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
     EXPECT_EQ(result.currentCommitIndex, LogIndex{2});
     EXPECT_EQ(result.quorum->term, LogTerm{1});
     EXPECT_EQ(result.quorum->index, LogIndex{2});
-    EXPECT_EQ(result.quorum->quorum, (std::vector{leaderId, followerId_1, followerId_2}));
+    auto quorum = result.quorum->quorum;
+    std::sort(quorum.begin(),  quorum.end());
+    EXPECT_EQ(quorum, (std::vector{followerId_1, followerId_2, leaderId}));
   }
 
   EXPECT_TRUE(follower_1->hasPendingAppendEntries());

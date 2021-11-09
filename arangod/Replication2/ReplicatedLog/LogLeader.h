@@ -98,6 +98,20 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options) -> std::shared_ptr<LogLeader>;
 
+  struct ParticipantSpec {
+    std::shared_ptr<AbstractFollower> impl;
+    ParticipantFlags flags;
+  };
+
+  using FollowersSpec = std::unordered_map<ParticipantId, ParticipantSpec>;
+
+  [[nodiscard]] static auto construct(
+      LogConfig config, std::unique_ptr<LogCore> logCore,
+      FollowersSpec const& followers,
+      ParticipantId id, LogTerm term, LoggerContext const& logContext,
+      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+      std::shared_ptr<ReplicatedLogGlobalSettings const> options) -> std::shared_ptr<LogLeader>;
+
   struct DoNotTriggerAsyncReplication {};
   constexpr static auto doNotTriggerAsyncReplication = DoNotTriggerAsyncReplication{};
 
@@ -156,8 +170,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   using ConstGuard = MutexGuard<GuardedLeaderData const, std::unique_lock<std::mutex>>;
 
   struct alignas(64) FollowerInfo {
-    explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl,
-                          TermIndexPair lastLogIndex, LoggerContext const& logContext);
+    explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl, TermIndexPair lastLogIndex,
+                          LoggerContext const& logContext, ParticipantFlags flags);
 
     std::chrono::steady_clock::duration _lastRequestLatency{};
     std::chrono::steady_clock::time_point _lastRequestStartTP{};
@@ -170,6 +184,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason = AppendEntriesErrorReason::NONE;
     LoggerContext const logContext;
+    ParticipantFlags flags;
 
     enum class State {
       IDLE,
@@ -207,14 +222,11 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   struct PreparedAppendEntryRequest {
     PreparedAppendEntryRequest() = delete;
     PreparedAppendEntryRequest(std::shared_ptr<LogLeader> const& logLeader,
-                               FollowerInfo& follower,
+                               std::shared_ptr<FollowerInfo> follower,
                                std::chrono::steady_clock::duration executionDelay);
 
     std::weak_ptr<LogLeader> _parentLog;
-    // This weak_ptr will always be an alias of _parentLog. It's thus not
-    // strictly necessary, but makes it more clear that we do share ownership
-    // of this particular FollowerInfo.
-    std::weak_ptr<FollowerInfo> _follower;
+    std::shared_ptr<FollowerInfo> _follower;
     std::chrono::steady_clock::duration _executionDelay;
   };
 
@@ -234,7 +246,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     auto operator=(GuardedLeaderData const&) -> GuardedLeaderData& = delete;
     auto operator=(GuardedLeaderData&&) -> GuardedLeaderData& = delete;
 
-    [[nodiscard]] auto prepareAppendEntry(FollowerInfo& follower)
+    [[nodiscard]] auto prepareAppendEntry(std::shared_ptr<FollowerInfo> follower)
         -> std::optional<PreparedAppendEntryRequest>;
     [[nodiscard]] auto prepareAppendEntries()
         -> std::vector<std::optional<PreparedAppendEntryRequest>>;
@@ -277,7 +289,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
 
     LogLeader& _self;
     InMemoryLog _inMemoryLog;
-    std::vector<FollowerInfo> _follower{};
+    std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>> _follower{};
     WaitForQueue _waitForQueue{};
     std::shared_ptr<QuorumData> _lastQuorum{};
     LogIndex _commitIndex{0};
@@ -303,9 +315,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   void establishLeadership();
 
   [[nodiscard]] static auto instantiateFollowers(
-      LoggerContext, std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-      std::shared_ptr<LocalFollower> const& localFollower,
-      TermIndexPair lastEntry) -> std::vector<FollowerInfo>;
+      LoggerContext, FollowersSpec const& follower,
+      std::shared_ptr<LocalFollower> const& localFollower, TermIndexPair lastEntry)
+      -> std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>;
 
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;

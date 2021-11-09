@@ -295,6 +295,7 @@ auto replication2::operator<<(std::ostream& os, TermIndexPair pair) -> std::ostr
 LogConfig::LogConfig(VPackSlice slice) {
   waitForSync = slice.get(StaticStrings::WaitForSyncString).extract<bool>();
   writeConcern = slice.get(StaticStrings::WriteConcern).extract<std::size_t>();
+  softWriteConcern = slice.get(StaticStrings::SoftWriteConcern).extract<std::size_t>();
   replicationFactor = slice.get(StaticStrings::ReplicationFactor).extract<std::size_t>();
 }
 
@@ -307,12 +308,14 @@ auto LogConfig::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
+  builder.add(VPackStringRef(StaticStrings::SoftWriteConcern), VPackValue(softWriteConcern));
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
 }
 
 auto replication2::operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool {
   // TODO How can we make sure that we never forget a field here?
   return left.waitForSync == right.waitForSync && left.writeConcern == right.writeConcern &&
+         left.softWriteConcern == right.softWriteConcern &&
          left.replicationFactor == right.replicationFactor;
 }
 
