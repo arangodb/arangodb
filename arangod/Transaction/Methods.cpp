@@ -1062,24 +1062,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
     bool didReplace = false;
 
-#ifdef USE_ENTERPRISE
-    if (collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE &&
-        ServerState::instance()->isSingleServer()) {
-      auto vsecol =
-          dynamic_cast<arangodb::VirtualSmartEdgeCollection const*>(collection.get());
-
-      if (vsecol == nullptr) {
-        // Cast did not work. Illegal state
-        return Result(TRI_ERROR_NO_SMART_COLLECTION);
-      }
-
-      auto vRes = vsecol->verifyEdge(value);
-      if (vRes.fail()) {
-        return vRes;
-      }
-    }
-#endif
-
     if (!isPrimaryKeyConstraintViolation) {
       // regular insert without overwrite option. the insert itself will check
       // if the primary key already exists
