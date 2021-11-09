@@ -25,6 +25,7 @@
 #include <set>
 #include <random>
 
+#include "Cluster/Maintenance.h"
 #include "MaintenanceFeature.h"
 
 #include "Agency/AgencyComm.h"
@@ -50,6 +51,9 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Random/RandomGenerator.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -105,6 +109,39 @@ bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
 
 }  // namespace
 
+arangodb::Result arangodb::maintenance::collectionCount(arangodb::LogicalCollection const& collection,
+                                                        uint64_t& c) {
+  std::string collectionName(collection.name());
+  transaction::StandaloneContext ctx(collection.vocbase());
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(), &ctx),
+    collectionName, AccessMode::Type::READ);
+
+  Result res = trx.begin();
+  if (res.fail()) {
+    LOG_TOPIC("5be16", ERR, Logger::MAINTENANCE) << "Failed to start count transaction: " << res;
+    return res;
+  }
+
+  OperationOptions options(ExecContext::current());
+  OperationResult opResult =
+      trx.count(collectionName, arangodb::transaction::CountType::Normal, options);
+  res = trx.finish(opResult.result);
+
+  if (res.fail()) {
+    LOG_TOPIC("26ed2", ERR, Logger::MAINTENANCE)
+        << "Failed to finish count transaction: " << res;
+    return res;
+  }
+
+  VPackSlice s = opResult.slice();
+  TRI_ASSERT(s.isNumber());
+  c = s.getNumber<uint64_t>();
+
+  return opResult.result;
+}
+
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Maintenance"),
       _forceActivation(false),
@@ -112,6 +149,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
       _firstRun(true),
       _maintenanceThreadsMax((std::max)(static_cast<uint32_t>(minThreadLimit),
                                         static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1))),
+      _maintenanceThreadsSlowMax(_maintenanceThreadsMax / 2),
       _secondsActionsBlock(2),
       _secondsActionsLinger(3600),
       _isShuttingDown(false),
@@ -146,6 +184,15 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                                    arangodb::options::Flags::Dynamic));
 
   options->addOption(
+      "--server.maintenance-slow-threads",
+      "maximum number of threads available for slow maintenance actions (long SynchronizeShard and long EnsureIndex)",
+      new UInt32Parameter(&_maintenanceThreadsSlowMax),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnDBServer,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Dynamic));
+
+  options->addOption(
       "--server.maintenance-actions-block",
       "minimum number of seconds finished Actions block duplicates",
       new Int32Parameter(&_secondsActionsBlock),
@@ -172,6 +219,17 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
 }  // MaintenanceFeature::collectOptions
 
 void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  // Explanation: There must always be at least 3 maintenance threads.
+  // The first one only does actions which are labelled "fast track".
+  // The next few threads do "slower" actions, but never work on very slow
+  // actions which came into being by rescheduling. If they stumble on
+  // an actions which seems to take long, they give up and reschedule
+  // with a special slow priority, such that the action is eventually
+  // executed by the slow threads. We can configure both the total number
+  // of threads as well as the number of slow threads. The number of slow
+  // threads must always be at most N-2 if N is the total number of threads.
+  // The default for the slow threads is N/2, unless the user has used
+  // an override.
   if (_maintenanceThreadsMax < minThreadLimit) {
     LOG_TOPIC("37726", WARN, Logger::MAINTENANCE)
         << "Need at least" << minThreadLimit << "maintenance-threads";
@@ -180,6 +238,27 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
     LOG_TOPIC("8fb0e", WARN, Logger::MAINTENANCE)
         << "maintenance-threads limited to " << maxThreadLimit;
     _maintenanceThreadsMax = maxThreadLimit;
+  }
+  if (!options->processingResult().touched("server.maintenance-slow-threads")) {
+    _maintenanceThreadsSlowMax = _maintenanceThreadsMax / 2;
+  }
+  if (_maintenanceThreadsSlowMax + 2 > _maintenanceThreadsMax) {
+    _maintenanceThreadsSlowMax = _maintenanceThreadsMax - 2;
+    LOG_TOPIC("54251", WARN, Logger::MAINTENANCE)
+        << "maintenance-slow-threads limited to "
+        << _maintenanceThreadsSlowMax;
+  }
+  if (_maintenanceThreadsSlowMax == 0) {
+    _maintenanceThreadsSlowMax = 1;
+    LOG_TOPIC("54252", WARN, Logger::MAINTENANCE)
+        << "maintenance-slow-threads raised to "
+        << _maintenanceThreadsSlowMax;
+  }
+  if (ServerState::instance()->isDBServer()) {
+    LOG_TOPIC("42531", INFO, Logger::MAINTENANCE)
+      << "Using " << _maintenanceThreadsMax
+      << " threads for maintenance, of which "
+      << _maintenanceThreadsSlowMax << " may to slow operations.";
   }
 }
 
@@ -257,8 +336,13 @@ void MaintenanceFeature::start() {
     if (loop == 0) {
       labels.emplace(ActionBase::FAST_TRACK);
     }
+    // The first two workers are not allowed to execute SLOW_OP_PRIORITY,
+    // all the others may:
+    int minPrio = loop < _maintenanceThreadsMax - _maintenanceThreadsSlowMax
+                  ? maintenance::NORMAL_PRIORITY 
+                  : maintenance::SLOW_OP_PRIORITY;
 
-    auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this, labels);
+    auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this, minPrio, labels);
 
     if (!newWorker->start(&_workerCompletion)) {
       LOG_TOPIC("4d8b8", ERR, Logger::MAINTENANCE)
@@ -381,6 +465,7 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
 
   if (action) {
     if (maintenance::COMPLETE != action->getState()) {
+      action->endStats();
       action->setState(maintenance::FAILED);
     } else {
       result.reset(TRI_ERROR_BAD_PARAMETER,
@@ -624,7 +709,7 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
   return std::shared_ptr<Action>();
 }
 
-std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<std::string> const& labels) {
+std::shared_ptr<Action> MaintenanceFeature::findReadyAction(int minimalPriorityAllowed, std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
 
   while (!_isShuttingDown) {
@@ -640,14 +725,16 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
           _prioQueue.pop();
           continue;
         }
-        if (top->matches(labels)) {
+        if (top->matches(labels) && top->priority() >= minimalPriorityAllowed) {
           ret_ptr = top;
           _prioQueue.pop();
           return ret_ptr;
         }
         // We are not interested, this can only mean that we are fast track
-        // and the top action is not. Therefore, the whole queue does not
-        // contain any fast track, so we can idle.
+        // and the top action is not, or that the top action has a smaller
+        // priority than our minimalPriority. Therefore, the whole queue
+        // does not contain any fast track or high enough prio, so we can
+        // idle.
         break;
       }
 
@@ -1149,4 +1236,15 @@ MaintenanceFeature::ShardActionMap MaintenanceFeature::getShardLocks() const {
   LOG_TOPIC("aaed4", DEBUG, Logger::MAINTENANCE) << "Copy of shard action map taken.";
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
   return _shardActionMap;
+}
+
+Result MaintenanceFeature::requeueAction(std::shared_ptr<maintenance::Action>& action,
+    int newPriority) {
+  TRI_ASSERT(action->getState() == ActionState::COMPLETE ||
+             action->getState() == ActionState::FAILED);
+  auto newAction = std::make_shared<maintenance::Action>(*this, action->describe());
+  newAction->setPriority(newPriority);
+  WRITE_LOCKER(wLock, _actionRegistryLock);
+  registerAction(newAction, false);
+  return {};
 }

@@ -1,6 +1,10 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-637: Slow SynchronizeShard jobs which need to copy data could
+  block quick SynchronizeShard jobs which have the data and only need to
+  resync.
+
 * DEVSUP-899: Fixed Subquery execution in a very rare case a subquery, nested in
   another subquery, was not executed, which is fixed now.
   Technical details:
