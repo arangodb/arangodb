@@ -620,10 +620,11 @@ void MockClusterServer::agencyDropDatabase(std::string const& name) {
       .wait();
 }
 
-void MockClusterServer::buildCollectionProperties(VPackBuilder& props,
-                                                  std::string const& collectionName,
-                                                  std::string const& cid, TRI_col_type_e type,
-                                                  VPackSlice additionalProperties) {
+void MockClusterServer::buildCollectionProperties(
+    VPackBuilder& props, std::string const& collectionName,
+    std::string const& cid, TRI_col_type_e type,
+    std::vector<std::pair<std::string, std::string>> const& shardNameToServerNamePairs,
+    VPackSlice additionalProperties) {
   {
     // This is hand-crafted unfortunately the code does not exist...
     VPackObjectBuilder guard(&props);
@@ -631,6 +632,7 @@ void MockClusterServer::buildCollectionProperties(VPackBuilder& props,
     props.add(StaticStrings::DataSourceName, VPackValue(collectionName));
     props.add(StaticStrings::DataSourcePlanId, VPackValue(cid));
     props.add(StaticStrings::DataSourceId, VPackValue(cid));
+    props.add(StaticStrings::NumberOfShards, VPackValue(shardNameToServerNamePairs.size()));
     props.add(VPackValue(StaticStrings::Indexes));
     {
       VPackArrayBuilder guard2(&props);
@@ -719,7 +721,8 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
   auto vocbase = databaseFeature.lookupDatabase(dbName);
 
   VPackBuilder props;
-  buildCollectionProperties(props, collectionName, cid, type, additionalProperties);
+  buildCollectionProperties(props, collectionName, cid, type,
+                            shardNameToServerNamePairs, additionalProperties);
   LogicalCollection dummy(*vocbase, props.slice(), true);
 
   auto shards = std::make_shared<ShardMap>();

@@ -97,6 +97,40 @@ TEST_F(DistributeQueryRuleTest, no_collection_access) {
   assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode"} );
 }
 
+TEST_F(DistributeQueryRuleTest, document_then_enumerate) {
+  auto queryString = R"aql(
+    LET doc = DOCUMENT("collection/abc")
+      FOR x IN collection
+      FILTER x._key == doc.name
+      RETURN x)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  assertNodesMatch(planSlice,
+                   {"SingletonNode", "CalculationNode", "ScatterNode",
+                    "RemoteNode", "EnumerateCollectionNode", "CalculationNode",
+                    "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, many_enumerate_collections) {
+  auto queryString = R"aql(
+    FOR x IN collection
+      FOR y IN collection
+      RETURN {x,y})aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  assertNodesMatch(planSlice,
+                   {"SingletonNode", "EnumerateCollectionNode", "RemoteNode",
+                    "GatherNode", "ScatterNode", "RemoteNode",
+                    "EnumerateCollectionNode", "CalculationNode", "RemoteNode",
+                    "GatherNode", "ReturnNode"});
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
