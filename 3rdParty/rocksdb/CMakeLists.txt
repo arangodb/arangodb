@@ -16,17 +16,7 @@ set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 add_definitions("-DNROCKSDB_THREAD_STATUS")
 add_definitions("-DROCKSDB_SUPPORT_THREAD_LOCAL")
 
-# Determine value if IPO_ENABLED from CMAKE_BUILD_TYPE
-set(IPO_ENABLED False)
-if (NOT USE_GOOGLE_TESTS AND
-   (CMAKE_BUILD_TYPE STREQUAL "Release"
-    OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
-    OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"))
-  set(IPO_ENABLED True)
-else()
-  set(IPO_ENABLED False)
-endif()
-
+# IPO_ENABLED is set by the top-level CMakeLists.txt file
 if (IPO_ENABLED)
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION True)
 endif()
