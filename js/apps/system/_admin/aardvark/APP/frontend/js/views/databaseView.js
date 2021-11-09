@@ -180,8 +180,7 @@
       let replicationFactor = $('#new-replication-factor').val();
       let writeConcern = $('#new-write-concern').val();
 
-      if(parseInt(writeConcern) <= parseInt(replicationFactor))
-      {
+      if(parseInt(writeConcern) <= parseInt(replicationFactor)) {
         var options = {
           name: dbname,
           "options" : {
@@ -208,7 +207,7 @@
 
         arangoHelper.arangoNotification('Database creation in progress.');
       } else {
-        arangoHelper.arangoError('DB', 'Write concerns must be smaller or equal compared to the replication factor');
+        arangoHelper.arangoError('DB', 'No database created. Write concerns must be smaller or equal compared to the replication factor.');
       }
       window.modalView.hide();
     },
