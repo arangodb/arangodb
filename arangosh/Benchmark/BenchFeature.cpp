@@ -531,7 +531,7 @@ void BenchFeature::start() {
   *_result = ret;
 }
 
-void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> &results,
+void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult>& results,
                           BenchmarkStats const& stats,
                           std::string const& histogram, VPackBuilder& builder) {
 
@@ -566,7 +566,8 @@ void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> &re
   builder.add("collection", VPackValue(_collection));
 
   std::sort(results.begin(), results.end(),
-            [](BenchRunResult a, BenchRunResult b) { return a._time < b._time; });
+            [](BenchRunResult const& a, BenchRunResult const& b)
+            { return a._time < b._time; });
 
   BenchRunResult output{0, 0, 0, 0};
 
