@@ -190,34 +190,40 @@
       if (frontendConfig.forceOneShard) {
         sharding = 'single';
       }
-      var replicationFactor = $('#new-replication-factor').val();
-      var writeConcern = $('#new-write-concern').val();
+      
+      let replicationFactor = $('#new-replication-factor').val();
+      let writeConcern = $('#new-write-concern').val();
 
-      var options = {
-        name: dbname,
-        "options" : {
-          "sharding" : sharding,
-          "replicationFactor" : Number(replicationFactor),
-          "writeConcern" : Number(writeConcern),
-        },
-        users: [{
-          username: userName
-        }]
-      };
+      if(parseInt(writeConcern) <= parseInt(replicationFactor))
+      {
+        var options = {
+          name: dbname,
+          "options" : {
+            "sharding" : sharding,
+            "replicationFactor" : Number(replicationFactor),
+            "writeConcern" : Number(writeConcern),
+          },
+          users: [{
+            username: userName
+          }]
+        };
 
-      this.collection.create(options, {
-        error: function (data, err) {
-          self.handleError(err, dbname);
-        },
-        success: function (data) {
-          if (window.location.hash === '#databases') {
-            self.updateDatabases();
+        this.collection.create(options, {
+          error: function (data, err) {
+            self.handleError(err, dbname);
+          },
+          success: function (data) {
+            if (window.location.hash === '#databases') {
+              self.updateDatabases();
+            }
+            arangoHelper.arangoNotification('Database ' + _.escape(data.get('name')) + ' created.');
           }
-          arangoHelper.arangoNotification('Database ' + data.get('name') + ' created.');
-        }
-      });
+        });
 
-      arangoHelper.arangoNotification('Database creation in progress.');
+        arangoHelper.arangoNotification('Database creation in progress.');
+      } else {
+        arangoHelper.arangoError('DB', 'Write concerns must be smaller or equal compared to the replication factor');
+      }
       window.modalView.hide();
     },
 
