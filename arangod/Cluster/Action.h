@@ -210,8 +210,10 @@ class Action {
     _action->setPriority(newPriority);
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   static void addNewFactoryForTest(std::string const& name,
       std::function<std::unique_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>&& factory);
+#endif
 
  private:
   /// @brief actually create the concrete action
