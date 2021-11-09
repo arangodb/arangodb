@@ -184,7 +184,8 @@ arangodb::Result phaseTwo(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
-  ReplicatedLogStatusMapByDatabase const& localLogs);
+  ReplicatedLogStatusMapByDatabase const& localLogs,
+  std::unordered_set<std::string> const& failedServers);
 
 /**
  * @brief          Report local changes to current
@@ -230,7 +231,8 @@ void syncReplicatedShardsWithLeaders(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
-  std::unordered_set<std::string>& makeDirty);
+  std::unordered_set<std::string>& makeDirty,
+  std::unordered_set<std::string> const& failedServers);
 
 
 }  // namespace maintenance
