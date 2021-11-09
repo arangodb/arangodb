@@ -24,6 +24,7 @@
 #include "tests_shared.hpp"
 
 #include "analysis/token_attributes.hpp"
+#include "index/comparer.hpp"
 #include "index/segment_writer.hpp"
 #include "index/index_tests.hpp"
 #include "store/memory_directory.hpp"
