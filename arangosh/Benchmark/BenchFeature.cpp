@@ -89,6 +89,7 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
       _progress(true),
       _quiet(false),
       _waitForSync(false),
+      _generateHistogram(false),
       _runs(1),
       _junitReportFile(""),
       _jsonReportFile(""),
@@ -277,7 +278,7 @@ void BenchFeature::setupHistogram(std::stringstream& pp, VPackBuilder& builder) 
     pp << std::fixed << std::right << std::setw(13) << std::setprecision(2)
         << percentile << "%";
   }
-  pp << std::endl;
+  pp << '\n';
 
 }
 void BenchFeature::updateStatsValues(std::stringstream& pp, VPackBuilder& builder,
@@ -308,7 +309,7 @@ void BenchFeature::updateStatsValues(std::stringstream& pp, VPackBuilder& builde
            << std::setprecision(4) << (time * 1000) << std::setw(0) << "ms";
         j++;
       }
-      pp << std::endl;
+      pp << '\n';
       builder.close();
     }
   }
@@ -506,7 +507,7 @@ void BenchFeature::start() {
     builder.close();
   }
 
-  std::cout << std::endl;
+  std::cout << '\n';
 
   report(client, results, totalStats, pp.str(), builder);
 
@@ -518,7 +519,7 @@ void BenchFeature::start() {
   }
 
   if (!ok) {
-    std::cout << "At least one of the runs produced failures!" << std::endl;
+    std::cout << "At least one of the runs produced failures!" << '\n';
   }
 
   benchmark->tearDown();
@@ -530,12 +531,12 @@ void BenchFeature::start() {
   *_result = ret;
 }
 
-void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results,
+void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> &results,
                           BenchmarkStats const& stats,
                           std::string const& histogram, VPackBuilder& builder) {
 
   if (_generateHistogram) {
-    std::cout << histogram << std::endl;
+    std::cout << histogram << '\n';
   }
 
   std::cout << "Total number of operations: " << _realOperations << ", runs: " << _runs
@@ -614,7 +615,7 @@ void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
             << (stats.avg() * 1000) << "ms" << std::endl
             << "Max request time: " << std::setprecision(4)
             << (stats.max * 1000) << "ms" << std::endl
-            << std::endl;
+            << '\n';
 
   builder.add("min", VPackValue(stats.min));
   builder.add("avg", VPackValue(stats.avg()));

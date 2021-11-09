@@ -83,7 +83,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
  private:
   void status(std::string const& value);
-  void report(ClientFeature&, std::vector<BenchRunResult>, arangobench::BenchmarkStats const& stats, std::string const& histogram, VPackBuilder& builder);
+  void report(ClientFeature&, std::vector<BenchRunResult>&, arangobench::BenchmarkStats const& stats, std::string const& histogram, VPackBuilder& builder);
   void printResult(BenchRunResult const& result, VPackBuilder& builder);
   bool writeJunitReport(BenchRunResult const& result);
   void setupHistogram(std::stringstream& pp, VPackBuilder& builder);
@@ -105,7 +105,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
   bool _verbose;
   bool _quiet;
   bool _waitForSync;
-  bool _generateHistogram = false; // don't generate histogram by default
+  bool _generateHistogram; // don't generate histogram by default
   uint64_t _runs;
   std::string _junitReportFile;
   std::string _jsonReportFile;
