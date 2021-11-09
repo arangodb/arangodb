@@ -803,7 +803,7 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_reschedule_and_valida
   // 5. verify completed actions
   ASSERT_TRUE(tf.verifyRegistryState(post_thread));
 
-#if 1  // for debugging
+#if 0  // for debugging
   std::cout << tf.toVelocyPack().toJson() << std::endl;
 #endif
 }
