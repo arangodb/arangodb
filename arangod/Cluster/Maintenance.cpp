@@ -29,7 +29,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
@@ -1521,7 +1520,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
-  std::unordered_set<std::string>& makeDirty) {
+  std::unordered_set<std::string>& makeDirty,
+  std::unordered_set<std::string> const& failedServers) {
 
   for (auto const& dbname : dirty) {
 
@@ -1624,6 +1624,12 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         }
        
         std::string leader = pservers[0].copyString();
+
+        // If the leader is failed, we need not try to get in sync:
+        if (failedServers.find(leader) != failedServers.end()) {
+          continue;
+        }
+
         std::shared_ptr<ActionDescription> description = std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{
             {NAME, SYNCHRONIZE_SHARD},
@@ -1659,7 +1665,8 @@ arangodb::Result arangodb::maintenance::phaseTwo(
   uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
-  MaintenanceFeature::ShardActionMap const& shardActionMap) {
+  MaintenanceFeature::ShardActionMap const& shardActionMap,
+  std::unordered_set<std::string> const& failedServers) {
 
   auto start = std::chrono::steady_clock::now();
 
@@ -1693,7 +1700,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
       VPackObjectBuilder agency(&report);
       try {
         std::unordered_set<std::string> makeDirty;
-        syncReplicatedShardsWithLeaders(plan, dirty, cur, local, serverId, feature, shardActionMap, makeDirty);
+        syncReplicatedShardsWithLeaders(plan, dirty, cur, local, serverId, feature, shardActionMap, makeDirty, failedServers);
         feature.addDirty(makeDirty, false);
       } catch (std::exception const& e) {
         LOG_TOPIC("7e286", ERR, Logger::MAINTENANCE)
