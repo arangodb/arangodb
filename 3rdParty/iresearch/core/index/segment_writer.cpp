@@ -304,6 +304,8 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
       }
     }
 
+    fields_.flush_features(*col_writer_, docmap, buffer);
+
     meta.sort = sort_.id; // store sorted column id in segment meta
   }
 

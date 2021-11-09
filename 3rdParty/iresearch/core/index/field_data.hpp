@@ -26,6 +26,7 @@
 
 #include "field_meta.hpp"
 #include "postings.hpp"
+#include "sorted_column.hpp"
 #include "formats/formats.hpp"
 
 #include "index/iterators.hpp"
@@ -35,6 +36,7 @@
 #include "utils/noncopyable.hpp"
 
 #include <vector>
+#include <deque>
 #include <tuple>
 #include <unordered_map>
 
@@ -72,14 +74,25 @@ inline bool memcmp_less(
   return memcmp_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
 }
 
+// represents a mapping between cached column data
+// and a pointer to column identifier
+struct cached_column {
+  cached_column(field_id* id, column_info info) noexcept
+    : id{id}, stream{info} {
+  }
+
+  field_id* id;
+  sorted_column stream;
+};
+
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
     const string_ref& name,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
-    bool random_access
-  );
+    std::deque<cached_column>& cached_features,
+    bool random_access);
 
   doc_id_t doc() const noexcept { return last_doc_; }
 
@@ -99,6 +112,10 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   bool prox_random_access() const noexcept {
     return TERM_PROCESSING_TABLES[1] == proc_table_;
+  }
+
+  bool has_norms() const noexcept {
+    return static_cast<bool>(norms_);
   }
 
  private:
@@ -122,6 +139,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   columnstore_writer::values_writer_f norms_;
   field_meta meta_;
   postings terms_;
+  std::deque<cached_column>* cached_features_;
   byte_block_pool::inserter* byte_writer_;
   int_block_pool::inserter* int_writer_;
   const process_term_f* proc_table_;
@@ -152,9 +170,16 @@ class IRESEARCH_API fields_data: util::noncopyable {
   /// @return approximate amount of memory actively in-use by this instance
   //////////////////////////////////////////////////////////////////////////////
   size_t memory_active() const noexcept {
+    const auto column_cache_active = std::accumulate(
+      cached_features_.begin(), cached_features_.end(), size_t{0},
+      [](size_t lhs, const cached_column& rhs) noexcept {
+        return lhs + rhs.stream.memory_active();
+    });
+
     return byte_writer_.pool_offset()
       + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
-      + fields_.size() * sizeof(fields_map::value_type);
+      + fields_.size() * sizeof(fields_map::value_type)
+      + column_cache_active;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -173,8 +198,14 @@ class IRESEARCH_API fields_data: util::noncopyable {
   void flush(field_writer& fw, flush_state& state);
   void reset() noexcept;
 
+  void flush_features(
+      columnstore_writer& writer,
+      const doc_map& docmap,
+      sorted_column::flush_buffer_t& buffer);
+
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  std::deque<cached_column> cached_features_; // pointer remain valid
   const comparer* comparator_;
   fields_map fields_;
   byte_block_pool byte_pool_;

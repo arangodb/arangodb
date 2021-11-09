@@ -756,9 +756,11 @@ field_data::field_data(
     const string_ref& name,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
+    std::deque<cached_column>& cached_features,
     bool random_access)
   : meta_(name, flags::empty_instance()),
     terms_(*byte_writer),
+    cached_features_(&cached_features),
     byte_writer_(&byte_writer),
     int_writer_(&int_writer),
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
@@ -787,9 +789,21 @@ data_output& field_data::norms(columnstore_writer& writer) {
   if (!norms_) {
     // FIXME encoder for norms???
     // do not encrypt norms
-    auto handle = writer.push_column(NORM_COLUMN);
-    norms_ = std::move(handle.second);
-    meta_.norm = handle.first;
+
+    if (!prox_random_access()) {
+      auto handle = writer.push_column(NORM_COLUMN);
+      norms_ = std::move(handle.second);
+      meta_.norm = handle.first;
+    } else {
+      meta_.norm = field_limits::invalid();
+      auto* column = &cached_features_->emplace_back(&meta_.norm, NORM_COLUMN).stream;
+
+      norms_ = [column](irs::doc_id_t doc) mutable
+          -> columnstore_writer::column_output& {
+        column->prepare(doc);
+        return *column;
+      };
+    }
   }
 
   return norms_(doc());
@@ -1170,10 +1184,10 @@ field_data& fields_data::emplace(const hashed_string_ref& name) {
   // replace original reference to 'name' provided by the caller
   // with a reference to the cached copy in 'value'
   return map_utils::try_emplace_update_key(
-    fields_,                                                  // container
-    generator,                                                // key generator
-    name,                                                     // key
-    name, byte_writer_, int_writer_, (nullptr != comparator_) // value
+    fields_,                                                                    // container
+    generator,                                                                  // key generator
+    name,                                                                       // key
+    name, byte_writer_, int_writer_, cached_features_, (nullptr != comparator_) // value
   ).first->second;
 }
 
@@ -1216,10 +1230,23 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
   fw.end();
 }
 
+void fields_data::flush_features(
+    columnstore_writer& writer,
+    const doc_map& docmap,
+    sorted_column::flush_buffer_t& buffer) {
+  for (auto& feature : cached_features_) {
+    assert(feature.id);
+    if (IRS_LIKELY(!field_limits::valid(*feature.id))) {
+      *feature.id = feature.stream.flush(writer, docmap, buffer);
+    }
+  }
+}
+
 void fields_data::reset() noexcept {
   byte_writer_ = byte_pool_.begin(); // reset position pointer to start of pool
   features_.clear();
   fields_.clear();
+  cached_features_.clear();
   int_writer_ = int_pool_.begin(); // reset position pointer to start of pool
 }
 
