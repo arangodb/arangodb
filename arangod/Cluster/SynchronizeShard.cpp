@@ -867,11 +867,11 @@ bool SynchronizeShard::first() {
 
     auto ep = clusterInfo.getServerEndpoint(leader);
     uint64_t docCountOnLeader = 0;
-    if (!collectionCountOnLeader(ep, docCountOnLeader).ok()) {
+    if (Result res = collectionCountOnLeader(ep, docCountOnLeader); res.fail()) {
       std::stringstream error;
-      error << "failed to get a count on leader " << database << "/" << shard;
+      error << "failed to get a count on leader " << database << "/" << shard << ": " << res.errorMessage();
       LOG_TOPIC("1254a", ERR, Logger::MAINTENANCE) << "SynchronizeShard " << error.str();
-      result(TRI_ERROR_INTERNAL, error.str());
+      result(res.errorNumber(), error.str());
       return false;
     }
 
@@ -1385,8 +1385,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
 void SynchronizeShard::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    bool haveRequeued =
-      result().errorNumber() == TRI_ERROR_ACTION_UNFINISHED;
+    bool haveRequeued = result().is(TRI_ERROR_ACTION_UNFINISHED);
     // This error happens if we abort the action because we assumed
     // that it would take too long. In this case it has been rescheduled
     // and we must not unlock the shard!

@@ -1239,6 +1239,6 @@ Result MaintenanceFeature::requeueAction(std::shared_ptr<maintenance::Action>& a
   auto newAction = std::make_shared<maintenance::Action>(*this, action->describe());
   newAction->setPriority(newPriority);
   WRITE_LOCKER(wLock, _actionRegistryLock);
-  registerAction(newAction, false);
+  registerAction(std::move(newAction), false);
   return {};
 }
