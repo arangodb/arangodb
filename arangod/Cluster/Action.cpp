@@ -206,10 +206,12 @@ bool Action::operator<(Action const& other) const {
   return false;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 void Action::addNewFactoryForTest(std::string const& name,
       std::function<std::unique_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>&& factory) {
   factories.emplace(name, std::move(factory));
 }
+#endif
 
 namespace std {
 ostream& operator<<(ostream& out, arangodb::maintenance::Action const& d) {
