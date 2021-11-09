@@ -416,6 +416,21 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   void removeStats();
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Add statistic about failed commit
+  //////////////////////////////////////////////////////////////////////////////
+  void wasFailedCommit();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Add statistic about failed cleanup
+  //////////////////////////////////////////////////////////////////////////////
+  void wasFailedCleanup();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Add statistic about failed consolidation
+  //////////////////////////////////////////////////////////////////////////////
+  void wasFailedConsolidation();
+
   StorageEngine* _engine;
   VPackComparer _comparer;
   IResearchFeature* _asyncFeature;  // the feature where async jobs were registered (nullptr == no jobs registered)
@@ -432,6 +447,12 @@ class IResearchLink {
   std::string const _viewGuid;  // the identifier of the desired view (read-only, set via init())
   bool _createdInRecovery;  // link was created based on recovery marker
   GuardMetric<LinkStats>* _linkStats;
+  Gauge<uint64_t>* _numFailedCommits;
+  Gauge<uint64_t>* _numFailedCleanups;
+  Gauge<uint64_t>* _numFailedConsolidations;
+  Gauge<uint64_t>* _allCommitTimeMs;
+  Gauge<uint64_t>* _allCleanupTimeMs;
+  Gauge<uint64_t>* _allConsolidationTimeMs;
 };
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,

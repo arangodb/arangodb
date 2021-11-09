@@ -67,6 +67,18 @@ using namespace arangodb::iresearch;
 
 DECLARE_GUARD_METRIC(arangodb_arangosearch_link_stats, IResearchLink::LinkStats,
                      "Stats of documents in link");
+DECLARE_GAUGE(arangodb_arangosearch_num_failed_commits, uint64_t,
+              "Number of failed commits");
+DECLARE_GAUGE(arangodb_arangosearch_num_failed_cleanups, uint64_t,
+              "Number of failed cleanups");
+DECLARE_GAUGE(arangodb_arangosearch_num_failed_consolidations, uint64_t,
+              "Number of failed consolidations");
+DECLARE_GAUGE(arangodb_arangosearch_commit_time, uint64_t,
+              "Time of all commits in microseconds");
+DECLARE_GAUGE(arangodb_arangosearch_cleanup_time, uint64_t,
+              "Time of all cleanups in microseconds");
+DECLARE_GAUGE(arangodb_arangosearch_consolidation_time, uint64_t,
+              "Time of all consolidations in microseconds");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the link state for a given TransactionState
@@ -255,13 +267,14 @@ struct Task {
   IndexId id;
 };
 
-arangodb_arangosearch_link_stats getLinkStatMetric(const IResearchLink& link) {
-  arangodb_arangosearch_link_stats stats;
-  stats.addLabel("viewId", std::move(link.getViewId()));
-  stats.addLabel("collId", std::move(link.getCollectionName()));
-  stats.addLabel("shardName", std::move(link.getShardName()));
-  stats.addLabel("dbName", std::move(link.getDbName()));
-  return stats;
+template <typename T>
+T getMetric(const IResearchLink& link) {
+  T metric;
+  metric.addLabel("viewId", std::move(link.getViewId()));
+  metric.addLabel("collId", std::move(link.getCollectionName()));
+  metric.addLabel("shardName", std::move(link.getShardName()));
+  metric.addLabel("dbName", std::move(link.getDbName()));
+  return metric;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -405,18 +418,12 @@ void CommitTask::operator()() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  auto const syncStart =
-      std::chrono::steady_clock::now();  // FIXME: add sync durations to metrics
   auto res = linkPtr->commitUnsafe(false, &code);  // run commit ('_asyncSelf' locked by async task)
 
   if (res.ok()) {
     LOG_TOPIC("7e323", TRACE, iresearch::TOPIC)
         << "successful sync of arangosearch link '" << id << "', run id '"
-        << size_t(&runId) << "', took: "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::steady_clock::now() - syncStart)
-               .count()
-        << "ms";
+        << size_t(&runId) << '\'';
     if (code == IResearchLink::CommitResult::DONE) {
       if (cleanupIntervalStep && cleanupIntervalCount++ > cleanupIntervalStep) {  // if enabled
         cleanupIntervalCount = 0;
@@ -425,25 +432,15 @@ void CommitTask::operator()() {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        auto const cleanupStart =
-            std::chrono::steady_clock::now();  // FIXME: add cleanup durations to metrics
         res = linkPtr->cleanupUnsafe();  // run cleanup ('_asyncSelf' locked by async task)
 
         if (res.ok()) {
           LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
               << "successful cleanup of arangosearch link '" << id
-              << "', run id '" << size_t(&runId) << "', took: "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(
-                     std::chrono::steady_clock::now() - cleanupStart)
-                     .count()
-              << "ms";
+              << "', run id '" << size_t(&runId) << '\'';
         } else {
           LOG_TOPIC("130de", WARN, iresearch::TOPIC)
-              << "error after running for "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(
-                     std::chrono::steady_clock::now() - cleanupStart)
-                     .count()
-              << "ms while cleaning up arangosearch link '" << id
+              << "error after cleaning up arangosearch link '" << id
               << "', run id '" << size_t(&runId) << "': " << res.errorNumber()
               << " " << res.errorMessage();
         }
@@ -451,12 +448,9 @@ void CommitTask::operator()() {
     }
   } else {
     LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
-        << "error after running for "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::steady_clock::now() - syncStart)
-               .count()
-        << "ms while committing arangosearch link '" << linkPtr->id() << "', run id '"
-        << size_t(&runId) << "': " << res.errorNumber() << " " << res.errorMessage();
+        << "error after committing arangosearch link '" << linkPtr->id()
+        << "', run id '" << size_t(&runId) << "': " << res.errorNumber() << " "
+        << res.errorMessage();
   }
 }
 
@@ -619,7 +613,12 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _id{iid},
       _lastCommittedTick{0},
       _createdInRecovery{false},
-      _linkStats{nullptr} {
+      _linkStats{nullptr},
+      _numFailedCommits{nullptr},
+      _numFailedConsolidations{nullptr},
+      _allCommitTimeMs{nullptr},
+      _allCleanupTimeMs{nullptr},
+      _allConsolidationTimeMs{nullptr} {
   auto* key = this;
 
   // initialize transaction callback
@@ -764,16 +763,27 @@ Result IResearchLink::cleanupUnsafe() {
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
+  auto begin = std::chrono::steady_clock::now();
+
   try {
     irs::directory_utils::remove_all_unreferenced(*(_dataStore._directory));
   } catch (std::exception const& e) {
+    wasFailedCleanup();
     return {TRI_ERROR_INTERNAL,
             "caught exception while cleaning up arangosearch link '" +
                 std::to_string(id().id()) + "': " + e.what()};
   } catch (...) {
+    wasFailedCleanup();
     return {TRI_ERROR_INTERNAL,
             "caught exception while cleaning up arangosearch link '" +
                 std::to_string(id().id()) + "'"};
+  }
+
+  if (_allCleanupTimeMs) {
+    _allCleanupTimeMs->fetch_add(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                     std::chrono::steady_clock::now() - begin)
+                                     .count(),
+                                 std::memory_order_relaxed);
   }
 
   return {};
@@ -799,6 +809,8 @@ Result IResearchLink::commit(bool wait /*= true*/) {
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
 Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
+  auto const begin = std::chrono::steady_clock::now();
+
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
@@ -889,18 +901,26 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
         << "', live docs count '" << reader->live_docs_count()
         << "', last operation tick '" << _lastCommittedTick << "'";
   } catch (basics::Exception const& e) {
+    wasFailedCommit();
     return {e.code(), "caught exception while committing arangosearch link '" +
                           std::to_string(id().id()) + "': " + e.what()};
   } catch (std::exception const& e) {
+    wasFailedCommit();
     return {TRI_ERROR_INTERNAL,
             "caught exception while committing arangosearch link '" +
                 std::to_string(id().id()) + "': " + e.what()};
   } catch (...) {
+    wasFailedCommit();
     return {TRI_ERROR_INTERNAL,
             "caught exception while committing arangosearch link '" +
                 std::to_string(id().id())};
   }
-
+  if (_allCommitTimeMs) {
+    _allCommitTimeMs->fetch_add(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    std::chrono::steady_clock::now() - begin)
+                                    .count(),
+                                std::memory_order_relaxed);
+  }
   return {};
 }
 
@@ -910,7 +930,7 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
 Result IResearchLink::consolidateUnsafe(IResearchViewMeta::ConsolidationPolicy const& policy,
                                         irs::merge_writer::flush_progress_t const& progress,
                                         bool& emptyConsolidation) {
-  emptyConsolidation = false;
+  emptyConsolidation = false;  // TODO Why?
 
   if (!policy.policy()) {
     return {
@@ -922,10 +942,12 @@ Result IResearchLink::consolidateUnsafe(IResearchViewMeta::ConsolidationPolicy c
 
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
+  auto begin = std::chrono::steady_clock::now();
 
   try {
     auto const res = _dataStore._writer->consolidate(policy.policy(), nullptr, progress);
     if (!res) {
+      wasFailedConsolidation();
       return {TRI_ERROR_INTERNAL,
               "failure while executing consolidation policy '" +
                   policy.properties().toString() + "' on arangosearch link '" +
@@ -934,17 +956,24 @@ Result IResearchLink::consolidateUnsafe(IResearchViewMeta::ConsolidationPolicy c
 
     emptyConsolidation = (res.size == 0);
   } catch (std::exception const& e) {
+    wasFailedConsolidation();
     return {TRI_ERROR_INTERNAL,
             "caught exception while executing consolidation policy '" +
                 policy.properties().toString() + "' on arangosearch link '" +
                 std::to_string(id().id()) + "': " + e.what()};
   } catch (...) {
+    wasFailedConsolidation();
     return {TRI_ERROR_INTERNAL,
             "caught exception while executing consolidation policy '" +
                 policy.properties().toString() + "' on arangosearch link '" +
                 std::to_string(id().id()) + "'"};
   }
-
+  if (_allConsolidationTimeMs) {
+    _allConsolidationTimeMs->fetch_add(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                           std::chrono::steady_clock::now() - begin)
+                                           .count(),
+                                       std::memory_order_relaxed);
+  }
   return {};
 }
 
@@ -1258,7 +1287,25 @@ Result IResearchLink::init(velocypack::Slice const& definition,
   if (ServerState::instance()->isSingleServer() || !clusterWideLink) {
     _linkStats =
         &_collection.vocbase().server().getFeature<arangodb::MetricsFeature>().add(
-            getLinkStatMetric(*this));
+            getMetric<arangodb_arangosearch_link_stats>(*this));
+    _numFailedCommits =
+        &_collection.vocbase().server().getFeature<arangodb::MetricsFeature>().add(
+            getMetric<arangodb_arangosearch_num_failed_commits>(*this));
+    _numFailedCleanups =
+        &_collection.vocbase().server().getFeature<arangodb::MetricsFeature>().add(
+            getMetric<arangodb_arangosearch_num_failed_cleanups>(*this));
+    _numFailedConsolidations =
+        &_collection.vocbase().server().getFeature<arangodb::MetricsFeature>().add(
+            getMetric<arangodb_arangosearch_num_failed_consolidations>(*this));
+    _allCommitTimeMs =
+        &_collection.vocbase().server().getFeature<arangodb::MetricsFeature>().add(
+            getMetric<arangodb_arangosearch_commit_time>(*this));
+    _allCleanupTimeMs =
+        &_collection.vocbase().server().getFeature<arangodb::MetricsFeature>().add(
+            getMetric<arangodb_arangosearch_cleanup_time>(*this));
+    _allConsolidationTimeMs =
+        &_collection.vocbase().server().getFeature<arangodb::MetricsFeature>().add(
+            getMetric<arangodb_arangosearch_consolidation_time>(*this));
   }
 
   return {};
@@ -1999,7 +2046,55 @@ void IResearchLink::removeStats() {
   if (_linkStats) {
     _linkStats = nullptr;
     _collection.vocbase().server().getFeature<arangodb::MetricsFeature>().remove(
-        getLinkStatMetric(*this));
+        getMetric<arangodb_arangosearch_link_stats>(*this));
+  }
+  if (_numFailedCommits) {
+    _numFailedCommits = nullptr;
+    _collection.vocbase().server().getFeature<arangodb::MetricsFeature>().remove(
+        getMetric<arangodb_arangosearch_num_failed_commits>(*this));
+  }
+  if (_numFailedCleanups) {
+    _numFailedCleanups = nullptr;
+    _collection.vocbase().server().getFeature<arangodb::MetricsFeature>().remove(
+        getMetric<arangodb_arangosearch_num_failed_cleanups>(*this));
+  }
+  if (_numFailedConsolidations) {
+    _numFailedConsolidations = nullptr;
+    _collection.vocbase().server().getFeature<arangodb::MetricsFeature>().remove(
+        getMetric<arangodb_arangosearch_num_failed_consolidations>(*this));
+  }
+  if (_allCommitTimeMs) {
+    _allCommitTimeMs = nullptr;
+    _collection.vocbase().server().getFeature<arangodb::MetricsFeature>().remove(
+        getMetric<arangodb_arangosearch_commit_time>(*this));
+  }
+  if (_allCleanupTimeMs) {
+    _allCleanupTimeMs = nullptr;
+    _collection.vocbase().server().getFeature<arangodb::MetricsFeature>().remove(
+        getMetric<arangodb_arangosearch_cleanup_time>(*this));
+  }
+  if (_allConsolidationTimeMs) {
+    _allConsolidationTimeMs = nullptr;
+    _collection.vocbase().server().getFeature<arangodb::MetricsFeature>().remove(
+        getMetric<arangodb_arangosearch_consolidation_time>(*this));
+  }
+}
+
+void IResearchLink::wasFailedCommit() {
+  if (_numFailedCommits) {
+    _numFailedCommits->fetch_add(1, std::memory_order_relaxed);
+  }
+}
+
+void IResearchLink::wasFailedCleanup() {
+  if (_numFailedCleanups) {
+    _numFailedCleanups->fetch_add(1, std::memory_order_relaxed);
+  }
+}
+
+void IResearchLink::wasFailedConsolidation() {
+  if (_numFailedConsolidations) {
+    _numFailedConsolidations->fetch_add(1, std::memory_order_relaxed);
   }
 }
 
