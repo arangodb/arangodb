@@ -544,7 +544,7 @@ add_executable(${BIN_ARANGOSIMPLELOGIN}
   ${LDAP_SIMPLE_SOURCES}
   ${ProductVersionFiles_arangosimplelogin}
   LoginTest/LoginFeature.cpp
-  LoginTest/arangosimplelogin.cpp
+  LoginTest/arangologin.cpp
 )
 target_include_directories(${BIN_ARANGOSIMPLELOGIN} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 if (USE_ENTERPRISE)
@@ -591,9 +591,9 @@ endif ()
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)
-   target_compile_options(${BIN_ARANGOSIMPLELOGIN} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+   target_compile_options(${BIN_ARANGOSIMPLELOGIN} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS /DHANDLER_TYPE=LdapSimpleAuthenticationHandler /DPROVIDER=LdapAuthSimpleProvider)
  else ()
-   target_compile_options(${BIN_ARANGOSIMPLELOGIN} PRIVATE -Werror -Wno-error=deprecated-declarations)
+   target_compile_options(${BIN_ARANGOSIMPLELOGIN} PRIVATE -Werror -Wno-error=deprecated-declarations -DHANDLER_TYPE=LdapSimpleAuthenticationHandler -DPROVIDER=LdapAuthSimpleProvider)
  endif ()
 endif ()
 
@@ -617,7 +617,7 @@ add_executable(${BIN_ARANGOSEARCHLOGIN}
   ${LDAP_SEARCH_SOURCES}
   ${ProductVersionFiles_arangosearchlogin}
   LoginTest/LoginFeature.cpp
-  LoginTest/arangosearchlogin.cpp
+  LoginTest/arangologin.cpp
 )
 target_include_directories(${BIN_ARANGOSEARCHLOGIN} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 if (USE_ENTERPRISE)
@@ -664,9 +664,9 @@ endif ()
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)
-   target_compile_options(${BIN_ARANGOSEARCHLOGIN} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+   target_compile_options(${BIN_ARANGOSEARCHLOGIN} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS /DHANDLER_TYPE=LdapSearchAuthenticationHandler /DPROVIDER=LdapAuthSearchProvider)
  else ()
-   target_compile_options(${BIN_ARANGOSEARCHLOGIN} PRIVATE -Werror -Wno-error=deprecated-declarations)
+   target_compile_options(${BIN_ARANGOSEARCHLOGIN} PRIVATE -Werror -Wno-error=deprecated-declarations -DHANDLER_TYPE=LdapSearchAuthenticationHandler -DPROVIDER=LdapAuthSearchProvider)
  endif ()
 endif ()
 

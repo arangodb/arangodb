@@ -45,7 +45,8 @@
 #include "../arangod/GeneralServer/AuthenticationFeature.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
-#include "Enterprise/Ldap/LdapAuthenticationHandler.h"
+#include "Enterprise/Ldap/LdapSimpleAuthenticationHandler.h"
+#include "Enterprise/Ldap/LdapSearchAuthenticationHandler.h"
 #endif
 
 using namespace arangodb;
@@ -199,6 +200,8 @@ void LoginFeature::start() {
   VPackSlice slice;
   std::shared_ptr<VPackBuilder> builder;
 
+  HANDLER_TYPE authHandler(server().getFeature<LdapFeature>());
+
   while (true) {
     std::string input;
     std::getline(*inputStream, input);
@@ -232,9 +235,6 @@ void LoginFeature::start() {
 
       slice = VPackSlice(reinterpret_cast<uint8_t const*>(input.data()));
     }
-  
-    LdapAuthenticationHandler *authHandler = (LdapAuthenticationHandler *)&server().getFeature<LdapFeature>();
-    auto result = authHandler->authenticate(slice.get("user").toString(), slice.get("passvoid").toString());
 
     if (!ofs.is_open()) {
       LOG_TOPIC("bb8a7", ERR, Logger::FIXME) << "cannot write outfile '" << _outputFile << "'";
@@ -242,6 +242,8 @@ void LoginFeature::start() {
       return;
     }
 
+    auto result = authHandler.authenticate(slice.get("user").toString(), slice.get("passvoid").toString());
+ 
     VPackBuffer<uint8_t> response;
     VPackBuilder bodyBuilder(response);
     {
