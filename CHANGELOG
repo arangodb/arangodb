@@ -1,13 +1,13 @@
 v3.8.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed arangodump not overwriting dump directory when flags `--all-databases`
+  and `--overwrite` are set to true.
+
 * When enabling the cluster supervision maintenance mode via the web UI, there
   is now the possibility to select a duration for the maintenance mode.
   Previous versions of ArangoDB always enabled the maintenance mode for one
   hour, without allowing any choice here.
-
-* Fixed arangodump not overwriting dump directory when flags `--all-databases`
-  and `--overwrite` are set to true.
 
 * Fixed SEARCH-261: Fix possible race between file creation and directory
   cleaner (ArangoSearch).
