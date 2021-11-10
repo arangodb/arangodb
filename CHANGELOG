@@ -4,6 +4,9 @@ v3.8.3 (XXXX-XX-XX)
 * Fixed arangodump not overwriting dump directory when flags `--all-databases`
   and `--overwrite` are set to true.
 
+* Fixed BTS-637: Slow SynchronizeShard jobs which need to copy data could block
+  quick SynchronizeShard jobs which have the data and only need to resync.
+
 * When enabling the cluster supervision maintenance mode via the web UI, there
   is now the possibility to select a duration for the maintenance mode.
   Previous versions of ArangoDB always enabled the maintenance mode for one
