@@ -730,7 +730,7 @@ void InvertedIndexFieldIterator::next() {
     while (!_arrayStack.empty() && _valueSlice.isNone()) {
       if (_arrayStack.back().valid()) {
         _valueSlice = *_arrayStack.back();
-        _arrayStack.back()++;
+        ++_arrayStack.back();
       } else {
         _arrayStack.pop_back();
       }
