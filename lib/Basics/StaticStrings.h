@@ -24,6 +24,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 namespace arangodb {
 class StaticStrings {
@@ -120,6 +121,7 @@ class StaticStrings {
   static std::string const DataSourcePlanId;   // data-source plan id
   static std::string const DataSourceSystem;   // data-source system marker
   static std::string const DataSourceType;     // data-source type
+  static std::string const DataSourceParameters;
 
   // Index definition fields
   static std::string const IndexExpireAfter;   // ttl index expire value
@@ -390,6 +392,9 @@ class StaticStrings {
   static std::string const ValidationParameterLevel;
   static std::string const ValidationParameterRule;
   static std::string const ValidationParameterType;
+
+  // API Strings
+  static std::string_view const ApiLogInternal;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;

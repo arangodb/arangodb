@@ -30,25 +30,25 @@
 #include <fuerte/requests.h>
 #include <v8.h>
 
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Import/ImportHelper.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
-#include "Shell/ConsoleFeature.h"
+#include "Shell/ShellConsoleFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-buffer.h"
+#include "V8/v8-conv.h"
+#include "V8/v8-deadline.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8/v8-deadline.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -582,13 +582,13 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
 
   if (args.Length() < 4) {
     if (client->jwtSecret().empty()) {
-      ConsoleFeature& console = v8connection->server().getFeature<ConsoleFeature>();
+      ShellConsoleFeature& console = v8connection->server().getFeature<ShellConsoleFeature>();
 
       if (console.isEnabled()) {
         password = console.readPassword("Please specify a password: ");
       } else {
         std::cout << "Please specify a password: " << std::flush;
-        password = ConsoleFeature::readPassword();
+        password = ShellConsoleFeature::readPassword();
         std::cout << std::endl << std::flush;
       }
     }
@@ -1877,8 +1877,8 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
       err += ex.what();
       TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
     }
-  } 
-  return v8::Local<v8::Value>();
+  }
+  return v8::Undefined(isolate);
 }
 
 v8::Local<v8::Value> translateResultBodyToV8(fu::Response const& response,

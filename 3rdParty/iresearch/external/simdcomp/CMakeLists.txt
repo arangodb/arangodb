@@ -24,11 +24,11 @@ else()
 endif()
 
 # test for arm
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*|arm64.*|aarch64.*)")
    set(BASE_FLAGS
-    ${BASE_FLAGS}
-    "-D__ARM_NEON__"
-    )
+     ${BASE_FLAGS}
+     "-D__ARM_NEON__"
+     )
 endif()
 
 set(SIMDCOMP_SRCS
@@ -48,6 +48,7 @@ target_link_libraries(simdcomp-static ${BASE_FLAGS})
 target_include_directories(
   simdcomp-static
   PUBLIC ${PROJECT_SOURCE_DIR}/include
+  PUBLIC $<TARGET_PROPERTY:sse2neon,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 # shared library
@@ -56,6 +57,7 @@ target_link_libraries(simdcomp-shared ${BASE_FLAGS})
 target_include_directories(
   simdcomp-shared
   PUBLIC ${PROJECT_SOURCE_DIR}/include
+  PUBLIC $<TARGET_PROPERTY:sse2neon,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 # object library
@@ -63,4 +65,5 @@ add_library(simdcomp-obj OBJECT ${SIMDCOMP_SRCS})
 target_include_directories(
   simdcomp-obj
   PUBLIC ${PROJECT_SOURCE_DIR}/include
+  PUBLIC $<TARGET_PROPERTY:sse2neon,INTERFACE_INCLUDE_DIRECTORIES>
 )

@@ -28,6 +28,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "ClusterEngine/ClusterTransactionCollection.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -152,4 +153,13 @@ uint64_t ClusterTransactionState::numCommits() const {
   // there are no intermediate commits for a cluster transaction, so we can
   // return 1 for a committed transaction and 0 otherwise
   return _status == transaction::Status::COMMITTED ? 1 : 0;
+}
+
+TRI_voc_tick_t ClusterTransactionState::lastOperationTick() const noexcept {
+  return 0;
+}
+
+std::unique_ptr<TransactionCollection> ClusterTransactionState::createTransactionCollection(
+    DataSourceId cid, AccessMode::Type accessType) {
+  return std::make_unique<ClusterTransactionCollection>(this, cid, accessType);
 }

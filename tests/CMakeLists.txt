@@ -106,6 +106,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
+  Aql/FixedOutputExecutionBlockMock.cpp
   Aql/InRangeFunctionTest.cpp
   Aql/JaccardFunctionTest.cpp
   Aql/LevenshteinMatchFunctionTest.cpp
@@ -222,6 +223,7 @@ set(ARANGODB_TESTS_SOURCES
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
+  Containers/SmallVectorTest.cpp
   Futures/Future-test.cpp
   Futures/Promise-test.cpp
   Futures/Try-test.cpp
@@ -267,6 +269,7 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/RestViewHandler-test.cpp
   RestHandler/VstResponse-test.cpp
   RestServer/FlushFeature-test.cpp
+  Restore/CollectionRestoreOrder.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/HotBackupTest.cpp
@@ -275,13 +278,16 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/ShaEventListener.cpp
   RocksDBEngine/TransactionManagerTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
+  SimpleHttpClient/HttpResponseCheckerTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/Context-test.cpp
+  Transaction/CountCacheTest.cpp
   Transaction/Manager-test.cpp
   Transaction/RestTransactionHandler-test.cpp
   Utils/CollectionNameResolver-test.cpp
   Utils/NameValidatorTest.cpp
+  Utils/QuickGen.cpp
   V8Server/v8-analyzers-test.cpp
   V8Server/v8-users-test.cpp
   V8Server/v8-views-test.cpp
@@ -330,7 +336,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/AsyncFollower.h
   Replication2/Mocks/FakeFollower.h
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
-  )
+  Replication2/ReplicatedLog/CalcCommitIndexTest.cpp)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
@@ -376,6 +382,7 @@ target_link_libraries(arangodbtests
   arango_rocksdb
   arango_v8server
   arangoserver
+  arango_restore
   fuerte
   rocksdb
   snappy

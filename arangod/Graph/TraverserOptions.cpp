@@ -761,6 +761,26 @@ auto TraverserOptions::getEdgeDestination(arangodb::velocypack::Slice edge,
   return from.stringRef();
 }
 
+void TraverserOptions::initializeIndexConditions(
+  aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+  aql::Variable const* indexVariable) {
+  BaseOptions::initializeIndexConditions(ast, varInfo, indexVariable);
+  for (auto& [unused, infos] : _depthLookupInfo) {
+    for (auto& info : infos) {
+      info.initializeNonConstExpressions(ast, varInfo, indexVariable);
+    }
+  }
+}
+
+void TraverserOptions::calculateIndexExpressions(aql::Ast* ast) {
+  BaseOptions::calculateIndexExpressions(ast);
+  for (auto& [unused, infos] : _depthLookupInfo) {
+    for (auto& info : infos) {
+      info.calculateIndexExpressions(ast, _expressionCtx);
+    }
+  }
+}
+
 bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vertex,
                                                 uint64_t depth) {
   arangodb::aql::Expression* expression = nullptr;

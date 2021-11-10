@@ -33,7 +33,6 @@
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
-#include "ClusterEngine/ClusterTransactionCollection.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #include "ClusterEngine/ClusterV8Functions.h"
 #include "GeneralServer/RestHandlerFactory.h"
@@ -129,11 +128,6 @@ std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
   return std::make_shared<ClusterTransactionState>(vocbase, tid, options);
 }
 
-std::unique_ptr<TransactionCollection> ClusterEngine::createTransactionCollection(
-    TransactionState& state, DataSourceId cid, AccessMode::Type accessType) {
-  return std::unique_ptr<TransactionCollection>(
-      new ClusterTransactionCollection(&state, cid, accessType));
-}
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
   if (isRocksDB()) {

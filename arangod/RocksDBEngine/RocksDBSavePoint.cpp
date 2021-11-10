@@ -33,27 +33,24 @@
 
 namespace arangodb {
 
-RocksDBSavePoint::RocksDBSavePoint(RocksDBTransactionState* state,
-                                   transaction::Methods* trx,
+RocksDBSavePoint::RocksDBSavePoint(DataSourceId collectionId,
+                                   RocksDBTransactionState& state,
                                    TRI_voc_document_operation_e operationType)
     : _state(state),
-      _trx(trx),
+      _rocksMethods(*state.rocksdbMethods(collectionId)),
+      _collectionId(collectionId),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _numCommitsAtStart(0),
 #endif
       _operationType(operationType),
-      _handled(_trx->isSingleOperationTransaction()),
+      _handled(state.isSingleOperation()),
       _tainted(false) {
-  TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(trx != nullptr);
-
   if (!_handled) {
-    auto mthds = RocksDBTransactionState::toMethods(_trx);
     // only create a savepoint when necessary
-    mthds->SetSavePoint();
+    _rocksMethods.SetSavePoint();
   }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _numCommitsAtStart = _state->numCommits();
+  _numCommitsAtStart = _state.numCommits();
 #endif
 }
 
@@ -73,23 +70,23 @@ RocksDBSavePoint::~RocksDBSavePoint() {
   }
 }
 
-void RocksDBSavePoint::prepareOperation(DataSourceId cid, RevisionId rid) {
+void RocksDBSavePoint::prepareOperation(RevisionId rid) {
   TRI_ASSERT(!_tainted);
 
-  _state->prepareOperation(cid, rid, _operationType);
+  _state.prepareOperation(_collectionId, rid, _operationType);
 }
 
 /// @brief acknowledges the current savepoint, so there
 /// will be no rollback when the destructor is called
-Result RocksDBSavePoint::finish(DataSourceId cid, RevisionId rid) {
+Result RocksDBSavePoint::finish(RevisionId rid) {
   bool hasPerformedIntermediateCommit = false;
   Result res = basics::catchToResult([&]() -> Result {
-    return _state->addOperation(cid, rid, _operationType, hasPerformedIntermediateCommit);
+    return _state.addOperation(_collectionId, rid, _operationType, hasPerformedIntermediateCommit);
   });
 
   if (!_handled) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_numCommitsAtStart + (hasPerformedIntermediateCommit ? 1 : 0) == _state->numCommits());
+    TRI_ASSERT(_numCommitsAtStart + (hasPerformedIntermediateCommit ? 1 : 0) == _state.numCommits());
 #endif
 
     if (res.ok()) {
@@ -103,8 +100,7 @@ Result RocksDBSavePoint::finish(DataSourceId cid, RevisionId rid) {
         // leave the savepoint alone, because it belonged to another
         // transaction, and the current transaction will not have any
         // savepoint
-        auto mthds = RocksDBTransactionState::toMethods(_trx);
-        mthds->PopSavePoint();
+        _state.rocksdbMethods(_collectionId)->PopSavePoint();
       }
     
       // this will prevent the rollback call in the destructor
@@ -123,10 +119,9 @@ Result RocksDBSavePoint::finish(DataSourceId cid, RevisionId rid) {
 
 void RocksDBSavePoint::rollback() {
   TRI_ASSERT(!_handled);
-  auto mthds = RocksDBTransactionState::toMethods(_trx);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(_numCommitsAtStart == _state->numCommits());
+  TRI_ASSERT(_numCommitsAtStart == _state.numCommits());
 #endif
 
   rocksdb::Status s;
@@ -134,18 +129,18 @@ void RocksDBSavePoint::rollback() {
     // we have written at least one Put or Delete operation after
     // we created the savepoint. because that has modified the
     // WBWI, we need to do a full rebuild
-    s = mthds->RollbackToSavePoint();
+    s = _rocksMethods.RollbackToSavePoint();
   } else {
     // we have written only LogData values since we created the
     // savepoint. we can get away by rolling back the WBWI's
     // underlying WriteBatch only. this is a lot faster (simple
     // std::string::resize instead of a full rebuild of the WBWI
     // from the WriteBatch)
-    s = mthds->RollbackToWriteBatchSavePoint();
+    s = _rocksMethods.RollbackToWriteBatchSavePoint();
   }  
   TRI_ASSERT(s.ok());
 
-  _state->rollbackOperation(_operationType);
+  _rocksMethods.rollbackOperation(_operationType);
 
   _handled = true;  // in order to not roll back again by accident
 }

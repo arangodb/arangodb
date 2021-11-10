@@ -35,8 +35,7 @@ function arangoSecureInstallationSuite () {
 
   let oldPasswd;
 
-  // detect the path of arango-secure-installation. quite hacky, but works
-  const arangoSecureInstallation = fs.join(global.ARANGOSH_PATH, 'arango-secure-installation' + pu.executableExt);
+  const arangoSecureInstallation = pu.ARANGO_SECURE_INSTALLATION_BIN;
 
   assertTrue(fs.isFile(arangoSecureInstallation), "arango-secure-installation not found!");
 

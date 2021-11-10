@@ -712,9 +712,7 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQuer
   // we can be quite generous with the buffer size since the implementation is not recursive.
   constexpr std::size_t NumBufferedEntries = 1000;
   constexpr std::size_t BufferSize = sizeof(Entry) * NumBufferedEntries;
-  using Container = containers::SmallVector<Entry, BufferSize>;
-  Container::allocator_type::arena_type arena;
-  Container nodes{arena};
+  containers::SmallVectorWithArena<Entry, BufferSize> nodes;
   // Our stackbased arena can hold NumBufferedEntries, so we reserve everythhing at once.
   nodes.reserve(NumBufferedEntries);
   nodes.emplace_back(const_cast<ExecutionNode*>(this), State::Pending);
@@ -1913,24 +1911,21 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   VarSet inVars;
   _expression->variables(inVars);
 
-  std::vector<Variable const*> expInVars;
-  expInVars.reserve(inVars.size());
-  std::vector<RegisterId> expInRegs;
-  expInRegs.reserve(inVars.size());
+  std::vector<std::pair<VariableId, RegisterId>> expInVarsToRegs;
+  expInVarsToRegs.reserve(inVars.size());
 
   auto inputRegisters = RegIdSet{};
-  inputRegisters.reserve(inVars.size());
 
   for (auto& var : inVars) {
-    expInVars.emplace_back(var);
+    TRI_ASSERT(var != nullptr);
     auto regId = variableToRegisterId(var);
-    expInRegs.emplace_back(regId);
+    expInVarsToRegs.emplace_back(var->id, regId);
     inputRegisters.emplace(regId);
   }
 
   bool const isReference = (expression()->node()->type == NODE_TYPE_REFERENCE);
   if (isReference) {
-    TRI_ASSERT(expInRegs.size() == 1);
+    TRI_ASSERT(expInVarsToRegs.size() == 1);
   }
   bool const willUseV8 = expression()->willUseV8();
 
@@ -1949,8 +1944,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   auto executorInfos = CalculationExecutorInfos(
       outputRegister, engine.getQuery() /* used for v8 contexts and in expression */,
-      *expression(), std::move(expInVars) /* required by expression.execute */,
-      std::move(expInRegs)); /* required by expression.execute */
+      *expression(), std::move(expInVarsToRegs)); /* required by expression.execute */
 
   if (isReference) {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(
@@ -2112,11 +2106,10 @@ bool SubqueryNode::mayAccessCollections() {
       ExecutionNode::SHORTEST_PATH,
       ExecutionNode::K_SHORTEST_PATHS};
 
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  ::arangodb::containers::SmallVectorWithArena<ExecutionNode*> nodes;
 
   NodeFinder<std::initializer_list<ExecutionNode::NodeType>, WalkerUniqueness::Unique> finder(
-      types, nodes, true);
+      types, nodes.vector(), true);
   _subquery->walk(finder);
 
   if (!nodes.empty()) {

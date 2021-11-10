@@ -574,8 +574,8 @@ constexpr iresearch_absl::weak_ordering compare_result_as_ordering(
 
 template <
     typename Compare, typename K, typename LK,
-    iresearch_absl::enable_if_t<!std::is_same<bool, iresearch_absl::result_of_t<Compare(
-                                              const K &, const LK &)>>::value,
+    iresearch_absl::enable_if_t<!std::is_same<bool, iresearch_absl::result_of_t<Compare,
+                                              const K &, const LK &>>::value,
                       int> = 0>
 constexpr iresearch_absl::weak_ordering do_three_way_comparison(const Compare &compare,
                                                       const K &x, const LK &y) {

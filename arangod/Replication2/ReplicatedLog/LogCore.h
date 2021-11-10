@@ -33,7 +33,6 @@
 
 namespace arangodb::replication2::replicated_log {
 struct PersistedLog;
-struct PersistedLogIterator;
 
 /**
  * @brief The persistent core of a replicated log. There must only ever by one
@@ -60,7 +59,7 @@ struct alignas(64) LogCore {
   auto insert(PersistedLogIterator& iter, bool waitForSync) -> Result;
   [[nodiscard]] auto read(LogIndex first) const -> std::unique_ptr<PersistedLogIterator>;
   auto removeBack(LogIndex first) -> Result;
-  auto removeFront(LogIndex stop) -> Result;
+  auto removeFront(LogIndex stop) -> futures::Future<Result>;
 
   auto releasePersistedLog() && -> std::shared_ptr<PersistedLog>;
 
