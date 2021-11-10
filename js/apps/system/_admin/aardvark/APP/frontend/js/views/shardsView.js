@@ -430,9 +430,18 @@
         ordered[key] = collections[key];
       });
 
+      var serversFailed = {};
+      var healthData = window.App.lastHealthCheckResult;
+      if (healthData && healthData.Health) {
+        Object.keys(healthData.Health).forEach(function(id) {
+          serversFailed[healthData.Health[id].ShortName] = healthData.Health[id].Status === 'FAILED';
+        });
+      }
+        
       this.$el.html(this.template.render({
         collections: ordered,
-        visible: this.visibleCollections
+        visible: this.visibleCollections,
+        serversFailed: serversFailed,
       }));
 
       // if we have only one collection to show, automatically open the entry
