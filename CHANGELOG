@@ -1,6 +1,18 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Make background calculation of SHA hashes for RocksDB .sst files less
+  intrusive. The previous implementation frequently iterated over all files in
+  the database directory to check if it needed to ad-hoc calculate the SHA
+  hashes for .sst files it previously missed. The procedure it used was to
+  iterate over all files in the database directory and check if there were
+  matching pairs of .sst files and .sha files. This was expensive, because a
+  full directory iteration was performed and a lot of temporary strings were
+  created for filenames and used in comparisons. This was especially expensive
+  for larger deployments with lots of .sst files.
+  The expensive iteration of files in the directory is now happening less
+  frequently, and will not be as expensive as before if it runs.
+
 * Close a potential gap during shard synchronization when moving from the
   initial sync step to the WAL tailing step. In this small gap the leader could
   purge some of the WAL files that would be required by the following WAL
