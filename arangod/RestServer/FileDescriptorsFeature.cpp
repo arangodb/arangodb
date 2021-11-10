@@ -157,7 +157,7 @@ void FileDescriptorsFeature::start() {
       << FileDescriptors::stringify(current.soft) 
       << ". please raise to at least " << required 
       << " (e.g. via ulimit -n " << required << ") or" 
-      << " adjust the value of the startup option --servers.descriptors-minimum";
+      << " adjust the value of the startup option --server.descriptors-minimum";
     if (_descriptorsMinimum == 0) {
       LOG_TOPIC("a33ba", WARN, arangodb::Logger::SYSCALL) << s.str();
     } else {
