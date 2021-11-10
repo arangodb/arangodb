@@ -158,6 +158,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   // Updates the flags of the participants.
   void updateParticipantsConfig(std::shared_ptr<ParticipantsConfig const> config);
 
+  // Returns [acceptedConfig.generation, committedConfig.generation]
+  auto getParticipantConfigGenerations() const noexcept
+      -> std::pair<std::size_t, std::size_t>;
+
  protected:
   // Use the named constructor construct() to create a leader!
   LogLeader(LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,

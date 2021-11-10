@@ -29,27 +29,43 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::algorithms;
 using namespace arangodb::replication2::test;
 
-struct UpdateParticipantsFlagsTest : ReplicatedLogTest {};
-
-TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto followerLog1 = makeReplicatedLog(LogId{1});
-  auto followerLog2 = makeReplicatedLog(LogId{1});
-
-  auto follower1 = followerLog1->becomeFollower("follower1", LogTerm{4}, "leader");
-  auto follower2 = followerLog2->becomeFollower("follower2", LogTerm{4}, "leader");
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower1, follower2}, /* write concern = */ 2);
-
-  auto const runAllAsyncAppendEntries = [&] {
+struct UpdateParticipantsFlagsTest : ReplicatedLogTest {
+  void runAllAsyncAppendEntries() {
     while (follower1->hasPendingAppendEntries() || follower2->hasPendingAppendEntries()) {
       follower1->runAsyncAppendEntries();
       follower2->runAsyncAppendEntries();
     }
-  };
+  }
+
+  std::shared_ptr<TestReplicatedLog> leaderLog = makeReplicatedLog(LogId{1});
+  std::shared_ptr<TestReplicatedLog> followerLog1 = makeReplicatedLog(LogId{1});
+  std::shared_ptr<TestReplicatedLog> followerLog2 = makeReplicatedLog(LogId{1});
+
+  std::shared_ptr<DelayedFollowerLog> follower1 =
+      followerLog1->becomeFollower("follower1", LogTerm{4}, "leader");
+  std::shared_ptr<DelayedFollowerLog> follower2 =
+      followerLog2->becomeFollower("follower2", LogTerm{4}, "leader");
+  std::shared_ptr<replicated_log::LogLeader> leader =
+      leaderLog->becomeLeader("leader", LogTerm{4}, {follower1, follower2},
+                              /* write concern = */ 2);
+};
+
+TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
+  // This test creates three participants with wc = 3.
+  // Then it establishes leadership. After that, it updates the
+  // participant configuration such that follower2 is forced.
+  // After that we only run the leader and follower1 and expect
+  // the log entry not to be committed.
 
   leader->triggerAsyncReplication();
   runAllAsyncAppendEntries();
   ASSERT_TRUE(leader->isLeadershipEstablished());
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 0);
+    EXPECT_EQ(committed, 0);
+  }
 
   auto idx = leader->insert(LogPayload::createFromString("entry #1"));
   // let only commit Follower1
@@ -65,6 +81,12 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
     leader->updateParticipantsConfig(newConfig);
   }
 
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 1);
+    EXPECT_EQ(committed, 0);
+  }
+
   auto idx2 = leader->insert(LogPayload::createFromString("entry #2"));
   // let only commit Follower1
   follower1->runAllAsyncAppendEntries();
@@ -76,28 +98,29 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
   runAllAsyncAppendEntries();
   // the entry should now be committed
   EXPECT_GE(leader->getCommitIndex(), idx2);
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 1);
+    EXPECT_EQ(committed, 1);
+  }
 }
 
-
 TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto followerLog1 = makeReplicatedLog(LogId{1});
-  auto followerLog2 = makeReplicatedLog(LogId{1});
-
-  auto follower1 = followerLog1->becomeFollower("follower1", LogTerm{4}, "leader");
-  auto follower2 = followerLog2->becomeFollower("follower2", LogTerm{4}, "leader");
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower1, follower2}, /* write concern = */ 2);
-
-  auto const runAllAsyncAppendEntries = [&] {
-    while (follower1->hasPendingAppendEntries() || follower2->hasPendingAppendEntries()) {
-      follower1->runAsyncAppendEntries();
-      follower2->runAsyncAppendEntries();
-    }
-  };
-
+  // This test creates three participants with wc = 3.
+  // Then it establishes leadership. After that, it updates the
+  // participant configuration such that follower1 is excluded.
+  // After that we only run the leader and follower1 and expect
+  // the log entry not to be committed.
   leader->triggerAsyncReplication();
   runAllAsyncAppendEntries();
   ASSERT_TRUE(leader->isLeadershipEstablished());
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 0);
+    EXPECT_EQ(committed, 0);
+  }
 
   auto idx = leader->insert(LogPayload::createFromString("entry #1"));
   // let only commit Follower1
@@ -113,6 +136,12 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
     leader->updateParticipantsConfig(newConfig);
   }
 
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 1);
+    EXPECT_EQ(committed, 0);
+  }
+
   auto idx2 = leader->insert(LogPayload::createFromString("entry #2"));
   // let only commit Follower1
   follower1->runAllAsyncAppendEntries();
@@ -124,4 +153,68 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
   runAllAsyncAppendEntries();
   // the entry should now be committed
   EXPECT_GE(leader->getCommitIndex(), idx2);
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 1);
+    EXPECT_EQ(committed, 1);
+  }
+}
+
+TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
+  // Here first update the config such that one follower is forced.
+  // This config is never committed. We then change it back, such that
+  // the follower is no longer forced and we can commit again.
+  // The generation should be 2 at the end of the test.
+
+  leader->triggerAsyncReplication();
+  runAllAsyncAppendEntries();
+  ASSERT_TRUE(leader->isLeadershipEstablished());
+
+  // Force follower 2
+  {
+    auto newConfig = std::make_shared<ParticipantsConfig>();
+    newConfig->generation = 1;
+    // make follower2 excluded
+    newConfig->participants["follower2"] = replication2::ParticipantFlags{true, false};
+    leader->updateParticipantsConfig(newConfig);
+  }
+
+  auto idx = leader->insert(LogPayload::createFromString("entry #1"));
+  // let only commit Follower1
+  follower1->runAllAsyncAppendEntries();
+  // entry should not be committed because follower2 is forced
+  // although wc is 2
+  EXPECT_NE(leader->getCommitIndex(), idx);
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 1);
+    EXPECT_EQ(committed, 0);
+  }
+
+  // change configuration back to non-forced follower 2
+  {
+    auto newConfig = std::make_shared<ParticipantsConfig>();
+    newConfig->generation = 2;
+    leader->updateParticipantsConfig(newConfig);
+  }
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 2);
+    EXPECT_EQ(committed, 0);
+  }
+
+  auto idx2 = leader->insert(LogPayload::createFromString("entry #2"));
+  // let only commit Follower1
+  follower1->runAllAsyncAppendEntries();
+  // The entry should be committed now
+  EXPECT_EQ(leader->getCommitIndex(), idx2);
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 2);
+    EXPECT_EQ(committed, 2);
+  }
 }
