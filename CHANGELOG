@@ -12,6 +12,17 @@ devel
   that are kept when the graph is already created in a cluster. This feature is
   only available in the Enterprise Edition.
 
+* Close a potential gap during shard synchronization when moving from the
+  initial sync step to the WAL tailing step. In this small gap the leader 
+  could purge some of the WAL files that would be required by the following
+  WAL tailing step. This was possible because at the end of the initial sync
+  step, the snapshot on the leader is released, and there is a small window
+  of time before the follower will issue its first WAL tailing request.
+
+* Improve Shards overview in web UI: the number of currently syncing shards is
+  now displayed per collection. Additionally, shards on failed servers are now
+  displayed in a different color.
+
 * Increase default stack size on Windows from 1MB to 4MB. This should allow
   execution of larger queries without overflowing the stack.
 

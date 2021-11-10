@@ -2647,7 +2647,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   if (body.hasKey(StaticStrings::RebootId)) {
     if (body.get(StaticStrings::RebootId).isInteger()) {
-      if (body.hasKey("serverId") && body.get("serverId").isString()) {
+      if (body.get("serverId").isString()) {
         rebootId = RebootId(body.get(StaticStrings::RebootId).getNumber<uint64_t>());
         serverId = body.get("serverId").copyString();
       } else {
@@ -2739,6 +2739,13 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
       b.add(StaticStrings::FollowingTermId,
             VPackValue(col->followers()->newFollowingTermId(serverId)));
     }
+
+    // also return the _current_ last log sequence number. this may be higher
+    // than the tick of the transaction created above, but it still can be
+    // used by a follower as an upper bound until which to tail the WAL _at most_.
+    TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
+    StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+    b.add("lastLogTick", VPackValue(engine.currentTick()));
   }
 
   LOG_TOPIC("61a9d", DEBUG, Logger::REPLICATION)
