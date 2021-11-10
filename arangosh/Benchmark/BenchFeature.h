@@ -23,11 +23,11 @@
 
 #pragma once
 
+#include <velocypack/velocypack-aliases.h>
+
 #include <atomic>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace arangobench {
@@ -42,7 +42,8 @@ struct BenchRunResult {
   uint64_t _incomplete;
   double _requestTime;
 
-  void update(double time, uint64_t failures, uint64_t incomplete, double requestTime) {
+  void update(double time, uint64_t failures, uint64_t incomplete,
+              double requestTime) {
     _time = time;
     _failures = failures;
     _incomplete = incomplete;
@@ -74,13 +75,15 @@ class BenchFeature final : public application_features::ApplicationFeature {
   uint64_t replicationFactor() const { return _replicationFactor; }
   uint64_t numberOfShards() const { return _numberOfShards; }
   bool waitForSync() const { return _waitForSync; }
-  
+
   std::string const& customQuery() const { return _customQuery; }
   std::string const& customQueryFile() const { return _customQueryFile; }
 
  private:
   void status(std::string const& value);
-  bool report(ClientFeature&, std::vector<BenchRunResult>, arangobench::BenchmarkStats const& stats, std::string const& histogram, VPackBuilder& builder);
+  bool report(ClientFeature&, std::vector<BenchRunResult>,
+              arangobench::BenchmarkStats const& stats,
+              std::string const& histogram, VPackBuilder& builder);
   void printResult(BenchRunResult const& result, VPackBuilder& builder);
   bool writeJunitReport(BenchRunResult const& result);
 
@@ -105,7 +108,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
   std::string _jsonReportFile;
   uint64_t _replicationFactor;
   uint64_t _numberOfShards;
-  
+
   std::string _customQuery;
   std::string _customQueryFile;
 
@@ -114,7 +117,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
   uint64_t _histogramNumIntervals;
   double _histogramIntervalSize;
   std::vector<double> _percentiles;
-  
+
   static void updateStartCounter();
   static int getStartCounter();
 
@@ -122,4 +125,3 @@ class BenchFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

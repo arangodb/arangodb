@@ -23,6 +23,10 @@
 
 #include "SenderThread.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/Common.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
@@ -33,16 +37,13 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::import;
 
 SenderThread::SenderThread(application_features::ApplicationServer& server,
                            std::unique_ptr<httpclient::SimpleHttpClient> client,
-                           ImportStatistics* stats, std::function<void()> const& wakeup)
+                           ImportStatistics* stats,
+                           std::function<void()> const& wakeup)
     : Thread(server, "Import Sender"),
       _client(std::move(client)),
       _wakeup(wakeup),
@@ -64,7 +65,8 @@ void SenderThread::beginShutdown() {
   guard.broadcast();
 }
 
-void SenderThread::sendData(std::string const& url, arangodb::basics::StringBuffer* data,
+void SenderThread::sendData(std::string const& url,
+                            arangodb::basics::StringBuffer* data,
                             size_t lowLine, size_t highLine) {
   TRI_ASSERT(_idle && !_hasError);
   _url = url;
@@ -126,10 +128,10 @@ void SenderThread::run() {
         TRI_ASSERT(!_idle && !_url.empty());
 
         {
-          QuickHistogramTimer timer(_stats->_histogram, (_highLineNumber - _lowLineNumber) +1);
-          std::unique_ptr<httpclient::SimpleHttpResult> result(
-              _client->request(rest::RequestType::POST, _url, _data.c_str(),
-                               _data.length()));
+          QuickHistogramTimer timer(_stats->_histogram,
+                                    (_highLineNumber - _lowLineNumber) + 1);
+          std::unique_ptr<httpclient::SimpleHttpResult> result(_client->request(
+              rest::RequestType::POST, _url, _data.c_str(), _data.length()));
 
           handleResult(result.get());
         }
@@ -180,7 +182,8 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
     if (details.isArray()) {
       for (VPackSlice detail : VPackArrayIterator(details)) {
         if (detail.isString()) {
-          LOG_TOPIC("e5a29", WARN, arangodb::Logger::FIXME) << "" << detail.copyString();
+          LOG_TOPIC("e5a29", WARN, arangodb::Logger::FIXME)
+              << "" << detail.copyString();
         }
       }
     }
@@ -190,27 +193,28 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
       MUTEX_LOCKER(guard, _stats->_mutex);
       // look up the "created" flag
       _stats->_numberCreated +=
-        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                    "created", 0);
+          arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+              body, "created", 0);
 
       // look up the "errors" flag
       _stats->_numberErrors +=
-        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                    "errors", 0);
+          arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+              body, "errors", 0);
 
       // look up the "updated" flag
       _stats->_numberUpdated +=
-        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                    "updated", 0);
+          arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+              body, "updated", 0);
 
       // look up the "ignored" flag
       _stats->_numberIgnored +=
-        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                    "ignored", 0);
+          arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+              body, "ignored", 0);
     }
 
     // get the "error" flag. This returns a pointer, not a copy
-    if (arangodb::basics::VelocyPackHelper::getBooleanValue(body, "error", false)) {
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(body, "error",
+                                                            false)) {
       // get the error message
       VPackSlice const errorMessage = body.get("errorMessage");
       if (errorMessage.isString()) {
@@ -220,16 +224,16 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
       // will trigger the waiting ImportHelper thread to cancel the import
       _hasError = true;
     }
-  } // if
+  }  // if
 
-  if (!_hasError && !result->getHttpReturnMessage().empty() && !result->isComplete()) {
+  if (!_hasError && !result->getHttpReturnMessage().empty() &&
+      !result->isComplete()) {
     _errorMessage = result->getHttpReturnMessage();
     if (0 != _lowLineNumber || 0 != _highLineNumber) {
-      LOG_TOPIC("8add8", WARN, arangodb::Logger::FIXME) << "Error left import lines "
-                                                        << _lowLineNumber << " through "
-                                                        << _highLineNumber
-                                                        << " in unknown state";
-    } // if
+      LOG_TOPIC("8add8", WARN, arangodb::Logger::FIXME)
+          << "Error left import lines " << _lowLineNumber << " through "
+          << _highLineNumber << " in unknown state";
+    }  // if
     _hasError = true;
-  } // if
+  }  // if
 }

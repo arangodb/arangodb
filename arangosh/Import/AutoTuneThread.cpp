@@ -21,14 +21,14 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "AutoTuneThread.h"
+
 #include <iostream>
 #include <thread>
 
-#include "AutoTuneThread.h"
+#include "Basics/ConditionLocker.h"
 #include "ImportFeature.h"
 #include "ImportHelper.h"
-
-#include "Basics/ConditionLocker.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -77,7 +77,7 @@ void AutoTuneThread::beginShutdown() {
 }
 
 void AutoTuneThread::run() {
-  constexpr uint64_t period = 2; // seconds
+  constexpr uint64_t period = 2;  // seconds
 
   while (!isStopping()) {
     {
@@ -112,7 +112,8 @@ void AutoTuneThread::run() {
       }
 
       LOG_TOPIC("e815e", DEBUG, arangodb::Logger::FIXME)
-          << "current: " << currentMax << ", period: " << periodActual << ", new: " << newMax;
+          << "current: " << currentMax << ", period: " << periodActual
+          << ", new: " << newMax;
 
       _importHelper.setMaxUploadSize(newMax);
     }

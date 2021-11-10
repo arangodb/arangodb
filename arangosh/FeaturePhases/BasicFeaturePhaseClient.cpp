@@ -21,9 +21,9 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <functional>
-
 #include "BasicFeaturePhaseClient.h"
+
+#include <functional>
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Shell/ClientFeature.h"

@@ -23,50 +23,53 @@
 
 #pragma once
 
-#include "Benchmark.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
+
 #include <string>
+
+#include "Benchmark.h"
 
 namespace arangodb::arangobench {
 
-  struct CollectionCreationTest : public Benchmark<CollectionCreationTest> {
-    static std::string name() { return "collection"; }
+struct CollectionCreationTest : public Benchmark<CollectionCreationTest> {
+  static std::string name() { return "collection"; }
 
-    CollectionCreationTest(BenchFeature& arangobench)
+  CollectionCreationTest(BenchFeature& arangobench)
       : Benchmark<CollectionCreationTest>(arangobench) {}
 
-    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-      //unfortunately, we don't know how many collections we would need to clean up here
-      //because the user can choose a timed execution, so there would be no way to find out
-      //how many collections would be created in a timed execution.
-      return true;
-    }
+  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+    // unfortunately, we don't know how many collections we would need to clean
+    // up here because the user can choose a timed execution, so there would be
+    // no way to find out how many collections would be created in a timed
+    // execution.
+    return true;
+  }
 
-    void tearDown() override {}
+  void tearDown() override {}
 
-    void buildRequest(size_t threadNumber, size_t threadCounter,
-                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
-      requestData.url = "/_api/collection";
-      requestData.type = rest::RequestType::POST;
-      using namespace arangodb::velocypack;
-      requestData.payload.openObject();
-      requestData.payload.add("name", Value(_arangobench.collection() + std::to_string(++_counter)));
-      requestData.payload.close();
-    }
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
+    requestData.url = "/_api/collection";
+    requestData.type = rest::RequestType::POST;
+    using namespace arangodb::velocypack;
+    requestData.payload.openObject();
+    requestData.payload.add(
+        "name", Value(_arangobench.collection() + std::to_string(++_counter)));
+    requestData.payload.close();
+  }
 
-    char const* getDescription() const noexcept override {
-      return "creates as many separate (empty) collections as provided in the value of --requests.";
-    }
+  char const* getDescription() const noexcept override {
+    return "creates as many separate (empty) collections as provided in the "
+           "value of --requests.";
+  }
 
-    bool isDeprecated() const noexcept override {
-      return false;
-    }
+  bool isDeprecated() const noexcept override { return false; }
 
-    static std::atomic<uint64_t> _counter;
+  static std::atomic<uint64_t> _counter;
+};
 
-  };
-
-  std::atomic<uint64_t> CollectionCreationTest::_counter(0);
+std::atomic<uint64_t> CollectionCreationTest::_counter(0);
 
 }  // namespace arangodb::arangobench

@@ -24,12 +24,12 @@
 
 #pragma once
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <memory>
 #include <queue>
 #include <vector>
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
@@ -42,13 +42,13 @@
 #include "Utils/ClientManager.h"
 
 namespace arangodb {
-template <typename JobData>
+template<typename JobData>
 class Worker;
 
 /**
  * @brief Provides a simple, parallel task queue for `arangosh`-based clients.
  */
-template <typename JobData>
+template<typename JobData>
 class ClientTaskQueue {
  public:
   /**
@@ -63,8 +63,8 @@ class ClientTaskQueue {
    * @param  jobData Data describing the job
    * @return         The result status of the job
    */
-  using JobProcessor =
-      std::function<void(httpclient::SimpleHttpClient& client, JobData& jobData)>;
+  using JobProcessor = std::function<void(httpclient::SimpleHttpClient& client,
+                                          JobData& jobData)>;
 
   /**
    * @brief Handles the result of an individual jobs
@@ -79,8 +79,8 @@ class ClientTaskQueue {
    * @param jobData Data describing the job which was just processed
    * @param result  The result status of the job
    */
-  using JobResultHandler =
-      std::function<void(std::unique_ptr<JobData>&& jobData, Result const& result)>;
+  using JobResultHandler = std::function<void(
+      std::unique_ptr<JobData>&& jobData, Result const& result)>;
 
  public:
   ClientTaskQueue(application_features::ApplicationServer& server,
@@ -98,7 +98,8 @@ class ClientTaskQueue {
    * @param  numWorkers The number of workers to spawn
    * @return            `true` if successful
    */
-  bool spawnWorkers(ClientManager& manager, uint32_t const& numWorkers) noexcept;
+  bool spawnWorkers(ClientManager& manager,
+                    uint32_t const& numWorkers) noexcept;
 
   /**
    * @brief Determines if the job queue is currently empty
@@ -173,7 +174,8 @@ class ClientTaskQueue {
     Worker& operator=(Worker const&) = delete;
 
    public:
-    explicit Worker(application_features::ApplicationServer&, ClientTaskQueue<JobData>&,
+    explicit Worker(application_features::ApplicationServer&,
+                    ClientTaskQueue<JobData>&,
                     std::unique_ptr<httpclient::SimpleHttpClient>&&);
     virtual ~Worker();
 
@@ -208,12 +210,12 @@ class ClientTaskQueue {
 // IMPLEMENTATION BELOW
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename JobData>
-inline ClientTaskQueue<JobData>::ClientTaskQueue(application_features::ApplicationServer& server,
-                                                 JobProcessor processJob)
+template<typename JobData>
+inline ClientTaskQueue<JobData>::ClientTaskQueue(
+    application_features::ApplicationServer& server, JobProcessor processJob)
     : _server(server), _processJob(processJob) {}
 
-template <typename JobData>
+template<typename JobData>
 ClientTaskQueue<JobData>::~ClientTaskQueue() {
   for (auto& worker : _workers) {
     worker->beginShutdown();
@@ -221,9 +223,9 @@ ClientTaskQueue<JobData>::~ClientTaskQueue() {
   _jobsCondition.broadcast();
 }
 
-template <typename JobData>
-inline bool ClientTaskQueue<JobData>::spawnWorkers(ClientManager& manager,
-                                                   uint32_t const& numWorkers) noexcept {
+template<typename JobData>
+inline bool ClientTaskQueue<JobData>::spawnWorkers(
+    ClientManager& manager, uint32_t const& numWorkers) noexcept {
   uint32_t spawned = 0;
   try {
     MUTEX_LOCKER(lock, _workersLock);
@@ -238,7 +240,7 @@ inline bool ClientTaskQueue<JobData>::spawnWorkers(ClientManager& manager,
   return (numWorkers == spawned);
 }
 
-template <typename JobData>
+template<typename JobData>
 inline bool ClientTaskQueue<JobData>::isQueueEmpty() const noexcept {
   bool isEmpty = false;
   try {
@@ -249,9 +251,9 @@ inline bool ClientTaskQueue<JobData>::isQueueEmpty() const noexcept {
   return isEmpty;
 }
 
-template <typename JobData>
-inline std::tuple<size_t, size_t, size_t> ClientTaskQueue<JobData>::statistics() const
-    noexcept {
+template<typename JobData>
+inline std::tuple<size_t, size_t, size_t> ClientTaskQueue<JobData>::statistics()
+    const noexcept {
   size_t busy = 0;
   size_t workers = 0;
   MUTEX_LOCKER(lock, _jobsLock);
@@ -264,7 +266,7 @@ inline std::tuple<size_t, size_t, size_t> ClientTaskQueue<JobData>::statistics()
   return std::make_tuple(_jobs.size(), workers, busy);
 }
 
-template <typename JobData>
+template<typename JobData>
 inline bool ClientTaskQueue<JobData>::allWorkersBusy() const noexcept {
   try {
     MUTEX_LOCKER(lock, _workersLock);
@@ -278,7 +280,7 @@ inline bool ClientTaskQueue<JobData>::allWorkersBusy() const noexcept {
   return true;
 }
 
-template <typename JobData>
+template<typename JobData>
 inline bool ClientTaskQueue<JobData>::allWorkersIdle() const noexcept {
   try {
     MUTEX_LOCKER(lock, _workersLock);
@@ -292,8 +294,9 @@ inline bool ClientTaskQueue<JobData>::allWorkersIdle() const noexcept {
   return true;
 }
 
-template <typename JobData>
-inline bool ClientTaskQueue<JobData>::queueJob(std::unique_ptr<JobData>&& job) noexcept {
+template<typename JobData>
+inline bool ClientTaskQueue<JobData>::queueJob(
+    std::unique_ptr<JobData>&& job) noexcept {
   try {
     MUTEX_LOCKER(lock, _jobsLock);
     _jobs.emplace(std::move(job));
@@ -304,7 +307,7 @@ inline bool ClientTaskQueue<JobData>::queueJob(std::unique_ptr<JobData>&& job) n
   }
 }
 
-template <typename JobData>
+template<typename JobData>
 inline void ClientTaskQueue<JobData>::clearQueue() noexcept {
   try {
     MUTEX_LOCKER(lock, _jobsLock);
@@ -315,7 +318,7 @@ inline void ClientTaskQueue<JobData>::clearQueue() noexcept {
   }
 }
 
-template <typename JobData>
+template<typename JobData>
 inline void ClientTaskQueue<JobData>::waitForIdle() noexcept {
   try {
     while (true) {
@@ -330,7 +333,7 @@ inline void ClientTaskQueue<JobData>::waitForIdle() noexcept {
   }
 }
 
-template <typename JobData>
+template<typename JobData>
 inline std::unique_ptr<JobData> ClientTaskQueue<JobData>::fetchJob() noexcept {
   std::unique_ptr<JobData> job(nullptr);
 
@@ -348,7 +351,7 @@ inline std::unique_ptr<JobData> ClientTaskQueue<JobData>::fetchJob() noexcept {
   return job;
 }
 
-template <typename JobData>
+template<typename JobData>
 inline void ClientTaskQueue<JobData>::waitForWork() noexcept {
   try {
     if (!isQueueEmpty()) {
@@ -361,7 +364,7 @@ inline void ClientTaskQueue<JobData>::waitForWork() noexcept {
   }
 }
 
-template <typename JobData>
+template<typename JobData>
 inline void ClientTaskQueue<JobData>::notifyIdle() noexcept {
   try {
     _workersCondition.signal();
@@ -369,23 +372,27 @@ inline void ClientTaskQueue<JobData>::notifyIdle() noexcept {
   }
 }
 
-template <typename JobData>
+template<typename JobData>
 inline ClientTaskQueue<JobData>::Worker::Worker(
-    application_features::ApplicationServer& server, ClientTaskQueue<JobData>& queue,
+    application_features::ApplicationServer& server,
+    ClientTaskQueue<JobData>& queue,
     std::unique_ptr<httpclient::SimpleHttpClient>&& client)
-    : Thread(server, "Worker"), _queue(queue), _client(std::move(client)), _idle(true) {}
+    : Thread(server, "Worker"),
+      _queue(queue),
+      _client(std::move(client)),
+      _idle(true) {}
 
-template <typename JobData>
+template<typename JobData>
 inline ClientTaskQueue<JobData>::Worker::~Worker() {
   Thread::shutdown();
 }
 
-template <typename JobData>
+template<typename JobData>
 inline bool ClientTaskQueue<JobData>::Worker::isIdle() const noexcept {
   return _idle.load();
 }
 
-template <typename JobData>
+template<typename JobData>
 inline void ClientTaskQueue<JobData>::Worker::run() {
   while (!isStopping()) {
     std::unique_ptr<JobData> job = _queue.fetchJob();
@@ -407,4 +414,3 @@ inline void ClientTaskQueue<JobData>::Worker::run() {
 }
 
 }  // namespace arangodb
-
