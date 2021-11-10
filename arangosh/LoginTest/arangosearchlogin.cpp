@@ -44,6 +44,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Ldap/LdapAuthSearchProvider.h"
 
 #endif
 
@@ -73,7 +74,8 @@ int main(int argc, char* argv[]) {
     server.addFeature<ShutdownFeature>(
         std::vector<std::type_index>{std::type_index(typeid(LoginFeature))});
     server.addFeature<LoginFeature>(&ret);
-    server.addFeature<LdapFeature>();
+    auto provider = LdapAuthSearchProvider();
+    server.addFeature<LdapFeature>(&provider);
     server.addFeature<VersionFeature>();
 
     try {
