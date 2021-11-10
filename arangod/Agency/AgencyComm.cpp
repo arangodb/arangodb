@@ -1048,15 +1048,15 @@ bool AgencyComm::ensureStructureInitialized() {
       break;
     }
 
+    // we can get here if a competing process tries to initialize
+    // the agency structures as well
     LOG_TOPIC("63f7b", INFO, Logger::AGENCYCOMM)
         << "Initializing agency failed. We'll try again soon";
-    // We should really have exclusive access, here, this is strange!
-    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     LOG_TOPIC("9d265", TRACE, Logger::AGENCYCOMM)
         << "Waiting for agency to get initialized";
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
   }
 
   return true;
