@@ -102,14 +102,15 @@ void CacheManagerFeature::start() {
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
     try {
-      return scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
+      scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
+      return true;
     } catch (...) {
       return false;
     }
   };
 
   SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
-  _manager = std::make_unique<Manager>(sharedPRNG, postFn, _cacheSize);
+  _manager = std::make_unique<Manager>(sharedPRNG, std::move(postFn), _cacheSize);
 
   _rebalancer = std::make_unique<CacheRebalancerThread>(server(), _manager.get(), _rebalancingInterval);
   _rebalancer->start();

@@ -23,6 +23,7 @@
 
 #include "tests_shared.hpp"
 #include "index/index_tests.hpp"
+#include "index/norm.hpp"
 #include "search/all_filter.hpp"
 #include "search/column_existence_filter.hpp"
 #include "search/boolean_filter.hpp"
@@ -34,7 +35,6 @@
 #include "search/score.hpp"
 #include "search/term_filter.hpp"
 #include "search/tfidf.hpp"
-#include "utils/utf8_path.hpp"
 #include "utils/type_limits.hpp"
 
 namespace {
@@ -43,14 +43,10 @@ using namespace tests;
 
 struct bstring_data_output: public data_output {
   irs::bstring out_;
-  virtual void close() override {}
   virtual void write_byte(irs::byte_type b) override { write_bytes(&b, 1); }
   virtual void write_bytes(const irs::byte_type* b, size_t size) override {
     out_.append(b, size);
   }
-};
-
-class tfidf_test: public index_test_base { 
 };
 
 // -----------------------------------------------------------------------------
@@ -80,11 +76,134 @@ class tfidf_test: public index_test_base {
 // AverageDocLength (TotalFreq/DocsCount) = 6.5 //
 //////////////////////////////////////////////////
 
-TEST_P(tfidf_test, consts) {
+class tfidf_test_case : public index_test_base {
+ protected:
+  void test_query_norms(irs::type_info::type_id norm,
+                        irs::feature_handler_f handler);
+};
+
+void tfidf_test_case::test_query_norms(irs::type_info::type_id norm, irs::feature_handler_f handler) {
+  {
+    const std::vector<irs::type_info::type_id> extra_features = { norm };
+
+    tests::json_doc_generator gen(
+      resource("simple_sequential_order.json"),
+      [&extra_features](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) { // field
+          doc.insert(
+            std::make_shared<string_field>(
+              name, data.str, irs::IndexFeatures::FREQ,
+              extra_features),
+            true, false);
+        } else if (data.is_number()) { // seq
+          const auto value = std::to_string(data.as_number<uint64_t>());
+          doc.insert(
+            std::make_shared<string_field>(
+              name, value, irs::IndexFeatures::FREQ,
+              extra_features),
+            false, true);
+        }
+    });
+
+    irs::index_writer::init_options opts;
+    opts.features.emplace(norm, handler);
+
+    add_segment(gen, irs::OM_CREATE, opts);
+  }
+
+  irs::order order;
+  order.add(true, std::make_unique<irs::tfidf_sort>(true));
+
+  auto prepared_order = order.prepare();
+  auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
+    return prepared_order.less(lhs.c_str(), rhs.c_str());
+  };
+
+  auto reader = iresearch::directory_reader::open(dir(), codec());
+  auto& segment = *(reader.begin());
+  const auto* column = segment.column_reader("seq");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
+
+  // by_range multiple
+  {
+    irs::by_range filter;
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    constexpr uint64_t expected[]{ 7, 0, 3, 1, 5, };
+
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_TRUE(bool(score));
+
+    while(docs->next()) {
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      in.reset(actual_value);
+
+      auto str_seq = irs::read_string<std::string>(in);
+      auto seq = strtoull(str_seq.c_str(), nullptr, 10);
+      sorted.emplace(score_value, seq);
+    }
+
+    ASSERT_EQ(IRESEARCH_COUNTOF(expected), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
+  }
+
+  // by_range multiple (3 values)
+  {
+    irs::by_range filter;
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    constexpr uint64_t expected[]{ 0, 7, 5, 2, 3, 1, };
+
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto* score = irs::get<irs::score>(*docs);
+
+    while(docs->next()) {
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      in.reset(actual_value);
+
+      auto str_seq = irs::read_string<std::string>(in);
+      auto seq = strtoull(str_seq.c_str(), nullptr, 10);
+      sorted.emplace(score_value, seq);
+    }
+
+    ASSERT_EQ(IRESEARCH_COUNTOF(expected), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
+  }
+}
+
+TEST_P(tfidf_test_case, consts) {
   static_assert("tfidf" == irs::type<irs::tfidf_sort>::name());
 }
 
-TEST_P(tfidf_test, test_load) {
+TEST_P(tfidf_test_case, test_load) {
   irs::order order;
   auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
@@ -94,7 +213,7 @@ TEST_P(tfidf_test, test_load) {
 
 #ifndef IRESEARCH_DLL
 
-TEST_P(tfidf_test, make_from_bool) {
+TEST_P(tfidf_test_case, make_from_bool) {
   // `withNorms` argument
   {
     auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "true");
@@ -110,7 +229,7 @@ TEST_P(tfidf_test, make_from_bool) {
   ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "1"));
 }
 
-TEST_P(tfidf_test, make_from_array) {
+TEST_P(tfidf_test_case, make_from_array) {
   // default args
   {
     auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
@@ -151,14 +270,14 @@ TEST_P(tfidf_test, make_from_array) {
 
 #endif // IRESEARCH_DLL
 
-TEST_P(tfidf_test, test_normalize_features) {
+TEST_P(tfidf_test_case, test_normalize_features) {
   // default norms
   {
     auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->features());
   }
 
   // with norms (as args)
@@ -167,7 +286,7 @@ TEST_P(tfidf_test, test_normalize_features) {
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()}), prepared->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->features());
   }
 
   // with norms
@@ -176,7 +295,7 @@ TEST_P(tfidf_test, test_normalize_features) {
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()}), prepared->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->features());
   }
 
   // without norms (as args)
@@ -185,7 +304,7 @@ TEST_P(tfidf_test, test_normalize_features) {
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->features());
   }
 
   // without norms
@@ -194,41 +313,32 @@ TEST_P(tfidf_test, test_normalize_features) {
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->features());
   }
 }
 
-TEST_P(tfidf_test, test_phrase) {
+TEST_P(tfidf_test_case, test_phrase) {
   auto analyzed_json_field_factory = [](
       tests::document& doc,
       const std::string& name,
       const tests::json_doc_generator::json_value& data) {
-    typedef templates::text_field<std::string> text_field;
+    typedef text_field<std::string> text_field;
 
-    class string_field : public templates::string_field {
+    class string_field : public tests::string_field {
      public:
       string_field(const std::string& name, const irs::string_ref& value)
-        : templates::string_field(name, value) {
-      }
-
-      const irs::flags& features() const {
-        static irs::flags features{ irs::type<irs::frequency>::get() };
-        return features;
+        : tests::string_field(name, value) {
+        this->index_features_ = irs::IndexFeatures::FREQ;
       }
     }; // string_field
 
     if (data.is_string()) {
       // analyzed field
       doc.indexed.push_back(std::make_shared<text_field>(
-        std::string(name.c_str()) + "_anl",
-        data.str
-      ));
+        std::string(name.c_str()) + "_anl", data.str));
 
       // not analyzed field
-      doc.insert(std::make_shared<string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<string_field>(name, data.str));
     }
   };
 
@@ -350,16 +460,16 @@ TEST_P(tfidf_test, test_phrase) {
   }
 }
 
-TEST_P(tfidf_test, test_query) {
+TEST_P(tfidf_test_case, test_query) {
   {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
-          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
         } else if (data.is_number()) { // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
-          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+          doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
     });
     add_segment(gen);
@@ -420,10 +530,10 @@ TEST_P(tfidf_test, test_query) {
       resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
-          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
         } else if (data.is_number()) { // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
-          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+          doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
     });
     auto writer = open_writer(irs::OM_CREATE);
@@ -507,10 +617,10 @@ TEST_P(tfidf_test, test_query) {
       resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
-          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
         } else if (data.is_number()) { // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
-          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+          doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
     });
     auto writer = open_writer(irs::OM_CREATE);
@@ -604,10 +714,10 @@ TEST_P(tfidf_test, test_query) {
       resource("simple_sequential.json"),
       [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
-          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
         } else if (data.is_number()) { // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
-          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+          doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
     });
     auto writer = open_writer(irs::OM_CREATE);
@@ -1040,9 +1150,13 @@ TEST_P(tfidf_test, test_query) {
   }
 }
 
+TEST_P(tfidf_test_case, test_query_norms) {
+  test_query_norms(irs::type<irs::norm>::id(), &irs::norm::compute);
+}
+
 #ifndef IRESEARCH_DLL
 
-TEST_P(tfidf_test, test_collector_serialization) {
+TEST_P(tfidf_test_case, test_collector_serialization) {
   // initialize test data
   {
     tests::json_doc_generator gen(
@@ -1067,7 +1181,7 @@ TEST_P(tfidf_test, test_collector_serialization) {
   ASSERT_EQ(1, reader.size());
   auto* field = reader[0].field("name");
   ASSERT_NE(nullptr, field);
-  auto term = field->iterator();
+  auto term = field->iterator(irs::SeekMode::NORMAL);
   ASSERT_NE(nullptr, term);
   ASSERT_TRUE(term->next());
   term->read(); // fill term_meta
@@ -1179,7 +1293,7 @@ TEST_P(tfidf_test, test_collector_serialization) {
   }
 }
 
-TEST_P(tfidf_test, test_make) {
+TEST_P(tfidf_test_case, test_make) {
   // default values
   {
     auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
@@ -1226,16 +1340,16 @@ TEST_P(tfidf_test, test_make) {
   }
 }
 
-TEST_P(tfidf_test, test_order) {
+TEST_P(tfidf_test_case, test_order) {
   {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
-          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
         } else if (data.is_number()) { // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
-          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+          doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
     });
     add_segment(gen);
@@ -1294,20 +1408,36 @@ TEST_P(tfidf_test, test_order) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  tfidf_test,
-  tfidf_test,
-  ::testing::Combine(
-    ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0")
-  ),
-  tests::to_string
-);
-
 #endif // IRESEARCH_DLL
 
-} // namespace {
+INSTANTIATE_TEST_SUITE_P(
+  tfidf_test,
+  tfidf_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values("1_0")),
+  tfidf_test_case::to_string
+);
+
+class tfidf_test_case_14 : public tfidf_test_case { };
+
+TEST_P(tfidf_test_case_14, test_query_norms) {
+  test_query_norms(irs::type<irs::norm2>::id(), &irs::norm2::compute);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  tfidf_test_14,
+  tfidf_test_case_14,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values("1_4")),
+  tfidf_test_case_14::to_string
+);
+
+}

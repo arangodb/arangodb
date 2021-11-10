@@ -18,8 +18,6 @@ if (MSVC)
   )
 else ()
   set(LIB_ARANGO_POSIX
-    ApplicationFeatures/DaemonFeature.cpp
-    ApplicationFeatures/SupervisorFeature.cpp
     Basics/locks-posix.cpp
     Basics/memory-map-posix.cpp
     Basics/terminal-utils-posix.cpp
@@ -78,12 +76,10 @@ add_library(arango STATIC
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
   ApplicationFeatures/CpuUsageFeature.cpp
-  ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/GreetingsFeaturePhase.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/TimeZoneFeature.cpp
-  ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
   ApplicationFeatures/SharedPRNGFeature.cpp
@@ -102,6 +98,7 @@ add_library(arango STATIC
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
   Basics/ErrorCode.cpp
+  Basics/FeatureFlags.cpp
   Basics/ResultError.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
@@ -121,6 +118,7 @@ add_library(arango STATIC
   Basics/Result.cpp
   Basics/FileResult.cpp
   Basics/Identifier.cpp
+  Basics/IndexIter.h
   Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
@@ -129,6 +127,7 @@ add_library(arango STATIC
   Basics/StringHeap.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
+  Basics/UnshackledMutex.cpp
   Basics/Utf8Helper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
@@ -152,16 +151,18 @@ add_library(arango STATIC
   Basics/tri-strings.cpp
   Basics/tri-zip.cpp
   Containers/MerkleTree.cpp
+  Containers/MerkleTreeHelpers.cpp
+  Containers/ImmerMemoryPolicy.h
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
   Futures/Future.cpp
+  Logger/Escaper.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
-  Logger/LogBufferFeature.cpp
   Logger/LogLevel.cpp
   Logger/LogThread.cpp
   Logger/LogTopic.cpp
@@ -195,6 +196,7 @@ add_library(arango STATIC
   SimpleHttpClient/ClientConnection.cpp
   SimpleHttpClient/ConnectionCache.cpp
   SimpleHttpClient/GeneralClientConnection.cpp
+  SimpleHttpClient/HttpResponseChecker.cpp
   SimpleHttpClient/SimpleHttpClient.cpp
   SimpleHttpClient/SimpleHttpResult.cpp
   SimpleHttpClient/SslClientConnection.cpp
@@ -203,11 +205,32 @@ add_library(arango STATIC
   Ssl/ssl-helper.cpp
   Utilities/ScriptLoader.cpp
   Utilities/IsArangoExecutable.cpp
+  Utilities/NameValidator.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
   ${ADDITIONAL_LIB_ARANGO_SOURCES}
 )
+
+# The following is necessary to compile MerkleTree.cpp without RTTI.
+# RTTI needs to be disabled because the file contains a class that
+# is derived from some Snappy base class, which itself is compiled
+# with -fno-rtti. Mixing RTTI code and non-RTTI code can cause
+# problems during linking. Here is what "man g++" has to say:
+#     Mixing code compiled with -frtti with that compiled with
+#     -fno-rtti may not work. For example, programs may fail to
+#     link if a class compiled with -fno-rtti is used as a
+#     base for a class compiled with -frtti.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  set_source_files_properties(
+    Containers/MerkleTreeHelpers.cpp
+    PROPERTIES COMPILE_FLAGS "/GR-")
+else()
+  set_source_files_properties(
+    Containers/MerkleTreeHelpers.cpp
+    PROPERTIES COMPILE_FLAGS "-fno-rtti")
+endif()
+
 
 target_link_libraries(arango
   s2
@@ -225,6 +248,7 @@ set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen
 target_include_directories(arango PRIVATE ${FROZEN_INCLUDE_DIR})
 
 add_dependencies(arango snappy)
+target_link_libraries(arango snappy)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 include_directories(${SNAPPY_INCLUDE_DIR})

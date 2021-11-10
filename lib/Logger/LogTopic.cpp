@@ -109,6 +109,9 @@ class Topics {
 
 }  // namespace
 
+// pseudo-topic to address all log topics
+std::string const LogTopic::ALL("all");
+
 LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
 LogTopic Logger::AGENCYSTORE("agencystore", LogLevel::WARN);
@@ -132,13 +135,15 @@ LogTopic Logger::FLUSH("flush", LogLevel::INFO);
 LogTopic Logger::GRAPHS("graphs", LogLevel::INFO);
 LogTopic Logger::HEARTBEAT("heartbeat", LogLevel::INFO);
 LogTopic Logger::HTTPCLIENT("httpclient", LogLevel::WARN);
-LogTopic Logger::MAINTENANCE("maintenance", LogLevel::WARN);
+LogTopic Logger::LICENSE("license", LogLevel::INFO);
+LogTopic Logger::MAINTENANCE("maintenance", LogLevel::INFO);
 LogTopic Logger::MEMORY("memory", LogLevel::INFO);
 LogTopic Logger::MMAP("mmap");
 LogTopic Logger::PERFORMANCE("performance", LogLevel::WARN);
 LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
+LogTopic Logger::REPLICATION2("replication2", LogLevel::INFO);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
 LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);
@@ -214,6 +219,9 @@ LogTopic::LogTopic(std::string const& name, LogLevel level)
     : _id(NEXT_TOPIC_ID.fetch_add(1, std::memory_order_seq_cst)),
       _name(name),
       _level(level) {
+  // "all" is only a pseudo-topic.
+  TRI_ASSERT(name != "all");
+
   if (name != "fixme" && name != "general") {
     // "fixme" is a remainder from ArangoDB < 3.2, when it was
     // allowed to log messages without a topic. From 3.2 onwards,

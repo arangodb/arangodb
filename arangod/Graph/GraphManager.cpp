@@ -96,56 +96,17 @@ Result GraphManager::createCollection(std::string const& name, TRI_col_type_e co
 
   auto& vocbase = ctx()->vocbase();
 
-  VPackBuilder helper;
-  helper.openObject();
-
-  if (ServerState::instance()->isCoordinator()) {
-    Result res =
-        ShardingInfo::validateShardsAndReplicationFactor(options, vocbase.server(), true);
-    if (res.fail()) {
-      return res;
-    }
-
-    bool const forceOneShard =
-        vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-        vocbase.sharding() == "single";
-
-    if (forceOneShard) {
-      // force a single shard with shards distributed like "_graph"
-      helper.add(StaticStrings::NumberOfShards, VPackValue(1));
-      helper.add(StaticStrings::DistributeShardsLike,
-                 VPackValue(vocbase.shardingPrototypeName()));
-    }
-  }
-
-  helper.close();
-
-  VPackBuilder mergedBuilder =
-      VPackCollection::merge(options, helper.slice(), false, true);
-
   std::shared_ptr<LogicalCollection> coll;
   OperationOptions opOptions(ExecContext::current());
   auto res = arangodb::methods::Collections::create(  // create collection
       vocbase,                                        // collection vocbase
       opOptions,
-      name,                   // collection name
-      colType,                // collection type
-      mergedBuilder.slice(),  // collection properties
+      name,     // collection name
+      colType,  // collection type
+      options,  // collection properties
       waitForSync, true, false, coll);
 
   return res;
-}
-
-Result GraphManager::findOrCreateVertexCollectionByName(const std::string& name, bool waitForSync,
-                                                        VPackSlice options) {
-  std::shared_ptr<LogicalCollection> def;
-
-  def = getCollectionByName(ctx()->vocbase(), name);
-  if (def == nullptr) {
-    return createVertexCollection(name, waitForSync, options);
-  }
-
-  return Result(TRI_ERROR_NO_ERROR);
 }
 
 bool GraphManager::renameGraphCollection(std::string const& oldName,
@@ -227,62 +188,87 @@ Result GraphManager::checkForEdgeDefinitionConflicts(std::map<std::string, EdgeD
   return applyOnAllGraphs(callback);
 }
 
-Result GraphManager::findOrCreateCollectionsByEdgeDefinitions(
-    Graph const& graph, std::map<std::string, EdgeDefinition> const& edgeDefinitions,
-    bool waitForSync, VPackSlice options) {
-  for (auto const& it : edgeDefinitions) {
-    EdgeDefinition const& edgeDefinition = it.second;
-    Result res = findOrCreateCollectionsByEdgeDefinition(graph, edgeDefinition,
-                                                         waitForSync, options);
-
-    if (res.fail()) {
-      return res;
-    }
-  }
-
-  return Result{TRI_ERROR_NO_ERROR};
-}
-
-Result GraphManager::findOrCreateCollectionsByEdgeDefinition(Graph const& graph,
+Result GraphManager::findOrCreateCollectionsByEdgeDefinition(Graph& graph,
                                                              EdgeDefinition const& edgeDefinition,
-                                                             bool waitForSync,
-                                                             VPackSlice const options) {
-  std::string const& edgeCollection = edgeDefinition.getName();
-  std::shared_ptr<LogicalCollection> def =
-      getCollectionByName(ctx()->vocbase(), edgeCollection);
+                                                             bool waitForSync) {
+  std::unordered_set<std::string> satellites = graph.satelliteCollections();
+  // Validation Phase collect a list of collections to create
+  std::unordered_set<std::string> documentCollectionsToCreate{};
+  std::unordered_set<std::string> edgeCollectionsToCreate{};
+  std::unordered_set<std::shared_ptr<LogicalCollection>> existentDocumentCollections{};
+  std::unordered_set<std::shared_ptr<LogicalCollection>> existentEdgeCollections{};
 
-  if (def == nullptr) {
-    Result res = createEdgeCollection(edgeCollection, waitForSync, options);
-    if (res.fail()) {
-      return res;
-    }
-  }
-
-  std::unordered_set<std::string> vertexCollections;
-
-  // duplicates in from and to shouldn't occur, but are safely ignored here
-  for (auto const& colName : edgeDefinition.getFrom()) {
-    vertexCollections.emplace(colName);
-  }
-  for (auto const& colName : edgeDefinition.getTo()) {
-    vertexCollections.emplace(colName);
-  }
-  for (auto const& colName : vertexCollections) {
-    def = getCollectionByName(ctx()->vocbase(), colName);
-    if (def == nullptr) {
-      Result res = createVertexCollection(colName, waitForSync, options);
-      if (res.fail()) {
-        return res;
-      }
+  auto& vocbase = ctx()->vocbase();
+  std::string const& edgeCollName = edgeDefinition.getName();
+  std::shared_ptr<LogicalCollection> edgeColl;
+  Result res = methods::Collections::lookup(vocbase, edgeCollName, edgeColl);
+  if (res.ok()) {
+    TRI_ASSERT(edgeColl);
+    if (edgeColl->type() != TRI_COL_TYPE_EDGE) {
+      return Result(TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,
+                    "Collection: '" + edgeColl->name() +
+                        "' is not an EdgeCollection");
     } else {
-      auto res = graph.validateCollection(*def.get());
-      if (res.fail()) {
-        return res;
+      // found the collection
+      existentEdgeCollections.emplace(edgeColl);
+    }
+  } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    return res;
+  } else {
+    edgeCollectionsToCreate.emplace(edgeCollName);
+  }
+
+  for (auto const& vertexColl : edgeDefinition.getFrom()) {
+    std::shared_ptr<LogicalCollection> col;
+    Result res = methods::Collections::lookup(vocbase, vertexColl, col);
+    if (res.ok()) {
+      TRI_ASSERT(col);
+      if (col->isSatellite()) {
+        satellites.emplace(col->name());
+      }
+      existentDocumentCollections.emplace(col);
+    } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+      return res;
+    } else {
+      if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
+        auto res = ensureVertexShardingMatches(graph, *edgeColl, satellites,
+                                               vertexColl, true);
+        if (res.fail()) {
+          return res;
+        }
+        documentCollectionsToCreate.emplace(vertexColl);
       }
     }
   }
 
-  return Result{TRI_ERROR_NO_ERROR};
+  for (auto const& vertexColl : edgeDefinition.getTo()) {
+    std::shared_ptr<LogicalCollection> col;
+    Result res = methods::Collections::lookup(vocbase, vertexColl, col);
+    if (res.ok()) {
+      TRI_ASSERT(col);
+      if (col->isSatellite()) {
+        satellites.emplace(col->name());
+      }
+      existentDocumentCollections.emplace(col);
+    } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+      return res;
+    } else {
+      if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
+        if (edgeColl) {
+          auto res = ensureVertexShardingMatches(graph, *edgeColl, satellites,
+                                                 vertexColl, false);
+          if (res.fail()) {
+            return res;
+          }
+        }
+
+        documentCollectionsToCreate.emplace(vertexColl);
+      }
+    }
+  }
+  return ensureCollections(graph, documentCollectionsToCreate,
+                           edgeCollectionsToCreate, existentDocumentCollections,
+                           existentEdgeCollections, satellites, waitForSync);
 }
 
 /// @brief extract the collection by either id or name, may return nullptr!
@@ -412,7 +398,7 @@ OperationResult GraphManager::createGraph(VPackSlice document, bool waitForSync)
   }
 
   // Make sure all collections exist and are created
-  res = ensureCollections(graph.get(), waitForSync);
+  res = ensureAllCollections(graph.get(), waitForSync);
   if (res.fail()) {
     return OperationResult{res, options};
   }
@@ -458,10 +444,10 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
 
 Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
                              arangodb::aql::QueryString{queryStr}, nullptr);
-  query.queryOptions().skipAudit = true;
-  aql::QueryResult queryResult = query.executeSync();
+  query->queryOptions().skipAudit = true;
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -501,7 +487,9 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
   return res;
 }
 
-Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
+Result GraphManager::ensureAllCollections(Graph* graph, bool waitForSync) const {
+  TRI_ASSERT(graph != nullptr);
+  std::unordered_set<std::string> satellites = graph->satelliteCollections();
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};
@@ -543,6 +531,9 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
     Result res = methods::Collections::lookup(vocbase, vertexColl, col);
     if (res.ok()) {
       TRI_ASSERT(col);
+      if (col->isSatellite()) {
+        satellites.emplace(col->name());
+      }
       existentDocumentCollections.emplace(col);
     } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
@@ -552,37 +543,68 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
       }
     }
   }
+  return ensureCollections(*graph, documentCollectionsToCreate,
+                           edgeCollectionsToCreate, existentDocumentCollections,
+                           existentEdgeCollections, satellites, waitForSync);
+}
 
+Result GraphManager::ensureCollections(
+    Graph& graph, std::unordered_set<std::string>& documentCollectionsToCreate,
+    std::unordered_set<std::string> const& edgeCollectionsToCreate,
+    std::unordered_set<std::shared_ptr<LogicalCollection>> const& existentDocumentCollections,
+    std::unordered_set<std::shared_ptr<LogicalCollection>> const& existentEdgeCollections,
+    std::unordered_set<std::string> const& satellites, bool waitForSync) const {
   // II. Validate graph
   // a) Initial Validation
   if (!existentDocumentCollections.empty()) {
     for (auto const& col : existentDocumentCollections) {
-      graph->ensureInitial(*col);
+      graph.ensureInitial(*col);
     }
   }
 
   // b) Enterprise Sharding
 #ifdef USE_ENTERPRISE
+  std::string createdInitialName;
   {
-    Result res = ensureEnterpriseCollectionSharding(graph, waitForSync,
-                                                    documentCollectionsToCreate);
+    auto [res, createdCollectionName] =
+        ensureEnterpriseCollectionSharding(&graph, waitForSync, documentCollectionsToCreate);
     if (res.fail()) {
       return res;
     }
+    createdInitialName = createdCollectionName;
   }
+
+  ScopeGuard guard([&]() noexcept {
+    // rollback initial collection, in case it got created
+    if (!createdInitialName.empty()) {
+      std::shared_ptr<LogicalCollection> coll;
+      Result found =
+          methods::Collections::lookup(ctx()->vocbase(), createdInitialName, coll);
+      if (found.ok()) {
+        TRI_ASSERT(coll);
+        Result dropResult = arangodb::methods::Collections::drop(*coll, false, -1.0);
+        if (dropResult.fail()) {
+          LOG_TOPIC("04c89", WARN, Logger::GRAPHS)
+              << "While cleaning up graph `" << graph.name() << "`: "
+              << "Dropping collection `" << createdInitialName << "` failed with error "
+              << dropResult.errorNumber() << ": " << dropResult.errorMessage();
+        }
+      }
+    }
+  });
 #endif
 
   // III. Validate collections
   // document collections
   for (auto const& col : existentDocumentCollections) {
-    Result res = graph->validateCollection(*col);
+    Result res = graph.validateCollection(*col);
     if (res.fail()) {
       return res;
     }
   }
   // edge collections
   for (auto const& col : existentEdgeCollections) {
-    Result res = graph->validateCollection(*col);
+    Result res = graph.validateCollection(*col);
     if (res.fail()) {
       return res;
     }
@@ -592,21 +614,33 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackLake{};
 
   auto collectionsToCreate =
-      prepareCollectionsToCreate(graph, waitForSync, documentCollectionsToCreate,
-                                 edgeCollectionsToCreate, vpackLake);
+      prepareCollectionsToCreate(&graph, waitForSync, documentCollectionsToCreate,
+                                 edgeCollectionsToCreate, satellites, vpackLake);
   if (!collectionsToCreate.ok()) {
     return collectionsToCreate.result();
   }
 
   if (collectionsToCreate.get().empty()) {
     // NOTE: Empty graph is allowed.
+#ifdef USE_ENTERPRISE
+    guard.cancel();
+#endif
     return TRI_ERROR_NO_ERROR;
   }
 
   std::vector<std::shared_ptr<LogicalCollection>> created;
   OperationOptions opOptions(ExecContext::current());
-  return methods::Collections::create(vocbase, opOptions, collectionsToCreate.get(),
-                                      waitForSync, true, false, nullptr, created);
+
+  Result finalResult = methods::Collections::create(ctx()->vocbase(), opOptions,
+                                                    collectionsToCreate.get(), waitForSync,
+                                                    true, false, nullptr, created);
+#ifdef USE_ENTERPRISE
+  if (finalResult.ok()) {
+    guard.cancel();
+  }
+#endif
+
+  return finalResult;
 }
 
 #ifndef USE_ENTERPRISE
@@ -614,6 +648,7 @@ ResultT<std::vector<CollectionCreationInfo>> GraphManager::prepareCollectionsToC
     Graph const* graph, bool waitForSync,
     std::unordered_set<std::string> const& documentsCollectionNames,
     std::unordered_set<std::string> const& edgeCollectionNames,
+    std::unordered_set<std::string> const& satellites,
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>>& vpackLake) const {
   std::vector<CollectionCreationInfo> collectionsToCreate;
   collectionsToCreate.reserve(documentsCollectionNames.size() +
@@ -670,12 +705,12 @@ Result GraphManager::readGraphKeys(velocypack::Builder& builder) const {
 
 Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
                                       std::string const& queryStr) const {
-  arangodb::aql::Query query(ctx(), arangodb::aql::QueryString(queryStr), nullptr);
-  query.queryOptions().skipAudit = true;
+  auto query = arangodb::aql::Query::create(ctx(), arangodb::aql::QueryString(queryStr), nullptr);
+  query->queryOptions().skipAudit = true;
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
       << "starting to load graphs information";
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -1079,3 +1114,12 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
     return {TRI_ERROR_INTERNAL};
   }
 }
+
+#ifndef USE_ENTERPRISE
+Result GraphManager::ensureVertexShardingMatches(Graph const&, LogicalCollection&,
+                                                 std::unordered_set<std::string> const&,
+                                                 std::string const&, bool) const {
+  // Only relevant for Enterprise graphs.
+  return TRI_ERROR_NO_ERROR;
+}
+#endif

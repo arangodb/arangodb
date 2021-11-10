@@ -49,6 +49,7 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "RegisterPlan.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -179,6 +180,10 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
       }
     }
   }
+
+  if (options.filterOptimization != arangodb::iresearch::FilterOptimization::MAX) {
+    builder.add("filterOptimization", VPackValue(static_cast<int64_t>(options.filterOptimization)));
+  }
 }
 
 bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& options) {
@@ -281,6 +286,19 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
         return false;
       }
       options.countApproximate = conditionTypeIt->second;
+    }
+  }
+
+  // filterOptimization
+  {
+    auto const optionSlice = optionsSlice.get("filterOptimization");
+    if (!optionSlice.isNone()) {
+      // 'filterOptimization' is optional. Missing means MAX
+      if (!optionSlice.isNumber()) {
+        return false;
+      }
+      options.filterOptimization =
+        static_cast<arangodb::iresearch::FilterOptimization>(optionSlice.getNumber<int>());
     }
   }
 
@@ -437,6 +455,18 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
            return false;
          }
          options.conditionOptimization = conditionTypeIt->second;
+         return true;
+       }},
+       // cppcheck-suppress constStatement
+       {"filterOptimization", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+                                  aql::AstNode const& value,
+                                  IResearchViewNode::Options& options, std::string& error) {
+         if (!value.isValueType(aql::VALUE_TYPE_INT)) {
+           error = "int value expected for option 'filterOptimization'";
+           return false;
+         }
+         options.filterOptimization =
+           static_cast<arangodb::iresearch::FilterOptimization>(value.getIntValue());
          return true;
        }}};
 
@@ -861,38 +891,38 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
   viewValuesVars[columnNumber].emplace_back(IResearchViewNode::ViewVariable{fieldNumber, var});
 }
 
-template <MaterializeType materializeType>
+template <bool copyStored, MaterializeType materializeType>
 constexpr std::unique_ptr<aql::ExecutionBlock> (*executors[])(
     aql::ExecutionEngine*, IResearchViewNode const*, aql::RegisterInfos&&,
     aql::IResearchViewExecutorInfos&&) = {
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, materializeType>>>(
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<copyStored, false, materializeType>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, materializeType>>>(
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<copyStored, true, materializeType>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false, materializeType>>>(
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<copyStored, false, materializeType>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true, materializeType>>>(
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<copyStored, true, materializeType>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     }};
 
 constexpr size_t getExecutorIndex(bool sorted, bool ordered) {
   auto index = static_cast<size_t>(ordered) + 2 * static_cast<size_t>(sorted);
-  TRI_ASSERT(index < IRESEARCH_COUNTOF(executors<MaterializeType::Materialize>));
+  TRI_ASSERT(index < IRESEARCH_COUNTOF((executors<false, MaterializeType::Materialize>)));
   return index;
 }
 
@@ -1660,7 +1690,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                         getRegisterPlan()->varInfo,   // ??? do we need this?
                                         getDepth(),
                                         std::move(outNonMaterializedViewRegs),
-                                        _options.countApproximate};
+                                        _options.countApproximate,
+                                        filterOptimization()};
 
     return std::make_tuple(materializeType, std::move(executorInfos), std::move(registerInfos));
   };
@@ -1679,24 +1710,55 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   TRI_ASSERT(_sort.first == nullptr || !_sort.first->empty());  // guaranteed by optimizer rule
   bool const ordered = !_scorers.empty();
+#ifdef USE_ENTERPRISE
+  auto& engineSelectorFeature =  _view->vocbase().server().getFeature<EngineSelectorFeature>();
+  bool const encrypted =
+    engineSelectorFeature.isRocksDB() &&
+    engineSelectorFeature.engine<RocksDBEngine>().isEncryptionEnabled();
+#endif
+  
   switch (materializeType) {
     case MaterializeType::NotMaterialize:
-      return ::executors<MaterializeType::NotMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
+      return ::executors<false, MaterializeType::NotMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::LateMaterialize:
-      return ::executors<MaterializeType::LateMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
+      return ::executors<false, MaterializeType::LateMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::Materialize:
-      return ::executors<MaterializeType::Materialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
+      return ::executors<false, MaterializeType::Materialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
-      return ::executors<MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
+#ifdef USE_ENTERPRISE
+      if (encrypted) {
+        return ::executors<true, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
           _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
                                             std::move(executorInfos));
+      } else {
+        return ::executors<false, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
+          _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
+                                            std::move(executorInfos));
+      }
+#else
+      return ::executors<false, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
+          _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
+                                            std::move(executorInfos));
+#endif
     case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
-      return ::executors<MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
+#ifdef USE_ENTERPRISE
+      if (encrypted) {
+      return ::executors<true, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
           _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
                                             std::move(executorInfos));
+      } else {
+      return ::executors<false, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
+          _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
+                                            std::move(executorInfos));
+      }
+#else
+      return ::executors<false, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
+          _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
+                                            std::move(executorInfos));
+#endif
     default:
       ADB_UNREACHABLE;
   }

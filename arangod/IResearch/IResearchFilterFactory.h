@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include "IResearchFilterOptimization.h"
+
 #include "VocBase/voc-types.h"
 
 #include "search/filter.hpp"

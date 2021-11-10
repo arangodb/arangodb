@@ -24,10 +24,8 @@
 #include "UpgradeFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "ApplicationFeatures/SupervisorFeature.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
@@ -46,9 +44,11 @@
 #include "Pregel/PregelFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/BootstrapFeature.h"
+#include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/RestartAction.h"
+#include "RestServer/SupervisorFeature.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 

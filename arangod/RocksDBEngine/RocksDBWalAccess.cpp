@@ -71,13 +71,6 @@ TRI_voc_tick_t RocksDBWalAccess::lastTick() const {
   return _engine.db()->GetLatestSequenceNumber();
 }
 
-/// should return the list of transactions started, but not committed in that
-/// range (range can be adjusted)
-WalAccessResult RocksDBWalAccess::openTransactions(WalAccess::Filter const& filter,
-                                                   TransactionCallback const&) const {
-  return WalAccessResult(TRI_ERROR_NO_ERROR, true, 0, 0, 0);
-}
-
 /// WAL parser. Premise of this code is that transactions
 /// can potentially be batched into the same rocksdb write batch
 /// but transactions can never be interleaved with operations
@@ -652,6 +645,31 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     // drop and truncate may use this, but we do not print anything
     return rocksdb::Status();  // make WAL iterator happy
   }
+  
+  rocksdb::Status MarkBeginPrepare(bool = false) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument("MarkBeginPrepare() handler not defined.");
+  }
+  
+  rocksdb::Status MarkEndPrepare(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument("MarkEndPrepare() handler not defined.");
+  }
+    
+  rocksdb::Status MarkNoop(bool /*empty_batch*/) override {
+    return rocksdb::Status::OK();
+  }
+    
+  rocksdb::Status MarkRollback(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument(
+        "MarkRollbackPrepare() handler not defined.");
+  }
+    
+  rocksdb::Status MarkCommit(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument("MarkCommit() handler not defined.");
+  }
 
  public:
   /// figures out from which sequence number we need to start scanning
@@ -777,6 +795,93 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 #endif
 };
 
+/// @brief helper function to print WAL contents. this is only used for
+/// debugging
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void RocksDBWalAccess::printWal(Filter const& filter, size_t chunkSize, 
+                                MarkerCallback const& func) const {
+  rocksdb::TransactionDB* db = _engine.db();
+
+  if (chunkSize < 16384) {  // we need to have some sensible minimum
+    chunkSize = 16384;
+  }
+
+  // pre 3.4 breaking up write batches is not supported
+  size_t maxTrxChunkSize = filter.tickLastScanned > 0 ? chunkSize : SIZE_MAX;
+
+  MyWALDumper dumper(_engine, filter, func, maxTrxChunkSize);
+  const uint64_t since = dumper.safeBeginTick();
+  TRI_ASSERT(since <= filter.tickStart);
+  TRI_ASSERT(since <= filter.tickEnd);
+
+  uint64_t firstTick = UINT64_MAX;   // first tick to actually print (exclusive)
+  uint64_t lastScannedTick = since;  // last (begin) tick of batch we looked at
+  uint64_t latestTick = db->GetLatestSequenceNumber();
+
+  std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  
+  rocksdb::TransactionLogIterator::ReadOptions ro(false);
+  rocksdb::Status s = db->GetUpdatesSince(since, &iterator, ro);
+  TRI_ASSERT(s.ok());
+
+  // we need to check if the builder is bigger than the chunksize,
+  // only after we printed a full WriteBatch. Otherwise a client might
+  // never read the full writebatch
+  LOG_TOPIC("caefa", WARN, Logger::ENGINES)
+      << "WAL tailing call. Scan since: " << since << ", tick start: " << filter.tickStart
+      << ", tick end: " << filter.tickEnd << ", chunk size: " << chunkSize << ", latesttick: " << latestTick;
+  while (iterator->Valid() && lastScannedTick <= filter.tickEnd) {
+    rocksdb::BatchResult batch = iterator->GetBatch();
+    // record the first tick we are actually considering
+    if (firstTick == UINT64_MAX) {
+      firstTick = batch.sequence;
+    }
+
+    if (batch.sequence > filter.tickEnd) {
+      break;  // cancel out
+    }
+
+    LOG_TOPIC("a9d9c", WARN, Logger::REPLICATION) 
+        << "found batch-seq: " << batch.sequence << ", count: " 
+        << batch.writeBatchPtr->Count() 
+        << ", last scanned: " << lastScannedTick;
+    lastScannedTick = batch.sequence;  // start of the batch
+    TRI_ASSERT(lastScannedTick <= db->GetLatestSequenceNumber());
+
+    if (batch.sequence < since) {
+      iterator->Next();  // skip
+      continue;
+    }
+
+    dumper.startNewBatch(batch.sequence);
+    s = batch.writeBatchPtr->Iterate(&dumper);
+    if (batch.writeBatchPtr->Count() == 0) {
+      // there can be completely empty write batches. in case we encounter
+      // some, we cannot assume the tick gets increased next time
+      dumper.disableTickCheck();
+    }
+    TRI_ASSERT(s.ok());
+
+    uint64_t batchEndSeq = dumper.endBatch();        // end tick of the batch
+    TRI_ASSERT(batchEndSeq >= lastScannedTick);
+
+    if (dumper.responseSize() >= chunkSize) {  // break if response gets big
+      LOG_TOPIC("205d3", WARN, Logger::REPLICATION) << "reached maximum result size. finishing tailing";
+      break;
+    }
+    // we need to set this here again, to avoid re-scanning WriteBatches
+    lastScannedTick = batchEndSeq;  // do not remove, tailing take forever
+    TRI_ASSERT(lastScannedTick <= db->GetLatestSequenceNumber());
+
+    iterator->Next();
+  }
+
+  latestTick = db->GetLatestSequenceNumber();
+
+  LOG_TOPIC("5b5a1", WARN, Logger::REPLICATION) 
+      << "lastScannedTick: " << lastScannedTick << ", latestTick: " << latestTick;
+}
+#endif
+
 // iterates over WAL starting at 'from' and returns up to 'chunkSize' documents
 // from the corresponding database
 WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
@@ -805,19 +910,19 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   // prevent purging of WAL files while we are in here
   RocksDBFilePurgePreventer purgePreventer(_engine.disallowPurging());
 
-  std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
+  std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
   rocksdb::Status s = db->GetUpdatesSince(since, &iterator, ro);
   if (!s.ok()) {
     Result r = convertStatus(s, rocksutils::StatusHint::wal);
-    return WalAccessResult(r.errorNumber(), filter.tickStart == latestTick, 0, 0, latestTick);
+    return WalAccessResult(r.errorNumber(), filter.tickStart == latestTick, 0, /*lastScannedTick*/ 0, latestTick);
   }
 
   // we need to check if the builder is bigger than the chunksize,
   // only after we printed a full WriteBatch. Otherwise a client might
   // never read the full writebatch
-  LOG_TOPIC("caefa", DEBUG, Logger::ENGINES)
+  LOG_TOPIC("caefb", DEBUG, Logger::ENGINES)
       << "WAL tailing call. Scan since: " << since << ", tick start: " << filter.tickStart
       << ", tick end: " << filter.tickEnd << ", chunk size: " << chunkSize;
   while (iterator->Valid() && lastScannedTick <= filter.tickEnd) {
@@ -833,6 +938,14 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
 
     // LOG_TOPIC("1eccb", TRACE, Logger::REPLICATION) << "found batch-seq: " << batch.sequence;
     lastScannedTick = batch.sequence;  // start of the batch
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (lastScannedTick > db->GetLatestSequenceNumber()) {
+      // this is an unexpected condition. in this case we print the WAL for
+      // debug purposes and error out
+      printWal(filter, chunkSize, func);
+    }
+#endif
+    TRI_ASSERT(lastScannedTick <= db->GetLatestSequenceNumber());
 
     if (batch.sequence < since) {
       // LOG_TOPIC("a5e56", TRACE, Logger::REPLICATION) << "skipping batch from " << batch.sequence << " to " << (batch.sequence + batch.writeBatchPtr->Count());
@@ -863,6 +976,14 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
     }
     // we need to set this here again, to avoid re-scanning WriteBatches
     lastScannedTick = batchEndSeq;  // do not remove, tailing take forever
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (lastScannedTick > db->GetLatestSequenceNumber()) {
+      // this is an unexpected condition. in this case we print the WAL for
+      // debug purposes and error out
+      printWal(filter, chunkSize, func);
+    }
+#endif
+    TRI_ASSERT(lastScannedTick <= db->GetLatestSequenceNumber());
 
     iterator->Next();
   }
@@ -870,6 +991,16 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   // update our latest sequence number again, because it may have been raised
   // while scanning the WAL
   latestTick = db->GetLatestSequenceNumber();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (s.ok() && lastScannedTick > latestTick) {
+    // this is an unexpected condition. in this case we print the WAL for
+    // debug purposes and error out
+    printWal(filter, chunkSize, func);
+  }
+#endif
+
+  TRI_ASSERT(!s.ok() || lastScannedTick <= latestTick);
 
   WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= filter.tickStart,
                          lastWrittenTick, lastScannedTick, latestTick);

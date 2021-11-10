@@ -45,12 +45,14 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/Utf8Helper.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -135,14 +137,14 @@ arangodb::LogicalDataSource::Type const& readType(arangodb::velocypack::Slice in
 
 // The Slice contains the part of the plan that
 // is relevant for this collection.
-LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& info, bool isAStub)
+LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info, bool isAStub)
     : LogicalDataSource(
           LogicalCollection::category(),
           ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN), vocbase,
           DataSourceId{Helper::extractIdValue(info)}, ::readGloballyUniqueId(info),
           DataSourceId{Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId))},
           Helper::getStringValue(info, StaticStrings::DataSourceName, ""),
-          TRI_vocbase_t::IsSystemName(
+          NameValidator::isSystemName(
               Helper::getStringValue(info, StaticStrings::DataSourceName, "")) &&
               Helper::getBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
@@ -179,7 +181,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 
   TRI_ASSERT(info.isObject());
 
-  if (!TRI_vocbase_t::IsAllowedName(info)) {
+  bool extendedNames = vocbase.server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+  if (!CollectionNameValidator::isAllowedName(system(), extendedNames, name())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -422,8 +425,8 @@ void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   _physical->prepareIndexes(indexesSlice);
 }
 
-std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(transaction::Methods* trx) {
-  return _physical->getAllIterator(trx);
+std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(transaction::Methods* trx, ReadOwnWrites readOwnWrites) {
+  return _physical->getAllIterator(trx, readOwnWrites);
 }
 
 std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Methods* trx) {
@@ -493,24 +496,12 @@ bool LogicalCollection::usesRevisionsAsDocumentIds() const {
   return _usesRevisionsAsDocumentIds.load();
 }
 
-void LogicalCollection::setUsesRevisionsAsDocumentIds(bool usesRevisions) {
-  if (!_usesRevisionsAsDocumentIds.load() && usesRevisions && _version >= Version::v37) {
-    _usesRevisionsAsDocumentIds.store(true);
-  }
-}
-
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
 
 bool LogicalCollection::syncByRevision() const {
   return _syncByRevision.load();
-}
-
-void LogicalCollection::setSyncByRevision(bool usesRevisions) {
-  if (!_syncByRevision.load() && _usesRevisionsAsDocumentIds.load() && usesRevisions) {
-    _syncByRevision.store(true);
-  }
 }
 
 bool LogicalCollection::useSyncByRevision() const {
@@ -577,17 +568,12 @@ Result LogicalCollection::rename(std::string&& newName) {
   auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
   // Check for illegal states.
-  switch (_status) {
-    case TRI_VOC_COL_STATUS_CORRUPTED:
-      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
-    case TRI_VOC_COL_STATUS_DELETED:
-      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-    default:
-      // Fall through intentional
-      break;
-  }
-
   if (_status != TRI_VOC_COL_STATUS_LOADED) {
+    if (_status == TRI_VOC_COL_STATUS_CORRUPTED) {
+      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
+    } else if (_status == TRI_VOC_COL_STATUS_DELETED) {
+      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+    }
     // Unknown status
     return TRI_ERROR_INTERNAL;
   }
@@ -839,7 +825,7 @@ void LogicalCollection::includeVelocyPackEnterprise(VPackBuilder&) const {
 
 void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
 
-arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, bool) {
+arangodb::Result LogicalCollection::properties(velocypack::Slice slice, bool) {
   // the following collection properties are intentionally not updated,
   // as updating them would be very complicated:
   // - _cid
@@ -1036,7 +1022,7 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(std::string const& idxName
   return getPhysical()->lookupIndex(idxName);
 }
 
-std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice const& info) const {
+std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice info) const {
   if (!info.isObject()) {
     // Compatibility with old v8-vocindex.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1044,7 +1030,7 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice const& info) co
   return getPhysical()->lookupIndex(info);
 }
 
-std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice const& info, bool& created) {
+std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info, bool& created) {
   auto idx = _physical->createIndex(info, /*restore*/ false, created);
   if (idx) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
@@ -1087,7 +1073,7 @@ void LogicalCollection::persistPhysicalCollection() {
   engine.createCollection(vocbase(), *this);
 }
 
-basics::ReadWriteLock& LogicalCollection::statusLock() { return _statusLock; }
+basics::ReadWriteLock& LogicalCollection::statusLock() noexcept { return _statusLock; }
 
 /// @brief Defer a callback to be executed when the collection
 ///        can be dropped. The callback is supposed to drop
@@ -1174,14 +1160,6 @@ bool LogicalCollection::skipForAqlWrite(arangodb::velocypack::Slice document,
 }
 #endif
 
-// SECTION: Key Options
-VPackSlice LogicalCollection::keyOptions() const {
-  if (_keyOptions == nullptr) {
-    return arangodb::velocypack::Slice::nullSlice();
-  }
-  return VPackSlice(_keyOptions->data());
-}
-
 void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
   auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
   if (schema != nullptr) {
@@ -1248,8 +1226,6 @@ void LogicalCollection::decorateWithInternalValidators() {
   // Community validators go in here.
   decorateWithInternalEEValidators();
 }
-
-bool LogicalCollection::isShard() const noexcept { return planId() != id(); }
 
 bool LogicalCollection::isLocalSmartEdgeCollection() const noexcept {
   return (_internalValidatorTypes & InternalValidatorType::LocalSmartEdge) != 0;

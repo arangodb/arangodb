@@ -84,7 +84,7 @@ TEST(sorted_column_test, flush_empty) {
 
   // write sorted column
   {
-    auto writer = codec->get_columnstore_writer();
+    auto writer = codec->get_columnstore_writer(false);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);
@@ -98,7 +98,12 @@ TEST(sorted_column_test, flush_empty) {
     ASSERT_EQ(0, order.size());
     ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(column_id));
 
-    ASSERT_FALSE(writer->commit()); // nothing to commit
+    irs::flush_state state;
+    state.dir = &dir;
+    state.doc_count = 0;
+    state.name = segment.name;
+
+    ASSERT_FALSE(writer->commit(state)); // nothing to commit
   }
 
   // read sorted column
@@ -155,7 +160,7 @@ TEST(sorted_column_test, insert_duplicates) {
 
   // write sorted column
   {
-    auto writer = codec->get_columnstore_writer();
+    auto writer = codec->get_columnstore_writer(false);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);
@@ -194,7 +199,12 @@ TEST(sorted_column_test, insert_duplicates) {
     ASSERT_EQ(0, order.size()); // already sorted
     ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(column_id));
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir;
+    state.doc_count = IRESEARCH_COUNTOF(values);
+    state.name = segment.name;
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // read sorted column
@@ -266,7 +276,7 @@ TEST(sorted_column_test, sort) {
 
   // write sorted column
   {
-    auto writer = codec->get_columnstore_writer();
+    auto writer = codec->get_columnstore_writer(false);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);
@@ -303,7 +313,12 @@ TEST(sorted_column_test, sort) {
     ASSERT_EQ(1+IRESEARCH_COUNTOF(values), order.size());
     ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(column_id));
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir;
+    state.doc_count = IRESEARCH_COUNTOF(values);
+    state.name = segment.name;
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   std::vector<uint32_t> sorted_values(values, values + IRESEARCH_COUNTOF(values));

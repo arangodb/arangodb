@@ -9,11 +9,6 @@ if(CMAKE_SYSTEM_NAME MATCHES "Cygwin")
   add_definitions(-fno-builtin-memcmp -DCYGWIN)
 elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
   add_definitions(-DOS_MACOSX)
-  if(CMAKE_SYSTEM_PROCESSOR MATCHES arm)
-    add_definitions(-DIOS_CROSS_COMPILE -DROCKSDB_LITE)
-    # no debug info for IOS, that will make our library big
-    add_definitions(-DNDEBUG)
-  endif()
 elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
   add_definitions(-DOS_LINUX)
 elseif(CMAKE_SYSTEM_NAME MATCHES "SunOS")
@@ -72,9 +67,9 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBLogValue.cpp
   RocksDBEngine/RocksDBMetaCollection.cpp
   RocksDBEngine/RocksDBMetadata.cpp
-  RocksDBEngine/RocksDBTransactionMethods.cpp
   RocksDBEngine/RocksDBOptimizerRules.cpp
   RocksDBEngine/RocksDBOptionFeature.cpp
+  RocksDBEngine/RocksDBPersistedLog.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
   RocksDBEngine/RocksDBRecoveryManager.cpp
   RocksDBEngine/RocksDBReplicationCommon.cpp
@@ -90,6 +85,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBSettingsManager.cpp
   RocksDBEngine/RocksDBSyncThread.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
+  RocksDBEngine/RocksDBTransactionMethods.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBTtlIndex.cpp
   RocksDBEngine/RocksDBTypes.cpp
@@ -98,5 +94,9 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBVPackIndex.cpp
   RocksDBEngine/RocksDBValue.cpp
   RocksDBEngine/RocksDBWalAccess.cpp
+  RocksDBEngine/RocksDBZkdIndex.cpp
+  RocksDBEngine/ReplicatedRocksDBTransactionCollection.cpp
+  RocksDBEngine/ReplicatedRocksDBTransactionState.cpp
+  RocksDBEngine/SimpleRocksDBTransactionState.cpp
 )
 set(ROCKSDB_SOURCES ${ROCKSDB_SOURCES} PARENT_SCOPE)

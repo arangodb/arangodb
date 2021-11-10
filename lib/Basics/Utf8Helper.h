@@ -29,6 +29,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <string_view>
 
 #include <unicode/coll.h>
 #include <unicode/umachine.h>
@@ -196,27 +197,29 @@ class Utf8Helper {
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
 
-UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength);
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength, UErrorCode* status = nullptr);
 UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, UChar* buffer, size_t bufferSize,
-                       size_t* outLength);
+                       size_t* outLength, UErrorCode* status = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uchar (utf-16) to a utf-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength);
+char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength, UErrorCode* status = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLength);
+char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLength, UErrorCode* status = nullptr);
+
+std::string normalizeUtf8ToNFC(std::string_view value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf16 string (NFC) and export it to utf8
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength, size_t* outLength);
+char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength, size_t* outLength, UErrorCode* status = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two utf8 strings

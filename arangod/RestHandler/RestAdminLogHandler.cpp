@@ -35,12 +35,13 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "Logger/LogBufferFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LogTopic.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "RestServer/LogBufferFeature.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
@@ -425,8 +426,15 @@ void RestAdminLogHandler::handleLogLevel() {
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {
+      if (VPackSlice all = slice.get("all"); all.isString()) {
+        // handle "all" first, so we can do
+        // {"all":"info","requests":"debug"} or such
+        std::string const l = "all=" + all.copyString();
+        Logger::setLogLevel(l);
+      }
+      // now process all log topics except "all"
       for (auto it : VPackObjectIterator(slice)) {
-        if (it.value.isString()) {
+        if (it.value.isString() && !it.key.isEqualString(LogTopic::ALL)) {
           std::string const l = it.key.copyString() + "=" + it.value.copyString();
           Logger::setLogLevel(l);
         }

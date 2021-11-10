@@ -27,7 +27,6 @@
 #include <velocypack/HashedStringRef.h>
 #include "Containers/HashSet.h"
 
-// TODO Temporary include
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Providers/TypeAliases.h"
 #include "Graph/TraverserOptions.h"
@@ -45,7 +44,6 @@ namespace graph {
 
 template <class ProviderType, class PathStoreType, class Step>
 class SingleProviderPathResult : public PathResultInterface {
-  using VertexRef = arangodb::velocypack::HashedStringRef;  // TODO might remove
 
  public:
   SingleProviderPathResult(Step step, ProviderType& provider, PathStoreType& store);

@@ -1125,6 +1125,9 @@ function processQuery(query, explain, planIndex) {
 
   var iterateIndexes = function (idx, i, node, types, variable) {
     var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
+    if (node.readOwnWrites) {
+      what += "; read own writes";
+    }
     if (types.length === 0 || what !== types[types.length - 1]) {
       types.push(what);
     }
@@ -1201,7 +1204,8 @@ function processQuery(query, explain, planIndex) {
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + (node.count ? ', with count optimization' : '') + `${restriction(node)} */`) + filter;
+        const enumAnnotation = annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + (node.count ? ', with count optimization' : '') + `${restriction(node)} ${node.readOwnWrites ? '; read own writes' : ''} */`);
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + enumAnnotation + filter;
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':

@@ -107,10 +107,10 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
   }
 }
 
-OperationResult UpdateReplaceModifierCompletion::transact(transaction::Methods& trx, VPackSlice const data) {
+futures::Future<OperationResult> UpdateReplaceModifierCompletion::transact(transaction::Methods& trx, VPackSlice const data) {
   if (_infos._isReplace) {
-    return trx.replace(_infos._aqlCollection->name(), data, _infos._options);
+    return trx.replaceAsync(_infos._aqlCollection->name(), data, _infos._options);
   } else {
-    return trx.update(_infos._aqlCollection->name(), data, _infos._options);
+    return trx.updateAsync(_infos._aqlCollection->name(), data, _infos._options);
   }
 }

@@ -32,7 +32,19 @@
 
 namespace {
 static std::string const emptyString;
+
+inline int hex2int(char ch, int errorCode) {
+  if ('0' <= ch && ch <= '9') {
+    return ch - '0';
+  } else if ('A' <= ch && ch <= 'F') {
+    return ch - 'A' + 10;
+  } else if ('a' <= ch && ch <= 'f') {
+    return ch - 'a' + 10;
+  }
+
+  return errorCode;
 }
+} // namespace
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -75,11 +87,6 @@ void RequestHeader::acceptType(std::string const& type) {
   addMeta(fu_accept_key, type);
 }
 
-void RequestHeader::addParameter(std::string const& key,
-                                 std::string const& value) {
-  parameters.try_emplace(key, value);
-}
-
 /// @brief analyze path and split into components
 /// strips /_db/<name> prefix, sets db name and fills parameters
 void RequestHeader::parseArangoPath(std::string const& p) {
@@ -98,7 +105,29 @@ void RequestHeader::parseArangoPath(std::string const& p) {
       ++q;
     }
     FUERTE_ASSERT(q >= pathBegin);
-    this->database = std::string(pathBegin, q - pathBegin);
+    this->database.clear();
+    char const* p = pathBegin;
+    while (p != q) {
+      std::string::value_type c = (*p);
+      if (c == '%') {
+        if (p + 2 < q) {
+          int h = ::hex2int(p[1], 256) << 4;
+          h += ::hex2int(p[2], 256);
+          if (h >= 256) {
+            throw std::invalid_argument("invalid encoding value in request URL");
+          }
+          this->database.push_back(static_cast<char>(h & 0xFF));
+          p += 2;
+        } else {
+          throw std::invalid_argument("invalid encoding value in request URL");
+        }
+      } else if (c == '+') {
+        this->database.push_back(' ');
+      } else {
+        this->database.push_back(c);
+      }
+      ++p;
+    }
     if (*q == '\0') {
       this->path = "/";
     } else {
@@ -242,19 +271,19 @@ asio_ns::const_buffer Response::payload() const {
 }
 
 size_t Response::payloadSize() const {
-  if (_payloadOffset > _payload.byteSize()) {
+  auto payloadByteSize = _payload.byteSize();
+  if (_payloadOffset > payloadByteSize) {
     return 0;
   }
-  return _payload.byteSize() - _payloadOffset;
+  return payloadByteSize - _payloadOffset;
 }
 
 std::shared_ptr<velocypack::Buffer<uint8_t>> Response::copyPayload() const {
   auto buffer = std::make_shared<velocypack::Buffer<uint8_t>>();
-  if (payloadSize() == 0) {
-    return buffer;
+  if (payloadSize() > 0) {
+    buffer->append(_payload.data() + _payloadOffset,
+                   _payload.byteSize() - _payloadOffset);
   }
-  buffer->append(_payload.data() + _payloadOffset,
-                 _payload.byteSize() - _payloadOffset);
   return buffer;
 }
 

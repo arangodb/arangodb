@@ -68,6 +68,9 @@ auto OneSidedEnumerator<Configuration>::destroyEngines() -> void {
 
 template <class Configuration>
 void OneSidedEnumerator<Configuration>::clear(bool keepPathStore) {
+  if (!keepPathStore) {
+    _interior.reset();
+  }
   _queue.clear();
   _results.clear();
 
@@ -75,25 +78,6 @@ void OneSidedEnumerator<Configuration>::clear(bool keepPathStore) {
     _interior.reset();
     clearProvider(); // TODO: Check usage of keepPathStore (if necessary)
   }
-}
-
-template <class Configuration>
-    void OneSidedEnumerator<Configuration>::clearProvider() {
-  // Guarantee that the used Queue is empty and we do not hold any reference to PathStore.
-  // Info: Steps do contain VertexRefs which are hold in PathStore.
-  TRI_ASSERT(_queue.isEmpty());
-
-  // Guarantee that _results is empty. Steps are contained in _results those
-  // do contain VertexRefs which are hold in PathStore.
-  TRI_ASSERT(_results.empty());
-
-  // Guarantee that the used PathStore is cleared, before we clear the Provider.
-  // The Provider does hold the StringHeap cache.
-  TRI_ASSERT(_interior.size() == 0);
-
-  // ProviderStore must be cleared as last (!), as we do have multiple places holding
-  // references to contained VertexRefs there.
-  _provider.clear(); // PathStore
 }
 
 template <class Configuration>
@@ -262,6 +246,11 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
   }
 
   _resultsFetched = true;
+}
+
+template <class Configuration>
+auto OneSidedEnumerator<Configuration>::prepareIndexExpressions(aql::Ast* ast) -> void {
+  _provider.prepareIndexExpressions(ast);
 }
 
 template <class Configuration>

@@ -38,6 +38,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "Transaction/MethodsApi.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Slice.h>
@@ -132,7 +133,8 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
 
 /// @brief lazily begin a transaction on subordinate servers
 Future<network::Response> beginTransactionRequest(TransactionState& state,
-                                                  ServerID const& server) {
+                                                  ServerID const& server,
+                                                  transaction::MethodsApi api) {
   TransactionId tid = state.id().child();
   TRI_ASSERT(!tid.isLegacyTransactionId());
   
@@ -150,6 +152,7 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
   // responses that are close to the timeout value have a chance of getting
   // back to us (note: the 5 is arbitrary here, could as well be 3.0 or 10.0)
   reqOpts.timeout = network::Timeout(lockTimeout + 5.0);
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
   auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
   network::Headers headers;
@@ -210,7 +213,8 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
 }
 
 Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
-                                      transaction::Status status) {
+                                      transaction::Status status,
+                                      transaction::MethodsApi api) {
   TRI_ASSERT(state->isRunning());
 
   if (state->knownServers().empty()) {
@@ -226,6 +230,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
 
   network::RequestOptions reqOpts;
   reqOpts.database = state->vocbase().name();
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
   TransactionId tidPlus = state->id().child();
   std::string const path = "/_api/transaction/" + std::to_string(tidPlus.id());
@@ -266,7 +271,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
           Result res;
           for (Try<arangodb::network::Response> const& tryRes : responses) {
             network::Response const& resp = tryRes.get();  // throws exceptions upwards
-            Result res = ::checkTransactionResult(tidPlus, status, resp);
+            res = ::checkTransactionResult(tidPlus, status, resp);
             if (res.fail()) {
               break;
             }
@@ -331,16 +336,16 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
       });
 }
 
-Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::Status status) {
+Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::Status status,
+                                      transaction::MethodsApi api) {
   arangodb::TransactionState* state = trx.state();
   TRI_ASSERT(trx.isMainTransaction());
-  return commitAbortTransaction(state, status);
+  return commitAbortTransaction(state, status, api);
 }
 
 }  // namespace
 
-namespace arangodb {
-namespace ClusterTrxMethods {
+namespace arangodb::ClusterTrxMethods {
 using namespace arangodb::futures;
 
 bool IsServerIdLessThan::operator()(ServerID const& lhs, ServerID const& rhs) const noexcept {
@@ -348,8 +353,9 @@ bool IsServerIdLessThan::operator()(ServerID const& lhs, ServerID const& rhs) co
 }
 
 /// @brief begin a transaction on all leaders
-Future<Result> beginTransactionOnLeaders(TransactionState& state,
-                                         ClusterTrxMethods::SortedServersSet const& leaders) {
+Future<Result> beginTransactionOnLeaders(TransactionState& state, ClusterTrxMethods::SortedServersSet const& leaders,
+    // everything in this function is done synchronously, so the `api` parameter is currently unused.
+    [[maybe_unused]] transaction::MethodsApi api) {
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   Result res;
@@ -377,9 +383,10 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
       if (state.knowsServer(leader)) {
         continue;  // already sent a begin transaction there
       }
-      requests.emplace_back(::beginTransactionRequest(state, leader));
+      requests.emplace_back(
+          ::beginTransactionRequest(state, leader, transaction::MethodsApi::Synchronous));
     }
-    
+
     // use original lock timeout here
     state.options().lockTimeout = oldLockTimeout;
 
@@ -429,8 +436,9 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
 
     // abortTransaction on knownServers() and wait for them
     if (!state.knownServers().empty()) {
-      Result resetRes =
-          commitAbortTransaction(&state, transaction::Status::ABORTED).get();
+      Result resetRes = commitAbortTransaction(&state, transaction::Status::ABORTED,
+                                               transaction::MethodsApi::Synchronous)
+                            .get();
       if (resetRes.fail()) {
         // return here if cleanup failed - this needs to be a success
         return resetRes;
@@ -454,7 +462,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
       serverBefore = leader;
 #endif
 
-      auto resp = ::beginTransactionRequest(state, leader);
+      auto resp = ::beginTransactionRequest(state, leader, transaction::MethodsApi::Synchronous);
       auto const& resolvedResponse = resp.get();
       if (resolvedResponse.fail()) {
         return resolvedResponse.combinedResult();
@@ -468,13 +476,13 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
 }
 
 /// @brief commit a transaction on a subordinate
-Future<Result> commitTransaction(transaction::Methods& trx) {
-  return commitAbortTransaction(trx, transaction::Status::COMMITTED);
+Future<Result> commitTransaction(transaction::Methods& trx, transaction::MethodsApi api) {
+  return commitAbortTransaction(trx, transaction::Status::COMMITTED, api);
 }
 
 /// @brief commit a transaction on a subordinate
-Future<Result> abortTransaction(transaction::Methods& trx) {
-  return commitAbortTransaction(trx, transaction::Status::ABORTED);
+Future<Result> abortTransaction(transaction::Methods& trx, transaction::MethodsApi api) {
+  return commitAbortTransaction(trx, transaction::Status::ABORTED, api);
 }
 
 /// @brief set the transaction ID header
@@ -566,5 +574,4 @@ bool isElCheapo(TransactionState const& state) {
           state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
 }
 
-}  // namespace ClusterTrxMethods
-}  // namespace arangodb
+}  // namespace arangodb::ClusterTrxMethods

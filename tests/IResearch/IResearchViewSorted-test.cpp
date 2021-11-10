@@ -47,6 +47,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchQueryCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
@@ -75,15 +76,14 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "utils/string_utils.hpp"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
 
 class IResearchViewSortedTest
-    : public ::testing::Test,
+    : public ::testing::TestWithParam<arangodb::iresearch::LinkVersion>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
@@ -133,7 +133,7 @@ class IResearchViewSortedTest
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(IResearchViewSortedTest, SingleField) {
+TEST_P(IResearchViewSortedTest, SingleField) {
   // ArangoDB specific string comparer
   struct StringComparer {
     bool operator()(irs::string_ref const& lhs, irs::string_ref const& rhs) const {
@@ -181,12 +181,15 @@ TEST_F(IResearchViewSortedTest, SingleField) {
 
   // add link to collection
   {
+    auto versionStr = std::to_string(static_cast<uint32_t>(GetParam()));
+
     auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\" : {"
-        "\"collection_1\" : { \"includeAllFields\" : true },"
-        "\"collection_2\" : { \"includeAllFields\" : true }"
+        "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " },"
+        "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " }"
         "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(
+      updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -218,11 +221,11 @@ TEST_F(IResearchViewSortedTest, SingleField) {
     // insert into collections
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(arangodb::tests::testResourceDir);
-      resource /= irs::string_ref("simple_sequential.json");
+      resource /= std::string_view(arangodb::tests::testResourceDir);
+      resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -420,7 +423,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
   }
 }
 
-TEST_F(IResearchViewSortedTest, MultipleFields) {
+TEST_P(IResearchViewSortedTest, MultipleFields) {
   // ArangoDB specific string comparer
   struct StringComparer {
     bool operator()(irs::string_ref const& lhs, irs::string_ref const& rhs) const {
@@ -468,12 +471,15 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
 
   // add link to collection
   {
+    auto versionStr = std::to_string(static_cast<uint32_t>(GetParam()));
+
     auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\" : {"
-        "\"collection_1\" : { \"includeAllFields\" : true },"
-        "\"collection_2\" : { \"includeAllFields\" : true }"
+        "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " },"
+        "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " }"
         "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(
+      updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -505,11 +511,11 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
     // insert into collections
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(arangodb::tests::testResourceDir);
-      resource /= irs::string_ref("simple_sequential.json");
+      resource /= std::string_view(arangodb::tests::testResourceDir);
+      resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -812,3 +818,8 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchViewSortedTest,
+  IResearchViewSortedTest,
+  GetLinkVersions());

@@ -275,7 +275,75 @@ function arraySkiplistIndexSuite () {
       catch (err) {
         assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Test update of an array index where entries are removed:
+////////////////////////////////////////////////////////////////////////////////
+
+    testPersistentArrayIndexUpdates : function () {
+      collection.ensureIndex({type:"persistent", fields: ["a[*].b"], unique: true});
+
+      let meta = collection.insert({a: [{b:"xyz"}]});
+
+      try {
+        collection.insert({a: [{b:"xyz"}]});
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      collection.update(meta._key, {a: []});
+
+      let meta2 = collection.insert({a: [{b:"xyz"}]});  // must work again
+
+      try {
+        collection.insert({a: [{b:"xyz"}]});
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      collection.replace(meta2._key, {a: []});
+
+      collection.insert({a: [{b:"xyz"}]});  // must work again
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Test update of an array index where entries are changed:
+////////////////////////////////////////////////////////////////////////////////
+
+    testPersistentArrayIndexUpdates2 : function () {
+      collection.ensureIndex({type:"persistent", fields: ["a[*].b"], unique: true});
+
+      let meta = collection.insert({a: [{b:"xyz"}]});
+
+      try {
+        collection.insert({a: [{b:"xyz"}]});
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      collection.update(meta._key, {a: [{b:"123"}]});
+
+      let meta2 = collection.insert({a: [{b:"xyz"}]});  // must work again
+
+      try {
+        collection.insert({a: [{b:"xyz"}]});
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      collection.replace(meta2._key, {a: [{b:"456"}]});
+
+      collection.insert({a: [{b:"xyz"}]});  // must work again
+    },
 
   };
 }

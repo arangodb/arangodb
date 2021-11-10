@@ -39,10 +39,10 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         resource("phrase_sequential.json"),
         [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
           if (data.is_string()) { // field
-            doc.insert(std::make_shared<tests::templates::text_field<std::string>>(name, data.str), true, false);
+            doc.insert(std::make_shared<tests::text_field<std::string>>(name, data.str), true, false);
           } else if (data.is_number()) { // seq
             const auto value = std::to_string(data.as_number<uint64_t>());
-            doc.insert(std::make_shared<tests::templates::string_field>(name, value), false, true);
+            doc.insert(std::make_shared<tests::string_field>(name, value), false, true);
           }
       });
       add_segment(gen);
@@ -185,7 +185,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
     tests::json_doc_generator gen(
       resource("same_position.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
-        typedef tests::templates::text_field<std::string> text_field;
+        typedef tests::text_field<std::string> text_field;
         if (data.is_string()) {
           // a || b || c
           doc.indexed.push_back(std::make_shared<text_field>(name, data.str));
@@ -484,10 +484,9 @@ TEST(by_same_position_test, ctor) {
   ASSERT_EQ(irs::by_same_position_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
 
-  auto& features = irs::by_same_position::required();
-  ASSERT_EQ(2, features.size());
-  ASSERT_TRUE(features.check<irs::frequency>());
-  ASSERT_TRUE(features.check<irs::position>());
+  static_assert(
+    (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) ==
+    irs::by_same_position::required());
 }
 
 TEST(by_same_position_test, boost) {
@@ -610,18 +609,17 @@ TEST(by_same_position_test, equal) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   same_position_filter_test,
   same_position_filter_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_1", "1_0"},
-                      tests::format_info{"1_3", "1_0"})
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      tests::format_info{"1_0"},
+      tests::format_info{"1_1", "1_0"},
+      tests::format_info{"1_3", "1_0"})),
+  same_position_filter_test_case::to_string
 );

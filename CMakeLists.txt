@@ -26,6 +26,13 @@ endif ()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 
+message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
+  set(BUILDING_FOR_ARM64 ON)
+else()
+  set(BUILDING_FOR_ARM64 OFF)
+endif()
+
 if (APPLE)
   if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
     if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR "ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
@@ -88,7 +95,7 @@ option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing de
 # ARANGODB_RPM_REVISION
 
 set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "9")
+set(ARANGODB_VERSION_MINOR "10")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
@@ -526,6 +533,14 @@ find_package(PythonInterp 3 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
+execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} -c "import distutils.spawn"
+    RESULT_VARIABLE EXIT_CODE
+    OUTPUT_QUIET
+    )
+if (NOT "${EXIT_CODE}" EQUAL "0")
+  message(FATAL_ERROR "python distutils package is required! ")
+endif()
 
 # FIXME the build containers seem to have a
 # /usr/bin/ch(mod|own) to prevent the search
@@ -569,6 +584,9 @@ if (WINDOWS)
   set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"      CACHE STRING "base flags")
   set(BASE_C_FLAGS   ""                                  CACHE STRING "base C flags")
   set(BASE_CXX_FLAGS "/GR /EHsc /Zc:__cplusplus"         CACHE STRING "base C++flags")
+  # Increase the reserved stack size for all threads to 4MB
+  # Note: this is only _reserved_ memory, not necessarily _committed_ memory
+  set(BASE_LD_FLAGS  "/STACK:4194304"             CACHE STRING "base linker flags")
 else ()
   set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
   set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
@@ -580,8 +598,8 @@ endif ()
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
     message(WARNING "ArangoDB requires g++ 10.0 or newer, building with older compiler versions is unsupported")
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "10.9.9")
-    message(WARNING "ArangoDB doesn't support g++ 11.0 yet, building with newer compiler versions is unsupported")
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "11.9.9")
+    message(WARNING "ArangoDB doesn't support g++ 12.0 yet, building with newer compiler versions is unsupported")
   endif()
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
@@ -641,6 +659,9 @@ if (MSVC)
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
   )
+  set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL     "/DEBUG /OPT:REF /OPT:ICF")
+  set(CMAKE_EXE_LINKER_FLAGS_RELEASE        "/OPT:REF /OPT:ICF")
+  set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG /OPT:REF /OPT:ICF")
 else ()
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}"
@@ -687,9 +708,7 @@ endif ()
 ################################################################################
 
 set(ARANGODB_SSE42_FLAGS "")
-if (WINDOWS)
-  add_definitions("-DNO_SSE42")
-else ()
+if (NOT WINDOWS)
   include(TargetArch)
 
   target_architecture(CMAKE_TARGET_ARCHITECTURES)
@@ -705,12 +724,10 @@ else ()
 
   include(VcMacros)
 
-  option(USE_OPTIMIZE_FOR_ARCHITECTURE "try to determine CPU architecture" ON)
-
-  if (USE_OPTIMIZE_FOR_ARCHITECTURE)
-    include(OptimizeForArchitecture)
-    OptimizeForArchitecture()
-  endif ()
+  # Detect target architecture properties. This honors
+  # any target architecture set via -DTARGET_ARCHITECTURE=...
+  include(OptimizeForArchitecture)
+  OptimizeForArchitecture()
 
   if (USE_SSE4_2)
     set(ARANGODB_SSE42_FLAGS "-msse4.2")
@@ -738,11 +755,11 @@ set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
 ################################################################################
 
 # Allow to prohibit assembler optimization code explicitly
-if (MSVC)
+if (BUILDING_FOR_ARM64)
   SET(ASM_OPTIMIZATIONS_DEFAULT OFF)
-else (MSVC)
+else (BUILDING_FOR_ARM64)
   SET(ASM_OPTIMIZATIONS_DEFAULT ON)
-endif (MSVC)
+endif (BUILDING_FOR_ARM64)
 
 option(ASM_OPTIMIZATIONS "whether hand-optimized assembler code should be used"
   ${ASM_OPTIMIZATIONS_DEFAULT})
@@ -961,17 +978,17 @@ if (MSVC)
 
   set(BASE_FLAGS "/wd4996 ${BASE_FLAGS}")
 
-  set(CMAKE_C_FLAGS                "/MTd"                                              CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj"         CACHE INTERNAL "C debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                                      CACHE INTERNAL "C minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2"                                      CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                                  CACHE INTERNAL "C release with debug info flags")
+  set(CMAKE_C_FLAGS                ""                                      CACHE INTERNAL "default C compiler flags")
+  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1"     CACHE INTERNAL "C debug flags")
+  set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1"                               CACHE INTERNAL "C minimal size flags")
+  set(CMAKE_C_FLAGS_RELEASE        "/MT /O2"                               CACHE INTERNAL "C release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                           CACHE INTERNAL "C release with debug info flags")
 
-  set(CMAKE_CXX_FLAGS                "/MTd"                                            CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj"       CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                                    CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                                    CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                                CACHE INTERNAL "C++ release with debug info flags")
+  set(CMAKE_CXX_FLAGS                ""                                    CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1"   CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1"                             CACHE INTERNAL "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2"                             CACHE INTERNAL "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                         CACHE INTERNAL "C++ release with debug info flags")
 
   if (USE_CLCACHE_MODE)
     set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
@@ -1036,7 +1053,7 @@ else () # NOT MSVC
   # CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}.
   # there is no need to repeat the base flags in the build-type specific flags!
   set(CMAKE_C_FLAGS                  "${EXTRA_C_FLAGS}"                                CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -Og -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
+  set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C release with debug info flags")
@@ -1047,10 +1064,17 @@ else () # NOT MSVC
   # CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}.
   # there is no need to repeat the base flags in the build-type specific flags!
   set(CMAKE_CXX_FLAGS                "${EXTRA_CXX_FLAGS}"                              CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -Og -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
+
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      # On Darwin -fstandalone-debug is enabled by default, so we don't need
+      # to add it for AppleClang.
+      set(CMAKE_CXX_FLAGS_DEBUG             "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
+      set(CMAKE_CXX_FLAGS_RELWITHDEBINFO    "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fstandalone-debug")
+  endif ()
 
 endif ()
 

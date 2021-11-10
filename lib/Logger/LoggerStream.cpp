@@ -57,7 +57,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(LogTopic const& topic) noexcept {
 }
 
 // print a hex representation of the binary data
-LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) noexcept {
   try {
     uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
     uint8_t const* end = ptr + binary.size;
@@ -80,7 +80,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) {
 }
 
 // print a character array
-LoggerStreamBase& LoggerStreamBase::operator<<(Logger::CHARS const& data) {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::CHARS const& data) noexcept {
   try {
     _out.write(data.data, data.size);
   } catch (...) {
@@ -90,7 +90,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::CHARS const& data) {
   return *this;
 }
 
-LoggerStreamBase& LoggerStreamBase::operator<<(Logger::RANGE const& range) {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::RANGE const& range) noexcept {
   try {
     _out << range.baseAddress << " - "
          << static_cast<void const*>(static_cast<char const*>(range.baseAddress) +
@@ -103,7 +103,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::RANGE const& range) {
   return *this;
 }
 
-LoggerStreamBase& LoggerStreamBase::operator<<(Logger::FIXED const& value) {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::FIXED const& value) noexcept {
   try {
     std::ostringstream tmp;
     tmp << std::setprecision(value._precision) << std::fixed << value._value;

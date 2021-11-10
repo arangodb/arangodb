@@ -40,19 +40,11 @@ extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
 class IResearchQueryOptionsTest : public IResearchQueryTest {};
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-TEST_F(IResearchQueryOptionsTest, Collections) {
+TEST_P(IResearchQueryOptionsTest, Collections) {
   // ==, !=, <, <=, >, >=, range
   static std::vector<std::string> const EMPTY;
 
@@ -97,12 +89,14 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
 
   // add link to collection
   {
+    auto versionStr = std::to_string(static_cast<uint32_t>(linkVersion()));
+
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\" : {"
-        "\"collection_1\" : { \"includeAllFields\" : true },"
-        "\"collection_2\" : { \"includeAllFields\" : true }"
-        "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    "{ \"links\" : {"
+      "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " },"
+      "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " }"
+    "}}");
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -134,11 +128,11 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
     // insert into collections
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(arangodb::tests::testResourceDir);
-      resource /= irs::string_ref("simple_sequential.json");
+      resource /= std::string_view(arangodb::tests::testResourceDir);
+      resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -710,7 +704,7 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
   }
 }
 
-TEST_F(IResearchQueryOptionsTest, WaitForSync) {
+TEST_P(IResearchQueryOptionsTest, WaitForSync) {
   // ==, !=, <, <=, >, >=, range
   static std::vector<std::string> const EMPTY;
 
@@ -747,12 +741,14 @@ TEST_F(IResearchQueryOptionsTest, WaitForSync) {
 
   // add link to collection
   {
+    auto versionStr = std::to_string(static_cast<uint32_t>(linkVersion()));
+
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\" : {"
-        "\"collection_1\" : { \"includeAllFields\" : true },"
-        "\"collection_2\" : { \"includeAllFields\" : true }"
-        "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    "{ \"links\" : {"
+        "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " },"
+        "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " }"
+    "}}");
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -784,11 +780,11 @@ TEST_F(IResearchQueryOptionsTest, WaitForSync) {
     // insert into collections
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(arangodb::tests::testResourceDir);
-      resource /= irs::string_ref("simple_sequential.json");
+      resource /= std::string_view(arangodb::tests::testResourceDir);
+      resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -927,7 +923,7 @@ TEST_F(IResearchQueryOptionsTest, WaitForSync) {
   }
 }
 
-TEST_F(IResearchQueryOptionsTest, noMaterialization) {
+TEST_P(IResearchQueryOptionsTest, noMaterialization) {
   static std::vector<std::string> const EMPTY;
 
   auto createJson = arangodb::velocypack::Parser::fromJson(
@@ -964,12 +960,14 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
 
   // add link to collection
   {
+    auto versionStr = std::to_string(static_cast<uint32_t>(linkVersion()));
+
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\" : {"
-        "\"collection_1\" : { \"includeAllFields\" : true },"
-        "\"collection_2\" : { \"includeAllFields\" : true }"
-        "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    "{ \"links\" : {"
+       "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " },"
+       "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " }"
+    "}}");
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -1117,8 +1115,8 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
     EXPECT_TRUE(arangodb::tests::assertRules(
         vocbase, queryString, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
-    auto const res = query.explain();
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto const res = query->explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();
     arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
@@ -1151,8 +1149,8 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
     EXPECT_TRUE(arangodb::tests::assertRules(
         vocbase, queryString, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
-    auto const res = query.explain();
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto const res = query->explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();
     arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
@@ -1176,3 +1174,8 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
     EXPECT_EQ(8, resultIt.size());
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryOptionsTest,
+  IResearchQueryOptionsTest,
+  GetLinkVersions());

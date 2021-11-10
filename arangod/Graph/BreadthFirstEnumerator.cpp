@@ -24,6 +24,7 @@
 #include "BreadthFirstEnumerator.h"
 
 #include "Aql/PruneExpressionEvaluator.h"
+#include "Containers/Helpers.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Traverser.h"
@@ -159,6 +160,10 @@ bool BreadthFirstEnumerator::next() {
             // This vertex is on the path.
             return;
           }
+        }
+
+        if (!validDisjointPath(nextIdx, vId)) {
+          return;
         }
 
 #ifdef USE_ENTERPRISE
@@ -346,18 +351,8 @@ bool BreadthFirstEnumerator::shouldPrune() {
 }
 
 void BreadthFirstEnumerator::growStorage() {
-  size_t capacity;
-  if (_schreier.empty()) {
-    // minimal reserve size
-    capacity = 8;
-  } else {
-    capacity = _schreier.size() + 1;
-    if (capacity > _schreier.capacity()) {
-      capacity *= 2;
-    }
-  }
+  size_t capacity = arangodb::containers::Helpers::nextCapacity(_schreier, 8);
 
-  TRI_ASSERT(capacity > _schreier.size());
   if (capacity > _schreier.capacity()) {
     arangodb::ResourceUsageScope guard(_opts->resourceMonitor(),
                                        (capacity - _schreier.capacity()) * pathStepSize());

@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
+#include "Logger/LogMacros.h"
 #include "Rest/GeneralResponse.h"
 #include "Transaction/StandaloneContext.h"
 
@@ -157,7 +158,11 @@ void InternalRestTraverserHandler::queryEngine() {
 
   auto& registry = _registry;  // For the guard
   auto cleanup =
-      scopeGuard([registry, &engineId]() { registry->closeEngine(engineId); });
+      scopeGuard([registry, &engineId]() noexcept {
+    try{ registry->closeEngine(engineId); }catch(std::exception const& ex) {
+        LOG_TOPIC("dfc7a", ERR, Logger::AQL) << "Failed to close engine: " << ex.what();
+    }
+  });
 
   if (option == "lock") {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -227,7 +232,8 @@ void InternalRestTraverserHandler::queryEngine() {
       return;
     }
     engine->getVertexData(keysSlice, result, !depthSlice.isNone());
-  } else if (option == "smartSearch") {
+  } else if (option == "smartSearch" || option == "smartSearchBFS" ||
+             option == "smartSearchWeighted") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "this engine does not support the requested operation.");
@@ -236,28 +242,7 @@ void InternalRestTraverserHandler::queryEngine() {
     // Safe cast BaseTraverserEngines are all of type TRAVERSER
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
-    eng->smartSearchNew(body, result);  // TODO: Rename/Refactor. smartSearchNew does both (DFS & BFS)
-  } else if (option == "smartSearchBFS") {
-    if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
-      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "this engine does not support the requested operation.");
-      return;
-    }
-    // Safe cast BaseTraverserEngines are all of type TRAVERSER
-    auto eng = static_cast<BaseTraverserEngine*>(engine);
-    TRI_ASSERT(eng != nullptr);
-
-    eng->smartSearchNew(body, result);  // TODO: Rename/Refactor. smartSearchNew does both (DFS & BFS)
-  } else if (option == "smartSearchWeighted") {
-    if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
-      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "this engine does not support the requested operation.");
-      return;
-    }
-    // Safe cast BaseTraverserEngines are all of type TRAVERSER
-    auto eng = static_cast<BaseTraverserEngine*>(engine);
-    TRI_ASSERT(eng != nullptr);
-    eng->smartSearchNew(body, result);
+    eng->smartSearch(body, result);
   } else {
     // PATH Info wrong other error
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "");

@@ -274,7 +274,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       } } \
     } }");
 
-    EXPECT_TRUE(viewImpl->properties(updateJson->slice(), false).ok());
+    EXPECT_TRUE(viewImpl->properties(updateJson->slice(), true, false).ok());
   }
 
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
@@ -509,7 +509,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
       } } \
     } }");
 
-    EXPECT_TRUE(viewImpl->properties(updateJson->slice(), false).ok());
+    EXPECT_TRUE(viewImpl->properties(updateJson->slice(), true, false).ok());
   }
 
   // `catch` doesn't support cuncurrent checks
@@ -524,10 +524,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       try {
         irs::utf8_path resource;
 
-        resource /= irs::string_ref(arangodb::tests::testResourceDir);
-        resource /= irs::string_ref("simple_sequential.json");
+        resource /= std::string_view(arangodb::tests::testResourceDir);
+        resource /= std::string_view("simple_sequential.json");
         builder =
-            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       } catch (...) {
         return;  // velocyPackFromFile(...) may throw exception
       }
@@ -564,10 +564,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       try {
         irs::utf8_path resource;
 
-        resource /= irs::string_ref(arangodb::tests::testResourceDir);
-        resource /= irs::string_ref("simple_sequential.json");
+        resource /= std::string_view(arangodb::tests::testResourceDir);
+        resource /= std::string_view("simple_sequential.json");
         builder =
-            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       } catch (...) {
         return;  // velocyPackFromFile(...) may throw exception
       }
@@ -876,7 +876,7 @@ TEST_F(IResearchIndexTest, test_fields) {
       } } \
     } }");
 
-    EXPECT_TRUE(viewImpl->properties(updateJson->slice(), false).ok());
+    EXPECT_TRUE(viewImpl->properties(updateJson->slice(), true, false).ok());
   }
 
   // docs match from both collections

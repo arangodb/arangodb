@@ -66,7 +66,10 @@ namespace {
 // adjust this regex too!
 std::regex const uuidRegex(
     "^(SNGL|CRDN|PRMR|AGNT)-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$");
+
+static constexpr char const* extendedNamesDatabasesKey = "extendedNamesDatabases";
 }  // namespace
+
 
 static constexpr char const* currentServersRegisteredPref =
     "/Current/ServersRegistered/";
@@ -153,7 +156,7 @@ ServerState::~ServerState() = default;
 /// @brief create the (sole) instance
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState* ServerState::instance() { return Instance; }
+ServerState* ServerState::instance() noexcept { return Instance; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string representation of a role
@@ -319,14 +322,34 @@ ServerState::Mode ServerState::setServerMode(ServerState::Mode value) {
 }
 
 static std::atomic<bool> _serverstate_readonly(false);
+static std::atomic<bool> _license_readonly(false);
 
 bool ServerState::readOnly() {
+  return _serverstate_readonly.load(std::memory_order_acquire) ||
+    _license_readonly.load(std::memory_order_acquire);
+}
+
+bool ServerState::readOnlyByAPI() {
   return _serverstate_readonly.load(std::memory_order_acquire);
 }
 
+bool ServerState::readOnlyByLicense() {
+  return _license_readonly.load(std::memory_order_acquire);
+}
+
 /// @brief set server read-only
-bool ServerState::setReadOnly(bool ro) {
-  return _serverstate_readonly.exchange(ro, std::memory_order_release);
+bool ServerState::setReadOnly(ReadOnlyMode ro) {
+  auto ret = readOnly();
+  if(ro == API_FALSE) {
+    _serverstate_readonly.exchange(false, std::memory_order_release);
+  } else if (ro == API_TRUE) {
+    _serverstate_readonly.exchange(true, std::memory_order_release);
+  } else if (ro == LICENSE_FALSE) {
+    _license_readonly.exchange(false, std::memory_order_release);
+  } else if (ro == LICENSE_TRUE) {
+    _license_readonly.exchange(true, std::memory_order_release);
+  }
+  return ret;
 }
 
 // ============ Instance methods =================
@@ -368,7 +391,7 @@ bool ServerState::logoff(double timeout) {
 
   AgencyWriteTransaction unregisterTransaction(operations);
   AgencyComm comm(_server);
-  
+
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...
   int maxTries = static_cast<int>(timeout / 3.0);;
@@ -441,6 +464,10 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     LOG_TOPIC("1e2da", FATAL, arangodb::Logger::ENGINES)
         << "the usage of different storage engines in the "
         << "cluster is unsupported and may cause issues";
+    return false;
+  }
+ 
+  if (!checkNamingConventionsEquality(comm)) {
     return false;
   }
 
@@ -540,7 +567,7 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
       return "Coordinator";
     case ROLE_SINGLE:
       return "Single";
-    case ROLE_AGENT: 
+    case ROLE_AGENT:
       return "Agent";
     case ROLE_UNDEFINED: {
       return "Undefined";
@@ -632,12 +659,65 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
   return true;
 }
 
+/// @brief check equality of naming conventions settings with other registered servers
+bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
+  // our own setting
+  bool const extendedNamesForDatabases = _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
+
+  AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
+  if (result.successful()) {  // no error if we cannot reach agency directly
+
+    auto slicePath = AgencyCommHelper::slicePath(currentServersRegisteredPref);
+    VPackSlice servers = result.slice()[0].get(slicePath);
+    if (!servers.isObject()) {
+      return true;  // do not do anything harsh here
+    }
+
+    for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(servers)) {
+      if (!pair.value.isObject()) {
+        continue;
+      }
+      VPackSlice setting = pair.value.get(::extendedNamesDatabasesKey);
+      if (setting.isBool() && setting.getBool() != extendedNamesForDatabases) {
+        // different setting detected. bail out!
+        LOG_TOPIC("75972", FATAL, arangodb::Logger::STARTUP)
+          << "The usage of different settings for database object naming "
+          << "conventions (i.e. `--database.extended-names-databases` settings) "
+          << "in the cluster is unsupported and may cause follow-up issues. "
+          << "Please unify the settings for the startup option `--database.extended-names-databases` "
+          << "on all coordinators and DB servers in this cluster.";
+
+        std::string msg;
+        for (VPackObjectIterator::ObjectPair p : VPackObjectIterator(servers)) {
+          if (!p.value.isObject()) {
+            continue;
+          }
+          VPackSlice s = p.value.get(::extendedNamesDatabasesKey);
+          if (!msg.empty()) {
+            msg += ", ";
+          }
+          msg += "[" + p.key.copyString() + ": " + (s.isBool() ? (s.getBool() ? "true" : "false") : "not set") + "]";
+        }
+
+        if (!msg.empty()) {
+          LOG_TOPIC("1220d", FATAL, arangodb::Logger::STARTUP)
+            << "The following effective settings exist for `--database.extended-names-databases` "
+            << "for the servers in this cluster, either explicitly configured or persisted on database servers: " << msg;
+        }
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
                                            ServerState::RoleEnum const& role) {
   std::string const agencyListKey = roleToAgencyListKey(role);
-  AgencyCommResult result = comm.getValues("Plan/" + agencyListKey);
+  AgencyCommResult result = comm.getValues("Plan/" + agencyListKey, 3.0);
   if (!result.successful()) {
-    LOG_TOPIC("0f327", FATAL, Logger::STARTUP)
+    LOG_TOPIC("0f327", WARN, Logger::STARTUP)
         << "Couldn't fetch Plan/" << agencyListKey << " from agency. "
         << " Agency is not initialized? " << result.errorMessage();
     return false;
@@ -646,9 +726,9 @@ bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
   VPackSlice servers = result.slice()[0].get(
       std::vector<std::string>({AgencyCommHelper::path(), "Plan", agencyListKey}));
   if (!servers.isObject()) {
-    LOG_TOPIC("6507f", FATAL, Logger::STARTUP)
-        << "Plan/" << agencyListKey << " in agency is no object. "
-        << "Agency not initialized?";
+    LOG_TOPIC("6507f", WARN, Logger::STARTUP)
+        << "Plan/" << agencyListKey << " in agency is no object, but " << servers.typeName()
+        << ". Agency not initialized?";
     return false;
   }
   return true;
@@ -841,6 +921,8 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
       builder.add("engine",
                   VPackValue(_server.getFeature<EngineSelectorFeature>().engineName()));
+      builder.add(::extendedNamesDatabasesKey,
+                  VPackValue(_server.getFeature<DatabaseFeature>().extendedNamesForDatabases()));
       builder.add("timestamp",
                   VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
@@ -1046,9 +1128,9 @@ bool ServerState::isFoxxmaster() const {
   return /*!isRunningInCluster() ||*/ _foxxmaster == getId();
 }
 
-std::string ServerState::getFoxxmaster() const { 
+std::string ServerState::getFoxxmaster() const {
   READ_LOCKER(readLocker, _foxxmasterLock);
-  return _foxxmaster; 
+  return _foxxmaster;
 }
 
 void ServerState::setFoxxmaster(std::string const& foxxmaster) {
@@ -1105,6 +1187,14 @@ Result ServerState::propagateClusterReadOnly(bool mode) {
     // the change, we delay here for 2 seconds.
     std::this_thread::sleep_for(std::chrono::seconds(2));
   }
-  setReadOnly(mode);
+  setReadOnly(mode ? API_TRUE : API_FALSE);
   return Result();
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+bool ServerState::isGoogleTest() const noexcept { return _isGoogleTests; }
+
+void ServerState::setGoogleTest(bool isGoogleTests) noexcept {
+  _isGoogleTests = isGoogleTests;
+}
+#endif

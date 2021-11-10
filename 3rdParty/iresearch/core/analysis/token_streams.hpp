@@ -1,4 +1,4 @@
-﻿////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -23,7 +23,7 @@
 #ifndef IRESEARCH_TOKEN_STREAMS_H
 #define IRESEARCH_TOKEN_STREAMS_H
 
-#include "token_stream.hpp"
+#include "analyzer.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 #include "utils/numeric_utils.hpp"
@@ -35,10 +35,17 @@ namespace iresearch {
 /// @brief convenient helper implementation providing access to "increment"
 ///        and "term_attributes" attributes
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API basic_token_stream : public token_stream {
+class IRESEARCH_API basic_token_stream : public analysis::analyzer {
  public:
+
+  explicit basic_token_stream(const type_info& type) : analysis::analyzer(type) {}
+
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
+  }
+
+  bool reset(const string_ref&) override {
+    return false;
   }
 
  protected:
@@ -53,6 +60,7 @@ class IRESEARCH_API boolean_token_stream final
     : public basic_token_stream,
       private util::noncopyable {
  public:
+
   static constexpr string_ref value_true() noexcept {
     return { "\xFF", 1 };
   }
@@ -74,7 +82,13 @@ class IRESEARCH_API boolean_token_stream final
     in_use_ = false;
   }
 
+  static constexpr irs::string_ref type_name() noexcept {
+    return "boolean_token_stream";
+  }
+
  private:
+  using basic_token_stream::reset;
+
   bool in_use_;
   bool value_;
 }; // boolean_token_stream
@@ -86,7 +100,7 @@ class IRESEARCH_API boolean_token_stream final
 ///        on initial string length 
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API string_token_stream final
-    : public token_stream,
+    : public analysis::analyzer,
       private util::noncopyable {
  public:
   string_token_stream() noexcept;
@@ -102,9 +116,14 @@ class IRESEARCH_API string_token_stream final
     in_use_ = false; 
   }
 
-  void reset(const string_ref& value) noexcept {
+  bool reset(const string_ref& value) noexcept override {
     value_ = ref_cast<byte_type>(value);
     in_use_ = false;
+    return true;
+  }
+
+  static constexpr irs::string_ref type_name() noexcept {
+    return "string_token_stream";
   }
 
  private:
@@ -123,6 +142,10 @@ class IRESEARCH_API numeric_token_stream final
     : public basic_token_stream,
       private util::noncopyable {
  public:
+
+  explicit numeric_token_stream()
+    : basic_token_stream(irs::type<numeric_token_stream>::get()) {}
+
   static constexpr uint32_t PRECISION_STEP_DEF = 16;
   static constexpr uint32_t PRECISION_STEP_32 = 8;
 
@@ -145,7 +168,13 @@ class IRESEARCH_API numeric_token_stream final
 
   static bytes_ref value(bstring& buf, double_t value);
 
+  static constexpr irs::string_ref type_name() noexcept {
+    return "numeric_token_stream";
+  }
+
  private:
+  using basic_token_stream::reset;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @class numeric_term
   /// @brief term_attribute implementation for numeric_token_stream
@@ -156,16 +185,18 @@ class IRESEARCH_API numeric_token_stream final
       decltype(val_) val;
 
       val.i32 = value;
+      buf.resize(numeric_utils::numeric_traits<decltype(value)>::size());
 
-      return numeric_term::value(buf, NT_INT, val, 0);
+      return numeric_term::value(buf.data(), NT_INT, val, 0);
     }
 
     static bytes_ref value(bstring& buf, int64_t value) {
       decltype(val_) val;
 
       val.i64 = value;
+      buf.resize(numeric_utils::numeric_traits<decltype(value)>::size());
 
-      return numeric_term::value(buf, NT_LONG, val, 0);
+      return numeric_term::value(buf.data(), NT_LONG, val, 0);
     }
 
 #ifndef FLOAT_T_IS_DOUBLE_T
@@ -173,8 +204,9 @@ class IRESEARCH_API numeric_token_stream final
       decltype(val_) val;
 
       val.i32 = numeric_utils::numeric_traits<float_t>::integral(value);
+      buf.resize(numeric_utils::numeric_traits<decltype(value)>::size());
 
-      return numeric_term::value(buf, NT_FLOAT, val, 0);
+      return numeric_term::value(buf.data(), NT_FLOAT, val, 0);
     }
 #endif
 
@@ -182,8 +214,9 @@ class IRESEARCH_API numeric_token_stream final
       decltype(val_) val;
 
       val.i64 = numeric_utils::numeric_traits<double_t>::integral(value);
+      buf.resize(numeric_utils::numeric_traits<decltype(value)>::size());
 
-      return numeric_term::value(buf, NT_DBL, val, 0);
+      return numeric_term::value(buf.data(), NT_DBL, val, 0);
     }
 
     bool next(increment& inc, bytes_ref& out);
@@ -227,18 +260,16 @@ class IRESEARCH_API numeric_token_stream final
     };
 
     static irs::bytes_ref value(
-      bstring& buf,
+      byte_type* buf,
       NumericType type,
       value_t val,
       uint32_t shift);
 
-    IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-    bstring data_;
+    byte_type data_[numeric_utils::numeric_traits<double_t>::size()];
     value_t val_;
     NumericType type_;
     uint32_t step_;
     uint32_t shift_;
-    IRESEARCH_API_PRIVATE_VARIABLES_END
   }; // numeric_term
 
   numeric_term num_;
@@ -252,6 +283,10 @@ class IRESEARCH_API null_token_stream final
     : public basic_token_stream,
       private util::noncopyable {
  public:
+
+  explicit null_token_stream()
+    : basic_token_stream(irs::type<null_token_stream>::get()) {}
+
   static constexpr string_ref value_null() noexcept {
     // data pointer != nullptr or assert failure in bytes_hash::insert(...)
     return { "\x00", 0 };
@@ -263,7 +298,13 @@ class IRESEARCH_API null_token_stream final
     in_use_ = false; 
   }
 
+  static constexpr irs::string_ref type_name() noexcept {
+    return "null_token_stream";
+  }
+
  private:
+  using basic_token_stream::reset;
+
   bool in_use_{false};
 }; // null_token_stream
 

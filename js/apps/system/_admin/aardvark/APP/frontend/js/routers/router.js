@@ -6,6 +6,7 @@
 (function () {
   'use strict';
 
+  let isCurrentCoordinator = false;
   window.Router = Backbone.Router.extend({
     toUpdate: [],
     dbServers: [],
@@ -13,6 +14,7 @@
     foxxApiEnabled: undefined,
     statisticsInAllDatabases: undefined,
     lastRoute: undefined,
+    maxNumberOfMoveShards: undefined,
 
     routes: {
       '': 'cluster',
@@ -20,6 +22,7 @@
       'replication': 'replication',
       'replication/applier/:endpoint/:database': 'applier',
       'collections': 'collections',
+      'analyzers': 'analyzers',
       'new': 'newCollection',
       'login': 'login',
       'collection/:colid/documents/:pageid': 'documents',
@@ -49,6 +52,7 @@
       'cluster': 'cluster',
       'nodes': 'nodes',
       'shards': 'shards',
+      'rebalanceShards': 'rebalanceShards',
       'maintenance': 'maintenance',
       'distribution': 'distribution',
       'node/:name': 'node',
@@ -208,6 +212,8 @@
         this.statisticsInAllDatabases = frontendConfig.statisticsInAllDatabases;
       }
 
+      this.maxNumberOfMoveShards = frontendConfig.maxNumberOfMoveShards;
+
       document.addEventListener('keyup', this.listener, false);
 
       // This should be the only global object
@@ -235,6 +241,7 @@
       this.initOnce = _.once(function () {
         const callback = function (error, isCoordinator) {
           if (isCoordinator === true) {
+           isCurrentCoordinator = true;
             self.coordinatorCollection.fetch({
               success: function () {
                 self.fetchDBS();
@@ -317,6 +324,13 @@
         self.handleResize();
       });
 
+    },
+
+    analyzers: function () {
+      this.checkUser();
+
+      this.init.then(() => ReactDOM.render(React.createElement(window.AnalyzersReactView),
+        document.getElementById('content')));
     },
 
     cluster: function () {
@@ -405,6 +419,32 @@
           dbServers: this.dbServers
         });
         this.shardsView.render();
+      });
+    },
+
+    rebalanceShards: function () {
+      this.checkUser();
+
+      this.init.then(() => {
+        if (this.isCluster === false || isCurrentCoordinator === false || this.maxNumberOfMoveShards === 0) {
+          this.routes[''] = 'dashboard';
+          this.navigate('#dashboard', { trigger: true });
+          return;
+        }
+        // this below is for when Rebalance Shards tab is not clickable, but user enters it through its URL
+        else if (this.userCollection.authOptions.ro) { // if user can't edit the database,
+                                                                                            // it goes back to the Overview page
+          this.routes[''] = 'nodes';
+          this.navigate('#nodes', { trigger: true });
+          return;
+        }
+        if (this.rebalanceShardsView) {
+          this.rebalanceShardsView.remove();
+        }
+        this.rebalanceShardsView = new window.RebalanceShardsView({
+          maxNumberOfMoveShards: this.maxNumberOfMoveShards
+        });
+        this.rebalanceShardsView.render();
       });
     },
 
@@ -794,13 +834,8 @@
         this.documentView.defaultMode = mode;
 
         let doc = window.location.hash.split('/')[2];
-        const test = (doc.split('%').length - 1) % 3;
-
-        if (decodeURI(doc) !== doc && test !== 0) {
-          doc = decodeURIComponent(doc);
-        }
+        doc = decodeURIComponent(doc);
         this.documentView.docid = doc;
-
         this.documentView.render();
 
         const callback = function (error, type) {

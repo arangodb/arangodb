@@ -2,7 +2,7 @@ name: arangodb_connection_pool_leases_successful_total
 renamedFrom: arangodb_connection_leases_successful
 introducedIn: "3.8.0"
 help: |
-  Total number of successful connection leases from connection pool
+  Total number of successful connection leases from connection pool.
 unit: number
 type: counter
 category: Connectivity

@@ -598,7 +598,7 @@ auto QuerySnippet::prepareFirstBranch(
       // there are no local expansions
 
       auto* localGraphNode = ExecutionNode::castTo<LocalGraphNode*>(exp.node);
-      localGraphNode->setCollectionToShard({});  // clear previous information
+      localGraphNode->resetCollectionToShard();  // clear previous information
 
       TRI_ASSERT(localGraphNode->isUsedAsSatellite() == exp.isSatellite);
 
@@ -698,7 +698,13 @@ auto QuerySnippet::prepareFirstBranch(
       if (localGraphNode->isDisjoint()) {
         if (!myExpFinal.empty()) {
           size_t numberOfShards = myExpFinal.begin()->second.size();
-          // We need one expansion for every collection in the Graph (-1 per satellite)
+          // We need one expansion for every non-satellite collection in the Graph (-1 per satellite)
+          size_t amountOfNonSatellites = 0;
+          for (auto const& col : localGraphNode->collections()) {
+            if (!col->isSatellite()) {
+              amountOfNonSatellites++;
+            }
+          }
           size_t amountOfNonSatellites = 0;
           for (auto const& col : localGraphNode->collections()) {
             if (!col->isSatellite()) {

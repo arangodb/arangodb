@@ -26,6 +26,9 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/Expression.h"
+#include "Aql/NonConstExpressionContainer.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SortCondition.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
@@ -62,13 +65,11 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
   ::arangodb::containers::SmallVector<ConditionData*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ConditionData*> conditionData{a};
 
-  auto cleanup = [&conditionData]() -> void {
+  auto sg = arangodb::scopeGuard([&conditionData]() noexcept -> void {
     for (auto& it : conditionData) {
       delete it;
     }
-  };
-
-  TRI_DEFER(cleanup());
+  });
 
   std::vector<arangodb::aql::ConditionPart> parts;
   parts.reserve(n);
@@ -469,8 +470,159 @@ std::pair<bool, bool> findIndexHandleForAndNode(
   return std::make_pair(bestSupportsFilter, bestSupportsSort);
 }
 
-} // namespace
+/**
+ * @brief tests if the expression given by the AstNode
+ * accesses the given variable.
+ */
+bool accessesVariable(AstNode const* node, Variable const* var) {
+  if (node->isAttributeAccessForVariable(var, true)) {
+    // If this node is the variable access return true
+    return true;
+  }
 
+  for (size_t i = 0; i < node->numMembers(); i++) {
+    // Recursivley test if one of our subtrees accesses the variable
+    if (accessesVariable(node->getMemberUnchecked(i), var)) {
+      // One of them is enough
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * @brief Captures the given expression into the NonConstExpressionContainer for later execution.
+ * Extracts all required variables and retains their registers, s.t. all necessary pieces are stored in the container.
+ */
+void captureNonConstExpression(Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
+                               AstNode* expression, std::vector<size_t> selectedMembersFromRoot,
+                               NonConstExpressionContainer& result) {
+  // all new AstNodes are registered with the Ast in the Query
+  auto e = std::make_unique<aql::Expression>(ast, expression);
+
+  TRI_IF_FAILURE("IndexBlock::initialize") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  result._hasV8Expression |= e->willUseV8();
+
+  VarSet innerVars;
+  e->variables(innerVars);
+
+  result._expressions.emplace_back(
+      std::make_unique<NonConstExpression>(std::move(e), std::move(selectedMembersFromRoot)));
+
+  for (auto const& v : innerVars) {
+    auto it = varInfo.find(v->id);
+    TRI_ASSERT(it != varInfo.cend());
+    TRI_ASSERT(it->second.registerId.isValid());
+    result._varToRegisterMapping.emplace_back(v->id, it->second.registerId);
+  }
+
+  TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+}
+
+void captureFCallArgumentExpressions(Ast* ast,
+                                     std::unordered_map<VariableId, VarInfo> const& varInfo,
+                                     AstNode const* fCallExpression,
+                                     std::vector<size_t> selectedMembersFromRoot,
+                                     Variable const* indexVariable,
+                                     NonConstExpressionContainer& result) {
+  TRI_ASSERT(fCallExpression->type == NODE_TYPE_FCALL);
+  TRI_ASSERT(1 == fCallExpression->numMembers());
+
+  // We select the first member, so store it on our path
+  selectedMembersFromRoot.emplace_back(0);
+  AstNode* array = fCallExpression->getMemberUnchecked(0);
+
+  for (size_t k = 0; k < array->numMembers(); k++) {
+    AstNode* child = array->getMemberUnchecked(k);
+    if (!child->isConstant() && !accessesVariable(child, indexVariable)) {
+      std::vector<size_t> idx = selectedMembersFromRoot;
+      idx.emplace_back(k);
+      captureNonConstExpression(ast, varInfo, child, std::move(idx), result);
+    }
+  }
+}
+
+AstNode* wrapInUniqueCall(Ast* ast, AstNode* node, bool sorted) {
+  if (node->type != arangodb::aql::NODE_TYPE_ARRAY || node->numMembers() >= 2) {
+    // an non-array or an array with more than 1 member
+    auto array = ast->createNodeArray();
+    array->addMember(node);
+
+    // Here it does not matter which index we choose for the isSorted/isSparse
+    // check, we need them all sorted here.
+
+    if (sorted) {
+      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), array, true);
+    }
+    // a regular UNIQUE will do
+    return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("UNIQUE"), array, true);
+  }
+
+  // presumably an array with no or a single member
+  return node;
+}
+
+void extractNonConstPartsOfAndPart(Ast* ast,
+                                   std::unordered_map<VariableId, VarInfo> const& varInfo,
+                                   bool evaluateFCalls, bool sorted,
+                                   AstNode const* andNode, Variable const* indexVariable,
+                                   std::vector<size_t> selectedMembersFromRoot,
+                                   NonConstExpressionContainer& result) {
+
+  // in case of a geo spatial index a might take the form
+  // of a GEO_* function. We might need to evaluate fcall arguments
+  TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+  for (size_t j = 0; j < andNode->numMembers(); ++j) {
+    auto path = selectedMembersFromRoot;
+    path.emplace_back(j);
+    auto leaf = andNode->getMemberUnchecked(j);
+
+    // FCALL at this level is most likely a geo index
+    if (leaf->type == NODE_TYPE_FCALL) {
+      captureFCallArgumentExpressions(ast, varInfo, leaf, std::move(path), indexVariable, result);
+      continue;
+    } else if (leaf->numMembers() != 2) {
+      // The Index cannot solve non-binary operators.
+      TRI_ASSERT(false);
+      continue;
+    }
+
+    // We only support binary conditions
+    TRI_ASSERT(leaf->numMembers() == 2);
+    AstNode* lhs = leaf->getMember(0);
+    AstNode* rhs = leaf->getMember(1);
+    if (lhs->isAttributeAccessForVariable(indexVariable, false)) {
+      // Index is responsible for the left side, check if right side
+      // has to be evaluated
+      if (!rhs->isConstant()) {
+        if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+          rhs = wrapInUniqueCall(ast, rhs, sorted);
+        }
+        path.emplace_back(1);
+        captureNonConstExpression(ast, varInfo, rhs, std::move(path), result);
+      }
+    } else {
+      path.emplace_back(0);
+      // Index is responsible for the right side, check if left side
+      // has to be evaluated
+
+      if (lhs->type == NODE_TYPE_FCALL && !evaluateFCalls) {
+        // most likely a geo index condition
+        captureFCallArgumentExpressions(ast, varInfo, lhs, std::move(path), indexVariable, result);
+      } else if (!lhs->isConstant()) {
+        captureNonConstExpression(ast, varInfo, lhs, std::move(path), result);
+      }
+    }
+  }
+}
+
+} // namespace
 
 /// @brief Gets the best fitting index for one specific condition.
 ///        Difference to IndexHandles: Condition is only one NARY_AND
@@ -658,7 +810,28 @@ bool getIndexForSortCondition(
   return false;
 }
 
+NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
+    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo, bool evaluateFCalls,
+    bool sorted, AstNode const* condition, Variable const* indexVariable) {
+  // conditions can be of the form (a [<|<=|>|=>] b) && ...
+  TRI_ASSERT(condition != nullptr);
+  TRI_ASSERT(condition->type == NODE_TYPE_OPERATOR_NARY_AND || condition->type == NODE_TYPE_OPERATOR_NARY_OR);
+  TRI_ASSERT(indexVariable != nullptr);
 
-} // namespace utils
-} // namespace aql
-} // namespace arangodb
+  NonConstExpressionContainer result;
+
+  if (condition->type == NODE_TYPE_OPERATOR_NARY_OR) {
+    for (size_t i = 0; i < condition->numMembers(); ++i) {
+      auto andNode = condition->getMemberUnchecked(i);
+      extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, sorted, andNode, indexVariable, {i}, result);
+    }
+  } else {
+    extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, sorted, condition, indexVariable, {}, result);
+  }
+
+
+  return result;
+}
+}  // namespace utils
+}  // namespace aql
+}  // namespace arangodb

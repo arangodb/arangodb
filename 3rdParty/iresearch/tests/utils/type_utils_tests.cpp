@@ -24,6 +24,19 @@
 #include "tests_shared.hpp"
 #include "utils/type_utils.hpp"
 
+DEFINE_HAS_MEMBER(foo);
+DEFINE_HAS_MEMBER(bar);
+
+TEST(type_utils_tests, sfinae) {
+  struct A { void foo() { } };
+  struct B { int bar; };
+
+  static_assert(HAS_MEMBER(A, foo));
+  static_assert(!HAS_MEMBER(B, foo));
+  static_assert(!HAS_MEMBER(A, bar));
+  static_assert(HAS_MEMBER(B, bar));
+}
+
 TEST(type_utils_tests, is_convertible) {
   struct A { };
   struct B : A {};

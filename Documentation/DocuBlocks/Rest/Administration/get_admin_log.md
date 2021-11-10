@@ -192,13 +192,18 @@ is returned if there are insufficient privileges to read log levels.
 
 @RESTDESCRIPTION
 Modifies and returns the server's current log level settings.
-The request body must be a JSON object with the log topics being the object keys
-and the log levels being the object values.
+The request body must be a JSON string with a log level or a JSON object with the 
+log topics being the object keys and the log levels being the object values.
 
-The result is a JSON object with the adjusted log topics being the object keys, and
+If only a JSON string is specified as input, the log level is adjusted for the 
+"general" log topic only. If a JSON object is specified as input, the log levels will
+be set only for the log topic mentioned in the input object, but preserved for every
+other log topic.
+To set the log level for all log levels to a specific value, it is possible to hand
+in the special pseudo log topic "all".
+
+The result is a JSON object with all available log topics being the object keys, and
 the adjusted log levels being the object values.
-
-It can set the log level of all facilities by only specifying the log level as string without json.
 
 Possible log levels are:
 - FATAL - There will be no way out of this. ArangoDB will go down after this message.

@@ -226,11 +226,6 @@ exports.manage = function () {
   }
 
   if (global.ArangoServerState.getFoxxmasterQueueupdate()) {
-    if (!isCluster) {
-      // On a Foxxmaster change FoxxmasterQueueupdate is set to true
-      // we use this to signify a Leader change to this server
-      foxxManager.healAll(true);
-    }
     // do not call again immediately
     global.ArangoServerState.setFoxxmasterQueueupdate(false);
 

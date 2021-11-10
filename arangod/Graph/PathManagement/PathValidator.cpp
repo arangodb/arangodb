@@ -140,7 +140,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexRes
     return true;
   }
 
-  auto allowedCollections = _options.getAllowedVertexCollections();
+  auto const& allowedCollections = _options.getAllowedVertexCollections();
   if (allowedCollections.empty()) {
     // all allowed
     return true;

@@ -29,9 +29,6 @@
 #include <rocksdb/status.h>
 
 using namespace arangodb;
-
-RocksDBReadOnlyBaseMethods::RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state)
-    : RocksDBTransactionMethods(state) {}
   
 void RocksDBReadOnlyBaseMethods::prepareOperation(DataSourceId cid, RevisionId rid,
                                               TRI_voc_document_operation_e operationType) {
@@ -44,13 +41,13 @@ void RocksDBReadOnlyBaseMethods::rollbackOperation(TRI_voc_document_operation_e 
 
 Result RocksDBReadOnlyBaseMethods::addOperation(DataSourceId collectionId, RevisionId revisionId,
                                             TRI_voc_document_operation_e opType) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);                                          
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 rocksdb::Status RocksDBReadOnlyBaseMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
-                                                     rocksdb::Slice const& key,
-                                                     rocksdb::PinnableSlice* val) {
-  return this->Get(cf, key, val);
+                                                         rocksdb::Slice const& key,
+                                                         rocksdb::PinnableSlice* val) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 rocksdb::Status RocksDBReadOnlyBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,

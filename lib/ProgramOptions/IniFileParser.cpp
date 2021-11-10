@@ -173,7 +173,7 @@ bool IniFileParser::parseContent(std::string const& filename, std::string const&
       }
     } else {
       // unknown type of line. cannot handle it
-      return _options->fail("unknown line type");
+      return _options->fail("unknown line type in file '" + filename + "', line " + std::to_string(lineNumber) + ": '" + line + "'");
     }
   }
 

@@ -798,7 +798,7 @@ TEST(MerkleTreeTest, test_serializePortableLargeOnlyPopulated) {
   
   ASSERT_EQ(6, t1s.slice().get(StaticStrings::RevisionTreeMaxDepth).getNumber<int>());
   ASSERT_EQ(10'000'000, t1s.slice().get(StaticStrings::RevisionTreeCount).getNumber<int>());
-  ASSERT_EQ(t1.nodeCountAtDepth(6), t1s.slice().get(StaticStrings::RevisionTreeNodes).length());
+  ASSERT_GE(t1.nodeCountAtDepth(6), t1s.slice().get(StaticStrings::RevisionTreeNodes).length());
  
   size_t populated = 0;
   size_t empty = 0;
@@ -815,7 +815,7 @@ TEST(MerkleTreeTest, test_serializePortableLargeOnlyPopulated) {
   ASSERT_GT(empty, 0);
   ASSERT_GT(populated, 0);
 
-  ASSERT_EQ(t1.nodeCountAtDepth(6), empty + populated);
+  ASSERT_GE(t1.nodeCountAtDepth(6), empty + populated);
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::deserialize(
@@ -1526,9 +1526,9 @@ TEST(MerkleTreeTest, test_to_string) {
   // the exact size of the response is unclear here, due to the pseudo-random
   // inserts
   std::string s = t1.toString(false);
-  ASSERT_LE(1100, s.size());
+  ASSERT_LE(800, s.size());
   s = t1.toString(true);
-  ASSERT_LE(1250, s.size());
+  ASSERT_LE(950, s.size());
 }
 
 TEST(MerkleTreeTest, test_diff_one_side_empty_random_data_shifted) {

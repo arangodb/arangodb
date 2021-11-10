@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <array>
+#include <memory>
 #include <string_view>
 #include <unordered_set>
 
@@ -156,12 +157,12 @@ bool checkAttributeUniquenessUnsortedSet(ObjectIterator& it) {
   std::unique_ptr<std::unordered_set<StringRef>>& tmp = ::duplicateKeys;
 
   if (::duplicateKeys == nullptr) {
-    ::duplicateKeys.reset(new std::unordered_set<StringRef>());
+    ::duplicateKeys = std::make_unique<std::unordered_set<StringRef>>();
   } else {
     ::duplicateKeys->clear();
   }
 #else
-  std::unique_ptr<std::unordered_set<StringRef>> tmp(new std::unordered_set<StringRef>());
+  auto tmp = std::make_unique<std::unordered_set<StringRef>>();
 #endif
 
   do {
@@ -402,12 +403,12 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
   // start with clean sheet in case the previous run left something
   // in the vector (e.g. when bailing out with an exception)
   if (::sortEntries == nullptr) {
-    ::sortEntries.reset(new std::vector<SortEntry>());
+    ::sortEntries = std::make_unique<std::vector<SortEntry>>();
   } else {
     ::sortEntries->clear();
   }
 #else
-  std::unique_ptr<std::vector<SortEntry>> tmp(new std::vector<SortEntry>());
+  auto tmp = std::make_unique<std::vector<SortEntry>>();
 #endif
 
   std::size_t const n = std::distance(indexStart, indexEnd);

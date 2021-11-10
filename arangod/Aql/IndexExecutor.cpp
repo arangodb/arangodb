@@ -34,6 +34,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Expression.h"
+#include "Aql/NonConstExpression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -181,12 +182,10 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
 }  // namespace
 
 IndexExecutorInfos::IndexExecutorInfos(
-    RegisterId outputRegister, QueryContext& query,
-    Collection const* collection, Variable const* outVariable, bool produceResult,
-    Expression* filter, arangodb::aql::Projections projections,
-    std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
-    std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
-    bool hasV8Expression, bool count, AstNode const* condition,
+    RegisterId outputRegister, QueryContext& query, Collection const* collection,
+    Variable const* outVariable, bool produceResult, Expression* filter,
+    arangodb::aql::Projections projections, NonConstExpressionContainer&& nonConstExpressions,
+    bool count, ReadOwnWrites readOwnWrites, AstNode const* condition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options, IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
     IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
@@ -199,16 +198,14 @@ IndexExecutorInfos::IndexExecutorInfos(
       _outVariable(outVariable),
       _filter(filter),
       _projections(std::move(projections)),
-      _expInVars(std::move(expInVars)),
-      _expInRegs(std::move(expInRegs)),
-      _nonConstExpression(std::move(nonConstExpression)),
+      _nonConstExpressions(std::move(nonConstExpressions)),
       _outputRegisterId(outputRegister),
       _outNonMaterializedIndVars(outNonMaterializedIndVars),
       _outNonMaterializedIndRegs(std::move(outNonMaterializedIndRegs)),
       _hasMultipleExpansions(false),
       _produceResult(produceResult),
-      _hasV8Expression(hasV8Expression),
-      _count(count) {
+      _count(count),
+      _readOwnWrites(readOwnWrites) {
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
@@ -293,7 +290,7 @@ AstNode const* IndexExecutorInfos::getCondition() const noexcept {
 }
 
 bool IndexExecutorInfos::getV8Expression() const noexcept {
-  return _hasV8Expression;
+  return _nonConstExpressions._hasV8Expression;
 }
 
 RegisterId IndexExecutorInfos::getOutputRegisterId() const noexcept {
@@ -302,7 +299,7 @@ RegisterId IndexExecutorInfos::getOutputRegisterId() const noexcept {
 
 std::vector<std::unique_ptr<NonConstExpression>> const& IndexExecutorInfos::getNonConstExpressions() const
     noexcept {
-  return _nonConstExpression;
+  return _nonConstExpressions._expressions;
 }
 
 bool IndexExecutorInfos::hasMultipleExpansions() const noexcept {
@@ -319,12 +316,8 @@ bool IndexExecutorInfos::isAscending() const noexcept {
 
 Ast* IndexExecutorInfos::getAst() const noexcept { return _ast; }
 
-std::vector<Variable const*> const& IndexExecutorInfos::getExpInVars() const noexcept {
-  return _expInVars;
-}
-
-std::vector<RegisterId> const& IndexExecutorInfos::getExpInRegs() const noexcept {
-  return _expInRegs;
+std::vector<std::pair<VariableId, RegisterId>> const& IndexExecutorInfos::getVarsToRegister() const noexcept {
+  return _nonConstExpressions._varToRegisterMapping;
 }
 
 void IndexExecutorInfos::setHasMultipleExpansions(bool flag) {
@@ -332,7 +325,7 @@ void IndexExecutorInfos::setHasMultipleExpansions(bool flag) {
 }
 
 bool IndexExecutorInfos::hasNonConstParts() const {
-  return !_nonConstExpression.empty();
+  return !_nonConstExpressions._expressions.empty();
 }
 
 IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
@@ -346,7 +339,7 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
       _condition(condition),
       _index(index),
       _cursor(_trx.indexScanForCondition(
-          index, condition, infos.getOutVariable(), infos.getOptions())),
+          index, condition, infos.getOutVariable(), infos.getOptions(), infos.canReadOwnWrites())),
       _context(context),
       _type(infos.getCount() ? Type::Count :
                 infos.isLateMaterialized()
@@ -509,7 +502,8 @@ void IndexExecutor::CursorReader::reset() {
     // We need to build a fresh search and cannot go the rearm shortcut
     _cursor = _trx.indexScanForCondition(_index, _condition,
                                          _infos.getOutVariable(),
-                                         _infos.getOptions());
+                                         _infos.getOptions(),
+                                         _infos.canReadOwnWrites());
   }
 }
 
@@ -518,10 +512,10 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _state(ExecutorState::HASMORE),
       _documentProducingFunctionContext(
-      _input, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
-      infos.query(), _trx, infos.getFilter(), infos.getProjections(),
-      false,
-      infos.getIndexes().size() > 1 || infos.hasMultipleExpansions()),
+        _input, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
+        infos.query(), _trx, infos.getFilter(), infos.getProjections(),
+        false,
+        infos.getIndexes().size() > 1 || infos.hasMultipleExpansions()),
       _infos(infos),
       _currentIndex(_infos.getIndexes().size()),
       _skipped(0) {
@@ -544,7 +538,7 @@ void IndexExecutor::initializeCursor() {
   _skipped = 0;
 }
 
-void IndexExecutor::initIndexes(InputAqlItemRow& input) {
+void IndexExecutor::initIndexes(InputAqlItemRow const& input) {
   // We start with a different context. Return documents found in the previous
   // context again.
   _documentProducingFunctionContext.reset();
@@ -562,7 +556,7 @@ void IndexExecutor::initIndexes(InputAqlItemRow& input) {
       };
 
       _infos.query().enterV8Context();
-      TRI_DEFER(cleanup());
+      auto sg = arangodb::scopeGuard([&]() noexcept { cleanup(); });
 
       ISOLATE;
       v8::HandleScope scope(isolate);  // do not delete this!
@@ -583,7 +577,7 @@ void IndexExecutor::initIndexes(InputAqlItemRow& input) {
   _currentIndex = _infos.getIndexes().size();
 }
 
-void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
+void IndexExecutor::executeExpressions(InputAqlItemRow const& input) {
   TRI_ASSERT(_infos.getCondition() != nullptr);
   TRI_ASSERT(!_infos.getNonConstExpressions().empty());
 
@@ -605,8 +599,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
     auto& regex = _documentProducingFunctionContext.aqlFunctionsInternalCache();
 
     ExecutorExpressionContext ctx(_trx, query, regex,
-                                  input, _infos.getExpInVars(),
-                                  _infos.getExpInRegs());
+                                  input, _infos.getVarsToRegister());
 
     bool mustDestroy;
     AqlValue a = exp->execute(&ctx, mustDestroy);

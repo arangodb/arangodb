@@ -37,6 +37,27 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+namespace {
+void PrepareIndexCondition(BaseOptions::LookupInfo const& info,
+    arangodb::velocypack::StringRef vertex) {
+  auto& node = info.indexCondition;
+  TRI_ASSERT(node->numMembers() > 0);
+  if (info.conditionNeedUpdate) {
+    // We have to inject _from/_to iff the condition needs it
+    auto dirCmp = node->getMemberUnchecked(info.conditionMemberToUpdate);
+    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+    TRI_ASSERT(dirCmp->numMembers() == 2);
+
+    auto idNode = dirCmp->getMemberUnchecked(1);
+    TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
+    TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
+    // must edit node in place; TODO replace node?
+    TEMPORARILY_UNLOCK_NODE(idNode);
+    idNode->setStringValue(vertex.data(), vertex.length());
+  }
+}
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get a document by it's ID. Also lazy locks the collection.
 ///        If DOCUMENT_NOT_FOUND this function will return normally
@@ -102,7 +123,7 @@ void SingleServerEdgeCursor::getDocAndRunCallback(IndexIterator* cursor, EdgeCur
           callback(std::move(etkn), edgeDoc, _currentCursor);
         }
         return true;
-      });
+      }, ReadOwnWrites::no);
 }
 
 bool SingleServerEdgeCursor::advanceCursor(IndexIterator*& cursor,
@@ -245,7 +266,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
             _opts->cache()->increaseCounter();
             callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
             return true;
-          }).ok();
+          }, ReadOwnWrites::no).ok();
         });
       }
     }
@@ -265,26 +286,12 @@ void SingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint6
 
   size_t i = 0;
   for (auto& info : _lookupInfo) {
-    auto& node = info.indexCondition;
-    TRI_ASSERT(node->numMembers() > 0);
-    if (info.conditionNeedUpdate) {
-      // We have to inject _from/_to iff the condition needs it
-      auto dirCmp = node->getMemberUnchecked(info.conditionMemberToUpdate);
-      TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
-      TRI_ASSERT(dirCmp->numMembers() == 2);
-
-      auto idNode = dirCmp->getMemberUnchecked(1);
-      TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
-      TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-      // must edit node in place; TODO replace node?
-      TEMPORARILY_UNLOCK_NODE(idNode);
-      idNode->setStringValue(vertex.data(), vertex.length());
-    }
-
+    ::PrepareIndexCondition(info, vertex);
     IndexIteratorOptions defaultIndexIteratorOptions;
 
     auto& csrs = _cursors[i++];
     size_t j = 0;
+    auto& node = info.indexCondition;
     for (auto const& it : info.idxHandles) {
       auto& cursor = csrs[j];
       // check if the underlying index iterator supports rearming
@@ -296,7 +303,7 @@ void SingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint6
       } else {
         // rearming not supported - we need to throw away the index iterator
         // and create a new one
-        cursor = _trx->indexScanForCondition(it, node, _tmpVar, defaultIndexIteratorOptions);
+        cursor = _trx->indexScanForCondition(it, node, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no);
       }
       ++j;
     }
@@ -323,28 +330,13 @@ void SingleServerEdgeCursor::buildLookupInfo(arangodb::velocypack::StringRef ver
 
 void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
                                        arangodb::velocypack::StringRef vertex) {
-  auto& node = info.indexCondition;
-  TRI_ASSERT(node->numMembers() > 0);
-  if (info.conditionNeedUpdate) {
-    // We have to inject _from/_to iff the condition needs it
-    auto dirCmp = node->getMemberUnchecked(info.conditionMemberToUpdate);
-    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
-    TRI_ASSERT(dirCmp->numMembers() == 2);
-
-    auto idNode = dirCmp->getMemberUnchecked(1);
-    TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
-    TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-    // must edit node in place; TODO replace node?
-    TEMPORARILY_UNLOCK_NODE(idNode);
-    idNode->setStringValue(vertex.data(), vertex.length());
-  }
-
+  ::PrepareIndexCondition(info, vertex);
   IndexIteratorOptions defaultIndexIteratorOptions;
   
   _cursors.emplace_back();
   auto& csrs = _cursors.back();
   csrs.reserve(info.idxHandles.size());
   for (std::shared_ptr<Index> const& index : info.idxHandles) {
-    csrs.emplace_back(_trx->indexScanForCondition(index, node, _tmpVar, defaultIndexIteratorOptions));
+    csrs.emplace_back(_trx->indexScanForCondition(index, info.indexCondition, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no));
   }
 }

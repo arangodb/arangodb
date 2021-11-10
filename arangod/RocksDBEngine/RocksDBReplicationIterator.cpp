@@ -41,7 +41,8 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
     LogicalCollection& collection, rocksdb::Snapshot const* snapshot)
     : RevisionReplicationIterator(collection),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
-          static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())) {
+          static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())),
+      _rangeBound(_bounds.end()) {
   auto& selector = collection.vocbase().server().getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = *static_cast<RocksDBEngine*>(&selector.engine());
   rocksdb::TransactionDB* db = engine.db();
@@ -54,6 +55,7 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
   ro.verify_checksums = false;
   ro.fill_cache = false;
   ro.prefix_same_as_start = true;
+  ro.iterate_upper_bound = &_rangeBound;
 
   rocksdb::ColumnFamilyHandle* cf = _bounds.columnFamily();
   _cmp = cf->GetComparator();
@@ -70,16 +72,19 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
     LogicalCollection& collection, transaction::Methods& trx)
     : RevisionReplicationIterator(collection),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
-          static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())) {
-  RocksDBTransactionMethods* methods = RocksDBTransactionState::toMethods(&trx);
+          static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())),
+      _rangeBound(_bounds.end()) {
+  RocksDBTransactionMethods* methods = RocksDBTransactionState::toMethods(&trx, collection.id());
 
   rocksdb::ColumnFamilyHandle* cf = _bounds.columnFamily();
   _cmp = cf->GetComparator();
 
-  _iter = methods->NewIterator(cf, [](rocksdb::ReadOptions& ro) {
+  _iter = methods->NewIterator(cf, [this](ReadOptions& ro) {
     ro.verify_checksums = false;
     ro.fill_cache = false;
     ro.prefix_same_as_start = true;
+    ro.iterate_upper_bound = &_rangeBound;
+    ro.readOwnWrites = false;
   });
   if (_iter == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to build RocksDBRevisionReplicationIterator for transaction");
@@ -88,6 +93,8 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
 }
 
 bool RocksDBRevisionReplicationIterator::hasMore() const {
+  // TODO - check if the comparator is still necessary (thus the assertion)
+  TRI_ASSERT(!_iter->Valid() || _cmp->Compare(_iter->key(), _bounds.end()) <= 0);
   return _iter->Valid() && _cmp->Compare(_iter->key(), _bounds.end()) <= 0;
 }
 

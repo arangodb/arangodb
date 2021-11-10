@@ -39,13 +39,15 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include <chrono>
 
 namespace arangodb {
+
+namespace velocypack {
+class Slice;
+class Builder;
+}
+
 enum class RecoveryState : uint32_t {
   /// @brief recovery is not yet started
   BEFORE = 0,
@@ -65,7 +67,6 @@ class DatabaseInitialSyncer;
 class LogicalCollection;
 class LogicalView;
 class PhysicalCollection;
-class PhysicalView;
 class Result;
 class TransactionCollection;
 class TransactionState;
@@ -88,35 +89,18 @@ class StorageEngine : public application_features::ApplicationFeature {
  public:
   // create the storage engine
   StorageEngine(application_features::ApplicationServer& server,
-                std::string const& engineName, std::string const& featureName,
-                std::unique_ptr<IndexFactory>&& indexFactory)
-      : application_features::ApplicationFeature(server, featureName),
-        _indexFactory(std::move(indexFactory)),
-        _typeName(engineName) {
-    // each specific storage engine feature is optional. the storage engine
-    // selection feature will make sure that exactly one engine is selected at
-    // startup
-    setOptional(true);
-    // storage engines must not use elevated privileges for files etc
-    startsAfter<application_features::BasicFeaturePhaseServer>();
-
-    startsAfter<CacheManagerFeature>();
-    startsBefore<StorageEngineFeature>();
-    startsAfter<transaction::ManagerFeature>();
-    startsAfter<ViewTypesFeature>();
-  }
+                std::string engineName, std::string const& featureName,
+                std::unique_ptr<IndexFactory>&& indexFactory);
   
   virtual HealthData healthCheck() = 0;
 
   virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
   virtual std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId, transaction::Options const& options) = 0;
-  virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
-      TransactionState& state, DataSourceId cid, AccessMode::Type accessType) = 0;
 
   // when a new collection is created, this method is called to augment the
   // collection creation data with engine-specific information
-  virtual void addParametersForNewCollection(VPackBuilder&, VPackSlice /*info*/) {}
+  virtual void addParametersForNewCollection(velocypack::Builder&, velocypack::Slice /*info*/);
 
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
@@ -126,7 +110,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // --------------------
 
   // return the name of the specific storage engine e.g. rocksdb
-  virtual std::string const& typeName() const { return _typeName; }
+  virtual std::string const& typeName() const;
 
   // inventory functionality
   // -----------------------
@@ -192,7 +176,7 @@ class StorageEngine : public application_features::ApplicationFeature {
                                                         ErrorCode& status) = 0;
 
   // @brief write create marker for database
-  virtual Result writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) { return {}; }
+  virtual Result writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice);
 
   // asks the storage engine to drop the specified database and persist the
   // deletion info. Note that physical deletion of the database data must not
@@ -203,19 +187,26 @@ class StorageEngine : public application_features::ApplicationFeature {
   // to "prepareDropDatabase" returns
   //
   // is done under a lock in database feature
-  virtual Result prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
+  virtual Result prepareDropDatabase(TRI_vocbase_t& vocbase);
 
   // perform a physical deletion of the database
   virtual Result dropDatabase(TRI_vocbase_t& database) = 0;
 
   /// @brief is database in recovery
-  bool inRecovery() { return recoveryState() < RecoveryState::DONE; }
+  bool inRecovery();
 
   /// @brief current recovery state
   virtual RecoveryState recoveryState() = 0;
 
   /// @brief current recovery tick
   virtual TRI_voc_tick_t recoveryTick() = 0;
+
+  virtual auto createReplicatedLog(TRI_vocbase_t&, arangodb::replication2::LogId)
+      -> ResultT<std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> = 0;
+
+  virtual auto dropReplicatedLog(TRI_vocbase_t&,
+                                 std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const&)
+      -> Result = 0;
 
   //// Operations on Collections
   // asks the storage engine to create a collection as specified in the VPack
@@ -298,24 +289,19 @@ class StorageEngine : public application_features::ApplicationFeature {
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.
-  IndexFactory const& indexFactory() const {
-    // The factory has to be created by the implementation
-    // and shall never be deleted
-    TRI_ASSERT(_indexFactory.get() != nullptr);
-    return *_indexFactory;
-  }
+  IndexFactory const& indexFactory() const;
 
   // AQL functions
   // -------------
 
   /// @brief Add engine-specific optimizer rules
-  virtual void addOptimizerRules(aql::OptimizerRulesFeature&) {}
+  virtual void addOptimizerRules(aql::OptimizerRulesFeature&);
 
   /// @brief Add engine-specific V8 functions
-  virtual void addV8Functions() {}
+  virtual void addV8Functions();
 
   /// @brief Add engine-specific REST handlers
-  virtual void addRestHandlers(rest::RestHandlerFactory& handlerFactory) {}
+  virtual void addRestHandlers(rest::RestHandlerFactory& handlerFactory);
 
   // replication
   virtual void cleanupReplicationContexts() = 0;
@@ -343,36 +329,11 @@ class StorageEngine : public application_features::ApplicationFeature {
                             velocypack::Builder& builder) = 0;
   virtual WalAccess const* walAccess() const = 0;
 
-  void getCapabilities(velocypack::Builder& builder) const {
-    builder.openObject();
-    builder.add("name", velocypack::Value(typeName()));
-    builder.add("supports", velocypack::Value(VPackValueType::Object));
-    builder.add("dfdb", velocypack::Value(false));
+  void getCapabilities(velocypack::Builder& builder) const;
 
-    builder.add("indexes", velocypack::Value(VPackValueType::Array));
-    for (auto const& it : indexFactory().supportedIndexes()) {
-      builder.add(velocypack::Value(it));
-    }
-    builder.close();  // indexes
+  virtual void getStatistics(velocypack::Builder& builder, bool v2) const;
 
-    builder.add("aliases", velocypack::Value(VPackValueType::Object));
-    builder.add("indexes", velocypack::Value(VPackValueType::Object));
-    for (auto const& it : indexFactory().indexAliases()) {
-      builder.add(it.first, velocypack::Value(it.second));
-    }
-    builder.close();  // indexes
-    builder.close();  // aliases
-
-    builder.close();  // supports
-    builder.close();  // object
-  }
-
-  virtual void getStatistics(VPackBuilder& builder, bool v2) const {
-    builder.openObject();
-    builder.close();
-  }
-
-  virtual void getStatistics(std::string& result, bool v2) const {}
+  virtual void getStatistics(std::string& result, bool v2) const;
 
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const = 0;
@@ -381,14 +342,14 @@ class StorageEngine : public application_features::ApplicationFeature {
 
  protected:
   void registerCollection(TRI_vocbase_t& vocbase,
-                          std::shared_ptr<arangodb::LogicalCollection> const& collection) {
-    vocbase.registerCollection(true, collection);
-  }
+                          std::shared_ptr<arangodb::LogicalCollection> const& collection);
 
   void registerView(TRI_vocbase_t& vocbase,
-                    std::shared_ptr<arangodb::LogicalView> const& view) {
-    vocbase.registerView(true, view);
-  }
+                    std::shared_ptr<arangodb::LogicalView> const& view);
+
+  static void registerReplicatedLog(
+      TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
+      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log);
 
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;

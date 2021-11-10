@@ -124,7 +124,6 @@ class WeightedQueue {
   /// @brief queue datastore
   /// Note: Mutable is a required for hasProcessableElement right now which is const. We can easily make it non const here.
   mutable std::vector<Step> _queue;
-  // std::priority_queue<Step, std::vector<Step>, WeightedComparator> _queue;
 
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;

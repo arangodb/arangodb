@@ -285,7 +285,7 @@ void TRI_CopyString(char* dst, char const* src, size_t length) {
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeString(char* value) { TRI_Free(value); }
+void TRI_FreeString(char* value) noexcept { TRI_Free(value); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sha256 of a string
@@ -303,68 +303,6 @@ char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
   return (char*)dst;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes special characters using C escapes
-/// the target buffer must have been allocated already and big enough to hold
-/// the result of at most (4 * inLength) + 2 bytes!
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_EscapeControlsCString(char const* in, size_t inLength, char* out,
-                                size_t* outLength, bool appendNewline) {
-  if (out == nullptr) {
-    return nullptr;
-  }
-
-  char* qtr = out;
-  char const* ptr;
-  char const* end;
-
-  for (ptr = in, end = ptr + inLength; ptr < end; ptr++, qtr++) {
-    uint8_t n;
-
-    switch (*ptr) {
-      case '\n':
-        *qtr++ = '\\';
-        *qtr = 'n';
-        break;
-
-      case '\r':
-        *qtr++ = '\\';
-        *qtr = 'r';
-        break;
-
-      case '\t':
-        *qtr++ = '\\';
-        *qtr = 't';
-        break;
-
-      default:
-        n = (uint8_t)(*ptr);
-
-        if (n < 32) {
-          uint8_t n1 = n >> 4;
-          uint8_t n2 = n & 0x0F;
-
-          *qtr++ = '\\';
-          *qtr++ = 'x';
-          *qtr++ = (n1 < 10) ? ('0' + n1) : ('A' + n1 - 10);
-          *qtr = (n2 < 10) ? ('0' + n2) : ('A' + n2 - 10);
-        } else {
-          *qtr = *ptr;
-        }
-
-        break;
-    }
-  }
-
-  if (appendNewline) {
-    *qtr++ = '\n';
-  }
-
-  *qtr = '\0';
-  *outLength = static_cast<size_t>(qtr - out);
-  return out;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unescapes unicode escape sequences

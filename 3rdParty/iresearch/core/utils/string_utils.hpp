@@ -30,8 +30,20 @@
   #define snprintf _snprintf
 #endif
 
+#include "utils/math_utils.hpp"
+
 namespace iresearch {
 namespace string_utils {
+
+inline size_t oversize(
+    size_t chunk_size, size_t size, size_t min_size) noexcept {
+  assert(chunk_size);
+  assert(min_size > size);
+
+  typedef math::math_traits<size_t> math_traits;
+
+  return size + math_traits::ceil(min_size-size, chunk_size);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resize string to the full capacity of resize to the specified size
@@ -65,6 +77,7 @@ inline int to_string(std::string& buf, const char* format, Args&&... args) {
   buf.resize(buf.size() + result);
 
   try {
+    // cppcheck-suppress accessForwarded
     result = snprintf(&buf[start], result, format, std::forward<Args>(args)...);
     buf.resize(start + (std::max)(0, result));
   } catch (...) {

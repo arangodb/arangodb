@@ -185,39 +185,38 @@ struct aligned_type {
 // ----------------------------------------------------------------------------
 
 template<typename Alloc>
-struct allocator_deallocator : public compact_ref<0, Alloc> {
-  typedef compact_ref<0, Alloc> allocator_ref_t;
-  typedef typename allocator_ref_t::allocator_type allocator_type;
+struct allocator_deallocator : public compact<0, Alloc> {
+  typedef compact<0, Alloc> allocator_t;
+  typedef typename allocator_t::type allocator_type;
   typedef typename allocator_type::pointer pointer;
 
-  allocator_deallocator(const allocator_type& alloc) noexcept
-    : allocator_ref_t(alloc) {
+  explicit allocator_deallocator(const allocator_type& alloc) noexcept
+    : allocator_t(alloc) {
   }
 
   void operator()(pointer p) const noexcept {
-    auto& alloc = const_cast<allocator_ref_t*>(this)->get();
+    auto& alloc = const_cast<allocator_type&>(allocator_t::get());
 
     // deallocate storage
     std::allocator_traits<allocator_type>::deallocate(
-      alloc, p, 1
-    );
+      alloc, p, 1);
   }
 }; // allocator_deallocator
 
 template<typename Alloc>
-struct allocator_deleter : public compact_ref<0, Alloc> {
-  typedef compact_ref<0, Alloc> allocator_ref_t;
-  typedef typename allocator_ref_t::type allocator_type;
+struct allocator_deleter : public compact<0, Alloc> {
+  typedef compact<0, Alloc> allocator_t;
+  typedef typename allocator_t::type allocator_type;
   typedef typename allocator_type::pointer pointer;
 
-  allocator_deleter(allocator_type& alloc) noexcept
-    : allocator_ref_t(alloc) {
+  explicit allocator_deleter(const allocator_type& alloc) noexcept
+    : allocator_t(alloc) {
   }
 
   void operator()(pointer p) const noexcept {
     typedef std::allocator_traits<allocator_type> traits_t;
 
-    auto& alloc = const_cast<allocator_deleter*>(this)->get();
+    auto& alloc = const_cast<allocator_type&>(allocator_t::get());
 
     // destroy object
     traits_t::destroy(alloc, p);
@@ -228,20 +227,20 @@ struct allocator_deleter : public compact_ref<0, Alloc> {
 }; // allocator_deleter
 
 template<typename Alloc>
-class allocator_array_deallocator : public compact_ref<0, Alloc> {
+class allocator_array_deallocator : public compact<0, Alloc> {
  public:
-  typedef compact_ref<0, Alloc> allocator_ref_t;
-  typedef typename allocator_ref_t::type allocator_type;
+  typedef compact<0, Alloc> allocator_t;
+  typedef typename allocator_t::type allocator_type;
   typedef typename allocator_type::pointer pointer;
 
   allocator_array_deallocator(const allocator_type& alloc, size_t size) noexcept
-    : allocator_ref_t(alloc), size_(size) {
+    : allocator_t(alloc), size_(size) {
   }
 
   void operator()(pointer p) const noexcept {
     typedef std::allocator_traits<allocator_type> traits_t;
 
-    auto& alloc = const_cast<allocator_type&>(allocator_ref_t::get());
+    auto& alloc = const_cast<allocator_type&>(allocator_t::get());
 
     // deallocate storage
     traits_t::deallocate(alloc, p, size_);
@@ -252,20 +251,20 @@ class allocator_array_deallocator : public compact_ref<0, Alloc> {
 }; // allocator_array_deallocator
 
 template<typename Alloc>
-class allocator_array_deleter : public compact_ref<0, Alloc> {
+class allocator_array_deleter : public compact<0, Alloc> {
  public:
-  typedef compact_ref<0, Alloc> allocator_ref_t;
-  typedef typename allocator_ref_t::type allocator_type;
+  typedef compact<0, Alloc> allocator_t;
+  typedef typename allocator_t::type allocator_type;
   typedef typename allocator_type::pointer pointer;
 
-  allocator_array_deleter(allocator_type& alloc, size_t size) noexcept
-    : allocator_ref_t(alloc), size_(size) {
+  allocator_array_deleter(const allocator_type& alloc, size_t size) noexcept
+    : allocator_t(alloc), size_(size) {
   }
 
   void operator()(pointer p) const noexcept {
     typedef std::allocator_traits<allocator_type> traits_t;
 
-    auto& alloc = const_cast<allocator_type&>(allocator_ref_t::get());
+    auto& alloc = const_cast<allocator_type&>(allocator_t::get());
 
     // destroy objects
     for (auto begin = p, end = p + size_; begin != end; ++begin) {
@@ -302,6 +301,7 @@ struct managed_deleter : util::noncopyable {
   template<
     typename U,
     typename = std::enable_if_t<std::is_convertible_v<U*, pointer>, U*>>
+  // cppcheck-suppress noExplicitConstructor
   managed_deleter(managed_deleter<U>&& rhs) noexcept
     : ptr_(rhs.ptr_) {
     rhs.ptr_ = nullptr;
@@ -329,7 +329,7 @@ struct managed_deleter : util::noncopyable {
     return *this;
   }
 
-  void operator()(pointer p) noexcept {
+  void operator()(const pointer p) noexcept {
     assert(!ptr_ || p == ptr_);
     delete ptr_;
   }
@@ -594,7 +594,7 @@ typename std::enable_if<
 // --SECTION--                                                            maker
 // ----------------------------------------------------------------------------
 
-template<typename Class, bool = is_shared_ptr<typename Class::ptr>::value>
+template<typename Class, bool = is_shared_ptr_v<typename Class::ptr>>
 struct maker {
   template<typename... Args>
   static typename Class::ptr make(Args&&... args) {
@@ -665,11 +665,6 @@ static ptr make(Args&&... args) { \
   typedef irs::memory::maker<type> maker_t; \
   return maker_t::template make(std::forward<Args>(args)...); \
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief declaration of a factory method
-//////////////////////////////////////////////////////////////////////////////
-#define DECLARE_FACTORY(...) static ptr make(__VA_ARGS__)
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation of a factory method, instantiation on heap

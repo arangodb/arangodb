@@ -27,6 +27,7 @@
 #include "ClusterIndex.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
+#include "RocksDBEngine/RocksDBZkdIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -246,7 +247,8 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     }
     case TRI_IDX_TYPE_EDGE_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
+        SimpleAttributeEqualityMatcher matcher(this->_fields);
+        return matcher.matchOne(this, node, reference, itemsInIndex);
       }
       // other...
       SimpleAttributeEqualityMatcher matcher(this->_fields);
@@ -276,6 +278,9 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
       // should not be called for these indexes
       return Index::supportsFilterCondition(allIndexes, node, reference, itemsInIndex);
     }
+
+    case TRI_IDX_TYPE_ZKD_INDEX:
+      return zkd::supportsFilterCondition(this, allIndexes, node, reference, itemsInIndex);
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;
@@ -314,6 +319,10 @@ Index::SortCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortConditio
       }
       break;
     }
+
+    case TRI_IDX_TYPE_ZKD_INDEX:
+      // Sorting not supported
+      return Index::SortCosts{};
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;
@@ -359,7 +368,10 @@ aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
       return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
     }
-      
+
+    case TRI_IDX_TYPE_ZKD_INDEX:
+      return zkd::specializeCondition(this, node, reference);
+
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }

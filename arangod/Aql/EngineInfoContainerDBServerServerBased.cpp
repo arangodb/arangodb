@@ -25,11 +25,11 @@
 
 #include "Aql/Ast.h"
 #include "Aql/GraphNode.h"
+#include "Aql/TraverserEngineShardLists.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTrxMethods.h"
-#include "Graph/BaseOptions.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -77,123 +77,6 @@ Result ExtractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId,
 }
 
 }  // namespace
-
-EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngineShardLists(
-    GraphNode const* node, ServerID const& server,
-    std::unordered_map<ShardID, ServerID> const& shardMapping, QueryContext& query)
-    : _node(node), _hasShard(false) {
-  auto const& edges = _node->edgeColls();
-  TRI_ASSERT(!edges.empty());
-  auto const& restrictToShards = query.queryOptions().restrictToShards;
-#ifdef USE_ENTERPRISE
-  transaction::Methods trx{query.newTrxContext()};
-#endif
-  // Extract the local shards for edge collections.
-  for (auto const& col : edges) {
-#ifdef USE_ENTERPRISE
-    if (trx.isInaccessibleCollection(col->id())) {
-      _inaccessible.insert(col->name());
-      _inaccessible.insert(std::to_string(col->id().id()));
-    }
-#endif
-    _edgeCollections.emplace_back(
-        getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards),
-                          col->isSatellite() && node->isSmart()));
-  }
-  // Extract vertices
-  auto const& vertices = _node->vertexColls();
-  // Guaranteed by addGraphNode, this will inject vertex collections
-  // in anonymous graph case
-  // It might in fact be empty, if we only have edge collections in a graph.
-  // Or if we guarantee to never read vertex data.
-  for (auto const& col : vertices) {
-#ifdef USE_ENTERPRISE
-    if (trx.isInaccessibleCollection(col->id())) {
-      _inaccessible.insert(col->name());
-      _inaccessible.insert(std::to_string(col->id().id()));
-    }
-#endif
-    auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards),
-                                    col->isSatellite() && node->isSmart());
-    _vertexCollections.try_emplace(col->name(), std::move(shards));
-  }
-}
-
-std::vector<ShardID> EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::getAllLocalShards(
-    std::unordered_map<ShardID, ServerID> const& shardMapping, ServerID const& server,
-    std::shared_ptr<std::vector<std::string>> shardIds, bool colIsSatellite) {
-  std::vector<ShardID> localShards;
-  for (auto const& shard : *shardIds) {
-    auto const& it = shardMapping.find(shard);
-    TRI_ASSERT(it != shardMapping.end());
-    if (it->second == server) {
-      localShards.emplace_back(shard);
-      // Guaranteed that the traversal will be executed on this server.
-      _hasShard = true;
-    } else if (colIsSatellite) {
-      // The satellite does not force run of a traversal here.
-      localShards.emplace_back(shard);
-    }
-  }
-  return localShards;
-}
-
-void EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::serializeIntoBuilder(
-    VPackBuilder& infoBuilder) const {
-  TRI_ASSERT(_hasShard);
-  TRI_ASSERT(infoBuilder.isOpenArray());
-  infoBuilder.openObject();
-  {
-    // Options
-    infoBuilder.add(VPackValue("options"));
-    graph::BaseOptions* opts = _node->options();
-    opts->buildEngineInfo(infoBuilder);
-  }
-  {
-    // Variables
-    std::vector<aql::Variable const*> vars;
-    _node->getConditionVariables(vars);
-    if (!vars.empty()) {
-      infoBuilder.add(VPackValue("variables"));
-      infoBuilder.openArray();
-      for (auto v : vars) {
-        v->toVelocyPack(infoBuilder);
-      }
-      infoBuilder.close();
-    }
-  }
-
-  infoBuilder.add(VPackValue("shards"));
-  infoBuilder.openObject();
-  infoBuilder.add(VPackValue("vertices"));
-  infoBuilder.openObject();
-  for (auto const& col : _vertexCollections) {
-    infoBuilder.add(VPackValue(col.first));
-    infoBuilder.openArray();
-    for (auto const& v : col.second) {
-      infoBuilder.add(VPackValue(v));
-    }
-    infoBuilder.close();  // this collection
-  }
-  infoBuilder.close();  // vertices
-
-  infoBuilder.add(VPackValue("edges"));
-  infoBuilder.openArray();
-  for (auto const& edgeShards : _edgeCollections) {
-    infoBuilder.openArray();
-    for (auto const& e : edgeShards) {
-      infoBuilder.add(VPackValue(e));
-    }
-    infoBuilder.close();
-  }
-  infoBuilder.close();  // edges
-  infoBuilder.close();  // shards
-
-  _node->enhanceEngineInfo(infoBuilder);
-
-  infoBuilder.close();  // base
-  TRI_ASSERT(infoBuilder.isOpenArray());
-}
 
 EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(QueryContext& query) noexcept
     : _query(query), _shardLocking(query), _lastSnippetId(1) {
@@ -418,7 +301,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
   ErrorCode cleanupReason = TRI_ERROR_CLUSTER_TIMEOUT;
 
-  auto cleanupGuard = scopeGuard([this, &serverToQueryId, &cleanupReason]() {
+  auto cleanupGuard = scopeGuard([this, &serverToQueryId, &cleanupReason]() noexcept {
     try {
       transaction::Methods& trx = _query.trxForOptimization();
       auto requests = cleanupEngines(cleanupReason, _query.vocbase().name(), serverToQueryId);
@@ -453,7 +336,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   _query.queryOptions().ttl =
       std::max<double>(oldTtl, transaction::Manager::idleTTLDBServer);
 
-  auto ttlGuard = scopeGuard([this, oldTtl]() {
+  auto ttlGuard = scopeGuard([this, oldTtl]() noexcept {
     // restore previous TTL value
     _query.queryOptions().ttl = oldTtl;
   });
@@ -826,6 +709,7 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
 void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node, bool pushToSingleServer) {
   node->prepareOptions();
   injectVertexCollections(node);
+  node->initializeIndexConditions();
   // SnippetID does not matter on GraphNodes
   _shardLocking.addNode(node, 0, pushToSingleServer);
   _graphNodes.emplace_back(node);
@@ -871,7 +755,7 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack
 #endif
 }
 
-// Insert the Variables information into the message to be send to DBServers
+// Insert the Variables information into the message to be sent to DBServers
 void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("variables"));
@@ -879,7 +763,7 @@ void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypa
   _query.ast()->variables()->toVelocyPack(builder);
 }
 
-// Insert the Snippets information into the message to be send to DBServers
+// Insert the Snippets information into the message to be sent to DBServers
 void EngineInfoContainerDBServerServerBased::addSnippetPart(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
@@ -893,7 +777,7 @@ void EngineInfoContainerDBServerServerBased::addSnippetPart(
   builder.close();  // snippets
 }
 
-// Insert the TraversalEngine information into the message to be send to DBServers
+// Insert the TraversalEngine information into the message to be sent to DBServers
 std::vector<bool> EngineInfoContainerDBServerServerBased::addTraversalEnginesPart(
     arangodb::velocypack::Builder& infoBuilder,
     std::unordered_map<ShardID, ServerID> const& shardMapping, ServerID const& server) const {

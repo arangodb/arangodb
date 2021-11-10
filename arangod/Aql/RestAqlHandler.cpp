@@ -287,10 +287,9 @@ void RestAqlHandler::setupClusterQuery() {
 
   double const ttl = options.ttl;
   // creates a StandaloneContext or a leased context
-  auto q = std::make_unique<ClusterQuery>(clusterQueryId,
-                                          createTransactionContext(access),
-                                          std::move(options));
-
+  auto q = ClusterQuery::create(clusterQueryId,
+                                createTransactionContext(access),
+                                std::move(options));
   TRI_ASSERT(clusterQueryId == 0 || clusterQueryId == q->id());
 
   VPackBufferUInt8 buffer;
@@ -378,7 +377,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
 
   if (_engine->getQuery().queryOptions().profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
-        << "[query#" << idString << "] remote request received: " << operation
+        << "[query#" << _engine->getQuery().id() << "] remote request received: " << operation
         << " registryId=" << idString;
   }
 
@@ -830,7 +829,7 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
   auto errorCode =
       VelocyPackHelper::getNumericValue<ErrorCode>(querySlice, StaticStrings::Code,
                                                    TRI_ERROR_INTERNAL);
-  std::unique_ptr<ClusterQuery> query = _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
+  std::shared_ptr<ClusterQuery> query = _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
   if (!query) {
     // this may be a race between query garbage collection and the client
     // shutting down the query. it is debatable whether this is an actual error
@@ -856,4 +855,12 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
 
     generateResult(rest::ResponseCode::OK, std::move(buffer));
   }));
+}
+
+RequestLane RestAqlHandler::lane() const {
+  if (ServerState::instance()->isCoordinator()) {
+    return RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR;
+  } else {
+    return RequestLane::CLUSTER_AQL;
+  }
 }

@@ -76,13 +76,13 @@ printf " # coordinators: %s," "$NRCOORDINATORS"
 printf " transport: %s\n" "$TRANSPORT"
 
 if (( $NRAGENTS % 2 == 0)) ; then
-  echo "**ERROR: Number of agents must be odd! Bailing out."
+  echo "**ERROR**: Number of agents must be odd! Bailing out."
   exit 1
 fi
 
 SFRE=1.0
 COMP=500
-KEEP=2000
+KEEP=50000
 if [ -z "$ONGOING_PORTS" ] ; then
   CO_BASE=$(( $PORT_OFFSET + 8530 ))
   DB_BASE=$(( $PORT_OFFSET + 8629 ))
@@ -102,8 +102,13 @@ if [ -z "$JWT_SECRET" ];then
   AUTHENTICATION="--server.authentication false"
   AUTHORIZATION_HEADER=""
 else
-  AUTHENTICATION="--server.jwt-secret $JWT_SECRET"
-  AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
+  if ! command -v jwtgen &> /dev/null; then
+    echo "**ERROR**: jwtgen could not be found. Install via \"npm install -g jwtgen\". Bailing out"
+    exit
+  fi
+  echo $JWT_SECRET > cluster/jwt.secret
+  AUTHENTICATION="--server.jwt-secret-keyfile cluster/jwt.secret"
+  export AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
 fi
 
 if [ -z "$ENCRYPTION_SECRET" ];then
@@ -225,7 +230,7 @@ start() {
 
     TYPE=$1
     PORT=$2
-    mkdir -p cluster/data$PORT cluster/apps$PORT
+    mkdir -p cluster/data$PORT
     echo == Starting $TYPE on port $PORT
     [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     if [ "$AUTOUPGRADE" == "1" ];then
@@ -292,19 +297,25 @@ done
 
 testServer() {
     PORT=$1
+    COUNTER=0
     while true ; do
         if [ -z "$AUTHORIZATION_HEADER" ]; then
           ${CURL}//$ADDRESS:$PORT/_api/version > /dev/null 2>&1
         else
           ${CURL}//$ADDRESS:$PORT/_api/version -H "$AUTHORIZATION_HEADER" > /dev/null 2>&1
         fi
-        if [ "$?" != "0" ] ; then
-            echo Server on port $PORT does not answer yet.
+        if [ "x$?" != "x0" ] ; then
+            COUNTER=$(($COUNTER + 1))
+            if [ "x$COUNTER" = "x4" ]; then
+              # only print every now and then
+              echo Server on port $PORT does not answer yet.
+              COUNTER=0
+            fi;
         else
             echo Server on port $PORT is ready for business.
             break
         fi
-        sleep 1
+        sleep 0.25
     done
 }
 
@@ -317,5 +328,9 @@ done
 
 echo == Done, your cluster is ready at
 for p in `seq $CO_BASE $PORTTOPCO` ; do
+  if [ -z "$JWT_SECRET" ];then
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p"
+  else
+    echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p --server.jwt-secret-keyfile cluster/jwt.secret"
+  fi
 done

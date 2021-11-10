@@ -124,6 +124,8 @@ class OneSidedEnumerator : public TraversalEnumerator {
   bool skipPath() override;
   auto destroyEngines() -> void override;
 
+  auto prepareIndexExpressions(aql::Ast* ast) -> void override;
+
   /**
    * @brief Return statistics generated since
    * the last time this method was called.

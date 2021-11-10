@@ -1169,7 +1169,7 @@ size_t AqlItemBlock::maxModifiedEntries() const noexcept { return _numRegisters 
 
 size_t AqlItemBlock::capacity() const noexcept { return _data.capacity(); }
 
-bool AqlItemBlock::isShadowRow(size_t row) const {
+bool AqlItemBlock::isShadowRow(size_t row) const noexcept {
   return _shadowRows.is(row);
 }
 

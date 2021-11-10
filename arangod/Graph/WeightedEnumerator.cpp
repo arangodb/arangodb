@@ -75,11 +75,9 @@ bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
   // getSingleVertex does nothing but that and checking conditions
   // However, for global unique vertexes, we need the vertex getter.
   if (_traverser->getVertex(toVertex, nextEdge.depth)) {
-#ifdef USE_ENTERPRISE
     if (!validDisjointPath(nextEdge.fromIndex, toVertex)) {
       return false;
     }
-#endif
     if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
       if (pathContainsVertex(nextEdge.fromIndex, toVertex)) {
         // This vertex is on the path.

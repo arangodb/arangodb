@@ -47,16 +47,18 @@ class RocksDBWalAccess final : public WalAccess {
   ///
   TRI_voc_tick_t lastTick() const override;
 
-  /// should return the list of transactions started, but not committed in that
-  /// range (range can be adjusted)
-  WalAccessResult openTransactions(WalAccess::Filter const& filter,
-                                   TransactionCallback const&) const override;
-
   /// Tails the wall, this will already sanitize the
   WalAccessResult tail(WalAccess::Filter const& filter, size_t chunkSize,
                        MarkerCallback const&) const override;
 
  private:
+  /// @brief helper function to print WAL contents. this is only used for
+  /// debugging
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void printWal(WalAccess::Filter const& filter, size_t chunkSize,
+                MarkerCallback const&) const;
+#endif
+
   RocksDBEngine& _engine;
 };
 }  // namespace arangodb

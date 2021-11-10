@@ -680,7 +680,11 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   TRI_ASSERT(traverser != nullptr);
   auto executorInfos = TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
                                               getStartVertex(), inputRegister,
-                                              std::move(filterConditionVariables));
+                                              std::move(filterConditionVariables),
+                                              plan()->getAst());
+
+  // We need to prepare the variable accesses before we ask the index nodes.
+  initializeIndexConditions();
 
   return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -707,6 +711,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
                                          bool const withProperties) const {
+  graphCloneHelper(plan, c, withProperties);
   if (isVertexOutVariableAccessed()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
@@ -736,7 +741,6 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
 
   c._conditionVariables.reserve(_conditionVariables.size());
   for (auto const& it : _conditionVariables) {
-    //#warning TODO: check if not cloning variables breaks anything
     if (withProperties) {
       c._conditionVariables.emplace(it->clone());
     } else {

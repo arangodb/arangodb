@@ -53,7 +53,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
            const std::string& name,
            const tests::json_doc_generator::json_value& data) {
           if (data.is_string()) {
-            doc.insert(std::make_shared<tests::templates::string_field>(
+            doc.insert(std::make_shared<tests::string_field>(
               name,
               data.str
             ));
@@ -1282,21 +1282,20 @@ TEST_P(range_filter_test_case, visit) {
   visitor.reset();
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   range_filter_test,
   range_filter_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_1", "1_0"},
-                      tests::format_info{"1_2", "1_0"},
-                      tests::format_info{"1_3", "1_0"})
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      tests::format_info{"1_0"},
+      tests::format_info{"1_1", "1_0"},
+      tests::format_info{"1_2", "1_0"},
+      tests::format_info{"1_3", "1_0"})),
+  range_filter_test_case::to_string
 );
 
 }

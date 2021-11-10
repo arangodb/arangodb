@@ -87,16 +87,6 @@ template<
     return contains(irs::type<type>::id());
   }
 
-  flags features() const {
-    flags features;
-
-    for (auto& entry: map_) {
-      features.map_.insert(entry.first);
-    }
-
-    return features;
-  }
-
   template<typename A>
   inline typename ref<A>::type* get() noexcept {
     typedef typename std::enable_if<

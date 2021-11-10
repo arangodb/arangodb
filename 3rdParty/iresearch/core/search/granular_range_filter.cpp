@@ -103,11 +103,12 @@ void collect_terms_between(
     bool include_begin_term, // should begin_term also be included
     bool include_end_term, /* should end_term also be included*/
     Visitor& visitor) {
-  auto masked_begin_level = mask_granularity(terms.value(), prefix_size); // the starting range granularity level
+  irs::bstring tmp;
+  irs::bytes_ref masked_begin_level;
 
   // seek to start of term range for collection
   if (!begin_term.null()) {
-    auto res = terms.seek_ge(begin_term); // seek to start
+    const auto res = terms.seek_ge(begin_term); // seek to start
 
     if (irs::SeekResult::END == res) {
       return; // have reached the end of terms in segment
@@ -128,25 +129,26 @@ void collect_terms_between(
     masked_begin_level = mask_granularity(begin_term, prefix_size); // update level after seek
   } else if (!include_begin_term && !terms.next()) {
     return; // skipped current term and no more terms in segment
+  } else {
+    tmp = static_cast<irs::bstring>(terms.value()); // need a copy as the original reference may be changed
+    masked_begin_level = mask_granularity(tmp, prefix_size); // the starting range granularity level
   }
 
   const auto& masked_end_term = mask_value(end_term, prefix_size); // the ending term for range collection
 
   collect_terms(
-    segment, field, terms, visitor, [&prefix_size, &masked_begin_level, &masked_end_term, include_end_term](
-      const irs::term_iterator& itr
-    )->bool {
-      const auto& masked_current_level = mask_granularity(itr.value(), prefix_size);
-      const auto& masked_current_term = mask_value(itr.value(), prefix_size);
+    segment, field, terms, visitor,
+    [&prefix_size, masked_begin_level, masked_end_term, include_end_term](const irs::term_iterator& itr)->bool {
+      const auto& value = itr.value();
+      const auto masked_current_level = mask_granularity(value, prefix_size);
+      const auto masked_current_term = mask_value(value, prefix_size);
 
       // collect to end, end is when end of terms or masked_current_term < masked_begin_term or masked_current_term >= masked_end_term
       // i.e. end or granularity level boundary passed or term already covered by a less-granular range
       return masked_current_level == masked_begin_level
              && (masked_end_term.null() // (begin .. end of granularity range]
                  || (include_end_term && masked_current_term <= masked_end_term) // (being .. end]
-                 || (!include_end_term && masked_current_term < masked_end_term) // (begin .. end)
-                 )
-             ;
+                 || (!include_end_term && masked_current_term < masked_end_term)); // (begin .. end)
     }
   );
 }
@@ -471,13 +473,13 @@ void visit(
     const irs::by_granular_range::options_type::range_type& rng,
     Visitor& visitor) {
 
-  auto terms = reader.iterator();
+  auto terms = reader.iterator(irs::SeekMode::NORMAL);
 
   if (IRS_UNLIKELY(!terms) || !terms->next()) {
     return; // no terms to collect
   }
 
-  size_t prefix_size = reader.meta().features.check<irs::granularity_prefix>() ? 1 : 0;
+  const size_t prefix_size = reader.meta().features.count(irs::type<irs::granularity_prefix>::id());
 
   assert(!rng.min.empty() || irs::BoundType::UNBOUNDED == rng.min_type);
   assert(!rng.max.empty() || irs::BoundType::UNBOUNDED == rng.max_type);
@@ -540,7 +542,7 @@ void set_granular_term(by_granular_range_options::terms& boundary,
   }
 }
 
-DEFINE_FACTORY_DEFAULT(by_granular_range)
+DEFINE_FACTORY_DEFAULT(by_granular_range) // cppcheck-suppress unknownMacro
 
 /*static*/ filter::prepared::ptr by_granular_range::prepare(
     const index_reader& index,

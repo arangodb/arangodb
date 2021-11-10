@@ -83,6 +83,7 @@
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-general-graph.h"
+#include "V8Server/v8-replicated-logs.h"
 #include "V8Server/v8-replication.h"
 #include "V8Server/v8-statistics.h"
 #include "V8Server/v8-users.h"
@@ -498,9 +499,9 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const queryString(TRI_ObjectToString(isolate, args[0]));
   // If we execute an AQL query from V8 we need to unset the nolock headers
-  arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
-                             nullptr);
-  auto parseResult = query.parse();
+  auto query = arangodb::aql::Query::create(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
+                                            nullptr);
+  auto parseResult = query->parse();
 
   if (parseResult.result.fail()) {
     TRI_V8_THROW_EXCEPTION_FULL(parseResult.result.errorNumber(), parseResult.result.errorMessage());
@@ -626,9 +627,10 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // bind parameters will be freed by the query later
-  arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true),
-                             aql::QueryString(queryString), bindVars, options.slice());
-  auto queryResult = query.explain();
+  auto query = arangodb::aql::Query::create(transaction::V8Context::Create(vocbase, true),
+                                            aql::QueryString(queryString), std::move(bindVars), 
+                                            aql::QueryOptions(options.slice()));
+  auto queryResult = query->explain();
 
   if (queryResult.result.fail()) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
@@ -637,7 +639,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   if (queryResult.data != nullptr) {
-    if (query.queryOptions().allPlans) {
+    if (query->queryOptions().allPlans) {
       result->Set(context,
                   TRI_V8_ASCII_STRING(isolate, "plans"),
                   TRI_VPackToV8(isolate, queryResult.data->slice())).FromMaybe(false);
@@ -714,8 +716,11 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     queryId = TRI_NewServerSpecificTick(); 
   }
 
-  arangodb::aql::ClusterQuery query(queryId, transaction::V8Context::Create(vocbase, true),
-                                    aql::QueryOptions(options.slice()));
+  auto query = arangodb::aql::ClusterQuery::create(
+      queryId, 
+      transaction::V8Context::Create(vocbase, true),
+      aql::QueryOptions(options.slice())
+  );
   
   VPackSlice collections = queryBuilder.slice().get("collections");
   VPackSlice variables = queryBuilder.slice().get("variables");
@@ -736,12 +741,12 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
  
   TRI_ASSERT(!ServerState::instance()->isDBServer());
   VPackBuilder ignoreResponse;
-  query.prepareClusterQuery(VPackSlice::emptyObjectSlice(),
-                            collections, variables,
-                            snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse,
-                            analyzersRevision);
+  query->prepareClusterQuery(VPackSlice::emptyObjectSlice(),
+                             collections, variables,
+                             snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse,
+                             analyzersRevision);
   
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
@@ -832,11 +837,10 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8ToVPack(isolate, options, args[2], false);
   }
 
-  // bind parameters will be freed by the query later
-  arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
-                             bindVars, options.slice());
+  auto query = arangodb::aql::Query::create(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
+                                            std::move(bindVars), aql::QueryOptions(options.slice()));
 
-  arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate);
+  arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED)) {
@@ -2085,6 +2089,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_InitV8Collections(context, &vocbase, v8g, isolate, ArangoNS);
   TRI_InitV8Views(*v8g, isolate);
+  TRI_InitV8ReplicatedLogs(v8g, isolate);
   TRI_InitV8Users(context, &vocbase, v8g, isolate);
   TRI_InitV8GeneralGraph(context, &vocbase, v8g, isolate);
 
@@ -2270,6 +2275,14 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_SHARDS"),
                           v8::Number::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
+      .FromMaybe(false);  // ignore result
+
+  // max number of move shards
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_MOVE_SHARDS"),
+                          v8::Number::New(isolate,
+                                          vocbase.server().getFeature<ClusterFeature>().maxNumberOfMoveShards()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
   
   // force one shard collections?

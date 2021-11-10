@@ -442,6 +442,7 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.add("aborted", VPackValue(info._transactionsStatistics._transactionsAborted.load()));
   b.add("committed", VPackValue(info._transactionsStatistics._transactionsCommitted.load()));
   b.add("intermediateCommits", VPackValue(info._transactionsStatistics._intermediateCommits.load()));
+  b.add("readOnly", VPackValue(info._transactionsStatistics._readTransactions.load()));
   b.close();
 
   if (dealer.isEnabled()) {

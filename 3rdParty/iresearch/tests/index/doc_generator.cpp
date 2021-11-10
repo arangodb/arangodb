@@ -22,11 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "doc_generator.hpp"
-#include "analysis/analyzers.hpp"
-#include "index/field_data.hpp"
-#include "analysis/token_streams.hpp"
-#include "store/store_utils.hpp"
-#include "utils/file_utils.hpp"
 
 #include <sstream>
 #include <iomanip>
@@ -35,8 +30,13 @@
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/reader.h>
 #include <rapidjson/istreamwrapper.h>
-
 #include <utf8.h>
+
+#include "index/norm.hpp"
+#include "index/field_data.hpp"
+#include "analysis/token_streams.hpp"
+#include "store/store_utils.hpp"
+#include "utils/file_utils.hpp"
 
 namespace utf8 {
 namespace unchecked {
@@ -282,7 +282,7 @@ delim_doc_generator::delim_doc_generator(
   doc_->reset();
 }
 
-const tests::document* delim_doc_generator::next() {
+const document* delim_doc_generator::next() {
   if (!getline(ifs_, str_)) {
     return nullptr;
   } 
@@ -326,7 +326,7 @@ csv_doc_generator::csv_doc_generator(
   doc_.reset();
 }
 
-const tests::document* csv_doc_generator::next() {
+const document* csv_doc_generator::next() {
   if (!getline(ifs_, line_) || !stream_) {
     return nullptr;
   }
@@ -361,7 +361,7 @@ bool csv_doc_generator::skip() {
 //////////////////////////////////////////////////////////////////////////////
 class parse_json_handler : irs::util::noncopyable {
  public:
-  typedef std::vector<tests::document> documents_t;
+  typedef std::vector<document> documents_t;
 
   parse_json_handler(const json_doc_generator::factory_f& factory, documents_t& docs)
     : factory_(factory), docs_(docs) {
@@ -452,7 +452,7 @@ class parse_json_handler : irs::util::noncopyable {
     return true;
   }
 
-  bool EndObject(rapidjson::SizeType memberCount) {
+  bool EndObject(rapidjson::SizeType /*memberCount*/) {
     --level_;
 
     if (!path_.empty()) {
@@ -480,7 +480,7 @@ class parse_json_handler : irs::util::noncopyable {
 json_doc_generator::json_doc_generator(
     const irs::utf8_path& file,
     const json_doc_generator::factory_f& factory) {
-  std::ifstream input(irs::utf8_path(file).utf8().c_str(), std::ios::in | std::ios::binary);
+  std::ifstream input(irs::utf8_path(file).u8string().c_str(), std::ios::in | std::ios::binary);
   assert(input);
 
   rapidjson::IStreamWrapper stream(input);
@@ -514,7 +514,7 @@ json_doc_generator::json_doc_generator(json_doc_generator&& rhs) noexcept
     next_(std::move(rhs.next_)) {
 }
 
-const tests::document* json_doc_generator::next() {
+const document* json_doc_generator::next() {
   if (docs_.end() == next_) {
     return nullptr;
   }
@@ -525,6 +525,261 @@ const tests::document* json_doc_generator::next() {
 
 void json_doc_generator::reset() {
   next_ = docs_.begin();
+}
+
+token_stream_payload::token_stream_payload(irs::token_stream* impl)
+  : impl_(impl) {
+    assert(impl_);
+    term_ = irs::get<irs::term_attribute>(*impl_);
+    assert(term_);
+}
+
+irs::attribute* token_stream_payload::get_mutable(irs::type_info::type_id type) {
+  if (irs::type<irs::payload>::id() == type) {
+    return &pay_;
+  }
+
+  return impl_->get_mutable(type);
+}
+
+bool token_stream_payload::next() {
+  if (impl_->next()) {
+    pay_.value = term_->value;
+    return true;
+  }
+  pay_.value = irs::bytes_ref::NIL;
+  return false;
+}
+
+string_field::string_field(
+    const std::string& name,
+    irs::IndexFeatures index_features,
+    const std::vector<irs::type_info::type_id>& extra_features) {
+  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
+  features_ = extra_features;
+  name_ = name;
+}
+
+string_field::string_field(
+    const std::string& name,
+    const irs::string_ref& value,
+    irs::IndexFeatures index_features,
+    const std::vector<irs::type_info::type_id>& extra_features)
+  : value_(value) {
+  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
+  features_ = extra_features;
+  name_ = name;
+}
+
+// reject too long terms
+void string_field::value(const irs::string_ref& str) {
+  const auto size_len = irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
+  const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
+  auto begin = str.begin();
+  auto end = str.begin() + max_len;
+  value_.assign(begin, end);
+}
+
+bool string_field::write(irs::data_output& out) const {
+  irs::write_string(out, value_);
+  return true;
+}
+
+irs::token_stream& string_field::get_tokens() const {
+  REGISTER_TIMER_DETAILED();
+
+  stream_.reset(value_);
+  return stream_;
+}
+
+string_ref_field::string_ref_field(
+    const std::string& name,
+    irs::IndexFeatures extra_index_features,
+    const std::vector<irs::type_info::type_id>& extra_features) {
+  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
+  features_ = extra_features;
+  name_ = name;
+}
+
+string_ref_field::string_ref_field(
+    const std::string& name,
+    const irs::string_ref& value,
+    irs::IndexFeatures extra_index_features,
+    const std::vector<irs::type_info::type_id>& extra_features)
+  : value_(value) {
+  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
+  features_ = extra_features;
+  name_ = name;
+}
+
+// truncate very long terms
+void string_ref_field::value(const irs::string_ref& str) {
+  const auto size_len = irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
+  const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
+
+  value_ = irs::string_ref(str.c_str(), max_len);
+}
+
+bool string_ref_field::write(irs::data_output& out) const {
+  irs::write_string(out, value_);
+  return true;
+}
+
+irs::token_stream& string_ref_field::get_tokens() const {
+  REGISTER_TIMER_DETAILED();
+
+  stream_.reset(value_);
+  return stream_;
+}
+
+void europarl_doc_template::init() {
+  clear();
+  indexed.push_back(std::make_shared<string_field>("title"));
+  indexed.push_back(std::make_shared<text_ref_field>("title_anl", false));
+  indexed.push_back(std::make_shared<text_ref_field>("title_anl_pay", true));
+  indexed.push_back(std::make_shared<text_ref_field>("body_anl", false));
+  indexed.push_back(std::make_shared<text_ref_field>("body_anl_pay", true));
+  {
+    insert(std::make_shared<long_field>());
+    auto& field = static_cast<long_field&>(indexed.back());
+    field.name("date");
+  }
+  insert(std::make_shared<string_field>("datestr"));
+  insert(std::make_shared<string_field>("body"));
+  {
+    insert(std::make_shared<int_field>());
+    auto& field = static_cast<int_field&>(indexed.back());
+    field.name("id");
+  }
+  insert(std::make_shared<string_field>("idstr"));
+}
+
+void europarl_doc_template::value(size_t idx, const std::string& value) {
+  static auto get_time = [](const std::string& src) {
+    std::istringstream ss(src);
+    std::tm tmb{};
+    char c;
+    ss >> tmb.tm_year >> c >> tmb.tm_mon >> c >> tmb.tm_mday;
+    return std::mktime( &tmb );
+  };
+
+  switch (idx) {
+    case 0: // title
+      title_ = value;
+      indexed.get<string_field>("title")->value(title_);
+      indexed.get<text_ref_field>("title_anl")->value(title_);
+      indexed.get<text_ref_field>("title_anl_pay")->value(title_);
+      break;
+    case 1: // date
+      indexed.get<long_field>("date")->value(get_time(value));
+      indexed.get<string_field>("datestr")->value(value);
+      break;
+    case 2: // body
+      body_ = value;
+      indexed.get<string_field>("body")->value(body_);
+      indexed.get<text_ref_field>("body_anl")->value(body_);
+      indexed.get<text_ref_field>("body_anl_pay")->value(body_);
+      break;
+  }
+}
+
+void europarl_doc_template::end() {
+  ++idval_;
+  indexed.get<int_field>("id")->value(idval_);
+  indexed.get<string_field>("idstr")->value(std::to_string(idval_));
+}
+
+void europarl_doc_template::reset() {
+  idval_ = 0;
+}
+
+void generic_json_field_factory(
+    document& doc,
+    const std::string& name,
+    const json_doc_generator::json_value& data) {
+  if (json_doc_generator::ValueType::STRING == data.vt) {
+    doc.insert(std::make_shared<string_field>(name, data.str));
+  } else if (json_doc_generator::ValueType::NIL == data.vt) {
+    doc.insert(std::make_shared<binary_field>());
+    auto& field = (doc.indexed.end() - 1).as<binary_field>();
+    field.name(name);
+    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
+  } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
+    doc.insert(std::make_shared<binary_field>());
+    auto& field = (doc.indexed.end() - 1).as<binary_field>();
+    field.name(name);
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+  } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
+    doc.insert(std::make_shared<binary_field>());
+    auto& field = (doc.indexed.end() - 1).as<binary_field>();
+    field.name(name);
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+  } else if (data.is_number()) {
+    // 'value' can be interpreted as a double
+    doc.insert(std::make_shared<double_field>());
+    auto& field = (doc.indexed.end() - 1).as<double_field>();
+    field.name(name);
+    field.value(data.as_number<double_t>());
+  }
+}
+
+void payloaded_json_field_factory(
+    document& doc,
+    const std::string& name,
+    const json_doc_generator::json_value& data) {
+  typedef text_field<std::string> text_field;
+
+  if (json_doc_generator::ValueType::STRING == data.vt) {
+    // analyzed && pyaloaded
+    doc.indexed.push_back(std::make_shared<text_field>(
+      std::string(name.c_str()) + "_anl_pay",
+      data.str, true));
+
+    // analyzed field
+    doc.indexed.push_back(std::make_shared<text_field>(
+      std::string(name.c_str()) + "_anl",
+      data.str));
+
+    // not analyzed field
+    doc.insert(std::make_shared<string_field>(name, data.str));
+  } else if (json_doc_generator::ValueType::NIL == data.vt) {
+    doc.insert(std::make_shared<binary_field>());
+    auto& field = (doc.indexed.end() - 1).as<binary_field>();
+    field.name(name);
+    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
+  } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
+    doc.insert(std::make_shared<binary_field>());
+    auto& field = (doc.indexed.end() - 1).as<binary_field>();
+    field.name(name);
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+  } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
+    doc.insert(std::make_shared<binary_field>());
+    auto& field = (doc.indexed.end() - 1).as<binary_field>();
+    field.name(name);
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false()));
+  } else if (data.is_number()) {
+    // 'value' can be interpreted as a double
+    doc.insert(std::make_shared<double_field>());
+    auto& field = (doc.indexed.end() - 1).as<double_field>();
+    field.name(name);
+    field.value(data.as_number<double_t>());
+  }
+}
+
+void normalized_string_json_field_factory(
+    document& doc,
+    const std::string& name,
+    const json_doc_generator::json_value& data) {
+  if (json_doc_generator::ValueType::STRING == data.vt) {
+    doc.insert(
+      std::make_shared<string_field>(
+        name,
+        data.str,
+        irs::IndexFeatures::NONE,
+        std::vector<irs::type_info::type_id>{ irs::type<irs::norm>::id() }));;
+  } else {
+    generic_json_field_factory(doc, name, data);
+  }
 }
 
 } // tests

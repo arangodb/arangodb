@@ -66,7 +66,7 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     return irs::doc_iterator::empty();
   }
 
-  auto term = pkField->iterator();
+  auto term = pkField->iterator(irs::SeekMode::RANDOM_ONLY);
 
   auto const pkRef =
       irs::numeric_utils::numeric_traits<LocalDocumentId::BaseType>::raw_ref(_pk);
@@ -76,7 +76,7 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     return irs::doc_iterator::empty();
   }
 
-  auto docs = segment.mask(term->postings(irs::flags::empty_instance()));  // must not match removed docs
+  auto docs = segment.mask(term->postings(irs::IndexFeatures::NONE));  // must not match removed docs
 
   if (!docs->next()) {
     return irs::doc_iterator::empty();

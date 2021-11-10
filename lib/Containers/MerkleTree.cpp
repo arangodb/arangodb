@@ -29,17 +29,14 @@
 #include <limits>
 #include <memory>
 #include <mutex>
-#include <queue>
 #include <shared_mutex>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include <snappy.h>
-#include <snappy-sinksource.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -54,8 +51,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/hashes.h"
-
-#include "Logger/LogMacros.h"
+#include "Containers/MerkleTreeHelpers.h"
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 #include "Random/RandomGenerator.h"
@@ -72,86 +68,6 @@ template<typename T> T readUInt(char const*& p) noexcept {
   memcpy(&value, p, sizeof(T));
   p += sizeof(T);
   return arangodb::basics::littleToHost<T>(value);
-};
-
-/// @brief an empty shard that is reused when serializing empty shards
-struct EmptyShard {
-  EmptyShard()
-    : buffer(arangodb::containers::MerkleTreeBase::Data::buildShard(arangodb::containers::MerkleTreeBase::ShardSize)) {}
-
-  char* data() const { return reinterpret_cast<char*>(buffer.get()); }
-
-  arangodb::containers::MerkleTreeBase::Data::ShardType buffer;
-};
-
-/// @brief an empty shard that is reused when serializing empty shards
-EmptyShard const emptyShard;
-
-
-class SnappyStringAppendSink : public snappy::Sink {
- public:
-  explicit SnappyStringAppendSink(std::string& output) 
-      : output(output) {}
-
-  void Append(const char* bytes, size_t n) override {
-    output.append(bytes, n);
-  }
-
- private:
-  std::string& output;
-};
-  
-/// @brief helper class for compressing a Merkle tree using Snappy
-class MerkleTreeSnappySource : public snappy::Source {
- public:
-  explicit MerkleTreeSnappySource(std::uint64_t numberOfShards, 
-                                  std::uint64_t allocationSize,
-                                  arangodb::containers::MerkleTreeBase::Data const& data)
-      : numberOfShards(numberOfShards),
-        data(data), 
-        bytesRead(0),
-        bytesLeftToRead(allocationSize) {}
-  
-  size_t Available() const override {
-    return bytesLeftToRead;
-  }
-  
-  char const* Peek(size_t* len) override {
-    if (bytesRead < arangodb::containers::MerkleTreeBase::MetaSize) {
-      TRI_ASSERT(bytesRead == 0);
-      *len = arangodb::containers::MerkleTreeBase::MetaSize;
-      return reinterpret_cast<char const*>(&data.meta);
-    }
-    
-    TRI_ASSERT(bytesRead >= arangodb::containers::MerkleTreeBase::MetaSize);
-    std::uint64_t shard = (bytesRead - arangodb::containers::MerkleTreeBase::MetaSize) / arangodb::containers::MerkleTreeBase::ShardSize;
-    std::uint64_t offsetInShard = (bytesRead - arangodb::containers::MerkleTreeBase::MetaSize) % arangodb::containers::MerkleTreeBase::ShardSize;
-
-    if (shard < numberOfShards) {
-      *len = arangodb::containers::MerkleTreeBase::ShardSize - offsetInShard;
-      if (shard >= data.shards.size() || data.shards[shard] == nullptr) {
-        // for compressing empty shards, we use the static EmptyShard object,
-        // which consists of one shard that is completely empty
-        return emptyShard.data() + offsetInShard;
-      }
-      return reinterpret_cast<char const*>(data.shards[shard].get()) + offsetInShard;
-    }
-    // no more data
-    *len = 0;
-    return "";
-  }
-
-  void Skip(size_t n) override {
-    bytesRead += n;
-    TRI_ASSERT(n <= bytesLeftToRead);
-    bytesLeftToRead -= n;
-  }
-   
- private:
-  std::uint64_t const numberOfShards;
-  arangodb::containers::MerkleTreeBase::Data const& data;
-  std::uint64_t bytesRead;
-  std::uint64_t bytesLeftToRead;
 };
 
 }  // namespace
@@ -462,7 +378,9 @@ MerkleTree<Hasher, BranchingBits>::deserialize(velocypack::Slice slice) {
   std::uint64_t summaryHash = read.getNumber<std::uint64_t>();
 
   velocypack::Slice nodes = slice.get(StaticStrings::RevisionTreeNodes);
-  if (!nodes.isArray() || nodes.length() < nodeCountAtDepth(depth)) {
+  if (!nodes.isArray() || nodes.length() > nodeCountAtDepth(depth)) {
+    // note: we can have less nodes than nodeCountAtDepth because of
+    // "skip" nodes
     return nullptr;
   }
 
@@ -475,6 +393,12 @@ MerkleTree<Hasher, BranchingBits>::deserialize(velocypack::Slice slice) {
   std::uint64_t index = 0;
   for (velocypack::Slice nodeSlice : velocypack::ArrayIterator(nodes)) {
     TRI_ASSERT(nodeSlice.isObject());
+
+    arangodb::velocypack::Slice skipSlice = nodeSlice.get("skip");
+    if (!skipSlice.isNone()) {
+      index += skipSlice.getNumber<std::uint64_t>();
+      continue;
+    }
 
     arangodb::velocypack::Slice countSlice = nodeSlice.get(StaticStrings::RevisionTreeCount);
     arangodb::velocypack::Slice hashSlice = nodeSlice.get(StaticStrings::RevisionTreeHash);
@@ -905,20 +829,37 @@ void MerkleTree<Hasher, BranchingBits>::serialize(velocypack::Builder& output,
   output.add(StaticStrings::RevisionTreeHash, velocypack::Value(meta().summary.hash));
   
   velocypack::ArrayBuilder nodeArrayGuard(&output, StaticStrings::RevisionTreeNodes);
-  
+ 
+  std::uint64_t toSkip = 0;
   std::uint64_t last = nodeCountAtDepth(depth);
   for (std::uint64_t index = 0; index < last; ++index) {
     Node const& src = this->node(index);
-    if (onlyPopulated && src.empty()) {
-      // return an empty object. this is still worse than returning nothing at all,
-      // but otherwise we would need to return the index number of each populaed node,
-      // which is likely more data
-      output.openObject();
-      output.close();
+    if (onlyPopulated) {
+      if (src.empty()) {
+        // node is empty. simply count how many empty nodes we have in a run
+        ++toSkip;
+      } else {
+        // check if we have a run of empty nodes...
+        if (toSkip == 1) {
+          // return an empty object. this is still worse than returning nothing at all,
+          // but otherwise we would need to return the index number of each populated node,
+          // which is likely more data
+          output.add(velocypack::Slice::emptyObjectSlice());
+        } else if (toSkip > 1) {
+          // cheat and only return the number of empty buckets
+          output.openObject();
+          output.add("skip", velocypack::Value(toSkip));
+          output.close();
+        }
+        toSkip = 0;
+        src.toVelocyPack(output);
+      }
     } else {
       src.toVelocyPack(output);
     }
   }
+  // if onlyPopulated = true, we intentionally don't serialize any
+  // to-skip nodes at the end, because they are optional
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
@@ -957,7 +898,7 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
   switch (format) {
     case BinaryFormat::OnlyPopulated: {
       // make a minimum allocation that will be enough for the meta data and a 
-      // few notes. if we need more space, the string can grow as needed
+      // few nodes. if we need more space, the string can grow as needed
       output.reserve(64);
       serializeMeta(output, /*usePadding*/ false);
       serializeNodes(output, /*all*/ false);
@@ -965,8 +906,8 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
     }
     case BinaryFormat::CompressedSnappyFull: {
       output.reserve(16384);
-      ::MerkleTreeSnappySource source(numberOfShards(), allocationSize(meta().depth), _data);
-      ::SnappyStringAppendSink sink(output);
+      arangodb::containers::helpers::MerkleTreeSnappySource source(numberOfShards(), allocationSize(meta().depth), _data);
+      arangodb::containers::helpers::SnappyStringAppendSink sink(output);
       snappy::Compress(&source, &sink);
       break;
     }
@@ -990,7 +931,7 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
       }
 
       TRI_ASSERT(output.size() == MetaSize - sizeof(Meta::Padding) + sizeof(uint32_t) + numberOfShards() * sizeof(uint32_t));
-      ::SnappyStringAppendSink sink(output);
+      arangodb::containers::helpers::SnappyStringAppendSink sink(output);
       for (std::uint64_t i = 0; i < numberOfShards(); ++i) {
         size_t compressedLength = 0;
         bool shardSet = (_data.shards.size() > i && _data.shards[i] != nullptr);
@@ -1309,6 +1250,8 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(
     node.count -= count;
   }
   node.hash ^= value;
+    
+  TRI_ASSERT(node.count > 0 || node.hash == 0);
 
   return true;
 }

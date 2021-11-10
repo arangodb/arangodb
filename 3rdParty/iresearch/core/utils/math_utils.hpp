@@ -165,11 +165,14 @@ constexpr uint32_t popcnt32(uint32_t v) noexcept{
 }
 
 FORCE_INLINE uint32_t pop32(uint32_t v) noexcept {
-#if __GNUC__ >= 4 
+#if __GNUC__ >= 4
   return __builtin_popcount(v);
 #elif defined(_MSC_VER) 
   //TODO: compile time
   return cpuinfo::support_popcnt() ?__popcnt(v) : popcnt32(v);
+#else
+  #pragma message("pop32: fallback to popcnt32")
+  return popcnt32(v);
 #endif
 }
 
@@ -179,6 +182,9 @@ FORCE_INLINE uint64_t pop64(uint64_t v) noexcept{
 #elif defined(_MSC_VER) && defined(_M_X64)
   //TODO: compile time
   return cpuinfo::support_popcnt() ? __popcnt64(v) : popcnt64(v);
+#else
+  #pragma message("pop64: fallback to popcnt64")
+  return popcnt64(v);
 #endif
 }
 
@@ -274,7 +280,8 @@ struct math_traits {
   static size_t pop(T value);
   static size_t pop(const T* begin, const T* end);
   static size_t ceil(T value, T step);
-}; // math_traits 
+  static uint32_t bits_required(T val) noexcept;
+}; // math_traits
 
 template<typename T>
 struct math_traits<T, sizeof(uint32_t)> {
@@ -295,6 +302,9 @@ struct math_traits<T, sizeof(uint32_t)> {
   }
   static size_t ceil(type value, type step) noexcept {
     return ceil32(value, step);
+  }
+  static uint32_t bits_required(type val) noexcept {
+    return 0 == val ? 0 : 32 - static_cast<uint32_t>(clz(val));
   }
 }; // math_traits
 
@@ -318,19 +328,10 @@ struct math_traits<T, sizeof(uint64_t)> {
   static size_t ceil(type value, type step) noexcept {
     return ceil64(value, step);
   }
+  static uint32_t bits_required(type val) noexcept {
+    return 0 == val ? 0 : 64 - static_cast<uint32_t>(clz(val));
+  }
 }; // math_traits
-
-//// MacOS size_t is a different type from any of the above
-//#if defined(__APPLE__)
-//  template<>
-//  struct math_traits<size_t> {
-//    typedef size_t type;
-//
-//    static size_t clz(type value) { return clz64(value); }
-//    static size_t ctz(type value) { return ctz64(value); }
-//    static size_t pop(type value) { return pop64(value); }
-//  };
-//#endif
 
 template<
   typename Input, 

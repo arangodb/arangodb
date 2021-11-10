@@ -28,11 +28,16 @@
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 namespace arangodb {
 
 class LogicalCollection;
 class StorageEngine;
+
+namespace replication2::replicated_log {
+struct LogStatus;
+}
 
 namespace maintenance {
 
@@ -48,8 +53,29 @@ constexpr int RESIGN_PRIORITY = 3;
 // For non fast track:
 constexpr int INDEX_PRIORITY = 2;
 constexpr int SYNCHRONIZE_PRIORITY = 1;
+constexpr int SLOW_OP_PRIORITY = 0;
+  // for jobs which know they are slow, this works as follows: a job starts
+  // with some priority, if it notices along the way that it is too slow
+  // (like a large index generation or a large synchronize shard op), then
+  // it aborts itself and reschedules itself with SLOW_OP_PRIORITY to let
+  // other, shorter, more urgent jobs move forward. There is always one
+  // maintenance thread which does not execute SLOW_OP_PRIORITY jobs.
 
 using Transactions = std::vector<std::pair<VPackBuilder, VPackBuilder>>;
+// database -> LogId -> LogStatus
+using ReplicatedLogStatusMap =
+    std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>;
+using ReplicatedLogStatusMapByDatabase =
+    std::unordered_map<DatabaseID, ReplicatedLogStatusMap>;
+using ReplicatedLogSpecMap =
+    std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::agency::LogPlanSpecification>;
+using ReplicatedLogSpecByDatabase = std::unordered_map<DatabaseID, ReplicatedLogStatusMap>;
+
+void diffReplicatedLogs(DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
+                        ReplicatedLogSpecMap const& planLogs, std::string const& serverId,
+                        MaintenanceFeature::errors_t& errors,
+                        std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+                        std::vector<std::shared_ptr<ActionDescription>>& actions);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
@@ -74,7 +100,8 @@ arangodb::Result diffPlanLocal(
     std::string const& serverId, MaintenanceFeature::errors_t& errors,
     std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
-    MaintenanceFeature::ShardActionMap const& shardActionMap);
+    MaintenanceFeature::ShardActionMap const& shardActionMap,
+    ReplicatedLogStatusMapByDatabase const& localLogs);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
@@ -96,7 +123,8 @@ arangodb::Result executePlan(
   std::unordered_set<std::string> const& moreDirt,
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, arangodb::MaintenanceFeature& feature, VPackBuilder& report,
-  arangodb::MaintenanceFeature::ShardActionMap const& shardActionMap);
+  arangodb::MaintenanceFeature::ShardActionMap const& shardActionMap,
+  ReplicatedLogStatusMapByDatabase const& localLogs);
 
 /**
  * @brief          Difference local and current states for phase 2 of
@@ -134,7 +162,8 @@ arangodb::Result phaseOne(
   std::unordered_set<std::string> const& moreDirt,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
-  MaintenanceFeature::ShardActionMap const& shardActionMap);
+  MaintenanceFeature::ShardActionMap const& shardActionMap,
+  ReplicatedLogStatusMapByDatabase const& localLogs);
 
 /**
  * @brief          Phase two: Report in agency
@@ -154,7 +183,9 @@ arangodb::Result phaseTwo(
   uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
-  MaintenanceFeature::ShardActionMap const& shardActionMap);
+  MaintenanceFeature::ShardActionMap const& shardActionMap,
+  ReplicatedLogStatusMapByDatabase const& localLogs,
+  std::unordered_set<std::string> const& failedServers);
 
 /**
  * @brief          Report local changes to current
@@ -181,7 +212,8 @@ arangodb::Result reportInCurrent(
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& cur,
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
-    VPackBuilder& report, ShardStatistics& shardStats);
+    VPackBuilder& report, ShardStatistics& shardStats,
+    ReplicatedLogStatusMapByDatabase const& localLogs);
 
 /**
  * @brief            Schedule synchroneous replications
@@ -199,7 +231,8 @@ void syncReplicatedShardsWithLeaders(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
-  std::unordered_set<std::string>& makeDirty);
+  std::unordered_set<std::string>& makeDirty,
+  std::unordered_set<std::string> const& failedServers);
 
 
 }  // namespace maintenance

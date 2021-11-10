@@ -33,11 +33,11 @@
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
-#include "ClusterEngine/ClusterTransactionCollection.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #include "ClusterEngine/ClusterV8Functions.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
@@ -128,11 +128,6 @@ std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
   return std::make_shared<ClusterTransactionState>(vocbase, tid, options);
 }
 
-std::unique_ptr<TransactionCollection> ClusterEngine::createTransactionCollection(
-    TransactionState& state, DataSourceId cid, AccessMode::Type accessType) {
-  return std::unique_ptr<TransactionCollection>(
-      new ClusterTransactionCollection(&state, cid, accessType));
-}
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
   if (isRocksDB()) {
@@ -302,6 +297,17 @@ void ClusterEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) 
   // If test `shell-cluster-collection-selectivity.js` fails consider increasing
   // timeout
   std::this_thread::sleep_for(std::chrono::seconds(5));
+}
+
+auto ClusterEngine::createReplicatedLog(TRI_vocbase_t&, arangodb::replication2::LogId)
+    -> ResultT<std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
+  return {TRI_ERROR_NOT_IMPLEMENTED};
+}
+
+auto ClusterEngine::dropReplicatedLog(TRI_vocbase_t&,
+                                      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const&)
+    -> Result {
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 // -----------------------------------------------------------------------------

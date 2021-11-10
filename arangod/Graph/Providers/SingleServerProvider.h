@@ -95,6 +95,8 @@ class SingleServerProvider {
 
   aql::TraversalStats stealStats();
 
+  void prepareIndexExpressions(aql::Ast* ast);
+
  private:
   void activateCache(bool enableDocumentCache);
 

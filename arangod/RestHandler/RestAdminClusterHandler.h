@@ -29,6 +29,7 @@
 
 #include <velocypack/Slice.h>
 
+#include <cstdint>
 #include <map>
 #include <utility>
 
@@ -46,6 +47,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
  private:
+  static std::string const CancelJob;
   static std::string const Health;
   static std::string const NumberOfServers;
   static std::string const Maintenance;
@@ -67,7 +69,9 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleNumberOfServers();
   RestStatus handleMaintenance();
 
-  RestStatus setMaintenance(bool state);
+  // timeout can be used to set an arbitrary timeout for the maintenance
+  // duration. it will be ignored if "state" is not true. 
+  RestStatus setMaintenance(bool state, uint64_t timeout);
   RestStatus handlePutMaintenance();
   RestStatus handleGetMaintenance();
 
@@ -86,6 +90,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleCleanoutServer();
   RestStatus handleResignLeadership();
   RestStatus handleMoveShard();
+  RestStatus handleCancelJob();
   RestStatus handleQueryJobStatus();
 
   RestStatus handleRemoveServer();
@@ -124,7 +129,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   typedef futures::Future<futures::Unit> FutureVoid;
 
   FutureVoid waitForSupervisionState(bool state,
-                                     clock::time_point startTime = clock::time_point());
+                                     std::string const& reactivationTime,
+                                     clock::time_point startTime);
 
   struct RemoveServerContext {
     size_t tries;
@@ -167,7 +173,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   using ShardMap = std::map<std::string, std::unordered_set<CollectionShardPair>>;
   using ReshardAlgorithm =
-      std::function<void(ShardMap&, std::vector<MoveShardDescription>&)>;
+      std::function<void(ShardMap&, std::vector<MoveShardDescription>&, std::uint32_t)>;
 
  private:
   FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);

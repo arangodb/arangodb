@@ -161,13 +161,9 @@ auto BlocksWithClientsImpl<Executor>::executeForClient(AqlCallStack stack,
     _executor.acquireLock();
   }
   
-  auto guard = scopeGuard([this]() {
+  auto guard = scopeGuard([&]() noexcept {
     if constexpr (std::is_same<MutexExecutor, Executor>::value) {
       _executor.releaseLock();
-    } else {
-      // mark "this" as unused. unfortunately we cannot use [[maybe_unsed]]
-      // in the lambda capture as it does not parse
-      (void) this;
     }
   });
   

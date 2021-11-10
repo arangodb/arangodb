@@ -810,14 +810,14 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
     return result;
   }
 
-  auto guard = scopeGuard([&d]() { closedir(d); });
+  auto guard = scopeGuard([&d]() noexcept { closedir(d); });
 
   struct dirent* de = readdir(d);
 
   while (de != nullptr) {
     if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0) {
       // may throw
-      result.emplace_back(std::string(de->d_name));
+      result.emplace_back(de->d_name);
     }
 
     de = readdir(d);
@@ -1081,23 +1081,14 @@ bool TRI_ProcessFile(char const* filename,
     return false;
   }
   
-  TRI_string_buffer_t result;
-  TRI_InitStringBuffer(&result, false);
-
-  auto guard = scopeGuard([&fd, &result]() {
+  auto guard = scopeGuard([&fd]() noexcept {
     TRI_CLOSE(fd);
-    TRI_DestroyStringBuffer(&result);
   });
 
-  auto res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return false;
-  }
+  char buffer[4096];
 
   while (true) {
-    TRI_ASSERT(TRI_CapacityStringBuffer(&result) >= READBUFFER_SIZE);
-    TRI_read_return_t n = TRI_READ(fd, (void*) TRI_BeginStringBuffer(&result), READBUFFER_SIZE);
+    TRI_read_return_t n = TRI_READ(fd, &buffer[0], sizeof(buffer));
 
     if (n == 0) {
       return true;
@@ -1108,7 +1099,7 @@ bool TRI_ProcessFile(char const* filename,
       return false;
     }
 
-    if (!reader(result._buffer, n)) {
+    if (!reader(&buffer[0], n)) {
       return false;
     }
   }
@@ -1121,7 +1112,7 @@ bool TRI_ProcessFile(char const* filename,
 char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   gzFile gzFd = gzopen(filename,"rb");
-  auto fdGuard = arangodb::scopeGuard([&gzFd]() {
+  auto fdGuard = arangodb::scopeGuard([&gzFd]() noexcept {
     if (nullptr != gzFd) {
       gzclose(gzFd);
     }
@@ -1178,7 +1169,7 @@ char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* fil
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   encryptionFeature.setKeyFile(keyfile);
-  auto keyGuard = arangodb::scopeGuard([&encryptionFeature]() {
+  auto keyGuard = arangodb::scopeGuard([&encryptionFeature]() noexcept {
     encryptionFeature.clearKey();
   });
 
@@ -1422,7 +1413,7 @@ ErrorCode TRI_VerifyLockFile(char const* filename) {
          sizeof(buffer));  // not really necessary, but this shuts up valgrind
   TRI_read_return_t n = TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   if (n <= 0 || n == sizeof(buffer)) {
     return TRI_ERROR_NO_ERROR;
@@ -1704,7 +1695,7 @@ std::string TRI_BinaryName(char const* argv0) {
 std::string TRI_LocateBinaryPath(char const* argv0) {
 #if _WIN32
   wchar_t buff[4096];
-  int res = GetModuleFileNameW(NULL, buff, sizeof(buff));
+  int res = GetModuleFileNameW(nullptr, buff, sizeof(buff));
 
   if (res != 0) {
     buff[4095] = '\0';
@@ -2092,33 +2083,21 @@ std::string TRI_HomeDirectory() {
 ////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
-  FILE* fin;
-  void* buffer;
-  auto res = TRI_ERROR_NO_ERROR;
-
-  *crc = TRI_InitialCrc32();
-
-  constexpr size_t bufferSize = 4096;
-  buffer = TRI_Allocate(bufferSize);
-
-  if (buffer == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  fin = TRI_FOPEN(path, "rb");
+  FILE* fin = TRI_FOPEN(path, "rb");
 
   if (fin == nullptr) {
-    TRI_Free(buffer);
-
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  res = TRI_ERROR_NO_ERROR;
+  char buffer[4096];
+  
+  auto res = TRI_ERROR_NO_ERROR;
+  *crc = TRI_InitialCrc32();
 
   while (true) {
-    size_t sizeRead = fread(buffer, 1, bufferSize, fin);
+    size_t sizeRead = fread(&buffer[0], 1, sizeof(buffer), fin);
 
-    if (sizeRead < bufferSize) {
+    if (sizeRead < sizeof(buffer)) {
       if (feof(fin) == 0) {
         res = TRI_ERROR_FAILED;
         break;
@@ -2126,13 +2105,11 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
     }
 
     if (sizeRead > 0) {
-      *crc = TRI_BlockCrc32(*crc, static_cast<char const*>(buffer), sizeRead);
+      *crc = TRI_BlockCrc32(*crc, &buffer[0], sizeRead);
     } else /* if (sizeRead <= 0) */ {
       break;
     }
   }
-
-  TRI_Free(buffer);
 
   if (0 != fclose(fin)) {
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -2534,113 +2511,6 @@ std::string TRI_LocateConfigDirectory(char const*) {
 
 #endif
 
-/// @brief creates a new datafile
-/// returns the file descriptor or -1 if the file cannot be created
-int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
-  TRI_ERRORBUF;
-
-  // open the file
-  int fd = TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME,
-                      S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-
-  TRI_IF_FAILURE("CreateDatafile1") {
-    // intentionally fail
-    TRI_CLOSE(fd);
-    fd = -1;
-    errno = ENOSPC;
-  }
-
-  if (fd < 0) {
-    if (errno == ENOSPC) {
-      TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-      LOG_TOPIC("f7530", ERR, arangodb::Logger::FIXME)
-          << "cannot create datafile '" << filename << "': " << TRI_last_error();
-    } else {
-      TRI_SYSTEM_ERROR();
-
-      TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC("53a75", ERR, arangodb::Logger::FIXME)
-          << "cannot create datafile '" << filename << "': " << TRI_GET_ERRORBUF;
-    }
-    return -1;
-  }
-
-  // no fallocate present, or at least pretend it's not there...
-  int res = 1;
-
-#ifdef __linux__
-#ifdef FALLOC_FL_ZERO_RANGE
-  // try fallocate
-  res = fallocate(fd, FALLOC_FL_ZERO_RANGE, 0, maximalSize);
-#endif
-#endif
-
-  // cppcheck-suppress knownConditionTrueFalse
-  if (res != 0) {
-    // either fallocate failed or it is not there...
-    
-    // create a buffer filled with zeros
-    static constexpr size_t nullBufferSize = 4096;
-    char nullBuffer[nullBufferSize];
-    memset(&nullBuffer[0], 0, nullBufferSize);
-
-    // fill file with zeros from buffer
-    size_t writeSize = nullBufferSize;
-    size_t written = 0;
-    while (written < maximalSize) {
-      if (writeSize + written > maximalSize) {
-        writeSize = maximalSize - written;
-      }
-
-      ssize_t writeResult = TRI_WRITE(fd, &nullBuffer[0], static_cast<TRI_write_t>(writeSize));
-
-      TRI_IF_FAILURE("CreateDatafile2") {
-        // intentionally fail
-        writeResult = -1;
-        errno = ENOSPC;
-      }
-
-      if (writeResult < 0) {
-        if (errno == ENOSPC) {
-          TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-          LOG_TOPIC("449cf", ERR, arangodb::Logger::FIXME)
-              << "cannot create datafile '" << filename << "': " << TRI_last_error();
-        } else {
-          TRI_SYSTEM_ERROR();
-          TRI_set_errno(TRI_ERROR_SYS_ERROR);
-          LOG_TOPIC("2c4a6", ERR, arangodb::Logger::FIXME)
-              << "cannot create datafile '" << filename << "': " << TRI_GET_ERRORBUF;
-        }
-
-        TRI_CLOSE(fd);
-        TRI_UnlinkFile(filename.c_str());
-
-        return -1;
-      }
-
-      written += static_cast<size_t>(writeResult);
-    }
-  }
-
-  // go back to offset 0
-  TRI_lseek_t offset = TRI_LSEEK(fd, (TRI_lseek_t)0, SEEK_SET);
-
-  if (offset == (TRI_lseek_t)-1) {
-    TRI_SYSTEM_ERROR();
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    TRI_CLOSE(fd);
-
-    // remove empty file
-    TRI_UnlinkFile(filename.c_str());
-
-    LOG_TOPIC("dfc52", ERR, arangodb::Logger::FIXME)
-        << "cannot seek in datafile '" << filename << "': '" << TRI_GET_ERRORBUF << "'";
-    return -1;
-  }
-
-  return fd;
-}
-
 bool TRI_PathIsAbsolute(std::string const& path) {
 #if _WIN32
   return !PathIsRelativeW(toWString(path).data());
@@ -2759,7 +2629,7 @@ TRI_SHA256Functor::~TRI_SHA256Functor() {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   EVP_MD_CTX_free(_context);
 #else
-    EVP_MD_CTX_destroy(_context);
+  EVP_MD_CTX_destroy(_context);
 #endif
 }
 

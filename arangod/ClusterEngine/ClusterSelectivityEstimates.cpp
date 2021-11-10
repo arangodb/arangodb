@@ -42,7 +42,7 @@ void ClusterSelectivityEstimates::flush() {
     std::this_thread::yield();
   }
 
-  auto guard = scopeGuard([this]() {
+  auto guard = scopeGuard([this]() noexcept {
     _updating.store(false, std::memory_order_release);
   });
   
@@ -71,7 +71,7 @@ IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TransactionId t
       if (_updating.load(std::memory_order_relaxed) || _updating.exchange(true, std::memory_order_acquire)) {
         useExpired = true;
       } else {
-        auto guard = scopeGuard([this]() {
+        auto guard = scopeGuard([this]() noexcept {
           _updating.store(false, std::memory_order_release);
         });
 
@@ -114,11 +114,11 @@ void ClusterSelectivityEstimates::set(IndexEstMap const& estimates) {
   }
   
   double ttl = defaultTtl;
-  // let selectivity estimates expire less seldomly for system collections
+  // let selectivity estimates expire less often for system collections
   if (!_collection.name().empty() && _collection.name()[0] == '_') {
     ttl = systemCollectionTtl;
   }
-
+  
   // finally update the cache
-  std::atomic_store(&_data, std::make_shared<ClusterSelectivityEstimates::InternalData>(estimates, ttl));
+  std::atomic_store(&_data, std::make_shared<ClusterSelectivityEstimates::InternalData>(estimates, TRI_microtime() + ttl));
 }

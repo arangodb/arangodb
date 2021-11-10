@@ -46,9 +46,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     struct stored {
       const irs::string_ref& name() { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         auto str = std::to_string(value);
@@ -791,7 +789,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
 
         auto next_expected_doc = expected_doc + 2;
         auto next_expected_value = expected_value + 2;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto next_expected_value_str  = std::to_string(next_expected_value);
 
@@ -855,7 +853,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
 
         auto next_expected_doc = expected_doc + 2;
         auto next_expected_value = expected_value + 2;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto next_expected_value_str  = std::to_string(next_expected_value);
 
@@ -900,7 +898,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
 
       auto next_expected_doc = expected_doc + 2;
       auto next_expected_value = expected_value + 2;
-      for (auto i = 0; i < steps_forward; ++i) {
+      for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -946,7 +944,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
 
       auto next_expected_doc = expected_doc + 2;
       auto next_expected_value = expected_value + 2;
-      for (auto i = 0; i < steps_forward && it->next(); ++i) {
+      for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto next_expected_value_str  = std::to_string(next_expected_value);
 
@@ -1123,9 +1121,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
         : column_name(name) {
       }
       const irs::string_ref& name() { return column_name; }
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
       bool write(irs::data_output&) { return true; }
       const irs::string_ref column_name;
     } field(column_name), gap("gap");
@@ -1754,7 +1750,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
         ASSERT_EQ(expected_doc, it->value());
 
         auto next_expected_doc = expected_doc + 1;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           ASSERT_EQ(next_expected_doc, it->value());
 
           ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
@@ -1806,7 +1802,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
         }
 
         auto next_expected_doc = expected_doc + 1;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           if (next_expected_doc == BLOCK_SIZE+1) {
             ++next_expected_doc; // gap
           }
@@ -1838,7 +1834,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
 
       auto next_expected_doc = expected_doc + 1;
-      for (auto i = 0; i < steps_forward; ++i) {
+      for (size_t i = 0; i < steps_forward; ++i) {
         if (next_expected_doc == BLOCK_SIZE+1) {
           ++next_expected_doc; // gap
         }
@@ -1867,7 +1863,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
 
       auto next_expected_doc = expected_doc + 1;
-      for (auto i = 0; i < steps_forward && it->next(); ++i) {
+      for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         ASSERT_EQ(next_expected_doc, it->value());
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
         ++next_expected_doc;
@@ -1984,9 +1980,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       }
       const irs::string_ref& name() { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         auto str = std::to_string(value);
@@ -2802,7 +2796,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           if (next_expected_doc == BLOCK_SIZE + 1) {
             ++next_expected_doc; // gap
             ++next_expected_value;
@@ -2872,7 +2866,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           if (next_expected_doc == BLOCK_SIZE+1) {
             ++next_expected_doc; // gap
             ++next_expected_value;
@@ -2926,7 +2920,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
 
       auto next_expected_doc = expected_doc + 1;
       auto next_expected_value = expected_value + 1;
-      for (auto i = 0; i < steps_forward; ++i) {
+      for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -2972,7 +2966,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
 
       auto next_expected_doc = expected_doc + 1;
       auto next_expected_value = expected_value + 1;
-      for (auto i = 0; i < steps_forward && it->next(); ++i) {
+      for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         if (next_expected_doc == BLOCK_SIZE+1) {
           ++next_expected_doc; // gap
           ++next_expected_value;
@@ -3150,9 +3144,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
       const irs::string_ref& name() noexcept { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         if (value == BLOCK_SIZE-1) {
@@ -3411,9 +3403,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     struct stored {
       const irs::string_ref& name() { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         if (value == BLOCK_SIZE-1) {
@@ -3615,9 +3605,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
       const irs::string_ref& name() noexcept { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         irs::write_string(
@@ -4061,7 +4049,6 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      size_t count = 0;
       irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
       irs::doc_id_t expected_value = 0;
       for (; expected_doc <= 1+MAX_DOCS; ) {
@@ -4330,7 +4317,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           if (next_expected_doc == 1025) {
             ++next_expected_doc; // gap
             ++next_expected_value;
@@ -4399,7 +4386,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           if (next_expected_doc == 1025) {
             ++next_expected_doc; // gap
             ++next_expected_value;
@@ -4443,7 +4430,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
       auto next_expected_doc = expected_doc + 1;
       auto next_expected_value = expected_value + 1;
-      for (auto i = 0; i < steps_forward; ++i) {
+      for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -4484,7 +4471,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
       auto next_expected_doc = expected_doc + 1;
       auto next_expected_value = expected_value + 1;
-      for (auto i = 0; i < steps_forward && it->next(); ++i) {
+      for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         if (next_expected_doc == 1025) {
           next_expected_doc++; // gap
           next_expected_value++;
@@ -4613,10 +4600,8 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
   {
     struct stored {
       const irs::string_ref& name() { return column_name; }
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
-      bool write(irs::data_output& out) { return true; }
+      irs::features_t features() const { return {}; }
+      bool write(irs::data_output& /*out*/) { return true; }
     } field;
 
     irs::doc_id_t docs_count = 0;
@@ -5215,7 +5200,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
         ++docs_count;
 
         auto next_expected_doc = expected_doc + 2;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
@@ -5262,7 +5247,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
         ++docs_count;
 
         auto next_expected_doc = expected_doc + 2;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
@@ -5288,7 +5273,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       auto next_expected_doc = expected_doc + 2;
-      for (auto i = 0; i < steps_forward; ++i) {
+      for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         ASSERT_EQ(next_expected_doc, it->value());
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -5317,7 +5302,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       auto next_expected_doc = expected_doc + 2;
-      for (auto i = 0; i < steps_forward && it->next(); ++i) {
+      for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         ASSERT_EQ(next_expected_doc, it->value());
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
@@ -5452,10 +5437,8 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
   {
     struct stored {
       const irs::string_ref& name() { return column_name; }
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
-      bool write(irs::data_output& out) { return true; }
+      irs::features_t features() const { return {}; }
+      bool write(irs::data_output& /*out*/) { return true; }
     } field;
 
     irs::doc_id_t docs_count = 0;
@@ -5923,7 +5906,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
         ASSERT_EQ(expected_doc, it->value());
 
         auto next_expected_doc = expected_doc + 1;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           ASSERT_EQ(next_expected_doc, it->value());
 
           // can't seek backwards
@@ -5962,7 +5945,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
 
         auto next_expected_doc = expected_doc + 1;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           ASSERT_EQ(next_expected_doc, it->value());
           ++next_expected_doc;
         }
@@ -5983,7 +5966,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       ASSERT_EQ(min_doc, it->seek(expected_doc));
 
       auto next_expected_doc = expected_doc + 1;
-      for (auto i = 0; i < steps_forward; ++i) {
+      for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         ASSERT_EQ(next_expected_doc, it->value());
         ++next_expected_doc;
@@ -6007,7 +5990,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
 
       auto next_expected_doc = expected_doc + 1;
-      for (auto i = 0; i < steps_forward && it->next(); ++i) {
+      for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         ASSERT_EQ(next_expected_doc, it->value());
         ++next_expected_doc;
       }
@@ -6096,9 +6079,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     struct stored {
       const irs::string_ref& name() { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         irs::write_string(
@@ -6656,7 +6637,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(next_expected_doc, it->value());
@@ -6709,7 +6690,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(next_expected_doc, it->value());
@@ -6742,7 +6723,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
 
       auto next_expected_doc = expected_doc + 1;
       auto next_expected_value = expected_value + 1;
-      for (auto i = 0; i < steps_forward; ++i) {
+      for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -6777,7 +6758,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
 
       auto next_expected_doc = expected_doc + 1;
       auto next_expected_value = expected_value + 1;
-      for (auto i = 0; i < steps_forward && it->next(); ++i) {
+      for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
         ASSERT_EQ(next_expected_doc, it->value());
@@ -6879,9 +6860,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     struct stored {
       const irs::string_ref& name() { return column_name; }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         auto str = std::to_string(value);
@@ -7549,7 +7528,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto next_expected_value_str  = std::to_string(next_expected_value);
 
@@ -7612,7 +7591,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
-        for (auto i = 0; i < steps_forward && it->next(); ++i) {
+        for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto next_expected_value_str  = std::to_string(next_expected_value);
 
@@ -7656,7 +7635,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
 
       auto next_expected_doc = expected_doc + 1;
       auto next_expected_value = expected_value + 1;
-      for (auto i = 0; i < steps_forward; ++i) {
+      for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -7702,7 +7681,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
 
       auto next_expected_doc = expected_doc + 1;
       auto next_expected_value = expected_value + 1;
-      for (auto i = 0; i < steps_forward && it->next(); ++i) {
+      for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto next_expected_value_str  = std::to_string(next_expected_value);
 
@@ -7818,17 +7797,17 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
     virtual void init() {
       clear();
       reserve(2);
-      insert(std::make_shared<tests::templates::string_field>("id"));
-      insert(std::make_shared<tests::templates::string_field>("label"));
+      insert(std::make_shared<tests::string_field>("id"));
+      insert(std::make_shared<tests::string_field>("label"));
     }
 
     virtual void value(size_t idx, const irs::string_ref& value) {
       switch(idx) {
        case 0:
-        indexed.get<tests::templates::string_field>("id")->value(value);
+        indexed.get<tests::string_field>("id")->value(value);
         break;
        case 1:
-        indexed.get<tests::templates::string_field>("label")->value(value);
+        indexed.get<tests::string_field>("label")->value(value);
       }
     }
   };
@@ -7885,7 +7864,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -7919,7 +7898,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++id;
           ASSERT_TRUE(reader(id, actual_value));
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           ASSERT_NE(nullptr, field);
           ASSERT_EQ(field->value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -7936,7 +7915,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -7975,7 +7954,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++expected_id;
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
 
           const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
@@ -8007,7 +7986,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -8039,7 +8018,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         while ((doc = gen.next())) {
           ASSERT_TRUE(reader(++id, actual_value));
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           ASSERT_EQ(field->value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
         }
@@ -8055,7 +8034,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -8093,7 +8072,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++expected_id;
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -8146,7 +8125,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -8185,7 +8164,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++expected_id;
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -8213,7 +8192,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++id;
           ASSERT_TRUE(reader(id, actual_value));
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           ASSERT_NE(nullptr, field);
           ASSERT_EQ(field->value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -8230,7 +8209,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -8269,7 +8248,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++expected_id;
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -8300,7 +8279,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -8338,7 +8317,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++expected_id;
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -8365,7 +8344,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         while ((doc = gen.next())) {
           ASSERT_TRUE(reader(++id, actual_value));
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           ASSERT_EQ(field->value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
         }
@@ -8381,7 +8360,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -8419,7 +8398,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++expected_id;
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -8795,18 +8774,17 @@ TEST_P(index_column_test_case, read_empty_doc_attributes) {
   ASSERT_EQ(nullptr, column);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_column_test,
   index_column_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory),
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
     ::testing::Values(
       tests::format_info{"1_0"},
       tests::format_info{"1_1", "1_0"},
-      tests::format_info{"1_2", "1_0"})
-  ),
-  tests::to_string
+      tests::format_info{"1_2", "1_0"})),
+  index_column_test_case::to_string
 );

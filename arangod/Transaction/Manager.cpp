@@ -119,7 +119,7 @@ void Manager::unregisterTransaction(TransactionId transactionId, bool isReadOnly
                                     bool isFollowerTransaction) {
   // always perform an unlock when we leave this function
   auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction,
-                           &isFollowerTransaction]() {
+                           &isFollowerTransaction]() noexcept {
     if (!isReadOnlyTransaction && !isFollowerTransaction) {
       _rwLock.unlockRead();
       _nrReadLocked.fetch_sub(1, std::memory_order_relaxed);
@@ -359,16 +359,14 @@ ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase, VPackSl
 
 Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                                  VPackSlice trxOpts, bool isFollowerTransaction) {
+  TRI_ASSERT((ServerState::instance()->isSingleServer() && !isFollowerTransaction) ||
+             tid.isFollowerTransactionId() == isFollowerTransaction);
   transaction::Options options;
   std::vector<std::string> reads, writes, exclusives;
 
   Result res = buildOptions(trxOpts, options, reads, writes, exclusives);
   if (res.fail()) {
     return res;
-  }
-
-  if (isFollowerTransaction) {
-    options.isFollowerTransaction = true;
   }
 
   return ensureManagedTrx(vocbase, tid, reads, writes, exclusives, std::move(options));
@@ -379,9 +377,11 @@ transaction::Hints Manager::ensureHints(transaction::Options& options) const {
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isFollowerTransactionOnDBServer(options)) {
     hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
-    // turn on intermediate commits on followers as well. otherwise huge leader
-    // transactions could make the follower claim all memory and crash.
-    hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    if (options.isIntermediateCommitEnabled()) {
+      // turn on intermediate commits on followers as well. otherwise huge leader
+      // transactions could make the follower claim all memory and crash.
+      hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    }
   }
   return hints;
 }
@@ -494,15 +494,17 @@ Result Manager::lockCollections(TRI_vocbase_t& vocbase,
               if (res.fail()) {
                 return false;
               }
-              res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname,
-                                             mode, /*lockUsage*/ false));
-              if (res.fail()) {
-                return false;
-              }
-              res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname,
-                                             mode, /*lockUsage*/ false));
-              if (res.fail()) {
-                return false;
+              if (!col->isDisjoint()) {
+                res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname,
+                                               mode, /*lockUsage*/ false));
+                if (res.fail()) {
+                  return false;
+                }
+                res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname,
+                                               mode, /*lockUsage*/ false));
+                if (res.fail()) {
+                  return false;
+                }
               }
             }
           } catch (basics::Exception const& ex) {
@@ -558,20 +560,23 @@ ResultT<TransactionId> Manager::createManagedTrx(
   if (res.fail()) {
     return res;
   }
-  std::shared_ptr<TransactionState> state;
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   TRI_ASSERT(ServerState::isSingleServerOrCoordinator(role));
   TransactionId tid = ServerState::isSingleServer(role)
                           ? TransactionId::createSingleServer()
                           : TransactionId::createCoordinator();
-  try {
-    // now start our own transaction
+
+  auto maybeState = basics::catchToResultT([&] {
     StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
-    state = engine.createTransactionState(vocbase, tid, options);
-  } catch (basics::Exception const& e) {
-    return res.reset(e.code(), e.message());
+    // now start our own transaction
+    return engine.createTransactionState(vocbase, tid, options);
+  });
+  if (!maybeState.ok()) {
+    return std::move(maybeState).result();
   }
+  auto& state = maybeState.get();
+
   TRI_ASSERT(state != nullptr);
   TRI_ASSERT(state->id() == tid);
 
@@ -623,9 +628,17 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  if (tid.isFollowerTransactionId()) {
-    options.isFollowerTransaction = true;
-  }
+  // This method should not be used in a single server. Note that single-server
+  // transaction IDs will randomly be identified as follower transactions,
+  // leader transactions, legacy transactions or coordinator transactions;
+  // context is important.
+  TRI_ASSERT(!ServerState::instance()->isSingleServer() ||
+             ServerState::instance()->isGoogleTest());
+  // We should never have `options.isFollowerTransaction == true`, but
+  // `tid.isFollowerTransactionId() == false`.
+  TRI_ASSERT(options.isFollowerTransaction == tid.isFollowerTransactionId() ||
+             !options.isFollowerTransaction);
+  options.isFollowerTransaction = tid.isFollowerTransactionId();
 
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
       << "managed trx creating: " << tid.id();
@@ -657,14 +670,16 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     return res;
   }
 
-  std::shared_ptr<TransactionState> state;
-  try {
-    // now start our own transaction
+  auto maybeState = basics::catchToResultT([&] {
     StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
-    state = engine.createTransactionState(vocbase, tid, options);
-  } catch (basics::Exception const& e) {
-    return res.reset(e.code(), e.message());
+    // now start our own transaction
+    return engine.createTransactionState(vocbase, tid, options);
+  });
+  if (!maybeState.ok()) {
+    return std::move(maybeState).result();
   }
+  auto& state = maybeState.get();
+
   TRI_ASSERT(state != nullptr);
   TRI_ASSERT(state->id() == tid);
 
@@ -1116,10 +1131,8 @@ void Manager::iterateManagedTrx(std::function<void(TransactionId, ManagedTrx con
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
   bool didWork = false;
-  ::arangodb::containers::SmallVector<TransactionId, 64>::allocator_type::arena_type a1;
-  ::arangodb::containers::SmallVector<TransactionId, 64> toAbort{a1};
-  ::arangodb::containers::SmallVector<TransactionId, 64>::allocator_type::arena_type a2;
-  ::arangodb::containers::SmallVector<TransactionId, 64> toErase{a2};
+  ::arangodb::containers::SmallVectorWithArena<TransactionId, 64> toAbort;
+  ::arangodb::containers::SmallVectorWithArena<TransactionId, 64> toErase;
 
   uint64_t numAborted = 0;
 
@@ -1129,7 +1142,7 @@ bool Manager::garbageCollect(bool abortAll) {
     } else {
       _transactions[bucket]._lock.lockRead();
     }
-    auto scope = scopeGuard([&] { _transactions[bucket]._lock.unlock(); });
+    auto scope = scopeGuard([&]() noexcept { _transactions[bucket]._lock.unlock(); });
 
     for (auto& it : _transactions[bucket]._managed) {
       ManagedTrx& mtrx = it.second;
@@ -1211,8 +1224,7 @@ bool Manager::garbageCollect(bool abortAll) {
 
 /// @brief abort all transactions matching
 bool Manager::abortManagedTrx(std::function<bool(TransactionState const&, std::string const&)> cb) {
-  ::arangodb::containers::SmallVector<TransactionId, 64>::allocator_type::arena_type arena;
-  ::arangodb::containers::SmallVector<TransactionId, 64> toAbort{arena};
+  ::arangodb::containers::SmallVectorWithArena<TransactionId, 64> toAbort;
 
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     READ_LOCKER(locker, _transactions[bucket]._lock);

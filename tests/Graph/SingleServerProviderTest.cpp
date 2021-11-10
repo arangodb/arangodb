@@ -60,7 +60,7 @@ class SingleServerProviderTest : public ::testing::Test {
   // Only used to mock a singleServer
   std::unique_ptr<GraphTestSetup> s{nullptr};
   std::unique_ptr<MockGraphDatabase> singleServer{nullptr};
-  std::unique_ptr<arangodb::aql::Query> query{nullptr};
+  std::shared_ptr<arangodb::aql::Query> query{nullptr};
   arangodb::GlobalResourceMonitor _global{};
   arangodb::ResourceMonitor _resourceMonitor{_global};
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
@@ -73,7 +73,8 @@ class SingleServerProviderTest : public ::testing::Test {
 
   std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
 
-  std::string stringToMatch = "0-1";
+  // can be used for further testing to generate a expression
+  // std::string stringToMatch = "0-1";
 
   SingleServerProviderTest() {}
   ~SingleServerProviderTest() {}
@@ -97,8 +98,10 @@ class SingleServerProviderTest : public ::testing::Test {
     _varNode = ::InitializeReference(*query->ast(), *_tmpVar);
 
     std::vector<IndexAccessor> usedIndexes{};
-    auto expr = conditionKeyMatches(stringToMatch);
-    usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, expr, 0});
+
+    // can be used to create an expression, currently unused but may be helpful for additional tests
+    // auto expr = conditionKeyMatches(stringToMatch);
+    usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr, std::nullopt, 0});
 
     _expressionContext =
         std::make_unique<arangodb::aql::FixedVarExpressionContext>(*_trx, *query, _functionsCache);
@@ -112,7 +115,7 @@ class SingleServerProviderTest : public ::testing::Test {
   /*
    * generates a condition #TMP._key == '<toMatch>'
    */
-  std::shared_ptr<aql::Expression> conditionKeyMatches(std::string const& toMatch) {
+  std::unique_ptr<aql::Expression> conditionKeyMatches(std::string const& toMatch) {
     auto expectedKey =
         query->ast()->createNodeValueString(toMatch.c_str(), toMatch.length());
     auto keyAccess =
@@ -122,7 +125,7 @@ class SingleServerProviderTest : public ::testing::Test {
     // This condition cannot be fulfilled
     auto condition = query->ast()->createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
                                                             keyAccess, expectedKey);
-    return std::make_shared<aql::Expression>(query->ast(), condition);
+    return std::make_unique<aql::Expression>(query->ast(), condition);
   }
 };
 
@@ -137,11 +140,21 @@ TEST_F(SingleServerProviderTest, it_can_provide_edges) {
                               static_cast<uint32_t>(startVertex.length())};
   Step s = testee.startVertex(hashedStart);
 
+  std::vector<std::string> results = {};
+  VPackBuilder builder;
+
   testee.expand(s, 0, [&](Step next) {
-    VPackBuilder hund;
-    testee.addEdgeToBuilder(next.getEdge(), hund);
-    LOG_DEVEL << next.getVertexIdentifier() << " e: " << hund.toJson();
+    results.push_back(next.getVertex().getID().toString());
   });
+
+  // Order is not guaranteed
+  ASSERT_EQ(results.size(), 2);
+  if (results.at(0) == "v/1") {
+    ASSERT_EQ(results.at(1), "v/2");
+  } else {
+    ASSERT_EQ(results.at(0), "v/2");
+    ASSERT_EQ(results.at(1), "v/1");
+  }
 }
 
 }  // namespace single_server_provider_test

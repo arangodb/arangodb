@@ -104,9 +104,8 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     arangodb::LogicalView::ptr wiew;
-    ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .create(wiew, *vocbase, json->slice())
-                     .ok()));
+    ASSERT_TRUE(arangodb::iresearch::IResearchView::factory()
+                   .create(wiew, *vocbase, json->slice(), true).ok());
     EXPECT_FALSE(!wiew);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
     EXPECT_NE(nullptr, impl);
@@ -127,9 +126,9 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr wiew;
-    ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .create(wiew, *vocbase, viewJson->slice())
-                     .ok()));
+    ASSERT_TRUE(arangodb::iresearch::IResearchView::factory()
+                  .create(wiew, *vocbase, viewJson->slice(), true)
+                  .ok());
     EXPECT_FALSE(!wiew);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
     EXPECT_NE(nullptr, impl);
@@ -165,7 +164,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .create(wiew, *vocbase, viewJson->slice())
+                     .create(wiew, *vocbase, viewJson->slice(), true)
                      .ok()));
     EXPECT_FALSE(!wiew);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
@@ -209,9 +208,9 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
   auto logicalCollection = vocbase->createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   arangodb::LogicalView::ptr wiew;
-  ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                   .create(wiew, *vocbase, viewJson->slice())
-                   .ok()));
+  ASSERT_TRUE(arangodb::iresearch::IResearchView::factory()
+                   .create(wiew, *vocbase, viewJson->slice(), true)
+                   .ok());
   EXPECT_FALSE(!wiew);
   auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
   EXPECT_NE(nullptr, impl);
@@ -263,7 +262,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
   ASSERT_FALSE(!wiewImpl);
 
   beforeCount = 0;  // reset before call to StorageEngine::createView(...)
-  auto res = logicalWiew->properties(viewUpdateJson->slice(), true);
+  auto res = logicalWiew->properties(viewUpdateJson->slice(), true, true);
   ASSERT_TRUE(res.ok());
   EXPECT_EQ(1, beforeCount);  // +1 for StorageEngineMock::createIndex(...) and then for various other activities
 }
@@ -283,9 +282,10 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
   auto logicalCollection = vocbase->createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   arangodb::LogicalView::ptr wiew;
-  ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                   .create(wiew, *vocbase, viewJson->slice())
-                   .ok()));
+  ASSERT_TRUE(arangodb::iresearch::IResearchView::factory()
+                   .create(wiew, *vocbase, viewJson->slice(),
+                           true)
+                   .ok());
   EXPECT_FALSE(!wiew);
   auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
   EXPECT_NE(nullptr, impl);
@@ -355,7 +355,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
     std::string dataPath =
         (((irs::utf8_path() /= server.testFilesystemPath()) /=
           std::string("databases")) /= std::string("arangosearch-123"))
-            .utf8();
+            .u8string();
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson(
@@ -410,9 +410,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection);
     arangodb::LogicalView::ptr logicalWiew;
-    ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .create(logicalWiew, *vocbase, createJson->slice())
-                     .ok()));
+    ASSERT_TRUE(arangodb::iresearch::IResearchView::factory()
+                     .create(logicalWiew, *vocbase, createJson->slice(), true)
+                     .ok());
     ASSERT_FALSE(!logicalWiew);
     auto* wiewImpl =
         dynamic_cast<arangodb::iresearch::IResearchView*>(logicalWiew.get());
@@ -451,7 +451,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     ASSERT_NE(nullptr, logicalCollection);
     arangodb::LogicalView::ptr logicalWiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .create(logicalWiew, *vocbase, createJson->slice())
+                     .create(logicalWiew, *vocbase, createJson->slice(), true)
                      .ok()));
     ASSERT_FALSE(!logicalWiew);
     auto* wiewImpl =
@@ -517,7 +517,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     auto* wiewImpl =
         dynamic_cast<arangodb::iresearch::IResearchView*>(logicalWiew.get());
     EXPECT_FALSE(!wiewImpl);
-    arangodb::Result res = logicalWiew->properties(links->slice(), true);
+    arangodb::Result res = logicalWiew->properties(links->slice(), true, true);
     EXPECT_TRUE(res.ok());
     EXPECT_FALSE(logicalCollection->getIndexes().empty());
 
@@ -608,7 +608,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     auto* wiewImpl =
         dynamic_cast<arangodb::iresearch::IResearchView*>(logicalWiew.get());
     ASSERT_FALSE(!wiewImpl);
-    arangodb::Result res = logicalWiew->properties(viewUpdateJson->slice(), true);
+    arangodb::Result res = logicalWiew->properties(viewUpdateJson->slice(), true, true);
     ASSERT_TRUE(res.ok());
 
     static std::vector<std::string> const EMPTY;
@@ -897,7 +897,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   ASSERT_NE(nullptr, logicalCollection);
   arangodb::LogicalView::ptr logicalWiew;
   ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                   .create(logicalWiew, *vocbase, viewJson->slice())
+                   .create(logicalWiew, *vocbase, viewJson->slice(), true)
                    .ok()));
   ASSERT_FALSE(!logicalWiew);
   auto* wiewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalWiew.get());
@@ -1046,7 +1046,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       auto update = arangodb::velocypack::Parser::fromJson(
           "{ \"collections\": [ 6, 7, 8, 9 ], \"consolidationIntervalMsec\": "
           "52, \"links\": { \"testCollection\": {} } }");
-      EXPECT_TRUE(wiew->properties(update->slice(), true).ok());
+      EXPECT_TRUE(
+        wiew->properties(update->slice(), true, true).ok());
     }
 
     {
@@ -1162,7 +1163,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       auto update = arangodb::velocypack::Parser::fromJson(
           "{ \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": "
           "{} }, \"consolidationIntervalMsec\": 52 }");
-      EXPECT_TRUE(wiew->properties(update->slice(), false).ok());
+      EXPECT_TRUE(wiew->properties(
+        update->slice(), true, false).ok());
     }
 
     {
@@ -1289,7 +1291,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       auto update = arangodb::velocypack::Parser::fromJson(
           "{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} "
           "}, \"consolidationIntervalMsec\": 52 }");
-      EXPECT_TRUE(wiew->properties(update->slice(), true).ok());
+      EXPECT_TRUE(wiew->properties(
+        update->slice(), true, true).ok());
     }
 
     {
@@ -1415,7 +1418,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       auto update = arangodb::velocypack::Parser::fromJson(
           "{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} "
           "}, \"consolidationIntervalMsec\": 52 }");
-      EXPECT_TRUE(wiew->properties(update->slice(), false).ok());
+      EXPECT_TRUE(wiew->properties(update->slice(), true, false).ok());
     }
 
     {

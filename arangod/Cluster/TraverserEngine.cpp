@@ -302,7 +302,9 @@ void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
       if ((!pair.isArray()) || pair.length() != 2) {
         // Invalid communication. Skip
         TRI_ASSERT(false);
-        continue;
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "Internal Traverser communication "
+                                       "broken. Failed to inject variables.");
       }
       auto varId =
           arangodb::basics::VelocyPackHelper::getNumericValue<aql::VariableId>(pair.at(0),
@@ -312,6 +314,7 @@ void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
       aql::AqlValue val(pair.at(1).start());
       _opts->setVariableValue(var, val);
     }
+    _opts->calculateIndexExpressions(_query.ast());
   }
 }
 
@@ -412,13 +415,5 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
 TraverserEngine::~TraverserEngine() = default;
 
 void TraverserEngine::smartSearch(VPackSlice, VPackBuilder&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
-}
-
-void TraverserEngine::smartSearchNew(VPackSlice, VPackBuilder&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
-}
-
-void TraverserEngine::smartSearchBFS(VPackSlice, VPackBuilder&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
 }

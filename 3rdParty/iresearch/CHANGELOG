@@ -1,4 +1,72 @@
-v1.0 (2021-03-30)
+master
+-------------------------
+
+* Add `classification_stream` capable of classifying input data based on FastText NN model.
+
+* Add `nearest_neighbors_stream` capable of generating synonyms based on FastText NN model.
+
+v1.1 (2021-11-04)
+-------------------------
+
+* Fix possible race between file creation and directory cleaner.
+
+* Fix invalid sorting order of stored features in presence of primary sort.
+
+* Enhance troubleshooting experience for the analyzers required locale.
+
+* Eliminate dependency to Boost.Locale.
+
+* Get rid of internal conversions during analysis. All text analyzers now expect UTF-8 encoded input.
+
+* Fix threading related issues reported by TSAN.
+
+* Add "object" locale parsing for the `collation_token_stream` to support definig locale variant
+  and keywords.
+
+* Get rid of `utf8_path` in favor of `std::filesystem::path`.
+
+* Fix sporadic "error while reading compact" failures.
+
+* Rework Compression API to return `std::unique_ptr` instead of `std::shared_ptr`.
+
+* Rework Analyzer API to return `std::unique_ptr` instead of `std::shared_ptr`.
+
+* Derive `null_token_stream`, `string_token_stream`, `numeric_token_stream` and `null_token_stream`
+  from `analysis::analyzer`.
+
+* Rework iterators API to reduce number of heap allocations.
+
+* Add new analyzer `collation` capable of producing tokens honoring language
+  specific sorting.
+
+* Add new feature `iresearch::norm2` representing fixed length norm value.
+
+* Split field features into built-in set of index features and pluggable field features.
+
+* Add ability to specify target prefix for `by_edit_distance` query.
+
+* Fix possible crash in `disjunction` inside `visit` of the already exhausted iterator.
+
+* Fix block boundaries evaluation in `block_iterator` for `memory_directory` and `fs_directory`.
+
+* Reduce number of heap allocations in `numeric_token_stream`.
+
+* Replace RapidJSON with Velocypack for analyzers and scorers serialization and deserialization
+
+* Add new `1_4` segment format utilizing new columnstore and term dictionary index format.
+
+* Add new columnstore implementation based on sparse bitset format.
+
+* Add random access functionality to `data_input` for both regular reads and
+  direct buffer access.
+
+* Add `sparse_bitset_writer`/`sparse_bitset_iterator`, a fast and efficient on-disk
+  format for storing sparse bit sets.
+
+* Add a set of SIMD-based utils for encoding.
+
+
+v1.0 (2021-06-14)
 -------------------------
 
 Initial release of IResearch library

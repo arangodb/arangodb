@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -40,8 +41,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Logger/LogMacros.h"
-
-class CollectionNameResolver;
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -130,13 +129,33 @@ typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::end() co
   return it;
 }
 
+ModificationExecutorResultState UpsertModifier::resultState() const noexcept {
+  std::lock_guard<std::mutex> guard(_resultStateMutex);
+  return _resultState; 
+}
+
 void UpsertModifier::reset() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    std::unique_lock<std::mutex> guard(_resultStateMutex, std::try_to_lock);
+    TRI_ASSERT(guard.owns_lock());
+    TRI_ASSERT(_resultState != ModificationExecutorResultState::WaitingForResult);
+  }
+#endif
+
   _insertAccumulator.reset();
   _insertResults.reset();
   _updateAccumulator.reset();
   _updateResults.reset();
 
   _operations.clear();
+
+  resetResult();
+}
+
+void UpsertModifier::resetResult() noexcept {
+  std::lock_guard<std::mutex> guard(_resultStateMutex);
+  _resultState = ModificationExecutorResultState::NoResult;
 }
 
 UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
@@ -214,7 +233,7 @@ VPackArrayIterator UpsertModifier::getInsertResultsIterator() const {
   return VPackArrayIterator(VPackArrayIterator::Empty{});
 }
 
-Result UpsertModifier::accumulate(InputAqlItemRow& row) {
+void UpsertModifier::accumulate(InputAqlItemRow& row) {
   RegisterId const inDocReg = _infos._input1RegisterId;
   RegisterId const insertReg = _infos._input2RegisterId;
   RegisterId const updateReg = _infos._input3RegisterId;
@@ -233,11 +252,29 @@ Result UpsertModifier::accumulate(InputAqlItemRow& row) {
     auto insertDoc = row.getValue(insertReg);
     result = insertCase(_insertAccumulator, insertDoc);
   }
-  _operations.push_back({result, row});
-  return Result{};
+  _operations.emplace_back(result, row);
 }
 
-Result UpsertModifier::transact(transaction::Methods& trx) {
+ExecutionState UpsertModifier::transact(transaction::Methods& trx) {
+  std::lock_guard<std::mutex> guard(_resultStateMutex);
+
+  switch (_resultState) {
+    case ModificationExecutorResultState::WaitingForResult:
+      // WAITING is not yet implemented for UpsertModifier, we shouldn't get here
+      TRI_ASSERT(false);
+      return ExecutionState::WAITING;
+    case ModificationExecutorResultState::HaveResult:
+      // WAITING is not yet implemented for UpsertModifier, we shouldn't get here
+      TRI_ASSERT(false);
+      return ExecutionState::DONE;
+    case ModificationExecutorResultState::NoResult:
+      // continue
+      break;
+  }
+
+  TRI_ASSERT(_resultState == ModificationExecutorResultState::NoResult);
+  _resultState = ModificationExecutorResultState::NoResult;
+
   auto toInsert = _insertAccumulator.closeAndGetContents();
   if (toInsert.isArray() && toInsert.length() > 0) {
     _insertResults =
@@ -256,8 +293,10 @@ Result UpsertModifier::transact(transaction::Methods& trx) {
     }
     throwOperationResultException(_infos, _updateResults);
   }
+  
+  _resultState = ModificationExecutorResultState::HaveResult;
 
-  return Result{};
+  return ExecutionState::DONE;
 }
 
 size_t UpsertModifier::nrOfDocuments() const {
@@ -297,3 +336,11 @@ size_t UpsertModifier::nrOfWritesExecuted() const {
 size_t UpsertModifier::nrOfWritesIgnored() const { return nrOfErrors(); }
 
 size_t UpsertModifier::getBatchSize() const { return _batchSize; }
+
+bool UpsertModifier::hasResultOrException() const noexcept {
+  return resultState() == ModificationExecutorResultState::HaveResult;
+}
+
+bool UpsertModifier::hasNeitherResultNorOperationPending() const noexcept {
+  return resultState() == ModificationExecutorResultState::NoResult;
+}

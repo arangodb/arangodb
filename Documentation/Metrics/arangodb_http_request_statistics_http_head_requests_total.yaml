@@ -2,7 +2,7 @@ name: arangodb_http_request_statistics_http_head_requests_total
 renamedFrom: arangodb_http_request_statistics_http_head_requests
 introducedIn: "3.8.0"
 help: |
-  Number of HTTP HEAD requests
+  Number of HTTP HEAD requests.
 unit: number
 type: counter
 category: Statistics

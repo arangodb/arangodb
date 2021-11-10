@@ -42,7 +42,7 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    void buildRequest(int threadNumber, size_t threadCounter,
+    void buildRequest(size_t threadNumber, size_t threadCounter,
                       size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
       size_t keyId = static_cast<size_t>(globalCounter / 2);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
@@ -74,7 +74,7 @@ namespace arangodb::arangobench {
     }
 
     bool isDeprecated() const noexcept override {
-      return false;
+      return true;
     }
 
   };

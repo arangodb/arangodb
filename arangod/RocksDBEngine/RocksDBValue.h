@@ -34,11 +34,19 @@
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 
 namespace arangodb {
+
+namespace replication2 {
+class LogId;
+struct LogIndex;
+struct LogTerm;
+struct LogPayload;
+}
 
 class RocksDBValue {
  public:
@@ -50,14 +58,18 @@ class RocksDBValue {
 
   static RocksDBValue Database(VPackSlice const& data);
   static RocksDBValue Collection(VPackSlice const& data);
+  static RocksDBValue ReplicatedLog(VPackSlice const& data);
   static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId, RevisionId revision);
   static RocksDBValue EdgeIndexValue(arangodb::velocypack::StringRef const& vertexId);
   static RocksDBValue VPackIndexValue();
+  static RocksDBValue ZkdIndexValue();
+  static RocksDBValue UniqueZkdIndexValue(LocalDocumentId const& docId);
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId);
   static RocksDBValue View(VPackSlice const& data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
   static RocksDBValue KeyGeneratorValue(VPackSlice const& data);
   static RocksDBValue S2Value(S2Point const& c);
+  static RocksDBValue LogEntry(replication2::PersistingLogEntry const& entry);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval
@@ -102,14 +114,21 @@ class RocksDBValue {
   static VPackSlice data(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the numeric value from the key field of a VPackSlice
-  //////////////////////////////////////////////////////////////////////////////
-  static uint64_t keyValue(rocksdb::Slice const&);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Centroid of shape or point on the sphere surface in degrees
   //////////////////////////////////////////////////////////////////////////////
   static S2Point centroid(rocksdb::Slice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extract the term of a log index value
+  //////////////////////////////////////////////////////////////////////////////
+  // TODO replace with persistingLogEntry()
+  static replication2::LogTerm logTerm(rocksdb::Slice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extract the payload
+  //////////////////////////////////////////////////////////////////////////////
+  // TODO replace with persistingLogEntry()
+  static replication2::LogPayload logPayload(rocksdb::Slice const&);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -143,6 +162,7 @@ class RocksDBValue {
   RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, RevisionId revision);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
   RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRef const& data);
+  RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const&);
   explicit RocksDBValue(S2Point const&);
 
  private:
@@ -150,7 +170,6 @@ class RocksDBValue {
   static LocalDocumentId documentId(char const* data, uint64_t size);
   static arangodb::velocypack::StringRef vertexId(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
-  static uint64_t keyValue(char const* data, size_t size);
 
  private:
   RocksDBEntryType _type;

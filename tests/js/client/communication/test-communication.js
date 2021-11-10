@@ -43,7 +43,7 @@ let { debugCanUseFailAt,
     } = require('@arangodb/test-helper');
 
 const getMetric = (name) => {
-  let res = arango.GET_RAW("/_admin/metrics");
+  let res = arango.GET_RAW("/_admin/metrics/v2");
   let re = new RegExp("^" + name + "({[^}]*})?");
   let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
   if (!matches.length) {
@@ -63,9 +63,7 @@ const endpointToURL = (endpoint) => {
   return 'http' + endpoint.substr(pos);
 };
 
-// detect the path of arangosh. quite hacky, but works
-const arangosh = fs.join(global.ARANGOSH_PATH, 'arangosh' + pu.executableExt);
-
+const arangosh = pu.ARANGOSH_BIN;
 
 const debug = function (text) {
   console.warn(text);

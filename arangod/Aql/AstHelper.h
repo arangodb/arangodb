@@ -24,22 +24,17 @@
 #pragma once
 
 #include <string>
-#include <unordered_set>
+#include <vector>
 
-#include "Containers/SmallVector.h"
-
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 struct AstNode;
 struct Variable;
 namespace ast {
 
 /// @brief determines the to-be-kept attribute of an INTO expression
-std::unordered_set<std::string> getReferencedAttributesForKeep(
-    AstNode const* node, ::arangodb::containers::SmallVector<Variable const*> searchVariables,
-    bool& isSafeForOptimization);
+auto getReferencedAttributesForKeep(AstNode const* node, const Variable* searchVariable,
+                                    bool& isSafeForOptimization)
+    -> std::vector<std::string>;
 
 }  // namespace ast
-}  // namespace aql
-}  // namespace arangodb
-
+}  // namespace arangodb::aql

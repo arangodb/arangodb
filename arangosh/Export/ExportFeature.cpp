@@ -25,16 +25,17 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/files.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
+#include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
@@ -558,7 +559,10 @@ void ExportFeature::writeBatch(ManagedDirectory::File & fd, VPackArrayIterator i
 
 void ExportFeature::writeToFile(ManagedDirectory::File & fd, std::string const& line) {
   fd.write(line.c_str(), line.size());
-  THROW_ARANGO_EXCEPTION_IF_FAIL(fd.status());
+  auto res = fd.status();
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(std::move(res));
+  }
 }
 
 std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClient,
@@ -569,25 +573,13 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
       httpClient->request(requestType, url, postBody.c_str(), postBody.size()));
   _httpRequestsDone++;
 
-  if (response == nullptr || !response->isComplete()) {
-    LOG_TOPIC("c590f", FATAL, Logger::CONFIG) << "got invalid response from server: " + httpClient->getErrorMessage();
+  auto check = arangodb::HttpResponseChecker::check(httpClient->getErrorMessage(), response.get());
+  if (check.fail()) {
+    LOG_TOPIC("c590f", FATAL, Logger::CONFIG) << check.errorMessage();
     FATAL_ERROR_EXIT();
   }
-  
-  std::shared_ptr<VPackBuilder> parsedBody;
 
-  if (response->wasHttpError()) {
-    parsedBody = response->getBodyVelocyPack();
-    arangodb::velocypack::Slice error = parsedBody->slice();
-    std::string errorMsg;
-    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
-      errorMsg = " - " + error.get(arangodb::StaticStrings::ErrorMessage).copyString();
-    }
-    //std::cout << parsedBody->toJson() << std::endl;
-    LOG_TOPIC("dbf58", FATAL, Logger::CONFIG) << "got invalid response from server: HTTP " +
-               StringUtils::itoa(response->getHttpReturnCode()) + ": " << response->getHttpReturnMessage() << errorMsg;
-    FATAL_ERROR_EXIT();
-  }
+  std::shared_ptr<VPackBuilder> parsedBody;
 
   try {
     parsedBody = response->getBodyVelocyPack();

@@ -30,6 +30,7 @@
 #include <mutex>
 #include <optional>
 #include <stdexcept>
+#include <utility>
 #include <variant>
 
 /**
@@ -90,6 +91,11 @@ class MutexGuard {
   auto get() const noexcept -> T&;
   auto operator->() const noexcept -> T*;
 
+  // @brief Unlocks and releases the mutex, and releases the value.
+  //        The guard is unusable after this, and the value inaccessible from
+  //        the guard.
+  void unlock() noexcept(noexcept(std::declval<L>().unlock()));
+
  private:
   struct nop {
     void operator()(T*) {}
@@ -113,7 +119,16 @@ auto MutexGuard<T, L>::get() const noexcept -> T& {
 
 template <class T, class L>
 auto MutexGuard<T, L>::operator->() const noexcept -> T* {
-  return std::addressof(get());
+  return _value.get();
+}
+
+template <class T, class L>
+void MutexGuard<T, L>::unlock() noexcept(noexcept(std::declval<L>().unlock())) {
+  static_assert(noexcept(_value.reset()));
+  static_assert(noexcept(_mutexLock.release()));
+  _value.reset();
+  _mutexLock.unlock();
+  _mutexLock.release();
 }
 
 template <class T, class M = std::mutex, template <class> class L = std::unique_lock>
@@ -249,7 +264,7 @@ auto Guarded<T, M, L>::getLockedGuard() const -> MutexGuard<T const, L<M>> {
 
 template <class T, class M, template <class> class L>
 auto Guarded<T, M, L>::tryLockedGuard() -> std::optional<MutexGuard<T, L<M>>> {
-  auto lock = lock_type(_mutex, std::try_lock);
+  auto lock = lock_type(_mutex, std::try_to_lock);
 
   if (lock.owns_lock()) {
     return MutexGuard(_value, std::move(lock));
@@ -261,7 +276,7 @@ auto Guarded<T, M, L>::tryLockedGuard() -> std::optional<MutexGuard<T, L<M>>> {
 template <class T, class M, template <class> class L>
 auto Guarded<T, M, L>::tryLockedGuard() const
     -> std::optional<MutexGuard<T const, L<M>>> {
-  auto lock = lock_type(_mutex, std::try_lock);
+  auto lock = lock_type(_mutex, std::try_to_lock);
 
   if (lock.owns_lock()) {
     return MutexGuard(_value, std::move(lock));

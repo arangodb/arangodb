@@ -198,6 +198,10 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
   return result;
 }
 
+void MockGraphProvider::prepareIndexExpressions(aql::Ast* ast) {
+  // Nothing to do here. We do not have any special index conditions
+}
+
 [[nodiscard]] transaction::Methods* MockGraphProvider::trx() { return &_trx; }
 
 aql::TraversalStats MockGraphProvider::stealStats() {

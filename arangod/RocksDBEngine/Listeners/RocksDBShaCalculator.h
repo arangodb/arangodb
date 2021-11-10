@@ -23,63 +23,78 @@
 
 #pragma once
 
-#include <atomic>
-#include <queue>
+#include <chrono>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 // public rocksdb headers
 #include <rocksdb/listener.h>
 
+#include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class RocksDBShaCalculatorThread : public arangodb::Thread {
  public:
   explicit RocksDBShaCalculatorThread(application_features::ApplicationServer& server,
-                                      std::string const& name)
-      : Thread(server, name) {}
+                                      std::string const& name);
+
   ~RocksDBShaCalculatorThread();
 
+  /// @brief called by RocksDB when a new .sst file is created
   void queueShaCalcFile(std::string const& pathName);
 
+  /// @brief called by RocksDB when it deletes an .sst
   void queueDeleteFile(std::string const& pathName);
 
+  // return [success, hash]
+  static std::pair<bool, std::string> shaCalcFile(std::string const& filename);
+
+  void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
+  
   void signalLoop();
-
-  static bool shaCalcFile(std::string const& filename);
-
-  static bool deleteFile(std::string const& filename);
-
-  static void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
 
  protected:
   void run() override;
+  
+  void deleteObsoleteFiles();
 
-  struct actionNeeded_t {
-    enum { CALC_SHA, DELETE_ACTION } _action;
-    std::string _path;
-  };
+  template <typename T>
+  bool isSstFilename(T const& filename) const;
+  
+  /// @brief The following wrapper routine simplifies unit testing
+  TEST_VIRTUAL std::string getRocksDBPath();
 
   basics::ConditionVariable _loopingCondvar;
 
   Mutex _pendingMutex;
-  std::queue<actionNeeded_t> _pendingQueue;
+  /// @brief use vectors to buffer all pending operations. this
+  /// will mean that we do not necessarily process the operations
+  /// in incoming order (LIFO), but rather in FIFO order. However,
+  /// the processing order is not important here
+  std::vector<std::string> _pendingCalculations;
+  std::unordered_set<std::string> _pendingDeletions;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief The following wrapper routines simplify unit testing
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual std::string getRocksDBPath();
+  /// @brief already calculated and memoized hash values
+  std::unordered_map<std::string, std::string> _calculatedHashes;
+
+  /// @brief time point when we ran the last full check over the
+  /// entire directory
+  std::chrono::time_point<std::chrono::steady_clock> _lastFullCheck;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-///
-///
-////////////////////////////////////////////////////////////////////////////////
 class RocksDBShaCalculator : public rocksdb::EventListener {
  public:
-  explicit RocksDBShaCalculator(application_features::ApplicationServer&);
+  explicit RocksDBShaCalculator(application_features::ApplicationServer&, bool startThread);
   virtual ~RocksDBShaCalculator();
 
   void OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
@@ -87,8 +102,12 @@ class RocksDBShaCalculator : public rocksdb::EventListener {
   void OnTableFileDeleted(const rocksdb::TableFileDeletionInfo& /*info*/) override;
 
   void OnCompactionCompleted(rocksdb::DB* db, const rocksdb::CompactionJobInfo& ci) override;
+  
+  void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
 
-  void beginShutdown() { _shaThread.beginShutdown(); };
+  void beginShutdown() { _shaThread.beginShutdown(); }
+
+  void waitForShutdown();
 
  protected:
   /// thread to perform sha256 and file deletes in background

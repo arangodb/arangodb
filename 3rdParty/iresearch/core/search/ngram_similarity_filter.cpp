@@ -400,24 +400,18 @@ class ngram_similarity_query : public filter::prepared {
       const ngram_segment_state_t& query_state) const {
     using disjunction_t = irs::disjunction_iterator<doc_iterator::ptr>;
 
-    const auto& features = irs::flags::empty_instance();
-
     disjunction_t::doc_iterators_t itrs;
     itrs.reserve(query_state.terms.size());
     for (auto& term_state : query_state.terms) {
       if (term_state == nullptr) {
         continue;
       }
-      auto term = query_state.field->iterator();
 
-      // use bytes_ref::blank here since we do not need just to "jump"
-      // to cached state, and we are not interested in term value itself */
-      if (!term->seek(bytes_ref::NIL, *term_state)) {
-        continue;
-      }
+      auto* field = query_state.field;
+      assert(field);
 
       // get postings
-      auto docs = term->postings(features);
+      auto docs = field->postings(*term_state, IndexFeatures::NONE);
       assert(docs);
 
       // add iterator
@@ -437,21 +431,17 @@ class ngram_similarity_query : public filter::prepared {
       const order::prepared& ord) const {
     approximation::doc_iterators_t itrs;
     itrs.reserve(query_state.terms.size());
-    auto features = ord.features() | by_ngram_similarity::features();
+    const IndexFeatures features = ord.features() | by_ngram_similarity::required();
     for (auto& term_state : query_state.terms) {
       if (term_state == nullptr) {
         continue;
       }
-      auto term = query_state.field->iterator();
 
-      // use bytes_ref::blank here since we do not need just to "jump"
-      // to cached state, and we are not interested in term value itself */
-      if (!term->seek(bytes_ref::NIL, *term_state)) {
-        continue;
-      }
+      auto* field = query_state.field;
+      assert(field);
 
       // get postings
-      auto docs = term->postings(features);
+      auto docs = field->postings(*term_state, features);
       assert(docs);
 
       // add iterator
@@ -463,8 +453,9 @@ class ngram_similarity_query : public filter::prepared {
     }
 
     return memory::make_managed<ngram_similarity_doc_iterator>(
-        std::move(itrs), rdr, *query_state.field, boost(), stats_.c_str(),
-        query_state.terms.size(), min_match_count_, ord);
+      std::move(itrs), rdr, *query_state.field, boost(),
+      stats_.c_str(), query_state.terms.size(),
+      min_match_count_, ord);
   }
 
   size_t min_match_count_;
@@ -476,12 +467,7 @@ class ngram_similarity_query : public filter::prepared {
 // --SECTION--                                by_ngram_similarity implementation
 // -----------------------------------------------------------------------------
 
-/* static */ const flags& by_ngram_similarity::features() {
-  static const flags req{ irs::type<frequency>::get(), irs::type<position>::get() };
-  return req;
-}
-
-DEFINE_FACTORY_DEFAULT(by_ngram_similarity)
+DEFINE_FACTORY_DEFAULT(by_ngram_similarity) // cppcheck-suppress unknownMacro
 
 filter::prepared::ptr by_ngram_similarity::prepare(
     const index_reader& rdr,
@@ -521,14 +507,14 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     }
 
     // check required features
-    if (!features().is_subset_of(field->meta().features)) {
+    if (required() != (field->meta().index_features & required())) {
       continue;
     }
 
     field_stats.collect(segment, *field); // collect field statistics once per segment
     size_t term_idx = 0;
     size_t count_terms = 0;
-    seek_term_iterator::ptr term = field->iterator();
+    seek_term_iterator::ptr term = field->iterator(SeekMode::NORMAL);
     for (const auto& ngram : ngrams) {
       term_states.emplace_back();
       auto& state = term_states.back();

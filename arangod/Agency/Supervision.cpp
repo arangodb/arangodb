@@ -23,6 +23,8 @@
 
 #include "Supervision.h"
 
+#include <Basics/StringUtils.h>
+#include <Basics/overload.h>
 #include <thread>
 
 #include "Agency/ActiveFailoverJob.h"
@@ -42,6 +44,9 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/AgencyMethods.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/Algorithms.h"
 #include "StorageEngine/HealthData.h"
 
 using namespace arangodb;
@@ -324,7 +329,6 @@ void Supervision::upgradeAgency() {
   {
     VPackArrayBuilder trxs(&builder);
     upgradeZero(builder);
-    fixPrototypeChain(builder);
     upgradeOne(builder);
     upgradeHealthRecords(builder);
     upgradeMaintenance(builder);
@@ -962,7 +966,7 @@ void Supervision::reportStatus(std::string const& status) {
     }
   }
 
-  // Importatnt! No reporting in transient for Maintenance mode.
+  // Important! No reporting in transient for Maintenance mode.
   if (status != "Maintenance") {
     transient(_agent, *report);
   }
@@ -1644,6 +1648,9 @@ bool Supervision::handleJobs() {
       << "Begin checkBrokenAnalyzers";
   checkBrokenAnalyzers();
 
+  LOG_TOPIC("f7d05", TRACE, Logger::SUPERVISION) << "Begin checkReplicatedLogs";
+  checkReplicatedLogs();
+
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
 
@@ -1895,23 +1902,22 @@ void Supervision::workJobs() {
   }
 }
 
-bool Supervision::verifyCoordinatorRebootID(std::string const& coordinatorID,
-                                            uint64_t wantedRebootID, bool& coordinatorFound) {
+bool Supervision::verifyServerRebootID(std::string const& serverID,
+                                            uint64_t wantedRebootID, bool& serverFound) {
   // check if the coordinator exists in health
-  std::string const& health = serverHealth(coordinatorID);
+  std::string const& health = serverHealth(serverID);
   LOG_TOPIC("44432", DEBUG, Logger::SUPERVISION)
-      << "verifyCoordinatorRebootID: coordinatorID=" << coordinatorID
-      << " health=" << health;
+      << "verifyServerRebootID: coordinatorID=" << serverID << " health=" << health;
 
   // if the server is not found, health is an empty string
-  coordinatorFound = !health.empty();
+  serverFound = !health.empty();
   if (health != "GOOD" && health != "BAD") {
     return false;
   }
 
   // now lookup reboot id
   std::optional<uint64_t> rebootID =
-      snapshot().hasAsUInt(curServersKnown + coordinatorID + "/" + StaticStrings::RebootId);
+      snapshot().hasAsUInt(curServersKnown + serverID + "/" + StaticStrings::RebootId);
   LOG_TOPIC("54326", DEBUG, Logger::SUPERVISION)
       << "verifyCoordinatorRebootID: rebootId=" << rebootID.value_or(0)
       << " bool=" << rebootID.has_value();
@@ -2090,7 +2096,7 @@ void Supervision::restoreBrokenAnalyzersRevision(std::string const& database,
   write_ret_t res = _agent->write(envelope);
   if (!res.successful()) {
     LOG_TOPIC("e43cb", DEBUG, Logger::SUPERVISION)
-        << "failed to resore broken analyzers revision in agency. Will retry. "
+        << "failed to restore broken analyzers revision in agency. Will retry. "
         << envelope->toJson();
   }
 }
@@ -2107,9 +2113,9 @@ void Supervision::resourceCreatorLost(
   bool keepResource = true;
   bool coordinatorFound = false;
 
+
   if (rebootID && coordinatorID) {
-    keepResource = Supervision::verifyCoordinatorRebootID(*coordinatorID,
-                                                          *rebootID, coordinatorFound);
+    keepResource = Supervision::verifyServerRebootID(*coordinatorID, *rebootID, coordinatorFound);
     // incomplete data, should not happen
   } else {
     //          v---- Please note this awesome log-id
@@ -2217,6 +2223,95 @@ void Supervision::checkBrokenAnalyzers() {
         restoreBrokenAnalyzersRevision(dbData.first, *revision, *buildingRevision,
                                        ev.coordinatorId, ev.coordinatorRebootId, ev.coordinatorFound);
       });
+    }
+  }
+}
+
+
+void Supervision::checkReplicatedLogs() {
+  _lock.assertLockedByCurrentThread();
+
+  using namespace replication2::agency;
+
+  auto const readPlanSpecification = [](Node const& node) -> LogPlanSpecification {
+    auto builder = node.toBuilder();
+    return LogPlanSpecification{from_velocypack, builder.slice()};
+  };
+
+  auto const readLogCurrent = [](Node const& node) -> LogCurrent {
+    auto builder = node.toBuilder();
+    return LogCurrent(from_velocypack, builder.slice());
+  };
+
+  // check if Plan has replicated logs
+  auto const& planNode = snapshot().hasAsNode(planRepLogPrefix);
+  if (!planNode) {
+    return;
+  }
+
+  using namespace replication2::algorithms;
+
+  ParticipantInfo info = std::invoke([&]{
+    ParticipantInfo info;
+    auto& dbservers = snapshot().hasAsChildren(plannedServers).value().get();
+    for (auto const& [serverId, node]: dbservers) {
+      bool const isHealthy = serverHealth(serverId) == HEALTH_STATUS_GOOD;
+      auto rebootID =
+          snapshot().hasAsUInt(curServersKnown + serverId + "/" + StaticStrings::RebootId);
+      if (rebootID) {
+        info.emplace(serverId, ParticipantRecord{RebootId{*rebootID}, isHealthy});
+      }
+    }
+    return info;
+  });
+
+  auto builder = std::make_shared<Builder>();
+  auto envelope = arangodb::agency::envelope::into_builder(*builder);
+  for (auto const& [dbName, db] : planNode->get().children()) {
+    for (auto const& [idString, node] : db->children()) {
+      auto spec = readPlanSpecification(*node);
+      auto current = std::invoke(
+          [&, &dbName = dbName, &idString = idString]() -> LogCurrent {
+            using namespace cluster::paths;
+            auto currentPath =
+                aliases::current()
+                    ->replicatedLogs()
+                    ->database(dbName)
+                    ->log(idString)
+                    ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
+
+            if (auto cnode = snapshot().get(currentPath); cnode.has_value()) {
+              return readLogCurrent(cnode->get());
+            }
+            return {};
+          });
+
+      auto checkResult = checkReplicatedLog(dbName, spec, current, info);
+      envelope = std::visit(
+          overload{[&, &dbName = dbName](LogPlanTermSpecification const& newSpec) {
+                     return arangodb::replication2::agency::methods::updateTermSpecificationTrx(
+                         std::move(envelope), dbName, spec.id, newSpec,
+                         spec.currentTerm.has_value()
+                             ? std::optional{spec.currentTerm->term}
+                             : std::nullopt);
+                   },
+                   [&, &dbName = dbName](LogCurrentSupervisionElection const& newElection) {
+                     return arangodb::replication2::agency::methods::updateElectionResult(
+                         std::move(envelope), dbName, spec.id, newElection);
+                   },
+                   [&](std::monostate const&) {
+                     return std::move(envelope);  // do nothing
+                   }},
+          checkResult);
+    }
+  }
+
+  envelope.done();
+  if (builder->slice().length() > 0) {
+    write_ret_t res = _agent->write(builder);
+    if (!res.successful()) {
+      LOG_TOPIC("12d36", WARN, Logger::SUPERVISION)
+      << "failed to update term in agency. Will retry. " << builder->toJson();
     }
   }
 }
@@ -2487,56 +2582,6 @@ void Supervision::enforceReplication() {
   }
 }
 
-
-void Supervision::fixPrototypeChain(Builder& migrate) {
-  _lock.assertLockedByCurrentThread();
-
-  auto const& snap = snapshot();
-
-  std::function<std::string(std::string const&, std::string const&)> resolve;
-  resolve = [&](std::string const& db, std::string const& col) {
-    std::string s;
-    auto const& tmp_n = snap.hasAsNode(planColPrefix + db + "/" + col);
-    if (tmp_n) {
-      Node const& n = tmp_n->get();
-      s = n.hasAsString("distributeShardsLike").value();
-    }
-    return (s.empty()) ? col : resolve(db, s);
-  };
-
-  for (auto const& database : snapshot().hasAsChildren(planColPrefix).value().get()) {
-    for (auto const& collection : database.second->children()) {
-      if (collection.second->has("distributeShardsLike")) {
-        auto prototype =
-            (*collection.second).hasAsString("distributeShardsLike").value();
-        if (!prototype.empty()) {
-          std::string u;
-          try {
-            u = resolve(database.first, prototype);
-          } catch (...) {
-          }
-          if (u != prototype) {
-            {
-              VPackArrayBuilder trx(&migrate);
-              {
-                VPackObjectBuilder oper(&migrate);
-                migrate.add(planColPrefix + database.first + "/" +
-                                collection.first + "/" + "distributeShardsLike",
-                            VPackValue(u));
-              }
-              {
-                VPackObjectBuilder prec(&migrate);
-                migrate.add(planColPrefix + database.first + "/" +
-                                collection.first + "/" + "distributeShardsLike",
-                            VPackValue(prototype));
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
 
 // Shrink cluster if applicable, guarded by caller
 void Supervision::shrinkCluster() {

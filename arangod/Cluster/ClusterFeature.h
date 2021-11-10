@@ -83,8 +83,11 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::uint32_t maxNumberOfShards() const { return _maxNumberOfShards; }
   std::uint32_t minReplicationFactor() const { return _minReplicationFactor; }
   std::uint32_t maxReplicationFactor() const { return _maxReplicationFactor; }
-  double indexCreationTimeout() const { return _indexCreationTimeout; }
+  std::uint32_t maxNumberOfMoveShards() const { return _maxNumberOfMoveShards;}
   bool forceOneShard() const { return _forceOneShard; }
+  /// @brief index creation timeout in seconds. note: this used to be
+  /// a configurable parameter in previous versions, but is now hard-coded.
+  double indexCreationTimeout() const { return _indexCreationTimeout; }
 
   std::shared_ptr<HeartbeatThread> heartbeatThread();
 
@@ -162,13 +165,16 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
   std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
   std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
+  std::uint32_t _maxNumberOfMoveShards = 10;     // maximum number of shards to be moved per rebalance operation
+                                                 //if value = 0, no move shards operations will be scheduled
   ErrorCode _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
   bool _createWaitsForSyncReplication = true;
   bool _forceOneShard = false;
   bool _unregisterOnShutdown = false;
   bool _enableCluster = false;
   bool _requirePersistedId = false;
-  double _indexCreationTimeout = 3600.0;
+  /// @brief coordinator timeout for index creation. defaults to 4 days
+  double _indexCreationTimeout = 72.0 * 3600.0;
   std::unique_ptr<ClusterInfo> _clusterInfo;
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
   std::unique_ptr<AgencyCache> _agencyCache;

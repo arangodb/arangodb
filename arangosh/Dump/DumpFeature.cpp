@@ -24,11 +24,8 @@
 
 #include "DumpFeature.h"
 
-#include <algorithm>
 #include <chrono>
-#include <thread>
 
-#include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -38,29 +35,32 @@
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
-#include "Basics/files.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Maskings/Maskings.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
+#include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
+#include "Utilities/NameValidator.h"
 #include "Utils/ManagedDirectory.h"
 
 namespace {
 
-/// @brief fake client id we will send to the server. the server keeps
+/// @brief fake client and syncer ids we will send to the server. the server keeps
 /// track of all connected clients
 static std::string clientId;
+static std::string syncerId;
 
 /// @brief name of the feature to report to application server
 constexpr auto FeatureName = "Dump";
@@ -75,31 +75,6 @@ constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
 /// @brief generic error for if server returns bad/unexpected json
 const arangodb::Result ErrorMalformedJsonResponse = {
     TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
-
-/// @brief check whether HTTP response is valid, complete, and not an error
-arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& client,
-                                   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> const& response) {
-  using arangodb::basics::StringUtils::concatT;
-  using arangodb::basics::StringUtils::itoa;
-  if (response == nullptr || !response->isComplete()) {
-    return {TRI_ERROR_INTERNAL,
-            "got invalid response from server: " + client.getErrorMessage()};
-  }
-  if (response->wasHttpError()) {
-    auto errorNum = static_cast<int>(TRI_ERROR_INTERNAL);
-    std::string errorMsg = response->getHttpReturnMessage();
-    std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
-    arangodb::velocypack::Slice error = bodyBuilder->slice();
-    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
-      errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
-      errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
-    }
-    auto err = ErrorCode{errorNum};
-    return {err, concatT("got invalid response from server: HTTP ",
-                         itoa(response->getHttpReturnCode()), ": ", errorMsg)};
-  }
-  return {};
-}
 
 /// @brief checks that a file pointer is valid and file status is ok
 bool fileOk(arangodb::ManagedDirectory::File* file) {
@@ -126,7 +101,8 @@ std::pair<arangodb::Result, std::vector<std::string>> getDatabases(arangodb::htt
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::GET, url, "", 0));
-  auto check = ::checkHttpResponse(client, response);
+  auto check = arangodb::HttpResponseChecker::check(client.getErrorMessage(), response.get());
+
   if (check.fail()) {
     LOG_TOPIC("47882", ERR, arangodb::Logger::DUMP)
         << "An error occurred while trying to determine list of databases: " << check.errorMessage();
@@ -141,6 +117,7 @@ std::pair<arangodb::Result, std::vector<std::string>> getDatabases(arangodb::htt
     return {::ErrorMalformedJsonResponse, databases};
   }
   VPackSlice resBody = parsedBody->slice();
+
   if (resBody.isObject()) {
     resBody = resBody.get("result");
   }
@@ -173,7 +150,7 @@ std::pair<arangodb::Result, uint64_t> startBatch(arangodb::httpclient::SimpleHtt
   using arangodb::basics::VelocyPackHelper;
   using arangodb::basics::StringUtils::uint64;
 
-  std::string url = "/_api/replication/batch?serverId=" + clientId;
+  std::string url = "/_api/replication/batch?serverId=" + clientId + "&syncerId=" + syncerId;
   std::string const body = "{\"ttl\":600}";
   if (!DBserver.empty()) {
     url += "&DBserver=" + DBserver;
@@ -181,7 +158,7 @@ std::pair<arangodb::Result, uint64_t> startBatch(arangodb::httpclient::SimpleHtt
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::POST, url, body.c_str(), body.size()));
-  auto check = ::checkHttpResponse(client, response);
+  auto check = ::arangodb::HttpResponseChecker::check(client.getErrorMessage(), response.get());
   if (check.fail()) {
     LOG_TOPIC("34dbf", ERR, arangodb::Logger::DUMP)
         << "An error occurred while creating dump context: " << check.errorMessage();
@@ -210,7 +187,7 @@ void extendBatch(arangodb::httpclient::SimpleHttpClient& client,
   TRI_ASSERT(batchId > 0);
 
   std::string url = "/_api/replication/batch/" + itoa(batchId) +
-                    "?serverId=" + clientId;
+                    "?serverId=" + clientId + "&syncerId=" + syncerId;
   std::string const body = "{\"ttl\":600}";
   if (!DBserver.empty()) {
     url += "&DBserver=" + DBserver;
@@ -324,7 +301,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     // make the actual request for data
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
         client.request(arangodb::rest::RequestType::GET, url, nullptr, 0, headers));
-    auto check = ::checkHttpResponse(client, response);
+    auto check = ::arangodb::HttpResponseChecker::check(client.getErrorMessage(), response.get());
     if (check.fail()) {
       LOG_TOPIC("ac972", ERR, arangodb::Logger::DUMP)
           << "An error occurred while dumping collection '" << name
@@ -412,6 +389,14 @@ void processJob(arangodb::httpclient::SimpleHttpClient& client, arangodb::DumpFe
   if (res.fail()) {
     job.feature.reportError(res);
   }
+}
+
+/// @brief return either the name of the database to be used as a folder name, or its id if its name contains special characters and is not fully supported in every OS
+[[nodiscard]] std::string getDatabaseDirName(std::string const& databaseName, std::string const& id) {
+  bool isOldStyleName = 
+      arangodb::DatabaseNameValidator::isAllowedName(/*allowSystem*/ true, /*extendedNames*/ false, 
+                                                     arangodb::velocypack::StringRef(databaseName));
+  return isOldStyleName ? databaseName : id;
 }
 
 }  // namespace
@@ -618,6 +603,7 @@ DumpFeature::DumpFeature(application_features::ApplicationServer& server, int& e
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
   _options.outputPath = buildFilename(currentDirectory().result(), "dump");
+  _options.threadCount = std::max(uint32_t(_options.threadCount), static_cast<uint32_t>(NumberOfCores::getValue()));
 }
 
 std::string DumpFeature::featureName() { return ::FeatureName; }
@@ -651,7 +637,8 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
   options->addOption(
       "--threads",
       "maximum number of collections/shards to process in parallel",
-      new UInt32Parameter(&_options.threadCount))
+      new UInt32Parameter(&_options.threadCount),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic))
       .setIntroducedIn(30400);
 
   options->addOption("--dump-data", "dump collection data",
@@ -775,7 +762,13 @@ Result DumpFeature::runSingleDump(httpclient::SimpleHttpClient& client,
   if (res.fail()) {
     return res;
   }
-  TRI_DEFER(::endBatch(client, "", batchId));
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    try {
+      ::endBatch(client, "", batchId);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("c4938", ERR, Logger::DUMP) << "Failed to end batch: " << ex.what();
+    }
+  });
 
   // get the cluster inventory
   std::string const url = "/_api/replication/inventory?includeSystem=" +
@@ -793,7 +786,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
                             uint64_t batchId) {
   std::unique_ptr<httpclient::SimpleHttpResult> response(
       client.request(rest::RequestType::GET, baseUrl, nullptr, 0));
-  auto check = ::checkHttpResponse(client, response);
+  auto check = ::arangodb::HttpResponseChecker::check(client.getErrorMessage(), response.get());
   if (check.fail()) {
     LOG_TOPIC("eb7f4", ERR, arangodb::Logger::DUMP)
         << "An error occurred while fetching inventory: " << check.errorMessage();
@@ -811,7 +804,21 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   if (!body.isObject()) {
     return ::ErrorMalformedJsonResponse;
   }
-  
+
+  if (_options.allDatabases) {
+    std::string const dbId = body.get("properties").get("id").copyString();
+    // inject current database
+    LOG_TOPIC("4af42", INFO, Logger::DUMP) << "Dumping database '" << dbName << "' (" << dbId << ")";
+    _directory = std::make_unique<ManagedDirectory>(
+        server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, ::getDatabaseDirName(dbName, dbId)),
+        !_options.overwrite, true, _options.useGzip);
+
+    if (_directory->status().fail()) {
+      LOG_TOPIC("94201", ERR, Logger::DUMP) << _directory->status().errorMessage();
+      return _directory->status();
+    }
+  }
+
   // use tick provided by server if user did not specify one
   if (_options.tickEnd == 0 && !_options.clusterMode) {
     uint64_t tick = basics::VelocyPackHelper::stringUInt64(body, "tick");
@@ -1064,6 +1071,7 @@ void DumpFeature::start() {
   // in the future, if we are sure the server is an ArangoDB 3.5 or
   // higher
   ::clientId = std::to_string(RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL)));
+  ::syncerId = std::to_string(RandomGenerator::interval(static_cast<uint64_t>(0xFFFFFFFFFFFFFFFFULL)));
 
   double const start = TRI_microtime();
 
@@ -1092,9 +1100,8 @@ void DumpFeature::start() {
 
   // get database name to operate on
   auto& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
-
   // get a client to use in main thread
-  auto httpClient = _clientManager.getConnectedClient(_options.force, true, true);
+  auto httpClient = _clientManager.getConnectedClient(_options.force, true, true, 0);
 
   // check if we are in cluster or single-server mode
   Result result{TRI_ERROR_NO_ERROR};
@@ -1148,20 +1155,8 @@ void DumpFeature::start() {
   if (res.ok()) {
     for (auto const& db : databases) {
       if (_options.allDatabases) {
-        // inject current database
-        LOG_TOPIC("4af42", INFO, Logger::DUMP) << "Dumping database '" << db << "'";
         client.setDatabaseName(db);
-        httpClient = _clientManager.getConnectedClient(_options.force, false, true);
-
-        _directory = std::make_unique<ManagedDirectory>(
-            server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
-            true, true, _options.useGzip);
-
-        if (_directory->status().fail()) {
-          res = _directory->status();
-          LOG_TOPIC("94201", ERR, Logger::DUMP) << _directory->status().errorMessage();
-          break;
-        }
+        httpClient = _clientManager.getConnectedClient(_options.force, false, true, 0);
       }
 
       try {

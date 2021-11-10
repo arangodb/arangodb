@@ -169,13 +169,6 @@
   #define GCC_ONLY(...)
 #endif
 
-// hool for Valgrind-only code
-#if defined(IRESEARCH_VALGRIND)
-  #define VALGRIND_ONLY(...) __VA_ARGS__
-#else
-  #define VALGRIND_ONLY(...)
-#endif
-
 // check if sizeof(float_t) == sizeof(double_t)
 #if defined(FLT_EVAL_METHOD) && ((FLT_EVAL_METHOD == 1) || (FLT_EVAL_METHOD == 2))
   static_assert(sizeof(float_t) == sizeof(double_t), "sizeof(float_t) != sizeof(double_t)");
@@ -287,7 +280,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // for MSVC on x64 architecture SSE2 is always enabled
-#if defined(__SSE2__) || (defined(_MSC_VER) && (defined(_M_AMD64) || defined(_M_X64)))
+#if defined(__SSE2__) || defined(__ARM_NEON) || defined(__ARM_NEON__) || (defined(_MSC_VER) && (defined(_M_AMD64) || defined(_M_X64)))
 #define IRESEARCH_SSE2
 #endif
 
@@ -349,6 +342,13 @@
 
 namespace iresearch_absl { }
 namespace iresearch {
+constexpr bool is_big_endian() noexcept {
+#ifdef IRESEARCH_BIG_ENDIAN
+ return true;
+#else
+ return false;
+#endif
+}
 // we are using custom absl namespace (and also prefixed macros names)
 // as absl does not support side-by-side compiling in single project
 // with another target also using another version of absl. So with this custom

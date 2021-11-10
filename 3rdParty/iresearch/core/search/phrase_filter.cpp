@@ -315,8 +315,8 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       return doc_iterator::empty();
     }
 
-    // get features required for query & order
-    auto features = ord.features() | by_phrase::required();
+    // get index features required for query & order
+    const IndexFeatures features = ord.features() | by_phrase::required();
 
     conjunction_t::doc_iterators_t itrs;
     itrs.reserve(phrase_state->terms.size());
@@ -324,20 +324,17 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
     std::vector<fixed_phrase_frequency::term_position_t> positions;
     positions.reserve(phrase_state->terms.size());
 
-    // find term using cached state
-    auto terms = phrase_state->reader->iterator();
+    auto* reader = phrase_state->reader;
+    assert(reader);
+
     auto position = positions_.begin();
 
     for (const auto& term_state : phrase_state->terms) {
       assert(term_state.first);
 
-      // use bytes_ref::blank here since we do not need just to "jump"
-      // to cached state, and we are not interested in term value itself
-      if (!terms->seek(bytes_ref::NIL, *term_state.first)) {
-        return doc_iterator::empty();
-      }
-
-      auto docs = terms->postings(features); // postings
+      // get postings using cached state
+      auto docs = reader->postings(*term_state.first, features);
+      assert(docs);
 
       auto* pos = irs::get_mutable<irs::position>(docs.get());
 
@@ -401,7 +398,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     }
 
     // get features required for query & order
-    const auto features = ord.features() | by_phrase::required();
+    const IndexFeatures features = ord.features() | by_phrase::required();
 
     conjunction_t::doc_iterators_t conj_itrs;
     conj_itrs.reserve(phrase_state->terms.size());
@@ -412,7 +409,9 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     positions.resize(phrase_size);
 
     // find term using cached state
-    auto terms = phrase_state->reader->iterator();
+    auto* reader = phrase_state->reader;
+    assert(reader);
+
     auto position = positions_.begin();
 
     auto term_state = phrase_state->terms.begin();
@@ -425,13 +424,8 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       disj_itrs.reserve(num_terms);
       for (const auto end = term_state + num_terms; term_state != end; ++term_state) {
         assert(term_state->first);
-        // use bytes_ref::NIL here since we do not need just to "jump"
-        // to cached state, and we are not interested in term value itself
-        if (!terms->seek(bytes_ref::NIL, *term_state->first)) {
-          continue;
-        }
 
-        disjunction_t::adapter docs(terms->postings(features),
+        disjunction_t::adapter docs(reader->postings(*term_state->first, features),
                                     term_state->second);
 
         if (!docs.position) {
@@ -483,13 +477,8 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
 // -----------------------------------------------------------------------------
 // --SECTION--                                          by_phrase implementation
 // -----------------------------------------------------------------------------
-
-/* static */ const flags& by_phrase::required() {
-  static const flags req{ irs::type<frequency>::get(), irs::type<position>::get() };
-  return req;
-}
-
-DEFINE_FACTORY_DEFAULT(by_phrase)
+// cppcheck-suppress unknownMacro
+DEFINE_FACTORY_DEFAULT(by_phrase) 
 
 filter::prepared::ptr by_phrase::prepare(
     const index_reader& index,
@@ -551,7 +540,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     }
 
     // check required features
-    if (!by_phrase::required().is_subset_of(reader->meta().features)) {
+    if (required() != (reader->meta().index_features & required())) {
       continue;
     }
 
@@ -650,7 +639,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     }
 
     // check required features
-    if (!by_phrase::required().is_subset_of(reader->meta().features)) {
+    if (required() != (reader->meta().index_features & required())) {
       continue;
     }
 

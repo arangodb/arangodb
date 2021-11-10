@@ -245,7 +245,10 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
     unsigned char const* s = reinterpret_cast<unsigned char const*>(&x);
     appendHexValue(s, sizeof(unsigned char const*), p, false);
   }
-
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+  // FIXME: implement ARM64 context output
+  appendNullTerminatedString(" ARM64 CPU context: is not available ", p);
+#else
   auto ctx = static_cast<ucontext_t*>(ucontext);
   if (ctx) {
     auto appendRegister = [ctx, &p](const char* prefix, int reg) {
@@ -273,6 +276,7 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
     appendRegister(", r14: 0x", REG_R14);
     appendRegister(", r15: 0x", REG_R15);
   }
+#endif
 #endif
 
   return p - s;
@@ -584,7 +588,7 @@ void CrashHandler::crash(char const* context) {
 }
 
 /// @brief logs an assertion failure and crashes the program
-void CrashHandler::assertionFailure(char const* file, int line, char const* func, char const* context) {
+void CrashHandler::assertionFailure(char const* file, int line, char const* func, char const* context, const char *message) {
   // assemble an "assertion failured in file:line: message" string
   char buffer[4096];
   memset(&buffer[0], 0, sizeof(buffer));
@@ -601,6 +605,10 @@ void CrashHandler::assertionFailure(char const* file, int line, char const* func
   }
   appendNullTerminatedString(": ", p);
   appendNullTerminatedString(context, 256, p);
+  if (message != nullptr) {
+    appendNullTerminatedString(" ; ", p);
+    appendNullTerminatedString(message, p);
+  }
 
   crash(&buffer[0]);
 }
@@ -634,7 +642,7 @@ void CrashHandler::installCrashHandler() {
 
 #ifndef _WIN32
   try {
-    constexpr size_t stackSize = std::max<size_t>(
+    size_t const stackSize = std::max<size_t>(
         128 * 1024, 
         std::max<size_t>(
           MINSIGSTKSZ, 
