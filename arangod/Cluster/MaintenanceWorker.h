@@ -38,6 +38,7 @@ namespace maintenance {
 class MaintenanceWorker : public Thread {
  public:
   explicit MaintenanceWorker(MaintenanceFeature& feature,
+                    int minimalPriorityAllowed,
                     std::unordered_set<std::string> const& labels = std::unordered_set<std::string>());
 
   MaintenanceWorker(MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
@@ -82,6 +83,8 @@ class MaintenanceWorker : public Thread {
   Result _lastResult;
 
   const std::unordered_set<std::string> _labels;
+
+  int const _minimalPriorityAllowed;
 
  private:
   MaintenanceWorker(MaintenanceWorker const&) = delete;

@@ -467,7 +467,10 @@ SyncerId newSyncerId() {
 }
 
 Syncer::SyncerState::SyncerState(Syncer* syncer, ReplicationApplierConfiguration const& configuration)
-    : syncerId{newSyncerId()}, applier{configuration}, connection{syncer, configuration}, leader{configuration} {}
+    : syncerId{newSyncerId()}, 
+      applier{configuration}, 
+      connection{syncer, configuration}, 
+      leader{configuration} {}
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _state{this, configuration} {
