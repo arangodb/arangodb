@@ -295,9 +295,15 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("652ff", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo";
 
+    std::unordered_set<std::string> failedServers;
+    auto failedServersList = clusterInfo.getFailedServers();
+    for (auto const& fs : failedServersList) {
+      failedServers.emplace(fs);
+    }
     tmp = arangodb::maintenance::phaseTwo(plan, current, currentIndex, dirty,
                                           local, serverId, mfeature, rb,
-                                          currentShardLocks, localLogs);
+                                          currentShardLocks, localLogs,
+                                          failedServers);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";

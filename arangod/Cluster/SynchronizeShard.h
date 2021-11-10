@@ -58,6 +58,9 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   void setLeaderInfo(arangodb::replutils::LeaderInfo const& leaderInfo);
 
  private:
+  arangodb::Result collectionCountOnLeader(std::string const& endpoint,
+                                           uint64_t& c);
+
   arangodb::Result getReadLock(network::ConnectionPool* pool,
                                std::string const& endpoint, 
                                std::string const& collection, 
