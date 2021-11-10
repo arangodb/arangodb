@@ -202,7 +202,7 @@ bool TailingSyncer::hasMultipleOngoingTransactions() const {
 #endif
 
 /// @brief whether or not a marker should be skipped
-bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const& slice,
+bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice slice,
                                TRI_voc_tick_t actualMarkerTick, TRI_replication_operation_e type) {
   TRI_ASSERT(slice.isObject());
 
@@ -229,10 +229,10 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const
         }
       }
     }
-  }
-
-  if (tooOld) {
-    return true;
+  
+    if (tooOld) {
+      return true;
+    }
   }
 
   // the transient applier state is just used for one shard / collection
@@ -245,7 +245,7 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const
     return false;
   }
 
-  VPackSlice const name = slice.get(::cnameRef);
+  VPackSlice name = slice.get(::cnameRef);
   if (name.isString()) {
     return isExcludedCollection(name.copyString());
   }
