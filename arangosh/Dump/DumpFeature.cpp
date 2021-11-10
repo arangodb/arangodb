@@ -819,7 +819,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     LOG_TOPIC("4af42", INFO, Logger::DUMP)
         << "Dumping database '" << dbName << "' (" << dbId << ")";
     _directory = std::make_unique<ManagedDirectory>(
-        server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, dbId),
+        server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, dbName),
         !_options.overwrite, true, _options.useGzip);
 
     if (_directory->status().fail()) {
