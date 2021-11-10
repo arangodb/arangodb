@@ -705,12 +705,6 @@ auto QuerySnippet::prepareFirstBranch(
               amountOfNonSatellites++;
             }
           }
-          size_t amountOfNonSatellites = 0;
-          for (auto const& col : localGraphNode->collections()) {
-            if (!col->isSatellite()) {
-              amountOfNonSatellites++;
-            }
-          }
           TRI_ASSERT(myExpFinal.size() == amountOfNonSatellites);
           for (auto const& expDefinition : myExpFinal) {
             TRI_ASSERT(expDefinition.second.size() == numberOfShards);
