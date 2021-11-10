@@ -248,7 +248,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief execute a callback while holding _ioLock
   ///  and write lock for _readDB
+#if 0
+// currently not called from anywhere
   void executeLockedWrite(std::function<void()> const& cb);
+#endif
 
   /// @brief execute a callback while holding _transientLock
   void executeTransientLocked(std::function<void()> const& cb);
@@ -281,17 +284,11 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Get notification as inactive pool member
   void notify(query_t const&);
 
-  /// @brief All there is in the state machine
-  query_t allLogs() const;
-
   /// @brief Get copy of log entries starting with begin ending on end
   std::vector<log_t> logs(index_t begin = 0, index_t end = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief Last contact with followers
   void lastAckedAgo(Builder&) const;
-
-  /// @brief Am I active agent
-  bool active() const;
 
   /// @brief Are we ready for RAFT?
   bool ready() const;
