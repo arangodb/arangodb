@@ -525,12 +525,12 @@ if (USE_FAIL_ON_WARNINGS)
 endif ()
 
 ################################################################################
-## arangologin
+## arangosimplelogin
 ################################################################################
 
 if (MSVC AND NOT(SKIP_PACKAGING))
-  generate_product_version(ProductVersionFiles_arangologin
-    NAME arangologin
+  generate_product_version(ProductVersionFiles_arangosimplelogin
+    NAME arangosimplelogin
     FILE_DESCRIPTION ${ARANGO_LOGIN_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
@@ -539,23 +539,24 @@ if (MSVC AND NOT(SKIP_PACKAGING))
     VERSION_REVISION ${BUILD_ID}
   )
 endif ()
-add_executable(${BIN_ARANGOLOGIN}
+add_executable(${BIN_ARANGOSIMPLELOGIN}
   ${ADDITIONAL_LOGIN_ARANGO_SOURCES}
-  ${ProductVersionFiles_arangoLOGIN}
+  ${LDAP_SIMPLE_SOURCES}
+  ${ProductVersionFiles_arangosimplelogin}
   LoginTest/LoginFeature.cpp
-  LoginTest/arangologin.cpp
+  LoginTest/arangosimplelogin.cpp
 )
-target_include_directories(${BIN_ARANGOLOGIN} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGOSIMPLELOGIN} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 if (USE_ENTERPRISE)
-  target_include_directories(arangologin PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  target_include_directories(${BIN_ARANGOSIMPLELOGIN} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
   add_definitions(-DUSE_ENTERPRISE=1)
 
   if (MSVC)
-    target_link_libraries(${BIN_ARANGOLOGIN}
+    target_link_libraries(${BIN_ARANGOSIMPLELOGIN}
       Wldap32.lib
     )
   else()
-    target_link_libraries(${BIN_ARANGOLOGIN}
+    target_link_libraries(${BIN_ARANGOSIMPLELOGIN}
       ${LDAP_LIB}
       ${LBER_LIB}
       ${OPENSSL_LIBRARIES}
@@ -563,7 +564,7 @@ if (USE_ENTERPRISE)
   endif()
 endif()
 
-target_link_libraries(${BIN_ARANGOLOGIN}
+target_link_libraries(${BIN_ARANGOSIMPLELOGIN}
   arango
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
@@ -573,26 +574,99 @@ target_link_libraries(${BIN_ARANGOLOGIN}
 )
 
 install(
-  TARGETS ${BIN_ARANGOLOGIN}
+  TARGETS ${BIN_ARANGOSIMPLELOGIN}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(arangoLOGIN)
+install_config(arangosimplelogin)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(${BIN_ARANGOLOGIN} zlibstatic v8_build) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOSIMPLELOGIN} zlibstatic v8_build) # v8_build includes ICU build
 else ()
-  add_dependencies(${BIN_ARANGOLOGIN} zlibstatic) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOSIMPLELOGIN} zlibstatic) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(${BIN_ARANGOLOGIN} jemalloc_build)
+  add_dependencies(${BIN_ARANGOSIMPLELOGIN} jemalloc_build)
 endif ()
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)
-   target_compile_options(${BIN_ARANGOLOGIN} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+   target_compile_options(${BIN_ARANGOSIMPLELOGIN} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
  else ()
-   target_compile_options(${BIN_ARANGOLOGIN} PRIVATE -Werror -Wno-error=deprecated-declarations)
+   target_compile_options(${BIN_ARANGOSIMPLELOGIN} PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
+
+################################################################################
+## arangosearchlogin
+################################################################################
+
+if (MSVC AND NOT(SKIP_PACKAGING))
+  generate_product_version(ProductVersionFiles_arangosearchlogin
+    NAME arangosearchlogin
+    FILE_DESCRIPTION ${ARANGO_LOGIN_FRIENDLY_STRING}
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
+    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
+    VERSION_REVISION ${BUILD_ID}
+  )
+endif ()
+add_executable(${BIN_ARANGOSEARCHLOGIN}
+  ${ADDITIONAL_LOGIN_ARANGO_SOURCES}
+  ${LDAP_SEARCH_SOURCES}
+  ${ProductVersionFiles_arangosearchlogin}
+  LoginTest/LoginFeature.cpp
+  LoginTest/arangosearchlogin.cpp
+)
+target_include_directories(${BIN_ARANGOSEARCHLOGIN} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+if (USE_ENTERPRISE)
+  target_include_directories(${BIN_ARANGOSEARCHLOGIN} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  add_definitions(-DUSE_ENTERPRISE=1)
+
+  if (MSVC)
+    target_link_libraries(${BIN_ARANGOSEARCHLOGIN}
+      Wldap32.lib
+    )
+  else()
+    target_link_libraries(${BIN_ARANGOSEARCHLOGIN}
+      ${LDAP_LIB}
+      ${LBER_LIB}
+      ${OPENSSL_LIBRARIES}
+    )
+  endif()
+endif()
+
+target_link_libraries(${BIN_ARANGOSEARCHLOGIN}
+  arango
+  ${MSVC_LIBS}
+  ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
+  arango_shell
+)
+
+install(
+  TARGETS ${BIN_ARANGOSEARCHLOGIN}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+install_config(arangosearchlogin)
+
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(${BIN_ARANGOSEARCHLOGIN} zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(${BIN_ARANGOSEARCHLOGIN} zlibstatic) # v8_build includes ICU build
+endif ()
+
+if (USE_JEMALLOC)
+  add_dependencies(${BIN_ARANGOSEARCHLOGIN} jemalloc_build)
+endif ()
+
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+   target_compile_options(${BIN_ARANGOSEARCHLOGIN} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(${BIN_ARANGOSEARCHLOGIN} PRIVATE -Werror -Wno-error=deprecated-declarations)
  endif ()
 endif ()
 

@@ -42,7 +42,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
+// #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
 using namespace arangodb;
@@ -72,7 +72,7 @@ class PhysicalCollectionTest
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>());  // required for TRI_vocbase_t
 
 #if USE_ENTERPRISE
-    features.emplace_back(server.addFeature<arangodb::LdapFeature>());
+//    features.emplace_back(server.addFeature<arangodb::LdapFeature>());
 #endif
 
     for (auto& f : features) {

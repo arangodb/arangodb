@@ -326,7 +326,8 @@ set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
 set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
 set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
 set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
-set(ARANGO_LOGIN_FRIENDLY_STRING   "arangologin - login tester")
+set(ARANGO_SIMPLE_LOGIN_FRIENDLY_STRING   "arangosimplelogin - LDAP login connector")
+set(ARANGO_SEARCH_LOGIN_FRIENDLY_STRING   "arangosearchlogin - LDAP login connector")
 
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
@@ -338,7 +339,8 @@ set(BIN_ARANGOIMPORT  arangoimport)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
 set(BIN_ARANGOVPACK   arangovpack)
-set(BIN_ARANGOLOGIN   arangologin)
+set(BIN_ARANGOSIMPLELOGIN   arangosimplelogin)
+set(BIN_ARANGOSEARCHLOGIN   arangosearchlogin)
 
 # test binaries
 set(BIN_ARANGODB_TESTS arangodbtests)

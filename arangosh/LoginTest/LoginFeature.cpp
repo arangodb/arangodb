@@ -42,6 +42,7 @@
 #include <fstream>
 #include <unordered_set>
 
+#include "../arangod/GeneralServer/AuthenticationFeature.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/Ldap/LdapAuthenticationHandler.h"
@@ -232,8 +233,8 @@ void LoginFeature::start() {
       slice = VPackSlice(reinterpret_cast<uint8_t const*>(input.data()));
     }
   
-    LdapAuthenticationHandler authHandler(server().getFeature<LdapFeature>());
-    auto result = authHandler.authenticate(slice.get("user").toString(), slice.get("passvoid").toString());
+    LdapAuthenticationHandler *authHandler = (LdapAuthenticationHandler *)&server().getFeature<LdapFeature>();
+    auto result = authHandler->authenticate(slice.get("user").toString(), slice.get("passvoid").toString());
 
     if (!ofs.is_open()) {
       LOG_TOPIC("bb8a7", ERR, Logger::FIXME) << "cannot write outfile '" << _outputFile << "'";

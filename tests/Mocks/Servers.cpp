@@ -136,7 +136,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
-  server.addFeature<arangodb::LdapFeature>(false);
+  // server.addFeature<arangodb::LdapFeature>(false);
   server.addFeature<arangodb::LicenseFeature>(false);
 #endif
 }

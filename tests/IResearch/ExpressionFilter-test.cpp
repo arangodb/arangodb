@@ -77,7 +77,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 #if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
+//#include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
 extern const char* ARGV0;  // defined in main.cpp
@@ -290,7 +290,7 @@ struct IResearchExpressionFilterTest
     feature.validateOptions(server.options());
 
 #if USE_ENTERPRISE
-    features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
+//    features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {
