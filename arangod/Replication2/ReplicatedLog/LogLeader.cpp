@@ -1050,7 +1050,6 @@ void replicated_log::LogLeader::establishLeadership() {
     return firstIndex;
   });
 
-
   waitFor(waitForIndex).thenFinal([weak = weak_from_this()](futures::Try<WaitForResult>&& result) noexcept {
     if (auto self = weak.lock(); self) {
       try {
@@ -1061,10 +1060,10 @@ void replicated_log::LogLeader::establishLeadership() {
         LOG_CTX("5ceda", FATAL, self->_logContext)
             << "failed to establish leadership: " << err.what();
       }
+    } else {
+      LOG_TOPIC("94696", TRACE, Logger::REPLICATION2)
+          << "leader is already gone, no leadership was established";
     }
-
-    LOG_TOPIC("94696", TRACE, Logger::REPLICATION2)
-        << "leader is already gone, no leadership was established";
   });
 }
 
