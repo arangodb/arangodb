@@ -134,10 +134,6 @@ void ExecutionBlock::collectExecStats(ExecutionStats& stats) const {
   }
 }
 
-bool ExecutionBlock::isInSplicedSubquery() const noexcept {
-  return _exeNode != nullptr ? _exeNode->isInSplicedSubquery() : false;
-}
-
 void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack, std::string const& clientId) {
   if (_profileLevel >= ProfileLevel::Blocks) {
     if (_execNodeStats.runtime >= 0.0) {

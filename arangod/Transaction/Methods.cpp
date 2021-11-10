@@ -673,11 +673,6 @@ bool transaction::Methods::isEdgeCollection(std::string const& collectionName) c
 }
 
 /// @brief return the type of a collection
-bool transaction::Methods::isDocumentCollection(std::string const& collectionName) const {
-  return getCollectionType(collectionName) == TRI_COL_TYPE_DOCUMENT;
-}
-
-/// @brief return the type of a collection
 TRI_col_type_e transaction::Methods::getCollectionType(std::string const& collectionName) const {
   auto collection = resolver()->getCollection(collectionName);
 
@@ -2054,22 +2049,6 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
   // the above methods must always return a valid iterator or throw!
   TRI_ASSERT(iterator != nullptr);
   return iterator;
-}
-
-/// @brief return the collection
-arangodb::LogicalCollection* transaction::Methods::documentCollection(DataSourceId cid) const {
-  TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  auto trxColl = trxCollection(cid, AccessMode::Type::READ);
-  if (trxColl == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "could not find collection");
-  }
-
-  TRI_ASSERT(trxColl != nullptr);
-  TRI_ASSERT(trxColl->collection() != nullptr);
-  return trxColl->collection().get();
 }
 
 /// @brief return the collection
