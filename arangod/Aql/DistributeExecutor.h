@@ -97,18 +97,7 @@ class DistributeExecutor {
                        std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
 
  private:
-  /**
-   * @brief Compute which client needs to get this row
-   *        NOTE: Has SideEffects
-   *        If the input value does not contain an object, it is modified inplace with
-   *        a new Object containing a key value!
-   *        Hence this method is not const ;(
-   *
-   * @param block The input block
-   * @param rowIndex
-   * @return std::string Identifier used by the client
-   */
-  auto getClient(SharedAqlItemBlockPtr const& block, size_t rowIndex) const -> std::string;
+  auto getClient(velocypack::Slice input) const -> std::string;
 
   DistributeExecutorInfos const& _infos;
 

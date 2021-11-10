@@ -60,8 +60,7 @@ class EdgeDefinition {
                  EdgeDefinitionType type = EdgeDefinitionType::DEFAULT)
       : _edgeCollection(std::move(edgeCollection_)),
         _from(std::move(from_)),
-        _to(std::move(to_)),
-        _type(type) {}
+        _to(std::move(to_)) {}
 
   std::string const& getName() const { return _edgeCollection; }
   void setName(std::string const& newName) { _edgeCollection = newName; }
@@ -80,8 +79,7 @@ class EdgeDefinition {
   /// types of values.
   static Result validateEdgeDefinition(const velocypack::Slice& edgeDefinition);
 
-  static ResultT<EdgeDefinition> createFromVelocypack(velocypack::Slice edgeDefinition,
-                                                      std::set<std::string> const& satCollections);
+  static ResultT<EdgeDefinition> createFromVelocypack(velocypack::Slice edgeDefinition);
 
   void toVelocyPack(velocypack::Builder&) const;
 
@@ -97,7 +95,6 @@ class EdgeDefinition {
   std::string _edgeCollection;
   std::set<std::string> _from;
   std::set<std::string> _to;
-  EdgeDefinitionType _type;
 };
 
 class Graph {
