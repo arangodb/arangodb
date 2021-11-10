@@ -195,7 +195,7 @@ class GraphNode : public ExecutionNode {
   void addCollectionToShard(std::string const& coll, std::string const& shard) {
     // NOTE: Do not replace this by emplace or insert.
     // This is also used to overwrite the existing entry.
-    _collectionToShard[coll] = std::vector<std::string>{shard};
+    _collectionToShard[coll] = shard;
   }
 
   graph::Graph const* graph() const noexcept;
@@ -284,7 +284,7 @@ class GraphNode : public ExecutionNode {
   std::unordered_map<ServerID, aql::EngineId> _engines;
 
   /// @brief list of shards involved, required for one-shard-databases
-  std::unordered_map<std::string, std::vector<std::string>> _collectionToShard;
+  std::unordered_map<std::string, std::string> _collectionToShard;
 };
 
 }  // namespace aql

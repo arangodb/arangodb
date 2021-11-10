@@ -81,6 +81,25 @@ void OneSidedEnumerator<Configuration>::clear(bool keepPathStore) {
 }
 
 template <class Configuration>
+void OneSidedEnumerator<Configuration>::clearProvider() {
+  // Guarantee that the used Queue is empty and we do not hold any reference to PathStore.
+  // Info: Steps do contain VertexRefs which are hold in PathStore.
+  TRI_ASSERT(_queue.isEmpty());
+
+  // Guarantee that _results is empty. Steps are contained in _results and do contain
+  // Steps which do contain VertexRefs which are hold in PathStore.
+  TRI_ASSERT(_results.empty());
+
+  // Guarantee that the used PathStore is cleared, before we clear the Provider.
+  // The Provider does hold the StringHeap cache.
+  TRI_ASSERT(_interior.size() == 0);
+
+  // ProviderStore must be cleared as last (!), as we do have multiple places holding
+  // references to contained VertexRefs there.
+  _provider.clear(); // PathStore
+}
+
+template <class Configuration>
 auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> void {
   // Pull next element from Queue
   // Do 1 step search
