@@ -26,15 +26,16 @@
 
 // Include implementation and forward-declarations in our namespace:
 
+#include <algorithm>
+
 #include "Containers/HashSetFwd.h"
 #include "Containers/details/HashSetImpl.h"
 
-#include <algorithm>
-
 namespace emilib {
 
-template <typename KeyT, typename HashT, typename EqT>
-bool operator==(HashSet<KeyT, HashT, EqT> const& left, HashSet<KeyT, HashT, EqT> const& right) {
+template<typename KeyT, typename HashT, typename EqT>
+bool operator==(HashSet<KeyT, HashT, EqT> const& left,
+                HashSet<KeyT, HashT, EqT> const& right) {
   if (left.size() != right.size()) {
     return false;
   }
@@ -44,4 +45,3 @@ bool operator==(HashSet<KeyT, HashT, EqT> const& left, HashSet<KeyT, HashT, EqT>
 }
 
 }  // namespace emilib
-

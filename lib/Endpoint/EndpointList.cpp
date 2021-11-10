@@ -21,9 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <utility>
-
 #include "EndpointList.h"
+
+#include <utility>
 
 #include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
@@ -57,7 +57,8 @@ EndpointList::~EndpointList() {
 /// @brief add a new endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointList::add(std::string const& specification, int backLogSize, bool reuseAddress) {
+bool EndpointList::add(std::string const& specification, int backLogSize,
+                       bool reuseAddress) {
   std::string const key = Endpoint::unifiedForm(specification);
 
   if (key.empty()) {
@@ -127,7 +128,8 @@ std::vector<std::string> EndpointList::all() const {
 /// @brief return all typed endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> EndpointList::all(Endpoint::TransportType transport) const {
+std::vector<std::string> EndpointList::all(
+    Endpoint::TransportType transport) const {
   std::vector<std::string> result;
   std::string prefix;
 

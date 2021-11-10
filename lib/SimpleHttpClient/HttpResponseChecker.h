@@ -25,13 +25,15 @@
 #include "Basics/Result.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-
 namespace arangodb {
 class HttpResponseChecker {
  public:
   HttpResponseChecker() = delete;
-  static arangodb::Result check(std::string const& clientErrorMsg, arangodb::httpclient::SimpleHttpResult const* const response,
-                                std::string const& actionMsg = "", std::string const& requestPayload = "");
+  static arangodb::Result check(
+      std::string const& clientErrorMsg,
+      arangodb::httpclient::SimpleHttpResult const* const response,
+      std::string const& actionMsg = "",
+      std::string const& requestPayload = "");
 };
 
-}
+}  // namespace arangodb

@@ -23,9 +23,8 @@
 
 #pragma once
 
-#include "Endpoint/EndpointIp.h"
-
 #include "Basics/StringUtils.h"
+#include "Endpoint/EndpointIp.h"
 
 namespace arangodb {
 class EndpointIpV6 final : public EndpointIp {
@@ -42,4 +41,3 @@ class EndpointIpV6 final : public EndpointIp {
   }
 };
 }  // namespace arangodb
-

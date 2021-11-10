@@ -23,13 +23,13 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
-#include "Basics/system-compiler.h"
-
 #include <exception>
 #include <type_traits>
 #include <utility>
+
+#include "Basics/Common.h"
+#include "Basics/debugging.h"
+#include "Basics/system-compiler.h"
 
 namespace arangodb {
 namespace futures {
@@ -37,7 +37,7 @@ namespace futures {
 /// Try<T> is a wrapper that contains either an instance of T, an exception, or
 /// nothing. Exceptions are stored as exception_ptrs so that the user can
 /// minimize rethrows if so desired. Inspired by Folly's Try
-template <typename T>
+template<typename T>
 class Try {
   static_assert(!std::is_reference<T>::value,
                 "Do not use with reference types");
@@ -53,7 +53,8 @@ class Try {
 
   /// Construct a Try with a value by copy
   /// @param v The value to copy
-  explicit Try(const T& v) noexcept(std::is_nothrow_copy_constructible<T>::value)
+  explicit Try(const T& v) noexcept(
+      std::is_nothrow_copy_constructible<T>::value)
       : _value(v), _content(Content::Value) {}
 
   /// Construct a Try with a value by move
@@ -61,9 +62,9 @@ class Try {
   explicit Try(T&& v) noexcept(std::is_nothrow_move_constructible<T>::value)
       : _value(std::move(v)), _content(Content::Value) {}
 
-  template <typename... Args>
-  explicit Try(std::in_place_t,
-               Args&&... args) noexcept(std::is_nothrow_constructible<T, Args&&...>::value)
+  template<typename... Args>
+  explicit Try(std::in_place_t, Args&&... args) noexcept(
+      std::is_nothrow_constructible<T, Args&&...>::value)
       : _value(static_cast<Args&&>(args)...), _content(Content::Value) {}
 
   /// Construct a Try with an exception_ptr
@@ -82,7 +83,8 @@ class Try {
   }
 
   // Move assigner
-  Try& operator=(Try<T>&& t) noexcept(std::is_nothrow_move_constructible<T>::value) {
+  Try& operator=(Try<T>&& t) noexcept(
+      std::is_nothrow_move_constructible<T>::value) {
     if (this == &t) {
       return *this;
     }
@@ -109,7 +111,8 @@ class Try {
     }
   }
   // Copy assigner
-  Try& operator=(const Try& t) noexcept(std::is_nothrow_copy_constructible<T>::value) {
+  Try& operator=(const Try& t) noexcept(
+      std::is_nothrow_copy_constructible<T>::value) {
     static_assert(std::is_copy_constructible<T>::value,
                   "T must be copyable for Try<T> to be copyable");
     if (this == &t) {
@@ -137,8 +140,9 @@ class Try {
   /// In-place construct the value in the Try object.
   /// Destroys any previous value prior to constructing the new value.
   /// Leaves *this in an empty state if the construction of T throws.
-  template <typename... Args>
-  T& emplace(Args&&... args) noexcept(std::is_nothrow_constructible<T, Args&&...>::value) {
+  template<typename... Args>
+  T& emplace(Args&&... args) noexcept(
+      std::is_nothrow_constructible<T, Args&&...>::value) {
     this->destroy();
     new (&_value) T(static_cast<Args&&>(args)...);
     _content = Content::Value;
@@ -163,7 +167,7 @@ class Try {
     _content = Content::Exception;
   }
 
-  template <typename E>
+  template<typename E>
   void set_exception(E const& e) {
     this->destroy();
     new (&_exception) std::exception_ptr(std::make_exception_ptr(e));
@@ -302,7 +306,7 @@ class Try {
 
 /// Specialization of Try for void value type. Encapsulates either success or an
 /// exception.
-template <>
+template<>
 class Try<void> {
  public:
   Try() noexcept : _exception() { TRI_ASSERT(!hasException()); }
@@ -382,7 +386,7 @@ class Try<void> {
     _exception = std::move(e);
   }
 
-  template <typename E>
+  template<typename E>
   void set_exception(E const& e) {
     _exception = std::make_exception_ptr(e);
   }
@@ -391,8 +395,9 @@ class Try<void> {
   std::exception_ptr _exception;
 };
 
-template <class F, typename R = typename std::invoke_result<F>::type>
-typename std::enable_if<!std::is_same<R, void>::value, Try<R>>::type makeTryWith(F&& func) noexcept {
+template<class F, typename R = typename std::invoke_result<F>::type>
+typename std::enable_if<!std::is_same<R, void>::value, Try<R>>::type
+makeTryWith(F&& func) noexcept {
   try {
     return Try<R>(std::in_place, func());
   } catch (...) {
@@ -400,8 +405,9 @@ typename std::enable_if<!std::is_same<R, void>::value, Try<R>>::type makeTryWith
   }
 }
 
-template <class F, typename R = typename std::invoke_result<F>::type>
-typename std::enable_if<std::is_same<R, void>::value, Try<void>>::type makeTryWith(F&& func) noexcept {
+template<class F, typename R = typename std::invoke_result<F>::type>
+typename std::enable_if<std::is_same<R, void>::value, Try<void>>::type
+makeTryWith(F&& func) noexcept {
   try {
     func();
     return Try<void>();
@@ -411,22 +417,22 @@ typename std::enable_if<std::is_same<R, void>::value, Try<void>>::type makeTryWi
 }
 
 /// test for Try parameter in templates
-template <typename T>
+template<typename T>
 struct isTry {
   static constexpr bool value = false;
   typedef T inner;
 };
-template <typename T>
+template<typename T>
 struct isTry<Try<T>> {
   static constexpr bool value = true;
   typedef T inner;
 };
-template <typename T>
+template<typename T>
 struct isTry<Try<T>&> {
   static constexpr bool value = true;
   typedef T inner;
 };
-template <typename T>
+template<typename T>
 struct isTry<Try<T>&&> {
   static constexpr bool value = true;
   typedef T inner;

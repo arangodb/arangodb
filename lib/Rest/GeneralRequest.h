@@ -24,6 +24,11 @@
 
 #pragma once
 
+#include <velocypack/Builder.h>
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+
 #include <cstddef>
 #include <map>
 #include <memory>
@@ -32,11 +37,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include <velocypack/Builder.h>
-#include <velocypack/Options.h>
-#include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 #include "Basics/Common.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -72,7 +72,7 @@ class GeneralRequest {
   static RequestType translateMethod(std::string const& method) {
     return translateMethod(arangodb::velocypack::StringRef(method));
   }
-  
+
   static RequestType translateMethod(arangodb::velocypack::StringRef const&);
 
   // append RequestType as string value to given String buffer
@@ -87,8 +87,7 @@ class GeneralRequest {
   arangodb::velocypack::Options const* validationOptions(bool strictValidation);
 
  public:
-  explicit GeneralRequest(ConnectionInfo const& connectionInfo,
-                          uint64_t mid)
+  explicit GeneralRequest(ConnectionInfo const& connectionInfo, uint64_t mid)
       : _connectionInfo(connectionInfo),
         _messageId(mid),
         _requestContext(nullptr),
@@ -100,7 +99,7 @@ class GeneralRequest {
         _acceptEncoding(EncodingType::UNSET),
         _isRequestContextOwner(false),
         _authenticated(false) {}
-        
+
   virtual ~GeneralRequest();
 
  public:
@@ -126,9 +125,7 @@ class GeneralRequest {
   void setUser(std::string const& user) { _user = user; }
 
   /// @brief the request context depends on the application
-  RequestContext* requestContext() const {
-    return _requestContext;
-  }
+  RequestContext* requestContext() const { return _requestContext; }
 
   /// @brief set request context and whether this requests is allowed
   ///        to delete it
@@ -140,7 +137,7 @@ class GeneralRequest {
 
   std::string const& fullUrl() const { return _fullUrl; }
   std::string const& requestUrl() const { return _fullUrl; }
-  
+
   // consists of the URL without the host and without any parameters.
   std::string const& requestPath() const { return _requestPath; }
 
@@ -152,16 +149,12 @@ class GeneralRequest {
   void setPrefix(std::string const& prefix) { _prefix = prefix; }
 
   // Returns the request path suffixes in non-URL-decoded form
-  std::vector<std::string> const& suffixes() const {
-    return _suffixes;
-  }
+  std::vector<std::string> const& suffixes() const { return _suffixes; }
 
   void addSuffix(std::string part);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void clearSuffixes() {
-    _suffixes.clear();
-  }
+  void clearSuffixes() { _suffixes.clear(); }
 #endif
 
   // Returns the request path suffixes in URL-decoded form. Note: this will
@@ -179,9 +172,7 @@ class GeneralRequest {
     return _headers;
   }
 
-  void removeHeader(std::string key) {
-    _headers.erase(key);
-  }
+  void removeHeader(std::string key) { _headers.erase(key); }
 
   // the value functions give access to to query string parameters
   std::string const& value(std::string const& key) const;
@@ -193,15 +184,17 @@ class GeneralRequest {
   // returns the query parameters as fuerte needs them (as a map)
   std::map<std::string, std::string> parameters() const;
 
-  std::unordered_map<std::string, std::vector<std::string>> const& arrayValues() const {
+  std::unordered_map<std::string, std::vector<std::string>> const& arrayValues()
+      const {
     return _arrayValues;
   }
-  
-  std::shared_ptr<velocypack::Builder> toVelocyPackBuilderPtr(bool strictValidation = true);
+
+  std::shared_ptr<velocypack::Builder> toVelocyPackBuilderPtr(
+      bool strictValidation = true);
 
   /// @brief returns parsed value, returns valueNotFound if parameter was not
   /// found
-  template <typename T>
+  template<typename T>
   T parsedValue(std::string const& key, T valueNotFound);
 
   /// @brief the content length
@@ -218,7 +211,9 @@ class GeneralRequest {
   ContentType contentType() const { return _contentType; }
   /// @brief should generally reflect the Accept header
   ContentType contentTypeResponse() const { return _contentTypeResponse; }
-  std::string const& contentTypeResponsePlain() const { return _contentTypeResponsePlain; }
+  std::string const& contentTypeResponsePlain() const {
+    return _contentTypeResponsePlain;
+  }
   /// @brief should generally reflect the Accept-Encoding header
   EncodingType acceptEncoding() const { return _acceptEncoding; }
 
@@ -231,38 +226,38 @@ class GeneralRequest {
   }
 
  protected:
-  ConnectionInfo _connectionInfo; /// connection info
-  
+  ConnectionInfo _connectionInfo;  /// connection info
+
   /// request payload buffer, exact access semantics are defined in subclass
   velocypack::Buffer<uint8_t> _payload;
-  
+
   std::string _databaseName;
   std::string _user;
 
   std::string _fullUrl;
   std::string _requestPath;
   std::string _prefix;  // part of path matched by rest route
-  std::string  _contentTypeResponsePlain;
-  std::vector<std::string> _suffixes; // path suffixes
+  std::string _contentTypeResponsePlain;
+  std::vector<std::string> _suffixes;  // path suffixes
 
   std::unordered_map<std::string, std::string> _headers;
   std::unordered_map<std::string, std::string> _values;
   std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
-  
+
   /// @brief if payload was not VPack this will store parsed result
   std::shared_ptr<velocypack::Builder> _vpackBuilder;
-  
+
   uint64_t const _messageId;
-  
+
   // request context (might contain vocbase)
   RequestContext* _requestContext;
 
   double _tokenExpiry;
-  
+
   rest::AuthenticationMethod _authenticationMethod;
 
   // information about the payload
-  RequestType _type;  // GET, POST, ..
+  RequestType _type;         // GET, POST, ..
   ContentType _contentType;  // UNSET, VPACK, JSON
   ContentType _contentTypeResponse;
   EncodingType _acceptEncoding;
@@ -270,4 +265,3 @@ class GeneralRequest {
   bool _authenticated;
 };
 }  // namespace arangodb
-

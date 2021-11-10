@@ -26,6 +26,7 @@
 #include <Winsvc.h>
 #include <signal.h>
 #include <windows.h>
+
 #include <iostream>
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -88,17 +89,19 @@ void WindowsServiceFeature::StartArangoService(bool WaitForRunning) {
 
   if (schSCManager == 0) {
     TRI_SYSTEM_ERROR();
-    std::cerr << "FATAL: OpenSCManager failed with " << windowsErrorBuf << std::endl;
+    std::cerr << "FATAL: OpenSCManager failed with " << windowsErrorBuf
+              << std::endl;
     exit(EXIT_FAILURE);
   }
   // Get a handle to the service.
-  auto arangoService =
-      OpenService(schSCManager, ServiceName.c_str(),
-                  SERVICE_START | SERVICE_QUERY_STATUS | SERVICE_ENUMERATE_DEPENDENTS);
+  auto arangoService = OpenService(
+      schSCManager, ServiceName.c_str(),
+      SERVICE_START | SERVICE_QUERY_STATUS | SERVICE_ENUMERATE_DEPENDENTS);
 
   if (arangoService == nullptr) {
     TRI_SYSTEM_ERROR();
-    std::cerr << "INFO: OpenService failed with " << windowsErrorBuf << std::endl;
+    std::cerr << "INFO: OpenService failed with " << windowsErrorBuf
+              << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -106,7 +109,8 @@ void WindowsServiceFeature::StartArangoService(bool WaitForRunning) {
   if (!QueryServiceStatusEx(arangoService, SC_STATUS_PROCESS_INFO, (LPBYTE)&ssp,
                             sizeof(SERVICE_STATUS_PROCESS), &bytesNeeded)) {
     TRI_SYSTEM_ERROR();
-    std::cerr << "INFO: QueryServiceStatusEx failed with " << windowsErrorBuf << std::endl;
+    std::cerr << "INFO: QueryServiceStatusEx failed with " << windowsErrorBuf
+              << std::endl;
     CloseServiceHandle(schSCManager);
     exit(EXIT_FAILURE);
   }
@@ -133,11 +137,12 @@ void WindowsServiceFeature::StartArangoService(bool WaitForRunning) {
 
     // Check the status again.
 
-    if (!QueryServiceStatusEx(arangoService,
-                              SC_STATUS_PROCESS_INFO,  // info level
-                              (LPBYTE)&ssp,            // address of structure
-                              sizeof(SERVICE_STATUS_PROCESS),  // size of structure
-                              &bytesNeeded)) {
+    if (!QueryServiceStatusEx(
+            arangoService,
+            SC_STATUS_PROCESS_INFO,          // info level
+            (LPBYTE)&ssp,                    // address of structure
+            sizeof(SERVICE_STATUS_PROCESS),  // size of structure
+            &bytesNeeded)) {
       TRI_SYSTEM_ERROR();
       std::cerr << "INFO: QueryServiceStatusEx failed with " << windowsErrorBuf
                 << std::endl;
@@ -164,18 +169,20 @@ void WindowsServiceFeature::StopArangoService(bool WaitForShutdown) {
 
   if (schSCManager == 0) {
     TRI_SYSTEM_ERROR();
-    std::cerr << "FATAL: OpenSCManager failed with " << windowsErrorBuf << std::endl;
+    std::cerr << "FATAL: OpenSCManager failed with " << windowsErrorBuf
+              << std::endl;
     exit(EXIT_FAILURE);
   }
 
   // Get a handle to the service.
-  auto arangoService =
-      OpenService(schSCManager, ServiceName.c_str(),
-                  SERVICE_STOP | SERVICE_QUERY_STATUS | SERVICE_ENUMERATE_DEPENDENTS);
+  auto arangoService = OpenService(
+      schSCManager, ServiceName.c_str(),
+      SERVICE_STOP | SERVICE_QUERY_STATUS | SERVICE_ENUMERATE_DEPENDENTS);
 
   if (arangoService == nullptr) {
     TRI_SYSTEM_ERROR();
-    std::cerr << "INFO: OpenService failed with " << windowsErrorBuf << std::endl;
+    std::cerr << "INFO: OpenService failed with " << windowsErrorBuf
+              << std::endl;
     CloseServiceHandle(schSCManager);
     return;
   }
@@ -184,7 +191,8 @@ void WindowsServiceFeature::StopArangoService(bool WaitForShutdown) {
   if (!QueryServiceStatusEx(arangoService, SC_STATUS_PROCESS_INFO, (LPBYTE)&ssp,
                             sizeof(SERVICE_STATUS_PROCESS), &bytesNeeded)) {
     TRI_SYSTEM_ERROR();
-    std::cerr << "INFO: QueryServiceStatusEx failed with " << windowsErrorBuf << std::endl;
+    std::cerr << "INFO: QueryServiceStatusEx failed with " << windowsErrorBuf
+              << std::endl;
     CloseServiceHandle(schSCManager);
     exit(EXIT_FAILURE);
   }
@@ -195,7 +203,8 @@ void WindowsServiceFeature::StopArangoService(bool WaitForShutdown) {
   }
 
   // Send a stop code to the service.
-  if (!ControlService(arangoService, SERVICE_CONTROL_STOP, (LPSERVICE_STATUS)&ssp)) {
+  if (!ControlService(arangoService, SERVICE_CONTROL_STOP,
+                      (LPSERVICE_STATUS)&ssp)) {
     TRI_SYSTEM_ERROR();
     std::cerr << "ControlService failed with " << windowsErrorBuf << std::endl;
     CloseServiceHandle(arangoService);
@@ -207,8 +216,9 @@ void WindowsServiceFeature::StopArangoService(bool WaitForShutdown) {
     // we sleep 1 second before we re-check the status.
     Sleep(1000);
 
-    if (!QueryServiceStatusEx(arangoService, SC_STATUS_PROCESS_INFO, (LPBYTE)&ssp,
-                              sizeof(SERVICE_STATUS_PROCESS), &bytesNeeded)) {
+    if (!QueryServiceStatusEx(arangoService, SC_STATUS_PROCESS_INFO,
+                              (LPBYTE)&ssp, sizeof(SERVICE_STATUS_PROCESS),
+                              &bytesNeeded)) {
       TRI_SYSTEM_ERROR();
       printf("QueryServiceStatusEx failed (%s)\n", windowsErrorBuf);
       CloseServiceHandle(arangoService);
@@ -251,7 +261,8 @@ void WindowsServiceFeature::installService() {
       OpenSCManager(nullptr, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
 
   if (schSCManager == 0) {
-    std::cerr << "FATAL: OpenSCManager failed with " << GetLastError() << std::endl;
+    std::cerr << "FATAL: OpenSCManager failed with " << GetLastError()
+              << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -273,7 +284,8 @@ void WindowsServiceFeature::installService() {
   CloseServiceHandle(schSCManager);
 
   if (schService == 0) {
-    std::cerr << "FATAL: CreateServiceA failed with " << GetLastError() << std::endl;
+    std::cerr << "FATAL: CreateServiceA failed with " << GetLastError()
+              << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -281,7 +293,8 @@ void WindowsServiceFeature::installService() {
       "multi-model NoSQL database (version " ARANGODB_VERSION_FULL ")"};
   ChangeServiceConfig2(schService, SERVICE_CONFIG_DESCRIPTION, &description);
 
-  std::cout << "INFO: added service with command line '" << command << "'" << std::endl;
+  std::cout << "INFO: added service with command line '" << command << "'"
+            << std::endl;
 
   CloseServiceHandle(schService);
 }
@@ -300,17 +313,21 @@ void DeleteService(bool force) {
       OpenSCManager(nullptr, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
 
   if (schSCManager == nullptr) {
-    std::cerr << "FATAL: OpenSCManager failed with " << GetLastError() << std::endl;
+    std::cerr << "FATAL: OpenSCManager failed with " << GetLastError()
+              << std::endl;
     exit(EXIT_FAILURE);
   }
 
-  SC_HANDLE schService = OpenServiceA(schSCManager,  // SCManager database
-                                      ServiceName.c_str(),  // name of service
-                                      DELETE | SERVICE_QUERY_CONFIG);  // first validate whether its us, then delete.
+  SC_HANDLE schService = OpenServiceA(
+      schSCManager,         // SCManager database
+      ServiceName.c_str(),  // name of service
+      DELETE |
+          SERVICE_QUERY_CONFIG);  // first validate whether its us, then delete.
 
   char serviceConfigMemory[8192];  // msdn says: 8k is enough.
   DWORD bytesNeeded = 0;
-  if (QueryServiceConfig(schService, (LPQUERY_SERVICE_CONFIGA)&serviceConfigMemory,
+  if (QueryServiceConfig(schService,
+                         (LPQUERY_SERVICE_CONFIGA)&serviceConfigMemory,
                          sizeof(serviceConfigMemory), &bytesNeeded)) {
     QUERY_SERVICE_CONFIG* cfg = (QUERY_SERVICE_CONFIG*)&serviceConfigMemory;
 
@@ -318,14 +335,16 @@ void DeleteService(bool force) {
                           std::string("\" --start-service");
     if (strcmp(cfg->lpBinaryPathName, command.c_str())) {
       if (!force) {
-        std::cerr << "NOT removing service of other installation: " << cfg->lpBinaryPathName
-                  << " Our path is: " << path << std::endl;
+        std::cerr << "NOT removing service of other installation: "
+                  << cfg->lpBinaryPathName << " Our path is: " << path
+                  << std::endl;
 
         CloseServiceHandle(schSCManager);
         return;
       } else {
         std::cerr << "Removing service of other installation because of FORCE: "
-                  << cfg->lpBinaryPathName << "Our path is: " << path << std::endl;
+                  << cfg->lpBinaryPathName << "Our path is: " << path
+                  << std::endl;
       }
     }
   }
@@ -333,12 +352,14 @@ void DeleteService(bool force) {
   CloseServiceHandle(schSCManager);
 
   if (schService == nullptr) {
-    std::cerr << "FATAL: OpenServiceA failed with " << GetLastError() << std::endl;
+    std::cerr << "FATAL: OpenServiceA failed with " << GetLastError()
+              << std::endl;
     exit(EXIT_FAILURE);
   }
 
   if (!DeleteService(schService)) {
-    std::cerr << "FATAL: DeleteService failed with " << GetLastError() << std::endl;
+    std::cerr << "FATAL: DeleteService failed with " << GetLastError()
+              << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -354,7 +375,8 @@ void SetServiceStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode,
   // disable control requests until the service is started
   SERVICE_STATUS ss;
 
-  if (dwCurrentState == SERVICE_START_PENDING || dwCurrentState == SERVICE_STOP_PENDING) {
+  if (dwCurrentState == SERVICE_START_PENDING ||
+      dwCurrentState == SERVICE_STOP_PENDING) {
     ss.dwControlsAccepted = 0;
   } else {
     ss.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
@@ -466,7 +488,8 @@ void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
   }
 
   // stop service
-  if (dwCtrlCode == SERVICE_CONTROL_STOP || dwCtrlCode == SERVICE_CONTROL_SHUTDOWN) {
+  if (dwCtrlCode == SERVICE_CONTROL_STOP ||
+      dwCtrlCode == SERVICE_CONTROL_SHUTDOWN) {
     SetServiceStatus(SERVICE_STOP_PENDING, NO_ERROR, 0, 0, 0);
 
     if (ArangoInstance != nullptr && ArangoInstance->_server != nullptr) {
@@ -481,10 +504,11 @@ void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
   }
 }
 
-WindowsServiceFeature::WindowsServiceFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "WindowsService"), 
-      _server(&server), 
-      _progress(2), 
+WindowsServiceFeature::WindowsServiceFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature(server, "WindowsService"),
+      _server(&server),
+      _progress(2),
       _shutdownNoted(false) {
   setOptional(true);
   requiresElevatedPrivileges(true);
@@ -502,57 +526,75 @@ WindowsServiceFeature::WindowsServiceFeature(application_features::ApplicationSe
   //#endif
 }
 
-void WindowsServiceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--start-service", "used to start as windows service",
-                     new BooleanParameter(&_startAsService),
-                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                                 arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+void WindowsServiceFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  options->addOption(
+      "--start-service", "used to start as windows service",
+      new BooleanParameter(&_startAsService),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Command));
 
-  options->addOption("--install-service",
-                     "used to register a service with windows",
-                     new BooleanParameter(&_installService),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                                  arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+  options->addOption(
+      "--install-service", "used to register a service with windows",
+      new BooleanParameter(&_installService),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Command));
 
-  options->addOption("--uninstall-service",
-                     "used to unregister a service with windows",
-                     new BooleanParameter(&_unInstallService),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                                  arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+  options->addOption(
+      "--uninstall-service", "used to unregister a service with windows",
+      new BooleanParameter(&_unInstallService),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Command));
 
   options->addOption(
       "--uninstall-service-force",
       "specify to ovrerride the protection to uninstall the service of another "
       "installation",
       new BooleanParameter(&_forceUninstall),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Command));
 
-  options->addOption("--servicectl-start",
-                     "command an already registered service to start",
-                     new BooleanParameter(&_startService),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                                  arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+  options->addOption(
+      "--servicectl-start", "command an already registered service to start",
+      new BooleanParameter(&_startService),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Command));
 
   options->addOption(
       "--servicectl-start-wait",
       "command an already registered service to start and wait till it's up",
       new BooleanParameter(&_startWaitService),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Command));
 
-  options->addOption("--servicectl-stop",
-                     "command an already registered service to stop",
-                     new BooleanParameter(&_stopService),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                                  arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+  options->addOption(
+      "--servicectl-stop", "command an already registered service to stop",
+      new BooleanParameter(&_stopService),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Command));
 
   options->addOption(
       "--servicectl-stop-wait",
       "command an already registered service to stop and wait till it's gone",
       new BooleanParameter(&_stopWaitService),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Command));
 }
 
 void WindowsServiceFeature::abortService(uint16_t exitCode) {
@@ -563,7 +605,8 @@ void WindowsServiceFeature::abortService(uint16_t exitCode) {
   exit(EXIT_FAILURE);
 }
 
-void WindowsServiceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void WindowsServiceFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
   if (!TRI_InitWindowsEventLog()) {
     exit(EXIT_FAILURE);
   }
@@ -576,42 +619,43 @@ void WindowsServiceFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
   } else if (_startAsService) {
     TRI_SetWindowsServiceAbortFunction(abortService);
 
-    ApplicationServer::ProgressHandler reporter{[this](ApplicationServer::State state) {
-                               switch (state) {
-                                 case ApplicationServer::State::IN_WAIT:
-                                   this->startupFinished();
-                                   break;
-                                 case ApplicationServer::State::IN_SHUTDOWN:
-                                 case ApplicationServer::State::IN_STOP:
-                                   this->shutdownBegins();
-                                   break;
-                                 case ApplicationServer::State::IN_COLLECT_OPTIONS:
-                                 case ApplicationServer::State::IN_VALIDATE_OPTIONS:
-                                 case ApplicationServer::State::IN_PREPARE:
-                                 case ApplicationServer::State::IN_START:
-                                   this->startupProgress();
-                                   break;
-                                 case ApplicationServer::State::ABORTED:
-                                   this->shutdownFailure();
-                                   break;
-                                 case ApplicationServer::State::UNINITIALIZED:
-                                 case ApplicationServer::State::STOPPED:
-                                   break;
-                               }
-                             },
-                             [this](application_features::ApplicationServer::State state,
-                                    std::string const& name) {
-                               switch (state) {
-                                 case ApplicationServer::State::IN_COLLECT_OPTIONS:
-                                 case ApplicationServer::State::IN_VALIDATE_OPTIONS:
-                                 case ApplicationServer::State::IN_PREPARE:
-                                 case ApplicationServer::State::IN_START:
-                                   this->startupProgress();
-                                   break;
-                                 default:
-                                   break;
-                               }
-                             }};
+    ApplicationServer::ProgressHandler reporter{
+        [this](ApplicationServer::State state) {
+          switch (state) {
+            case ApplicationServer::State::IN_WAIT:
+              this->startupFinished();
+              break;
+            case ApplicationServer::State::IN_SHUTDOWN:
+            case ApplicationServer::State::IN_STOP:
+              this->shutdownBegins();
+              break;
+            case ApplicationServer::State::IN_COLLECT_OPTIONS:
+            case ApplicationServer::State::IN_VALIDATE_OPTIONS:
+            case ApplicationServer::State::IN_PREPARE:
+            case ApplicationServer::State::IN_START:
+              this->startupProgress();
+              break;
+            case ApplicationServer::State::ABORTED:
+              this->shutdownFailure();
+              break;
+            case ApplicationServer::State::UNINITIALIZED:
+            case ApplicationServer::State::STOPPED:
+              break;
+          }
+        },
+        [this](application_features::ApplicationServer::State state,
+               std::string const& name) {
+          switch (state) {
+            case ApplicationServer::State::IN_COLLECT_OPTIONS:
+            case ApplicationServer::State::IN_VALIDATE_OPTIONS:
+            case ApplicationServer::State::IN_PREPARE:
+            case ApplicationServer::State::IN_START:
+              this->startupProgress();
+              break;
+            default:
+              break;
+          }
+        }};
     _server->addReporter(reporter);
   }
 

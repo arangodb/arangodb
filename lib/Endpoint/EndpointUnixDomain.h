@@ -30,6 +30,7 @@
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
 
 #include <sys/socket.h>
+
 #include <string>
 
 namespace arangodb {
@@ -57,7 +58,7 @@ class EndpointUnixDomain final : public Endpoint {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief disconnect the endpoint
   //////////////////////////////////////////////////////////////////////////////
-  
+
   // cppcheck-suppress virtualCallInConstructor; bogus
   void disconnect() override;
 
@@ -73,4 +74,3 @@ class EndpointUnixDomain final : public Endpoint {
 }  // namespace arangodb
 
 #endif
-

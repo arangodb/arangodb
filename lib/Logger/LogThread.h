@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include <boost/lockfree/queue.hpp>
+
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-
-#include <boost/lockfree/queue.hpp>
 
 namespace arangodb {
 class LogGroup;
@@ -63,7 +63,7 @@ class LogThread final : public Thread {
   bool hasMessages() const noexcept;
   // wake up the log thread from the outside
   void wakeup() noexcept;
- 
+
   // handle all queued messages - normally this should not be called
   // by anyone, except from the crash handler
   bool processPendingMessages();
@@ -73,4 +73,3 @@ class LogThread final : public Thread {
   boost::lockfree::queue<MessageEnvelope> _messages;
 };
 }  // namespace arangodb
-

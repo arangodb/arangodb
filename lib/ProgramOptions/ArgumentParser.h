@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Basics/Common.h"
-
 #include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
@@ -164,4 +163,3 @@ class ArgumentParser {
 };
 }  // namespace options
 }  // namespace arangodb
-

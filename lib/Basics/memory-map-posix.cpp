@@ -25,6 +25,11 @@
 
 #ifdef TRI_HAVE_POSIX_MMAP
 
+#include <fcntl.h>
+#include <sys/mman.h>
+
+#include <cstring>
+
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/tri-strings.h"
@@ -32,10 +37,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <cstring>
 
 using namespace arangodb;
 
@@ -87,8 +88,10 @@ ErrorCode TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     TRI_ASSERT(*result != nullptr);
 
     LOG_TOPIC("667d8", DEBUG, Logger::MMAP)
-        << "memory-mapped range " << Logger::RANGE(*result, numOfBytesToInitialize)
-        << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
+        << "memory-mapped range "
+        << Logger::RANGE(*result, numOfBytesToInitialize)
+        << ", file-descriptor " << fileDescriptor
+        << ", flags: " << flagify(flags);
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -121,7 +124,8 @@ ErrorCode TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
 
   if (res == 0) {
     LOG_TOPIC("a12c1", DEBUG, Logger::MMAP)
-        << "memory-unmapped range " << Logger::RANGE(memoryAddress, numOfBytesToUnMap)
+        << "memory-unmapped range "
+        << Logger::RANGE(memoryAddress, numOfBytesToUnMap)
         << ", file-descriptor " << fileDescriptor;
 
     return TRI_ERROR_NO_ERROR;
@@ -145,8 +149,9 @@ ErrorCode TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
 
 ErrorCode TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
 #ifdef __linux__
-  LOG_TOPIC("399d4", TRACE, Logger::MMAP) << "madvise " << advice << " for range "
-                                          << Logger::RANGE(memoryAddress, numOfBytes);
+  LOG_TOPIC("399d4", TRACE, Logger::MMAP)
+      << "madvise " << advice << " for range "
+      << Logger::RANGE(memoryAddress, numOfBytes);
 
   int res = madvise(memoryAddress, numOfBytes, advice);
 
@@ -155,9 +160,10 @@ ErrorCode TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
   }
 
   res = errno;
-  LOG_TOPIC("7fffb", ERR, Logger::MMAP) << "madvise " << advice << " for range "
-                                        << Logger::RANGE(memoryAddress, numOfBytes)
-                                        << " failed with: " << strerror(res);
+  LOG_TOPIC("7fffb", ERR, Logger::MMAP)
+      << "madvise " << advice << " for range "
+      << Logger::RANGE(memoryAddress, numOfBytes)
+      << " failed with: " << strerror(res);
   return TRI_ERROR_INTERNAL;
 #else
   return TRI_ERROR_NO_ERROR;

@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include <s2/s2point.h>
+
 #include <cmath>
 #include <string>
-
-#include <s2/s2point.h>
 
 class S2LatLng;
 
@@ -79,4 +79,3 @@ struct Coordinate {
 
 }  // namespace geo
 }  // namespace arangodb
-

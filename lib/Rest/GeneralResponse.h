@@ -23,8 +23,9 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#include <velocypack/Options.h>
 
+#include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/voc-errors.h"
@@ -32,8 +33,6 @@
 #include "GeneralRequest.h"
 #include "Logger/Logger.h"
 #include "Rest/CommonDefines.h"
-
-#include <velocypack/Options.h>
 
 namespace arangodb {
 namespace velocypack {
@@ -78,7 +77,8 @@ class GeneralResponse {
   }
 
   void setContentType(std::string&& contentType) {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] = std::move(contentType);
+    _headers[arangodb::StaticStrings::ContentTypeHeader] =
+        std::move(contentType);
     _contentType = ContentType::CUSTOM;
   }
 
@@ -139,21 +139,25 @@ class GeneralResponse {
 
   // Payload needs to be of type: VPackSlice const&
   // or VPackBuffer<uint8_t>&&
-  template <typename Payload>
-  void setPayload(Payload&& payload,
-                  velocypack::Options const& options = velocypack::Options::Defaults,
-                  bool resolveExternals = true) {
+  template<typename Payload>
+  void setPayload(
+      Payload&& payload,
+      velocypack::Options const& options = velocypack::Options::Defaults,
+      bool resolveExternals = true) {
     TRI_ASSERT(isResponseEmpty());
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
 
-  virtual void addPayload(velocypack::Slice const&, arangodb::velocypack::Options const* = nullptr,
+  virtual void addPayload(velocypack::Slice const&,
+                          arangodb::velocypack::Options const* = nullptr,
                           bool resolveExternals = true) = 0;
   virtual void addPayload(velocypack::Buffer<uint8_t>&&,
                           arangodb::velocypack::Options const* = nullptr,
                           bool resolveExternals = true) = 0;
   virtual void addRawPayload(velocypack::StringRef payload) = 0;
-  virtual ErrorCode reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
+  virtual ErrorCode reservePayload(std::size_t size) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
   /// used for head
   bool generateBody() const { return _generateBody; }
@@ -162,17 +166,17 @@ class GeneralResponse {
   bool setGenerateBody(bool generateBody) {
     return _generateBody = generateBody;
   }
-  
+
   virtual ErrorCode deflate(size_t size = 16384) = 0;
 
  protected:
-  std::unordered_map<std::string, std::string> _headers;  // headers/metadata map
-  uint64_t _messageId;                                    // message ID
-  ResponseCode _responseCode;                             // http response code
+  std::unordered_map<std::string, std::string>
+      _headers;                // headers/metadata map
+  uint64_t _messageId;         // message ID
+  ResponseCode _responseCode;  // http response code
   ContentType _contentType;
   ContentType _contentTypeRequested;
   bool _generateBody;
   bool _allowCompression;
 };
 }  // namespace arangodb
-

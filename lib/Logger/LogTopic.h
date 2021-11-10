@@ -24,6 +24,7 @@
 #pragma once
 
 #include <stddef.h>
+
 #include <atomic>
 #include <string>
 #include <utility>
@@ -79,4 +80,3 @@ class LogTopic {
   std::atomic<LogLevel> _level;
 };
 }  // namespace arangodb
-

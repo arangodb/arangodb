@@ -37,12 +37,11 @@
 #endif
 
 #ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
 #include <WS2tcpip.h>
+#include <WinSock2.h>
 
 typedef long suseconds_t;
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket types
@@ -90,7 +89,8 @@ static inline int TRI_listen(TRI_socket_t s, int backlog) {
 /// @brief bind abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address, size_t addr_len) {
+static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address,
+                           size_t addr_len) {
 #ifdef _WIN32
   return bind(s.fileHandle, address, static_cast<int>(addr_len));
 #else
@@ -102,7 +102,8 @@ static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address, size_
 /// @brief connect abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address, size_t addr_len) {
+static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address,
+                              size_t addr_len) {
 #ifdef _WIN32
   return connect(s.fileHandle, address, (int)addr_len);
 #else
@@ -114,7 +115,8 @@ static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address, si
 /// @brief send abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline long TRI_send(TRI_socket_t s, const void* buffer, size_t length, int flags) {
+static inline long TRI_send(TRI_socket_t s, const void* buffer, size_t length,
+                            int flags) {
 #ifdef _WIN32
   return send(s.fileHandle, (char*)buffer, (int)length, flags);
 #else
@@ -208,7 +210,8 @@ static inline int TRI_get_fd_or_handle_of_socket(TRI_socket_t s) {
 
 int TRI_closesocket(TRI_socket_t);
 
-int TRI_readsocket(TRI_socket_t, void* buffer, size_t numBytesToRead, int flags);
+int TRI_readsocket(TRI_socket_t, void* buffer, size_t numBytesToRead,
+                   int flags);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets non-blocking mode for a socket
@@ -237,4 +240,3 @@ ErrorCode TRI_InetPton4(char const* src, unsigned char* dst);
 ////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode TRI_InetPton6(char const* src, unsigned char* dst);
-

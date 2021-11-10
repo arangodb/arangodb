@@ -24,12 +24,12 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-#include "Basics/StringBuffer.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/Common.h"
+#include "Basics/StringBuffer.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class for storing a request result
@@ -240,7 +240,7 @@ class SimpleHttpResult final {
   // flag which indicates whether or not the complete request has already be
   // sent (to the operating system):
   bool _haveSentRequestFully;
-  
+
   // request result type
   enum resultTypes _requestResultType;
 

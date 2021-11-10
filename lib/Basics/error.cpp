@@ -21,10 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <frozen/unordered_map.h>
+
 #include <cstring>
 #include <unordered_map>
-
-#include <frozen/unordered_map.h>
 
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -67,7 +67,6 @@ ErrorCode TRI_set_errno(ErrorCode error) {
 
   return error;
 }
-
 
 /// @brief return an error message for an error code
 std::string_view TRI_errno_string(ErrorCode code) noexcept {

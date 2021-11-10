@@ -24,6 +24,7 @@
 #pragma once
 
 #include <stddef.h>
+
 #include <atomic>
 #include <memory>
 #include <string>
@@ -35,7 +36,7 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 class CommunicationFeaturePhase;
-}
+}  // namespace application_features
 namespace basics {
 class StringBuffer;
 }
@@ -66,7 +67,8 @@ class GeneralClientConnection {
                           Endpoint* endpoint, double, double, size_t);
 
   GeneralClientConnection(application_features::ApplicationServer&,
-                          std::unique_ptr<Endpoint>& endpoint, double, double, size_t);
+                          std::unique_ptr<Endpoint>& endpoint, double, double,
+                          size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection
@@ -79,14 +81,15 @@ class GeneralClientConnection {
   /// @brief create a new connection from an endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  static GeneralClientConnection* factory(application_features::ApplicationServer& server,
-                                          Endpoint*, double requestTimeout, double connectTimeout,
-                                          size_t numRetries, uint64_t sslProtocol);
+  static GeneralClientConnection* factory(
+      application_features::ApplicationServer& server, Endpoint*,
+      double requestTimeout, double connectTimeout, size_t numRetries,
+      uint64_t sslProtocol);
 
-  static GeneralClientConnection* factory(application_features::ApplicationServer& server,
-                                          std::unique_ptr<Endpoint>&,
-                                          double requestTimeout, double connectTimeout,
-                                          size_t numRetries, uint64_t sslProtocol);
+  static GeneralClientConnection* factory(
+      application_features::ApplicationServer& server,
+      std::unique_ptr<Endpoint>&, double requestTimeout, double connectTimeout,
+      size_t numRetries, uint64_t sslProtocol);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the endpoint
@@ -145,7 +148,8 @@ class GeneralClientConnection {
   /// @brief read data from endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  bool handleRead(double, arangodb::basics::StringBuffer&, bool& connectionClosed);
+  bool handleRead(double, arangodb::basics::StringBuffer&,
+                  bool& connectionClosed);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the endpoint
@@ -210,7 +214,8 @@ class GeneralClientConnection {
   /// @brief read data from the connection
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual bool readClientConnection(arangodb::basics::StringBuffer&, bool& porgress) = 0;
+  virtual bool readClientConnection(arangodb::basics::StringBuffer&,
+                                    bool& porgress) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return whether the connection is readable
@@ -242,7 +247,7 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   Endpoint* _endpoint;
-  
+
   // reference to communication feature phase (populated only once for
   // the entire lifetime of the SimpleHttpClient, as the repeated feature
   // lookup may be expensive otherwise)
@@ -271,7 +276,7 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t _numConnectRetries;
-  
+
   bool _freeEndpointOnDestruction;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -293,4 +298,3 @@ class GeneralClientConnection {
 };
 }  // namespace httpclient
 }  // namespace arangodb
-

@@ -26,7 +26,6 @@
 #pragma once
 
 #include <Greenspun/Interpreter.h>
-
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -38,4 +37,3 @@ void RegisterAllDateTimeFunctions(Machine& ctx);
 
 }  // namespace greenspun
 }  // namespace arangodb
-

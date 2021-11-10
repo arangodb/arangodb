@@ -35,4 +35,3 @@ class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
 
 }  // namespace application_features
 }  // namespace arangodb
-

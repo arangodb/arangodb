@@ -23,11 +23,11 @@
 
 #pragma once
 
-#include "Basics/Exceptions.h"
-#include "Basics/StringBuffer.h"
-
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/Exceptions.h"
+#include "Basics/StringBuffer.h"
 
 namespace arangodb {
 namespace basics {
@@ -58,7 +58,8 @@ class VPackStringBufferAdapter final : public VPackSink {
     }
   }
   void append(char const* p, uint64_t len) override final {
-    auto res = TRI_AppendString2StringBuffer(_buffer, p, static_cast<size_t>(len));
+    auto res =
+        TRI_AppendString2StringBuffer(_buffer, p, static_cast<size_t>(len));
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -76,4 +77,3 @@ class VPackStringBufferAdapter final : public VPackSink {
 };
 }  // namespace basics
 }  // namespace arangodb
-

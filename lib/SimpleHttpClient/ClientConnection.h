@@ -24,6 +24,7 @@
 #pragma once
 
 #include <stddef.h>
+
 #include <memory>
 
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -83,7 +84,8 @@ class ClientConnection final : public GeneralClientConnection {
   /// @brief read data from the connection
   //////////////////////////////////////////////////////////////////////////////
 
-  bool readClientConnection(arangodb::basics::StringBuffer&, bool& connectionClosed) override;
+  bool readClientConnection(arangodb::basics::StringBuffer&,
+                            bool& connectionClosed) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return whether the connection is readable
@@ -93,4 +95,3 @@ class ClientConnection final : public GeneralClientConnection {
 };
 }  // namespace httpclient
 }  // namespace arangodb
-

@@ -24,19 +24,18 @@
 #pragma once
 
 #include <stddef.h>
+#include <v8-platform.h>
+#include <v8.h>
+
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include <v8-platform.h>
-#include <v8.h>
-
-#include "Basics/operating-system.h"
-
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Mutex.h"
+#include "Basics/operating-system.h"
 
 namespace arangodb {
 namespace application_features {
@@ -46,7 +45,8 @@ namespace options {
 class ProgramOptions;
 }
 
-class V8PlatformFeature final : public application_features::ApplicationFeature {
+class V8PlatformFeature final
+    : public application_features::ApplicationFeature {
  private:
   struct IsolateData {
     bool _outOfMemory = false;
@@ -97,4 +97,3 @@ class V8PlatformFeature final : public application_features::ApplicationFeature 
 };
 
 }  // namespace arangodb
-

@@ -23,10 +23,9 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-
 #include <openssl/ssl.h>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/asio_ns.h"
 
 namespace arangodb {
@@ -43,4 +42,3 @@ class SslFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

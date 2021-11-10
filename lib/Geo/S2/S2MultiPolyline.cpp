@@ -28,14 +28,14 @@ using std::set;
 #include <vector>
 using std::vector;
 
-#include "S2MultiPolyline.h"
-
 #include <s2/s2cap.h>
 #include <s2/s2cell.h>
 #include <s2/s2latlng.h>
 #include <s2/s2latlng_rect_bounder.h>
 #include <s2/s2polyline.h>
 #include <s2/util/coding/coder.h>
+
+#include "S2MultiPolyline.h"
 
 DECLARE_bool(s2debug);  // defined in s2.cc
 

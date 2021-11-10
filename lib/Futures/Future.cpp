@@ -21,11 +21,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Futures/Future.h"
+
 #include <cstdint>
+
 #include "Basics/Result.h"
 #include "Utils/OperationResult.h"
-
-#include "Futures/Future.h"
 
 namespace arangodb {
 namespace futures {
@@ -42,10 +43,8 @@ template class Future<double>;
 // arangodb types
 template class Future<arangodb::Result>;
 template class Future<arangodb::OperationResult>;
-  
+
 /// Make a complete void future
-Future<Unit> makeFuture() {
-  return Future<Unit>(unit);
-}
+Future<Unit> makeFuture() { return Future<Unit>(unit); }
 }  // namespace futures
 }  // namespace arangodb

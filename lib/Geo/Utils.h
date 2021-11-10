@@ -23,12 +23,11 @@
 
 #pragma once
 
+#include <s2/s2cell_id.h>
+#include <velocypack/Slice.h>
+
 #include <cstdint>
 #include <vector>
-
-#include <s2/s2cell_id.h>
-
-#include <velocypack/Slice.h>
 
 #include "Basics/Result.h"
 #include "Geo/GeoParams.h"
@@ -46,8 +45,8 @@ namespace geo {
 /// bounds for any kind of arithmetics
 struct Interval {
   Interval(S2CellId mn, S2CellId mx) noexcept : range_min(mn), range_max(mx) {}
-  S2CellId range_min; /// @brief inclusive minimum cell id
-  S2CellId range_max; /// @brief inclusive maximum cell id
+  S2CellId range_min;  /// @brief inclusive minimum cell id
+  S2CellId range_max;  /// @brief inclusive maximum cell id
   static bool compare(const Interval& a, const Interval& b) {
     return a.range_min < b.range_min;
   }
@@ -66,17 +65,20 @@ Result indexCellsLatLng(velocypack::Slice const& data, bool isGeoJson,
 
 /// generate intervalls of list of intervals to scan
 void scanIntervals(QueryParams const& params, S2RegionCoverer* coverer,
-                   S2Region const& region, std::vector<geo::Interval>& sortedIntervals);
+                   S2Region const& region,
+                   std::vector<geo::Interval>& sortedIntervals);
 
 /// will return all the intervals including the cells containing them
 /// in the less detailed levels. Should allow us to scan all intervals
 /// which may contain intersecting geometries
-void scanIntervals(QueryParams const& params, std::vector<S2CellId> const& cover,
+void scanIntervals(QueryParams const& params,
+                   std::vector<S2CellId> const& cover,
                    std::vector<geo::Interval>& sortedIntervals);
 
 /// Returns the ellipsoidal distance between p1 and p2 on e (in meters).
 /// (solves the inverse geodesic problem)
-double geodesicDistance(S2LatLng const& p1, S2LatLng const& p2, geo::Ellipsoid const& e);
+double geodesicDistance(S2LatLng const& p1, S2LatLng const& p2,
+                        geo::Ellipsoid const& e);
 
 /// Returns a point at distance `dist` (in meters) of `p` in direction `azimuth`
 /// (in degrees between -180 and 180)
@@ -86,4 +88,3 @@ S2LatLng geodesicPointAtDist(S2LatLng const& p, double dist, double azimuth,
 }  // namespace utils
 }  // namespace geo
 }  // namespace arangodb
-

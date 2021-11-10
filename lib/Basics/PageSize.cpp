@@ -21,9 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/operating-system.h"
-
 #include "Basics/PageSize.h"
+
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -45,9 +45,7 @@ int pageSizeImpl() {
   return systemInfo.dwPageSize;
 }
 #else
-int pageSizeImpl() {
-  return getpagesize();
-}
+int pageSizeImpl() { return getpagesize(); }
 #endif
 
 struct PageSizeCache {
@@ -57,9 +55,7 @@ struct PageSizeCache {
 
 PageSizeCache const cache;
 
-} // namespace
+}  // namespace
 
 /// @brief return page size from cache
-int arangodb::PageSize::getValue() {
-  return ::cache.cachedValue;
-}
+int arangodb::PageSize::getValue() { return ::cache.cachedValue; }

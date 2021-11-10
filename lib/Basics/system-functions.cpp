@@ -21,11 +21,11 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/operating-system.h"
-
 #include "system-functions.h"
 
 #include <chrono>
+
+#include "Basics/operating-system.h"
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -51,18 +51,21 @@ void* memrchr(void const* block, int c, size_t size) {
 #ifdef _WIN32
 void* memmem(void const* haystack, size_t haystackLength, void const* needle,
              size_t needleLength) {
-  if (haystackLength == 0 || needleLength == 0 || haystackLength < needleLength) {
+  if (haystackLength == 0 || needleLength == 0 ||
+      haystackLength < needleLength) {
     return nullptr;
   }
 
   char const* n = static_cast<char const*>(needle);
 
   if (needleLength == 1) {
-    return memchr(const_cast<void*>(haystack), static_cast<int>(*n), haystackLength);
+    return memchr(const_cast<void*>(haystack), static_cast<int>(*n),
+                  haystackLength);
   }
 
   char const* current = static_cast<char const*>(haystack);
-  char const* end = static_cast<char const*>(haystack) + haystackLength - needleLength;
+  char const* end =
+      static_cast<char const*>(haystack) + haystackLength - needleLength;
 
   for (; current <= end; ++current) {
     if (*current == *n && memcmp(needle, current, needleLength) == 0) {

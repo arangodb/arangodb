@@ -23,20 +23,21 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Math.h"
+
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
+
 #include <cmath>
 
 #include "Greenspun/Extractor.h"
-#include "Math.h"
 
 namespace arangodb::greenspun {
 
-template <typename F>
+template<typename F>
 auto Math_applySingle(F&& f) {
   return [f = std::forward<F>(f)](Machine& ctx, VPackSlice const paramsList,
                                   VPackBuilder& result) -> EvalResult {
-
     auto res = extract<double>(paramsList);
     if (res.fail()) {
       return res.error();
@@ -48,11 +49,10 @@ auto Math_applySingle(F&& f) {
   };
 }
 
-template <typename F>
+template<typename F>
 auto Math_applyTwo(F&& f) {
   return [f = std::forward<F>(f)](Machine& ctx, VPackSlice const paramsList,
                                   VPackBuilder& result) -> EvalResult {
-
     auto res = extract<double, double>(paramsList);
     if (res.fail()) {
       return res.error();
@@ -64,8 +64,13 @@ auto Math_applyTwo(F&& f) {
   };
 }
 
-#define SET_MATH_SINGLE_FUNC(name) ctx.setFunction(#name, Math_applySingle([](double x) { return std:: name(x); }))
-#define SET_MATH_DOUBLE_FUNC(name) ctx.setFunction(#name, Math_applyTwo([](double a, double b) { return std:: name(a, b); }))
+#define SET_MATH_SINGLE_FUNC(name) \
+  ctx.setFunction(#name,           \
+                  Math_applySingle([](double x) { return std::name(x); }))
+#define SET_MATH_DOUBLE_FUNC(name)                              \
+  ctx.setFunction(#name, Math_applyTwo([](double a, double b) { \
+                    return std::name(a, b);                     \
+                  }))
 
 void RegisterAllMathFunctions(Machine& ctx) {
   SET_MATH_SINGLE_FUNC(abs);
@@ -83,7 +88,6 @@ void RegisterAllMathFunctions(Machine& ctx) {
   SET_MATH_SINGLE_FUNC(sqrt);
   SET_MATH_SINGLE_FUNC(cbrt);
   SET_MATH_DOUBLE_FUNC(hypot);
-
 
   SET_MATH_SINGLE_FUNC(sin);
   SET_MATH_SINGLE_FUNC(cos);

@@ -24,6 +24,7 @@
 #pragma once
 
 #include <unicode/locid.h>
+
 #include <memory>
 #include <string>
 
@@ -45,7 +46,8 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
-  static void* prepareIcu(std::string const& binaryPath, std::string const& binaryExecutionPath,
+  static void* prepareIcu(std::string const& binaryPath,
+                          std::string const& binaryExecutionPath,
                           std::string& path, std::string const& binaryName);
   icu::Locale& getLocale();
   std::string const& getDefaultLanguage() const;
@@ -62,4 +64,3 @@ class LanguageFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

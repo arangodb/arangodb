@@ -25,6 +25,7 @@
 
 #include <s2/s2polyline.h>
 #include <s2/s2region.h>
+
 #include <vector>
 
 /// Represents a range of multiple independent polylines
@@ -78,4 +79,3 @@ class S2MultiPolyline : public S2Region {
   // would be relatively expensive (due to division by sizeof(S2Point) == 24).
   std::vector<S2Polyline> lines_;
 };
-

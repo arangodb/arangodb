@@ -24,7 +24,6 @@
 #include "EncodingUtils.h"
 
 #include <velocypack/velocypack-aliases.h>
-
 #include <zconf.h>
 #include <zlib.h>
 

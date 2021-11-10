@@ -21,10 +21,10 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "CommonDefines.h"
+
 #include <ostream>
 #include <string>
-
-#include "CommonDefines.h"
 
 #include "Basics/StaticStrings.h"
 
@@ -59,7 +59,8 @@ ContentType stringToContentType(std::string const& val, ContentType def) {
   if (val == StaticStrings::MimeTypeVPack) {
     return ContentType::VPACK;
   }
-  if (val.size() >= 25 && val.compare(0, 25, "application/x-arango-dump") == 0) {
+  if (val.size() >= 25 &&
+      val.compare(0, 25, "application/x-arango-dump") == 0) {
     return ContentType::DUMP;
   }
   if (val.size() >= 10 && val.compare(0, 10, "text/plain") == 0) {

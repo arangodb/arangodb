@@ -23,6 +23,7 @@
 
 #include <fcntl.h>
 #include <stdio.h>
+
 #include <algorithm>
 #include <cstring>
 #include <iostream>
@@ -34,8 +35,6 @@
 #include <unistd.h>
 #endif
 
-#include "LogAppenderFile.h"
-
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -43,6 +42,7 @@
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
+#include "LogAppenderFile.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -63,21 +63,27 @@ LogAppenderStream::LogAppenderStream(std::string const& filename, int fd)
       _unicodeEscape(Logger::getUseUnicodeEscaped()) {
   if (_controlEscape) {
     if (_unicodeEscape) {
-      _escaper = std::make_unique<Escaper<ControlCharsEscaper, UnicodeCharsEscaper>>();
+      _escaper =
+          std::make_unique<Escaper<ControlCharsEscaper, UnicodeCharsEscaper>>();
     } else {
-      _escaper = std::make_unique<Escaper<ControlCharsEscaper, UnicodeCharsRetainer>>();
+      _escaper = std::make_unique<
+          Escaper<ControlCharsEscaper, UnicodeCharsRetainer>>();
     }
   } else {
     if (_unicodeEscape) {
-      _escaper = std::make_unique<Escaper<ControlCharsSuppressor, UnicodeCharsEscaper>>();
+      _escaper = std::make_unique<
+          Escaper<ControlCharsSuppressor, UnicodeCharsEscaper>>();
     } else {
-      _escaper = std::make_unique<Escaper<ControlCharsSuppressor, UnicodeCharsRetainer>>();
+      _escaper = std::make_unique<
+          Escaper<ControlCharsSuppressor, UnicodeCharsRetainer>>();
     }
   }
 }
 
-size_t LogAppenderStream::determineOutputBufferSize(std::string const& message) const {
-  return _escaper->determineOutputBufferSize(message)+ 2; //+2 bytes because it needs to end with '\n' and '\0'
+size_t LogAppenderStream::determineOutputBufferSize(
+    std::string const& message) const {
+  return _escaper->determineOutputBufferSize(message) +
+         2;  //+2 bytes because it needs to end with '\n' and '\0'
 }
 
 size_t LogAppenderStream::writeIntoOutputBuffer(std::string const& message) {
@@ -115,7 +121,8 @@ void LogAppenderStream::logMessage(LogMessage const& message) {
   size_t length = writeIntoOutputBuffer(message._message);
   TRI_ASSERT(length <= neededBufferSize);
 
-  this->writeLogMessage(message._level, message._topicId, _buffer.get(), length);
+  this->writeLogMessage(message._level, message._topicId, _buffer.get(),
+                        length);
 
   if (_bufferSize > maxBufferSize) {
     // free the buffer so the Logger is not hogging so much memory
@@ -124,7 +131,7 @@ void LogAppenderStream::logMessage(LogMessage const& message) {
   }
 }
 
-LogAppenderFile::LogAppenderFile(std::string const& filename) 
+LogAppenderFile::LogAppenderFile(std::string const& filename)
     : LogAppenderStream(filename, -1), _filename(filename) {
   if (_filename != "+" && _filename != "-") {
     // logging to an actual file
@@ -140,8 +147,9 @@ LogAppenderFile::LogAppenderFile(std::string const& filename)
 
     if (_fd == -1) {
       // no existing appender found yet
-      int fd = TRI_CREATE(_filename.c_str(), O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
-                          _fileMode);
+      int fd =
+          TRI_CREATE(_filename.c_str(),
+                     O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC, _fileMode);
 
       if (fd < 0) {
         TRI_ERRORBUF;
@@ -158,7 +166,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename)
         if (result != 0) {
           // we cannot log this error here, as we are the logging itself
           // so just to please compilers, we pretend we are using the result
-          (void) result;
+          (void)result;
         }
       }
 #endif
@@ -178,7 +186,8 @@ LogAppenderFile::LogAppenderFile(std::string const& filename)
 
 LogAppenderFile::~LogAppenderFile() = default;
 
-void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/, char const* buffer, size_t len) {
+void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/,
+                                      char const* buffer, size_t len) {
   bool giveUp = false;
 
   while (len > 0) {
@@ -242,8 +251,9 @@ void LogAppenderFile::reopenAll() {
     TRI_RenameFile(filename.c_str(), backup.c_str());
 
     // open new log file
-    int fd = TRI_CREATE(filename.c_str(), O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
-                        _fileMode);
+    int fd =
+        TRI_CREATE(filename.c_str(),
+                   O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC, _fileMode);
 
     if (fd < 0) {
       TRI_RenameFile(backup.c_str(), filename.c_str());
@@ -256,7 +266,7 @@ void LogAppenderFile::reopenAll() {
       if (result != 0) {
         // we cannot log this error here, as we are the logging itself
         // so just to please compilers, we pretend we are using the result
-        (void) result;
+        (void)result;
       }
     }
 #endif
@@ -292,7 +302,8 @@ void LogAppenderFile::closeAll() {
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-std::vector<std::tuple<int, std::string, LogAppenderFile*>> LogAppenderFile::getAppenders() {
+std::vector<std::tuple<int, std::string, LogAppenderFile*>>
+LogAppenderFile::getAppenders() {
   std::vector<std::tuple<int, std::string, LogAppenderFile*>> result;
 
   std::unique_lock<std::mutex> guard(_openAppendersMutex);
@@ -303,7 +314,9 @@ std::vector<std::tuple<int, std::string, LogAppenderFile*>> LogAppenderFile::get
   return result;
 }
 
-void LogAppenderFile::setAppenders(std::vector<std::tuple<int, std::string, LogAppenderFile*>> const& appenders) {
+void LogAppenderFile::setAppenders(
+    std::vector<std::tuple<int, std::string, LogAppenderFile*>> const&
+        appenders) {
   std::unique_lock<std::mutex> guard(_openAppendersMutex);
 
   _openAppenders.clear();
@@ -326,13 +339,15 @@ LogAppenderStdStream::~LogAppenderStdStream() {
   }
 }
 
-void LogAppenderStdStream::writeLogMessage(LogLevel level, size_t topicId, char const* buffer, size_t len) {
+void LogAppenderStdStream::writeLogMessage(LogLevel level, size_t topicId,
+                                           char const* buffer, size_t len) {
   writeLogMessage(_fd, _useColors, level, topicId, buffer, len, false);
 }
 
 void LogAppenderStdStream::writeLogMessage(int fd, bool useColors,
-                                           LogLevel level, size_t /*topicId*/, char const* buffer,
-                                           size_t len, bool appendNewline) {
+                                           LogLevel level, size_t /*topicId*/,
+                                           char const* buffer, size_t len,
+                                           bool appendNewline) {
   if (!allowStdLogging()) {
     return;
   }
@@ -373,9 +388,8 @@ void LogAppenderStdStream::writeLogMessage(int fd, bool useColors,
   }
 }
 
-
 LogAppenderStderr::LogAppenderStderr()
-      : LogAppenderStdStream("+", STDERR_FILENO) {}
+    : LogAppenderStdStream("+", STDERR_FILENO) {}
 
 LogAppenderStdout::LogAppenderStdout()
-      : LogAppenderStdStream("-", STDOUT_FILENO) {}
+    : LogAppenderStdStream("-", STDOUT_FILENO) {}

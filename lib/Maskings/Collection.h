@@ -23,14 +23,13 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/Common.h"
 #include "Maskings/AttributeMasking.h"
 #include "Maskings/CollectionFilter.h"
 #include "Maskings/CollectionSelection.h"
@@ -45,7 +44,8 @@ class Collection {
  public:
   Collection() {}
 
-  Collection(CollectionSelection selection, std::vector<AttributeMasking> const& maskings)
+  Collection(CollectionSelection selection,
+             std::vector<AttributeMasking> const& maskings)
       : _selection(selection), _maskings(maskings) {}
 
   CollectionSelection selection() const noexcept { return _selection; }
@@ -59,4 +59,3 @@ class Collection {
 };
 }  // namespace maskings
 }  // namespace arangodb
-

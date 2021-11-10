@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
+
 #include <string>
 
 #include "Basics/Common.h"
@@ -32,13 +33,12 @@
 #include <WinSock2.h>
 #endif
 
-#include "ClientConnection.h"
-
 #include "Basics/StringBuffer.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/socket-utils.h"
 #include "Basics/voc-errors.h"
+#include "ClientConnection.h"
 #include "Endpoint/Endpoint.h"
 
 using namespace arangodb;
@@ -49,15 +49,16 @@ using namespace arangodb::httpclient;
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-ClientConnection::ClientConnection(application_features::ApplicationServer& server,
-                                   Endpoint* endpoint, double requestTimeout,
-                                   double connectTimeout, size_t connectRetries)
+ClientConnection::ClientConnection(
+    application_features::ApplicationServer& server, Endpoint* endpoint,
+    double requestTimeout, double connectTimeout, size_t connectRetries)
     : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
                               connectRetries) {}
 
-ClientConnection::ClientConnection(application_features::ApplicationServer& server,
-                                   std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
-                                   double connectTimeout, size_t connectRetries)
+ClientConnection::ClientConnection(
+    application_features::ApplicationServer& server,
+    std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
+    double connectTimeout, size_t connectRetries)
     : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
                               connectRetries) {}
 
@@ -153,7 +154,8 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClientConnection::readClientConnection(StringBuffer& stringBuffer, bool& connectionClosed) {
+bool ClientConnection::readClientConnection(StringBuffer& stringBuffer,
+                                            bool& connectionClosed) {
   if (!checkSocket()) {
     connectionClosed = true;
     return false;
@@ -171,7 +173,8 @@ bool ClientConnection::readClientConnection(StringBuffer& stringBuffer, bool& co
       return false;
     }
 
-    TRI_read_return_t  lenRead = TRI_READ_SOCKET(_socket, stringBuffer.end(), READBUFFER_SIZE - 1, 0);
+    TRI_read_return_t lenRead =
+        TRI_READ_SOCKET(_socket, stringBuffer.end(), READBUFFER_SIZE - 1, 0);
 
     if (lenRead == -1) {
       // error occurred

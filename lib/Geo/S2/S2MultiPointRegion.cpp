@@ -21,6 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 #include "S2MultiPointRegion.h"
+
 #include <s2/s2cap.h>
 #include <s2/s2cell.h>
 #include <s2/s2latlng_rect.h>

@@ -24,9 +24,9 @@
 #pragma once
 
 #ifndef DESERIALIZER_NO_VPACK_TYPES
+#include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Slice.h"
-#include "velocypack/Builder.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -39,4 +39,3 @@ using builder_type = arangodb::velocypack::Builder;
 }  // namespace velocypack
 }  // namespace arangodb
 #endif  // DESERIALIZER_NO_VPACK_TYPES
-

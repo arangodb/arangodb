@@ -23,14 +23,14 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <atomic>
+
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace basics {
 
-template <class T>
+template<class T>
 struct SharedAtomic {
   SharedAtomic() : _data() {}
   SharedAtomic(T t) : _data(t) {}
@@ -51,7 +51,8 @@ struct SharedAtomic {
 
   bool is_lock_free() const noexcept { return _data.is_lock_free(); }
 
-  void store(T desired, std::memory_order order = std::memory_order_seq_cst) noexcept {
+  void store(T desired,
+             std::memory_order order = std::memory_order_seq_cst) noexcept {
     _data.store(desired, order);
   }
 
@@ -61,7 +62,8 @@ struct SharedAtomic {
 
   operator T() const noexcept { return _data.load(); }
 
-  T exchange(T desired, std::memory_order order = std::memory_order_seq_cst) noexcept {
+  T exchange(T desired,
+             std::memory_order order = std::memory_order_seq_cst) noexcept {
     return _data.exchange(desired, order);
   }
 
@@ -70,42 +72,51 @@ struct SharedAtomic {
     return _data.compare_exchange_weak(expected, desired, success, failure);
   }
 
-  bool compare_exchange_weak(T& expected, T desired,
-                             std::memory_order order = std::memory_order_seq_cst) noexcept {
+  bool compare_exchange_weak(
+      T& expected, T desired,
+      std::memory_order order = std::memory_order_seq_cst) noexcept {
     return _data.compare_exchange_weak(expected, desired, order);
   }
 
-  bool compare_exchange_strong(T& expected, T desired, std::memory_order success,
+  bool compare_exchange_strong(T& expected, T desired,
+                               std::memory_order success,
                                std::memory_order failure) noexcept {
     return _data.compare_exchange_strong(expected, desired, success, failure);
   }
 
-  bool compare_exchange_strong(T& expected, T desired,
-                               std::memory_order order = std::memory_order_seq_cst) noexcept {
+  bool compare_exchange_strong(
+      T& expected, T desired,
+      std::memory_order order = std::memory_order_seq_cst) noexcept {
     return _data.compare_exchange_strong(expected, desired, order);
   }
 
 #if __cplusplus > 201402L
-  static constexpr bool is_always_lock_free = std::atomic<T>::is_always_lock_free;
+  static constexpr bool is_always_lock_free =
+      std::atomic<T>::is_always_lock_free;
 #endif
 
-  T fetch_add(T arg, std::memory_order order = std::memory_order_seq_cst) noexcept {
+  T fetch_add(T arg,
+              std::memory_order order = std::memory_order_seq_cst) noexcept {
     return _data.fetch_add(arg, order);
   }
 
-  T fetch_sub(T arg, std::memory_order order = std::memory_order_seq_cst) noexcept {
+  T fetch_sub(T arg,
+              std::memory_order order = std::memory_order_seq_cst) noexcept {
     return _data.fetch_sub(arg, order);
   }
 
-  T fetch_and(T arg, std::memory_order order = std::memory_order_seq_cst) noexcept {
+  T fetch_and(T arg,
+              std::memory_order order = std::memory_order_seq_cst) noexcept {
     return _data.fetch_and(arg, order);
   }
 
-  T fetch_or(T arg, std::memory_order order = std::memory_order_seq_cst) noexcept {
+  T fetch_or(T arg,
+             std::memory_order order = std::memory_order_seq_cst) noexcept {
     return _data.fetch_or(arg, order);
   }
 
-  T fetch_xor(T arg, std::memory_order order = std::memory_order_seq_cst) noexcept {
+  T fetch_xor(T arg,
+              std::memory_order order = std::memory_order_seq_cst) noexcept {
     return _data.fetch_xor(arg, order);
   }
 
@@ -135,4 +146,3 @@ struct SharedAtomic {
 
 }  // namespace basics
 }  // namespace arangodb
-
