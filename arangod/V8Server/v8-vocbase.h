@@ -47,3 +47,4 @@ class JSLoader;
 void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                          arangodb::aql::QueryRegistry* queryRegistry,
                          TRI_vocbase_t& vocbase, size_t threadNumber);
+

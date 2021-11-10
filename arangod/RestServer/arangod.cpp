@@ -21,6 +21,11 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+#include "Basics/directories.h"
+#include "Basics/operating-system.h"
+#include "Basics/tri-strings.h"
+
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -43,12 +48,8 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/Common.h"
 #include "Basics/CrashHandler.h"
 #include "Basics/FileUtils.h"
-#include "Basics/directories.h"
-#include "Basics/operating-system.h"
-#include "Basics/tri-strings.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterUpgradeFeature.h"
@@ -136,6 +137,7 @@
 #include <iostream>
 #endif
 
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 
@@ -145,8 +147,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     std::string name = context.binaryName();
 
     auto options = std::make_shared<arangodb::options::ProgramOptions>(
-        argv[0], "Usage: " + name + " [<options>]",
-        "For more information use:", SBIN_DIRECTORY);
+        argv[0], "Usage: " + name + " [<options>]", "For more information use:", SBIN_DIRECTORY);
 
     ApplicationServer server(options, SBIN_DIRECTORY);
     ServerState state(server);
@@ -316,8 +317,7 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
     return;
   }
   // register the service ctrl handler,  lpszArgv[0] contains service name
-  ServiceStatus =
-      RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
+  ServiceStatus = RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
 
   // set start pending
   SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000, 0);
@@ -333,6 +333,7 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 
 #endif
 
+
 #ifdef __linux__
 
 // The following is a hack which is currently (September 2019) needed to
@@ -341,9 +342,12 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 // See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91737 for developments
 // in gcc/libgcc to address this issue.
 
-static void* g(void* p) { return p; }
+static void* g(void *p) {
+  return p;
+}
 
-static void gg() {}
+static void gg() {
+}
 
 static void f() {
   pthread_t t;
@@ -358,9 +362,7 @@ static void f() {
 int main(int argc, char* argv[]) {
 #ifdef __linux__
   // Do not delete this! See above for an explanation.
-  if (argc >= 1 && strcmp(argv[0], "not a/valid name") == 0) {
-    f();
-  }
+  if (argc >= 1 && strcmp(argv[0], "not a/valid name") == 0) { f(); }
 #endif
 
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
@@ -371,8 +373,8 @@ int main(int argc, char* argv[]) {
     ARGC = argc;
     ARGV = argv;
 
-    SERVICE_TABLE_ENTRY ste[] = {
-        {TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
+    SERVICE_TABLE_ENTRY ste[] = {{TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+                                 {nullptr, nullptr}};
 
     if (!StartServiceCtrlDispatcher(ste)) {
       std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
@@ -395,13 +397,13 @@ int main(int argc, char* argv[]) {
   }
   try {
     res = (*arangodb::restartAction)();
-  } catch (...) {
+  } catch(...) {
     res = -1;
   }
   delete arangodb::restartAction;
   if (res != 0) {
-    std::cerr << "FATAL: RestartAction returned non-zero exit status: " << res
-              << ", giving up." << std::endl;
+    std::cerr << "FATAL: RestartAction returned non-zero exit status: "
+      << res << ", giving up." << std::endl;
     return res;
   }
   // It is not clear if we want to do the following under Linux and OSX,
@@ -412,12 +414,10 @@ int main(int argc, char* argv[]) {
 #if defined(__linux__) || defined(__APPLE__)
   res = chdir(workdir.c_str());
   if (res != 0) {
-    std::cerr << "WARNING: could not change into directory '" << workdir << "'"
-              << std::endl;
+    std::cerr << "WARNING: could not change into directory '" << workdir << "'" << std::endl;
   }
   if (execvp(argv[0], argv) == -1) {
-    std::cerr << "WARNING: could not execvp ourselves, restore will not work!"
-              << std::endl;
+    std::cerr << "WARNING: could not execvp ourselves, restore will not work!" << std::endl;
   }
 #endif
 }

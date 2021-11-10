@@ -22,43 +22,41 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MultiAqlItemBlockInputRange.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
-
 #include <numeric>
 
-#include "Aql/ShadowAqlItemRow.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-static auto RowHasNonEmptyValue(ShadowAqlItemRow const& row) -> bool {
-  if (row.isInitialized()) {
-    RegisterCount const numRegisters =
-        static_cast<RegisterCount>(row.getNumRegisters());
-    for (RegisterId::value_t registerId = 0; registerId < numRegisters;
-         ++registerId) {
-      if (!row.getValue(registerId).isEmpty()) {
-        return true;
+  static auto RowHasNonEmptyValue(ShadowAqlItemRow const& row) -> bool {
+    if (row.isInitialized()) {
+      RegisterCount const numRegisters = static_cast<RegisterCount>(row.getNumRegisters());
+      for (RegisterId::value_t registerId = 0; registerId < numRegisters; ++registerId) {
+        if (!row.getValue(registerId).isEmpty()) {
+          return true;
+        }
       }
     }
+    return false;
   }
-  return false;
 }
-}  // namespace
 
-MultiAqlItemBlockInputRange::MultiAqlItemBlockInputRange(
-    ExecutorState state, std::size_t skipped, std::size_t nrInputRanges) {
+
+MultiAqlItemBlockInputRange::MultiAqlItemBlockInputRange(ExecutorState state,
+                                                         std::size_t skipped,
+                                                         std::size_t nrInputRanges) {
   _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
   TRI_ASSERT(nrInputRanges > 0);
 }
 
-auto MultiAqlItemBlockInputRange::resizeOnce(ExecutorState state,
-                                             size_t skipped,
+auto MultiAqlItemBlockInputRange::resizeOnce(ExecutorState state, size_t skipped,
                                              size_t nrInputRanges) -> void {
   // Is expected to be called exactly once to set the number of dependencies.
   // We never want to reduce the number of dependencies.
@@ -67,26 +65,27 @@ auto MultiAqlItemBlockInputRange::resizeOnce(ExecutorState state,
   _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
 }
 
-auto MultiAqlItemBlockInputRange::upstreamState(
-    size_t const dependency) const noexcept -> ExecutorState {
+auto MultiAqlItemBlockInputRange::upstreamState(size_t const dependency) const
+    noexcept -> ExecutorState {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).upstreamState();
 }
 
 auto MultiAqlItemBlockInputRange::hasValidRow() const noexcept -> bool {
-  return std::any_of(
-      std::begin(_inputs), std::end(_inputs),
-      [](AqlItemBlockInputRange const& i) -> bool { return i.hasValidRow(); });
+  return std::any_of(std::begin(_inputs), std::end(_inputs),
+                     [](AqlItemBlockInputRange const& i) -> bool {
+                       return i.hasValidRow();
+                     });
 }
 
 auto MultiAqlItemBlockInputRange::hasDataRow() const noexcept -> bool {
-  return std::any_of(
-      std::begin(_inputs), std::end(_inputs),
-      [](AqlItemBlockInputRange const& i) -> bool { return i.hasDataRow(); });
+  return std::any_of(std::begin(_inputs), std::end(_inputs),
+                     [](AqlItemBlockInputRange const& i) -> bool {
+                       return i.hasDataRow();
+                     });
 }
 
-auto MultiAqlItemBlockInputRange::hasDataRow(
-    size_t const dependency) const noexcept -> bool {
+auto MultiAqlItemBlockInputRange::hasDataRow(size_t const dependency) const noexcept -> bool {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).hasDataRow();
 }
@@ -103,14 +102,13 @@ auto MultiAqlItemBlockInputRange::peekDataRow(size_t const dependency) const
   return _inputs.at(dependency).peekDataRow();
 }
 
-auto MultiAqlItemBlockInputRange::skipAll(size_t const dependency) noexcept
-    -> std::size_t {
+auto MultiAqlItemBlockInputRange::skipAll(size_t const dependency) noexcept -> std::size_t {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).skipAll();
 }
 
-auto MultiAqlItemBlockInputRange::skippedInFlight(
-    size_t const dependency) const noexcept -> std::size_t {
+auto MultiAqlItemBlockInputRange::skippedInFlight(size_t const dependency) const
+    noexcept -> std::size_t {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).skippedInFlight();
 }
@@ -123,14 +121,14 @@ auto MultiAqlItemBlockInputRange::nextDataRow(size_t const dependency)
 
 // We have a shadow row, iff all our inputs have o
 auto MultiAqlItemBlockInputRange::hasShadowRow() const noexcept -> bool {
-  return std::all_of(
-      std::begin(_inputs), std::end(_inputs),
-      [](AqlItemBlockInputRange const& i) -> bool { return i.hasShadowRow(); });
+  return std::all_of(std::begin(_inputs), std::end(_inputs),
+                     [](AqlItemBlockInputRange const& i) -> bool {
+                       return i.hasShadowRow();
+                     });
 }
 
 // * It doesn't matter which shadow row we peek, they should all be the same
-auto MultiAqlItemBlockInputRange::peekShadowRow() const
-    -> arangodb::aql::ShadowAqlItemRow {
+auto MultiAqlItemBlockInputRange::peekShadowRow() const -> arangodb::aql::ShadowAqlItemRow {
   if (!hasShadowRow()) {
     return ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
   }
@@ -157,7 +155,7 @@ auto MultiAqlItemBlockInputRange::peekShadowRow() const
 auto MultiAqlItemBlockInputRange::nextShadowRow()
     -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
   TRI_ASSERT(!hasDataRow());
-
+  
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_dependenciesDontAgreeOnState);
   auto oneDependencyDone = bool{false};
@@ -211,7 +209,7 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
     } else {
       // we already have the filled one.
       // Just assert the others are empty for correctness
-      TRI_ASSERT(!::RowHasNonEmptyValue(otherRow));
+      TRI_ASSERT(! ::RowHasNonEmptyValue(otherRow));
     }
   }
 
@@ -222,24 +220,24 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
   return {state, std::move(shadowRow)};
 }
 
-auto MultiAqlItemBlockInputRange::getBlock(
-    size_t const dependency) const noexcept -> SharedAqlItemBlockPtr {
+auto MultiAqlItemBlockInputRange::getBlock(size_t const dependency) const
+    noexcept -> SharedAqlItemBlockPtr {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs[dependency].getBlock();
 }
 
-auto MultiAqlItemBlockInputRange::setDependency(
-    size_t const dependency, AqlItemBlockInputRange const& range) -> void {
+auto MultiAqlItemBlockInputRange::setDependency(size_t const dependency,
+                                                AqlItemBlockInputRange const& range) -> void {
   TRI_ASSERT(dependency < _inputs.size());
   _inputs.at(dependency) = range;
 }
 
 auto MultiAqlItemBlockInputRange::isDone() const -> bool {
-  return std::all_of(std::begin(_inputs), std::end(_inputs),
-                     [](AqlItemBlockInputRange const& i) -> bool {
-                       return i.upstreamState() == ExecutorState::DONE &&
-                              !i.hasDataRow();
-                     });
+  return  std::all_of(std::begin(_inputs), std::end(_inputs),
+                      [](AqlItemBlockInputRange const& i) -> bool {
+                        return i.upstreamState() == ExecutorState::DONE &&
+                               !i.hasDataRow();
+                      });
 }
 
 auto MultiAqlItemBlockInputRange::state() const -> ExecutorState {
@@ -276,14 +274,12 @@ auto MultiAqlItemBlockInputRange::skipForDependency(size_t const dependency,
 }
 
 // Skip all that is available
-auto MultiAqlItemBlockInputRange::skipAllForDependency(size_t const dependency)
-    -> size_t {
+auto MultiAqlItemBlockInputRange::skipAllForDependency(size_t const dependency) -> size_t {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).skipAll();
 }
 
-auto MultiAqlItemBlockInputRange::numberDependencies() const noexcept
-    -> size_t {
+auto MultiAqlItemBlockInputRange::numberDependencies() const noexcept -> size_t {
   return _inputs.size();
 }
 
@@ -316,12 +312,10 @@ auto MultiAqlItemBlockInputRange::reset() -> void {
   return count;
 }
 
-[[nodiscard]] auto MultiAqlItemBlockInputRange::finalState() const noexcept
-    -> ExecutorState {
-  bool hasMore =
-      std::any_of(_inputs.begin(), _inputs.end(), [](auto const& range) {
-        return range.finalState() == ExecutorState::HASMORE;
-      });
+[[nodiscard]] auto MultiAqlItemBlockInputRange::finalState() const noexcept -> ExecutorState {
+  bool hasMore = std::any_of(_inputs.begin(), _inputs.end(), [](auto const& range) {
+    return range.finalState() == ExecutorState::HASMORE;
+  });
   if (hasMore) {
     return ExecutorState::HASMORE;
   }

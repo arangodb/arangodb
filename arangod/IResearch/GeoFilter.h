@@ -23,12 +23,13 @@
 
 #pragma once
 
-#include "Basics/debugging.h"
-#include "Geo/ShapeContainer.h"
-#include "IResearch/Geo.h"
 #include "search/filter.hpp"
 #include "search/search_range.hpp"
 #include "utils/type_limits.hpp"
+
+#include "Basics/debugging.h"
+#include "IResearch/Geo.h"
+#include "Geo/ShapeContainer.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -51,7 +52,7 @@ enum class GeoFilterType : uint32_t {
   /// @brief check if a given shape is fully contained within indexed data
   ////////////////////////////////////////////////////////////////////////////////
   IS_CONTAINED
-};  // GeoFilterType
+}; // GeoFilterType
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct GeoFilterOptions
@@ -67,8 +68,7 @@ struct GeoFilterOptions {
 
   size_t hash() const noexcept {
     using GeoFilterUnderlyingType = std::underlying_type_t<GeoFilterType>;
-    size_t hash = std::hash<GeoFilterUnderlyingType>()(
-        static_cast<GeoFilterUnderlyingType>(type));
+    size_t hash = std::hash<GeoFilterUnderlyingType>()(static_cast<GeoFilterUnderlyingType>(type));
 
     auto* region = shape.region();
     TRI_ASSERT(region);
@@ -76,7 +76,7 @@ struct GeoFilterOptions {
     std::vector<S2CellId> cells;
     region->GetCellUnionBound(&cells);
 
-    for (auto cell : cells) {
+    for (auto cell: cells) {
       hash = irs::hash_combine(hash, S2CellIdHash()(cell));
     }
     return hash;
@@ -86,13 +86,14 @@ struct GeoFilterOptions {
   std::string prefix;
   S2RegionTermIndexer::Options options;
   GeoFilterType type{GeoFilterType::INTERSECTS};
-};  // GeoFilterOptions
+}; // GeoFilterOptions
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class GeoFilter
 /// @brief user-side geo filter
 //////////////////////////////////////////////////////////////////////////////
-class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
+class GeoFilter final
+  : public irs::filter_base<GeoFilterOptions>{
  public:
   static constexpr irs::string_ref type_name() noexcept {
     return "arangodb::iresearch::GeoFilter";
@@ -103,10 +104,11 @@ class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
   using filter::prepare;
 
   virtual prepared::ptr prepare(
-      const irs::index_reader& rdr, const irs::order::prepared& ord,
-      irs::boost_t boost,
-      const irs::attribute_provider* /*ctx*/) const override;
-};  // GeoFilter
+    const irs::index_reader& rdr,
+    const irs::order::prepared& ord,
+    irs::boost_t boost,
+    const irs::attribute_provider* /*ctx*/) const override;
+}; // GeoFilter
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct GeoFilterOptions
@@ -128,14 +130,14 @@ class GeoDistanceFilterOptions {
   irs::search_range<double_t> range;
   std::string prefix;
   S2RegionTermIndexer::Options options;
-};  // GeoFilterOptions
+}; // GeoFilterOptions
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class GeoDistanceFilter
 /// @brief user-side geo distance filter
 //////////////////////////////////////////////////////////////////////////////
 class GeoDistanceFilter final
-    : public irs::filter_base<GeoDistanceFilterOptions> {
+  : public irs::filter_base<GeoDistanceFilterOptions>{
  public:
   static constexpr irs::string_ref type_name() noexcept {
     return "arangodb::iresearch::GeoFilter";
@@ -146,10 +148,12 @@ class GeoDistanceFilter final
   using filter::prepare;
 
   virtual prepared::ptr prepare(
-      const irs::index_reader& rdr, const irs::order::prepared& ord,
-      irs::boost_t boost,
-      const irs::attribute_provider* /*ctx*/) const override;
-};  // GeoDistanceFilter
+    const irs::index_reader& rdr,
+    const irs::order::prepared& ord,
+    irs::boost_t boost,
+    const irs::attribute_provider* /*ctx*/) const override;
+}; // GeoDistanceFilter
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // iresearch
+} // arangodb
+

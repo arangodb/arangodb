@@ -23,18 +23,17 @@
 
 #include "InAndOutRowExpressionContext.h"
 
-#include <velocypack/Slice.h>
-
 #include "Aql/AqlValue.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
+#include <velocypack/Slice.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
-static bool testInternalIdValid(size_t id,
-                                std::vector<RegisterId> const& regs) {
+static bool testInternalIdValid(size_t id, std::vector<RegisterId> const& regs) {
   if (id == std::numeric_limits<std::size_t>::max()) {
     return true;
   }
@@ -43,10 +42,12 @@ static bool testInternalIdValid(size_t id,
 }
 
 InAndOutRowExpressionContext::InAndOutRowExpressionContext(
-    transaction::Methods& trx, QueryContext& context,
-    AqlFunctionsInternalCache& cache, std::vector<Variable const*> vars,
-    std::vector<RegisterId> regs, size_t vertexVarIdx, size_t edgeVarIdx,
-    size_t pathVarIdx)
+    transaction::Methods& trx,
+    QueryContext& context,
+    AqlFunctionsInternalCache& cache,
+    std::vector<Variable const*> vars,
+    std::vector<RegisterId> regs, size_t vertexVarIdx,
+    size_t edgeVarIdx, size_t pathVarIdx)
     : QueryExpressionContext(trx, context, cache),
       _input{CreateInvalidInputRowHint()},
       _vars(std::move(vars)),
@@ -69,8 +70,7 @@ void InAndOutRowExpressionContext::invalidateInputRow() {
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
 }
 
-bool InAndOutRowExpressionContext::isDataFromCollection(
-    Variable const* variable) const {
+bool InAndOutRowExpressionContext::isDataFromCollection(Variable const* variable) const {
   for (size_t i = 0; i < _vars.size(); ++i) {
     auto const& v = _vars[i];
     if (v->id == variable->id) {
@@ -78,7 +78,9 @@ bool InAndOutRowExpressionContext::isDataFromCollection(
         return true;
       }
       TRI_ASSERT(i < _regs.size());
-      if (i == _vertexVarIdx || i == _edgeVarIdx || i == _pathVarIdx) {
+      if (i == _vertexVarIdx ||
+          i == _edgeVarIdx ||
+          i == _pathVarIdx) {
         return true;
       }
     }
@@ -86,8 +88,8 @@ bool InAndOutRowExpressionContext::isDataFromCollection(
   return false;
 }
 
-AqlValue InAndOutRowExpressionContext::getVariableValue(
-    Variable const* variable, bool doCopy, bool& mustDestroy) const {
+AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
+                                                        bool& mustDestroy) const {
   TRI_ASSERT(_input.isInitialized());
   for (size_t i = 0; i < _vars.size(); ++i) {
     auto const& v = _vars[i];

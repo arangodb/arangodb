@@ -35,7 +35,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}  // namespace velocypack
+}
 namespace aql {
 class ExecutionPlan;
 class Expression;
@@ -55,9 +55,9 @@ class DocumentProducingNode {
   Variable const* outVariable() const;
 
   arangodb::aql::Projections const& projections() const noexcept;
-
+  
   arangodb::aql::Projections& projections() noexcept;
-
+  
   void setProjections(arangodb::aql::Projections projections);
 
   /// @brief remember the condition to execute for early filtering
@@ -65,19 +65,18 @@ class DocumentProducingNode {
 
   /// @brief return the early pruning condition for the node
   Expression* filter() const { return _filter.get(); }
-
+  
   /// @brief whether or not the node has an early pruning filter condition
   bool hasFilter() const { return _filter != nullptr; }
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder,
-                    unsigned flags) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder, unsigned flags) const;
 
   void setCountFlag() { _count = true; }
 
   void copyCountFlag(DocumentProducingNode const* other) {
     _count = other->_count;
   }
-
+  
   /// @brief wheter or not the node can be used for counting
   bool doCount() const;
 
@@ -96,10 +95,11 @@ class DocumentProducingNode {
 
   bool _count;
 
-  /// @brief Whether we should read our own writes performed by the current
-  /// query. ATM this is only necessary for UPSERTS.
+  /// @brief Whether we should read our own writes performed by the current query.
+  /// ATM this is only necessary for UPSERTS.
   ReadOwnWrites _readOwnWrites{ReadOwnWrites::no};
 };
 
 }  // namespace aql
 }  // namespace arangodb
+

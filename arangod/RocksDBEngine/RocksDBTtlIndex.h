@@ -33,7 +33,7 @@ class RocksDBMethods;
 namespace velocypack {
 class Builder;
 class Slice;
-}  // namespace velocypack
+}
 
 class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
  public:
@@ -43,34 +43,33 @@ class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
   IndexType type() const override { return Index::TRI_IDX_TYPE_TTL_INDEX; }
 
   char const* typeName() const override { return "rocksdb-ttl"; }
-
+  
   bool matchesDefinition(VPackSlice const&) const override;
-
-  void toVelocyPack(
-      arangodb::velocypack::Builder& builder,
-      std::underlying_type<Index::Serialize>::type flags) const override;
-
+  
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    std::underlying_type<Index::Serialize>::type flags) const override;
+  
  protected:
-  // special override method that extracts a timestamp value from the index
-  // attribute
+  // special override method that extracts a timestamp value from the index attribute
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& options, bool performChecks) override;
+                OperationOptions const& options,
+                bool performChecks) override;
 
-  // special override method that extracts a timestamp value from the index
-  // attribute
+  // special override method that extracts a timestamp value from the index attribute
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
                 velocypack::Slice doc) override;
 
  private:
   /// @brief extract a timestamp value from the index attribute value
-  /// returns a negative timestamp if the index attribute value is not
-  /// convertible properly into a timestamp
+  /// returns a negative timestamp if the index attribute value is not convertible
+  /// properly into a timestamp
   double getTimestamp(arangodb::velocypack::Slice const& doc) const;
-
+  
  private:
   double const _expireAfter;
 };
 
-}  // namespace arangodb
+}
+

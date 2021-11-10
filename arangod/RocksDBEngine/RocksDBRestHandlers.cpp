@@ -31,14 +31,11 @@
 
 using namespace arangodb;
 
-void RocksDBRestHandlers::registerResources(
-    rest::RestHandlerFactory* handlerFactory) {
-  handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::COLLECTION_PATH,
-      RestHandlerCreator<RocksDBRestCollectionHandler>::createNoData);
-  handlerFactory->addPrefixHandler(
-      "/_api/replication",
-      RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData);
-  handlerFactory->addPrefixHandler(
-      "/_admin/wal", RestHandlerCreator<RocksDBRestWalHandler>::createNoData);
+void RocksDBRestHandlers::registerResources(rest::RestHandlerFactory* handlerFactory) {
+  handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::COLLECTION_PATH,
+                                   RestHandlerCreator<RocksDBRestCollectionHandler>::createNoData);
+  handlerFactory->addPrefixHandler("/_api/replication",
+                                   RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData);
+  handlerFactory->addPrefixHandler("/_admin/wal",
+                                   RestHandlerCreator<RocksDBRestWalHandler>::createNoData);
 }

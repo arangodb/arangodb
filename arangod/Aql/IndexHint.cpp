@@ -23,6 +23,12 @@
 
 #include "IndexHint.h"
 
+#include "Aql/AstNode.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/QueryContext.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -30,12 +36,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <ostream>
-
-#include "Aql/AstNode.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/QueryContext.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 
 namespace {
 std::string const TypeIllegal("illegal");
@@ -61,9 +61,11 @@ arangodb::aql::IndexHint::HintType fromTypeName(std::string const& typeName) {
 namespace arangodb {
 namespace aql {
 
-IndexHint::IndexHint() : _type{HintType::None}, _forced{false} {}
+IndexHint::IndexHint() 
+    : _type{HintType::None}, _forced{false} {}
 
-IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
+IndexHint::IndexHint(QueryContext& query, AstNode const* node)
+    : IndexHint() {
   if (node->type == AstNodeType::NODE_TYPE_OBJECT) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       AstNode const* child = node->getMember(i);
@@ -80,10 +82,9 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
           if (value->type == AstNodeType::NODE_TYPE_VALUE &&
               value->value.type == AstNodeValueType::VALUE_TYPE_STRING) {
             _type = HintType::Simple;
-            _hint.simple.emplace_back(value->getStringValue(),
-                                      value->getStringLength());
+            _hint.simple.emplace_back(value->getStringValue(), value->getStringLength());
             handled = true;
-          } else if (value->type == AstNodeType::NODE_TYPE_ARRAY) {
+          } else  if (value->type == AstNodeType::NODE_TYPE_ARRAY) {
             _type = HintType::Simple;
             for (size_t j = 0; j < value->numMembers(); j++) {
               AstNode const* member = value->getMember(j);
@@ -107,24 +108,24 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
         }
 
         if (!handled) {
-          ExecutionPlan::invalidOptionAttribute(query, "FOR", name.data(),
-                                                name.size());
+          ExecutionPlan::invalidOptionAttribute(query, "FOR", name.data(), name.size());
         }
       }
     }
   }
 }
 
-IndexHint::IndexHint(VPackSlice const& slice) : IndexHint() {
+IndexHint::IndexHint(VPackSlice const& slice)
+    : IndexHint() {
+      
   // read index hint from slice
   // index hints were introduced in version 3.5. in previous versions they
   // are not available, so we need to be careful when reading them
   VPackSlice s = slice.get(::FieldContainer);
   if (s.isObject()) {
     _type = ::fromTypeName(
-        basics::VelocyPackHelper::getStringValue(s, ::FieldType, ""));
-    _forced =
-        basics::VelocyPackHelper::getBooleanValue(s, ::FieldForced, false);
+          basics::VelocyPackHelper::getStringValue(s, ::FieldType, ""));
+    _forced = basics::VelocyPackHelper::getBooleanValue(s, ::FieldForced, false);
   }
 
   if (_type != HintType::Illegal && _type != HintType::None) {
@@ -186,8 +187,7 @@ std::string IndexHint::toString() const {
   return builder.slice().toJson();
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::aql::IndexHint const& hint) {
+std::ostream& operator<<(std::ostream& stream, arangodb::aql::IndexHint const& hint) {
   stream << hint.toString();
   return stream;
 }

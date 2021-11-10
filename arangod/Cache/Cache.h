@@ -23,11 +23,6 @@
 
 #pragma once
 
-#include <cstdint>
-#include <limits>
-#include <list>
-#include <memory>
-
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
 #include "Basics/SharedCounter.h"
@@ -39,6 +34,11 @@
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
+
+#include <cstdint>
+#include <limits>
+#include <list>
+#include <memory>
 
 namespace arangodb {
 namespace cache {
@@ -75,8 +75,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
  public:
   Cache(ConstructionGuard guard, Manager* manager, std::uint64_t id,
-        Metadata&& metadata, std::shared_ptr<Table> table,
-        bool enableWindowedStats,
+        Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats,
         std::function<Table::BucketClearer(Metadata*)> bucketClearer,
         std::size_t slotsPerBucket);
   virtual ~Cache() = default;
@@ -146,9 +145,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   inline bool isShutdown() const { return _shutdown.load(); }
 
   struct Inserter {
-    Inserter(Cache& cache, void const* key, std::size_t keySize,
-             void const* value, std::size_t valueSize,
-             std::function<bool(Result const&)> retry);
+    Inserter(Cache& cache, void const* key, std::size_t keySize, void const* value,
+             std::size_t valueSize, std::function<bool(Result const&)> retry);
     Result status;
   };
 
@@ -171,8 +169,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   Metadata _metadata;
 
  private:
-  // manage the actual table - note: MUST be used only with atomic_load and
-  // atomic_store!
+  // manage the actual table - note: MUST be used only with atomic_load and atomic_store!
   std::shared_ptr<Table> _table;
 
   Table::BucketClearer _bucketClearer;
@@ -181,12 +178,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // manage eviction rate
   basics::SharedCounter<64> _insertsTotal;
   basics::SharedCounter<64> _insertEvictions;
-  static constexpr std::uint64_t _evictionMask =
-      4095;  // check roughly every 4096 insertions
-  static constexpr double _evictionRateThreshold =
-      0.01;  // if more than 1%
-             // evictions in past 4096
-             // inserts, migrate
+  static constexpr std::uint64_t _evictionMask = 4095;  // check roughly every 4096 insertions
+  static constexpr double _evictionRateThreshold = 0.01;  // if more than 1%
+                                                          // evictions in past 4096
+                                                          // inserts, migrate
 
   // times to wait until requesting is allowed again
   std::atomic<Manager::time_point::rep> _migrateRequestTime;
@@ -222,10 +217,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool migrate(std::shared_ptr<Table> newTable);
 
   virtual std::uint64_t freeMemoryFrom(std::uint32_t hash) = 0;
-  virtual void migrateBucket(void* sourcePtr,
-                             std::unique_ptr<Table::Subtable> targets,
+  virtual void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
                              std::shared_ptr<Table> newTable) = 0;
 };
 
 };  // end namespace cache
 };  // end namespace arangodb
+

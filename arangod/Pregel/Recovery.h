@@ -32,7 +32,7 @@
 namespace arangodb {
 namespace pregel {
 
-template<typename V, typename E>
+template <typename V, typename E>
 class GraphStore;
 class Conductor;
 
@@ -56,11 +56,10 @@ class RecoveryManager {
   ~RecoveryManager();
 
   void monitorCollections(DatabaseID const& database,
-                          std::vector<CollectionID> const& collections,
-                          Conductor* listener);
+                          std::vector<CollectionID> const& collections, Conductor* listener);
   void stopMonitoring(Conductor*);
   ErrorCode filterGoodServers(std::vector<ServerID> const& servers,
-                              std::vector<ServerID>& goodServers);
+                        std::vector<ServerID>& goodServers);
   void updatedFailedServers(std::vector<ServerID> const& failedServers);
   // bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };

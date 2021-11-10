@@ -32,8 +32,8 @@ class Builder;
 
 class RestSupportInfoHandler : public arangodb::RestBaseHandler {
  public:
-  RestSupportInfoHandler(application_features::ApplicationServer&,
-                         GeneralRequest*, GeneralResponse*);
+  RestSupportInfoHandler(application_features::ApplicationServer&, GeneralRequest*,
+                         GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestSupportInfoHandler"; }
@@ -44,3 +44,4 @@ class RestSupportInfoHandler : public arangodb::RestBaseHandler {
   void buildHostInfo(arangodb::velocypack::Builder& result);
 };
 }  // namespace arangodb
+

@@ -22,16 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ttl.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTtlMethods.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/TtlFeature.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::methods;
@@ -59,8 +58,7 @@ Result Ttl::getProperties(TtlFeature& feature, VPackBuilder& out) {
   return Result();
 }
 
-Result Ttl::setProperties(TtlFeature& feature, VPackSlice properties,
-                          VPackBuilder& out) {
+Result Ttl::setProperties(TtlFeature& feature, VPackSlice properties, VPackBuilder& out) {
   if (ServerState::instance()->isCoordinator()) {
     auto& clusterFeature = feature.server().getFeature<ClusterFeature>();
     return setTtlPropertiesOnAllDBServers(clusterFeature, properties, out);

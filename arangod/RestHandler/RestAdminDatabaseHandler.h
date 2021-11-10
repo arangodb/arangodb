@@ -37,3 +37,4 @@ class RestAdminDatabaseHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
 };
 }  // namespace arangodb
+

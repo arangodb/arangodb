@@ -28,7 +28,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
 #include <string>
 
 namespace arangodb {
@@ -39,8 +38,7 @@ namespace accumulators {
 using namespace arangodb::velocypack;
 
 struct MessageData {
-  void reset(std::string accumulatorName, VPackSlice const& value,
-             std::string const& sender);
+  void reset(std::string accumulatorName, VPackSlice const& value, std::string const& sender);
 
   void fromVelocyPack(VPackSlice slice);
   void toVelocyPack(VPackBuilder& b) const;
@@ -59,3 +57,4 @@ struct MessageData {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
+

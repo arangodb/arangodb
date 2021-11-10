@@ -31,37 +31,31 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-void QueryExpressionContext::registerWarning(ErrorCode errorCode,
-                                             char const* msg) {
+void QueryExpressionContext::registerWarning(ErrorCode errorCode, char const* msg) {
   _query.warnings().registerWarning(errorCode, msg);
 }
 
-void QueryExpressionContext::registerError(ErrorCode errorCode,
-                                           char const* msg) {
+void QueryExpressionContext::registerError(ErrorCode errorCode, char const* msg) {
   _query.warnings().registerError(errorCode, msg);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildRegexMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildRegexMatcher(ptr, length,
-                                                      caseInsensitive);
+icu::RegexMatcher* QueryExpressionContext::buildRegexMatcher(char const* ptr, size_t length,
+                                                             bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildRegexMatcher(ptr, length, caseInsensitive);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildLikeMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildLikeMatcher(ptr, length,
-                                                     caseInsensitive);
+icu::RegexMatcher* QueryExpressionContext::buildLikeMatcher(char const* ptr, size_t length,
+                                                            bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildLikeMatcher(ptr, length, caseInsensitive);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(
-    AqlValue splitExpression, velocypack::Options const* opts,
-    bool& isEmptyExpression) {
-  return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
-                                                      isEmptyExpression);
+icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(AqlValue splitExpression,
+                                                             velocypack::Options const* opts,
+                                                             bool& isEmptyExpression) {
+  return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts, isEmptyExpression);
 }
 
-arangodb::ValidatorBase* QueryExpressionContext::buildValidator(
-    arangodb::velocypack::Slice const& params) {
+arangodb::ValidatorBase* QueryExpressionContext::buildValidator(arangodb::velocypack::Slice const& params) {
   return _aqlFunctionsInternalCache.buildValidator(params);
 }
 

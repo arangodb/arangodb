@@ -25,7 +25,6 @@
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
-
 #include <cstddef>
 #include <limits>
 
@@ -84,8 +83,7 @@ class RocksDBTransactionState : public TransactionState {
 
   [[nodiscard]] bool hasFailedOperations() const override;
 
-  [[nodiscard]] bool iteratorMustCheckBounds(DataSourceId cid,
-                                             ReadOwnWrites readOwnWrites) const;
+  [[nodiscard]] bool iteratorMustCheckBounds(DataSourceId cid, ReadOwnWrites readOwnWrites) const;
 
   void prepareOperation(DataSourceId cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType);
@@ -93,25 +91,20 @@ class RocksDBTransactionState : public TransactionState {
   /// @brief add an operation for a transaction collection
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
   /// performed
-  [[nodiscard]] Result addOperation(DataSourceId collectionId,
-                                    RevisionId revisionId,
-                                    TRI_voc_document_operation_e opType,
-                                    bool& hasPerformedIntermediateCommit);
+  [[nodiscard]] Result addOperation(DataSourceId collectionId, RevisionId revisionId,
+                      TRI_voc_document_operation_e opType,
+                      bool& hasPerformedIntermediateCommit);
 
   /// @brief return wrapper around rocksdb transaction
-  [[nodiscard]] virtual RocksDBTransactionMethods* rocksdbMethods(
-      DataSourceId collectionId) const = 0;
+  [[nodiscard]] virtual RocksDBTransactionMethods* rocksdbMethods(DataSourceId collectionId) const = 0;
 
   /// @brief acquire a database snapshot if we do not yet have one.
-  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
-  /// already had a snapshot)
+  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
   [[nodiscard]] virtual bool ensureSnapshot() = 0;
 
-  [[nodiscard]] static RocksDBTransactionState* toState(
-      transaction::Methods* trx);
+  [[nodiscard]] static RocksDBTransactionState* toState(transaction::Methods* trx);
 
-  [[nodiscard]] static RocksDBTransactionMethods* toMethods(
-      transaction::Methods* trx, DataSourceId collectionId);
+  [[nodiscard]] static RocksDBTransactionMethods* toMethods(transaction::Methods* trx, DataSourceId collectionId);
 
   /// @brief make some internal preparations for accessing this state in
   /// parallel from multiple threads. READ-ONLY transactions
@@ -119,8 +112,7 @@ class RocksDBTransactionState : public TransactionState {
   /// @brief in parallel mode. READ-ONLY transactions
   [[nodiscard]] bool inParallelMode() const;
 
-  [[nodiscard]] RocksDBTransactionCollection::TrackedOperations&
-  trackedOperations(DataSourceId cid);
+  [[nodiscard]] RocksDBTransactionCollection::TrackedOperations& trackedOperations(DataSourceId cid);
 
   /// @brief Track documents inserted to the collection
   ///        Used to update the revision tree for replication after commit
@@ -157,7 +149,7 @@ class RocksDBTransactionState : public TransactionState {
   rocksdb::SequenceNumber prepareCollections();
   void commitCollections(rocksdb::SequenceNumber lastWritten);
   void cleanupCollections();
-
+  
   void maybeDisableIndexing();
 
   /// @brief delete transaction, snapshot and cache trx
@@ -179,14 +171,12 @@ class RocksDBTransactionState : public TransactionState {
 /// something in maintainer mode, and do nothing in release mode!
 struct RocksDBTransactionStateGuard {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  explicit RocksDBTransactionStateGuard(
-      RocksDBTransactionState* state) noexcept;
+  explicit RocksDBTransactionStateGuard(RocksDBTransactionState* state) noexcept;
   ~RocksDBTransactionStateGuard();
-
+  
   RocksDBTransactionState* _state;
 #else
-  explicit RocksDBTransactionStateGuard(
-      RocksDBTransactionState* /*state*/) noexcept {}
+  explicit RocksDBTransactionStateGuard(RocksDBTransactionState* /*state*/) noexcept {}
   ~RocksDBTransactionStateGuard() = default;
 #endif
 };
@@ -209,3 +199,4 @@ class RocksDBKeyLeaser {
 };
 
 }  // namespace arangodb
+

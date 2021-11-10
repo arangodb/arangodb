@@ -67,21 +67,25 @@ struct IResearchLinkHelper {
   /// @brief compare two link definitions for equivalience if used to create a
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
-  static bool equal(application_features::ApplicationServer& server,
-                    velocypack::Slice lhs, velocypack::Slice rhs,
-                    irs::string_ref const& dbname);
+  static bool equal(
+    application_features::ApplicationServer& server,
+    velocypack::Slice lhs,
+    velocypack::Slice rhs,
+    irs::string_ref const& dbname);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id
   //////////////////////////////////////////////////////////////////////////////
   static std::shared_ptr<IResearchLink> find(
-      LogicalCollection const& collection, IndexId id);
+    LogicalCollection const& collection,
+    IndexId id);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds first link between specified collection and view
   //////////////////////////////////////////////////////////////////////////////
   static std::shared_ptr<IResearchLink> find(
-      LogicalCollection const& collection, LogicalView const& view);
+    LogicalCollection const& collection,
+    LogicalView const& view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate and copy required fields from the 'definition' into
@@ -91,13 +95,16 @@ struct IResearchLinkHelper {
   /// @note true == inRecovery() then AnalyzerFeature will not allow persistence
   //////////////////////////////////////////////////////////////////////////////
   static Result normalize(
-      velocypack::Builder& normalized, velocypack::Slice definition,
-      bool isCreation, TRI_vocbase_t const& vocbase, LinkVersion defaultVersion,
-      IResearchViewSort const* primarySort = nullptr,
-      irs::type_info::type_id const* primarySortCompression = nullptr,
-      IResearchViewStoredValues const* storedValues = nullptr,
-      velocypack::Slice idSlice = velocypack::Slice(),
-      irs::string_ref collectionName = irs::string_ref::NIL);
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation,
+    TRI_vocbase_t const& vocbase,
+    LinkVersion defaultVersion,
+    IResearchViewSort const* primarySort = nullptr,
+    irs::type_info::type_id const* primarySortCompression = nullptr,
+    IResearchViewStoredValues const* storedValues = nullptr,
+    velocypack::Slice idSlice = velocypack::Slice(),
+    irs::string_ref collectionName = irs::string_ref::NIL);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief IResearch Link index type string value
@@ -111,14 +118,17 @@ struct IResearchLinkHelper {
   ///        * collection permissions
   ///        * valid link meta
   //////////////////////////////////////////////////////////////////////////////
-  static Result validateLinks(TRI_vocbase_t& vocbase, velocypack::Slice links);
+  static Result validateLinks(
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice links);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief visits all links in a collection
   /// @return full visitation compleated
   //////////////////////////////////////////////////////////////////////////////
-  static bool visit(LogicalCollection const& collection,
-                    std::function<bool(IResearchLink& link)> const& visitor);
+  static bool visit(
+    LogicalCollection const& collection,
+    std::function<bool(IResearchLink& link)> const& visitor);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates the collections in 'vocbase' to match the specified
@@ -129,14 +139,17 @@ struct IResearchLinkHelper {
   /// @param stale links to remove if there is no creation definition in 'links'
   /// @param linkVersion link version for creation if not set in a definition
   //////////////////////////////////////////////////////////////////////////////
-  static Result updateLinks(std::unordered_set<DataSourceId>& modified,
-                            LogicalView& view, velocypack::Slice links,
-                            LinkVersion defaultVersion,
-                            std::unordered_set<DataSourceId> const& stale = {});
+  static Result updateLinks(
+    std::unordered_set<DataSourceId>& modified,
+    LogicalView& view,
+    velocypack::Slice links,
+    LinkVersion defaultVersion,
+    std::unordered_set<DataSourceId> const& stale = {});
 
  private:
   IResearchLinkHelper() = delete;
-};  // IResearchLinkHelper
+}; // IResearchLinkHelper
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // iresearch
+} // arangodb
+

@@ -35,3 +35,4 @@ struct RocksDBRestHandlers {
 };
 
 }  // namespace arangodb
+

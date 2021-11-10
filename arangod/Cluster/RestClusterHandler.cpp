@@ -24,9 +24,6 @@
 
 #include "RestClusterHandler.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Agency/AgencyComm.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/Supervision.h"
@@ -39,19 +36,20 @@
 #include "Replication/ReplicationFeature.h"
 #include "Rest/Version.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestClusterHandler::RestClusterHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestClusterHandler::RestClusterHandler(application_features::ApplicationServer& server,
+                                       GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestClusterHandler::execute() {
   if (_request->requestType() != RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
                   "only the GET method is allowed");
     return RestStatus::DONE;
   }
@@ -74,16 +72,14 @@ RestStatus RestClusterHandler::execute() {
   }
 
   generateError(
-      Result(TRI_ERROR_HTTP_NOT_FOUND,
-             "expecting /_api/cluster/[endpoints,agency-dump,agency-cache]"));
+    Result(TRI_ERROR_HTTP_NOT_FOUND, "expecting /_api/cluster/[endpoints,agency-dump,agency-cache]"));
 
   return RestStatus::DONE;
 }
 
 void RestClusterHandler::handleAgencyDump() {
   if (!ServerState::instance()->isCoordinator()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                  TRI_ERROR_NOT_IMPLEMENTED,
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
                   "only to be executed on coordinators");
     return;
   }
@@ -92,8 +88,7 @@ void RestClusterHandler::handleAgencyDump() {
   if (af->isActive() && !_request->user().empty()) {
     auth::Level lvl;
     if (af->userManager() != nullptr) {
-      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
-                                                 true);
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
     } else {
       lvl = auth::Level::RW;
     }
@@ -110,18 +105,17 @@ void RestClusterHandler::handleAgencyDump() {
   if (res.ok()) {
     generateResult(rest::ResponseCode::OK, body->slice());
   } else {
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, res.errorNumber(),
-                  res.errorMessage());
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, res.errorNumber(), res.errorMessage());
   }
 }
 
 void RestClusterHandler::handleAgencyCache() {
+
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
     auth::Level lvl;
     if (af->userManager() != nullptr) {
-      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
-                                                 true);
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
     } else {
       lvl = auth::Level::RW;
     }
@@ -136,15 +130,16 @@ void RestClusterHandler::handleAgencyCache() {
   auto acb = ac.dump();
 
   generateResult(rest::ResponseCode::OK, acb->slice());
+
 }
 
 void RestClusterHandler::handleClusterInfo() {
+
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
     auth::Level lvl;
     if (af->userManager() != nullptr) {
-      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
-                                                 true);
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
     } else {
       lvl = auth::Level::RW;
     }
@@ -170,8 +165,7 @@ void RestClusterHandler::handleCommandEndpoints() {
     endpoints = ci.getCurrentCoordinators();
   } else if (ServerState::instance()->isSingleServer()) {
     ReplicationFeature& replication = server().getFeature<ReplicationFeature>();
-    if (!replication.isActiveFailoverEnabled() ||
-        !AsyncAgencyCommManager::isEnabled()) {
+    if (!replication.isActiveFailoverEnabled() || !AsyncAgencyCommManager::isEnabled()) {
       generateError(Result(TRI_ERROR_NOT_IMPLEMENTED,
                            "automatic failover is not enabled"));
       return;
@@ -183,9 +177,8 @@ void RestClusterHandler::handleCommandEndpoints() {
     std::string const healthPath = "Supervision/Health";
 
     auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-    auto [acb, idx] = cache.read(
-        std::vector<std::string>{AgencyCommHelper::path(healthPath),
-                                 AgencyCommHelper::path(leaderPath)});
+    auto [acb, idx] = cache.read(std::vector<std::string>{
+        AgencyCommHelper::path(healthPath), AgencyCommHelper::path(leaderPath)});
     auto result = acb->slice();
 
     if (!result.isArray()) {
@@ -213,18 +206,15 @@ void RestClusterHandler::handleCommandEndpoints() {
     }
 
     // {"serverId" : {"Status" : "GOOD", ...}}
-    for (VPackObjectIterator::ObjectPair const& pair :
-         VPackObjectIterator(healthMap)) {
+    for (VPackObjectIterator::ObjectPair const& pair : VPackObjectIterator(healthMap)) {
       TRI_ASSERT(pair.key.isString() && pair.value.isObject());
       if (pair.key.compareString(leaderId) != 0) {
         VPackSlice status = pair.value.get("Status");
         TRI_ASSERT(status.isString());
 
-        if (status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) ==
-            0) {
+        if (status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
           endpoints.insert(endpoints.begin(), pair.key.copyString());
-        } else if (status.compareString(
-                       consensus::Supervision::HEALTH_STATUS_BAD) == 0) {
+        } else if (status.compareString(consensus::Supervision::HEALTH_STATUS_BAD) == 0) {
           endpoints.push_back(pair.key.copyString());
         }
       }

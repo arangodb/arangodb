@@ -35,8 +35,7 @@ class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
  public:
   virtual ~RocksDBBackgroundErrorListener();
 
-  void OnBackgroundError(rocksdb::BackgroundErrorReason reason,
-                         rocksdb::Status* error) override;
+  void OnBackgroundError(rocksdb::BackgroundErrorReason reason, rocksdb::Status* error) override;
 
   void OnErrorRecoveryCompleted(rocksdb::Status /* old_bg_error */) override;
 
@@ -47,3 +46,4 @@ class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
 };
 
 }  // namespace arangodb
+

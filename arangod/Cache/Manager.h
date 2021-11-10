@@ -23,16 +23,6 @@
 
 #pragma once
 
-#include <array>
-#include <atomic>
-#include <chrono>
-#include <cstdint>
-#include <limits>
-#include <map>
-#include <memory>
-#include <stack>
-#include <utility>
-
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/SharedCounter.h"
 #include "Basics/SpinLocker.h"
@@ -43,6 +33,16 @@
 #include "Cache/Table.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionManager.h"
+
+#include <array>
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <limits>
+#include <map>
+#include <memory>
+#include <stack>
+#include <utility>
 
 namespace arangodb {
 class SharedPRNGFeature;
@@ -88,8 +88,8 @@ class Manager {
   /// @brief Initialize the manager with a scheduler post method and global
   /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
-          std::uint64_t globalLimit, bool enableWindowedStats = true);
+  Manager(SharedPRNGFeature& sharedPRNG,
+          PostFn schedulerPost, std::uint64_t globalLimit, bool enableWindowedStats = true);
 
   ~Manager();
 
@@ -165,7 +165,7 @@ class Manager {
   /// @brief Post a function to the scheduler
   //////////////////////////////////////////////////////////////////////////////
   bool post(std::function<void()> fn);
-
+  
   SharedPRNGFeature& sharedPRNG() const noexcept { return _sharedPRNG; }
 
  private:
@@ -204,10 +204,7 @@ class Manager {
 
   // actual tables to lease out
 
-  std::array<
-      std::stack<std::shared_ptr<Table>, std::vector<std::shared_ptr<Table>>>,
-      32>
-      _tables;
+  std::array<std::stack<std::shared_ptr<Table>, std::vector<std::shared_ptr<Table>>>, 32> _tables;
 
   // global statistics
   std::uint64_t _globalSoftLimit;
@@ -240,14 +237,13 @@ class Manager {
 
  private:  // used by caches
   // register and unregister individual caches
-  std::tuple<bool, Metadata, std::shared_ptr<Table>> registerCache(
-      std::uint64_t fixedSize, std::uint64_t maxSize);
+  std::tuple<bool, Metadata, std::shared_ptr<Table>> registerCache(std::uint64_t fixedSize,
+                                                                   std::uint64_t maxSize);
   void unregisterCache(std::uint64_t id);
 
   // allow individual caches to request changes to their allocations
   std::pair<bool, Manager::time_point> requestGrow(Cache* cache);
-  std::pair<bool, Manager::time_point> requestMigrate(
-      Cache* cache, uint32_t requestedLogSize);
+  std::pair<bool, Manager::time_point> requestMigrate(Cache* cache, uint32_t requestedLogSize);
 
   // stat reporting
   void reportAccess(std::uint64_t id);
@@ -284,17 +280,16 @@ class Manager {
   void reclaimTable(std::shared_ptr<Table> table, bool internal);
 
   // helpers for individual allocations
-  [[nodiscard]] bool increaseAllowed(uint64_t increase,
-                                     bool privileged = false) const;
+  [[nodiscard]] bool increaseAllowed(uint64_t increase, bool privileged = false) const;
 
   // helper for lr-accessed heuristics
   std::shared_ptr<PriorityList> priorityList();
 
   // helper for wait times
-  [[nodiscard]] static Manager::time_point futureTime(
-      std::uint64_t millisecondsFromNow);
+  [[nodiscard]] static Manager::time_point futureTime(std::uint64_t millisecondsFromNow);
   [[nodiscard]] bool pastRebalancingGracePeriod() const;
 };
 
 };  // end namespace cache
 };  // end namespace arangodb
+

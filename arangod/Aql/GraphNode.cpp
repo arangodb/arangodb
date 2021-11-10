@@ -55,7 +55,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-
 #include <utility>
 
 using namespace arangodb;
@@ -187,8 +186,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         if ((*it).second != dir) {
           std::string msg("conflicting directions specified for collection '" +
                           std::string(eColName));
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID, msg);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID, msg);
         }
         // do not re-add the same collection!
         continue;
@@ -197,11 +195,9 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       auto collection = resolver.getCollection(eColName);
 
       if (!collection || collection->type() != TRI_COL_TYPE_EDGE) {
-        std::string msg("collection type invalid for collection '" +
-                        std::string(eColName) +
+        std::string msg("collection type invalid for collection '" + std::string(eColName) +
                         ": expecting collection type 'edge'");
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
-                                       msg);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID, msg);
       }
 
       auto& collections = plan->getAst()->query().collections();
@@ -230,8 +226,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
   } else if (graph->isStringValue()) {
     std::string graphName = graph->getString();
     _graphInfo.add(VPackValue(graphName));
-    auto graphLookupResult =
-        plan->getAst()->query().lookupGraphByName(graphName);
+    auto graphLookupResult = plan->getAst()->query().lookupGraphByName(graphName);
 
     if (graphLookupResult.fail()) {
       THROW_ARANGO_EXCEPTION(graphLookupResult.result());
@@ -293,8 +288,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
   }
 }
 
-GraphNode::GraphNode(ExecutionPlan* plan,
-                     arangodb::velocypack::Slice const& base)
+GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(&(plan->getAst()->query().vocbase())),
       _vertexOutVariable(nullptr),
@@ -303,14 +297,13 @@ GraphNode::GraphNode(ExecutionPlan* plan,
       _tmpObjVariable(nullptr),
       _tmpObjVarNode(nullptr),
       _tmpIdNode(nullptr),
-      _defaultDirection(
-          uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(
-              base.get("defaultDirection")))),
+      _defaultDirection(uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(
+          base.get("defaultDirection")))),
       _optionsBuilt(false),
-      _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          base, StaticStrings::IsSmart, false)),
-      _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          base, StaticStrings::IsDisjoint, false)) {
+      _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(base, StaticStrings::IsSmart,
+                                                                   false)),
+      _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(base, StaticStrings::IsDisjoint,
+                                                                      false)) {
   if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
@@ -318,8 +311,7 @@ GraphNode::GraphNode(ExecutionPlan* plan,
       graphName = base.get("graph").copyString();
       if (base.hasKey("graphDefinition")) {
         // load graph and store pointer
-        auto graphLookupResult =
-            plan->getAst()->query().lookupGraphByName(graphName);
+        auto graphLookupResult = plan->getAst()->query().lookupGraphByName(graphName);
 
         if (graphLookupResult.fail()) {
           THROW_ARANGO_EXCEPTION(graphLookupResult.result());
@@ -362,8 +354,7 @@ GraphNode::GraphNode(ExecutionPlan* plan,
   // MSVC did throw an internal compiler error with auto instead of std::string
   // here at the time of this writing (some MSVC 2019 14.25.28610). Could
   // reproduce it only in our CI, my local MSVC (same version) ran fine...
-  auto getAqlCollectionFromName =
-      [&](std::string const& name) -> aql::Collection& {
+  auto getAqlCollectionFromName = [&](std::string const& name) -> aql::Collection& {
     // if the collection was already existent in the query, addCollection will
     // just return it.
     return *query.collections().add(name, AccessMode::Type::READ,
@@ -441,25 +432,21 @@ GraphNode::GraphNode(ExecutionPlan* plan,
                                    "graph options have to be a json-object.");
   }
 
-  _options =
-      BaseOptions::createOptionsFromSlice(_plan->getAst()->query(), opts);
+  _options = BaseOptions::createOptionsFromSlice(_plan->getAst()->query(), opts);
   // set traversal-translations
-  _options->setCollectionToShard(
-      _collectionToShard);  // could be moved as it will only be used here
+  _options->setCollectionToShard(_collectionToShard);  // could be moved as it will only be used here
   if (_options->parallelism() > 1) {
     _plan->getAst()->setContainsParallelNode();
   }
 }
 
 /// @brief Internal constructor to clone the node.
-GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
-                     TRI_vocbase_t* vocbase,
+GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                      std::vector<Collection*> const& edgeColls,
                      std::vector<Collection*> const& vertexColls,
                      TRI_edge_direction_e defaultDirection,
                      std::vector<TRI_edge_direction_e> directions,
-                     std::unique_ptr<graph::BaseOptions> options,
-                     Graph const* graph)
+                     std::unique_ptr<graph::BaseOptions> options, Graph const* graph)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -477,9 +464,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
   setGraphInfoAndCopyColls(edgeColls, vertexColls);
 }
 
-void GraphNode::setGraphInfoAndCopyColls(
-    std::vector<Collection*> const& edgeColls,
-    std::vector<Collection*> const& vertexColls) {
+void GraphNode::setGraphInfoAndCopyColls(std::vector<Collection*> const& edgeColls,
+                                         std::vector<Collection*> const& vertexColls) {
   _graphInfo.openArray();
   for (auto& it : edgeColls) {
     TRI_ASSERT(it != nullptr);
@@ -520,17 +506,16 @@ GraphNode::GraphNode(THIS_THROWS_WHEN_CALLED)
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-std::string const& GraphNode::collectionToShardName(
-    std::string const& collName) const {
+std::string const& GraphNode::collectionToShardName(std::string const& collName) const {
   if (_collectionToShard.empty()) {
     return collName;
   }
 
   auto found = _collectionToShard.find(collName);
   if (found == _collectionToShard.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL_AQL,
-        "unable to find shard '" + collName + "' in query shard map");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                   "unable to find shard '" + collName +
+                                       "' in query shard map");
   }
   return found->second;
 }
@@ -647,12 +632,10 @@ CostEstimate GraphNode::estimateCost() const {
   size_t incoming = estimate.estimatedNrItems;
   if (_optionsBuilt) {
     // We know which indexes are in use.
-    estimate.estimatedCost +=
-        incoming * _options->estimateCost(estimate.estimatedNrItems);
+    estimate.estimatedCost += incoming * _options->estimateCost(estimate.estimatedNrItems);
   } else {
     // Some hard-coded value, this is identical to build lookupInfos
-    // if no index estimate is availble (and it is not as long as the options
-    // are not built)
+    // if no index estimate is availble (and it is not as long as the options are not built)
     double baseCost = 1;
     size_t baseNumItems = 0;
     for (auto& e : _edgeColls) {
@@ -753,8 +736,7 @@ void GraphNode::enhanceEngineInfo(VPackBuilder& builder) const {
 #endif
 
 void GraphNode::addEdgeCollection(Collections const& collections,
-                                  std::string const& name,
-                                  TRI_edge_direction_e dir) {
+                                  std::string const& name, TRI_edge_direction_e dir) {
   auto aqlCollection = collections.get(name);
   if (aqlCollection != nullptr) {
     addEdgeCollection(*aqlCollection, dir);
@@ -772,8 +754,7 @@ void GraphNode::addEdgeCollection(Collections const& collections,
   }
 }
 
-void GraphNode::addEdgeCollection(aql::Collection& collection,
-                                  TRI_edge_direction_e dir) {
+void GraphNode::addEdgeCollection(aql::Collection& collection, TRI_edge_direction_e dir) {
   auto const& n = collection.name();
   if (_isSmart) {
     if (n.compare(0, 6, "_from_") == 0) {
@@ -803,8 +784,7 @@ void GraphNode::addEdgeCollection(aql::Collection& collection,
   }
 }
 
-void GraphNode::addVertexCollection(Collections const& collections,
-                                    std::string const& name) {
+void GraphNode::addVertexCollection(Collections const& collections, std::string const& name) {
   auto aqlCollection = collections.get(name);
   if (aqlCollection != nullptr) {
     addVertexCollection(*aqlCollection);
@@ -891,8 +871,7 @@ graph::Graph const* GraphNode::graph() const noexcept { return _graphObj; }
 void GraphNode::initializeIndexConditions() const {
   // We need to prepare the variable accesses before we ask the index nodes.
   // Those are located on the options, and need to be partially executed.
-  options()->initializeIndexConditions(
-      plan()->getAst(), getRegisterPlan()->varInfo, getTemporaryVariable());
+  options()->initializeIndexConditions(plan()->getAst(), getRegisterPlan()->varInfo, getTemporaryVariable());
 }
 
 bool GraphNode::isEligibleAsSatelliteTraversal() const {
@@ -907,7 +886,6 @@ bool GraphNode::isUsedAsSatellite() const { return false; }
 
 bool GraphNode::isLocalGraphNode() const { return false; }
 
-void GraphNode::waitForSatelliteIfRequired(
-    ExecutionEngine const* engine) const {}
+void GraphNode::waitForSatelliteIfRequired(ExecutionEngine const* engine) const {}
 
 #endif

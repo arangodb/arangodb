@@ -34,8 +34,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-FrontendFeature::FrontendFeature(
-    application_features::ApplicationServer& server)
+FrontendFeature::FrontendFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Frontend"), _versionCheck(true) {
   setOptional(true);
   startsAfter<ServerFeaturePhase>();
@@ -48,10 +47,10 @@ void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "alert the user if new versions are available",
                      new BooleanParameter(&_versionCheck),
                      arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Hidden));
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnSingle,
+                     arangodb::options::Flags::Hidden));
 }
 
 void FrontendFeature::prepare() {

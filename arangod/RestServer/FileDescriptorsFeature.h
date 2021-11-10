@@ -31,8 +31,7 @@ namespace arangodb {
 
 class FileDescriptorsFeature : public application_features::ApplicationFeature {
  public:
-  explicit FileDescriptorsFeature(
-      application_features::ApplicationServer& server);
+  explicit FileDescriptorsFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -47,3 +46,4 @@ class FileDescriptorsFeature : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 #endif
+

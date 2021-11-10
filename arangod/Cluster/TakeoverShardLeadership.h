@@ -43,3 +43,4 @@ class TakeoverShardLeadership : public ActionBase, public ShardDefinition {
 
 }  // namespace maintenance
 }  // namespace arangodb
+

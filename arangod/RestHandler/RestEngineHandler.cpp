@@ -23,21 +23,20 @@
 
 #include "RestEngineHandler.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEngineHandler::RestEngineHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestEngineHandler::RestEngineHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestEngineHandler::execute() {
@@ -45,8 +44,7 @@ RestStatus RestEngineHandler::execute() {
   auto const type = _request->requestType();
 
   if (type != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
@@ -68,8 +66,7 @@ void RestEngineHandler::handleGet() {
     return;
   }
 
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here

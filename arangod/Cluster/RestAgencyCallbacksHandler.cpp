@@ -36,8 +36,7 @@ using namespace arangodb::rest;
 
 RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response,
-    arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
+    GeneralResponse* response, arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
     : RestVocbaseBaseHandler(server, request, response),
       _agencyCallbackRegistry(agencyCallbackRegistry) {}
 
@@ -53,8 +52,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
   if (type != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
@@ -78,8 +76,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
     try {
       cb->refetchAndUpdate(true, false);
     } catch (arangodb::basics::Exception const& e) {
-      LOG_TOPIC("c3910", WARN, Logger::CLUSTER)
-          << "Error executing callback: " << e.message();
+      LOG_TOPIC("c3910", WARN, Logger::CLUSTER) << "Error executing callback: " << e.message();
     }
     resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   }

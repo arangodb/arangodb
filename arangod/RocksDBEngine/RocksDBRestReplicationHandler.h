@@ -25,6 +25,7 @@
 #pragma once
 
 #include "RestHandler/RestReplicationHandler.h"
+
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 
 namespace arangodb {
@@ -84,6 +85,7 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void adjustQuickKeysNumDocsLimit();
-#endif
+#endif  
 };
 }  // namespace arangodb
+

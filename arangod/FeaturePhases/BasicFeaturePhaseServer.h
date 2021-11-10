@@ -35,3 +35,4 @@ class BasicFeaturePhaseServer : public ApplicationFeaturePhase {
 
 }  // namespace application_features
 }  // namespace arangodb
+

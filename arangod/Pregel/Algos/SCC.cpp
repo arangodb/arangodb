@@ -22,10 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SCC.h"
-
 #include <atomic>
 #include <climits>
-
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
@@ -56,8 +54,7 @@ struct SCCComputation
     : public VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>> {
   SCCComputation() {}
 
-  void compute(
-      MessageIterator<SenderMessage<uint64_t>> const& messages) override {
+  void compute(MessageIterator<SenderMessage<uint64_t>> const& messages) override {
     if (isActive() == false) {
       // color was already determinded or vertex was trimmed
       return;
@@ -145,10 +142,10 @@ struct SCCComputation
   }
 };
 
-}  // namespace
+}
 
-VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
-SCC::createComputation(WorkerConfig const* config) const {
+VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* SCC::createComputation(
+    WorkerConfig const* config) const {
   return new SCCComputation();
 }
 
@@ -163,15 +160,13 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
 
   size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(arangodb::velocypack::Options const&,
-                      std::string const& documentId,
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& documentId,
                       arangodb::velocypack::Slice document, SCCValue& senders,
                       uint64_t& vertexIdRange) override {
     senders.vertexID = vertexIdRange++;
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           SCCValue const* ptr) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b, SCCValue const* ptr) const override {
     if (ptr->color != INT_MAX) {
       b.add(_resultField, VPackValue(ptr->color));
     } else {
@@ -216,14 +211,12 @@ struct SCCMasterContext : public MasterContext {
       } break;
 
       case SCCPhase::BACKWARD_TRAVERSAL_START:
-        LOG_TOPIC("fc62a", DEBUG, Logger::PREGEL)
-            << "Phase: BACKWARD_TRAVERSAL_START";
+        LOG_TOPIC("fc62a", DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_START";
         aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_REST);
         break;
 
       case SCCPhase::BACKWARD_TRAVERSAL_REST:
-        LOG_TOPIC("905b0", DEBUG, Logger::PREGEL)
-            << "Phase: BACKWARD_TRAVERSAL_REST";
+        LOG_TOPIC("905b0", DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_REST";
         bool const* converged = getAggregatedValue<bool>(kConverged);
         // continue until no more vertices are updated
         if (*converged == false) {

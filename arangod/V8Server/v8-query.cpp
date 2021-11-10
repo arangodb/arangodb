@@ -21,13 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-query.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Aql/Query.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
@@ -45,9 +38,15 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "v8-query.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -56,15 +55,13 @@ using namespace arangodb::basics;
 /// @brief run an AQL query and return the result as a V8 array
 ////////////////////////////////////////////////////////////////////////////////
 
-aql::QueryResultV8 AqlQuery(v8::Isolate* isolate,
-                            arangodb::LogicalCollection const* col,
-                            std::string const& aql,
-                            std::shared_ptr<VPackBuilder> const& bindVars) {
+aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection const* col,
+                            std::string const& aql, std::shared_ptr<VPackBuilder> const& bindVars) {
   TRI_ASSERT(col != nullptr);
 
-  auto query = arangodb::aql::Query::create(
-      transaction::V8Context::Create(col->vocbase(), true),
-      arangodb::aql::QueryString(aql), bindVars);
+  auto query = arangodb::aql::Query::create(transaction::V8Context::Create(col->vocbase(), true),
+                                            arangodb::aql::QueryString(aql),
+                                            bindVars);
 
   arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
   if (queryResult.result.fail()) {
@@ -99,22 +96,18 @@ static void EdgesQuery(TRI_edge_direction_e direction,
         TRI_V8_THROW_EXCEPTION_USAGE("outEdges(<vertices>)");
 
       case TRI_EDGE_ANY:
-      default: {
-        TRI_V8_THROW_EXCEPTION_USAGE("edges(<vertices>)");
-      }
+      default: { TRI_V8_THROW_EXCEPTION_USAGE("edges(<vertices>)"); }
     }
   }
 
-  auto buildFilter = [](TRI_edge_direction_e direction,
-                        std::string const& op) -> std::string {
+  auto buildFilter = [](TRI_edge_direction_e direction, std::string const& op) -> std::string {
     switch (direction) {
       case TRI_EDGE_IN:
         return "FILTER doc._to " + op + " @value";
       case TRI_EDGE_OUT:
         return "FILTER doc._from " + op + " @value";
       case TRI_EDGE_ANY:
-        return "FILTER doc._from " + op + " @value || doc._to " + op +
-               " @value";
+        return "FILTER doc._from " + op + " @value || doc._to " + op + " @value";
     }
 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -132,17 +125,15 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   }
 
   auto addOne = [isolate, &context](VPackBuilder* builder,
-                                    v8::Handle<v8::Value> const val) {
+                   v8::Handle<v8::Value> const val) {
     if (val->IsString() || val->IsStringObject()) {
       builder->add(VPackValue(TRI_ObjectToString(isolate, val)));
     } else if (val->IsObject()) {
       v8::Handle<v8::Object> obj =
           val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
-      if (TRI_HasProperty(context, isolate, obj,
-                          StaticStrings::IdString.c_str())) {
+      if (TRI_HasProperty(context, isolate, obj, StaticStrings::IdString.c_str())) {
         builder->add(VPackValue(TRI_ObjectToString(
-            isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STD_STRING(
-                                             isolate, StaticStrings::IdString))
+            isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::IdString))
                          .FromMaybe(v8::Local<v8::Value>()))));
       } else {
         builder->add(VPackValue(""));
@@ -164,8 +155,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
     v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(args[0]);
     uint32_t n = arr->Length();
     for (uint32_t i = 0; i < n; ++i) {
-      addOne(bindVars.get(),
-             arr->Get(context, i).FromMaybe(v8::Local<v8::Value>()));
+      addOne(bindVars.get(), arr->Get(context, i).FromMaybe(v8::Local<v8::Value>()));
     }
     bindVars->close();
   } else {
@@ -209,10 +199,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const collectionName(collection->name());
 
-  auto transactionContext =
-      transaction::V8Context::Create(collection->vocbase(), true);
-  SingleCollectionTransaction trx(transactionContext, *collection,
-                                  AccessMode::Type::READ);
+  auto transactionContext = transaction::V8Context::Create(collection->vocbase(), true);
+  SingleCollectionTransaction trx(transactionContext, *collection, AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -221,15 +209,13 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // copy default options
   VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler =
-      transactionContext->orderCustomTypeHandler();
+  resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler();
 
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
-
+  
   // We directly read the entire cursor. so batchsize == limit
-  auto iterator = trx.indexScan(
-      collectionName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+  auto iterator = trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments(
       [&resultBuilder](LocalDocumentId const&, VPackSlice slice) {
@@ -251,16 +237,11 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   auto documents = TRI_VPackToV8(isolate, docs, &resultOptions);
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "documents"), documents)
-      .FromMaybe(false);
-  result
-      ->Set(context, TRI_V8_ASCII_STRING(isolate, "total"),
-            v8::Number::New(isolate, static_cast<double>(docs.length())))
-      .FromMaybe(false);
-  result
-      ->Set(context, TRI_V8_ASCII_STRING(isolate, "count"),
-            v8::Number::New(isolate, static_cast<double>(docs.length())))
-      .FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "documents"), documents).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "total"),
+              v8::Number::New(isolate, static_cast<double>(docs.length()))).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "count"),
+              v8::Number::New(isolate, static_cast<double>(docs.length()))).FromMaybe(false);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -288,10 +269,8 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const collectionName(col->name());
 
-  auto transactionContext =
-      transaction::V8Context::Create(col->vocbase(), true);
-  SingleCollectionTransaction trx(transactionContext, *col,
-                                  AccessMode::Type::READ);
+  auto transactionContext = transaction::V8Context::Create(col->vocbase(), true);
+  SingleCollectionTransaction trx(transactionContext, *col, AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -321,8 +300,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // copy default options
   VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler =
-      transactionContext->orderCustomTypeHandler();
+  resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler();
   TRI_V8_RETURN(TRI_VPackToV8(isolate, doc.at(0), &resultOptions));
   TRI_V8_TRY_CATCH_END
 }
@@ -331,8 +309,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief was docuBlock collectionChecksum
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ChecksumCollection(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
@@ -352,21 +329,20 @@ static void JS_ChecksumCollection(
       withData = TRI_ObjectToBoolean(isolate, args[1]);
     }
   }
-
+  
   uint64_t checksum;
   RevisionId revId;
 
-  Result r = methods::Collections::checksum(*col, withRevisions, withData,
-                                            checksum, revId);
+  Result r = methods::Collections::checksum(*col, withRevisions,
+                                            withData, checksum, revId);
 
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
-
+  
   v8::Local<v8::Object> obj = v8::Object::New(isolate);
   obj->Set(context, TRI_V8_ASCII_STRING(isolate, "checksum"),
-           TRI_V8_ASCII_STD_STRING(isolate, std::to_string(checksum)))
-      .FromMaybe(false);
+           TRI_V8_ASCII_STD_STRING(isolate, std::to_string(checksum))).FromMaybe(false);
   obj->Set(context, TRI_V8_ASCII_STRING(isolate, "revision"),
            TRI_V8_ASCII_STD_STRING(isolate, revId.toString()))
       .FromMaybe(false);
@@ -435,8 +411,8 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8ToVPack(isolate, keys, args[0], false);
 
   bindVars->add(VPackValue("keys"));
-  arangodb::aql::BindParameters::stripCollectionNames(
-      keys.slice(), collection->name(), *bindVars.get());
+  arangodb::aql::BindParameters::stripCollectionNames(keys.slice(), collection->name(),
+                                                      *bindVars.get());
   bindVars->close();
 
   std::string const queryString(
@@ -446,10 +422,7 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (!queryResult.v8Data.IsEmpty()) {
-    result
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, "documents"),
-              queryResult.v8Data)
-        .FromMaybe(false);
+    result->Set(context, TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.v8Data).FromMaybe(false);
   }
 
   TRI_V8_RETURN(result);
@@ -509,14 +482,10 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result
-      ->Set(context, TRI_V8_ASCII_STRING(isolate, "removed"),
-            v8::Number::New(isolate, static_cast<double>(removed)))
-      .FromMaybe(false);
-  result
-      ->Set(context, TRI_V8_ASCII_STRING(isolate, "ignored"),
-            v8::Number::New(isolate, static_cast<double>(ignored)))
-      .FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "removed"),
+              v8::Number::New(isolate, static_cast<double>(removed))).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "ignored"),
+              v8::Number::New(isolate, static_cast<double>(ignored))).FromMaybe(false);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -544,24 +513,18 @@ void TRI_InitV8Queries(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
                        TRI_V8_ASCII_STRING(isolate, "ANY"), JS_AnyQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
-                       TRI_V8_ASCII_STRING(isolate, "checksum"),
-                       JS_ChecksumCollection);
+                       TRI_V8_ASCII_STRING(isolate, "checksum"), JS_ChecksumCollection);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
-                       TRI_V8_ASCII_STRING(isolate, "EDGES"), JS_EdgesQuery,
-                       true);
+                       TRI_V8_ASCII_STRING(isolate, "EDGES"), JS_EdgesQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
-                       TRI_V8_ASCII_STRING(isolate, "INEDGES"), JS_InEdgesQuery,
-                       true);
+                       TRI_V8_ASCII_STRING(isolate, "INEDGES"), JS_InEdgesQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
-                       TRI_V8_ASCII_STRING(isolate, "OUTEDGES"),
-                       JS_OutEdgesQuery, true);
+                       TRI_V8_ASCII_STRING(isolate, "OUTEDGES"), JS_OutEdgesQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
-                       TRI_V8_ASCII_STRING(isolate, "lookupByKeys"),
-                       JS_LookupByKeys,
+                       TRI_V8_ASCII_STRING(isolate, "lookupByKeys"), JS_LookupByKeys,
                        true);  // an alias for .documents
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
-                       TRI_V8_ASCII_STRING(isolate, "documents"),
-                       JS_LookupByKeys, true);
+                       TRI_V8_ASCII_STRING(isolate, "documents"), JS_LookupByKeys, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
                        TRI_V8_ASCII_STRING(isolate, "removeByKeys"),
                        JS_RemoveByKeys, true);

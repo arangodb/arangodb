@@ -37,3 +37,4 @@ class RestAdminExecuteHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus execute() override;
 };
 }  // namespace arangodb
+

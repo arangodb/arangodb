@@ -23,10 +23,10 @@
 
 #pragma once
 
-#include <cstring>
-
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+
+#include <cstring>
 
 namespace arangodb {
 
@@ -46,9 +46,7 @@ struct AccessMode {
 
   static bool isWrite(Type type) noexcept { return type == Type::WRITE; }
 
-  static bool isExclusive(Type type) noexcept {
-    return type == Type::EXCLUSIVE;
-  }
+  static bool isExclusive(Type type) noexcept { return type == Type::EXCLUSIVE; }
 
   static bool isWriteOrExclusive(Type type) noexcept {
     return isWrite(type) || isExclusive(type);
@@ -94,7 +92,7 @@ struct AccessMode {
 }  // namespace arangodb
 
 namespace std {
-template<>
+template <>
 struct hash<arangodb::AccessMode::Type> {
   size_t operator()(arangodb::AccessMode::Type const& value) const noexcept {
     return static_cast<size_t>(value);

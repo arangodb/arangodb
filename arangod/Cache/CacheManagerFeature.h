@@ -29,8 +29,7 @@
 
 namespace arangodb {
 
-class CacheManagerFeature final
-    : public application_features::ApplicationFeature {
+class CacheManagerFeature final : public application_features::ApplicationFeature {
  public:
   explicit CacheManagerFeature(application_features::ApplicationServer& server);
   ~CacheManagerFeature();
@@ -54,3 +53,4 @@ class CacheManagerFeature final
 };
 
 }  // namespace arangodb
+

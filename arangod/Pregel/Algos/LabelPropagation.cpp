@@ -22,9 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LabelPropagation.h"
-
 #include <cmath>
-
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
@@ -107,8 +105,8 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
   }
 };
 
-VertexComputation<LPValue, int8_t, uint64_t>*
-LabelPropagation::createComputation(WorkerConfig const* config) const {
+VertexComputation<LPValue, int8_t, uint64_t>* LabelPropagation::createComputation(
+    WorkerConfig const* config) const {
   return new LPComputation();
 }
 
@@ -122,15 +120,13 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   size_t estimatedVertexSize() const override { return sizeof(LPValue); }
   size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(arangodb::velocypack::Options const&,
-                      std::string const& /*documentId*/,
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/, LPValue& value,
                       uint64_t& vertexIdRange) override {
     value.currentCommunity = vertexIdRange++;
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           LPValue const* ptr) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b, LPValue const* ptr) const override {
     b.add(_resultField, VPackValue(ptr->currentCommunity));
     // b.add("stabilizationRounds", VPackValue(ptr->stabilizationRounds));
     return true;

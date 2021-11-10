@@ -48,8 +48,7 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   void generateUserResult(rest::ResponseCode code,
                           velocypack::Builder const& doc);
 
-  void generateDatabaseResult(auth::UserManager*, std::string const& user,
-                              bool full);
+  void generateDatabaseResult(auth::UserManager*, std::string const& user, bool full);
 
   RestStatus getRequest(auth::UserManager*);
   RestStatus postRequest(auth::UserManager*);
@@ -58,3 +57,4 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   RestStatus deleteRequest(auth::UserManager*);
 };
 }  // namespace arangodb
+

@@ -23,14 +23,14 @@
 
 #include "Cache/Metadata.h"
 
-#include <algorithm>
-#include <atomic>
-#include <cstdint>
-
 #include "Basics/debugging.h"
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
 #include "Logger/LogMacros.h"
+
+#include <algorithm>
+#include <atomic>
+#include <cstdint>
 
 namespace arangodb::cache {
 
@@ -108,8 +108,7 @@ bool Metadata::adjustUsageIfAllowed(std::int64_t usageChange) noexcept {
       return false;
     }
 
-    bool success = usage.compare_exchange_weak(expected, desired,
-                                               std::memory_order_acq_rel,
+    bool success = usage.compare_exchange_weak(expected, desired, std::memory_order_acq_rel,
                                                std::memory_order_relaxed);
     if (success) {
       break;
@@ -119,8 +118,7 @@ bool Metadata::adjustUsageIfAllowed(std::int64_t usageChange) noexcept {
   return true;
 }
 
-bool Metadata::adjustLimits(std::uint64_t softLimit,
-                            std::uint64_t hardLimit) noexcept {
+bool Metadata::adjustLimits(std::uint64_t softLimit, std::uint64_t hardLimit) noexcept {
   TRI_ASSERT(_lock.isLockedWrite());
   uint64_t fixed = tableSize + fixedSize + Manager::cacheRecordOverhead;
   auto approve = [&]() -> bool {
@@ -138,8 +136,7 @@ bool Metadata::adjustLimits(std::uint64_t softLimit,
   }
 
   // special case: finalize shrinking case above
-  if ((softLimit == Cache::minSize) && (hardLimit == Cache::minSize) &&
-      (usage <= hardLimit)) {
+  if ((softLimit == Cache::minSize) && (hardLimit == Cache::minSize) && (usage <= hardLimit)) {
     return approve();
   }
 
@@ -150,8 +147,7 @@ bool Metadata::adjustLimits(std::uint64_t softLimit,
   }
 
   // general case: finish shrinking
-  if ((softLimit == softUsageLimit) && (softLimit == hardLimit) &&
-      (usage <= hardLimit)) {
+  if ((softLimit == softUsageLimit) && (softLimit == hardLimit) && (usage <= hardLimit)) {
     return approve();
   }
 
@@ -180,16 +176,14 @@ std::uint64_t Metadata::newLimit() const noexcept {
 
 bool Metadata::migrationAllowed(std::uint64_t newTableSize) noexcept {
   TRI_ASSERT(_lock.isLocked());
-  return (hardUsageLimit + fixedSize + newTableSize +
-              Manager::cacheRecordOverhead <=
+  return (hardUsageLimit + fixedSize + newTableSize + Manager::cacheRecordOverhead <=
           std::min(deservedSize, maxSize));
 }
 
 void Metadata::changeTable(std::uint64_t newTableSize) noexcept {
   TRI_ASSERT(_lock.isLockedWrite());
   tableSize = newTableSize;
-  allocatedSize =
-      hardUsageLimit + fixedSize + tableSize + Manager::cacheRecordOverhead;
+  allocatedSize = hardUsageLimit + fixedSize + tableSize + Manager::cacheRecordOverhead;
 }
 
 }  // namespace arangodb::cache

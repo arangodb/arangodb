@@ -32,8 +32,7 @@ struct Variable;
 namespace ast {
 
 /// @brief determines the to-be-kept attribute of an INTO expression
-auto getReferencedAttributesForKeep(AstNode const* node,
-                                    const Variable* searchVariable,
+auto getReferencedAttributesForKeep(AstNode const* node, const Variable* searchVariable,
                                     bool& isSafeForOptimization)
     -> std::vector<std::string>;
 

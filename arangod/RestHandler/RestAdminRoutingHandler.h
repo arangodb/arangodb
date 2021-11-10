@@ -41,3 +41,4 @@ class RestAdminRoutingHandler : public RestVocbaseBaseHandler {
   void reloadRouting();
 };
 }  // namespace arangodb
+

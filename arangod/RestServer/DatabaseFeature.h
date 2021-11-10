@@ -28,8 +28,8 @@
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Utils/VersionTracker.h"
-#include "VocBase/Methods/Databases.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/Methods/Databases.h"
 
 struct TRI_vocbase_t;
 
@@ -38,14 +38,14 @@ namespace application_features {
 class ApplicationServer;
 }
 class LogicalCollection;
-}  // namespace arangodb
+}
 
 namespace arangodb {
 namespace velocypack {
-class Builder;  // forward declaration
-class Slice;    // forward declaration
-}  // namespace velocypack
-}  // namespace arangodb
+class Builder; // forward declaration
+class Slice; // forward declaration
+} // velocypack
+} //arangodb
 
 namespace arangodb {
 
@@ -61,9 +61,7 @@ class DatabaseManagerThread final : public Thread {
 
  private:
   // how long will the thread pause between iterations
-  static constexpr unsigned long waitTime() {
-    return static_cast<unsigned long>(500U * 1000U);
-  }
+  static constexpr unsigned long waitTime() { return static_cast<unsigned long>(500U * 1000U); }
 };
 
 class DatabaseFeature : public application_features::ApplicationFeature {
@@ -95,7 +93,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void recoveryDone();
 
   /// @brief whether or not the DatabaseFeature has started (and thus has
-  /// completely populated its lists of databases and collections from
+  /// completely populated its lists of databases and collections from 
   /// persistent storage)
   bool started() const noexcept;
 
@@ -119,21 +117,19 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::vector<std::string> getDatabaseNames();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
-  Result createDatabase(arangodb::CreateDatabaseInfo&&, TRI_vocbase_t*& result);
+  Result createDatabase(arangodb::CreateDatabaseInfo&& , TRI_vocbase_t*& result);
 
   ErrorCode dropDatabase(std::string const& name, bool removeAppsDirectory);
   ErrorCode dropDatabase(TRI_voc_tick_t id, bool removeAppsDirectory);
 
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
-                 std::function<bool(arangodb::LogicalCollection const*)> const&
-                     nameFilter);
+                 std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   TRI_vocbase_t* useDatabase(std::string const& name) const;
   TRI_vocbase_t* useDatabase(TRI_voc_tick_t id) const;
 
   TRI_vocbase_t* lookupDatabase(std::string const& name) const;
-  void enumerateDatabases(
-      std::function<void(TRI_vocbase_t& vocbase)> const& func);
+  void enumerateDatabases(std::function<void(TRI_vocbase_t& vocbase)> const& func);
   std::string translateCollectionName(std::string const& dbName,
                                       std::string const& collectionName);
 
@@ -144,14 +140,11 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool forceSyncProperties() const { return _forceSyncProperties; }
   void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
-
+  
   /// @brief whether or not extended names for databases can be used
   bool extendedNamesForDatabases() const { return _extendedNamesForDatabases; }
-  /// @brief will be called only during startup when reading stored value from
-  /// storage engine
-  void extendedNamesForDatabases(bool value) {
-    _extendedNamesForDatabases = value;
-  }
+  /// @brief will be called only during startup when reading stored value from storage engine
+  void extendedNamesForDatabases(bool value) { _extendedNamesForDatabases = value; }
 
   /// @brief currently always false, until feature is implemented
   bool extendedNamesForCollections() const { return false; }
@@ -164,7 +157,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void enableUpgrade() { _upgrade = true; }
   void disableUpgrade() { _upgrade = false; }
   void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
-
+  
   struct DatabasesLists {
     std::unordered_map<std::string, TRI_vocbase_t*> _databases;
     std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
@@ -173,8 +166,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   static TRI_vocbase_t& getCalculationVocbase();
 
  private:
-  static void initCalculationVocbase(
-      application_features::ApplicationServer& server);
+  static void initCalculationVocbase(application_features::ApplicationServer& server);
 
   void stopAppliers();
 
@@ -184,8 +176,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   /// @brief create app subdirectory for a database
   ErrorCode createApplicationDirectory(std::string const& name,
-                                       std::string const& basePath,
-                                       bool removeExisting);
+                                       std::string const& basePath, bool removeExisting);
 
   /// @brief iterate over all databases in the databases directory and open them
   ErrorCode iterateDatabases(arangodb::velocypack::Slice const& databases);
@@ -238,3 +229,4 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
+

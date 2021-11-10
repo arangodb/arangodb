@@ -117,7 +117,7 @@ struct WCCValue {
   std::unordered_set<PregelID> inboundNeighbors;
 };
 
-template<typename T>
+template <typename T>
 struct SenderMessage {
   SenderMessage() = default;
   SenderMessage(PregelID pid, T const& val)
@@ -127,7 +127,7 @@ struct SenderMessage {
   T value;
 };
 
-template<typename T>
+template <typename T>
 struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
   static_assert(std::is_arithmetic<T>::value, "Message type must be numeric");
   SenderMessageFormat() {}
@@ -137,8 +137,7 @@ struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
     senderVal.senderId.key = (*(++array)).copyString();
     senderVal.value = (*(++array)).getNumber<T>();
   }
-  void addValue(VPackBuilder& arrayBuilder,
-                SenderMessage<T> const& senderVal) const override {
+  void addValue(VPackBuilder& arrayBuilder, SenderMessage<T> const& senderVal) const override {
     arrayBuilder.openArray();
     arrayBuilder.add(VPackValue(senderVal.senderId.shard));
     arrayBuilder.add(VPackValuePair(senderVal.senderId.key.data(),

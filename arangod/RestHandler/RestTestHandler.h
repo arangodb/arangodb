@@ -32,8 +32,7 @@ namespace arangodb {
 
 class RestTestHandler : public RestVocbaseBaseHandler {
  public:
-  RestTestHandler(application_features::ApplicationServer&, GeneralRequest*,
-                  GeneralResponse*);
+  RestTestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
   ~RestTestHandler();
 
  public:
@@ -46,3 +45,4 @@ class RestTestHandler : public RestVocbaseBaseHandler {
   ResultT<RequestLane> requestLaneFromString(const std::string& str);
 };
 }  // namespace arangodb
+

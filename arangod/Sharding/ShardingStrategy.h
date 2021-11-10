@@ -39,8 +39,7 @@ class ShardingStrategy {
   ShardingStrategy& operator=(ShardingStrategy const&) = delete;
 
  public:
-  typedef std::function<std::unique_ptr<ShardingStrategy>(ShardingInfo*)>
-      FactoryFunction;
+  typedef std::function<std::unique_ptr<ShardingStrategy>(ShardingInfo*)> FactoryFunction;
 
   ShardingStrategy() = default;
   virtual ~ShardingStrategy() = default;
@@ -71,10 +70,10 @@ class ShardingStrategy {
   /// `_key` is the one and only sharding attribute.
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual ErrorCode getResponsibleShard(
-      arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
-      bool& usesDefaultShardKeys,
-      arangodb::velocypack::StringRef const& key) = 0;
+  virtual ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
+                                        ShardID& shardID, bool& usesDefaultShardKeys,
+                                        arangodb::velocypack::StringRef const& key) = 0;
 };
 
 }  // namespace arangodb
+

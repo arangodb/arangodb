@@ -24,18 +24,18 @@
 
 #pragma once
 
-#include <string>
-#include <unordered_set>
-
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Basics/ResultT.h"
 #include "Cluster/ClusterTypes.h"
+#include "Basics/ResultT.h"
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "StorageEngine/ReplicationIterator.h"
+
+#include <string>
+#include <unordered_set>
 
 namespace arangodb {
 class ClusterInfo;
@@ -334,10 +334,11 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
     std::shared_ptr<LogicalCollection> collection;
     std::unique_ptr<ReplicationIterator> iter;
   };
-
+  
   bool prepareRevisionOperation(RevisionOperationContext&);
 
  private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection
   //////////////////////////////////////////////////////////////////////////////
@@ -345,12 +346,13 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result processRestoreCollection(VPackSlice const&, bool overwrite, bool force,
                                   bool ignoreDistributeShardsLikeErrors);
 
+
   /// @brief helper function for processRestoreCoordinatorAnalyzersBatch() and
   /// processRestoreUsersBatch().
-  Result parseBatchForSystemCollection(
-      std::string const& collectionName, VPackBuilder& documentsToInsert,
-      std::unordered_set<std::string>& documentsToRemove,
-      bool generateNewRevisionIds);
+  Result parseBatchForSystemCollection(std::string const& collectionName,
+                                       VPackBuilder& documentsToInsert,
+                                       std::unordered_set<std::string>& documentsToRemove,
+                                       bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _analyzers collection in cluster
@@ -368,9 +370,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreDataBatch(transaction::Methods& trx,
-                                 std::string const& colName,
-                                 bool generateNewRevisionIds);
+  Result processRestoreDataBatch(transaction::Methods& trx, std::string const& colName, bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection
@@ -439,9 +439,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        before it was actually registered and therefor only seldomly
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::unordered_map<std::string,
-                            std::chrono::time_point<std::chrono::steady_clock>>
-      _tombstones;
+  static std::unordered_map<std::string, std::chrono::time_point<std::chrono::steady_clock>> _tombstones;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -509,11 +507,11 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void handleCommandDump() = 0;
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the revision tree for a given collection, if available
   //////////////////////////////////////////////////////////////////////////////
-
+  
   virtual void handleCommandRevisionTree() = 0;
 
  private:
@@ -533,8 +531,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   Result createBlockingTransaction(TransactionId tid, LogicalCollection& col,
                                    double ttl, AccessMode::Type access,
-                                   RebootId const& rebootId,
-                                   std::string const& serverId);
+                                   RebootId const& rebootId, std::string const& serverId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Test if we already have the read-lock

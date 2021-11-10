@@ -23,19 +23,19 @@
 
 #pragma once
 
+#include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
+
+#include "V8/v8-globals.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
 
-#include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
-#include "V8/v8-globals.h"
-
 namespace arangodb {
 
 namespace velocypack {
-template<typename T>
-class Buffer;
+template <typename T> class Buffer;
 }
 
 class CacheKeySpace {
@@ -43,12 +43,9 @@ class CacheKeySpace {
   v8::Handle<v8::Value> keyGet(v8::Isolate* isolate, std::string const& key);
   bool keySet(v8::Isolate* isolate, std::string const& key,
               v8::Handle<v8::Value> const& value, bool replace);
-
  private:
   arangodb::basics::ReadWriteLock _lock;
-  std::unordered_map<std::string,
-                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-      _hash;
+  std::unordered_map<std::string, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>> _hash;
 };
 
 struct DatabaseJavaScriptCache {
@@ -58,9 +55,10 @@ struct DatabaseJavaScriptCache {
   std::unordered_map<std::string, std::unique_ptr<CacheKeySpace>> keyspaces;
 };
 
-}  // namespace arangodb
+} // namespace arangodb
 
 struct TRI_vocbase_t;
 
 /// @brief creates the user structures functions
 void TRI_InitV8UserStructures(v8::Isolate* isolate, v8::Handle<v8::Context>);
+

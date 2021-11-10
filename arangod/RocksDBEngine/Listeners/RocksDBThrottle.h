@@ -68,14 +68,11 @@ class RocksDBThrottle : public rocksdb::EventListener {
   RocksDBThrottle();
   virtual ~RocksDBThrottle();
 
-  void OnFlushBegin(rocksdb::DB* db,
-                    const rocksdb::FlushJobInfo& flush_job_info) override;
+  void OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
 
-  void OnFlushCompleted(rocksdb::DB* db,
-                        const rocksdb::FlushJobInfo& flush_job_info) override;
+  void OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
 
-  void OnCompactionCompleted(rocksdb::DB* db,
-                             const rocksdb::CompactionJobInfo& ci) override;
+  void OnCompactionCompleted(rocksdb::DB* db, const rocksdb::CompactionJobInfo& ci) override;
 
   void SetFamilies(std::vector<rocksdb::ColumnFamilyHandle*>& Families) {
     _families = Families;
@@ -126,17 +123,17 @@ class RocksDBThrottle : public rocksdb::EventListener {
   rocksdb::DBImpl* _internalRocksDB;
   std::future<void> _threadFuture;
 
-  /// state of the throttle. the state will always be advanced from a
-  /// lower to a higher number (e.g. from NotStarted to Starting,
+  /// state of the throttle. the state will always be advanced from a 
+  /// lower to a higher number (e.g. from NotStarted to Starting, 
   /// from Starting to Running etc.) but never vice versa. It is possible
   /// jump from NotStarted to Done directly, but otherwise the sequence
   /// is NotStarted => Starting => Running => ShuttingDown => Done
   enum class ThrottleState {
-    NotStarted = 1,    // not started, this is the state at the beginning
-    Starting = 2,      // while background thread is started
-    Running = 3,       // throttle is operating normally
-    ShuttingDown = 4,  // throttle is in shutdown
-    Done = 5,          // throttle is shutdown
+    NotStarted    = 1, // not started, this is the state at the beginning
+    Starting      = 2, // while background thread is started
+    Running       = 3, // throttle is operating normally
+    ShuttingDown  = 4, // throttle is in shutdown
+    Done          = 5, // throttle is shutdown
   };
   std::atomic<ThrottleState> _throttleState;
 

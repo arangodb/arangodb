@@ -23,9 +23,6 @@
 
 #include "UpsertModifier.h"
 
-#include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ModificationExecutor.h"
@@ -37,9 +34,13 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
-#include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <velocypack/Collection.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -53,11 +54,9 @@ UpsertModifier::OutputIterator::OutputIterator(UpsertModifier const& modifier)
       _updateResultsIterator(modifier.getUpdateResultsIterator()) {}
 
 UpsertModifier::OutputIterator& UpsertModifier::OutputIterator::next() {
-  if (_operationsIterator->first ==
-      UpsertModifier::OperationType::UpdateReturnIfAvailable) {
+  if (_operationsIterator->first == UpsertModifier::OperationType::UpdateReturnIfAvailable) {
     ++_updateResultsIterator;
-  } else if (_operationsIterator->first ==
-             UpsertModifier::OperationType::InsertReturnIfAvailable) {
+  } else if (_operationsIterator->first == UpsertModifier::OperationType::InsertReturnIfAvailable) {
     ++_insertResultsIterator;
   }
   ++_operationsIterator;
@@ -68,8 +67,8 @@ UpsertModifier::OutputIterator& UpsertModifier::OutputIterator::operator++() {
   return next();
 }
 
-bool UpsertModifier::OutputIterator::operator!=(
-    UpsertModifier::OutputIterator const& other) const noexcept {
+bool UpsertModifier::OutputIterator::operator!=(UpsertModifier::OutputIterator const& other) const
+    noexcept {
   return _operationsIterator != other._operationsIterator;
 }
 
@@ -83,11 +82,9 @@ ModifierOutput UpsertModifier::OutputIterator::operator*() const {
 
     switch (_operationsIterator->first) {
       case UpsertModifier::OperationType::CopyRow:
-        return ModifierOutput{_operationsIterator->second,
-                              ModifierOutput::Type::CopyRow};
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
       case UpsertModifier::OperationType::SkipRow:
-        return ModifierOutput{_operationsIterator->second,
-                              ModifierOutput::Type::SkipRow};
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
       case UpsertModifier::OperationType::UpdateReturnIfAvailable:
         elm = *_updateResultsIterator;
         break;
@@ -96,45 +93,36 @@ ModifierOutput UpsertModifier::OutputIterator::operator*() const {
         break;
     }
 
-    bool error =
-        VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+    bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
     if (error) {
-      return ModifierOutput{_operationsIterator->second,
-                            ModifierOutput::Type::SkipRow};
+      return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
     } else {
-      return ModifierOutput{_operationsIterator->second,
-                            ModifierOutput::Type::ReturnIfRequired,
-                            ModificationExecutorHelpers::getDocumentOrNull(
-                                elm, StaticStrings::Old),
-                            ModificationExecutorHelpers::getDocumentOrNull(
-                                elm, StaticStrings::New)};
+      return ModifierOutput{
+          _operationsIterator->second, ModifierOutput::Type::ReturnIfRequired,
+          ModificationExecutorHelpers::getDocumentOrNull(elm, StaticStrings::Old),
+          ModificationExecutorHelpers::getDocumentOrNull(elm, StaticStrings::New)};
     }
   } else {
     switch (_operationsIterator->first) {
       case UpsertModifier::OperationType::UpdateReturnIfAvailable:
       case UpsertModifier::OperationType::InsertReturnIfAvailable:
       case UpsertModifier::OperationType::CopyRow:
-        return ModifierOutput{_operationsIterator->second,
-                              ModifierOutput::Type::CopyRow};
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
       case UpsertModifier::OperationType::SkipRow:
-        return ModifierOutput{_operationsIterator->second,
-                              ModifierOutput::Type::SkipRow};
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
     }
   }
 
   // shut up compiler
   TRI_ASSERT(false);
-  return ModifierOutput{_operationsIterator->second,
-                        ModifierOutput::Type::SkipRow};
+  return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
 }
 
-typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::begin()
-    const {
+typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::begin() const {
   return UpsertModifier::OutputIterator(this->_modifier);
 }
 
-typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::end()
-    const {
+typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::end() const {
   auto it = UpsertModifier::OutputIterator(this->_modifier);
   it._operationsIterator = _modifier._operations.end();
 
@@ -143,7 +131,7 @@ typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::end()
 
 ModificationExecutorResultState UpsertModifier::resultState() const noexcept {
   std::lock_guard<std::mutex> guard(_resultStateMutex);
-  return _resultState;
+  return _resultState; 
 }
 
 void UpsertModifier::reset() {
@@ -151,8 +139,7 @@ void UpsertModifier::reset() {
   {
     std::unique_lock<std::mutex> guard(_resultStateMutex, std::try_to_lock);
     TRI_ASSERT(guard.owns_lock());
-    TRI_ASSERT(_resultState !=
-               ModificationExecutorResultState::WaitingForResult);
+    TRI_ASSERT(_resultState != ModificationExecutorResultState::WaitingForResult);
   }
 #endif
 
@@ -172,11 +159,9 @@ void UpsertModifier::resetResult() noexcept {
 }
 
 UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
-    ModificationExecutorAccumulator& accu, AqlValue const& inDoc,
-    AqlValue const& updateDoc) {
+    ModificationExecutorAccumulator& accu, AqlValue const& inDoc, AqlValue const& updateDoc) {
   if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
-    CollectionNameResolver const& collectionNameResolver{
-        _infos._query.resolver()};
+    CollectionNameResolver const& collectionNameResolver{_infos._query.resolver()};
 
     // We are only interested in the key from `inDoc`
     std::string key;
@@ -194,17 +179,14 @@ UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
       _keyDocBuilder.clear();
 
       buildKeyDocument(_keyDocBuilder, key);
-      auto merger = VPackCollection::merge(toUpdate, _keyDocBuilder.slice(),
-                                           false, false);
+      auto merger = VPackCollection::merge(toUpdate, _keyDocBuilder.slice(), false, false);
       accu.add(merger.slice());
 
       return UpsertModifier::OperationType::UpdateReturnIfAvailable;
     } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-          std::string("expecting 'Object', got: ") +
-              updateDoc.slice().typeName() +
-              std::string(" while handling: UPSERT"));
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+                                     std::string("expecting 'Object', got: ") +
+                                         updateDoc.slice().typeName() + std::string(" while handling: UPSERT"));
       return UpsertModifier::OperationType::SkipRow;
     }
   } else {
@@ -212,8 +194,8 @@ UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
   }
 }
 
-UpsertModifier::OperationType UpsertModifier::insertCase(
-    ModificationExecutorAccumulator& accu, AqlValue const& insertDoc) {
+UpsertModifier::OperationType UpsertModifier::insertCase(ModificationExecutorAccumulator& accu,
+                                                         AqlValue const& insertDoc) {
   if (insertDoc.isObject()) {
     auto const& toInsert = insertDoc.slice();
     if (writeRequired(_infos, toInsert, StaticStrings::Empty)) {
@@ -278,13 +260,11 @@ ExecutionState UpsertModifier::transact(transaction::Methods& trx) {
 
   switch (_resultState) {
     case ModificationExecutorResultState::WaitingForResult:
-      // WAITING is not yet implemented for UpsertModifier, we shouldn't get
-      // here
+      // WAITING is not yet implemented for UpsertModifier, we shouldn't get here
       TRI_ASSERT(false);
       return ExecutionState::WAITING;
     case ModificationExecutorResultState::HaveResult:
-      // WAITING is not yet implemented for UpsertModifier, we shouldn't get
-      // here
+      // WAITING is not yet implemented for UpsertModifier, we shouldn't get here
       TRI_ASSERT(false);
       return ExecutionState::DONE;
     case ModificationExecutorResultState::NoResult:
@@ -305,23 +285,22 @@ ExecutionState UpsertModifier::transact(transaction::Methods& trx) {
   auto toUpdate = _updateAccumulator.closeAndGetContents();
   if (toUpdate.isArray() && toUpdate.length() > 0) {
     if (_infos._isReplace) {
-      _updateResults =
-          trx.replace(_infos._aqlCollection->name(), toUpdate, _infos._options);
+      _updateResults = trx.replace(_infos._aqlCollection->name(),
+                                   toUpdate, _infos._options);
     } else {
-      _updateResults =
-          trx.update(_infos._aqlCollection->name(), toUpdate, _infos._options);
+      _updateResults = trx.update(_infos._aqlCollection->name(),
+                                  toUpdate, _infos._options);
     }
     throwOperationResultException(_infos, _updateResults);
   }
-
+  
   _resultState = ModificationExecutorResultState::HaveResult;
 
   return ExecutionState::DONE;
 }
 
 size_t UpsertModifier::nrOfDocuments() const {
-  return _insertAccumulator.nrOfDocuments() +
-         _updateAccumulator.nrOfDocuments();
+  return _insertAccumulator.nrOfDocuments() + _updateAccumulator.nrOfDocuments();
 }
 
 size_t UpsertModifier::nrOfOperations() const { return _operations.size(); }

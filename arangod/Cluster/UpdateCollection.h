@@ -42,3 +42,4 @@ class UpdateCollection : public ActionBase, public ShardDefinition {
 
 }  // namespace maintenance
 }  // namespace arangodb
+

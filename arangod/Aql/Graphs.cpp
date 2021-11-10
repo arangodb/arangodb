@@ -21,8 +21,6 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Graphs.h"
-
 #include <velocypack/Iterator.h>
 
 #include "Aql/Ast.h"
@@ -30,12 +28,12 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Graph.h"
+#include "Graphs.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast,
-                                           EdgeConditionBuilder const& other)
+EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast, EdgeConditionBuilder const& other)
     : _fromCondition(nullptr),
       _toCondition(nullptr),
       _modCondition(nullptr),
@@ -86,8 +84,7 @@ void EdgeConditionBuilder::swapSides(AstNode* cond) {
     // If used correctly this class guarantuees that the last element
     // of the nary-and is the _from or _to part and is exchangable.
     TRI_ASSERT(_modCondition->numMembers() > 0);
-    auto changeNode =
-        _modCondition->getMemberUnchecked(_modCondition->numMembers() - 1);
+    auto changeNode = _modCondition->getMemberUnchecked(_modCondition->numMembers() - 1);
     TRI_ASSERT(changeNode == _fromCondition || changeNode == _toCondition);
 #endif
     _modCondition->changeMember(_modCondition->numMembers() - 1, cond);
@@ -153,8 +150,7 @@ AstNode* EdgeConditionBuilderContainer::createEqCheck(AstNode const* access) {
   return node.release();
 }
 
-AstNode* EdgeConditionBuilderContainer::createAttributeAccess(
-    std::string const& attr) {
+AstNode* EdgeConditionBuilderContainer::createAttributeAccess(std::string const& attr) {
   auto node = std::make_unique<AstNode>(NODE_TYPE_ATTRIBUTE_ACCESS);
   node->addMember(_varNode);
   node->setStringValue(attr.c_str(), attr.length());

@@ -31,11 +31,10 @@ class QueryContext;
 
 class DocumentIndexExpressionContext final : public QueryExpressionContext {
  public:
-  DocumentIndexExpressionContext(transaction::Methods& trx, QueryContext& query,
+  DocumentIndexExpressionContext(transaction::Methods& trx,
+                                 QueryContext& query,
                                  AqlFunctionsInternalCache& cache,
-                                 AqlValue (*getValue)(void const* ctx,
-                                                      Variable const* var,
-                                                      bool doCopy),
+                                 AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
                                  void const* ctx);
 
   ~DocumentIndexExpressionContext() = default;
@@ -59,3 +58,4 @@ class DocumentIndexExpressionContext final : public QueryExpressionContext {
 
 }  // namespace aql
 }  // namespace arangodb
+

@@ -23,6 +23,10 @@
 
 #pragma once
 
+#include "Aql/AqlItemMatrix.h"
+#include "Aql/ExecutionBlock.h"
+#include "Aql/types.h"
+
 #include <Basics/Common.h>
 #include <Basics/Exceptions.h>
 
@@ -30,9 +34,6 @@
 #include <memory>
 
 #include "Aql/AqlItemBlockInputMatrix.h"
-#include "Aql/AqlItemMatrix.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/types.h"
 
 namespace arangodb {
 namespace aql {
@@ -40,7 +41,7 @@ namespace aql {
 class AqlItemBlock;
 class SharedAqlItemBlockPtr;
 enum class ExecutionState;
-template<BlockPassthrough>
+template <BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
 class SkipResult;
@@ -51,50 +52,34 @@ class SkipResult;
  *
  *
  * Class Description and Guarantees
- * - Will have a single DependencyProxy only. This DependencyProxy cannot be
- * PassThrough.
+ * - Will have a single DependencyProxy only. This DependencyProxy cannot be PassThrough.
  * - It will offer the following APIs:
  *   - fetchAllRows()
- *     => Will fetch all Rows from the DependencyProxy until a ShadowRow is
- * fetched
- *     => If any of the requests to DependencyProxy returns WAITING, this will
- * be forwarded.
- *     => If all rows have been Fetched, it will return DONE and an
- * AqlItemMatrix, the Matrix will return results
- *     => Any later call will return DONE and a nullptr. So make sure you keep
- * the Matrix.
+ *     => Will fetch all Rows from the DependencyProxy until a ShadowRow is fetched
+ *     => If any of the requests to DependencyProxy returns WAITING, this will be forwarded.
+ *     => If all rows have been Fetched, it will return DONE and an AqlItemMatrix, the Matrix will return results
+ *     => Any later call will return DONE and a nullptr. So make sure you keep the Matrix.
  *     => This state can be left only if the shadowRow is fetched.
  *   - preFetchNumberOfRows()
- *     => Will do the same as fetchAllRows, but NOT give out the data, it will
- * only hold it internally.
- *     => On response it will inform the caller on exactly how many Rows will be
- * returned until the next ShadowRow appears.
+ *     => Will do the same as fetchAllRows, but NOT give out the data, it will only hold it internally.
+ *     => On response it will inform the caller on exactly how many Rows will be returned until the next ShadowRow appears.
  *   - upstreamState()
  *     => Returns the last state of the dependencyProxy.
  *   - fetchShadowRow()
  *     => Can only be called after fetchAllRows()
- *     => It is supposed to pop the next shadowRow, namely the reason why
- * fetchAllRows() was done.
- *     => You should continue to call fetchShadowRow() until you get either DONE
- * or an invalid ShadowRow, as it could be possible that a higher level
- * ShadowRow is next
- *     => If this call returns DONE your query is DONE and you can be sure no
- * further Rows will be produced.
+ *     => It is supposed to pop the next shadowRow, namely the reason why fetchAllRows() was done.
+ *     => You should continue to call fetchShadowRow() until you get either DONE or an invalid ShadowRow, as it could be possible that a higher level ShadowRow is next
+ *     => If this call returns DONE your query is DONE and you can be sure no further Rows will be produced.
  *     => After this is called fetchAllRows() can return a new AqlMatrix again.
- *     => NOTE: If you have releveant ShadowRows in consecutive order, you are
- * required to call fetchAllRows() in between of them. (This is required for
- * COLLECT which needs to produce a row on 0 input).
+ *     => NOTE: If you have releveant ShadowRows in consecutive order, you are required to call fetchAllRows() in between of them. (This is required for COLLECT which needs to produce a row on 0 input).
  *
  *
- * - This class should be used if the Executor requires that ALL input is
- * produced before it can start to work, e.g. it gives guarantees on side
- * effects or needs to do Sorting.
+ * - This class should be used if the Executor requires that ALL input is produced before it can start to work, e.g. it gives guarantees on side effects or needs to do Sorting.
  */
 class AllRowsFetcher {
  private:
  public:
-  explicit AllRowsFetcher(
-      DependencyProxy<BlockPassthrough::Disable>& executionBlock);
+  explicit AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
   TEST_VIRTUAL ~AllRowsFetcher() = default;
 
   using DataRange = AqlItemBlockInputMatrix;
@@ -107,19 +92,16 @@ class AllRowsFetcher {
   /**
    * @brief Execute the given call stack
    *
-   * @param stack Call stack, on top of stack there is current subquery, bottom
-   * is the main query.
+   * @param stack Call stack, on top of stack there is current subquery, bottom is the main query.
    * @return std::tuple<ExecutionState, size_t, DataRange>
    *   ExecutionState => DONE, all queries are done, there will be no more
-   *   ExecutionState => HASMORE, there are more results for queries, might be
-   * on other subqueries ExecutionState => WAITING, we need to do I/O to solve
-   * the request, save local state and return WAITING to caller immediately
+   *   ExecutionState => HASMORE, there are more results for queries, might be on other subqueries
+   *   ExecutionState => WAITING, we need to do I/O to solve the request, save local state and return WAITING to caller immediately
    *
    *   size_t => Amount of documents skipped
    *   DataRange => Resulting data
    */
-  std::tuple<ExecutionState, SkipResult, DataRange> execute(
-      AqlCallStack& stack);
+  std::tuple<ExecutionState, SkipResult, DataRange> execute(AqlCallStack& stack);
 
   // only for ModificationNodes
   ExecutionState upstreamState();
@@ -140,3 +122,4 @@ class AllRowsFetcher {
 
 }  // namespace aql
 }  // namespace arangodb
+

@@ -33,8 +33,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-IoContext::IoThread::IoThread(application_features::ApplicationServer& server,
-                              IoContext& iocontext)
+IoContext::IoThread::IoThread(application_features::ApplicationServer& server, IoContext& iocontext)
     : Thread(server, "Io"), _iocontext(iocontext) {}
 
 IoContext::IoThread::IoThread(IoThread const& other)
@@ -48,7 +47,7 @@ void IoContext::IoThread::run() {
     _iocontext.io_context.run();
   } catch (std::exception const& ex) {
     LOG_TOPIC("6794f", WARN, Logger::THREADS)
-        << "caught exception in IO thread: " << ex.what();
+      << "caught exception in IO thread: " << ex.what();
   }
 }
 
@@ -75,7 +74,7 @@ IoContext::~IoContext() { stop(); }
 void IoContext::stop() {
   _work.reset();
   io_context.stop();
-  while (_thread.isRunning()) {
+  while(_thread.isRunning()) {
     std::this_thread::yield();
   }
 }

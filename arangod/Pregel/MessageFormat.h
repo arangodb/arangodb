@@ -23,18 +23,17 @@
 
 #pragma once
 
+#include <cstddef>
+#include "Basics/Common.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <cstddef>
-
-#include "Basics/Common.h"
-
 namespace arangodb {
 namespace pregel {
 
-template<typename M>
+template <typename M>
 struct MessageFormat {
   virtual ~MessageFormat() = default;
   virtual void unwrapValue(VPackSlice body, M& value) const = 0;
@@ -78,7 +77,7 @@ struct FloatMessageFormat : public MessageFormat<float> {
   }
 };*/
 
-template<typename M>
+template <typename M>
 struct NumberMessageFormat : public MessageFormat<M> {
   static_assert(std::is_arithmetic<M>::value, "Message type must be numeric");
   NumberMessageFormat() {}

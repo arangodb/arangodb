@@ -42,8 +42,7 @@ byte_string operator"" _bs(const char* str, std::size_t len);
 byte_string operator"" _bss(const char* str, std::size_t len);
 
 auto interleave(std::vector<byte_string> const& vec) -> byte_string;
-auto transpose(byte_string_view bs, std::size_t dimensions)
-    -> std::vector<byte_string>;
+auto transpose(byte_string_view bs, std::size_t dimensions) -> std::vector<byte_string>;
 
 struct alignas(32) CompareResult {
   static constexpr auto max = std::numeric_limits<std::size_t>::max();
@@ -56,24 +55,21 @@ struct alignas(32) CompareResult {
 
 std::ostream& operator<<(std::ostream& ostream, CompareResult const& string);
 
-auto compareWithBox(byte_string_view cur, byte_string_view min,
-                    byte_string_view max, std::size_t dimensions)
-    -> std::vector<CompareResult>;
-void compareWithBoxInto(byte_string_view cur, byte_string_view min,
-                        byte_string_view max, std::size_t dimensions,
-                        std::vector<CompareResult>& result);
+auto compareWithBox(byte_string_view cur, byte_string_view min, byte_string_view max,
+                    std::size_t dimensions) -> std::vector<CompareResult>;
+void compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_string_view max,
+                    std::size_t dimensions, std::vector<CompareResult>& result);
 auto testInBox(byte_string_view cur, byte_string_view min, byte_string_view max,
                std::size_t dimensions) -> bool;
 
-auto getNextZValue(byte_string_view cur, byte_string_view min,
-                   byte_string_view max, std::vector<CompareResult>& cmpResult)
-    -> std::optional<byte_string>;
+auto getNextZValue(byte_string_view cur, byte_string_view min, byte_string_view max,
+                   std::vector<CompareResult>& cmpResult) -> std::optional<byte_string>;
 
-template<typename T>
+template <typename T>
 auto to_byte_string_fixed_length(T) -> zkd::byte_string;
-template<typename T>
+template <typename T>
 auto from_byte_string_fixed_length(byte_string_view) -> T;
-template<>
+template <>
 byte_string to_byte_string_fixed_length<double>(double x);
 
 enum class Bit { ZERO = 0, ONE = 1 };
@@ -151,9 +147,9 @@ struct RandomBitManipulator {
   byte_string& _ref;
 };
 
-template<typename T>
+template <typename T>
 void into_bit_writer_fixed_length(BitWriter&, T);
-template<typename T>
+template <typename T>
 auto from_bit_reader_fixed_length(BitReader&) -> T;
 
 struct floating_point {
@@ -170,7 +166,5 @@ std::ostream& operator<<(std::ostream& os, struct floating_point const& fp);
 
 }  // namespace arangodb::zkd
 
-std::ostream& operator<<(std::ostream& ostream,
-                         arangodb::zkd::byte_string const& string);
-std::ostream& operator<<(std::ostream& ostream,
-                         arangodb::zkd::byte_string_view string);
+std::ostream& operator<<(std::ostream& ostream, arangodb::zkd::byte_string const& string);
+std::ostream& operator<<(std::ostream& ostream, arangodb::zkd::byte_string_view string);

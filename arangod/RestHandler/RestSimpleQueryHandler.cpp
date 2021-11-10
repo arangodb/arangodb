@@ -23,10 +23,6 @@
 
 #include "RestSimpleQueryHandler.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -35,12 +31,17 @@
 #include "Utils/CursorRepository.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestSimpleQueryHandler::RestSimpleQueryHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response, arangodb::aql::QueryRegistry* queryRegistry)
+RestSimpleQueryHandler::RestSimpleQueryHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response,
+                                               arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(server, request, response, queryRegistry) {}
 
 RestStatus RestSimpleQueryHandler::execute() {
@@ -61,8 +62,7 @@ RestStatus RestSimpleQueryHandler::execute() {
     }
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -224,8 +224,7 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
 }
 
 static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
-                              VPackSlice const& doc, size_t skip,
-                              size_t limit) {
+                              VPackSlice const& doc, size_t skip, size_t limit) {
   TRI_ASSERT(doc.isObject());
   std::string query = "FOR doc IN @@collection";
 
@@ -238,10 +237,7 @@ static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
     key =
         basics::StringUtils::join(basics::StringUtils::split(key, '.'), "`.`");
     std::string istr = std::to_string(i++);
-    query.append(" FILTER doc.`")
-        .append(key)
-        .append("` == @value")
-        .append(istr);
+    query.append(" FILTER doc.`").append(key).append("` == @value").append(istr);
     result.add(std::string("value") + istr, pair.value);
   }
   result.close();
@@ -270,8 +266,7 @@ RestStatus RestSimpleQueryHandler::byExample() {
     return RestStatus::DONE;
   }
 
-  if (!body.isObject() || !body.hasKey("example") ||
-      !body.get("example").isObject()) {
+  if (!body.isObject() || !body.hasKey("example") || !body.get("example").isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return RestStatus::DONE;
   }
@@ -279,8 +274,7 @@ RestStatus RestSimpleQueryHandler::byExample() {
   // velocypack will throw an exception for negative numbers
   size_t skip = basics::VelocyPackHelper::getNumericValue(body, "skip", 0);
   size_t limit = basics::VelocyPackHelper::getNumericValue(body, "limit", 0);
-  size_t batchSize =
-      basics::VelocyPackHelper::getNumericValue(body, "batchSize", 0);
+  size_t batchSize = basics::VelocyPackHelper::getNumericValue(body, "batchSize", 0);
   VPackSlice example = body.get("example");
 
   std::string cname;

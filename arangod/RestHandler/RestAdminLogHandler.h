@@ -47,5 +47,7 @@ class RestAdminLogHandler : public RestBaseHandler {
   void clearLogs();
   RestStatus reportLogs(bool newFormat);
   void handleLogLevel();
+
 };
 }  // namespace arangodb
+

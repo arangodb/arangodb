@@ -30,7 +30,7 @@
 namespace arangodb {
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::function<int()>* restartAction = nullptr;
-}  // namespace arangodb
+}
 
 // Here is a sample of how to use this:
 //

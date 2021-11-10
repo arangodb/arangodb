@@ -38,9 +38,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestBaseHandler::RestBaseHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestBaseHandler::RestBaseHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
     : RestHandler(server, request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,11 +55,9 @@ arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
     std::string errmsg("VPackError error: ");
     errmsg.append(e.what());
     LOG_TOPIC("414a9", DEBUG, arangodb::Logger::REQUESTS) << errmsg;
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  errmsg);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
   } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "unknown exception");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, "unknown exception");
   }
   success = false;
   return VPackSlice::noneSlice();
@@ -74,14 +71,13 @@ void RestBaseHandler::handleError(Exception const& ex) {
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename Payload>
-void RestBaseHandler::generateResult(rest::ResponseCode code,
-                                     Payload&& payload) {
+template <typename Payload>
+void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload) {
   resetResponse(code);
   writeResult(std::forward<Payload>(payload), VPackOptions::Defaults);
 }
 
-template<typename Payload>
+template <typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload,
                                      VPackOptions const* options) {
   resetResponse(code);
@@ -91,10 +87,9 @@ void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload,
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename Payload>
-void RestBaseHandler::generateResult(
-    rest::ResponseCode code, Payload&& payload,
-    std::shared_ptr<transaction::Context> context) {
+template <typename Payload>
+void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload,
+                                     std::shared_ptr<transaction::Context> context) {
   resetResponse(code);
   writeResult(std::forward<Payload>(payload), *(context->getVPackOptions()));
 }
@@ -115,7 +110,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload) {
       tmp.add("result", payload);
     }
     tmp.close();
-
+    
     writeResult(std::move(buffer), VPackOptions::Defaults);
   } catch (...) {
     // Building the error response failed
@@ -123,8 +118,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload) {
 }
 
 /// Add `error` and `code` fields into your response
-void RestBaseHandler::generateOk(rest::ResponseCode code,
-                                 VPackBuilder const& payload) {
+void RestBaseHandler::generateOk(rest::ResponseCode code, VPackBuilder const& payload) {
   resetResponse(code);
 
   try {
@@ -154,20 +148,17 @@ void RestBaseHandler::generateCanceled() {
 /// @brief writes volocypack or json to response
 //////////////////////////////////////////////////////////////////////////////
 
-template<typename Payload>
-void RestBaseHandler::writeResult(Payload&& payload,
-                                  VPackOptions const& options) {
+template <typename Payload>
+void RestBaseHandler::writeResult(Payload&& payload, VPackOptions const& options) {
   try {
     if (_request != nullptr) {
       _response->setContentType(_request->contentTypeResponse());
     }
     _response->setPayload(std::forward<Payload>(payload), options);
   } catch (basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
-                  ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  ex.what());
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "cannot generate output");
@@ -175,35 +166,30 @@ void RestBaseHandler::writeResult(Payload&& payload,
 }
 
 // TODO -- rather move code to header (slower linking) or remove templates
-template void RestBaseHandler::generateResult<VPackBuffer<uint8_t>>(
-    rest::ResponseCode, VPackBuffer<uint8_t>&&);
-template void RestBaseHandler::generateResult<VPackSlice>(rest::ResponseCode,
-                                                          VPackSlice&&);
-template void RestBaseHandler::generateResult<VPackSlice&>(rest::ResponseCode,
-                                                           VPackSlice&);
+template void RestBaseHandler::generateResult<VPackBuffer<uint8_t>>(rest::ResponseCode,
+                                                                    VPackBuffer<uint8_t>&&);
+template void RestBaseHandler::generateResult<VPackSlice>(rest::ResponseCode, VPackSlice&&);
+template void RestBaseHandler::generateResult<VPackSlice&>(rest::ResponseCode, VPackSlice&);
 
 template void RestBaseHandler::generateResult<VPackBuffer<uint8_t>>(
     rest::ResponseCode, VPackBuffer<uint8_t>&&, VPackOptions const*);
-template void RestBaseHandler::generateResult<VPackSlice>(rest::ResponseCode,
-                                                          VPackSlice&&,
+template void RestBaseHandler::generateResult<VPackSlice>(rest::ResponseCode, VPackSlice&&,
                                                           VPackOptions const*);
-template void RestBaseHandler::generateResult<VPackSlice&>(rest::ResponseCode,
-                                                           VPackSlice&,
+template void RestBaseHandler::generateResult<VPackSlice&>(rest::ResponseCode, VPackSlice&,
                                                            VPackOptions const*);
 
 template void RestBaseHandler::generateResult<VPackBuffer<uint8_t>>(
-    rest::ResponseCode, VPackBuffer<uint8_t>&&,
-    std::shared_ptr<transaction::Context>);
+    rest::ResponseCode, VPackBuffer<uint8_t>&&, std::shared_ptr<transaction::Context>);
 template void RestBaseHandler::generateResult<VPackSlice>(
     rest::ResponseCode, VPackSlice&&, std::shared_ptr<transaction::Context>);
 template void RestBaseHandler::generateResult<VPackSlice&>(
     rest::ResponseCode, VPackSlice&, std::shared_ptr<transaction::Context>);
 
-template void RestBaseHandler::writeResult<VPackBuffer<uint8_t>>(
-    VPackBuffer<uint8_t>&& payload, VPackOptions const&);
+template void RestBaseHandler::writeResult<VPackBuffer<uint8_t>>(VPackBuffer<uint8_t>&& payload,
+                                                                 VPackOptions const&);
 template void RestBaseHandler::writeResult<VPackSlice>(VPackSlice&& payload,
                                                        VPackOptions const&);
 template void RestBaseHandler::writeResult<VPackSlice&>(VPackSlice& payload,
                                                         VPackOptions const&);
-template void RestBaseHandler::writeResult<VPackSlice const&>(
-    VPackSlice const& payload, VPackOptions const&);
+template void RestBaseHandler::writeResult<VPackSlice const&>(VPackSlice const& payload,
+                                                              VPackOptions const&);

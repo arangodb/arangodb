@@ -30,9 +30,9 @@
 namespace arangodb {
 namespace iresearch {
 
-class IResearchAnalyzerFeature;  // forward declaration
+class IResearchAnalyzerFeature; // forward declaration
 
-class RestAnalyzerHandler : public RestVocbaseBaseHandler {
+class RestAnalyzerHandler: public RestVocbaseBaseHandler {
  public:
   // @note RestHandlerFactory::createHandler(...) passes raw pointers for
   //       request/response to RestHandlerCreator::createNoData(...)
@@ -52,12 +52,18 @@ class RestAnalyzerHandler : public RestVocbaseBaseHandler {
 
  private:
   void createAnalyzer(IResearchAnalyzerFeature& analyzers);
-  void getAnalyzer(IResearchAnalyzerFeature& analyzers,
-                   std::string const& requestedName);
+  void getAnalyzer(
+    IResearchAnalyzerFeature& analyzers, 
+    std::string const& requestedName 
+  );
   void getAnalyzers(IResearchAnalyzerFeature& analyzers);
-  void removeAnalyzer(IResearchAnalyzerFeature& analyzers,
-                      std::string const& requestedName, bool force);
+  void removeAnalyzer(
+    IResearchAnalyzerFeature& analyzers, 
+    std::string const& requestedName, 
+    bool force
+  );
 };
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // iresearch
+} // arangodb
+

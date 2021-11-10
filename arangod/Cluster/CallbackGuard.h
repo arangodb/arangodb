@@ -66,5 +66,5 @@ class CallbackGuard {
   std::function<void(void)> _callback;
 };
 
-}  // namespace cluster
-}  // namespace arangodb
+}}
+

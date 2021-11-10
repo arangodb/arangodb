@@ -100,8 +100,7 @@ class ReplicationApplier {
   bool sleepIfStillActive(uint64_t sleepTime);
 
   /// @brief configure the replication applier
-  virtual void reconfigure(
-      ReplicationApplierConfiguration const& configuration);
+  virtual void reconfigure(ReplicationApplierConfiguration const& configuration);
 
   /// @brief load the applier state from persistent storage
   bool loadState();
@@ -178,8 +177,7 @@ class ReplicationApplier {
   void doStop(Result const& r, bool joinThread);
 
   static void readTick(arangodb::velocypack::Slice const& slice,
-                       char const* attributeName, TRI_voc_tick_t& dst,
-                       bool allowNull);
+                       char const* attributeName, TRI_voc_tick_t& dst, bool allowNull);
 
  protected:
   ReplicationApplierConfiguration _configuration;
@@ -194,3 +192,4 @@ class ReplicationApplier {
 };
 
 }  // namespace arangodb
+

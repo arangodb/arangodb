@@ -24,14 +24,13 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
-
-#include <map>
-
 #include "Aql/types.h"
 #include "Basics/StringHeap.h"
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/Providers/TypeAliases.h"
+
+#include <map>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -58,20 +57,17 @@ class RefactoredClusterTraverserCache {
   auto persistString(arangodb::velocypack::HashedStringRef idString)
       -> arangodb::velocypack::HashedStringRef;
 
-  auto cacheVertex(VertexType const& vertexId, velocypack::Slice vertexSlice)
-      -> void;
+  auto cacheVertex(VertexType const& vertexId, velocypack::Slice vertexSlice) -> void;
   auto isVertexCached(VertexType const& vertexKey) const -> bool;
   auto getCachedVertex(VertexType const& vertex) const -> velocypack::Slice;
 
-  /**
-   * @brief
-   *
-   * Returns: first entry is the vpack that is inside the cache and stays valid
-   * during computation The second entry indicates if the caller need to retain
-   * the handed in slice buffer.
-   */
-  auto persistEdgeData(velocypack::Slice edgeSlice)
-      -> std::pair<velocypack::Slice, bool>;
+/**
+ * @brief
+ * 
+ * Returns: first entry is the vpack that is inside the cache and stays valid during computation
+ * The second entry indicates if the caller need to retain the handed in slice buffer.
+ */
+  auto persistEdgeData(velocypack::Slice edgeSlice) -> std::pair<velocypack::Slice, bool>;
   auto isEdgeCached(EdgeType const& edge) const -> bool;
   auto getCachedEdge(EdgeType const& edge) const -> velocypack::Slice;
 
@@ -94,6 +90,7 @@ class RefactoredClusterTraverserCache {
 
   /// @brief edge reference to edge data slice
   std::unordered_map<EdgeType, velocypack::Slice> _edgeData;
+
 };
 
 }  // namespace graph

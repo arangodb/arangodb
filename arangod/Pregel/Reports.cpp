@@ -21,9 +21,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Reports.h"
-
 #include "Logger/LogMacros.h"
+#include "Reports.h"
 
 using namespace arangodb::pregel;
 
@@ -32,8 +31,7 @@ ReportBuilder::~ReportBuilder() {
     // this can not throw because we have allocate memory
     manager.append(Report{ss.str(), level, std::move(annotations)});
   } catch (std::exception const& ex) {
-    LOG_TOPIC("a6348", ERR, Logger::PREGEL)
-        << "failed to create report: " << ex.what();
+    LOG_TOPIC("a6348", ERR, Logger::PREGEL) << "failed to create report: " << ex.what();
   } catch (...) {
     LOG_TOPIC("b2359", ERR, Logger::PREGEL)
         << "failed to create report - unknown exception";
@@ -44,7 +42,7 @@ ReportBuilder::ReportBuilder(ReportManager& manager, ReportLevel lvl)
     : level(lvl), manager(manager) {}
 
 std::string arangodb::pregel::to_string(ReportLevel lvl) {
-  switch (lvl) {
+  switch(lvl) {
     case ReportLevel::DEBUG:
       return "debug";
     case ReportLevel::INFO:
@@ -69,7 +67,7 @@ ReportLevel levelFromString(std::string_view str) {
     return ReportLevel::ERR;
   }
 }
-}  // namespace
+}
 
 Report Report::fromVelocyPack(VPackSlice slice) {
   std::string msg = slice.get("msg").copyString();
@@ -81,7 +79,8 @@ Report Report::fromVelocyPack(VPackSlice slice) {
     annotations.emplace(pair.key.copyString(), std::move(builder));
   }
 
-  return Report{msg, level, std::move(annotations)};
+  return Report{msg, level,
+                std::move(annotations)};
 }
 
 void Report::intoBuilder(VPackBuilder& builder) const {

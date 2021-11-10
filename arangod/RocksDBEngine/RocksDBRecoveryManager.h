@@ -25,7 +25,6 @@
 #pragma once
 
 #include <rocksdb/types.h>
-
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "StorageEngine/StorageEngine.h"
@@ -37,11 +36,9 @@ class TransactionDB;
 
 namespace arangodb {
 
-class RocksDBRecoveryManager final
-    : public application_features::ApplicationFeature {
+class RocksDBRecoveryManager final : public application_features::ApplicationFeature {
  public:
-  explicit RocksDBRecoveryManager(
-      application_features::ApplicationServer& server);
+  explicit RocksDBRecoveryManager(application_features::ApplicationServer& server);
 
   static std::string featureName() { return "RocksDBRecoveryManager"; }
 
@@ -54,7 +51,9 @@ class RocksDBRecoveryManager final
   }
 
   /// @brief current recovery tick
-  rocksdb::SequenceNumber recoveryTick() const noexcept { return _tick; }
+  rocksdb::SequenceNumber recoveryTick() const noexcept {
+    return _tick;
+  }
 
  private:
   Result parseRocksWAL();
@@ -68,3 +67,4 @@ class RocksDBRecoveryManager final
 };
 
 }  // namespace arangodb
+

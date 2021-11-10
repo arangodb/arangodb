@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include "Basics/Common.h"
+
 #include <iosfwd>
 #include <string>
-
-#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -57,5 +57,5 @@ std::string toStringWithPrefix(QueryExecutionState::ValueType state);
 }  // namespace aql
 }  // namespace arangodb
 
-std::ostream& operator<<(std::ostream&,
-                         arangodb::aql::QueryExecutionState::ValueType);
+std::ostream& operator<<(std::ostream&, arangodb::aql::QueryExecutionState::ValueType);
+

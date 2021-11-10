@@ -23,11 +23,11 @@
 
 #include "MutexNode.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-
 #include "Aql/DistributeConsumerNode.h"
 #include "Aql/MutexExecutor.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -35,9 +35,9 @@ using namespace arangodb::aql;
 MutexNode::MutexNode(ExecutionPlan* plan, ExecutionNodeId id)
     : ExecutionNode(plan, id) {}
 
-MutexNode::MutexNode(ExecutionPlan* plan,
-                     arangodb::velocypack::Slice const& base)
+MutexNode::MutexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base) {
+      
   auto const clientsSlice = base.get("clients");
   if (clientsSlice.isArray()) {
     for (auto const clientSlice : velocypack::ArrayIterator(clientsSlice)) {
@@ -52,8 +52,8 @@ ExecutionNode::NodeType MutexNode::getType() const { return MUTEX; }
 
 ExecutionNode* MutexNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {
-  return cloneHelper(std::make_unique<MutexNode>(plan, _id), withDependencies,
-                     withProperties);
+  return cloneHelper(std::make_unique<MutexNode>(plan, _id),
+                     withDependencies, withProperties);
 }
 
 /// @brief doToVelocyPack, for MutexNode
@@ -66,14 +66,13 @@ void MutexNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> MutexNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
   auto registerInfos = createRegisterInfos({}, {});
-  return std::make_unique<ExecutionBlockImpl<MutexExecutor>>(
-      &engine, this, std::move(registerInfos), MutexExecutorInfos(_clients));
+  return std::make_unique<ExecutionBlockImpl<MutexExecutor>>(&engine, this,
+                                                             std::move(registerInfos), MutexExecutorInfos(_clients));
 }
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0
@@ -87,9 +86,7 @@ CostEstimate MutexNode::estimateCost() const {
 
 void MutexNode::addClient(DistributeConsumerNode const* client) {
   auto const& distId = client->getDistributeId();
-  // We cannot add the same distributeId twice, data is delivered exactly once
-  // for each id
-  TRI_ASSERT(std::find(_clients.begin(), _clients.end(), distId) ==
-             _clients.end());
+  // We cannot add the same distributeId twice, data is delivered exactly once for each id
+  TRI_ASSERT(std::find(_clients.begin(), _clients.end(), distId) == _clients.end());
   _clients.emplace_back(distId);
 }

@@ -51,9 +51,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-CheckVersionFeature::CheckVersionFeature(
-    application_features::ApplicationServer& server, int* result,
-    std::vector<std::type_index> const& nonServerFeatures)
+CheckVersionFeature::CheckVersionFeature(application_features::ApplicationServer& server,
+                                         int* result,
+                                         std::vector<std::type_index> const& nonServerFeatures)
     : ApplicationFeature(server, "CheckVersion"),
       _checkVersion(false),
       _result(result),
@@ -68,20 +68,17 @@ CheckVersionFeature::CheckVersionFeature(
   startsAfter<SystemDatabaseFeature>();
 }
 
-void CheckVersionFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void CheckVersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("check-version", "database.check-version");
 
-  options->addOption(
-      "--database.check-version",
-      "checks the versions of the database and exit",
-      new BooleanParameter(&_checkVersion),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                          arangodb::options::Flags::Command));
+  options->addOption("--database.check-version",
+                     "checks the versions of the database and exit",
+                     new BooleanParameter(&_checkVersion),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+                                                  arangodb::options::Flags::Command));
 }
 
-void CheckVersionFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void CheckVersionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_checkVersion) {
     return;
   }
@@ -95,8 +92,7 @@ void CheckVersionFeature::validateOptions(
   LoggerFeature& logger = server().getFeature<LoggerFeature>();
   logger.disableThreaded();
 
-  ReplicationFeature& replicationFeature =
-      server().getFeature<ReplicationFeature>();
+  ReplicationFeature& replicationFeature = server().getFeature<ReplicationFeature>();
   replicationFeature.disableReplicationApplier();
 
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
@@ -104,8 +100,8 @@ void CheckVersionFeature::validateOptions(
 
   // we can turn off all warnings about environment here, because they
   // wil show up on a regular start later anyway
-  server().disableFeatures(std::vector<std::type_index>{
-      std::type_index(typeid(EnvironmentFeature))});
+  server().disableFeatures(
+      std::vector<std::type_index>{std::type_index(typeid(EnvironmentFeature))});
 }
 
 void CheckVersionFeature::start() {
@@ -134,11 +130,9 @@ void CheckVersionFeature::checkVersion() {
   *_result = 1;
 
   // run version check
-  LOG_TOPIC("449fd", TRACE, arangodb::Logger::STARTUP)
-      << "starting version check";
+  LOG_TOPIC("449fd", TRACE, arangodb::Logger::STARTUP) << "starting version check";
 
-  DatabasePathFeature& databasePathFeature =
-      server().getFeature<DatabasePathFeature>();
+  DatabasePathFeature& databasePathFeature = server().getFeature<DatabasePathFeature>();
 
   LOG_TOPIC("73006", TRACE, arangodb::Logger::STARTUP)
       << "database path is: '" << databasePathFeature.directory() << "'";
@@ -158,8 +152,7 @@ void CheckVersionFeature::checkVersion() {
         res.status == methods::VersionResult::CANNOT_READ_VERSION_FILE) {
       if (ignoreDatafileErrors) {
         // try to install a fresh new, empty VERSION file instead
-        if (methods::Version::write(vocbase, std::map<std::string, bool>(),
-                                    true)
+        if (methods::Version::write(vocbase, std::map<std::string, bool>(), true)
                 .ok()) {
           // give it another try
           res = methods::Version::check(vocbase);
@@ -172,15 +165,13 @@ void CheckVersionFeature::checkVersion() {
       }
     } else if (res.status == methods::VersionResult::NO_VERSION_FILE) {
       // try to install a fresh new, empty VERSION file instead
-      if (methods::Version::write(vocbase, std::map<std::string, bool>(), true)
-              .ok()) {
+      if (methods::Version::write(vocbase, std::map<std::string, bool>(), true).ok()) {
         // give it another try
         res = methods::Version::check(vocbase);
       }
     }
 
-    LOG_TOPIC("53cbb", DEBUG, Logger::STARTUP)
-        << "version check return status " << res.status;
+    LOG_TOPIC("53cbb", DEBUG, Logger::STARTUP) << "version check return status " << res.status;
     if (res.status < 0) {
       LOG_TOPIC("52f16", FATAL, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
@@ -195,8 +186,7 @@ void CheckVersionFeature::checkVersion() {
       LOG_TOPIC("ef6ca", WARN, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
           << "': downgrade needed";
-    } else if (res.status == methods::VersionResult::UPGRADE_NEEDED &&
-               *_result == 1) {
+    } else if (res.status == methods::VersionResult::UPGRADE_NEEDED && *_result == 1) {
       // this is safe to do even if further databases will be checked
       // because we will never set the status back to success
       *_result = 2;
@@ -206,8 +196,7 @@ void CheckVersionFeature::checkVersion() {
     }
   }
 
-  LOG_TOPIC("382bb", DEBUG, Logger::STARTUP)
-      << "final result of version check: " << *_result;
+  LOG_TOPIC("382bb", DEBUG, Logger::STARTUP) << "final result of version check: " << *_result;
 
   if (*_result == 1) {
     *_result = EXIT_SUCCESS;
@@ -222,8 +211,7 @@ void CheckVersionFeature::checkVersion() {
           << "Database version check failed: upgrade needed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_UPGRADE_REQUIRED);
     } else {
-      LOG_TOPIC("13e92", FATAL, Logger::FIXME)
-          << "Database version check failed";
+      LOG_TOPIC("13e92", FATAL, Logger::FIXME) << "Database version check failed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_VERSION_CHECK_FAILED);
     }
     FATAL_ERROR_EXIT_CODE(*_result);

@@ -29,9 +29,10 @@
 #include <unordered_map>
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/debugging.h"
+
 #include "utils/hash_utils.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
@@ -40,7 +41,7 @@
 
 namespace {
 
-template<typename...>
+template <typename...>
 struct typelist;
 
 }
@@ -65,34 +66,41 @@ class AsyncValue {
     T* operator->() noexcept { return get(); }
     const T* operator->() const noexcept { return get(); }
 
-    explicit operator bool() const noexcept { return nullptr != get(); }
+    explicit operator bool() const noexcept {
+      return nullptr != get();
+    }
 
-    bool ownsLock() const noexcept { return _lock.owns_lock(); }
+    bool ownsLock() const noexcept {
+      return _lock.owns_lock();
+    }
 
    private:
     friend class AsyncValue<T>;
 
     Value(std::shared_lock<std::shared_mutex>&& lock, T* resource)
-        : _lock{std::move(lock)}, _resource{resource} {}
+      : _lock{std::move(lock)}, _resource{resource} {
+    }
 
     std::shared_lock<std::shared_mutex> _lock;
     T* _resource{};
   };
 
-  explicit AsyncValue(T* resource) noexcept : _resource{resource} {}
+  explicit AsyncValue(T* resource) noexcept
+    : _resource{resource} {
+  }
 
   ~AsyncValue() { reset(); }
 
   auto lock() const {
     auto lock = irs::make_shared_lock(_mutex);
-    return Value{std::move(lock), _resource};
+    return Value{ std::move(lock), _resource };
   }
 
   auto try_lock() const {
     auto lock = irs::make_shared_lock(_mutex, std::try_to_lock);
 
     if (lock.owns_lock()) {
-      return Value{std::move(lock), _resource};
+      return Value{ std::move(lock), _resource };
     }
 
     return Value{};
@@ -110,7 +118,7 @@ class AsyncValue {
   }
 
  private:
-  mutable std::shared_mutex _mutex;  // read-lock to prevent '_resource' reset()
+  mutable std::shared_mutex _mutex; // read-lock to prevent '_resource' reset()
   T* _resource;
 };
 
@@ -119,15 +127,13 @@ class AsyncValue {
 ///        declaration of map member variables whos' values are of the type
 ///        being declared
 ////////////////////////////////////////////////////////////////////////////////
-template<typename T>
+template <typename T>
 class UniqueHeapInstance {
  public:
-  template<typename... Args,
-           typename = typename std::enable_if<!std::is_same<
-               typelist<UniqueHeapInstance>,
-               typelist<typename std::decay<Args>::type...>>::value>::
-               type  // prevent matching of copy/move constructor
-           >
+  template <typename... Args,
+            typename = typename std::enable_if<!std::is_same<typelist<UniqueHeapInstance>,
+                                                             typelist<typename std::decay<Args>::type...>>::value>::type  // prevent matching of copy/move constructor
+            >
   explicit UniqueHeapInstance(Args&&... args)
       : _instance(irs::memory::make_unique<T>(std::forward<Args>(args)...)) {}
 
@@ -188,20 +194,17 @@ class UniqueHeapInstance {
 /// @brief a base class for UnorderedRefKeyMap providing implementation for
 ///        KeyHasher and KeyGenerator
 ////////////////////////////////////////////////////////////////////////////////
-template<typename CharType, typename V>
+template <typename CharType, typename V>
 struct UnorderedRefKeyMapBase {
  public:
-  typedef std::unordered_map<irs::hashed_basic_string_ref<CharType>,
-                             std::pair<std::basic_string<CharType>, V>>
-      MapType;
+  typedef std::unordered_map<irs::hashed_basic_string_ref<CharType>, std::pair<std::basic_string<CharType>, V>> MapType;
 
   typedef typename MapType::key_type KeyType;
   typedef V value_type;
   typedef std::hash<typename MapType::key_type::base_t> KeyHasher;
 
   struct KeyGenerator {
-    KeyType operator()(KeyType const& key,
-                       typename MapType::mapped_type const& value) const {
+    KeyType operator()(KeyType const& key, typename MapType::mapped_type const& value) const {
       return KeyType(key.hash(), value.first);
     }
   };
@@ -213,11 +216,10 @@ struct UnorderedRefKeyMapBase {
 ///        allowing the use of the map with an irs::basic_string_ref without
 ///        the need to allocaate memmory during find(...)
 ////////////////////////////////////////////////////////////////////////////////
-template<typename CharType, typename V>
-class UnorderedRefKeyMap
-    : public UnorderedRefKeyMapBase<CharType, V>,
-      private UnorderedRefKeyMapBase<CharType, V>::KeyGenerator,
-      private UnorderedRefKeyMapBase<CharType, V>::KeyHasher {
+template <typename CharType, typename V>
+class UnorderedRefKeyMap : public UnorderedRefKeyMapBase<CharType, V>,
+                           private UnorderedRefKeyMapBase<CharType, V>::KeyGenerator,
+                           private UnorderedRefKeyMapBase<CharType, V>::KeyHasher {
  public:
   typedef UnorderedRefKeyMapBase<CharType, V> MyBase;
   typedef typename MyBase::MapType MapType;
@@ -318,13 +320,13 @@ class UnorderedRefKeyMap
   }
 
   V& operator[](KeyType const& key) {
-    return irs::map_utils::try_emplace_update_key(
-               _map, keyGenerator(),
-               key,  // use same key for MapType::key_type and
-                     // MapType::value_type.first
-               std::piecewise_construct, std::forward_as_tuple(key),
-               std::forward_as_tuple()  // MapType::value_type
-               )
+    return irs::map_utils::try_emplace_update_key(_map, keyGenerator(),
+                                                  key,  // use same key for MapType::key_type and
+                                                        // MapType::value_type.first
+                                                  std::piecewise_construct,
+                                                  std::forward_as_tuple(key),
+                                                  std::forward_as_tuple()  // MapType::value_type
+                                                  )
         .first->second.second;
   }
 
@@ -337,25 +339,22 @@ class UnorderedRefKeyMap
 
   void clear() noexcept { _map.clear(); }
 
-  template<typename... Args>
+  template <typename... Args>
   std::pair<Iterator, bool> emplace(KeyType const& key, Args&&... args) {
     auto res = irs::map_utils::try_emplace_update_key(
         _map, keyGenerator(),
         key,  // use same key for MapType::key_type and
               // MapType::value_type.first
         std::piecewise_construct, std::forward_as_tuple(key),
-        std::forward_as_tuple(
-            std::forward<Args>(args)...)  // MapType::value_type
+        std::forward_as_tuple(std::forward<Args>(args)...)  // MapType::value_type
     );
 
     return std::make_pair(Iterator(res.first), res.second);
   }
 
-  template<typename... Args>
-  std::pair<Iterator, bool> emplace(typename KeyType::base_t const& key,
-                                    Args&&... args) {
-    return emplace(irs::make_hashed_ref(key, keyHasher()),
-                   std::forward<Args>(args)...);
+  template <typename... Args>
+  std::pair<Iterator, bool> emplace(typename KeyType::base_t const& key, Args&&... args) {
+    return emplace(irs::make_hashed_ref(key, keyHasher()), std::forward<Args>(args)...);
   }
 
   bool empty() const noexcept { return _map.empty(); }
@@ -415,3 +414,4 @@ class UnorderedRefKeyMap
 
 }  // namespace iresearch
 }  // namespace arangodb
+

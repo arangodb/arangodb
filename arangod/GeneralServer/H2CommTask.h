@@ -23,14 +23,13 @@
 
 #pragma once
 
-#include <nghttp2/nghttp2.h>
-#include <velocypack/StringRef.h>
-
-#include <boost/lockfree/queue.hpp>
-#include <memory>
-
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
+
+#include <nghttp2/nghttp2.h>
+#include <velocypack/StringRef.h>
+#include <boost/lockfree/queue.hpp>
+#include <memory>
 
 namespace arangodb {
 class HttpRequest;
@@ -42,11 +41,10 @@ namespace rest {
 
 struct H2Response;
 
-template<SocketType T>
+template <SocketType T>
 class H2CommTask final : public GeneralCommTask<T> {
  public:
-  H2CommTask(GeneralServer& server, ConnectionInfo,
-             std::unique_ptr<AsioSocket<T>> so);
+  H2CommTask(GeneralServer& server, ConnectionInfo, std::unique_ptr<AsioSocket<T>> so);
   ~H2CommTask() noexcept;
 
   void start() override;
@@ -60,29 +58,26 @@ class H2CommTask final : public GeneralCommTask<T> {
   virtual void sendResponse(std::unique_ptr<GeneralResponse> response,
                             RequestStatistics::Item stat) override;
 
-  virtual std::unique_ptr<GeneralResponse> createResponse(
-      rest::ResponseCode, uint64_t messageId) override;
+  virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
+                                                          uint64_t messageId) override;
 
  private:
   static int on_begin_headers(nghttp2_session* session,
                               const nghttp2_frame* frame, void* user_data);
   static int on_header(nghttp2_session* session, const nghttp2_frame* frame,
-                       const uint8_t* name, size_t namelen,
-                       const uint8_t* value, size_t valuelen, uint8_t flags,
-                       void* user_data);
+                       const uint8_t* name, size_t namelen, const uint8_t* value,
+                       size_t valuelen, uint8_t flags, void* user_data);
   static int on_frame_recv(nghttp2_session* session, const nghttp2_frame* frame,
                            void* user_data);
-  static int on_data_chunk_recv(nghttp2_session* session, uint8_t flags,
-                                int32_t stream_id, const uint8_t* data,
-                                size_t len, void* user_data);
+  static int on_data_chunk_recv(nghttp2_session* session, uint8_t flags, int32_t stream_id,
+                                const uint8_t* data, size_t len, void* user_data);
   static int on_stream_close(nghttp2_session* session, int32_t stream_id,
                              uint32_t error_code, void* user_data);
   static int on_frame_send(nghttp2_session* session, const nghttp2_frame* frame,
                            void* user_data);
 
-  static int on_frame_not_send(nghttp2_session* session,
-                               const nghttp2_frame* frame, int lib_error_code,
-                               void* user_data);
+  static int on_frame_not_send(nghttp2_session* session, const nghttp2_frame* frame,
+                               int lib_error_code, void* user_data);
 
  private:
   // ongoing Http2 stream
@@ -104,7 +99,7 @@ class H2CommTask final : public GeneralCommTask<T> {
 
   /// handle stream request in arangodb
   void processStream(Stream& strm);
-
+  
   void processRequest(Stream& stream, std::unique_ptr<HttpRequest> req);
 
   /// should close connection
@@ -120,14 +115,13 @@ class H2CommTask final : public GeneralCommTask<T> {
   Stream* findStream(int32_t sid);
 
  private:
+
   /// @brief used to generate the full url for debugging
   std::string url(HttpRequest const* req) const;
 
   velocypack::Buffer<uint8_t> _outbuffer;
 
-  boost::lockfree::queue<H2Response*,
-                         boost::lockfree::capacity<H2MaxConcurrentStreams>>
-      _responses;
+  boost::lockfree::queue<H2Response*, boost::lockfree::capacity<H2MaxConcurrentStreams>> _responses;
 
   std::map<int32_t, Stream> _streams;
 
@@ -136,6 +130,8 @@ class H2CommTask final : public GeneralCommTask<T> {
   std::atomic<unsigned> _numProcessing{0};
 
   std::atomic<bool> _signaledWrite{false};
+
 };
 }  // namespace rest
 }  // namespace arangodb
+

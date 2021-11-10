@@ -32,8 +32,7 @@ namespace maintenance {
 
 class CreateDatabase : public ActionBase {
  public:
-  CreateDatabase(MaintenanceFeature& feature,
-                 ActionDescription const& description);
+  CreateDatabase(MaintenanceFeature& feature, ActionDescription const& description);
 
   virtual ~CreateDatabase();
 
@@ -42,3 +41,4 @@ class CreateDatabase : public ActionBase {
 
 }  // namespace maintenance
 }  // namespace arangodb
+

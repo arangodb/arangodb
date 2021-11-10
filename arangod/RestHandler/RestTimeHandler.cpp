@@ -23,30 +23,28 @@
 
 #include "RestTimeHandler.h"
 
+#include "Basics/StaticStrings.h"
+#include "Basics/system-functions.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/StaticStrings.h"
-#include "Basics/system-functions.h"
-
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestTimeHandler::RestTimeHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestTimeHandler::RestTimeHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestTimeHandler::execute() {
   VPackBuilder result;
   result.openObject(true);
   result.add(StaticStrings::Error, VPackValue(false));
-  result.add(StaticStrings::Code,
-             VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+  result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   result.add("time", VPackValue(TRI_microtime()));
   result.close();
-
+  
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
 }

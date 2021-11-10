@@ -48,14 +48,13 @@ auto LimitStats::getFullCount() const noexcept -> std::size_t {
   return _fullCount;
 }
 
-auto aql::operator+=(ExecutionStats& executionStats,
-                     LimitStats const& limitStats) noexcept -> ExecutionStats& {
+auto aql::operator+=(ExecutionStats& executionStats, LimitStats const& limitStats) noexcept
+    -> ExecutionStats& {
   executionStats.fullCount += limitStats.getFullCount();
   return executionStats;
 }
 
-auto aql::operator==(LimitStats const& left, LimitStats const& right) noexcept
-    -> bool {
+auto aql::operator==(LimitStats const& left, LimitStats const& right) noexcept -> bool {
   // cppcheck-suppress *
   static_assert(
       sizeof(LimitStats) == sizeof(left.getFullCount()),

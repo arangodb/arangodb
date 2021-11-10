@@ -34,19 +34,18 @@ namespace arangodb {
 // only implements GET and NewIterator
 class RocksDBReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
  public:
-  explicit RocksDBReadOnlyMethods(RocksDBTransactionState* state,
-                                  rocksdb::TransactionDB* db);
+  explicit RocksDBReadOnlyMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db);
 
   ~RocksDBReadOnlyMethods();
 
   Result beginTransaction() override;
-
+  
   Result commitTransaction() override;
 
   Result abortTransaction() override;
 
   rocksdb::ReadOptions iteratorReadOptions() const override;
-
+  
   bool ensureSnapshot() override;
 
   rocksdb::SequenceNumber GetSequenceNumber() const noexcept override;
@@ -56,13 +55,13 @@ class RocksDBReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
                                                  ReadOptionsCallback) override;
-
  private:
   void releaseSnapshot();
-
+  
   rocksdb::TransactionDB* _db;
 
   ReadOptions _readOptions;
 };
 
 }  // namespace arangodb
+

@@ -44,8 +44,7 @@ class IResearchViewCoordinator;
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView on a coordinator in cluster
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
-                                       public IResearchLink {
+class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IResearchLink {
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief construct an uninitialized IResearch link, must call init(...)
@@ -72,8 +71,7 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
 
   virtual void load() override { IResearchLink::load(); }
 
-  virtual bool matchesDefinition(
-      arangodb::velocypack::Slice const& slice) const override {
+  virtual bool matchesDefinition(arangodb::velocypack::Slice const& slice) const override {
     return IResearchLink::matchesDefinition(slice);
   }
 
@@ -86,12 +84,9 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack;  // for std::shared_ptr<Builder>
-                              // Index::toVelocyPack(bool, Index::Serialize)
-  virtual void toVelocyPack(
-      arangodb::velocypack::Builder& builder,
-      std::underlying_type<arangodb::Index::Serialize>::type flags)
-      const override;
+  using Index::toVelocyPack; // for std::shared_ptr<Builder> Index::toVelocyPack(bool, Index::Serialize)
+  virtual void toVelocyPack(arangodb::velocypack::Builder& builder,
+                            std::underlying_type<arangodb::Index::Serialize>::type flags) const override;
 
   void toVelocyPackFigures(velocypack::Builder& builder) const override {
     IResearchLink::toVelocyPackStats(builder);
@@ -122,21 +117,25 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
     IndexFactory(application_features::ApplicationServer& server);
 
    public:
-    bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
+    bool equal(velocypack::Slice lhs,
+               velocypack::Slice rhs,
                std::string const& dbname) const override;
 
-    std::shared_ptr<Index> instantiate(
-        LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-        bool isClusterConstructor) const override;
+    std::shared_ptr<Index> instantiate(LogicalCollection& collection,
+                                       velocypack::Slice definition,
+                                       IndexId id,
+                                       bool isClusterConstructor) const override;
 
-    virtual Result normalize(velocypack::Builder& normalized,
-                             velocypack::Slice definition, bool isCreation,
-                             TRI_vocbase_t const& vocbase) const override;
+    virtual Result normalize(
+        velocypack::Builder& normalized,
+        velocypack::Slice definition,
+        bool isCreation,
+        TRI_vocbase_t const& vocbase) const override;
   };
 
-  static std::shared_ptr<IndexFactory> createFactory(
-      application_features::ApplicationServer&);
+  static std::shared_ptr<IndexFactory> createFactory(application_features::ApplicationServer&);
 };  // IResearchLinkCoordinator
 
 }  // namespace iresearch
 }  // namespace arangodb
+

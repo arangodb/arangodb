@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include <memory>
-
 #include "Agency/AgencyComm.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "RestServer/Metrics.h"
+
+#include <memory>
 
 namespace arangodb {
 class AgencyCallback;
@@ -45,8 +45,7 @@ class AgencyCallbackRegistry {
   ~AgencyCallbackRegistry();
 
   /// @brief register a callback
-  [[nodiscard]] Result registerCallback(std::shared_ptr<AgencyCallback> cb,
-                                        bool local = true);
+  [[nodiscard]] Result registerCallback(std::shared_ptr<AgencyCallback> cb, bool local = true);
 
   /// @brief unregister a callback
   bool unregisterCallback(std::shared_ptr<AgencyCallback> cb);
@@ -67,9 +66,10 @@ class AgencyCallbackRegistry {
 
   /// @brief total number of callbacks ever registered
   Counter& _totalCallbacksRegistered;
-
+  
   /// @brief current number of callbacks registered
   Gauge<uint64_t>& _callbacksCount;
 };
 
 }  // namespace arangodb
+

@@ -125,8 +125,7 @@ struct CachedValue {
   static void operator delete(void* ptr);
 
  private:
-  static constexpr std::size_t _padding =
-      alignof(std::atomic<std::uint32_t>) - 1;
+  static constexpr std::size_t _padding = alignof(std::atomic<std::uint32_t>) - 1;
   static const std::size_t _headerAllocSize;
   static constexpr std::size_t _headerAllocMask = ~_padding;
   static constexpr std::size_t _headerAllocOffset = _padding;
@@ -150,3 +149,4 @@ struct CachedValue {
 
 };  // end namespace cache
 };  // end namespace arangodb
+

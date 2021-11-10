@@ -23,15 +23,15 @@
 
 #pragma once
 
-#include <atomic>
-#include <string_view>
-#include <thread>
-
 #include "Basics/Common.h"
 #include "Basics/ResultT.h"
 #include "GeneralServer/RequestLane.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
+
+#include <atomic>
+#include <string_view>
+#include <thread>
 
 namespace arangodb {
 namespace application_features {
@@ -42,9 +42,9 @@ class Exception;
 }
 
 namespace futures {
-template<typename T>
+template <typename T>
 class Future;
-template<typename T>
+template <typename T>
 class Try;
 }  // namespace futures
 
@@ -62,8 +62,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler& operator=(RestHandler const&) = delete;
 
  public:
-  RestHandler(application_features::ApplicationServer&, GeneralRequest*,
-              GeneralResponse*);
+  RestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
   virtual ~RestHandler();
 
   void assignHandlerId();
@@ -75,7 +74,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   /// @brief called when the handler is dequeued in the scheduler
   void trackQueueEnd() noexcept;
-
+  
   /// @brief called when the handler execution is started
   void trackTaskStart() noexcept;
 
@@ -117,7 +116,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // what lane to use for this request
   virtual RequestLane lane() const = 0;
 
-  RequestLane determineRequestLane();
+  RequestLane determineRequestLane(); 
 
   virtual void prepareExecute(bool isContinue) {}
   virtual RestStatus execute() = 0;
@@ -155,15 +154,14 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  template<typename T>
+  template <typename T>
   RestStatus waitForFuture(futures::Future<T>&& f) {
     if (f.isReady()) {             // fast-path out
       f.result().throwIfFailed();  // just throw the error upwards
       return RestStatus::DONE;
     }
     bool done = false;
-    std::move(f).thenFinal([self = shared_from_this(),
-                            &done](futures::Try<T>&& t) -> void {
+    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>&& t) -> void {
       auto thisPtr = self.get();
       if (t.hasException()) {
         thisPtr->handleExceptionPtr(std::move(t).exception());
@@ -230,3 +228,4 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
 }  // namespace rest
 }  // namespace arangodb
+

@@ -45,3 +45,4 @@ class RestTasksHandler : public arangodb::RestVocbaseBaseHandler {
   void deleteTask();
 };
 }  // namespace arangodb
+

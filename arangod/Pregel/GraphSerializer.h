@@ -26,7 +26,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
 #include <cstddef>
 
 #include "Basics/Common.h"
@@ -36,20 +35,18 @@
 namespace arangodb {
 namespace pregel {
 
-template<typename V>
+template <typename V>
 struct VertexSerializer {
   virtual ~VertexSerializer() = default;
 
-  virtual void serialize(VPackBuilder const& builder,
-                         V const* targetPtr) const = 0;
+  virtual void serialize(VPackBuilder const& builder, V const* targetPtr) const = 0;
 
   virtual bool deserialize(VPackSlice const& data, V* targetPtr) const = 0;
 };
 
-template<>
+template <>
 struct VertexSerializer<int64_t> {
-  virtual void serialize(VPackBuilder const& builder,
-                         int64_t const* targetPtr) const {
+  virtual void serialize(VPackBuilder const& builder, int64_t const* targetPtr) const {
     builder.add(VPackValue(*targetPtr));
   };
   virtual bool deserialize(VPackSlice const& data, int64_t* targetPtr) const {

@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBSavePoint.h"
-
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -82,14 +81,12 @@ void RocksDBSavePoint::prepareOperation(RevisionId rid) {
 Result RocksDBSavePoint::finish(RevisionId rid) {
   bool hasPerformedIntermediateCommit = false;
   Result res = basics::catchToResult([&]() -> Result {
-    return _state.addOperation(_collectionId, rid, _operationType,
-                               hasPerformedIntermediateCommit);
+    return _state.addOperation(_collectionId, rid, _operationType, hasPerformedIntermediateCommit);
   });
 
   if (!_handled) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_numCommitsAtStart + (hasPerformedIntermediateCommit ? 1 : 0) ==
-               _state.numCommits());
+    TRI_ASSERT(_numCommitsAtStart + (hasPerformedIntermediateCommit ? 1 : 0) == _state.numCommits());
 #endif
 
     if (res.ok()) {
@@ -105,7 +102,7 @@ Result RocksDBSavePoint::finish(RevisionId rid) {
         // savepoint
         _state.rocksdbMethods(_collectionId)->PopSavePoint();
       }
-
+    
       // this will prevent the rollback call in the destructor
       _handled = true;
     } else {
@@ -140,7 +137,7 @@ void RocksDBSavePoint::rollback() {
     // std::string::resize instead of a full rebuild of the WBWI
     // from the WriteBatch)
     s = _rocksMethods.RollbackToWriteBatchSavePoint();
-  }
+  }  
   TRI_ASSERT(s.ok());
 
   _rocksMethods.rollbackOperation(_operationType);
@@ -148,4 +145,4 @@ void RocksDBSavePoint::rollback() {
   _handled = true;  // in order to not roll back again by accident
 }
 
-}  // namespace arangodb
+} // namespace

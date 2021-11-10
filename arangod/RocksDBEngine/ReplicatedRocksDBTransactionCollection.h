@@ -29,21 +29,17 @@ namespace arangodb {
 class RocksDBTransactionMethods;
 class ReplicatedRocksDBTransactionState;
 
-class ReplicatedRocksDBTransactionCollection final
-    : public RocksDBTransactionCollection {
+class ReplicatedRocksDBTransactionCollection final : public RocksDBTransactionCollection {
  public:
   ReplicatedRocksDBTransactionCollection(ReplicatedRocksDBTransactionState* trx,
-                                         DataSourceId cid,
-                                         AccessMode::Type accessType);
+                                         DataSourceId cid, AccessMode::Type accessType);
   ~ReplicatedRocksDBTransactionCollection();
 
   Result beginTransaction();
   Result commitTransaction();
   Result abortTransaction();
 
-  RocksDBTransactionMethods* rocksdbMethods() const {
-    return _rocksMethods.get();
-  }
+  RocksDBTransactionMethods* rocksdbMethods() const { return _rocksMethods.get(); }
 
   void beginQuery(bool isModificationQuery);
   void endQuery(bool isModificationQuery) noexcept;
@@ -62,9 +58,10 @@ class ReplicatedRocksDBTransactionCollection final
 
  private:
   void maybeDisableIndexing();
-
+  
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBTransactionMethods> _rocksMethods;
 };
 
 }  // namespace arangodb
+

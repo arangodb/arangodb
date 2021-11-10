@@ -23,36 +23,38 @@
 
 #pragma once
 
-#include <atomic>
-
 #include "Basics/Common.h"
 #include "Basics/Thread.h"
 #include "Basics/asio_ns.h"
+
+#include <atomic>
 
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
 namespace rest {
-
+  
 class IoContext {
   friend class IoThread;
 
  private:
+  
   class IoThread final : public Thread {
    public:
     explicit IoThread(application_features::ApplicationServer&, IoContext&);
     explicit IoThread(IoThread const&);
     ~IoThread();
     void run() override;
-
+    
    private:
     IoContext& _iocontext;
   };
-
+  
  public:
+  
   asio_ns::io_context io_context;
-
+  
  private:
   application_features::ApplicationServer& _server;
   IoThread _thread;
@@ -63,7 +65,7 @@ class IoContext {
   explicit IoContext(application_features::ApplicationServer&);
   explicit IoContext(IoContext const&);
   ~IoContext();
-
+  
   unsigned clients() const noexcept {
     return _clients.load(std::memory_order_acquire);
   }
@@ -71,7 +73,7 @@ class IoContext {
   void incClients() noexcept {
     _clients.fetch_add(1, std::memory_order_release);
   }
-
+  
   void decClients() noexcept {
     _clients.fetch_sub(1, std::memory_order_release);
   }
@@ -83,3 +85,4 @@ class IoContext {
 
 }  // namespace rest
 }  // namespace arangodb
+

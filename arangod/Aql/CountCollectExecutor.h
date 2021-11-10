@@ -26,14 +26,14 @@
 
 #pragma once
 
-#include <memory>
-#include <unordered_set>
-
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
+
+#include <memory>
+#include <unordered_set>
 
 namespace arangodb {
 namespace aql {
@@ -42,7 +42,7 @@ class InputAqlItemRow;
 class NoStats;
 class RegisterInfos;
 class OutputAqlItemRow;
-template<BlockPassthrough>
+template <BlockPassthrough>
 class SingleRowFetcher;
 struct AqlCall;
 class AqlItemBlockInputRange;
@@ -71,8 +71,7 @@ class CountCollectExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = false;
-    static constexpr BlockPassthrough allowsBlockPassthrough =
-        BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -88,26 +87,21 @@ class CountCollectExecutor {
   /**
    * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to
-   * upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
-                                 OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
   /**
    * @brief skip the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to
-   * upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange,
-                                   AqlCall& call)
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-  [[nodiscard]] auto expectedNumberOfRowsNew(
-      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
-      -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
   Infos const& infos() const noexcept;
@@ -118,3 +112,4 @@ class CountCollectExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
+

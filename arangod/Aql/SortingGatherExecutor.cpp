@@ -23,14 +23,14 @@
 
 #include "SortingGatherExecutor.h"
 
-#include <utility>
-
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/QueryContext.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
+#include "Aql/QueryContext.h"
 #include "Transaction/Methods.h"
+
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -40,10 +40,8 @@ namespace {
 /// @brief OurLessThan: comparison method for elements of SortingGatherBlock
 class OurLessThan {
  public:
-  OurLessThan(arangodb::aql::QueryContext& query,
-              std::vector<SortRegister>& sortRegisters) noexcept
-      : _resolver(query.resolver()),
-        _vpackOptions(query.vpackOptions()),
+  OurLessThan(arangodb::aql::QueryContext& query, std::vector<SortRegister>& sortRegisters) noexcept
+      : _resolver(query.resolver()), _vpackOptions(query.vpackOptions()),
         _sortRegisters(sortRegisters) {}
 
   bool operator()(SortingGatherExecutor::ValueType const& a,
@@ -101,11 +99,9 @@ class OurLessThan {
 /// @class HeapSorting
 /// @brief "Heap" sorting strategy
 ////////////////////////////////////////////////////////////////////////////////
-class HeapSorting final : public SortingGatherExecutor::SortingStrategy,
-                          private OurLessThan {
+class HeapSorting final : public SortingGatherExecutor::SortingStrategy, private OurLessThan {
  public:
-  HeapSorting(arangodb::aql::QueryContext& query,
-              std::vector<SortRegister>& sortRegisters) noexcept
+  HeapSorting(arangodb::aql::QueryContext& query, std::vector<SortRegister>& sortRegisters) noexcept
       : OurLessThan(query, sortRegisters) {}
 
   virtual SortingGatherExecutor::ValueType nextValue() override {
@@ -116,8 +112,7 @@ class HeapSorting final : public SortingGatherExecutor::SortingStrategy,
     return _heap.back();
   }
 
-  virtual void prepare(
-      std::vector<SortingGatherExecutor::ValueType>& blockPos) override {
+  virtual void prepare(std::vector<SortingGatherExecutor::ValueType>& blockPos) override {
     TRI_ASSERT(!blockPos.empty());
 
     if (_heap.size() == blockPos.size()) {
@@ -126,9 +121,8 @@ class HeapSorting final : public SortingGatherExecutor::SortingStrategy,
 
     _heap.clear();
     std::copy(blockPos.begin(), blockPos.end(), std::back_inserter(_heap));
-    std::make_heap(
-        _heap.begin(), _heap.end() - 1,
-        *this);  // remain last element out of heap to maintain invariant
+    std::make_heap(_heap.begin(), _heap.end() - 1,
+                   *this);  // remain last element out of heap to maintain invariant
     TRI_ASSERT(!_heap.empty());
   }
 
@@ -162,8 +156,7 @@ class MinElementSorting final : public SortingGatherExecutor::SortingStrategy,
     return *(std::min_element(_blockPos->begin(), _blockPos->end(), *this));
   }
 
-  virtual void prepare(
-      std::vector<SortingGatherExecutor::ValueType>& blockPos) override {
+  virtual void prepare(std::vector<SortingGatherExecutor::ValueType>& blockPos) override {
     _blockPos = &blockPos;
   }
 
@@ -177,18 +170,14 @@ class MinElementSorting final : public SortingGatherExecutor::SortingStrategy,
 
 }  // namespace
 SortingGatherExecutor::ValueType::ValueType(size_t index)
-    : dependencyIndex{index},
-      row{CreateInvalidInputRowHint()},
-      state{ExecutorState::HASMORE} {}
+    : dependencyIndex{index}, row{CreateInvalidInputRowHint()}, state{ExecutorState::HASMORE} {}
 
-SortingGatherExecutor::ValueType::ValueType(size_t index, InputAqlItemRow prow,
-                                            ExecutorState pstate)
+SortingGatherExecutor::ValueType::ValueType(size_t index, InputAqlItemRow prow, ExecutorState pstate)
     : dependencyIndex{index}, row{std::move(prow)}, state{pstate} {}
 
 SortingGatherExecutorInfos::SortingGatherExecutorInfos(
-    std::vector<SortRegister>&& sortRegister,
-    arangodb::aql::QueryContext& query, GatherNode::SortMode sortMode,
-    size_t limit, GatherNode::Parallelism p)
+    std::vector<SortRegister>&& sortRegister, arangodb::aql::QueryContext& query,
+    GatherNode::SortMode sortMode, size_t limit, GatherNode::Parallelism p)
     : _sortRegister(std::move(sortRegister)),
       _query(query),
       _sortMode(sortMode),
@@ -204,13 +193,11 @@ SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
       _fetchParallel(infos.parallelism() == GatherNode::Parallelism::Parallel) {
   switch (infos.sortMode()) {
     case GatherNode::SortMode::MinElement:
-      _strategy = std::make_unique<MinElementSorting>(infos.query(),
-                                                      infos.sortRegister());
+      _strategy = std::make_unique<MinElementSorting>(infos.query(), infos.sortRegister());
       break;
     case GatherNode::SortMode::Heap:
     case GatherNode::SortMode::Default:  // use heap by default
-      _strategy =
-          std::make_unique<HeapSorting>(infos.query(), infos.sortRegister());
+      _strategy = std::make_unique<HeapSorting>(infos.query(), infos.sortRegister());
       break;
     default:
       TRI_ASSERT(false);
@@ -221,9 +208,8 @@ SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
 
 SortingGatherExecutor::~SortingGatherExecutor() = default;
 
-auto SortingGatherExecutor::initialize(
-    typename Fetcher::DataRange const& inputRange, AqlCall const& clientCall)
-    -> AqlCallSet {
+auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputRange,
+                                       AqlCall const& clientCall) -> AqlCallSet {
   auto callSet = AqlCallSet{};
 
   if (!_initialized) {
@@ -232,8 +218,7 @@ auto SortingGatherExecutor::initialize(
     TRI_ASSERT(_numberDependencies == 0 ||
                _numberDependencies == inputRange.numberDependencies());
     _numberDependencies = inputRange.numberDependencies();
-    // If we have collected all ranges once, we can prepare the local
-    // data-structure copy
+    // If we have collected all ranges once, we can prepare the local data-structure copy
     if (_inputRows.empty()) {
       _inputRows.reserve(_numberDependencies);
       for (size_t dep = 0; dep < _numberDependencies; ++dep) {
@@ -261,9 +246,8 @@ auto SortingGatherExecutor::initialize(
   return callSet;
 }
 
-auto SortingGatherExecutor::requiresMoreInput(
-    typename Fetcher::DataRange const& inputRange, AqlCall const& clientCall)
-    -> AqlCallSet {
+auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const& inputRange,
+                                              AqlCall const& clientCall) -> AqlCallSet {
   auto callSet = AqlCallSet{};
 
   if (clientCall.hasSoftLimit()) {
@@ -283,8 +267,8 @@ auto SortingGatherExecutor::requiresMoreInput(
     if (needMoreInput) {
       // Still waiting for input
       // TODO: This call requires limits
-      callSet.calls.emplace_back(AqlCallSet::DepCallPair{
-          dependency, calculateUpstreamCall(clientCall)});
+      callSet.calls.emplace_back(
+          AqlCallSet::DepCallPair{dependency, calculateUpstreamCall(clientCall)});
     } else {
       // We got an answer, save it
       ValueType& localDep = _inputRows[dependency];
@@ -298,8 +282,7 @@ auto SortingGatherExecutor::requiresMoreInput(
   return callSet;
 }
 
-auto SortingGatherExecutor::nextRow(MultiAqlItemBlockInputRange& input)
-    -> InputAqlItemRow {
+auto SortingGatherExecutor::nextRow(MultiAqlItemBlockInputRange& input) -> InputAqlItemRow {
   if (input.isDone()) {
     // No rows, there is a chance we get into this.
     // If we requested data from upstream, but all if it is done.
@@ -338,8 +321,7 @@ auto SortingGatherExecutor::nextRow(MultiAqlItemBlockInputRange& input)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Guarantees requiredby this this block:
-///        1) For every dependency the input is sorted, according to the same
-///        strategy.
+///        1) For every dependency the input is sorted, according to the same strategy.
 ///
 ///        What this block does:
 ///        InitPhase:
@@ -400,8 +382,7 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
   return {state, NoStats{}, AqlCallSet{}};
 }
 
-auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
-                                          AqlCall& call)
+auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
   if (!_initialized) {
     // First initialize
@@ -483,8 +464,7 @@ bool SortingGatherExecutor::constrainedSort() const noexcept {
   return _limit > 0;
 }
 
-void SortingGatherExecutor::assertConstrainedDoesntOverfetch(
-    size_t const atMost) const noexcept {
+void SortingGatherExecutor::assertConstrainedDoesntOverfetch(size_t const atMost) const noexcept {
   // if we have a constrained sort, we should not be asked for more rows than
   // our limit.
   TRI_ASSERT(!constrainedSort() || atMost <= rowsLeftToWrite());
@@ -505,14 +485,13 @@ auto SortingGatherExecutor::limitReached() const noexcept -> bool {
   return constrainedSort() && rowsLeftToWrite() == 0;
 }
 
-[[nodiscard]] auto SortingGatherExecutor::calculateUpstreamCall(
-    AqlCall const& clientCall) const noexcept -> AqlCallList {
+[[nodiscard]] auto SortingGatherExecutor::calculateUpstreamCall(AqlCall const& clientCall) const
+    noexcept -> AqlCallList {
   auto upstreamCall = AqlCall{};
   if (constrainedSort()) {
     if (clientCall.hasSoftLimit()) {
       // We do not know if we are going to be asked again to do a fullcount
-      // So we can only request a softLimit bounded by our internal limit to
-      // upstream
+      // So we can only request a softLimit bounded by our internal limit to upstream
 
       upstreamCall.softLimit = clientCall.offset + clientCall.softLimit;
       if (rowsLeftToWrite() < upstreamCall.softLimit) {

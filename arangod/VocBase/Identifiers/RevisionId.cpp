@@ -21,10 +21,10 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VocBase/Identifiers/RevisionId.h"
-
 #include <cstdint>
 #include <limits>
+
+#include "VocBase/Identifiers/RevisionId.h"
 
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/NumberUtils.h"
@@ -84,8 +84,7 @@ std::pair<size_t, size_t> RevisionId::toString(char* buffer) const {
 /// arangodb::basics::maxUInt64StringSize bytes long
 arangodb::velocypack::ValuePair RevisionId::toValuePair(char* buffer) const {
   auto positions = toString(buffer);
-  return arangodb::velocypack::ValuePair(&buffer[0] + positions.first,
-                                         positions.second,
+  return arangodb::velocypack::ValuePair(&buffer[0] + positions.first, positions.second,
                                          velocypack::ValueType::String);
 }
 
@@ -95,7 +94,7 @@ void RevisionId::toPersistent(std::string& buffer) const {
 }
 
 /// @brief create a revision id with a lower-bound HLC value
-RevisionId RevisionId::lowerBound() {
+RevisionId RevisionId::lowerBound() { 
   // "2021-01-01T00:00:00.000Z" => 1609459200000 milliseconds since the epoch
   RevisionId value{uint64_t(1609459200000ULL) << 20ULL};
   TRI_ASSERT(value.id() > ::TickLimit);
@@ -123,14 +122,12 @@ RevisionId RevisionId::fromString(std::string const& ridStr) {
 }
 
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
-RevisionId RevisionId::fromString(std::string const& ridStr, bool& isOld,
-                                  bool warn) {
+RevisionId RevisionId::fromString(std::string const& ridStr, bool& isOld, bool warn) {
   return fromString(ridStr.c_str(), ridStr.size(), isOld, warn);
 }
 
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
-RevisionId RevisionId::fromString(char const* p, size_t len, bool& isOld,
-                                  bool warn) {
+RevisionId RevisionId::fromString(char const* p, size_t len, bool& isOld, bool warn) {
   if (len > 0 && *p >= '1' && *p <= '9') {
     BaseType r = NumberUtils::atoi_positive_unchecked<BaseType>(p, p + len);
     if (warn && r > ::TickLimit) {

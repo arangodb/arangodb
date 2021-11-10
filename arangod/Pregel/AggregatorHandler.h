@@ -26,10 +26,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
 #include <functional>
 #include <map>
-
 #include "Basics/ReadWriteLock.h"
 #include "Pregel/Aggregator.h"
 

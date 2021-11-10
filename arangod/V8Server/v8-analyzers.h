@@ -26,8 +26,8 @@
 
 #include <v8.h>
 
-struct TRI_v8_global_t;  // forward declaration
-struct TRI_vocbase_t;    // forward declaration
+struct TRI_v8_global_t; // forward declaration
+struct TRI_vocbase_t; // forward declaration
 
 namespace arangodb {
 namespace iresearch {
@@ -37,5 +37,6 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate);
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // iresearch
+} // arangodb
+

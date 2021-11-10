@@ -30,8 +30,9 @@ namespace arangodb {
 
 class RestCompactHandler : public arangodb::RestBaseHandler {
  public:
-  RestCompactHandler(application_features::ApplicationServer&, GeneralRequest*,
-                     GeneralResponse*);
+  RestCompactHandler(application_features::ApplicationServer&,
+                     GeneralRequest*, GeneralResponse*);
+
 
  public:
   RestStatus execute() override;
@@ -39,3 +40,4 @@ class RestCompactHandler : public arangodb::RestBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 };
 }  // namespace arangodb
+

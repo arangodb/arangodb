@@ -24,6 +24,8 @@
 #pragma once
 
 #include "Basics/Common.h"
+
 #include "V8/v8-globals.h"
 
 void TRI_InitV8Ttl(v8::Isolate* isolate);
+

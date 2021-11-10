@@ -25,9 +25,10 @@
 
 #pragma once
 
+#include <Pregel/MasterContext.h>
+
 #include <Greenspun/Primitives.h>
 #include <Pregel/Algos/AIR/AIR.h>
-#include <Pregel/MasterContext.h>
 
 namespace arangodb {
 namespace pregel {
@@ -42,22 +43,13 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
   MasterContext& operator=(MasterContext&&) = delete;
   MasterContext& operator=(MasterContext const&) = delete;
 
-  greenspun::EvalResult air_GotoPhase(greenspun::Machine& ctx,
-                                      VPackSlice params, VPackBuilder& result);
-  greenspun::EvalResult air_Finish(greenspun::Machine& ctx, VPackSlice params,
-                                   VPackBuilder& result);
-  greenspun::EvalResult air_VertexCount(greenspun::Machine& ctx,
-                                        VPackSlice params,
-                                        VPackBuilder& result);
-  greenspun::EvalResult air_AccumRef(greenspun::Machine& ctx, VPackSlice params,
-                                     VPackBuilder& result);
-  greenspun::EvalResult air_AccumSet(greenspun::Machine& ctx, VPackSlice params,
-                                     VPackBuilder& result);
-  greenspun::EvalResult air_AccumClear(greenspun::Machine& ctx,
-                                       VPackSlice params, VPackBuilder& result);
-  greenspun::EvalResult air_GlobalSuperstep(greenspun::Machine& ctx,
-                                            VPackSlice params,
-                                            VPackBuilder& result);
+  greenspun::EvalResult air_GotoPhase(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
+  greenspun::EvalResult air_Finish(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
+  greenspun::EvalResult air_VertexCount(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
+  greenspun::EvalResult air_AccumRef(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
+  greenspun::EvalResult air_AccumSet(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
+  greenspun::EvalResult air_AccumClear(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
+  greenspun::EvalResult air_GlobalSuperstep(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
 
   bool gotoPhase(std::string_view nextPhase);
   void finish();
@@ -69,15 +61,12 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
 
   void serializeValues(VPackBuilder& msg) override;
 
-  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const&
-  globalAccumulators();
-
- private:
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& globalAccumulators();
+private:
   ProgrammablePregelAlgorithm const* _algo;
   greenspun::Machine _airMachine;
 
-  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>>
-      _globalAccumulators;
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _globalAccumulators;
 
   ContinuationResult _userSelectedNext = ContinuationResult::DONT_CARE;
 };
@@ -86,3 +75,4 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
+

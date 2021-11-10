@@ -162,3 +162,4 @@ static_assert(sizeof(PlainBucket) == BUCKET_SIZE,
 
 };  // end namespace cache
 };  // end namespace arangodb
+

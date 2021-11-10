@@ -56,8 +56,7 @@ struct AqlValueMaterializer {
 
   ~AqlValueMaterializer();
 
-  arangodb::velocypack::Slice slice(arangodb::aql::AqlValue const& value,
-                                    bool resolveExternals);
+  arangodb::velocypack::Slice slice(arangodb::aql::AqlValue const& value, bool resolveExternals);
 
   arangodb::velocypack::Options const* options;
   arangodb::aql::AqlValue materialized;
@@ -66,3 +65,4 @@ struct AqlValueMaterializer {
 
 }  // namespace aql
 }  // namespace arangodb
+

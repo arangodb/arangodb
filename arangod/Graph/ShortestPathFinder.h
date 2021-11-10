@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
-
 #include "Basics/Common.h"
+
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace graph {
@@ -72,3 +72,4 @@ class ShortestPathFinder {
 
 }  // namespace graph
 }  // namespace arangodb
+

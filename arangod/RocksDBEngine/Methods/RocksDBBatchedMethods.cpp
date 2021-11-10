@@ -36,11 +36,11 @@ rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                  "BatchedMethods does not provide Get");
 }
 
-rocksdb::Status RocksDBBatchedMethods::GetForUpdate(
-    rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
-    rocksdb::PinnableSlice* val) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, "BatchedMethods does not provide GetForUpdate");
+rocksdb::Status RocksDBBatchedMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
+                                                    rocksdb::Slice const& key,
+                                                    rocksdb::PinnableSlice* val) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "BatchedMethods does not provide GetForUpdate");
 }
 
 rocksdb::Status RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
@@ -51,10 +51,10 @@ rocksdb::Status RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
   return _wb->Put(cf, key.string(), val);
 }
 
-rocksdb::Status RocksDBBatchedMethods::PutUntracked(
-    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
-    rocksdb::Slice const& val) {
-  return RocksDBBatchedMethods::Put(cf, key, val, /*assume_tracked*/ false);
+rocksdb::Status RocksDBBatchedMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
+                                                    RocksDBKey const& key,
+                                                    rocksdb::Slice const& val) {
+  return RocksDBBatchedMethods::Put(cf, key, val, /*assume_tracked*/false);
 }
 
 rocksdb::Status RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
@@ -63,8 +63,8 @@ rocksdb::Status RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
   return _wb->Delete(cf, key.string());
 }
 
-rocksdb::Status RocksDBBatchedMethods::SingleDelete(
-    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
+rocksdb::Status RocksDBBatchedMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
+                                                    RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
   return _wb->SingleDelete(cf, key.string());
 }

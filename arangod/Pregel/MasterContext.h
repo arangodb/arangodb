@@ -24,7 +24,6 @@
 #pragma once
 
 #include <velocypack/Slice.h>
-
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Reports.h"
@@ -57,18 +56,18 @@ class MasterContext {
   /// current global edge count, might change after each gss
   inline uint64_t edgeCount() const { return _edgeCount; }
 
-  template<typename T>
+  template <typename T>
   inline void aggregate(std::string const& name, T const& value) {
     T const* ptr = &value;
     _aggregators->aggregate(name, ptr);
   }
 
-  template<typename T>
+  template <typename T>
   inline const T* getAggregatedValue(std::string const& name) {
     return (const T*)_aggregators->getAggregatedValue(name);
   }
 
-  template<typename T>
+  template <typename T>
   inline void setAggregatedValue(std::string const& name, T const& value) {
     // FIXME refactor the aggregators, this whole API is horrible
     arangodb::velocypack::Builder b;
@@ -81,7 +80,7 @@ class MasterContext {
     _aggregators->setAggregatedValues(b.slice());
   }
 
-  template<typename T>
+  template <typename T>
   inline T* getAggregator(std::string const& name) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return dynamic_cast<T*>(_aggregators->getAggregator(name));
@@ -97,10 +96,7 @@ class MasterContext {
   /// @brief called before supersteps
   virtual void preGlobalSuperstep() {}
   /// @return true to continue the computation
-  virtual bool preGlobalSuperstepWithResult() {
-    preGlobalSuperstep();
-    return true;
-  }
+  virtual bool preGlobalSuperstepWithResult() { preGlobalSuperstep(); return true; }
   /// @brief called before supersteps; message that is put
   ///        in msg is sent to all WorkerContexts
   virtual void preGlobalSuperstepMessage(VPackBuilder& msg) {}
@@ -110,27 +106,19 @@ class MasterContext {
 
   /// @brief called after supersteps, VPackSlice contains array of all
   ///        worker messages received
-  virtual bool postGlobalSuperstepMessage(VPackSlice workerMsgs) {
-    return true;
-  }
+  virtual bool postGlobalSuperstepMessage(VPackSlice workerMsgs) { return true; }
 
   virtual void postApplication() {}
 
   ReportManager& getReportManager() { return *_reports; }
 
-  virtual void serializeValues(VPackBuilder& b) {}
+  virtual void serializeValues(VPackBuilder& b) { }
 
   enum class ContinuationResult {
-    CONTINUE,
-    ABORT,
-    DONT_CARE,
-    ACTIVATE_ALL,
-    ERROR_ABORT,
+    CONTINUE, ABORT, DONT_CARE, ACTIVATE_ALL, ERROR_ABORT,
   };
 
-  virtual ContinuationResult postGlobalSuperstep(bool allVertexesVotedHalt) {
-    return ContinuationResult::DONT_CARE;
-  }
+  virtual ContinuationResult postGlobalSuperstep(bool allVertexesVotedHalt) { return ContinuationResult::DONT_CARE; }
 
   /// Called when a worker send updated aggregator values.
   /// Only called in async mode, never called after a global superstep

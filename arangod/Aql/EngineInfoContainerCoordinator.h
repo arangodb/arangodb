@@ -23,12 +23,12 @@
 
 #pragma once
 
+#include "Aql/types.h"
+#include "Aql/ExecutionEngine.h"
+
 #include <stack>
 #include <string>
 #include <unordered_set>
-
-#include "Aql/ExecutionEngine.h"
-#include "Aql/types.h"
 
 namespace arangodb {
 class Result;
@@ -60,8 +60,7 @@ class EngineInfoContainerCoordinator {
     void addNode(ExecutionNode* en);
 
     Result buildEngine(Query& query, MapRemoteToSnippet const& dbServerQueryIds,
-                       bool isfirst,
-                       std::unique_ptr<ExecutionEngine>& engine) const;
+                       bool isfirst, std::unique_ptr<ExecutionEngine>& engine) const;
 
     EngineId engineId() const;
 
@@ -112,3 +111,4 @@ class EngineInfoContainerCoordinator {
 
 }  // namespace aql
 }  // namespace arangodb
+

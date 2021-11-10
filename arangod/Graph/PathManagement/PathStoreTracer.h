@@ -23,15 +23,16 @@
 
 #pragma once
 
-#include <unordered_map>
-#include <vector>
-
-#include "Basics/ResourceUsage.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Helpers/TraceEntry.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/TypeAliases.h"
+
+#include "Basics/ResourceUsage.h"
+
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 
@@ -43,7 +44,7 @@ namespace graph {
 
 class ValidationResult;
 
-template<class PathStoreImpl>
+template <class PathStoreImpl>
 class PathStoreTracer {
  public:
   using Step = typename PathStoreImpl::Step;
@@ -65,19 +66,17 @@ class PathStoreTracer {
   // @brief returns the current vector size
   size_t size() const;
 
-  template<class PathResultType>
+  template <class PathResultType>
   auto buildPath(Step const& vertex, PathResultType& path) const -> void;
 
-  template<class ProviderType>
-  auto reverseBuildPath(Step const& vertex,
-                        PathResult<ProviderType, Step>& path) const -> void;
+  template <class ProviderType>
+  auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const
+      -> void;
 
-  auto visitReversePath(Step const& step,
-                        std::function<bool(Step const&)> const& visitor) const
+  auto visitReversePath(Step const& step, std::function<bool(Step const&)> const& visitor) const
       -> bool;
 
-  auto modifyReversePath(Step& step, std::function<bool(Step&)> const& visitor)
-      -> bool;
+  auto modifyReversePath(Step& step, std::function<bool(Step&)> const& visitor) -> bool;
 
  private:
   PathStoreImpl _impl;
@@ -89,3 +88,4 @@ class PathStoreTracer {
 
 }  // namespace graph
 }  // namespace arangodb
+

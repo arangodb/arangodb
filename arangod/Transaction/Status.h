@@ -62,8 +62,9 @@ static inline char const* statusString(Status status) {
 
 Status statusFromString(char const* str, size_t len);
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::transaction::Status const& s);
+std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s);
 
 }  // namespace transaction
 }  // namespace arangodb
+
+

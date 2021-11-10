@@ -25,10 +25,10 @@
 
 #pragma once
 
+#include "Basics/Common.h"
+
 #include <rocksdb/slice.h>
 #include <rocksdb/slice_transform.h>
-
-#include "Basics/Common.h"
 
 namespace arangodb {
 
@@ -75,3 +75,4 @@ class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
 };
 
 }  // namespace arangodb
+

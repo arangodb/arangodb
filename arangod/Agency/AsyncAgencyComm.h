@@ -24,15 +24,17 @@
 #pragma once
 
 #include <fuerte/message.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <deque>
 #include <memory>
 #include <mutex>
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Agency/AgencyComm.h"
+
 #include "Agency/PathComponent.h"
 #include "Basics/ResultT.h"
 #include "Basics/debugging.h"
@@ -101,16 +103,14 @@ struct AsyncAgencyCommResult {
 // switched off. And since warnings are considered to be errors, we must
 // switch the warning off:
 
-#if defined(__GNUC__) && \
-    (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 
 struct AgencyReadResult : public AsyncAgencyCommResult {
-  AgencyReadResult(
-      AsyncAgencyCommResult&& result,
-      std::shared_ptr<arangodb::cluster::paths::Path const> valuePath)
+  AgencyReadResult(AsyncAgencyCommResult&& result,
+                   std::shared_ptr<arangodb::cluster::paths::Path const> valuePath)
       : AsyncAgencyCommResult(std::move(result)),
         _value(nullptr),
         _valuePath(std::move(valuePath)) {}
@@ -126,8 +126,7 @@ struct AgencyReadResult : public AsyncAgencyCommResult {
   std::shared_ptr<arangodb::cluster::paths::Path const> _valuePath;
 };
 
-#if defined(__GNUC__) && \
-    (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic pop
 #endif
 
@@ -160,8 +159,7 @@ class AsyncAgencyCommManager final {
 
   std::string getCurrentEndpoint();
   void reportError(std::string const& endpoint);
-  void reportRedirect(std::string const& endpoint,
-                      std::string const& redirectTo);
+  void reportRedirect(std::string const& endpoint, std::string const& redirectTo);
 
   network::ConnectionPool* pool() const { return _pool; }
   void pool(network::ConnectionPool* pool) { _pool = pool; }
@@ -194,21 +192,18 @@ class AsyncAgencyComm final {
   [[nodiscard]] FutureResult getValues(std::string const& path) const;
   [[nodiscard]] FutureReadResult getValues(
       std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
-  [[nodiscard]] FutureResult poll(network::Timeout timeout,
-                                  uint64_t index) const;
+  [[nodiscard]] FutureResult poll(network::Timeout timeout, uint64_t index) const;
 
-  template<typename T>
-  [[nodiscard]] FutureResult setValue(
-      network::Timeout timeout,
-      std::shared_ptr<arangodb::cluster::paths::Path const> const& path,
-      T const& value, uint64_t ttl = 0) {
+  template <typename T>
+  [[nodiscard]] FutureResult setValue(network::Timeout timeout,
+                                      std::shared_ptr<arangodb::cluster::paths::Path const> const& path,
+                                      T const& value, uint64_t ttl = 0) {
     return setValue(timeout, path->str(), value, ttl);
   }
 
-  template<typename T>
-  [[nodiscard]] FutureResult setValue(network::Timeout timeout,
-                                      std::string const& path, T const& value,
-                                      uint64_t ttl = 0) {
+  template <typename T>
+  [[nodiscard]] FutureResult setValue(network::Timeout timeout, std::string const& path,
+                                      T const& value, uint64_t ttl = 0) {
     VPackBuffer<uint8_t> transaction;
     {
       VPackBuilder trxBuilder(transaction);
@@ -235,52 +230,47 @@ class AsyncAgencyComm final {
   [[nodiscard]] FutureResult deleteKey(
       network::Timeout timeout,
       std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
-  [[nodiscard]] FutureResult deleteKey(network::Timeout timeout,
-                                       std::string const& path) const;
+  [[nodiscard]] FutureResult deleteKey(network::Timeout timeout, std::string const& path) const;
 
-  [[nodiscard]] FutureResult sendWriteTransaction(
-      network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
-  [[nodiscard]] FutureResult sendReadTransaction(
-      network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
-  [[nodiscard]] FutureResult sendPollTransaction(network::Timeout timeout,
-                                                 uint64_t index) const;
+  [[nodiscard]] FutureResult sendWriteTransaction(network::Timeout timeout,
+                                                  velocypack::Buffer<uint8_t>&& body) const;
+  [[nodiscard]] FutureResult sendReadTransaction(network::Timeout timeout,
+                                                 velocypack::Buffer<uint8_t>&& body) const;
+  [[nodiscard]] FutureResult sendPollTransaction(network::Timeout timeout, uint64_t index) const;
 
-  [[nodiscard]] FutureResult sendTransaction(
-      network::Timeout timeout, AgencyReadTransaction const&) const;
-  [[nodiscard]] FutureResult sendTransaction(
-      network::Timeout timeout, AgencyWriteTransaction const&) const;
+  [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout,
+                                             AgencyReadTransaction const&) const;
+  [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout,
+                                             AgencyWriteTransaction const&) const;
 
   enum class RequestType {
-    READ,    // send the transaction again in the case of no response
-    WRITE,   // does not send the transaction again but instead tries to do
-             // inquiry with the given ids
-    CUSTOM,  // talk to the leader and always return the result, even on timeout
-             // or redirect
+    READ,   // send the transaction again in the case of no response
+    WRITE,  // does not send the transaction again but instead tries to do inquiry with the given ids
+    CUSTOM,  // talk to the leader and always return the result, even on timeout or redirect
   };
 
   using ClientId = std::string;
 
-  [[nodiscard]] FutureResult sendWithFailover(
-      arangodb::fuerte::RestVerb method, std::string const& url,
-      network::Timeout timeout, RequestType type,
-      std::vector<ClientId> clientIds,
-      velocypack::Buffer<uint8_t>&& body) const;
-
-  [[nodiscard]] FutureResult sendWithFailover(
-      arangodb::fuerte::RestVerb method, std::string const& url,
-      network::Timeout timeout, RequestType type,
-      std::vector<ClientId> clientIds, AgencyTransaction const& trx) const;
-
-  [[nodiscard]] FutureResult sendWithFailover(
-      arangodb::fuerte::RestVerb method, std::string const& url,
-      network::Timeout timeout, RequestType type,
-      velocypack::Buffer<uint8_t>&& body) const;
+  [[nodiscard]] FutureResult sendWithFailover(arangodb::fuerte::RestVerb method,
+                                              std::string const& url,
+                                              network::Timeout timeout, RequestType type,
+                                              std::vector<ClientId> clientIds,
+                                              velocypack::Buffer<uint8_t>&& body) const;
 
   [[nodiscard]] FutureResult sendWithFailover(arangodb::fuerte::RestVerb method,
                                               std::string const& url,
-                                              network::Timeout timeout,
-                                              RequestType type,
-                                              uint64_t index) const;
+                                              network::Timeout timeout, RequestType type,
+                                              std::vector<ClientId> clientIds,
+                                              AgencyTransaction const& trx) const;
+
+  [[nodiscard]] FutureResult sendWithFailover(arangodb::fuerte::RestVerb method,
+                                              std::string const& url,
+                                              network::Timeout timeout, RequestType type,
+                                              velocypack::Buffer<uint8_t>&& body) const;
+
+  [[nodiscard]] FutureResult sendWithFailover(arangodb::fuerte::RestVerb method,
+                                              std::string const& url, network::Timeout timeout,
+                                              RequestType type, uint64_t index) const;
 
   AsyncAgencyComm() : _manager(AsyncAgencyCommManager::getInstance()) {}
   explicit AsyncAgencyComm(AsyncAgencyCommManager& manager)

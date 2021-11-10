@@ -40,4 +40,5 @@ struct SyncerId {
     return value == other.value;
   }
 };
-}  // namespace arangodb
+}
+

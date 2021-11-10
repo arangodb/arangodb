@@ -21,9 +21,8 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchViewStoredValues.h"
-
 #include "Basics/AttributeNameParser.h"
+#include "IResearchViewStoredValues.h"
 
 namespace {
 bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
@@ -42,15 +41,14 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
 
 const char* FIELD_COLUMN_PARAM = "fields";
 const char* COMPRESSION_COLUMN_PARAM = "compression";
-}  // namespace
+}
 
 namespace arangodb {
 namespace iresearch {
 
 const char IResearchViewStoredValues::FIELDS_DELIMITER = '\1';
 
-bool IResearchViewStoredValues::toVelocyPack(
-    velocypack::Builder& builder) const {
+bool IResearchViewStoredValues::toVelocyPack(velocypack::Builder& builder) const {
   if (!builder.isOpenArray()) {
     return false;
   }
@@ -62,8 +60,7 @@ bool IResearchViewStoredValues::toVelocyPack(
         builder.add(VPackValue(field.first));
       }
     }
-    irs::string_ref encodedCompression =
-        columnCompressionToString(column.compression);
+    irs::string_ref encodedCompression = columnCompressionToString(column.compression);
     TRI_ASSERT(!encodedCompression.null());
     if (ADB_LIKELY(!encodedCompression.null())) {
       addStringRef(builder, COMPRESSION_COLUMN_PARAM, encodedCompression);
@@ -100,7 +97,8 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
       try {
         // no expansions
         basics::TRI_ParseAttributeString(fieldName, field, false);
-      } catch (...) {
+      }
+      catch (...) {
         clear();
         return false;
       }
@@ -119,7 +117,7 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
             newField = false;
             break;
           }
-        } else {  // f.second.size() > fieldSize
+        } else { // f.second.size() > fieldSize
           if (isPrefix(field, f.second)) {
             // take shortest path field (obj.a is better than obj.a.sub_a)
             columnLength += fieldName.size() - f.second.size();
@@ -137,7 +135,7 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
       }
       // cppcheck-suppress accessMoved
       sc.fields.emplace_back(fieldName, std::move(field));
-      columnLength += fieldName.size() + 1;  // + 1 for FIELDS_DELIMITER
+      columnLength += fieldName.size() + 1; // + 1 for FIELDS_DELIMITER
       // cppcheck-suppress accessMoved
       fieldNames.emplace_back(std::move(fieldName));
     }
@@ -151,7 +149,7 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
     TRI_ASSERT(columnLength > 1);
     columnName.reserve(columnLength);
     for (auto const& fieldName : fieldNames) {
-      columnName += FIELDS_DELIMITER;  // a prefix for EXISTS()
+      columnName += FIELDS_DELIMITER; // a prefix for EXISTS()
       columnName += fieldName;
     }
     if (!uniqueColumns.emplace(columnName).second) {
@@ -166,8 +164,8 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
   return true;
 }
 
-bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
-                                               std::string& errorField) {
+bool IResearchViewStoredValues::fromVelocyPack(
+    velocypack::Slice slice, std::string& errorField) {
   clear();
   if (slice.isArray()) {
     _storedColumns.reserve(slice.length());
@@ -182,24 +180,20 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
           if (columnSlice.hasKey(COMPRESSION_COLUMN_PARAM)) {
             auto compressionKey = columnSlice.get(COMPRESSION_COLUMN_PARAM);
             if (ADB_LIKELY(compressionKey.isString())) {
-              auto decodedCompression = columnCompressionFromString(
-                  iresearch::getStringRef(compressionKey));
+              auto decodedCompression = columnCompressionFromString(iresearch::getStringRef(compressionKey));
               if (ADB_LIKELY(decodedCompression != nullptr)) {
                 compression = decodedCompression;
               } else {
-                errorField =
-                    "[" + std::to_string(idx) + "]." + COMPRESSION_COLUMN_PARAM;
+                errorField = "[" + std::to_string(idx) + "]." + COMPRESSION_COLUMN_PARAM;
                 return false;
               }
             } else {
-              errorField =
-                  "[" + std::to_string(idx) + "]." + COMPRESSION_COLUMN_PARAM;
+              errorField = "[" + std::to_string(idx) + "]." + COMPRESSION_COLUMN_PARAM;
               return false;
             }
           }
           if (!buildStoredColumnFromSlice(columnSlice.get(FIELD_COLUMN_PARAM),
-                                          uniqueColumns, fieldNames,
-                                          compression)) {
+                                          uniqueColumns, fieldNames, compression)) {
             errorField = "[" + std::to_string(idx) + "]." + FIELD_COLUMN_PARAM;
             return false;
           }
@@ -208,8 +202,8 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
           return false;
         }
       } else {
-        if (!buildStoredColumnFromSlice(columnSlice, uniqueColumns, fieldNames,
-                                        getDefaultCompression())) {
+        if (!buildStoredColumnFromSlice(columnSlice, uniqueColumns,
+                                        fieldNames, getDefaultCompression())) {
           errorField = "[" + std::to_string(idx) + "]." + FIELD_COLUMN_PARAM;
           return false;
         }
@@ -222,14 +216,13 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
 
 size_t IResearchViewStoredValues::memory() const noexcept {
   size_t size = sizeof(IResearchViewStoredValues);
-  size += sizeof(StoredColumn) * _storedColumns.size();
+  size += sizeof(StoredColumn)*_storedColumns.size();
   for (auto const& column : _storedColumns) {
     size += column.name.size();
-    size += sizeof(std::pair<std::string, std::vector<basics::AttributeName>>) *
-            column.fields.size();
+    size += sizeof(std::pair<std::string, std::vector<basics::AttributeName>>)*column.fields.size();
     for (auto const& field : column.fields) {
       size += field.first.size();
-      size += sizeof(basics::AttributeName) * field.second.size();
+      size += sizeof(basics::AttributeName)*field.second.size();
       for (auto const& attribute : field.second) {
         size += attribute.name.size();
       }
@@ -238,5 +231,5 @@ size_t IResearchViewStoredValues::memory() const noexcept {
   return size;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // iresearch
+} // arangodb

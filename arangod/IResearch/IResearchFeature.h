@@ -85,15 +85,14 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   /// @param fn the function to execute
   /// @param delay how log to sleep before the execution
   //////////////////////////////////////////////////////////////////////////////
-  bool queue(ThreadGroup id, std::chrono::steady_clock::duration delay,
+  bool queue(ThreadGroup id,
+             std::chrono::steady_clock::duration delay,
              std::function<void()>&& fn);
 
   std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
   std::pair<size_t, size_t> limits(ThreadGroup id) const;
 
-  template<typename Engine,
-           typename std::enable_if_t<std::is_base_of_v<StorageEngine, Engine>,
-                                     int> = 0>
+  template <typename Engine, typename std::enable_if_t<std::is_base_of_v<StorageEngine, Engine>, int> = 0>
   IndexTypeFactory& factory();
 
  private:
@@ -117,3 +116,4 @@ class IResearchFeature final : public application_features::ApplicationFeature {
 
 }  // namespace iresearch
 }  // namespace arangodb
+

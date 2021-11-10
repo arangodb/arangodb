@@ -25,16 +25,17 @@
 
 using namespace arangodb;
 
-RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(
-    rocksdb::TransactionDB* db, rocksdb::WriteBatchWithIndex* wb)
+RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(rocksdb::TransactionDB* db,
+                                                               rocksdb::WriteBatchWithIndex* wb)
     : RocksDBMethods(), _db(db), _wb(wb) {
   TRI_ASSERT(_db != nullptr);
   TRI_ASSERT(_wb != nullptr);
 }
 
-rocksdb::Status RocksDBBatchedWithIndexMethods::Get(
-    rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
-    rocksdb::PinnableSlice* val, ReadOwnWrites readOwnWrites) {
+rocksdb::Status RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                                    rocksdb::Slice const& key,
+                                                    rocksdb::PinnableSlice* val,
+                                                    ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
   if (readOwnWrites == ReadOwnWrites::yes) {
@@ -44,36 +45,34 @@ rocksdb::Status RocksDBBatchedWithIndexMethods::Get(
   }
 }
 
-rocksdb::Status RocksDBBatchedWithIndexMethods::GetForUpdate(
-    rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
-    rocksdb::PinnableSlice* val) {
-  return this->Get(
-      cf, key, val,
-      ReadOwnWrites::yes);  // update operations always have to read own writes
+rocksdb::Status RocksDBBatchedWithIndexMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
+                                                             rocksdb::Slice const& key,
+                                                             rocksdb::PinnableSlice* val) {
+  return this->Get(cf, key, val, ReadOwnWrites::yes); // update operations always have to read own writes
 }
 
-rocksdb::Status RocksDBBatchedWithIndexMethods::Put(
-    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
-    rocksdb::Slice const& val, bool assume_tracked) {
+rocksdb::Status RocksDBBatchedWithIndexMethods::Put(rocksdb::ColumnFamilyHandle* cf,
+                                                    RocksDBKey const& key,
+                                                    rocksdb::Slice const& val,
+                                                    bool assume_tracked) {
   TRI_ASSERT(cf != nullptr);
   return _wb->Put(cf, key.string(), val);
 }
 
-rocksdb::Status RocksDBBatchedWithIndexMethods::PutUntracked(
-    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
-    rocksdb::Slice const& val) {
-  return RocksDBBatchedWithIndexMethods::Put(cf, key, val,
-                                             /*assume_tracked*/ false);
+rocksdb::Status RocksDBBatchedWithIndexMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
+                                                             RocksDBKey const& key,
+                                                             rocksdb::Slice const& val) {
+  return RocksDBBatchedWithIndexMethods::Put(cf, key, val, /*assume_tracked*/false);
 }
 
-rocksdb::Status RocksDBBatchedWithIndexMethods::Delete(
-    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
+rocksdb::Status RocksDBBatchedWithIndexMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
+                                                       RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
   return _wb->Delete(cf, key.string());
 }
 
-rocksdb::Status RocksDBBatchedWithIndexMethods::SingleDelete(
-    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
+rocksdb::Status RocksDBBatchedWithIndexMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
+                                                             RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
   return _wb->SingleDelete(cf, key.string());
 }

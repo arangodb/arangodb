@@ -50,8 +50,7 @@ class ParallelUnsortedGatherExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough =
-        BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
 
@@ -73,8 +72,7 @@ class ParallelUnsortedGatherExecutor {
    *   AqlCall: Request to upstream
    *   size:t: Dependency to request
    */
-  [[nodiscard]] auto produceRows(MultiAqlItemBlockInputRange& input,
-                                 OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(MultiAqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCallSet>;
 
   /**
@@ -89,8 +87,7 @@ class ParallelUnsortedGatherExecutor {
    *   AqlCall: Request to upstream
    *   size:t: Dependency to request
    */
-  [[nodiscard]] auto skipRowsRange(MultiAqlItemBlockInputRange& input,
-                                   AqlCall& call)
+  [[nodiscard]] auto skipRowsRange(MultiAqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet>;
 
  private:
@@ -100,3 +97,4 @@ class ParallelUnsortedGatherExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
+

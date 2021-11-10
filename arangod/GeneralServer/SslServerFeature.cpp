@@ -21,9 +21,14 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SslServerFeature.h"
+#include <exception>
+#include <stdexcept>
+#include <unordered_set>
+#include <vector>
 
-#include <nghttp2/nghttp2.h>
+#include <boost/asio/ssl/context_base.hpp>
+#include <boost/asio/ssl/impl/context.ipp>
+
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/ec.h>
@@ -34,12 +39,7 @@
 #include <openssl/ssl3.h>
 #include <openssl/x509.h>
 
-#include <boost/asio/ssl/context_base.hpp>
-#include <boost/asio/ssl/impl/context.ipp>
-#include <exception>
-#include <stdexcept>
-#include <unordered_set>
-#include <vector>
+#include "SslServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
@@ -57,12 +57,13 @@
 #include "Random/UniformCharacter.h"
 #include "Ssl/ssl-helper.h"
 
+#include <nghttp2/nghttp2.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-SslServerFeature::SslServerFeature(
-    application_features::ApplicationServer& server)
+SslServerFeature::SslServerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "SslServer"),
       _cafile(),
       _keyfile(),
@@ -104,13 +105,12 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
   options->addOption("--ssl.protocol", availableSslProtocolsDescription(),
-                     new DiscreteValuesParameter<UInt64Parameter>(
-                         &_sslProtocol, sslProtocols));
+                     new DiscreteValuesParameter<UInt64Parameter>(&_sslProtocol, sslProtocols));
 
-  options->addOption(
-      "--ssl.options", "ssl connection options, see OpenSSL documentation",
-      new UInt64Parameter(&_sslOptions),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption("--ssl.options",
+                     "ssl connection options, see OpenSSL documentation",
+                     new UInt64Parameter(&_sslOptions),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--ssl.ecdh-curve",
@@ -123,8 +123,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_preferHttp11InAlpn));
 }
 
-void SslServerFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void SslServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // check for SSLv2
   if (_sslProtocol == SslProtocol::SSL_V2) {
     LOG_TOPIC("b7890", FATAL, arangodb::Logger::SSL)
@@ -206,8 +205,7 @@ class BIOGuard {
 }  // namespace
 
 static inline bool searchForProtocol(const unsigned char** out,
-                                     unsigned char* outlen,
-                                     const unsigned char* in,
+                                     unsigned char* outlen, const unsigned char* in,
                                      unsigned int inlen, const char* proto) {
   size_t len = strlen(proto);
   size_t i = 0;
@@ -244,29 +242,25 @@ static int alpn_select_proto_cb(SSL* ssl, const unsigned char** out,
   return SSL_TLSEXT_ERR_OK;
 }
 
-asio_ns::ssl::context SslServerFeature::createSslContextInternal(
-    std::string keyfilename, std::string& content) {
+asio_ns::ssl::context SslServerFeature::createSslContextInternal(std::string keyfilename,
+                                                                 std::string& content) {
   // This method creates an SSL context using the keyfile in `keyfilename`
   // It is used internally if the public method `createSslContext`
   // is called and if the hello callback happens and a non-default
   // servername extension is detected, then with a non-empty servername.
-  // If all goes well, the string `content` is set to the content of the
-  // keyfile.
+  // If all goes well, the string `content` is set to the content of the keyfile.
   try {
     std::string keyfileContent = FileUtils::slurp(keyfilename);
     // create context
-    asio_ns::ssl::context sslContext =
-        ::sslContext(SslProtocol(_sslProtocol), keyfilename);
+    asio_ns::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), keyfilename);
     content = std::move(keyfileContent);
 
     // and use this native handle
-    asio_ns::ssl::context::native_handle_type nativeContext =
-        sslContext.native_handle();
+    asio_ns::ssl::context::native_handle_type nativeContext = sslContext.native_handle();
 
     // set cache mode
-    SSL_CTX_set_session_cache_mode(nativeContext, _sessionCache
-                                                      ? SSL_SESS_CACHE_SERVER
-                                                      : SSL_SESS_CACHE_OFF);
+    SSL_CTX_set_session_cache_mode(nativeContext, _sessionCache ? SSL_SESS_CACHE_SERVER
+                                                                : SSL_SESS_CACHE_OFF);
 
     if (_sessionCache) {
       LOG_TOPIC("af2f4", TRACE, arangodb::Logger::SSL)
@@ -291,8 +285,7 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
 
       if (sslEcdhNid == 0) {
         LOG_TOPIC("40292", ERR, arangodb::Logger::SSL)
-            << "SSL error: " << lastSSLError()
-            << " Unknown curve name: " << _ecdhCurve;
+            << "SSL error: " << lastSSLError() << " Unknown curve name: " << _ecdhCurve;
         throw std::runtime_error("cannot create SSL context");
       }
 
@@ -318,13 +311,13 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
 #endif
 
     // set ssl context
-    int res = SSL_CTX_set_session_id_context(
-        nativeContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());
+    int res = SSL_CTX_set_session_id_context(nativeContext,
+                                             (unsigned char const*)_rctx.c_str(),
+                                             (int)_rctx.size());
 
     if (res != 1) {
       LOG_TOPIC("72e4e", ERR, arangodb::Logger::SSL)
-          << "cannot set SSL session id context '" << _rctx
-          << "': " << lastSSLError();
+          << "cannot set SSL session id context '" << _rctx << "': " << lastSSLError();
       throw std::runtime_error("cannot create SSL context");
     }
 
@@ -333,8 +326,7 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
       LOG_TOPIC("cdaf2", TRACE, arangodb::Logger::SSL)
           << "trying to load CA certificates from '" << _cafile << "'";
 
-      res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(),
-                                          nullptr);
+      res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(), nullptr);
 
       if (res == 0) {
         LOG_TOPIC("30289", ERR, arangodb::Logger::SSL)
@@ -364,8 +356,7 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
             BIOGuard bout(BIO_new(BIO_s_mem()));
 
             X509_NAME_print_ex(bout._bio, cert, 0,
-                               (XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV |
-                                ASN1_STRFLGS_UTF8_CONVERT) &
+                               (XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV | ASN1_STRFLGS_UTF8_CONVERT) &
                                    ~ASN1_STRFLGS_ESC_MSB);
 
             char* r;
@@ -690,8 +681,8 @@ static void splitPEM(std::string const& pem, std::vector<std::string>& certs,
     }
     posEndFooter += 5;  // Point to line end, typically or end of file
     size_t p = posEndHeader;
-    while (p > pos + 11 && (pem[p] == '\n' || pem[p] == '-' || pem[p] == '\r' ||
-                            pem[p] == ' ')) {
+    while (p > pos + 11 &&
+           (pem[p] == '\n' || pem[p] == '-' || pem[p] == '\r' || pem[p] == ' ')) {
       --p;
     }
     std::string type(pem.c_str() + pos + 11, (p + 1) - (pos + 11));
@@ -707,8 +698,7 @@ static void splitPEM(std::string const& pem, std::vector<std::string>& certs,
   }
 }
 
-static void dumpPEM(std::string const& pem, VPackBuilder& builder,
-                    std::string attrName) {
+static void dumpPEM(std::string const& pem, VPackBuilder& builder, std::string attrName) {
   if (pem.empty()) {
     {
       VPackObjectBuilder guard(&builder, attrName);
@@ -729,7 +719,7 @@ static void dumpPEM(std::string const& pem, VPackBuilder& builder,
     VPackObjectBuilder guard2(&builder, attrName);
     auto sha256 = func.finalize();
     builder.add("sha256", VPackValue(sha256));
-    builder.add("SHA256", VPackValue(sha256));  // deprecated in 3.7 GA
+    builder.add("SHA256", VPackValue(sha256)); // deprecated in 3.7 GA
     {
       VPackArrayBuilder guard3(&builder, "certificates");
       for (auto const& c : certs) {
@@ -741,8 +731,7 @@ static void dumpPEM(std::string const& pem, VPackBuilder& builder,
       func2(keys[0].c_str(), keys[0].size());
       sha256 = func2.finalize();
       builder.add("privateKeySha256", VPackValue(sha256));
-      builder.add("privateKeySHA256",
-                  VPackValue(sha256));  // deprecated in 3.7 GA
+      builder.add("privateKeySHA256", VPackValue(sha256)); // deprecated in 3.7 GA
     }
   }
 }
@@ -758,8 +747,7 @@ Result SslServerFeature::dumpTLSData(VPackBuilder& builder) const {
       if (_sniEntries.size() > 1) {
         VPackObjectBuilder guard2(&builder, "SNI");
         for (size_t i = 1; i < _sniEntries.size(); ++i) {
-          dumpPEM(_sniEntries[i].keyfileContent, builder,
-                  _sniEntries[i].serverName);
+          dumpPEM(_sniEntries[i].keyfileContent, builder, _sniEntries[i].serverName);
         }
       }
     }

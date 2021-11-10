@@ -22,12 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabaseReplicationApplier.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
@@ -45,17 +39,20 @@
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 
 /// @brief replication applier for a single database, without configuration
 DatabaseReplicationApplier::DatabaseReplicationApplier(TRI_vocbase_t& vocbase)
-    : DatabaseReplicationApplier(
-          ReplicationApplierConfiguration(vocbase.server()), vocbase) {}
+    : DatabaseReplicationApplier(ReplicationApplierConfiguration(vocbase.server()), vocbase) {}
 
 /// @brief replication applier for a single database, with configuration
-DatabaseReplicationApplier::DatabaseReplicationApplier(
-    ReplicationApplierConfiguration const& configuration,
-    TRI_vocbase_t& vocbase)
+DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfiguration const& configuration,
+                                                       TRI_vocbase_t& vocbase)
     : ReplicationApplier(configuration,
                          std::string("database '") + vocbase.name() + "'"),
       _vocbase(vocbase) {}
@@ -73,13 +70,11 @@ bool DatabaseReplicationApplier::applies() const {
 }
 
 /// @brief configure the replication applier
-void DatabaseReplicationApplier::reconfigure(
-    ReplicationApplierConfiguration const& configuration) {
+void DatabaseReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {
   if (configuration._database.empty()) {
     // no database
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
-        "no database configured");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
+                                   "no database configured");
   }
 
   ReplicationApplier::reconfigure(configuration);
@@ -97,16 +92,14 @@ void DatabaseReplicationApplier::forget() {
 
   removeState();
 
-  StorageEngine& engine =
-      _vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = _vocbase.server().getFeature<EngineSelectorFeature>().engine();
 
   engine.removeReplicationApplierConfiguration(_vocbase);
   _configuration.reset();
 }
 
 /// @brief factory function for creating a database-specific replication applier
-/*static*/ DatabaseReplicationApplier* DatabaseReplicationApplier::create(
-    TRI_vocbase_t& vocbase) {
+/*static*/ DatabaseReplicationApplier* DatabaseReplicationApplier::create(TRI_vocbase_t& vocbase) {
   std::unique_ptr<DatabaseReplicationApplier> applier;
 
   if (vocbase.type() == TRI_VOCBASE_TYPE_NORMAL) {
@@ -121,14 +114,11 @@ void DatabaseReplicationApplier::forget() {
 }
 
 /// @brief load a persisted configuration for the applier
-ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(
-    TRI_vocbase_t& vocbase) {
+ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(TRI_vocbase_t& vocbase) {
   // TODO: move to ReplicationApplier
-  StorageEngine& engine =
-      vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
   auto res = TRI_ERROR_INTERNAL;
-  VPackBuilder builder =
-      engine.getReplicationApplierConfiguration(vocbase, res);
+  VPackBuilder builder = engine.getReplicationApplierConfiguration(vocbase, res);
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // file not found
@@ -138,8 +128,9 @@ ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(
 
   TRI_ASSERT(!builder.isEmpty());
 
-  return ReplicationApplierConfiguration::fromVelocyPack(
-      vocbase.server(), builder.slice(), vocbase.name());
+  return ReplicationApplierConfiguration::fromVelocyPack(vocbase.server(),
+                                                         builder.slice(),
+                                                         vocbase.name());
 }
 
 /// @brief store the configuration for the applier
@@ -157,30 +148,25 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
       << "storing applier configuration " << builder.slice().toJson() << " for "
       << _databaseName;
 
-  StorageEngine& engine =
-      _vocbase.server().getFeature<EngineSelectorFeature>().engine();
-  auto res = engine.saveReplicationApplierConfiguration(
-      _vocbase, builder.slice(), doSync);
+  StorageEngine& engine = _vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  auto res = engine.saveReplicationApplierConfiguration(_vocbase, builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
 
-std::shared_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer()
-    const {
+std::shared_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer() const {
   return arangodb::DatabaseInitialSyncer::create(_vocbase, _configuration);
 }
 
 std::shared_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick) const {
-  return arangodb::DatabaseTailingSyncer::create(_vocbase, _configuration,
-                                                 initialTick, useTick);
+  return arangodb::DatabaseTailingSyncer::create(_vocbase, _configuration, initialTick, useTick);
 }
 
 std::string DatabaseReplicationApplier::getStateFilename() const {
-  StorageEngine& engine =
-      _vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = _vocbase.server().getFeature<EngineSelectorFeature>().engine();
 
   std::string const path = engine.databasePath(&_vocbase);
   if (path.empty()) {

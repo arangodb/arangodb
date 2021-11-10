@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include "Basics/Result.h"
 #include "types.hpp"
+#include "Basics/Result.h"
 
 namespace iresearch {
 class parametric_description;
-}  // namespace iresearch
+} // iresearch
 
 namespace arangodb {
 namespace iresearch {
@@ -37,7 +37,10 @@ constexpr irs::byte_type MAX_LEVENSHTEIN_DISTANCE = 4;
 constexpr irs::byte_type MAX_DAMERAU_LEVENSHTEIN_DISTANCE = 3;
 
 const irs::parametric_description& getParametricDescription(
-    irs::byte_type max_distance, bool with_transpositions);
+  irs::byte_type max_distance,
+  bool with_transpositions);
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // iresearch
+} // arangodb
+
+

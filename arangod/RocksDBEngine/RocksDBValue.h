@@ -25,7 +25,9 @@
 #pragma once
 
 #include <rocksdb/slice.h>
+
 #include <s2/s2point.h>
+
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
@@ -44,7 +46,7 @@ class LogId;
 struct LogIndex;
 struct LogTerm;
 struct LogPayload;
-}  // namespace replication2
+}
 
 class RocksDBValue {
  public:
@@ -57,10 +59,8 @@ class RocksDBValue {
   static RocksDBValue Database(VPackSlice const& data);
   static RocksDBValue Collection(VPackSlice const& data);
   static RocksDBValue ReplicatedLog(VPackSlice const& data);
-  static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId,
-                                        RevisionId revision);
-  static RocksDBValue EdgeIndexValue(
-      arangodb::velocypack::StringRef const& vertexId);
+  static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId, RevisionId revision);
+  static RocksDBValue EdgeIndexValue(arangodb::velocypack::StringRef const& vertexId);
   static RocksDBValue VPackIndexValue();
   static RocksDBValue ZkdIndexValue();
   static RocksDBValue UniqueZkdIndexValue(LocalDocumentId const& docId);
@@ -159,19 +159,16 @@ class RocksDBValue {
  private:
   RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);
-  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
-               RevisionId revision);
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, RevisionId revision);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
-  RocksDBValue(RocksDBEntryType type,
-               arangodb::velocypack::StringRef const& data);
+  RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRef const& data);
   RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const&);
   explicit RocksDBValue(S2Point const&);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);
   static LocalDocumentId documentId(char const* data, uint64_t size);
-  static arangodb::velocypack::StringRef vertexId(char const* data,
-                                                  size_t size);
+  static arangodb::velocypack::StringRef vertexId(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
 
  private:
@@ -180,3 +177,4 @@ class RocksDBValue {
 };
 
 }  // namespace arangodb
+

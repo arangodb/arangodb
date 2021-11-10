@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include "Basics/Common.h"
+
 #include <atomic>
 #include <limits>
-
-#include "Basics/Common.h"
 
 namespace arangodb {
 namespace transaction {
@@ -81,3 +81,4 @@ struct CountCache {
 
 }  // namespace transaction
 }  // namespace arangodb
+

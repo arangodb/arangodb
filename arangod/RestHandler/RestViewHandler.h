@@ -35,8 +35,7 @@ namespace arangodb {
 
 class RestViewHandler : public RestVocbaseBaseHandler {
  public:
-  RestViewHandler(application_features::ApplicationServer&, GeneralRequest*,
-                  GeneralResponse*);
+  RestViewHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestViewHandler"; }
@@ -52,3 +51,4 @@ class RestViewHandler : public RestVocbaseBaseHandler {
 };
 
 }  // namespace arangodb
+

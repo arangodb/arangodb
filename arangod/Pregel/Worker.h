@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/asio_ns.h"
@@ -42,19 +43,16 @@ namespace arangodb {
 class RestPregelHandler;
 
 namespace pregel {
-
+  
 class PregelFeature;
 
 class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
   virtual ~IWorker() = default;
   virtual void setupWorker() = 0;
-  virtual void prepareGlobalStep(VPackSlice const& data,
-                                 VPackBuilder& result) = 0;
-  virtual void startGlobalStep(
-      VPackSlice const& data) = 0;  // called by coordinator
-  virtual void cancelGlobalStep(
-      VPackSlice const& data) = 0;  // called by coordinator
+  virtual void prepareGlobalStep(VPackSlice const& data, VPackBuilder& result) = 0;
+  virtual void startGlobalStep(VPackSlice const& data) = 0;  // called by coordinator
+  virtual void cancelGlobalStep(VPackSlice const& data) = 0;  // called by coordinator
   virtual void receivedMessages(VPackSlice const& data) = 0;
   virtual void finalizeExecution(VPackSlice const& data,
                                  std::function<void()> cb) = 0;
@@ -64,22 +62,22 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
   virtual void aqlResult(VPackBuilder&, bool withId) const = 0;
 };
 
-template<typename V, typename E>
+template <typename V, typename E>
 class GraphStore;
 
-template<typename M>
+template <typename M>
 class InCache;
 
-template<typename M>
+template <typename M>
 class OutCache;
 
-template<typename T>
+template <typename T>
 class RangeIterator;
 
-template<typename V, typename E, typename M>
+template <typename V, typename E, typename M>
 class VertexContext;
 
-template<typename V, typename E, typename M>
+template <typename V, typename E, typename M>
 class Worker : public IWorker {
   // friend class arangodb::RestPregelHandler;
 
@@ -143,18 +141,15 @@ class Worker : public IWorker {
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
-  bool _processVertices(size_t threadId,
-                        RangeIterator<Vertex<V, E>>& vertexIterator);
+  bool _processVertices(size_t threadId, RangeIterator<Vertex<V,E>>& vertexIterator);
   void _finishedProcessing();
   void _continueAsync();
   void _callConductor(std::string const& path, VPackBuilder const& message);
-  void _callConductorWithResponse(std::string const& path,
-                                  VPackBuilder const& message,
+  void _callConductorWithResponse(std::string const& path, VPackBuilder const& message,
                                   std::function<void(VPackSlice slice)> handle);
 
  public:
-  Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
-         VPackSlice params, PregelFeature& feature);
+  Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm, VPackSlice params, PregelFeature& feature);
   ~Worker();
 
   // ====== called by rest handler =====
@@ -163,8 +158,7 @@ class Worker : public IWorker {
   void startGlobalStep(VPackSlice const& data) override;
   void cancelGlobalStep(VPackSlice const& data) override;
   void receivedMessages(VPackSlice const& data) override;
-  void finalizeExecution(VPackSlice const& data,
-                         std::function<void()> cb) override;
+  void finalizeExecution(VPackSlice const& data, std::function<void()> cb) override;
   void startRecovery(VPackSlice const& data) override;
   void compensateStep(VPackSlice const& data) override;
   void finalizeRecovery(VPackSlice const& data) override;
@@ -174,3 +168,4 @@ class Worker : public IWorker {
 
 }  // namespace pregel
 }  // namespace arangodb
+

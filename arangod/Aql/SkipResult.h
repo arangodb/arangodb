@@ -29,7 +29,7 @@
 #include <vector>
 
 namespace arangodb {
-template<typename T>
+template <typename T>
 class ResultT;
 }
 namespace arangodb::velocypack {
@@ -41,8 +41,7 @@ namespace arangodb::aql {
 
 class SkipResult {
  public:
-  static auto fromVelocyPack(velocypack::Slice)
-      -> arangodb::ResultT<SkipResult>;
+  static auto fromVelocyPack(velocypack::Slice) -> arangodb::ResultT<SkipResult>;
 
   SkipResult() = default;
 
@@ -61,8 +60,7 @@ class SkipResult {
 
   auto nothingSkipped() const noexcept -> bool;
 
-  auto toVelocyPack(arangodb::velocypack::Builder& builder) const noexcept
-      -> void;
+  auto toVelocyPack(arangodb::velocypack::Builder& builder) const noexcept -> void;
 
   auto incrementSubquery() -> void;
 
@@ -87,3 +85,4 @@ class SkipResult {
 std::ostream& operator<<(std::ostream&, arangodb::aql::SkipResult const&);
 
 }  // namespace arangodb::aql
+

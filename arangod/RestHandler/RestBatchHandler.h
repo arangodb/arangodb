@@ -93,3 +93,4 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   std::string _boundary;
 };
 }  // namespace arangodb
+

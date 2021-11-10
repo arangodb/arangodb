@@ -23,22 +23,21 @@
 
 #pragma once
 
-#include <queue>
-
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 
+#include <queue>
+
 namespace arangodb {
 namespace graph {
 
-template<class StepType>
+template <class StepType>
 class LifoQueue {
  public:
   static constexpr bool RequiresWeight = false;
   using Step = StepType;
-  // TODO: Add Sorting (Performance - will be implemented in the future -
-  // cluster relevant)
+  // TODO: Add Sorting (Performance - will be implemented in the future - cluster relevant)
   // -> loose ends to the end
 
   explicit LifoQueue(arangodb::ResourceMonitor& resourceMonitor)
@@ -89,8 +88,7 @@ class LifoQueue {
   Step pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
-    LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS)
-        << "<LifoQueue> Pop: " << first.toString();
+    LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS) << "<LifoQueue> Pop: " << first.toString();
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_front();
     return first;
@@ -106,3 +104,4 @@ class LifoQueue {
 
 }  // namespace graph
 }  // namespace arangodb
+

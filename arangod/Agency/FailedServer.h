@@ -30,8 +30,7 @@ namespace arangodb {
 namespace consensus {
 
 struct FailedServer : public Job {
-  FailedServer(Node const& snapshot, AgentInterface* agent,
-               std::string const& jobId,
+  FailedServer(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
                std::string const& creator = std::string(),
                std::string const& failed = std::string());
 
@@ -50,3 +49,4 @@ struct FailedServer : public Job {
 };
 }  // namespace consensus
 }  // namespace arangodb
+

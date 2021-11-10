@@ -32,3 +32,4 @@ struct ClusterV8Functions {
 };
 
 }  // namespace arangodb
+

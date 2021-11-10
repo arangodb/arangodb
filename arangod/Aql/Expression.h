@@ -23,11 +23,11 @@
 
 #pragma once
 
-#include <v8.h>
-#include <velocypack/Slice.h>
-
 #include <cstdint>
 #include <unordered_map>
+
+#include <v8.h>
+#include <velocypack/Slice.h>
 
 #include "Aql/types.h"
 #include "Containers/HashSet.h"
@@ -115,11 +115,11 @@ class Expression {
   std::string typeString();
 
   // @brief invoke JavaScript aql functions with args as param.
-  static AqlValue invokeV8Function(
-      arangodb::aql::ExpressionContext* expressionContext,
-      std::string const& jsName, std::string const& ucInvokeFN, char const* AFN,
-      bool rethrowV8Exception, size_t callArgs, v8::Handle<v8::Value>* args,
-      bool& mustDestroy);
+  static AqlValue invokeV8Function(arangodb::aql::ExpressionContext* expressionContext,
+                                   std::string const& jsName,
+                                   std::string const& ucInvokeFN, char const* AFN,
+                                   bool rethrowV8Exception, size_t callArgs,
+                                   v8::Handle<v8::Value>* args, bool& mustDestroy);
 
   /// @brief check whether this is an attribute access of any degree (e.g. a.b,
   /// a.b.c, ...)
@@ -150,8 +150,7 @@ class Expression {
   /// latter becomes `a + b + 1`
   void replaceVariableReference(Variable const*, AstNode const*);
 
-  void replaceAttributeAccess(Variable const*,
-                              std::vector<std::string> const& attribute);
+  void replaceAttributeAccess(Variable const*, std::vector<std::string> const& attribute);
 
   void setVariable(Variable const* variable, arangodb::velocypack::Slice value);
 
@@ -166,12 +165,12 @@ class Expression {
   void freeInternals() noexcept;
 
   /// @brief find a value in an array
-  bool findInArray(AqlValue const&, AqlValue const&,
-                   velocypack::Options const* vopts, AstNode const*) const;
+  bool findInArray(AqlValue const&, AqlValue const&, velocypack::Options const* vopts,
+                   AstNode const*) const;
 
   /// @brief analyze the expression (determine its type)
   void determineType();
-
+  
   /// @brief init the accessor specialization
   void initAccessor(ExpressionContext* ctx);
 
@@ -182,13 +181,10 @@ class Expression {
   AqlValue executeSimpleExpression(AstNode const*, bool& mustDestroy, bool);
 
   /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
-  AqlValue executeSimpleExpressionAttributeAccess(AstNode const*,
-                                                  bool& mustDestroy,
-                                                  bool doCopy);
+  AqlValue executeSimpleExpressionAttributeAccess(AstNode const*, bool& mustDestroy, bool doCopy);
 
   /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
-  AqlValue executeSimpleExpressionIndexedAccess(AstNode const*,
-                                                bool& mustDestroy, bool doCopy);
+  AqlValue executeSimpleExpressionIndexedAccess(AstNode const*, bool& mustDestroy, bool doCopy);
 
   /// @brief execute an expression of type SIMPLE with ARRAY
   AqlValue executeSimpleExpressionArray(AstNode const*, bool& mustDestroy);
@@ -200,8 +196,7 @@ class Expression {
   AqlValue executeSimpleExpressionValue(AstNode const*, bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with REFERENCE
-  AqlValue executeSimpleExpressionReference(AstNode const*, bool& mustDestroy,
-                                            bool);
+  AqlValue executeSimpleExpressionReference(AstNode const*, bool& mustDestroy, bool);
 
   /// @brief execute an expression of type SIMPLE with FCALL, dispatcher
   AqlValue executeSimpleExpressionFCall(AstNode const*, bool& mustDestroy);
@@ -236,8 +231,7 @@ class Expression {
   AqlValue executeSimpleExpressionComparison(AstNode const*, bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
-  AqlValue executeSimpleExpressionArrayComparison(AstNode const*,
-                                                  bool& mustDestroy);
+  AqlValue executeSimpleExpressionArrayComparison(AstNode const*, bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with TERNARY
   AqlValue executeSimpleExpressionTernary(AstNode const*, bool& mustDestroy);
@@ -252,6 +246,7 @@ class Expression {
   AqlValue executeSimpleExpressionArithmetic(AstNode const*, bool& mustDestroy);
 
  private:
+
   /// @brief the AST
   Ast* _ast;
 
@@ -275,3 +270,4 @@ class Expression {
 
 }  // namespace aql
 }  // namespace arangodb
+

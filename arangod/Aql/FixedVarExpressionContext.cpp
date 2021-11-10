@@ -22,23 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FixedVarExpressionContext.h"
-
-#include <velocypack/Builder.h>
-
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
 #include "Basics/debugging.h"
 
+#include <velocypack/Builder.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
-bool FixedVarExpressionContext::isDataFromCollection(
-    Variable const* variable) const {
+bool FixedVarExpressionContext::isDataFromCollection(Variable const* variable) const {
   return false;
 }
 
-AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable,
-                                                     bool doCopy,
+AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                      bool& mustDestroy) const {
   mustDestroy = false;
   auto it = _vars.find(variable);
@@ -53,12 +50,9 @@ AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable,
   return it->second;
 }
 
-void FixedVarExpressionContext::clearVariableValues() noexcept {
-  _vars.clear();
-}
+void FixedVarExpressionContext::clearVariableValues() noexcept { _vars.clear(); }
 
-void FixedVarExpressionContext::setVariableValue(Variable const* var,
-                                                 AqlValue const& value) {
+void FixedVarExpressionContext::setVariableValue(Variable const* var, AqlValue const& value) {
   _vars.try_emplace(var, value);
 }
 
@@ -66,8 +60,8 @@ void FixedVarExpressionContext::clearVariableValue(Variable const* var) {
   _vars.erase(var);
 }
 
-void FixedVarExpressionContext::serializeAllVariables(
-    velocypack::Options const& opts, velocypack::Builder& builder) const {
+void FixedVarExpressionContext::serializeAllVariables(velocypack::Options const& opts,
+                                                      velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
   for (auto const& it : _vars) {
     builder.openArray();
@@ -78,38 +72,40 @@ void FixedVarExpressionContext::serializeAllVariables(
   }
 }
 
-FixedVarExpressionContext::FixedVarExpressionContext(
-    transaction::Methods& trx, QueryContext& context,
-    AqlFunctionsInternalCache& cache)
+FixedVarExpressionContext::FixedVarExpressionContext(transaction::Methods& trx,
+                                                     QueryContext& context,
+                                                     AqlFunctionsInternalCache& cache)
     : QueryExpressionContext(trx, context, cache) {}
 
-SingleVarExpressionContext::SingleVarExpressionContext(
-    transaction::Methods& trx, QueryContext& context,
-    AqlFunctionsInternalCache& cache, Variable* var, AqlValue val)
-    : QueryExpressionContext(trx, context, cache),
-      _variable(var),
-      _value(val) {}
+SingleVarExpressionContext::SingleVarExpressionContext(transaction::Methods& trx,
+                                                       QueryContext& context,
+                                                       AqlFunctionsInternalCache& cache,
+                                                       Variable* var, AqlValue val)
+    : QueryExpressionContext(trx, context, cache), _variable(var), _value(val) {}
 
-SingleVarExpressionContext::SingleVarExpressionContext(
-    transaction::Methods& trx, QueryContext& context,
-    AqlFunctionsInternalCache& cache)
-    : SingleVarExpressionContext(trx, context, cache, nullptr,
-                                 AqlValue(AqlValueHintNull())) {}
+SingleVarExpressionContext::SingleVarExpressionContext(transaction::Methods& trx,
+                                                       QueryContext& context,
+                                                       AqlFunctionsInternalCache& cache)
+    : SingleVarExpressionContext(trx, context, cache, nullptr, AqlValue(AqlValueHintNull())) {}
 
-SingleVarExpressionContext::~SingleVarExpressionContext() { _value.destroy(); }
+
+SingleVarExpressionContext::~SingleVarExpressionContext() {
+  _value.destroy();
+}
 
 bool SingleVarExpressionContext::isDataFromCollection(Variable const*) const {
   return false;
 }
 
 AqlValue SingleVarExpressionContext::getVariableValue(Variable const* var, bool,
-                                                      bool&) const {
+                                                     bool&) const {
   if (var == _variable) {
     return _value;
   } else {
     return AqlValue(AqlValueHintNull());
   }
 }
+
 
 void SingleVarExpressionContext::setVariableValue(Variable* variable,
                                                   AqlValue& value) {

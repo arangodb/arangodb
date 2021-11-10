@@ -24,11 +24,11 @@
 
 #pragma once
 
+#include "Graph/TraverserOptions.h"
+
 #include <memory>
 #include <numeric>
 #include <unordered_map>
-
-#include "Graph/TraverserOptions.h"
 
 namespace arangodb {
 

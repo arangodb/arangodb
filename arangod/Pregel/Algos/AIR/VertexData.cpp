@@ -26,29 +26,26 @@
 #include "VertexData.h"
 
 #include <Pregel/Algos/AIR/AbstractAccumulator.h>
+
 #include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 
 using namespace arangodb::pregel::algos::accumulators;
 
-void VertexData::reset(
-    AccumulatorsDeclaration const& vertexAccumulatorsDeclaration,
-    CustomAccumulatorDefinitions const& customDefinitions,
-    std::string documentId, VPackSlice const& doc, std::size_t vertexId) {
+void VertexData::reset(AccumulatorsDeclaration const& vertexAccumulatorsDeclaration,
+                       CustomAccumulatorDefinitions const& customDefinitions,
+                       std::string documentId, VPackSlice const& doc, std::size_t vertexId) {
   _documentId = std::move(documentId);
   _document.clear();
   _document.add(doc);
   _vertexId = vertexId;
 
   for (auto&& acc : vertexAccumulatorsDeclaration) {
-    _vertexAccumulators.emplace(
-        acc.first, instantiateAccumulator(acc.second, customDefinitions));
+    _vertexAccumulators.emplace(acc.first, instantiateAccumulator(acc.second, customDefinitions));
   }
 }
 
-std::unique_ptr<AccumulatorBase> const& VertexData::accumulatorByName(
-    std::string_view name) const {
-  return _vertexAccumulators.at(
-      std::string{name});  // C++20 use string_view to lookup in map
+std::unique_ptr<AccumulatorBase> const& VertexData::accumulatorByName(std::string_view name) const {
+  return _vertexAccumulators.at(std::string{name}); // C++20 use string_view to lookup in map
 }

@@ -23,8 +23,6 @@
 
 #include "RocksDBRestWalHandler.h"
 
-#include <rocksdb/utilities/transaction_db.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -38,12 +36,14 @@
 #include "Transaction/ManagerFeature.h"
 #include "Utils/ExecContext.h"
 
+#include <rocksdb/utilities/transaction_db.h>
+
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RocksDBRestWalHandler::RocksDBRestWalHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RocksDBRestWalHandler::RocksDBRestWalHandler(application_features::ApplicationServer& server,
+                                             GeneralRequest* request,
+                                             GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RocksDBRestWalHandler::execute() {
@@ -78,8 +78,7 @@ RestStatus RocksDBRestWalHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -92,7 +91,7 @@ void RocksDBRestWalHandler::properties() {
 void RocksDBRestWalHandler::flush() {
   bool parseSuccess = true;
   VPackSlice slice = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess) {  // error already created
+  if (!parseSuccess) { // error already created
     return;
   }
   if (!slice.isObject() && !slice.isNone()) {
@@ -122,8 +121,7 @@ void RocksDBRestWalHandler::flush() {
   } else {
     // no request body
     waitForSync = _request->parsedValue("waitForSync", waitForSync);
-    waitForCollector =
-        _request->parsedValue("waitForCollector", waitForCollector);
+    waitForCollector = _request->parsedValue("waitForCollector", waitForCollector);
   }
 
   auto res = TRI_ERROR_NO_ERROR;
@@ -139,16 +137,14 @@ void RocksDBRestWalHandler::flush() {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  generateResult(rest::ResponseCode::OK,
-                 arangodb::velocypack::Slice::emptyObjectSlice());
+  generateResult(rest::ResponseCode::OK, arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void RocksDBRestWalHandler::transactions() {
   transaction::Manager* mngr = transaction::ManagerFeature::manager();
   VPackBuilder builder;
   builder.openObject();
-  builder.add("runningTransactions",
-              VPackValue(mngr->getActiveTransactionCount()));
+  builder.add("runningTransactions", VPackValue(mngr->getActiveTransactionCount()));
   builder.close();
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED, builder.slice());
 }

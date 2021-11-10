@@ -25,17 +25,16 @@
 #pragma once
 
 #include <rocksdb/types.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
-#include <atomic>
-
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <atomic>
 
 namespace rocksdb {
 class DB;
@@ -86,3 +85,4 @@ class RocksDBSettingsManager {
   TRI_voc_tick_t _initialReleasedTick;
 };
 }  // namespace arangodb
+

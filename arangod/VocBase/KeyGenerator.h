@@ -23,11 +23,11 @@
 
 #pragma once
 
-#include <array>
-#include <string>
-
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
+
+#include <array>
+#include <string>
 
 namespace arangodb {
 namespace application_features {
@@ -90,8 +90,7 @@ class KeyGenerator {
   static bool validateKey(char const* key, size_t len);
 
   /// @brief validate a document id (collection name + / + document key)
-  static bool validateId(char const* key, size_t len, bool extendedNames,
-                         size_t& split);
+  static bool validateId(char const* key, size_t len, bool extendedNames, size_t& split);
 
   /// @brief maximum length of a key in a collection
   static constexpr size_t maxKeyLength = 254;
@@ -108,3 +107,4 @@ class KeyGenerator {
 };
 
 }  // namespace arangodb
+

@@ -27,8 +27,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
-#include "Basics/StringUtils.h"
 #include "VelocyPackHelper.h"
+#include "Basics/StringUtils.h"
+
 #include "utils/math_utils.hpp"
 
 namespace {
@@ -67,7 +68,7 @@ bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction) {
   return false;
 }
 
-}  // namespace
+}
 
 namespace arangodb {
 namespace iresearch {
@@ -78,9 +79,7 @@ bool IResearchViewSort::toVelocyPack(velocypack::Builder& builder) const {
   }
 
   std::string fieldName;
-  auto visitor = [&builder, &fieldName](
-                     std::vector<basics::AttributeName> const& field,
-                     bool direction) {
+  auto visitor = [&builder, &fieldName](std::vector<basics::AttributeName> const& field, bool direction) {
     fieldName.clear();
     basics::TRI_AttributeNamesToString(field, fieldName, true);
 
@@ -94,8 +93,9 @@ bool IResearchViewSort::toVelocyPack(velocypack::Builder& builder) const {
   return visit(visitor);
 }
 
-bool IResearchViewSort::fromVelocyPack(velocypack::Slice slice,
-                                       std::string& error) {
+bool IResearchViewSort::fromVelocyPack(
+    velocypack::Slice slice,
+    std::string& error) {
   static std::string const directionFieldName = "direction";
   static std::string const ascFieldName = "asc";
   static std::string const fieldName = "field";
@@ -139,7 +139,8 @@ bool IResearchViewSort::fromVelocyPack(velocypack::Slice slice,
 
     try {
       arangodb::basics::TRI_ParseAttributeString(
-          arangodb::iresearch::getStringRef(fieldSlice), field, false);
+        arangodb::iresearch::getStringRef(fieldSlice), field,  false
+      );
     } catch (...) {
       // FIXME why doesn't 'TRI_ParseAttributeString' return bool?
       error = "[" + std::to_string(size()) + "]." + fieldName;
@@ -156,7 +157,7 @@ size_t IResearchViewSort::memory() const noexcept {
   size_t size = sizeof(IResearchViewSort);
 
   for (auto& field : _fields) {
-    size += sizeof(basics::AttributeName) * field.size();
+    size += sizeof(basics::AttributeName)*field.size();
     for (auto& entry : field) {
       size += entry.name.size();
     }
@@ -167,5 +168,5 @@ size_t IResearchViewSort::memory() const noexcept {
   return size;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // iresearch
+} // arangodb

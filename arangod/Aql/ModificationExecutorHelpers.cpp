@@ -23,13 +23,6 @@
 
 #include "ModificationExecutorHelpers.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <string>
-
 #include "Aql/AqlValue.h"
 #include "Aql/ModificationExecutorInfos.h"
 #include "Basics/Result.h"
@@ -37,13 +30,19 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationResult.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <string>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
-Result ModificationExecutorHelpers::getKey(
-    CollectionNameResolver const& resolver, AqlValue const& value,
-    std::string& key) {
+Result ModificationExecutorHelpers::getKey(CollectionNameResolver const& resolver,
+                                           AqlValue const& value, std::string& key) {
   TRI_ASSERT(key.empty());
 
   // If `value` is a string, this is our _key entry, so we use that.
@@ -58,19 +57,17 @@ Result ModificationExecutorHelpers::getKey(
                       value.slice().typeName());
   }
 
-  // not necessary to check if key exists in object, since AqlValue::get() will
-  // return a null-result below in case key does not exist.
+  // not necessary to check if key exists in object, since AqlValue::get() will return a
+  // null-result below in case key does not exist.
 
   // Extract key from `value`, and make sure it is a string
   bool mustDestroyKey;
-  AqlValue keyEntry =
-      value.get(resolver, StaticStrings::KeyString, mustDestroyKey, false);
+  AqlValue keyEntry = value.get(resolver, StaticStrings::KeyString, mustDestroyKey, false);
   AqlValueGuard keyGuard(keyEntry, mustDestroyKey);
 
   if (!keyEntry.isString()) {
-    return Result{
-        TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
-        std::string{"Expected _key to be a string attribute in document."}};
+    return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
+                  std::string{"Expected _key to be a string attribute in document."}};
   }
 
   // Key found and assigned, note rev is empty by assertion
@@ -79,15 +76,13 @@ Result ModificationExecutorHelpers::getKey(
   return Result{};
 }
 
-Result ModificationExecutorHelpers::getRevision(
-    CollectionNameResolver const& resolver, AqlValue const& value,
-    std::string& rev) {
+Result ModificationExecutorHelpers::getRevision(CollectionNameResolver const& resolver,
+                                                AqlValue const& value, std::string& rev) {
   TRI_ASSERT(rev.empty());
 
   if (!value.isObject()) {
-    return Result(
-        TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-        std::string{"Expected object, but got "} + value.slice().typeName());
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+                  std::string{"Expected object, but got "} + value.slice().typeName());
   }
 
   if (value.hasKey(StaticStrings::RevString)) {
@@ -108,9 +103,9 @@ Result ModificationExecutorHelpers::getRevision(
   return Result{};
 }
 
-Result ModificationExecutorHelpers::getKeyAndRevision(
-    CollectionNameResolver const& resolver, AqlValue const& value,
-    std::string& key, std::string& rev) {
+Result ModificationExecutorHelpers::getKeyAndRevision(CollectionNameResolver const& resolver,
+                                                      AqlValue const& value,
+                                                      std::string& key, std::string& rev) {
   Result result = getKey(resolver, value, key);
   // The key can either be a string, or contained in an object
   // If it is passed in as a string, then there is no revision
@@ -128,8 +123,9 @@ void ModificationExecutorHelpers::buildKeyDocument(VPackBuilder& builder,
   builder.close();
 }
 
-void ModificationExecutorHelpers::buildKeyAndRevDocument(
-    VPackBuilder& builder, std::string const& key, std::string const& rev) {
+void ModificationExecutorHelpers::buildKeyAndRevDocument(VPackBuilder& builder,
+                                                         std::string const& key,
+                                                         std::string const& rev) {
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(key));
 
@@ -142,16 +138,16 @@ void ModificationExecutorHelpers::buildKeyAndRevDocument(
   builder.close();
 }
 
-bool ModificationExecutorHelpers::writeRequired(
-    ModificationExecutorInfos const& infos, VPackSlice const& doc,
-    std::string const& key) {
+bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos const& infos,
+                                                VPackSlice const& doc,
+                                                std::string const& key) {
   return (!infos._consultAqlWriteFilter ||
           !infos._aqlCollection->getCollection()->skipForAqlWrite(doc, key));
 }
 
 void ModificationExecutorHelpers::throwOperationResultException(
-    ModificationExecutorInfos const& infos,
-    OperationResult const& operationResult) {
+    ModificationExecutorInfos const& infos, OperationResult const& operationResult) {
+
   // A "higher level error" happened (such as the transaction being aborted,
   // replication being refused, etc ), and we do not have errorCounter or
   // similar so we throw.
@@ -175,13 +171,11 @@ void ModificationExecutorHelpers::throwOperationResultException(
   // This mirrors previous behaviour and might not be entirely ideal.
   for (auto const& p : errorCounter) {
     auto const errorCode = ErrorCode{p.first};
-    if (!(infos._ignoreDocumentNotFound &&
-          errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+    if (!(infos._ignoreDocumentNotFound && errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // Find the first error and throw with message.
       for (auto doc : VPackArrayIterator(operationResult.slice())) {
         if (doc.isObject() && doc.hasKey(StaticStrings::ErrorNum) &&
-            ErrorCode{doc.get(StaticStrings::ErrorNum).getNumber<int>()} ==
-                errorCode) {
+            ErrorCode{doc.get(StaticStrings::ErrorNum).getNumber<int>()} == errorCode) {
           VPackSlice s = doc.get(StaticStrings::ErrorMessage);
           if (s.isString()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, s.copyString());
@@ -196,9 +190,9 @@ void ModificationExecutorHelpers::throwOperationResultException(
 }
 
 // Convert ModificationOptions to OperationOptions struct
-OperationOptions ModificationExecutorHelpers::convertOptions(
-    ModificationOptions const& in, Variable const* outVariableNew,
-    Variable const* outVariableOld) {
+OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions const& in,
+                                                             Variable const* outVariableNew,
+                                                             Variable const* outVariableOld) {
   OperationOptions out;
 
   // commented out OperationOptions attributes are not provided
@@ -224,8 +218,8 @@ OperationOptions ModificationExecutorHelpers::convertOptions(
   return out;
 }
 
-AqlValue ModificationExecutorHelpers::getDocumentOrNull(
-    VPackSlice const& elm, std::string const& key) {
+AqlValue ModificationExecutorHelpers::getDocumentOrNull(VPackSlice const& elm,
+                                                        std::string const& key) {
   VPackSlice s = elm.get(key);
   if (!s.isNone()) {
     return AqlValue{s};

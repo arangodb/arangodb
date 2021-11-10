@@ -41,16 +41,14 @@ struct Variable;
 namespace graph {
 class PathValidatorOptions {
  public:
-  PathValidatorOptions(
-      aql::Variable const* tmpVar,
-      arangodb::aql::FixedVarExpressionContext& expressionContext);
+  PathValidatorOptions(aql::Variable const* tmpVar,
+                       arangodb::aql::FixedVarExpressionContext& expressionContext);
   ~PathValidatorOptions() = default;
   PathValidatorOptions(PathValidatorOptions&&) = default;
   PathValidatorOptions(PathValidatorOptions const&) = default;
 
   /**
-   * @brief Set the expression that needs to hold true for ALL vertices on the
-   * path.
+   * @brief Set the expression that needs to hold true for ALL vertices on the path.
    */
   void setAllVerticesExpression(std::unique_ptr<aql::Expression> expression);
 
@@ -59,8 +57,7 @@ class PathValidatorOptions {
    * given depth. NOTE: This will overrule the ALL vertex expression, so make
    * sure this expression contains everything the ALL expression covers.
    */
-  void setVertexExpression(uint64_t depth,
-                           std::unique_ptr<aql::Expression> expression);
+  void setVertexExpression(uint64_t depth, std::unique_ptr<aql::Expression> expression);
 
   /**
    * @brief Get the Expression a vertex needs to hold if defined on the given
@@ -71,8 +68,7 @@ class PathValidatorOptions {
 
   void addAllowedVertexCollection(std::string const& collectionName);
 
-  void addAllowedVertexCollections(
-      std::vector<std::string> const& collectionNames);
+  void addAllowedVertexCollections(std::vector<std::string> const& collectionNames);
 
   std::vector<std::string> const& getAllowedVertexCollections() const;
 
@@ -93,8 +89,7 @@ class PathValidatorOptions {
 
  private:
   std::shared_ptr<aql::Expression> _allVerticesExpression;
-  std::unordered_map<uint64_t, std::shared_ptr<aql::Expression>>
-      _vertexExpressionOnDepth;
+  std::unordered_map<uint64_t, std::shared_ptr<aql::Expression>> _vertexExpressionOnDepth;
   aql::Variable const* _tmpVar;
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
 

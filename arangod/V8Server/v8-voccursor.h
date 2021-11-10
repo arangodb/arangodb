@@ -27,3 +27,4 @@
 #include "v8-vocbase.h"
 
 extern void TRI_InitV8cursor(v8::Handle<v8::Context>, TRI_v8_global_t*);
+

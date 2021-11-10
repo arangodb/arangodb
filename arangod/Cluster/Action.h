@@ -24,11 +24,11 @@
 
 #pragma once
 
-#include <chrono>
-
 #include "ActionBase.h"
 #include "ActionDescription.h"
 #include "Basics/Result.h"
+
+#include <chrono>
 
 namespace arangodb {
 
@@ -185,10 +185,14 @@ class Action {
   }
 
   /// @brief fastTrack
-  bool fastTrack() const { return _action->fastTrack(); }
+  bool fastTrack() const {
+    return _action->fastTrack();
+  }
 
   /// @brief priority
-  int priority() const { return _action->priority(); }
+  int priority() const {
+    return _action->priority();
+  }
 
  private:
   /// @brief actually create the concrete action

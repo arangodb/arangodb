@@ -23,10 +23,6 @@
 
 #include "TraverserOptions.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Aql/Ast.h"
 #include "Aql/Expression.h"
 #include "Aql/PruneExpressionEvaluator.h"
@@ -38,6 +34,10 @@
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/SingleServerTraverser.h"
 #include "Indexes/Index.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -57,8 +57,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
       mode(Order::DFS),
       defaultWeight(1.0) {}
 
-TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
-                                   VPackSlice obj)
+TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlice obj)
     : TraverserOptions(query) {
   TRI_ASSERT(obj.isObject());
 
@@ -71,8 +70,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
   minDepth = VPackHelper::getNumericValue<uint64_t>(obj, "minDepth", 1);
   maxDepth = VPackHelper::getNumericValue<uint64_t>(obj, "maxDepth", 1);
   _parallelism = VPackHelper::getNumericValue<size_t>(obj, "parallelism", 1);
-  _refactor = VPackHelper::getBooleanValue(
-      obj, StaticStrings::GraphRefactorFlag, false);
+  _refactor = VPackHelper::getBooleanValue(obj, StaticStrings::GraphRefactorFlag, false);
   TRI_ASSERT(minDepth <= maxDepth);
 
   std::string tmp =
@@ -286,8 +284,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
   }
 
   weightAttribute = VPackHelper::getStringValue(info, "weightAttribute", "");
-  defaultWeight =
-      VPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
+  defaultWeight = VPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
   if (defaultWeight < 0.) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,
                                    "negative default weight not allowed");
@@ -345,8 +342,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
     size_t length = collections.length();
     for (auto const& depth : VPackObjectIterator(read)) {
       uint64_t d = basics::StringUtils::uint64(depth.key.copyString());
-      auto [it, emplaced] =
-          _depthLookupInfo.try_emplace(d, std::vector<LookupInfo>());
+      auto [it, emplaced] = _depthLookupInfo.try_emplace(d, std::vector<LookupInfo>());
       TRI_ASSERT(emplaced);
       VPackSlice list = depth.value;
       TRI_ASSERT(length == list.length());
@@ -370,13 +366,13 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
       uint64_t d = basics::StringUtils::uint64(info.key.copyString());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       bool emplaced = false;
-      std::tie(std::ignore, emplaced) = _vertexExpressions.try_emplace(
-          d, new aql::Expression(query.ast(), info.value));
+      std::tie(std::ignore, emplaced) =
+          _vertexExpressions.try_emplace(d, new aql::Expression(query.ast(), info.value));
       TRI_ASSERT(emplaced);
 #else
-      _vertexExpressions.try_emplace(
-          d, arangodb::lazyConstruct(
-                 [&] { return new aql::Expression(query.ast(), info.value); }));
+      _vertexExpressions.try_emplace(d, arangodb::lazyConstruct([&] {
+                                       return new aql::Expression(query.ast(), info.value);
+                                     }));
 #endif
     }
   }
@@ -398,10 +394,8 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
   readProduceInfo(info);
 }
 
-TraverserOptions::TraverserOptions(TraverserOptions const& other,
-                                   bool const allowAlreadyBuiltCopy)
-    : BaseOptions(static_cast<BaseOptions const&>(other),
-                  allowAlreadyBuiltCopy),
+TraverserOptions::TraverserOptions(TraverserOptions const& other, bool const allowAlreadyBuiltCopy)
+    : BaseOptions(static_cast<BaseOptions const&>(other), allowAlreadyBuiltCopy),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
       _producePathsVertices(other._producePathsVertices),
@@ -526,9 +520,8 @@ void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
     builder.add(VPackValue(VPackValueType::Array));
     for (auto const& it2 : it.second) {
       for (auto const& it3 : it2.idxHandles) {
-        it3->toVelocyPack(builder,
-                          Index::makeFlags(Index::Serialize::Basics,
-                                           Index::Serialize::Estimates));
+        it3->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics,
+                                                    Index::Serialize::Estimates));
       }
     }
     builder.close();
@@ -640,8 +633,7 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.close();
 }
 
-bool TraverserOptions::shouldExcludeEdgeCollection(
-    std::string const& name) const {
+bool TraverserOptions::shouldExcludeEdgeCollection(std::string const& name) const {
   return !edgeCollections.empty() &&
          std::find(edgeCollections.begin(), edgeCollections.end(), name) ==
              edgeCollections.end();
@@ -651,11 +643,9 @@ void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                                           std::string const& collectionName,
                                           std::string const& attributeName,
                                           aql::AstNode* condition,
-                                          uint64_t depth,
-                                          bool onlyEdgeIndexes) {
+                                          uint64_t depth, bool onlyEdgeIndexes) {
   auto& list = _depthLookupInfo[depth];
-  injectLookupInfoInList(list, plan, collectionName, attributeName, condition,
-                         onlyEdgeIndexes);
+  injectLookupInfoInList(list, plan, collectionName, attributeName, condition, onlyEdgeIndexes);
 }
 
 bool TraverserOptions::vertexHasFilter(uint64_t depth) const {
@@ -689,9 +679,9 @@ bool TraverserOptions::hasVertexCollectionRestrictions() const {
   return !vertexCollections.empty();
 }
 
-bool TraverserOptions::evaluateEdgeExpression(
-    arangodb::velocypack::Slice edge, arangodb::velocypack::StringRef vertexId,
-    uint64_t depth, size_t cursorId) {
+bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
+                                              arangodb::velocypack::StringRef vertexId,
+                                              uint64_t depth, size_t cursorId) {
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _depthLookupInfo.find(depth);
@@ -731,8 +721,7 @@ bool TraverserOptions::evaluateEdgeExpression(
   return evaluateExpression(expression, edge);
 }
 
-auto TraverserOptions::explicitDepthLookupAt() const
-    -> std::unordered_set<std::size_t> {
+auto TraverserOptions::explicitDepthLookupAt() const -> std::unordered_set<std::size_t> {
   std::unordered_set<std::size_t> result;
 
   for (auto&& pair : _depthLookupInfo) {
@@ -754,9 +743,8 @@ auto TraverserOptions::isSatelliteLeader() const -> bool {
 }
 #endif
 
-auto TraverserOptions::getEdgeDestination(
-    arangodb::velocypack::Slice edge,
-    arangodb::velocypack::StringRef origin) const
+auto TraverserOptions::getEdgeDestination(arangodb::velocypack::Slice edge,
+                                          arangodb::velocypack::StringRef origin) const
     -> arangodb::velocypack::StringRef {
   if (edge.isString()) {
     return edge.stringRef();
@@ -774,9 +762,8 @@ auto TraverserOptions::getEdgeDestination(
 }
 
 void TraverserOptions::initializeIndexConditions(
-    aql::Ast* ast,
-    std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-    aql::Variable const* indexVariable) {
+  aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+  aql::Variable const* indexVariable) {
   BaseOptions::initializeIndexConditions(ast, varInfo, indexVariable);
   for (auto& [unused, infos] : _depthLookupInfo) {
     for (auto& info : infos) {
@@ -794,8 +781,8 @@ void TraverserOptions::calculateIndexExpressions(aql::Ast* ast) {
   }
 }
 
-bool TraverserOptions::evaluateVertexExpression(
-    arangodb::velocypack::Slice vertex, uint64_t depth) {
+bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vertex,
+                                                uint64_t depth) {
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _vertexExpressions.find(depth);
@@ -811,18 +798,16 @@ bool TraverserOptions::evaluateVertexExpression(
 }
 
 #ifndef USE_ENTERPRISE
-bool TraverserOptions::checkSmartDestination(
-    VPackSlice edge, velocypack::StringRef sourceVertex) const {
+bool TraverserOptions::checkSmartDestination(VPackSlice edge, velocypack::StringRef sourceVertex) const {
   return false;
 }
 #endif
 
-bool TraverserOptions::destinationCollectionAllowed(
-    VPackSlice edge, velocypack::StringRef sourceVertex) const {
+bool TraverserOptions::destinationCollectionAllowed(VPackSlice edge,
+                                                    velocypack::StringRef sourceVertex) const {
   if (hasVertexCollectionRestrictions()) {
     auto destination = getEdgeDestination(edge, sourceVertex);
-    auto collection =
-        transaction::helpers::extractCollectionFromId(destination);
+    auto collection = transaction::helpers::extractCollectionFromId(destination);
     if (std::find(vertexCollections.begin(), vertexCollections.end(),
                   std::string_view(collection.data(), collection.size())) ==
         vertexCollections.end()) {
@@ -839,8 +824,7 @@ bool TraverserOptions::destinationCollectionAllowed(
   return true;
 }
 
-std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
-    uint64_t depth) {
+std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(uint64_t depth) {
   ensureCache();
 
   if (_isCoordinator) {
@@ -849,12 +833,11 @@ std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
 
   auto specific = _depthLookupInfo.find(depth);
   if (specific != _depthLookupInfo.end()) {
-    return std::make_unique<graph::SingleServerEdgeCursor>(
-        this, _tmpVar, nullptr, specific->second);
+    return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr,
+                                                           specific->second);
   }
 
-  return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr,
-                                                         _baseLookupInfos);
+  return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr, _baseLookupInfos);
 }
 
 void TraverserOptions::linkTraverser(ClusterTraverser* trav) {
@@ -899,20 +882,20 @@ void TraverserOptions::activatePrune(std::vector<aql::Variable const*> vars,
       std::move(regs), vertexVarIdx, edgeVarIdx, pathVarIdx, expr);
 }
 
-void TraverserOptions::activatePostFilter(
-    std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
-    size_t vertexVarIdx, size_t edgeVarIdx, aql::Expression* expr) {
+void TraverserOptions::activatePostFilter(std::vector<aql::Variable const*> vars,
+                                          std::vector<aql::RegisterId> regs,
+                                          size_t vertexVarIdx, size_t edgeVarIdx,
+                                          aql::Expression* expr) {
   _postFilterExpression = std::make_unique<aql::PruneExpressionEvaluator>(
-      _trx, _query, _aqlFunctionsInternalCache, std::move(vars),
-      std::move(regs), vertexVarIdx, edgeVarIdx,
-      std::numeric_limits<std::size_t>::max(), expr);
+      _trx, _query, _aqlFunctionsInternalCache, std::move(vars), std::move(regs),
+      vertexVarIdx, edgeVarIdx, std::numeric_limits<std::size_t>::max(), expr);
 }
 
 double TraverserOptions::weightEdge(VPackSlice edge) const {
   TRI_ASSERT(mode == Order::WEIGHTED);
   const auto weight =
-      arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-          edge, weightAttribute, defaultWeight);
+      arangodb::basics::VelocyPackHelper::getNumericValue<double>(edge, weightAttribute,
+                                                                  defaultWeight);
   if (weight < 0.) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
   }
@@ -935,8 +918,6 @@ void TraverserOptions::readProduceInfo(VPackSlice obj) {
   _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
   _producePathsVertices =
       VPackHelper::getBooleanValue(obj, "producePathsVertices", true);
-  _producePathsEdges =
-      VPackHelper::getBooleanValue(obj, "producePathsEdges", true);
-  _producePathsWeights =
-      VPackHelper::getBooleanValue(obj, "producePathsWeights", true);
+  _producePathsEdges = VPackHelper::getBooleanValue(obj, "producePathsEdges", true);
+  _producePathsWeights = VPackHelper::getBooleanValue(obj, "producePathsWeights", true);
 }

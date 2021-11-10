@@ -27,20 +27,16 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
 #include <string>
 #include <vector>
-
 #include "Pregel/Graph.h"
 
 namespace arangodb {
 namespace pregel {
 
 struct VertexSumAggregator : public IAggregator {
-  typedef std::map<PregelShard, std::unordered_map<std::string, double>>
-      VertexMap;
-  typedef std::pair<PregelShard, std::unordered_map<std::string, double>>
-      MyPair;
+  typedef std::map<PregelShard, std::unordered_map<std::string, double>> VertexMap;
+  typedef std::pair<PregelShard, std::unordered_map<std::string, double>> MyPair;
 
   VertexSumAggregator(bool perm = false) : _permanent(perm) {}
 
@@ -91,8 +87,7 @@ struct VertexSumAggregator : public IAggregator {
   void serialize(std::string const& key, VPackBuilder& builder) const override {
     builder.add(key, VPackValue(VPackValueType::Object));
     for (auto const& pair1 : _entries) {
-      builder.add(std::to_string(pair1.first),
-                  VPackValue(VPackValueType::Array));
+      builder.add(std::to_string(pair1.first), VPackValue(VPackValueType::Array));
       for (auto const& pair2 : pair1.second) {
         builder.add(VPackValuePair(pair2.first.data(), pair2.first.size(),
                                    VPackValueType::String));
@@ -130,8 +125,7 @@ struct VertexSumAggregator : public IAggregator {
 
   void aggregateDefaultValue(double empty) { _default += empty; }
 
-  void forEach(
-      std::function<void(PregelID const& _id, double value)> func) const {
+  void forEach(std::function<void(PregelID const& _id, double value)> func) const {
     for (auto const& pair : _entries) {
       PregelShard shard = pair.first;
       std::unordered_map<std::string, double> const& vertexMap = pair.second;

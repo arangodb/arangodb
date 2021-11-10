@@ -23,11 +23,11 @@
 
 #include "SyncerId.h"
 
-#include <algorithm>
-
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Rest/GeneralRequest.h"
+
+#include <algorithm>
 
 using namespace arangodb;
 
@@ -40,21 +40,18 @@ SyncerId SyncerId::fromRequest(GeneralRequest const& request) {
 
   if (found) {
     if (idStr.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "syncerId, if set, must not be empty");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId, if set, must not be empty");
     }
-    if (!std::all_of(idStr.begin(), idStr.end(),
-                     [](char c) { return c >= '0' && c <= '9'; })) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "syncerId must be an integer");
+    if (!std::all_of(idStr.begin(), idStr.end(), [](char c) { 
+      return c >= '0' && c <= '9';
+    })) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId must be an integer");
     }
     if (idStr[0] == '0') {
       if (idStr.size() == 1) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "syncerId must be non-zero");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId must be non-zero");
       } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "syncerId must not begin with zero");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId must not begin with zero");
       }
     }
     try {
@@ -62,13 +59,11 @@ SyncerId SyncerId::fromRequest(GeneralRequest const& request) {
       // stoull could also throw std::invalid_argument, but this shouldn't be
       // possible due to the checks before.
     } catch (std::out_of_range const& e) {
-      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
-                                    "syncerId is too large: %s", e.what());
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER, "syncerId is too large: %s", e.what());
     }
     if (id == 0) {
       // id == 0 is reserved to mean "unset" and may not be set by the client.
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "syncerId must be non-zero");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId must be non-zero");
     }
   }
 

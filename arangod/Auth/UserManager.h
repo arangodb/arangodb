@@ -23,9 +23,10 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/Common.h"
 #include "Auth/User.h"
+
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
@@ -44,7 +45,7 @@ namespace aql {
 class QueryRegistry;
 }
 namespace basics {
-template<typename T>
+template <typename T>
 class ReadLocker;
 }
 
@@ -98,13 +99,11 @@ class UserManager {
 
   velocypack::Builder allUsers();
   /// Add user from arangodb, do not use for LDAP  users
-  Result storeUser(bool replace, std::string const& user,
-                   std::string const& pass, bool active,
-                   velocypack::Slice extras);
+  Result storeUser(bool replace, std::string const& user, std::string const& pass,
+                   bool active, velocypack::Slice extras);
 
   /// Enumerate list of all users
-  Result enumerateUsers(std::function<bool(auth::User&)>&&,
-                        bool retryOnConflict);
+  Result enumerateUsers(std::function<bool(auth::User&)>&&, bool retryOnConflict);
   /// Update specific user
   Result updateUser(std::string const& user, UserCallback&&);
   /// Access user without modifying it
@@ -130,12 +129,9 @@ class UserManager {
 #endif
 
   auth::Level databaseAuthLevel(std::string const& username,
-                                std::string const& dbname,
-                                bool configured = false);
-  auth::Level collectionAuthLevel(std::string const& username,
-                                  std::string const& dbname,
-                                  std::string const& coll,
-                                  bool configured = false);
+                                std::string const& dbname, bool configured = false);
+  auth::Level collectionAuthLevel(std::string const& username, std::string const& dbname,
+                                  std::string const& coll, bool configured = false);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   /// Overwrite internally cached permissions, only use

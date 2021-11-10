@@ -23,14 +23,13 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-#include <velocypack/StringRef.h>
-
-#include <vector>
-
 #include "Aql/ExecutionPlan.h"
 #include "Basics/Common.h"
 #include "Containers/RollingVector.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/StringRef.h>
+#include <vector>
 
 namespace arangodb {
 namespace aql {
@@ -40,13 +39,12 @@ struct QueryOptions;
 class Optimizer {
  private:
   /// @brief this stored the positions of rules in OptimizerRulesFeature::_rules
-  using RuleDatabase = std::vector<int>;
+  using RuleDatabase = std::vector<int>; 
 
   /// @brief the following struct keeps a list (deque) of ExecutionPlan*
   /// and has some automatic convenience functions.
   struct PlanList {
-    using Entry =
-        std::pair<std::unique_ptr<ExecutionPlan>, RuleDatabase::iterator>;
+    using Entry = std::pair<std::unique_ptr<ExecutionPlan>, RuleDatabase::iterator>;
 
     ::arangodb::containers::RollingVector<Entry> list;
 
@@ -74,8 +72,7 @@ class Optimizer {
     }
 
     /// @brief push_back
-    void push_back(std::unique_ptr<ExecutionPlan> p,
-                   RuleDatabase::iterator rule) {
+    void push_back(std::unique_ptr<ExecutionPlan> p, RuleDatabase::iterator rule) {
       list.push_back({std::move(p), rule});
     }
 
@@ -123,13 +120,10 @@ class Optimizer {
                    QueryOptions const& queryOptions, bool estimateAllPlans);
 
   /// @brief add a plan to the optimizer
-  void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const&,
-               bool wasModified);
-
-  /// @brief add a plan to the optimizer and makes it rerun the current rule
-  /// again
-  void addPlanAndRerun(std::unique_ptr<ExecutionPlan>, OptimizerRule const&,
-                       bool wasModified);
+  void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const&, bool wasModified);
+  
+  /// @brief add a plan to the optimizer and makes it rerun the current rule again 
+  void addPlanAndRerun(std::unique_ptr<ExecutionPlan>, OptimizerRule const&, bool wasModified);
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
   ::arangodb::containers::RollingVector<PlanList::Entry>& getPlans() {
@@ -153,17 +147,17 @@ class Optimizer {
   /// this should be called from rules, it will consider those that the
   /// current rules has already added
   size_t numberOfPlans() { return _plans.size() + _newPlans.size() + 1; }
-
+  
  private:
   /// @brief disable a specific rule
   void disableRule(ExecutionPlan* plan, int level);
-
+  
   /// @brief disable a specific rule, by name
-  void disableRule(ExecutionPlan* plan, velocypack::StringRef name);
-
+  void disableRule(ExecutionPlan* plan, velocypack::StringRef name); 
+  
   /// @brief enable a specific rule
   void enableRule(ExecutionPlan* plan, int level);
-
+  
   /// @brief enable a specific rule, by name
   void enableRule(ExecutionPlan* plan, velocypack::StringRef name);
 
@@ -177,10 +171,11 @@ class Optimizer {
   Stats _stats;
 
  private:
+ 
   void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
   void finalizePlans();
   void estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans);
-
+ 
   /// @brief the current set of plans to be optimized
   PlanList _plans;
 

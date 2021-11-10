@@ -27,8 +27,7 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-OneSidedEnumeratorOptions::OneSidedEnumeratorOptions(size_t minDepth,
-                                                     size_t maxDepth)
+OneSidedEnumeratorOptions::OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth)
     : _minDepth(minDepth), _maxDepth(maxDepth) {}
 
 OneSidedEnumeratorOptions::~OneSidedEnumeratorOptions() = default;

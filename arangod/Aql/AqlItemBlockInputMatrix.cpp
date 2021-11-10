@@ -22,14 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockInputMatrix.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
-
 #include <numeric>
-
-#include "Aql/ShadowAqlItemRow.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -43,8 +41,7 @@ AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state)
   TRI_ASSERT(!hasDataRow());
 }
 
-AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state,
-                                                 AqlItemMatrix* aqlItemMatrix)
+AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state, AqlItemMatrix* aqlItemMatrix)
     : _finalState{state}, _aqlItemMatrix{aqlItemMatrix} {
   TRI_ASSERT(_aqlItemMatrix != nullptr);
   if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow()) {
@@ -63,15 +60,14 @@ AqlItemBlockInputRange& AqlItemBlockInputMatrix::getInputRange() {
   if (_aqlItemMatrix->numberOfBlocks() == 0) {
     _lastRange = {AqlItemBlockInputRange{upstreamState()}};
   } else {
-    auto [blockPtr, start] = _aqlItemMatrix->getBlock(_currentBlockRowIndex);
+    auto [blockPtr, start] =  _aqlItemMatrix->getBlock(_currentBlockRowIndex);
     ExecutorState state = incrBlockIndex();
     _lastRange = {state, 0, std::move(blockPtr), start};
   }
   return _lastRange;
 }
 
-std::pair<ExecutorState, AqlItemMatrix const*>
-AqlItemBlockInputMatrix::getMatrix() noexcept {
+std::pair<ExecutorState, AqlItemMatrix const*> AqlItemBlockInputMatrix::getMatrix() noexcept {
   TRI_ASSERT(_aqlItemMatrix != nullptr);
 
   // We are always done. This InputMatrix
@@ -90,7 +86,7 @@ ExecutorState AqlItemBlockInputMatrix::upstreamState() const noexcept {
 bool AqlItemBlockInputMatrix::upstreamHasMore() const noexcept {
   return upstreamState() == ExecutorState::HASMORE;
 }
-
+  
 bool AqlItemBlockInputMatrix::hasValidRow() const noexcept {
   return _shadowRow.isInitialized() ||
          (_aqlItemMatrix != nullptr && _aqlItemMatrix->size() != 0);
@@ -102,8 +98,7 @@ bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
           (_aqlItemMatrix->size() > 0 && _finalState == ExecutorState::DONE));
 }
 
-std::pair<ExecutorState, ShadowAqlItemRow>
-AqlItemBlockInputMatrix::nextShadowRow() {
+std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRow() {
   auto tmpShadowRow = std::move(_shadowRow);
   TRI_ASSERT(_aqlItemMatrix != nullptr);
 
@@ -175,8 +170,7 @@ size_t AqlItemBlockInputMatrix::skipAllShadowRowsOfDepth(size_t depth) {
     return 0;
   }
   size_t skipped = 0;
-  std::tie(skipped, _shadowRow) =
-      _aqlItemMatrix->skipAllShadowRowsOfDepth(depth);
+  std::tie(skipped, _shadowRow) = _aqlItemMatrix->skipAllShadowRowsOfDepth(depth);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // Long assert block
   if (_shadowRow.isInitialized()) {
@@ -210,16 +204,14 @@ void AqlItemBlockInputMatrix::resetBlockIndex() noexcept {
   _currentBlockRowIndex = 0;
 }
 
-[[nodiscard]] auto AqlItemBlockInputMatrix::countDataRows() const noexcept
-    -> std::size_t {
+[[nodiscard]] auto AqlItemBlockInputMatrix::countDataRows() const noexcept -> std::size_t {
   if (_aqlItemMatrix == nullptr) {
     return 0;
   }
   return _aqlItemMatrix->countDataRows();
 }
 
-[[nodiscard]] auto AqlItemBlockInputMatrix::countShadowRows() const noexcept
-    -> std::size_t {
+[[nodiscard]] auto AqlItemBlockInputMatrix::countShadowRows() const noexcept -> std::size_t {
   if (_aqlItemMatrix == nullptr) {
     return 0;
   }
@@ -228,7 +220,6 @@ void AqlItemBlockInputMatrix::resetBlockIndex() noexcept {
   return _aqlItemMatrix->countShadowRows() + (hasShadowRow() ? 1 : 0);
 }
 
-[[nodiscard]] auto AqlItemBlockInputMatrix::finalState() const noexcept
-    -> ExecutorState {
+[[nodiscard]] auto AqlItemBlockInputMatrix::finalState() const noexcept -> ExecutorState {
   return _finalState;
 }

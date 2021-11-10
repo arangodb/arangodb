@@ -23,6 +23,12 @@
 
 #pragma once
 
+#include "Aql/ClusterNodes.h"
+#include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionState.h"
+#include "Aql/RegisterInfos.h"
+#include "Basics/Result.h"
+
 #include <velocypack/Builder.h>
 
 #include <cstdint>
@@ -30,12 +36,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include "Aql/ClusterNodes.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionState.h"
-#include "Aql/RegisterInfos.h"
-#include "Basics/Result.h"
 
 namespace arangodb {
 
@@ -76,13 +76,12 @@ class BlocksWithClients {
 
   /// @brief skipSomeForShard
   /// @deprecated
-  virtual std::pair<ExecutionState, size_t> skipSomeForShard(
-      size_t atMost, std::string const& shardId) = 0;
+  virtual std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
+                                                             std::string const& shardId) = 0;
 
   /**
    * @brief Execute for client.
-   *  Like execute, but bound to the dataset, that needs to be send to the given
-   * client ID
+   *  Like execute, but bound to the dataset, that needs to be send to the given client ID
    *
    * @param stack The AqlCallStack
    * @param clientId The requesting client Id.
@@ -101,19 +100,17 @@ class BlocksWithClients {
  * @tparam ClientBlockData needs to be able to hold the data to be distributed
  *         to a single client.
  *         It needs to implement the following methods:
- *         canProduce(size_t limit) -> bool stating it has enough information to
- * fill limit many rows (or more)
+ *         canProduce(size_t limit) -> bool stating it has enough information to fill limit many rows (or more)
  *
  */
 
-template<class Executor>
+template <class Executor>
 class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   using ExecutorInfos = typename Executor::Infos;
 
  public:
   BlocksWithClientsImpl(ExecutionEngine* engine, ExecutionNode const* ep,
-                        RegisterInfos registerInfos,
-                        typename Executor::Infos executorInfos);
+                        RegisterInfos registerInfos, typename Executor::Infos executorInfos);
 
   ~BlocksWithClientsImpl() override = default;
 
@@ -123,13 +120,11 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
       -> std::pair<ExecutionState, Result> override;
 
   /// @brief execute: shouldn't be used, use executeForClient
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(
-      AqlCallStack const& stack) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack) override;
 
   /**
    * @brief Execute for client.
-   *  Like execute, but bound to the dataset, that needs to be send to the given
-   * client ID
+   *  Like execute, but bound to the dataset, that needs to be send to the given client ID
    *
    * @param stack The AqlCallStack
    * @param clientId The requesting client Id.
@@ -146,8 +141,7 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
    * @param clientId The requesting client Id.
    * @return std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
    */
-  auto executeWithoutTraceForClient(AqlCallStack stack,
-                                    std::string const& clientId)
+  auto executeWithoutTraceForClient(AqlCallStack stack, std::string const& clientId)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   /**
@@ -158,13 +152,13 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
 
   /// @brief getSomeForShard
   /// @deprecated
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(
-      size_t atMost, std::string const& shardId) override;
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(size_t atMost,
+                                                                   std::string const& shardId) override;
 
   /// @brief skipSomeForShard
   /// @deprecated
-  std::pair<ExecutionState, size_t> skipSomeForShard(
-      size_t atMost, std::string const& shardId) override;
+  std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
+                                                     std::string const& shardId) override;
 
  protected:
   /// @brief getClientId: get the number <clientId> (used internally)
@@ -195,9 +189,9 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
 
   /// @brief A map of clientId to the data this client should receive.
   ///        This map will be filled as the execution progresses.
-  std::unordered_map<std::string, typename Executor::ClientBlockData>
-      _clientBlockData;
+  std::unordered_map<std::string, typename Executor::ClientBlockData> _clientBlockData;
 };
 
 }  // namespace aql
 }  // namespace arangodb
+

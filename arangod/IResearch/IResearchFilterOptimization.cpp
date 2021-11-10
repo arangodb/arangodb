@@ -21,12 +21,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/IResearchFilterOptimization.h"
-
 #include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 
 namespace arangodb {
 namespace iresearch {
+
 
 bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
                                     irs::string_ref name,
@@ -40,14 +40,12 @@ bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
           if (startsWith.size() <= options->prefix.size()) {
             if (irs::starts_with(irs::ref_cast<char>(options->prefix),
                                  startsWith)) {
-              // Nothing to do. We are already covered by this levenshtein
-              // prefix
+              // Nothing to do. We are already covered by this levenshtein prefix
               return true;
             }
           } else {
             // maybe we could enlarge prefix to cover us?
-            if (irs::starts_with(startsWith,
-                                 irs::ref_cast<char>(options->prefix))) {
+            if (irs::starts_with(startsWith, irs::ref_cast<char>(options->prefix))) {
               // looks promising - beginning of the levenshtein prefix is ok
               auto prefixTailSize = startsWith.size() - options->prefix.size();
               if (irs::starts_with(irs::ref_cast<char>(options->term),
@@ -55,14 +53,13 @@ bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
                                    prefixTailSize)) {
                 // we could enlarge prefix
                 options->prefix = irs::ref_cast<irs::byte_type>(startsWith);
-                options->term.erase(options->term.begin(),
-                                    options->term.begin() + prefixTailSize);
+                options->term.erase(options->term.begin(), options->term.begin() + prefixTailSize);
                 return true;
               }
             }
           }
-          if ((options->term.size() + options->prefix.size() +
-               options->max_distance) < startsWith.size()) {
+          if ((options->term.size() + options->prefix.size() + options->max_distance) <
+              startsWith.size()) {
             // last optimization effort - we can't fulfill this conjunction.
             // make it empty
             filter->clear();
@@ -76,5 +73,5 @@ bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
   return false;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // namespace iresearch
+} // namespace arangodb

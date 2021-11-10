@@ -24,6 +24,7 @@
 #pragma once
 
 #include <rocksdb/options.h>
+
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
@@ -45,13 +46,11 @@ class RocksDBPrimaryIndex;
 /// basically sorted after LocalDocumentId
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
-  RocksDBAllIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          ReadOwnWrites readOwnWrites);
+  RocksDBAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx, ReadOwnWrites readOwnWrites);
   ~RocksDBAllIndexIterator() = default;
 
   char const* typeName() const override { return "all-index-iterator"; }
-
+  
   /// @brief index does not support rearming
   bool canRearm() const override { return false; }
 
@@ -75,8 +74,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
 class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
-  RocksDBAnyIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx);
+  RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx);
   ~RocksDBAnyIndexIterator() = default;
 
   char const* typeName() const override { return "any-index-iterator"; }
@@ -87,9 +85,9 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   void resetImpl() override;
 
  private:
-  template<typename Func>
+  template <typename Func>
   bool doNext(size_t limit, Func const& func);
-
+  
   bool outOfRange() const;
   bool checkIter();
 
@@ -102,25 +100,22 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   uint64_t _returned;
   bool _forward;
 };
-
+  
+  
 /// @brief return false to stop iteration
-typedef std::function<bool(rocksdb::Slice const& key,
-                           rocksdb::Slice const& value)>
-    GenericCallback;
+typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& value)> GenericCallback;
 
 /// @brief a forward-only iterator over the primary index, only reading from the
 /// database, not taking into account changes done in the current transaction
 class RocksDBGenericIterator {
  public:
-  RocksDBGenericIterator(rocksdb::TransactionDB* db,
-                         rocksdb::ReadOptions& options,
+  RocksDBGenericIterator(rocksdb::TransactionDB* db, rocksdb::ReadOptions& options,
                          RocksDBKeyBounds const& bounds);
   RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 
   ~RocksDBGenericIterator() = default;
 
-  //* The following functions returns true if the iterator is valid within
-  //bounds on return.
+  //* The following functions returns true if the iterator is valid within bounds on return.
   //  @param limit - number of documents the callback should be applied to
   bool next(GenericCallback const& cb, size_t limit);
 

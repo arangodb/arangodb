@@ -39,11 +39,8 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-EndpointFeature::EndpointFeature(
-    application_features::ApplicationServer& server)
-    : HttpEndpointProvider(server, "Endpoint"),
-      _reuseAddress(true),
-      _backlogSize(64) {
+EndpointFeature::EndpointFeature(application_features::ApplicationServer& server)
+    : HttpEndpointProvider(server, "Endpoint"), _reuseAddress(true), _backlogSize(64) {
   setOptional(true);
   requiresElevatedPrivileges(true);
   startsAfter<application_features::AqlFeaturePhase>();
@@ -69,15 +66,13 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("tcp", "TCP features");
 
-  options->addOption(
-      "--tcp.reuse-address", "try to reuse TCP port(s)",
-      new BooleanParameter(&_reuseAddress),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption("--tcp.reuse-address", "try to reuse TCP port(s)",
+                     new BooleanParameter(&_reuseAddress),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption(
-      "--tcp.backlog-size", "listen backlog size",
-      new UInt64Parameter(&_backlogSize),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption("--tcp.backlog-size", "listen backlog size",
+                     new UInt64Parameter(&_backlogSize),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -120,12 +115,10 @@ std::vector<std::string> EndpointFeature::httpEndpoints() {
 void EndpointFeature::buildEndpointLists() {
   for (std::vector<std::string>::const_iterator i = _endpoints.begin();
        i != _endpoints.end(); ++i) {
-    bool ok =
-        _endpointList.add((*i), static_cast<int>(_backlogSize), _reuseAddress);
+    bool ok = _endpointList.add((*i), static_cast<int>(_backlogSize), _reuseAddress);
 
     if (!ok) {
-      LOG_TOPIC("1ddc1", FATAL, arangodb::Logger::FIXME)
-          << "invalid endpoint '" << (*i) << "'";
+      LOG_TOPIC("1ddc1", FATAL, arangodb::Logger::FIXME) << "invalid endpoint '" << (*i) << "'";
       FATAL_ERROR_EXIT();
     }
   }

@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
-
 #include "Basics/Result.h"
+
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace velocypack {
@@ -39,8 +39,7 @@ struct TtlStatistics;
 Result getTtlStatisticsFromAllDBServers(ClusterFeature&, TtlStatistics& out);
 
 /// @brief get TTL properties from all DBservers
-Result getTtlPropertiesFromAllDBServers(ClusterFeature&,
-                                        arangodb::velocypack::Builder& out);
+Result getTtlPropertiesFromAllDBServers(ClusterFeature&, arangodb::velocypack::Builder& out);
 
 /// @brief set TTL properties on all DBservers
 Result setTtlPropertiesOnAllDBServers(ClusterFeature&,
@@ -48,3 +47,4 @@ Result setTtlPropertiesOnAllDBServers(ClusterFeature&,
                                       arangodb::velocypack::Builder& out);
 
 }  // namespace arangodb
+

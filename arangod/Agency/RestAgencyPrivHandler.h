@@ -49,6 +49,7 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
 
  private:
+
   RestStatus reportErrorEmptyRequest();
   RestStatus reportTooManySuffices();
   RestStatus reportBadQuery(std::string const& message = "bad parameter");
@@ -62,3 +63,4 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
 };
 
 }  // namespace arangodb
+

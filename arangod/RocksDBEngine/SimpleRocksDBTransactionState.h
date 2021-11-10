@@ -39,9 +39,7 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState {
   /// @brief begin a transaction
   Result beginTransaction(transaction::Hints hints) override;
 
-  RocksDBTransactionMethods* rocksdbMethods(DataSourceId) const override {
-    return _rocksMethods.get();
-  }
+  RocksDBTransactionMethods* rocksdbMethods(DataSourceId) const override { return _rocksMethods.get(); }
 
   void beginQuery(bool isModificationQuery) override;
   void endQuery(bool isModificationQuery) noexcept override;
@@ -77,3 +75,4 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState {
 };
 
 }  // namespace arangodb
+

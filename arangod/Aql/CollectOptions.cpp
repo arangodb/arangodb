@@ -22,12 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectOptions.h"
+#include "Basics/Exceptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "Basics/Exceptions.h"
 
 using namespace arangodb::aql;
 
@@ -60,8 +59,7 @@ void CollectOptions::toVelocyPack(VPackBuilder& builder) const {
 }
 
 /// @brief get the aggregation method from a string
-CollectOptions::CollectMethod CollectOptions::methodFromString(
-    std::string const& method) {
+CollectOptions::CollectMethod CollectOptions::methodFromString(std::string const& method) {
   if (method == "hash") {
     return CollectMethod::HASH;
   }
@@ -79,8 +77,7 @@ CollectOptions::CollectMethod CollectOptions::methodFromString(
 }
 
 /// @brief stringify the aggregation method
-std::string CollectOptions::methodToString(
-    CollectOptions::CollectMethod method) {
+std::string CollectOptions::methodToString(CollectOptions::CollectMethod method) {
   if (method == CollectMethod::HASH) {
     return std::string("hash");
   }

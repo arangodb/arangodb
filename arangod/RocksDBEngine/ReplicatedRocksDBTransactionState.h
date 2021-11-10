@@ -31,15 +31,14 @@ class RocksDBTransactionMethods;
 class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
  public:
   ReplicatedRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                                    transaction::Options const& options);
+                                transaction::Options const& options);
 
   ~ReplicatedRocksDBTransactionState() override;
 
   /// @brief begin a transaction
   Result beginTransaction(transaction::Hints hints) override;
 
-  RocksDBTransactionMethods* rocksdbMethods(
-      DataSourceId collectionId) const override;
+  RocksDBTransactionMethods* rocksdbMethods(DataSourceId collectionId) const override;
 
   void beginQuery(bool isModificationQuery) override;
   void endQuery(bool isModificationQuery) noexcept override;
@@ -73,3 +72,4 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
 };
 
 }  // namespace arangodb
+

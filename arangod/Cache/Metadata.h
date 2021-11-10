@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include "Basics/ReadWriteSpinLock.h"
+
 #include <atomic>
 #include <cstdint>
-
-#include "Basics/ReadWriteSpinLock.h"
 
 namespace arangodb {
 namespace cache {
@@ -58,8 +58,7 @@ struct Metadata {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes record with given information.
   //////////////////////////////////////////////////////////////////////////////
-  Metadata(std::uint64_t usage, std::uint64_t fixed, std::uint64_t table,
-           std::uint64_t max);
+  Metadata(std::uint64_t usage, std::uint64_t fixed, std::uint64_t table, std::uint64_t max);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes record from an existing record.
@@ -146,3 +145,4 @@ struct Metadata {
 
 };  // end namespace cache
 };  // end namespace arangodb
+

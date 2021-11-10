@@ -24,7 +24,6 @@
 #pragma once
 
 #include <memory>
-
 #include "Graph/BaseOptions.h"
 
 namespace arangodb {
@@ -52,8 +51,7 @@ struct ShortestPathOptions : public BaseOptions {
 
   explicit ShortestPathOptions(aql::QueryContext& query);
 
-  ShortestPathOptions(aql::QueryContext& query,
-                      arangodb::velocypack::Slice const& info);
+  ShortestPathOptions(aql::QueryContext& query, arangodb::velocypack::Slice const& info);
 
   // @brief DBServer-constructor used by TraverserEngines
   ShortestPathOptions(aql::QueryContext& query,
@@ -63,12 +61,10 @@ struct ShortestPathOptions : public BaseOptions {
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
-  ///        When allowAlreadyBuiltCopy is true, the constructor also works
-  ///        after the planning phase; however, the options have to be prepared
-  ///        again (see ShortestPathNode / KShortestPathsNode
-  ///        ::prepareOptions())
-  ShortestPathOptions(ShortestPathOptions const& other,
-                      bool allowAlreadyBuiltCopy = false);
+  ///        When allowAlreadyBuiltCopy is true, the constructor also works after
+  ///        the planning phase; however, the options have to be prepared again
+  ///        (see ShortestPathNode / KShortestPathsNode ::prepareOptions())
+  ShortestPathOptions(ShortestPathOptions const& other, bool allowAlreadyBuiltCopy = false);
 
   // Creates a complete Object containing all EngineInfo
   // in the given builder.
@@ -91,10 +87,8 @@ struct ShortestPathOptions : public BaseOptions {
 
   // Creates a complete Object containing all EngineInfo
   // in the given builder.
-  void addReverseLookupInfo(aql::ExecutionPlan* plan,
-                            std::string const& collectionName,
-                            std::string const& attributeName,
-                            aql::AstNode* condition);
+  void addReverseLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
+                            std::string const& attributeName, aql::AstNode* condition);
 
   // Compute the weight of the given edge
   double weightEdge(arangodb::velocypack::Slice const) const;
@@ -118,3 +112,4 @@ struct ShortestPathOptions : public BaseOptions {
 
 }  // namespace graph
 }  // namespace arangodb
+

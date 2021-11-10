@@ -46,3 +46,4 @@ class VersionTracker {
   std::atomic<uint64_t> _value;
 };
 }  // namespace arangodb
+

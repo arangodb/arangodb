@@ -21,10 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ConsoleFeature.h"
-
-#include <iostream>
 #include <thread>
+
+#include "ConsoleFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/debugging.h"
@@ -38,6 +37,8 @@
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+
+#include <iostream>
 
 #ifndef _WIN32
 #include <sys/ioctl.h>
@@ -64,8 +65,7 @@ void ConsoleFeature::start() {
     return;
   }
 
-  LOG_TOPIC("a4313", TRACE, Logger::STARTUP)
-      << "server operation mode: CONSOLE";
+  LOG_TOPIC("a4313", TRACE, Logger::STARTUP) << "server operation mode: CONSOLE";
 
   auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
   auto database = sysDbFeature.use();
@@ -104,8 +104,7 @@ void ConsoleFeature::unprepare() {
   int iterations = 0;
 
   while (_consoleThread->isRunning() && ++iterations < 30) {
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(100));  // sleep while console is still needed
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));  // sleep while console is still needed
   }
 
   std::cout << std::endl << TRI_BYE_MESSAGE << std::endl;

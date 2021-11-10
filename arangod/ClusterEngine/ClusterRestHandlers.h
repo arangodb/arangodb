@@ -35,3 +35,4 @@ struct ClusterRestHandlers {
 };
 
 }  // namespace arangodb
+

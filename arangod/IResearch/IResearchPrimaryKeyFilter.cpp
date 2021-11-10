@@ -23,9 +23,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchPrimaryKeyFilter.h"
-
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+
 #include "index/index_reader.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/numeric_utils.hpp"
@@ -54,8 +54,9 @@ namespace iresearch {
 // ----------------------------------------------------------------------------
 
 irs::doc_iterator::ptr PrimaryKeyFilter::execute(
-    irs::sub_reader const& segment, irs::order::prepared const& /*order*/,
-    irs::attribute_provider const* /*ctx*/) const {
+    irs::sub_reader const& segment,
+    irs::order::prepared const& /*order*/,
+    irs::attribute_provider const* /*ctx*/ ) const {
   TRI_ASSERT(!_pkSeen);  // re-execution of a fiter is not expected to ever
                          // occur without a call to prepare(...)
   auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
@@ -68,16 +69,14 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
   auto term = pkField->iterator(irs::SeekMode::RANDOM_ONLY);
 
   auto const pkRef =
-      irs::numeric_utils::numeric_traits<LocalDocumentId::BaseType>::raw_ref(
-          _pk);
+      irs::numeric_utils::numeric_traits<LocalDocumentId::BaseType>::raw_ref(_pk);
 
   if (!term->seek(pkRef)) {
     // no such term
     return irs::doc_iterator::empty();
   }
 
-  auto docs = segment.mask(
-      term->postings(irs::IndexFeatures::NONE));  // must not match removed docs
+  auto docs = segment.mask(term->postings(irs::IndexFeatures::NONE));  // must not match removed docs
 
   if (!docs->next()) {
     return irs::doc_iterator::empty();
@@ -90,16 +89,14 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
   // entire datastore
   // * recovery should have at most 2 identical live primary keys in the entire
   // datastore
-  if (irs::filter::type() ==
-      irs::type<typeDefault>::id()) {  // explicitly check type of instance
+  if (irs::filter::type() == irs::type<typeDefault>::id()) {  // explicitly check type of instance
     TRI_ASSERT(!docs->next());  // primary key duplicates should NOT happen in
                                 // the same segment in regular runtime
-    _pkSeen =
-        true;  // already matched 1 primary key (should be at most 1 at runtime)
+    _pkSeen = true;  // already matched 1 primary key (should be at most 1 at runtime)
   }
 
   return irs::memory::to_managed<irs::doc_iterator, false>(
-      const_cast<PrimaryKeyIterator*>(&_pkIterator));
+    const_cast<PrimaryKeyIterator*>(&_pkIterator));
 }
 
 size_t PrimaryKeyFilter::hash() const noexcept {
@@ -112,8 +109,10 @@ size_t PrimaryKeyFilter::hash() const noexcept {
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
-    irs::index_reader const& /*index*/, irs::order::prepared const& /*ord*/,
-    irs::boost_t /*boost*/, irs::attribute_provider const* /*ctx*/) const {
+    irs::index_reader const& /*index*/,
+    irs::order::prepared const& /*ord*/,
+    irs::boost_t /*boost*/,
+    irs::attribute_provider const* /*ctx*/) const {
   // optimization, since during:
   // * regular runtime should have at most 1 identical primary key in the entire
   // datastore
@@ -127,8 +126,7 @@ irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
 }
 
 bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
-  return filter::equals(rhs) &&
-         _pk == static_cast<PrimaryKeyFilter const&>(rhs)._pk;
+  return filter::equals(rhs) && _pk == static_cast<PrimaryKeyFilter const&>(rhs)._pk;
 }
 
 /*static*/ irs::type_info PrimaryKeyFilter::type(StorageEngine& engine) {
@@ -141,8 +139,10 @@ bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
 // ----------------------------------------------------------------------------
 
 irs::filter::prepared::ptr PrimaryKeyFilterContainer::prepare(
-    irs::index_reader const& rdr, irs::order::prepared const& ord,
-    irs::boost_t boost, irs::attribute_provider const* ctx) const {
+    irs::index_reader const& rdr,
+    irs::order::prepared const& ord,
+    irs::boost_t boost,
+    irs::attribute_provider const* ctx) const {
   return irs::empty().prepare(rdr, ord, boost, ctx);
 }
 

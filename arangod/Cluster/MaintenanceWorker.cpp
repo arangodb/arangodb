@@ -22,9 +22,9 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MaintenanceWorker.h"
-
 #include <thread>
+
+#include "MaintenanceWorker.h"
 
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
@@ -35,9 +35,8 @@ namespace arangodb {
 
 namespace maintenance {
 
-MaintenanceWorker::MaintenanceWorker(
-    arangodb::MaintenanceFeature& feature,
-    std::unordered_set<std::string> const& labels)
+MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
+                                     std::unordered_set<std::string> const& labels)
     : Thread(feature.server(), "MaintenanceWorker"),
       _feature(feature),
       _curAction(nullptr),
@@ -81,19 +80,17 @@ void MaintenanceWorker::run() {
             default:
               _loopState = eSTOP;
               LOG_TOPIC("dc389", ERR, Logger::CLUSTER)
-                  << "MaintenanceWorkerRun:  unexpected state (" << _loopState
-                  << ")";
+                  << "MaintenanceWorkerRun:  unexpected state (" << _loopState << ")";
 
           }  // switch
-
+        
           // determine next loop state
           nextState(more);
 
         } catch (std::exception const& ex) {
           if (_curAction) {
             LOG_TOPIC("dd8e8", ERR, Logger::CLUSTER)
-                << "MaintenanceWorkerRun:  caught exception (" << ex.what()
-                << ")"
+                << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
                 << " state:" << _loopState << " action:" << *_curAction;
 
             try {
@@ -104,8 +101,7 @@ void MaintenanceWorker::run() {
             }
           } else {
             LOG_TOPIC("16d4c", ERR, Logger::CLUSTER)
-                << "MaintenanceWorkerRun:  caught exception (" << ex.what()
-                << ")"
+                << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
                 << " state:" << _loopState;
           }
         } catch (...) {
@@ -144,8 +140,7 @@ void MaintenanceWorker::run() {
 
 void MaintenanceWorker::nextState(bool actionMore) {
   // bad result code forces actionMore to false
-  if (_curAction &&
-      (!_curAction->result().ok() || FAILED == _curAction->getState())) {
+  if (_curAction && (!_curAction->result().ok() || FAILED == _curAction->getState())) {
     actionMore = false;
   }  // if
 
@@ -167,8 +162,7 @@ void MaintenanceWorker::nextState(bool actionMore) {
         _curAction->setState(WAITING);
         tempPtr = _curAction;
         _curAction = _curAction->getPreAction();
-        _curAction->setPostAction(
-            std::make_shared<ActionDescription>(tempPtr->describe()));
+        _curAction->setPostAction(std::make_shared<ActionDescription>(tempPtr->describe()));
         _loopState = eRUN_FIRST;
       }  // if
     } else {
@@ -193,8 +187,7 @@ void MaintenanceWorker::nextState(bool actionMore) {
         if (_curAction->getPostAction()) {
           _curAction = _curAction->getPostAction();
           _curAction->clearPreAction();
-          _loopState =
-              (WAITING == _curAction->getState() ? eRUN_NEXT : eRUN_FIRST);
+          _loopState = (WAITING == _curAction->getState() ? eRUN_NEXT : eRUN_FIRST);
           _curAction->setState(EXECUTING);
         } else {
           _curAction.reset();
@@ -219,8 +212,7 @@ void MaintenanceWorker::nextState(bool actionMore) {
 }
 
 void MaintenanceWorker::recordJobStats(bool failed) {
-  auto iter =
-      _feature._maintenance_job_metrics_map.find(_curAction->describe().name());
+  auto iter = _feature._maintenance_job_metrics_map.find(_curAction->describe().name());
   if (iter != _feature._maintenance_job_metrics_map.end()) {
     MaintenanceFeature::ActionMetrics& metrics = iter->second;
     auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(

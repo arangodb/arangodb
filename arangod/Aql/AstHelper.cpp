@@ -34,8 +34,7 @@ namespace {
 
 auto doNothingVisitor = [](AstNode const*) {};
 
-bool isTargetVariable(AstNode const* const current,
-                      Variable const* const searchVariable) {
+bool isTargetVariable(AstNode const* const current, Variable const* const searchVariable) {
   if (current->type == NODE_TYPE_INDEXED_ACCESS) {
     auto sub = current->getMemberUnchecked(0);
     if (sub->type == NODE_TYPE_REFERENCE) {
@@ -69,9 +68,10 @@ bool isTargetVariable(AstNode const* const current,
 
 }  // namespace
 
-auto arangodb::aql::ast::getReferencedAttributesForKeep(
-    AstNode const* const node, Variable const* const searchVariable,
-    bool& isSafeForOptimization) -> std::vector<std::string> {
+auto arangodb::aql::ast::getReferencedAttributesForKeep(AstNode const* const node,
+                                                        Variable const* const searchVariable,
+                                                        bool& isSafeForOptimization)
+    -> std::vector<std::string> {
   auto result = std::vector<std::string>();
   isSafeForOptimization = true;
 
@@ -89,8 +89,7 @@ auto arangodb::aql::ast::getReferencedAttributesForKeep(
     } else if (node->type == NODE_TYPE_REFERENCE) {
       auto const v = static_cast<Variable const*>(node->getData());
       if (v->id == searchVariable->id) {
-        isSafeForOptimization =
-            false;  // the expression references the searched variable
+        isSafeForOptimization = false;  // the expression references the searched variable
         return false;
       }
     } else if (node->type == NODE_TYPE_EXPANSION) {
@@ -100,8 +99,7 @@ auto arangodb::aql::ast::getReferencedAttributesForKeep(
           sub = sub->getMemberUnchecked(0)->getMemberUnchecked(1);
         }
         if (sub->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          while (sub->getMemberUnchecked(0)->type ==
-                 NODE_TYPE_ATTRIBUTE_ACCESS) {
+          while (sub->getMemberUnchecked(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
             sub = sub->getMemberUnchecked(0);
           }
           result.emplace_back(sub->getString());

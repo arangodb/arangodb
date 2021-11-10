@@ -23,16 +23,16 @@
 
 #include "QueryOptions.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
 #include "RestServer/QueryRegistryFeature.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -64,9 +64,7 @@ QueryOptions::QueryOptions()
       verbosePlans(false),
       stream(false),
       silent(false),
-      failOnWarning(
-          QueryOptions::defaultFailOnWarning),  // use global "failOnWarning"
-                                                // value
+      failOnWarning(QueryOptions::defaultFailOnWarning),  // use global "failOnWarning" value
       cache(false),
       fullCount(false),
       count(false),
@@ -170,8 +168,7 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     traversalProfile = value.getBool() ? TraversalProfileLevel::Basic
                                        : TraversalProfileLevel::None;
   } else if (value.isNumber()) {
-    traversalProfile =
-        static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
+    traversalProfile = static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
   }
 
   if (value = slice.get("allPlans"); value.isBool()) {
@@ -202,13 +199,12 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     verboseErrors = value.getBool();
   }
   if (value = slice.get("explainRegisters"); value.isBool()) {
-    explainRegisters =
-        value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
+    explainRegisters = value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
   }
-
+  
   // note: skipAudit is intentionally not read here.
   // the end user cannot override this setting
-
+  
   if (value = slice.get("forceOneShardAttributeValue"); value.isString()) {
     forceOneShardAttributeValue = value.copyString();
   }
@@ -254,8 +250,7 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   transactionOptions.fromVelocyPack(slice);
 }
 
-void QueryOptions::toVelocyPack(VPackBuilder& builder,
-                                bool disableOptimizerRules) const {
+void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRules) const {
   builder.openObject();
 
   builder.add("memoryLimit", VPackValue(memoryLimit));
@@ -279,10 +274,9 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("verboseErrors", VPackValue(verboseErrors));
 
   if (!forceOneShardAttributeValue.empty()) {
-    builder.add("forceOneShardAttributeValue",
-                VPackValue(forceOneShardAttributeValue));
+    builder.add("forceOneShardAttributeValue", VPackValue(forceOneShardAttributeValue));
   }
-
+  
   // note: skipAudit is intentionally not serialized here.
   // the end user cannot override this setting anyway.
 

@@ -26,8 +26,9 @@
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ bool IdentityAnalyzer::normalize(const irs::string_ref& /*args*/,
-                                            std::string& out) {
+/*static*/ bool IdentityAnalyzer::normalize(
+    const irs::string_ref& /*args*/,
+    std::string& out) {
   out.resize(VPackSlice::emptyObjectSlice().byteSize());
   std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
   return true;
@@ -38,8 +39,8 @@ namespace iresearch {
   return std::make_unique<IdentityAnalyzer>();
 }
 
-/*static*/ bool IdentityAnalyzer::normalize_json(
-    const irs::string_ref& /*args*/, std::string& out) {
+/*static*/ bool IdentityAnalyzer::normalize_json(const irs::string_ref& /*args*/,
+                                                 std::string& out) {
   out = "{}";
   return true;
 }
@@ -50,17 +51,19 @@ namespace iresearch {
 }
 
 IdentityAnalyzer::IdentityAnalyzer() noexcept
-    : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
-      _empty(true) {}
+  : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
+    _empty(true) {
+}
 
-irs::attribute* IdentityAnalyzer::get_mutable(
-    irs::type_info::type_id type) noexcept {
+irs::attribute* IdentityAnalyzer::get_mutable(irs::type_info::type_id type) noexcept {
   if (type == irs::type<irs::increment>::id()) {
     return &_inc;
   }
 
-  return type == irs::type<irs::term_attribute>::id() ? &_term : nullptr;
+  return type == irs::type<irs::term_attribute>::id()
+      ? &_term
+      : nullptr;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // iresearch
+} // arangodb

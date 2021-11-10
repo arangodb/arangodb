@@ -22,14 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReturnExecutor.h"
-
-#include <algorithm>
-
 #include "Aql/AqlValue.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -48,8 +47,7 @@ ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
 
 ReturnExecutor::~ReturnExecutor() = default;
 
-auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
-                                   AqlCall& call)
+auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   TRI_IF_FAILURE("ReturnExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -65,16 +63,13 @@ auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     // but this executor will always delegate the skipping
     // to upstream.
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "ReturnExecutor::skipRowsRange shouldn't be called");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "ReturnExecutor::skipRowsRange shouldn't be called");
   }
 
   return {inputRange.upstreamState(), stats, call.getSkipCount(), call};
 }
 
-auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange,
-                                 OutputAqlItemRow& output)
+auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   TRI_IF_FAILURE("ReturnExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -83,11 +78,9 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   Stats stats{};
 
   while (inputRange.hasDataRow() && !output.isFull()) {
-    auto [state, input] =
-        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
-    // REMARK: it is called `getInputRegisterId` here but FilterExecutor calls
-    // it `getInputRegister`.
+    // REMARK: it is called `getInputRegisterId` here but FilterExecutor calls it `getInputRegister`.
     AqlValue val = input.stealValue(_infos.getInputRegisterId());
     AqlValueGuard guard(val, true);
     TRI_IF_FAILURE("ReturnBlock::getSome") {
@@ -103,9 +96,9 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, output.getClientCall()};
 }
 
-[[nodiscard]] auto ReturnExecutor::expectedNumberOfRowsNew(
-    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
-    -> size_t {
+[[nodiscard]] auto ReturnExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                                           AqlCall const& call) const
+    noexcept -> size_t {
   if (input.finalState() == ExecutorState::DONE) {
     return input.countDataRows();
   }

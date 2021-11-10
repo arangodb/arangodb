@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LineRank.h"
-
 #include "Pregel/Aggregator.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
@@ -54,8 +53,7 @@ struct LRMasterContext : MasterContext {
     TRI_ASSERT(!_stopNext || *diff == 0);
     if (_stopNext) {
       // return false;
-      LOG_TOPIC("cc466", INFO, Logger::PREGEL)
-          << "should stop " << globalSuperstep();
+      LOG_TOPIC("cc466", INFO, Logger::PREGEL) << "should stop " << globalSuperstep();
     } else if (globalSuperstep() > 0 && *diff < EPS) {
       aggregate<bool>(kLastIteration, true);
       _stopNext = true;
@@ -96,8 +94,7 @@ struct LRComputation : public VertexComputation<float, float, float> {
           newScore = 0;
         } else {
           newScore /= getEdgeCount();
-          newScore = ctx->startAtNodeProb * RESTART_PROB +
-                     newScore * (1.0f - RESTART_PROB);
+          newScore = ctx->startAtNodeProb * RESTART_PROB + newScore * (1.0f - RESTART_PROB);
         }
 
         float diff = fabsf(newScore - *vertexValue);
@@ -110,8 +107,7 @@ struct LRComputation : public VertexComputation<float, float, float> {
   }
 };
 
-VertexComputation<float, float, float>* LineRank::createComputation(
-    WorkerConfig const* config) const {
+VertexComputation<float, float, float>* LineRank::createComputation(WorkerConfig const* config) const {
   return new LRComputation();
 }
 

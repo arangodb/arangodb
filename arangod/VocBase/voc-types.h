@@ -23,14 +23,14 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
-#include <velocypack/Value.h>
-
 #include <cstdint>
 #include <cstdlib>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+
+#include <velocypack/Slice.h>
+#include <velocypack/Value.h>
 
 #include "Basics/Identifier.h"
 
@@ -87,7 +87,7 @@ enum TRI_vocbase_col_status_e : int {
 /// @brief Hash function for a vector of VPackSlice
 namespace std {
 
-template<>
+template <>
 struct hash<std::vector<arangodb::velocypack::Slice>> {
   size_t operator()(std::vector<arangodb::velocypack::Slice> const& x) const {
     std::hash<arangodb::velocypack::Slice> sliceHash;
@@ -103,3 +103,4 @@ struct hash<std::vector<arangodb::velocypack::Slice>> {
 
 /// @brief databases list structure
 struct TRI_vocbase_t;
+

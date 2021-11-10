@@ -37,8 +37,7 @@ class ReplicationTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction
   explicit ReplicationTransaction(TRI_vocbase_t& vocbase)
-      : transaction::Methods(transaction::StandaloneContext::Create(vocbase),
-                             transaction::Options::replicationDefaults()),
+      : transaction::Methods(transaction::StandaloneContext::Create(vocbase), transaction::Options::replicationDefaults()),
         _guard(vocbase) {
     TRI_ASSERT(state() != nullptr);
     state()->setExclusiveAccessType();
@@ -49,3 +48,4 @@ class ReplicationTransaction : public transaction::Methods {
 };
 
 }  // namespace arangodb
+

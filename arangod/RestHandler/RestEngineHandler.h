@@ -42,3 +42,4 @@ class RestEngineHandler : public arangodb::RestBaseHandler {
   void getStats();
 };
 }  // namespace arangodb
+

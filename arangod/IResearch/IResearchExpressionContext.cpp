@@ -24,13 +24,13 @@
 
 #include "IResearchExpressionContext.h"
 
-#include <Containers/HashSet.h>
-
-#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/IResearchViewNode.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/QueryContext.h"
+#include "Aql/IResearchViewNode.h"
 #include "Basics/StaticStrings.h"
+
+#include <Containers/HashSet.h>
 
 namespace arangodb {
 namespace iresearch {
@@ -41,37 +41,31 @@ using namespace arangodb::aql;
 // --SECTION--                          ViewExpressionContextBase implementation
 // -----------------------------------------------------------------------------
 
-void ViewExpressionContextBase::registerWarning(ErrorCode errorCode,
-                                                char const* msg) {
+void ViewExpressionContextBase::registerWarning(ErrorCode errorCode, char const* msg) {
   _query->warnings().registerWarning(errorCode, msg);
 }
 
-void ViewExpressionContextBase::registerError(ErrorCode errorCode,
-                                              char const* msg) {
+void ViewExpressionContextBase::registerError(ErrorCode errorCode, char const* msg) {
   _query->warnings().registerError(errorCode, msg);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache->buildRegexMatcher(ptr, length,
-                                                       caseInsensitive);
+icu::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(char const* ptr, size_t length,
+                                                             bool caseInsensitive) {
+  return _aqlFunctionsInternalCache->buildRegexMatcher(ptr, length, caseInsensitive);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache->buildLikeMatcher(ptr, length,
-                                                      caseInsensitive);
+icu::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(char const* ptr, size_t length,
+                                                            bool caseInsensitive) {
+  return _aqlFunctionsInternalCache->buildLikeMatcher(ptr, length, caseInsensitive);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(
-    AqlValue splitExpression, velocypack::Options const* opts,
-    bool& isEmptyExpression) {
-  return _aqlFunctionsInternalCache->buildSplitMatcher(splitExpression, opts,
-                                                       isEmptyExpression);
+icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(AqlValue splitExpression,
+                                                             velocypack::Options const* opts,
+                                                             bool& isEmptyExpression) {
+  return _aqlFunctionsInternalCache->buildSplitMatcher(splitExpression, opts, isEmptyExpression);
 }
 
-arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(
-    arangodb::velocypack::Slice const& params) {
+arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(arangodb::velocypack::Slice const& params) {
   return _aqlFunctionsInternalCache->buildValidator(params);
 }
 
@@ -79,16 +73,19 @@ TRI_vocbase_t& ViewExpressionContextBase::vocbase() const {
   return _trx->vocbase();
 }
 
-transaction::Methods& ViewExpressionContextBase::trx() const { return *_trx; }
+transaction::Methods& ViewExpressionContextBase::trx() const {
+  return *_trx;
+}
 
-bool ViewExpressionContextBase::killed() const { return _query->killed(); }
+bool ViewExpressionContextBase::killed() const  {
+  return _query->killed();
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                              ViewExpressionContext implementation
 // -----------------------------------------------------------------------------
 
-AqlValue ViewExpressionContext::getVariableValue(Variable const* var,
-                                                 bool doCopy,
+AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCopy,
                                                  bool& mustDestroy) const {
   TRI_ASSERT(var);
 
@@ -134,6 +131,7 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var,
                                   "Variable '%s' is used before being assigned",
                                   var->name.c_str());
   }
+
 
   TRI_ASSERT(_inputRow.isInitialized());
   AqlValue const& value = _inputRow.getValue(varInfo.registerId);

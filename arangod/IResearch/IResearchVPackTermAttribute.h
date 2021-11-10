@@ -21,21 +21,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#include <velocypack/Slice.h>
-
 #include <utils/attributes.hpp>
 #include <utils/bit_utils.hpp>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace iresearch {
 
 struct VPackTermAttribute final : irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "vpack_term_attribute";
-  }
+  static constexpr irs::string_ref type_name() noexcept { return "vpack_term_attribute"; }
 
   ::arangodb::velocypack::Slice value;
 };
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // namespace iresearch
+} // namespace arangodb
+

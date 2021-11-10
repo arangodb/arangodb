@@ -141,3 +141,4 @@ class EdgeConditionBuilderContainer final : public EdgeConditionBuilder {
 
 }  // namespace aql
 }  // namespace arangodb
+

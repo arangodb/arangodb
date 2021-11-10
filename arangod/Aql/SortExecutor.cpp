@@ -23,10 +23,6 @@
 
 #include "SortExecutor.h"
 
-#include <Logger/LogMacros.h>
-
-#include <algorithm>
-
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/InputAqlItemRow.h"
@@ -34,6 +30,9 @@
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 #include "Basics/ResourceUsage.h"
+
+#include <Logger/LogMacros.h>
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -47,8 +46,7 @@ class OurLessThan {
               std::vector<SortRegister> const& sortRegisters) noexcept
       : _vpackOptions(options), _input(input), _sortRegisters(sortRegisters) {}
 
-  bool operator()(AqlItemMatrix::RowIndex const& a,
-                  AqlItemMatrix::RowIndex const& b) const {
+  bool operator()(AqlItemMatrix::RowIndex const& a, AqlItemMatrix::RowIndex const& b) const {
     auto const& left = _input.getBlockRef(a.first);
     auto const& right = _input.getBlockRef(b.first);
     for (auto const& reg : _sortRegisters) {
@@ -75,12 +73,14 @@ class OurLessThan {
 
 }  // namespace
 
-SortExecutorInfos::SortExecutorInfos(
-    RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-    RegIdFlatSet const& registersToClear,
-    std::vector<SortRegister> sortRegisters, std::size_t limit,
-    AqlItemBlockManager& manager, velocypack::Options const* options,
-    arangodb::ResourceMonitor& resourceMonitor, bool stable)
+SortExecutorInfos::SortExecutorInfos(RegisterCount nrInputRegisters,
+                                     RegisterCount nrOutputRegisters,
+                                     RegIdFlatSet const& registersToClear,
+                                     std::vector<SortRegister> sortRegisters,
+                                     std::size_t limit, AqlItemBlockManager& manager,
+                                     velocypack::Options const* options, 
+                                     arangodb::ResourceMonitor& resourceMonitor,
+                                     bool stable)
     : _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToClear(registersToClear.begin(), registersToClear.end()),
@@ -93,9 +93,7 @@ SortExecutorInfos::SortExecutorInfos(
   TRI_ASSERT(!_sortRegisters.empty());
 }
 
-RegisterCount SortExecutorInfos::numberOfInputRegisters() const {
-  return _numInRegs;
-}
+RegisterCount SortExecutorInfos::numberOfInputRegisters() const { return _numInRegs; }
 
 RegisterCount SortExecutorInfos::numberOfOutputRegisters() const {
   return _numOutRegs;
@@ -105,8 +103,7 @@ RegIdFlatSet const& SortExecutorInfos::registersToClear() const {
   return _registersToClear;
 }
 
-std::vector<SortRegister> const& SortExecutorInfos::sortRegisters()
-    const noexcept {
+std::vector<SortRegister> const& SortExecutorInfos::sortRegisters() const noexcept {
   return _sortRegisters;
 }
 
@@ -198,22 +195,20 @@ void SortExecutor::doSorting() {
   TRI_IF_FAILURE("SortBlock::doSorting") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-
+  
   size_t memoryUsageForRowIndexes = _input->memoryUsageForRowIndexes();
   // may throw
-  ResourceUsageScope guard(_infos.getResourceMonitor(),
-                           memoryUsageForRowIndexes);
+  ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsageForRowIndexes);
 
   TRI_ASSERT(_input != nullptr);
   _sortedIndexes = _input->produceRowIndexes();
-
+  
   // now we are responsible for tracking the memory
   guard.steal();
   _memoryUsageForRowIndexes = memoryUsageForRowIndexes;
 
   // comparison function
-  OurLessThan ourLessThan(_infos.vpackOptions(), *_input,
-                          _infos.sortRegisters());
+  OurLessThan ourLessThan(_infos.vpackOptions(), *_input, _infos.sortRegisters());
   if (_infos.stable()) {
     std::stable_sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
   } else {
@@ -252,9 +247,9 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
   return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
-[[nodiscard]] auto SortExecutor::expectedNumberOfRowsNew(
-    AqlItemBlockInputMatrix const& input, AqlCall const& call) const noexcept
-    -> size_t {
+[[nodiscard]] auto SortExecutor::expectedNumberOfRowsNew(AqlItemBlockInputMatrix const& input,
+                                                         AqlCall const& call) const
+    noexcept -> size_t {
   size_t rowsAvailable = input.countDataRows();
   if (_input != nullptr) {
     if (_returnNext < _sortedIndexes.size()) {

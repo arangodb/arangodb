@@ -27,19 +27,16 @@
 #include <Greenspun/Interpreter.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-
 #include <iostream>
-
 #include "AbstractAccumulator.h"
 
 namespace arangodb::pregel::algos::accumulators {
 
-template<typename T>
+template <typename T>
 class MinAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
-  auto update(T v)
-      -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
+  auto update(T v) -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
     if (v < this->_value) {
       this->_value = v;
       return AccumulatorBase::UpdateResult::CHANGED;
@@ -51,12 +48,11 @@ class MinAccumulator : public Accumulator<T> {
   }
 };
 
-template<typename T>
+template <typename T>
 class MaxAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
-  auto update(T v)
-      -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
+  auto update(T v) -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
     if (v > this->_value) {
       this->_value = v;
       return AccumulatorBase::UpdateResult::CHANGED;
@@ -68,12 +64,11 @@ class MaxAccumulator : public Accumulator<T> {
   }
 };
 
-template<typename T>
+template <typename T>
 class SumAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
-  auto update(T v)
-      -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
+  auto update(T v) -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
     auto old = this->_value;
     this->_value += v;
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
@@ -82,12 +77,11 @@ class SumAccumulator : public Accumulator<T> {
   auto clear() -> greenspun::EvalResult override { return this->set(T{0}); }
 };
 
-template<typename T>
+template <typename T>
 class AndAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
-  auto update(T v)
-      -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
+  auto update(T v) -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
     auto old = this->_value;
     this->_value &= v;
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
@@ -99,12 +93,11 @@ class AndAccumulator : public Accumulator<T> {
   }
 };
 
-template<typename T>
+template <typename T>
 class OrAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
-  auto update(T v)
-      -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
+  auto update(T v) -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
     auto old = this->_value;
     this->_value |= v;
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
@@ -116,18 +109,17 @@ class OrAccumulator : public Accumulator<T> {
   }
 };
 
-template<typename T>
+template <typename T>
 class StoreAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
-  auto update(T v)
-      -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
+  auto update(T v) -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
     this->_value = std::move(v);
     return AccumulatorBase::UpdateResult::CHANGED;
   }
 };
 
-template<>
+template <>
 class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
  public:
   using Accumulator<VPackSlice>::Accumulator;
@@ -151,11 +143,10 @@ class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
   VPackBuilder _buffer;
 };
 
-template<typename T>
+template <typename T>
 class ListAccumulator : public Accumulator<T> {
   using Accumulator<T>::Accumulator;
-  auto update(T v)
-      -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
+  auto update(T v) -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
     _list.emplace_back(std::move(v));
     return AccumulatorBase::UpdateResult::CHANGED;
   }
@@ -183,8 +174,7 @@ class ListAccumulator : public Accumulator<T> {
       }
       return {};
     } else {
-      auto msg =
-          std::string{"setBySlice expected an array, got "} + s.typeName();
+      auto msg = std::string{"setBySlice expected an array, got "} + s.typeName();
       return greenspun::EvalError{msg};
     }
   }
@@ -193,11 +183,10 @@ class ListAccumulator : public Accumulator<T> {
   std::vector<T> _list;
 };
 
-template<>
+template <>
 class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
   using Accumulator<VPackSlice>::Accumulator;
-  greenspun::EvalResultT<AccumulatorBase::UpdateResult> update(
-      VPackSlice v) override {
+  greenspun::EvalResultT<AccumulatorBase::UpdateResult> update(VPackSlice v) override {
     _list.emplace_back().add(v);
     return AccumulatorBase::UpdateResult::CHANGED;
   }
@@ -221,8 +210,7 @@ class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
       }
       return {};
     } else {
-      auto msg =
-          std::string{"setBySlice expected an array, but got "} + s.typeName();
+      auto msg = std::string{"setBySlice expected an array, but got "} + s.typeName();
       return greenspun::EvalError{msg};
     }
   }
@@ -231,9 +219,9 @@ class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
   std::vector<VPackBuilder> _list;
 };
 
-template<typename>
+template <typename>
 struct CustomAccumulator;
-template<>
+template <>
 struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
  public:
   CustomAccumulator(AccumulatorOptions const& options,
@@ -248,41 +236,36 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
 
   virtual auto clear() -> greenspun::EvalResult override;
   virtual auto setBySlice(VPackSlice v) -> greenspun::EvalResult override;
-  virtual auto getIntoBuilder(VPackBuilder& result)
-      -> greenspun::EvalResult override;
+  virtual auto getIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override;
 
-  virtual auto updateByMessageSlice(VPackSlice msg)
-      -> greenspun::EvalResultT<UpdateResult> override;
-  virtual auto updateByMessage(MessageData const& msg)
-      -> greenspun::EvalResultT<UpdateResult> override;
-
+  virtual auto updateByMessageSlice(VPackSlice msg) -> greenspun::EvalResultT<UpdateResult> override;
+  virtual auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override;
+  
   virtual auto setStateBySlice(VPackSlice s) -> greenspun::EvalResult override;
-  virtual auto getStateIntoBuilder(VPackBuilder& result)
-      -> greenspun::EvalResult override;
-  virtual auto getStateUpdateIntoBuilder(VPackBuilder& result)
-      -> greenspun::EvalResult override;
-  virtual auto aggregateStateBySlice(VPackSlice s)
-      -> greenspun::EvalResult override;
+  virtual auto getStateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override;
+  virtual auto getStateUpdateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override;
+  virtual auto aggregateStateBySlice(VPackSlice s) -> greenspun::EvalResult override;
 
   greenspun::EvalResult finalizeIntoBuilder(VPackBuilder& result) override;
+
 
  private:
   void SetupFunctions();
 
-  auto AIR_InputSender(greenspun::Machine& ctx, VPackSlice slice,
-                       VPackBuilder& result) -> greenspun::EvalResult;
-  auto AIR_InputValue(greenspun::Machine& ctx, VPackSlice slice,
-                      VPackBuilder& result) -> greenspun::EvalResult;
-  auto AIR_InputState(greenspun::Machine& ctx, VPackSlice slice,
-                      VPackBuilder& result) -> greenspun::EvalResult;
-  auto AIR_CurrentValue(greenspun::Machine& ctx, VPackSlice slice,
-                        VPackBuilder& result) -> greenspun::EvalResult;
+  auto AIR_InputSender(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result)
+      -> greenspun::EvalResult;
+  auto AIR_InputValue(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result)
+      -> greenspun::EvalResult;
+  auto AIR_InputState(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result)
+      -> greenspun::EvalResult;
+  auto AIR_CurrentValue(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result)
+      -> greenspun::EvalResult;
   auto AIR_GetCurrentValue(greenspun::Machine& ctx, VPackSlice slice,
                            VPackBuilder& result) -> greenspun::EvalResult;
-  auto AIR_ThisSet(greenspun::Machine& ctx, VPackSlice slice,
-                   VPackBuilder& result) -> greenspun::EvalResult;
-  auto AIR_Parameters(greenspun::Machine& ctx, VPackSlice slice,
-                      VPackBuilder& result) -> greenspun::EvalResult;
+  auto AIR_ThisSet(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result)
+      -> greenspun::EvalResult;
+  auto AIR_Parameters(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result)
+      -> greenspun::EvalResult;
 
   VPackSlice _inputSlice = VPackSlice::noneSlice();
   VPackSlice _inputSender = VPackSlice::noneSlice();
@@ -294,4 +277,5 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
   greenspun::Machine _machine;
 };
 
-}  // namespace arangodb::pregel::algos::accumulators
+}  // namespace arangodb
+

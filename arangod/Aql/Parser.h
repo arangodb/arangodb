@@ -105,12 +105,10 @@ class Parser {
                           std::string_view data, int line, int column);
 
   /// @brief register a parse error, position is specified as line / column
-  void registerParseError(ErrorCode errorCode, std::string_view data, int line,
-                          int column);
+  void registerParseError(ErrorCode errorCode, std::string_view data, int line, int column);
 
   /// @brief register a warning
-  void registerWarning(ErrorCode errorCode, std::string_view data, int line,
-                       int column);
+  void registerWarning(ErrorCode errorCode, std::string_view data, int line, int column);
 
   /// @brief push an AstNode array element on top of the stack
   /// the array must be removed from the stack via popArray
@@ -148,7 +146,7 @@ class Parser {
 
   /// @brief abstract syntax tree for the query, build during parsing
   Ast& _ast;
-
+  
   QueryString& _queryString;
 
   /// @brief lexer / scanner used when parsing the query (Aql/tokens.ll)
@@ -185,3 +183,4 @@ int Aqllex_destroy(void*);
 
 /// @brief forward for the context function provided by the lexer (.l)
 void Aqlset_extra(arangodb::aql::Parser*, void*);
+

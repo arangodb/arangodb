@@ -37,7 +37,9 @@ Compactor::Compactor(Agent* agent)
       _waitInterval(1000000) {}
 
 /// Dtor shuts down thread
-Compactor::~Compactor() { shutdown(); }
+Compactor::~Compactor() {
+  shutdown();
+}
 
 // @brief Run
 void Compactor::run() {
@@ -80,8 +82,7 @@ void Compactor::wakeUp() {
 
 // @brief Begin shutdown
 void Compactor::beginShutdown() {
-  LOG_TOPIC("4bad9", DEBUG, Logger::AGENCY)
-      << "Shutting down compactor personality";
+  LOG_TOPIC("4bad9", DEBUG, Logger::AGENCY) << "Shutting down compactor personality";
 
   Thread::beginShutdown();
 

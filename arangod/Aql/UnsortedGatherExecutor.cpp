@@ -29,6 +29,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 #include "Basics/debugging.h"
+
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
@@ -56,30 +57,26 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
       output.advanceRow();
     } else {
       if (input.upstreamState(currentDependency()) == ExecutorState::DONE) {
-        TRI_ASSERT(
-            input.rangeForDependency(currentDependency()).skippedInFlight() ==
-            0);
+        TRI_ASSERT(input.rangeForDependency(currentDependency()).skippedInFlight() == 0);
         advanceDependency();
       } else {
         auto callSet = AqlCallSet{};
-        callSet.calls.emplace_back(AqlCallSet::DepCallPair{
-            currentDependency(), AqlCallList{output.getClientCall()}});
+        callSet.calls.emplace_back(
+            AqlCallSet::DepCallPair{currentDependency(),
+                                    AqlCallList{output.getClientCall()}});
         return {input.upstreamState(currentDependency()), Stats{}, callSet};
       }
     }
   }
 
-  while (!done() &&
-         input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+  while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
     auto range = input.rangeForDependency(currentDependency());
-    if (range.upstreamState() == ExecutorState::HASMORE ||
-        range.skippedInFlight() > 0) {
+    if (range.upstreamState() == ExecutorState::HASMORE || range.skippedInFlight() > 0) {
       // skippedInFlight > 0 -> output.isFull()
       TRI_ASSERT(range.skippedInFlight() == 0 || output.isFull());
       break;
     }
-    TRI_ASSERT(
-        input.rangeForDependency(currentDependency()).skippedInFlight() == 0);
+    TRI_ASSERT(input.rangeForDependency(currentDependency()).skippedInFlight() == 0);
     advanceDependency();
   }
 
@@ -88,14 +85,13 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     return {ExecutorState::DONE, Stats{}, AqlCallSet{}};
   } else {
     auto callSet = AqlCallSet{};
-    callSet.calls.emplace_back(AqlCallSet::DepCallPair{
-        currentDependency(), AqlCallList{output.getClientCall()}});
+    callSet.calls.emplace_back(
+        AqlCallSet::DepCallPair{currentDependency(), AqlCallList{output.getClientCall()}});
     return {input.upstreamState(currentDependency()), Stats{}, callSet};
   }
 }
 
-auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
-                                           AqlCall& call)
+auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
   initialize(input);
   auto skipped = size_t{0};
@@ -116,8 +112,7 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
   call.resetSkipCount();
 
   // Skip over dependencies that are DONE, they cannot skip more
-  while (!done() &&
-         input.upstreamState(currentDependency()) == ExecutorState::DONE) {
+  while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {
     advanceDependency();
   }
 
@@ -135,11 +130,9 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
   return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
 }
 
-auto UnsortedGatherExecutor::initialize(
-    typename Fetcher::DataRange const& input) -> void {
+auto UnsortedGatherExecutor::initialize(typename Fetcher::DataRange const& input) -> void {
   // Dependencies can never change
-  TRI_ASSERT(_numDependencies == 0 ||
-             _numDependencies == input.numberDependencies());
+  TRI_ASSERT(_numDependencies == 0 || _numDependencies == input.numberDependencies());
   _numDependencies = input.numberDependencies();
 }
 

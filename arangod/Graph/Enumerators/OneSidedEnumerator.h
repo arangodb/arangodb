@@ -24,15 +24,17 @@
 
 #pragma once
 
-#include <set>
+#include "Containers/HashSet.h"
+
+#include "Basics/ResourceUsage.h"
 
 #include "Aql/TraversalStats.h"
-#include "Basics/ResourceUsage.h"
-#include "Containers/HashSet.h"
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Transaction/Methods.h"
+
+#include <set>
 
 namespace arangodb {
 
@@ -46,7 +48,7 @@ namespace graph {
 struct OneSidedEnumeratorOptions;
 class PathValidatorOptions;
 
-template<class Configuration>
+template <class Configuration>
 class OneSidedEnumerator : public TraversalEnumerator {
  public:
   using Step = typename Configuration::Step;  // public due to tracer access
@@ -89,8 +91,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
    *
    * @param source The source vertex to start the paths
    * @param depth The depth we're starting the search at
-   * @param weight The vertex ist starting to search at, only relevant for
-   * weighted searches
+   * @param weight The vertex ist starting to search at, only relevant for weighted searches
    * @param keepPathStore flag to determine that we should keep internas of last
    * run in memory. should be used if the last result is not processed yet, as
    * we will create invalid memory access in the handed out Paths.

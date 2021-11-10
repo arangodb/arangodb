@@ -23,23 +23,22 @@
 
 #pragma once
 
-#include <queue>
-#include <vector>
-
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 
+#include <queue>
+#include <vector>
+
 namespace arangodb {
 namespace graph {
 
-template<class StepType>
+template <class StepType>
 class WeightedQueue {
  public:
   static constexpr bool RequiresWeight = true;
   using Step = StepType;
-  // TODO: Add Sorting (Performance - will be implemented in the future -
-  // cluster relevant)
+  // TODO: Add Sorting (Performance - will be implemented in the future - cluster relevant)
   // -> loose ends to the end
 
   explicit WeightedQueue(arangodb::ResourceMonitor& resourceMonitor)
@@ -63,16 +62,14 @@ class WeightedQueue {
     // other elements are in heap structure, and moves the last element into
     // the correct position in the heap (incl. rebalancing of other elements)
     // The heap structure guarantees that the first element in the queue
-    // is the "largest" element (in our case it is the smallest, as we inverted
-    // the comperator)
+    // is the "largest" element (in our case it is the smallest, as we inverted the comperator)
     std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
   }
 
   bool hasProcessableElement() const {
     if (!isEmpty()) {
       // The heap structure guarantees that the first element in the queue
-      // is the "largest" element (in our case it is the smallest, as we
-      // inverted the comperator)
+      // is the "largest" element (in our case it is the smallest, as we inverted the comperator)
       auto const& first = _queue.front();
       return first.isProcessable();
     }
@@ -99,9 +96,9 @@ class WeightedQueue {
 
   Step pop() {
     TRI_ASSERT(!isEmpty());
-    // std::pop_heap will move the front element (the one we would like to
-    // steal) to the back of the vector, keeping the tree intact otherwise. Now
-    // we steal the last element.
+    // std::pop_heap will move the front element (the one we would like to steal)
+    // to the back of the vector, keeping the tree intact otherwise.
+    // Now we steal the last element.
     std::pop_heap(_queue.begin(), _queue.end(), _cmpHeap);
     Step first = std::move(_queue.back());
     LOG_TOPIC("9cd66", TRACE, Logger::GRAPHS)
@@ -125,8 +122,7 @@ class WeightedQueue {
   WeightedComparator _cmpHeap{};
 
   /// @brief queue datastore
-  /// Note: Mutable is a required for hasProcessableElement right now which is
-  /// const. We can easily make it non const here.
+  /// Note: Mutable is a required for hasProcessableElement right now which is const. We can easily make it non const here.
   mutable std::vector<Step> _queue;
 
   /// @brief query context
@@ -135,3 +131,4 @@ class WeightedQueue {
 
 }  // namespace graph
 }  // namespace arangodb
+

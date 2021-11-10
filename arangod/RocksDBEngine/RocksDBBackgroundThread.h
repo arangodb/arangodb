@@ -57,3 +57,4 @@ class RocksDBBackgroundThread final : public Thread {
   void run() override;
 };
 }  // namespace arangodb
+

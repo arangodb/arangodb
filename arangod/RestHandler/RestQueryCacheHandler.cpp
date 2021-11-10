@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestQueryCacheHandler.h"
-
 #include "Aql/QueryCache.h"
 
 using namespace arangodb;
@@ -30,9 +29,9 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryCacheHandler::RestQueryCacheHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestQueryCacheHandler::RestQueryCacheHandler(application_features::ApplicationServer& server,
+                                             GeneralRequest* request,
+                                             GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestQueryCacheHandler::execute() {

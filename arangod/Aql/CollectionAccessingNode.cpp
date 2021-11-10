@@ -23,9 +23,6 @@
 
 #include "CollectionAccessingNode.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNodeId.h"
@@ -38,32 +35,31 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
-CollectionAccessingNode::CollectionAccessingNode(
-    aql::Collection const* collection)
+CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collection)
     : _collectionAccess(collection) {
   TRI_ASSERT(_collectionAccess.collection() != nullptr);
   TRI_ASSERT(_usedShard.empty());
 }
 
-CollectionAccessingNode::CollectionAccessingNode(
-    ExecutionPlan* plan, arangodb::velocypack::Slice slice) {
+CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
+                                                 arangodb::velocypack::Slice slice) {
   aql::QueryContext& query = plan->getAst()->query();
   auto colName = slice.get("collection").copyString();
-  auto typeId =
-      basics::VelocyPackHelper::getNumericValue<int>(slice, "typeID", 0);
+  auto typeId = basics::VelocyPackHelper::getNumericValue<int>(slice, "typeID", 0);
   if (typeId == ExecutionNode::DISTRIBUTE) {
     // This is a special case, the distribute node can inject a collection
     // that is NOT yet known to the plan
-    query.collections().add(colName, AccessMode::Type::NONE,
-                            aql::Collection::Hint::Collection);
+    query.collections().add(colName, AccessMode::Type::NONE, aql::Collection::Hint::Collection);
   }
   // After we optionally added the collection for distribute we can create
   // the CollectionAccess:
-  _collectionAccess =
-      CollectionAccess{&plan->getAst()->query().collections(), slice};
+  _collectionAccess = CollectionAccess{&plan->getAst()->query().collections(), slice};
 
   VPackSlice restrictedTo = slice.get("restrictedTo");
 
@@ -83,8 +79,8 @@ void CollectionAccessingNode::collection(aql::Collection const* collection) {
   _collectionAccess.setCollection(collection);
 }
 
-void CollectionAccessingNode::toVelocyPack(
-    arangodb::velocypack::Builder& builder, unsigned /*flags*/) const {
+void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
+                                           unsigned /*flags*/) const {
   builder.add("database", VPackValue(collection()->vocbase()->name()));
   if (!_usedShard.empty()) {
     builder.add("collection", VPackValue(_usedShard));
@@ -95,12 +91,10 @@ void CollectionAccessingNode::toVelocyPack(
   if (prototypeCollection() != nullptr) {
     builder.add("prototype", VPackValue(prototypeCollection()->name()));
   }
-  builder.add(StaticStrings::Satellite,
-              VPackValue(collection()->isSatellite()));
+  builder.add(StaticStrings::Satellite, VPackValue(collection()->isSatellite()));
 
   if (ServerState::instance()->isCoordinator()) {
-    builder.add(StaticStrings::NumberOfShards,
-                VPackValue(collection()->numberOfShards()));
+    builder.add(StaticStrings::NumberOfShards, VPackValue(collection()->numberOfShards()));
   }
 
   if (!_restrictedTo.empty()) {
@@ -108,33 +102,30 @@ void CollectionAccessingNode::toVelocyPack(
   }
 #ifdef USE_ENTERPRISE
   builder.add("isSatellite", VPackValue(isUsedAsSatellite()));
-  builder.add("isSatelliteOf",
-              isUsedAsSatellite() ? VPackValue(getRawSatelliteOf().value().id(),
-                                               VPackValueType::UInt)
-                                  : VPackValue(VPackValueType::Null));
+  builder.add("isSatelliteOf", isUsedAsSatellite()
+                                   ? VPackValue(getRawSatelliteOf().value().id(), VPackValueType::UInt)
+                                   : VPackValue(VPackValueType::Null));
 #endif
 }
 
-void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(
-    arangodb::velocypack::Builder& builder) const {
+void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypack::Builder& builder) const {
   auto col = collection()->getCollection();
   builder.add(VPackValue("indexes"));
   col->getIndexesVPack(builder, [](arangodb::Index const* idx, uint8_t& flags) {
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-      flags = Index::makeFlags(Index::Serialize::Basics);
-      return true;
-    }
+                         if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+                           flags = Index::makeFlags(Index::Serialize::Basics);
+                           return true;
+                         }
 
-    return false;
-  });
+                         return false;
+                       });
 }
 
 bool CollectionAccessingNode::isUsedAsSatellite() const {
   return _collectionAccess.isUsedAsSatellite();
 }
 
-void CollectionAccessingNode::useAsSatelliteOf(
-    ExecutionNodeId prototypeAccessId) {
+void CollectionAccessingNode::useAsSatelliteOf(ExecutionNodeId prototypeAccessId) {
   TRI_ASSERT(collection()->isSatellite());
   _collectionAccess.useAsSatelliteOf(prototypeAccessId);
 }
@@ -145,8 +136,7 @@ auto CollectionAccessingNode::getSatelliteOf(
   return _collectionAccess.getSatelliteOf(nodesById);
 }
 
-auto CollectionAccessingNode::getRawSatelliteOf() const
-    -> std::optional<aql::ExecutionNodeId> {
+auto CollectionAccessingNode::getRawSatelliteOf() const -> std::optional<aql::ExecutionNodeId> {
   return _collectionAccess.getRawSatelliteOf();
 }
 
@@ -166,9 +156,8 @@ std::string const& CollectionAccessingNode::restrictedShard() const {
   return _restrictedTo;
 }
 
-void CollectionAccessingNode::setPrototype(
-    arangodb::aql::Collection const* prototypeCollection,
-    arangodb::aql::Variable const* prototypeOutVariable) {
+void CollectionAccessingNode::setPrototype(arangodb::aql::Collection const* prototypeCollection,
+                                           arangodb::aql::Variable const* prototypeOutVariable) {
   _collectionAccess.setPrototype(prototypeCollection, prototypeOutVariable);
 }
 
@@ -180,7 +169,6 @@ aql::Variable const* CollectionAccessingNode::prototypeOutVariable() const {
   return _collectionAccess.prototypeOutVariable();
 }
 
-auto CollectionAccessingNode::collectionAccess() const
-    -> aql::CollectionAccess const& {
+auto CollectionAccessingNode::collectionAccess() const -> aql::CollectionAccess const& {
   return _collectionAccess;
 }

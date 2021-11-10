@@ -23,11 +23,12 @@
 
 #pragma once
 
+#include "Basics/Common.h"
+
 #include <functional>
 #include <memory>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 
 namespace arangodb {
@@ -36,7 +37,7 @@ class AgencyComm;
 namespace velocypack {
 class Builder;
 class Slice;
-}  // namespace velocypack
+}
 
 namespace application_features {
 class ApplicationServer;
@@ -97,10 +98,9 @@ class AgencyCallback {
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-  AgencyCallback(application_features::ApplicationServer& server,
-                 std::string const&,
-                 std::function<bool(velocypack::Slice const&)> const&,
-                 bool needsValue, bool needsInitialValue = true);
+  AgencyCallback(application_features::ApplicationServer& server, std::string const&,
+                 std::function<bool(velocypack::Slice const&)> const&, bool needsValue,
+                 bool needsInitialValue = true);
 
   std::string const key;
   arangodb::basics::ConditionVariable _cv;
@@ -118,7 +118,7 @@ class AgencyCallback {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait until a callback is received or a timeout has happened
-  ///
+  /// 
   /// @return true => if we got woken up after maxTimeout
   ///         false => if someone else ringed the condition variable
   //////////////////////////////////////////////////////////////////////////////
@@ -130,11 +130,11 @@ class AgencyCallback {
   //////////////////////////////////////////////////////////////////////////////
   void local(bool b);
   bool local() const;
-
+  
  private:
   // execute callback with current value data:
   bool execute(velocypack::Slice data);
-
+  
   // execute callback without any data:
   bool executeEmpty();
 
@@ -155,11 +155,12 @@ class AgencyCallback {
   ///  2a) execute callback
   ///  2b) execute callback signaling
   ///  3) caller going into condition.wait() (and not woken up)
-  /// this variable is protected by the condition variable!
+  /// this variable is protected by the condition variable! 
   bool _wasSignaled;
 
-  /// Determined when registered in registry. Default: true
+  /// Determined when registered in registry. Default: true 
   bool _local;
 };
 
 }  // namespace arangodb
+

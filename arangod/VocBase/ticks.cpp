@@ -21,11 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ticks.h"
-
 #include <stddef.h>
-
 #include <atomic>
+
+#include "ticks.h"
 
 #include "Basics/HybridLogicalClock.h"
 #include "Cluster/ServerState.h"
@@ -61,9 +60,8 @@ void TRI_UpdateTickServer(TRI_voc_tick_t tick) {
   auto expected = CurrentTick.load(std::memory_order_relaxed);
 
   // only update global tick if less than the specified value...
-  while (expected < t && !CurrentTick.compare_exchange_weak(
-                             expected, t, std::memory_order_release,
-                             std::memory_order_relaxed)) {
+  while (expected < t && !CurrentTick.compare_exchange_weak(expected, t, std::memory_order_release,
+                                                            std::memory_order_relaxed)) {
     expected = CurrentTick.load(std::memory_order_relaxed);
   }
 }
@@ -78,9 +76,8 @@ TRI_voc_tick_t TRI_NewServerSpecificTick() {
   static constexpr size_t UpperShift{40};
 
   uint64_t lower = TRI_NewTickServer() & LowerMask;
-  uint64_t upper = (static_cast<uint64_t>(ServerState::instance()->getShortId())
-                    << UpperShift) &
-                   UpperMask;
+  uint64_t upper =
+      (static_cast<uint64_t>(ServerState::instance()->getShortId()) << UpperShift) & UpperMask;
   uint64_t tick = (upper | lower);
   return static_cast<TRI_voc_tick_t>(tick);
 }
@@ -95,9 +92,7 @@ TRI_voc_tick_t TRI_NewServerSpecificTickMod4() {
 
   const uint64_t lower = (TRI_NewTickServer() << LowerShift) & LowerMask;
   const uint64_t upper =
-      (static_cast<uint64_t>(ServerState::instance()->getShortId())
-       << UpperShift) &
-      UpperMask;
+      (static_cast<uint64_t>(ServerState::instance()->getShortId()) << UpperShift) & UpperMask;
   return static_cast<TRI_voc_tick_t>(upper | lower);
 }
 

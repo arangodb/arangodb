@@ -24,13 +24,14 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-
 #include <locale>
 #include <unordered_set>
 
 #include "IResearchViewSort.h"
 #include "IResearchViewStoredValues.h"
+
+#include <velocypack/Builder.h>
+
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
 #include "index/index_writer.hpp"
@@ -67,11 +68,12 @@ struct IResearchViewMeta {
       return _policy;
     }
 
-    VPackSlice properties() const noexcept { return _properties.slice(); }
+    VPackSlice properties() const noexcept {
+      return _properties.slice();
+    }
 
    private:
-    irs::index_writer::consolidation_policy_t
-        _policy;               // policy instance (false == disable)
+    irs::index_writer::consolidation_policy_t _policy;  // policy instance (false == disable)
     VPackBuilder _properties;  // normalized policy definition
   };
 
@@ -90,21 +92,14 @@ struct IResearchViewMeta {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  size_t _cleanupIntervalStep;  // issue cleanup after <count> commits (0 ==
-                                // disable)
-  size_t _commitIntervalMsec;   // issue commit after <interval> milliseconds (0
-                                // == disable)
-  size_t _consolidationIntervalMsec;  // issue consolidation after <interval>
-                                      // milliseconds (0 == disable)
-  ConsolidationPolicy _consolidationPolicy;  // the consolidation policy to use
-  uint32_t _version;  // the version of the iresearch interface e.g. which how
-                      // data is stored in iresearch (default == latest)
-  size_t _writebufferActive;   // maximum number of concurrent segments before
-                               // segment aquisition blocks, e.g. max number of
-                               // concurrent transacitons) (0 == unlimited)
-  size_t _writebufferIdle;     // maximum number of segments cached in the pool
-  size_t _writebufferSizeMax;  // maximum memory byte size per segment before a
-                               // segment flush is triggered (0 == unlimited)
+  size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
+  size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
+  size_t _consolidationIntervalMsec; // issue consolidation after <interval> milliseconds (0 == disable)
+  ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
+  uint32_t _version; // the version of the iresearch interface e.g. which how data is stored in iresearch (default == latest)
+  size_t _writebufferActive; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
+  size_t _writebufferIdle; // maximum number of segments cached in the pool
+  size_t _writebufferSizeMax; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
   IResearchViewSort _primarySort;
   IResearchViewStoredValues _storedValues;
   irs::type_info::type_id _primarySortCompression;
@@ -141,8 +136,7 @@ struct IResearchViewMeta {
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
   bool init(arangodb::velocypack::Slice const& slice, std::string& errorField,
-            IResearchViewMeta const& defaults = DEFAULT(),
-            Mask* mask = nullptr) noexcept;
+            IResearchViewMeta const& defaults = DEFAULT(), Mask* mask = nullptr) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchViewMeta object
@@ -152,8 +146,7 @@ struct IResearchViewMeta {
   ///        return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
   bool json(arangodb::velocypack::Builder& builder,
-            IResearchViewMeta const* ignoreEqual = nullptr,
-            Mask const* mask = nullptr) const;
+            IResearchViewMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link meta
@@ -171,9 +164,8 @@ struct IResearchViewMetaState {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  std::unordered_set<DataSourceId>
-      _collections;  // collection links added to this view via IResearchLink
-                     // creation (may contain no-longer valid cids)
+  std::unordered_set<DataSourceId> _collections;  // collection links added to this view via IResearchLink
+                                                  // creation (may contain no-longer valid cids)
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
@@ -229,3 +221,4 @@ struct IResearchViewMetaState {
 
 }  // namespace iresearch
 }  // namespace arangodb
+

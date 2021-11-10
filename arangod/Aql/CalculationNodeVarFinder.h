@@ -39,9 +39,7 @@ class CalculationNodeVarFinder final
   VarSet _currentUsedVars;
 
  public:
-  CalculationNodeVarFinder(
-      Variable const* var,
-      ::arangodb::containers::SmallVector<ExecutionNode*>& out) noexcept;
+  CalculationNodeVarFinder(Variable const* var, ::arangodb::containers::SmallVector<ExecutionNode*>& out) noexcept;
 
   bool before(ExecutionNode*) override final;
 };
@@ -65,3 +63,4 @@ class CalculationNodeVarExistenceFinder final
 };
 }  // namespace aql
 }  // namespace arangodb
+

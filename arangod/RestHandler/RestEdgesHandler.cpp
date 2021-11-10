@@ -23,9 +23,6 @@
 
 #include "RestEdgesHandler.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
@@ -38,19 +35,21 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEdgesHandler::RestEdgesHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestEdgesHandler::RestEdgesHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestEdgesHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
-
+  
   if (!ServerState::instance()->isSingleServerOrCoordinator()) {
     generateNotImplemented("ILLEGAL " + EDGES_PATH);
     return RestStatus::DONE;
@@ -108,17 +107,16 @@ std::string queryString(TRI_edge_direction_e dir) {
 }
 
 aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
-                            TRI_edge_direction_e dir,
-                            std::string const& vertexId) {
+                            TRI_edge_direction_e dir, std::string const& vertexId) {
   auto bindParameters = std::make_shared<VPackBuilder>();
   bindParameters->openObject();
   bindParameters->add("@collection", VPackValue(cname));
   bindParameters->add("vertex", VPackValue(vertexId));
   bindParameters->close();
 
-  auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(vocbase),
-      aql::QueryString(queryString(dir)), std::move(bindParameters));
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(vocbase),
+                                            aql::QueryString(queryString(dir)),
+                                            std::move(bindParameters));
   return query->executeSync();
 }
 }  // namespace
@@ -128,14 +126,12 @@ bool RestEdgesHandler::validateCollection(std::string const& name) {
   std::shared_ptr<LogicalCollection> collection = resolver.getCollection(name);
 
   if (!collection) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return false;
   }
 
   if (collection->type() != TRI_COL_TYPE_EDGE) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
 
@@ -173,8 +169,7 @@ bool RestEdgesHandler::readEdges() {
     return false;
   }
 
-  auto queryResult =
-      ::queryEdges(_vocbase, collectionName, direction, startVertex);
+  auto queryResult = ::queryEdges(_vocbase, collectionName, direction, startVertex);
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -182,8 +177,7 @@ bool RestEdgesHandler::readEdges() {
       generateError(rest::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
       return false;
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        queryResult.result.errorNumber(),
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
         StringUtils::concatT("Error executing edges query ",
                              queryResult.result.errorMessage()));
   }
@@ -208,8 +202,7 @@ bool RestEdgesHandler::readEdges() {
   resultBuilder.close();
 
   // and generate a response
-  generateResult(rest::ResponseCode::OK, std::move(buffer),
-                 queryResult.context);
+  generateResult(rest::ResponseCode::OK, std::move(buffer), queryResult.context);
 
   return true;
 }
@@ -259,14 +252,13 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.openObject();
   // build edges
   resultBuilder.add("edges", VPackValue(VPackValueType::Array));
-
+  
   std::unordered_set<std::string> foundEdges;
 
   std::shared_ptr<transaction::Context> ctx;
   for (VPackSlice it : VPackArrayIterator(body)) {
     std::string startVertex = it.copyString();
-    auto queryResult =
-        ::queryEdges(_vocbase, collectionName, direction, startVertex);
+    auto queryResult = ::queryEdges(_vocbase, collectionName, direction, startVertex);
 
     if (queryResult.result.fail()) {
       if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -274,18 +266,14 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
         generateError(rest::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
         return false;
       }
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          queryResult.result.errorNumber(),
+      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
           StringUtils::concatT("Error executing edges query ",
                                queryResult.result.errorMessage()));
     }
 
     VPackSlice edges = queryResult.data->slice();
     for (VPackSlice edge : VPackArrayIterator(edges)) {
-      if (foundEdges
-              .emplace(transaction::helpers::extractKeyFromDocument(edge)
-                           .copyString())
-              .second) {
+      if (foundEdges.emplace(transaction::helpers::extractKeyFromDocument(edge).copyString()).second) {
         resultBuilder.add(edge);
       }
     }

@@ -24,12 +24,12 @@
 
 #pragma once
 
-#include <mutex>
-
 #include "Auth/TokenCache.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
+
+#include <mutex>
 
 namespace arangodb {
 class AuthenticationFeature;
@@ -80,7 +80,8 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   CommTask const& operator=(CommTask const&) = delete;
 
  public:
-  CommTask(GeneralServer& server, ConnectionInfo info);
+  CommTask(GeneralServer& server,
+           ConnectionInfo info);
 
   virtual ~CommTask();
 
@@ -89,21 +90,23 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   virtual void stop() = 0;
 
  protected:
-  virtual std::unique_ptr<GeneralResponse> createResponse(
-      rest::ResponseCode, uint64_t messageId) = 0;
+
+  virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
+                                                          uint64_t messageId) = 0;
 
   /// @brief send the response to the client.
   virtual void sendResponse(std::unique_ptr<GeneralResponse>,
                             RequestStatistics::Item) = 0;
 
  protected:
+  
   enum class Flow : bool { Continue = true, Abort = false };
   static constexpr size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
 
   /// Must be called before calling executeRequest, will add an error
   /// response if execution is supposed to be aborted
   Flow prepareExecution(auth::TokenCache::Entry const&, GeneralRequest&);
-
+  
   /// Must be called from sendResponse, before response is rendered
   void finishExecution(GeneralResponse&, std::string const& cors) const;
 
@@ -114,43 +117,44 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   RequestStatistics::Item const& acquireStatistics(uint64_t);
   RequestStatistics::Item const& statistics(uint64_t);
   RequestStatistics::Item stealStatistics(uint64_t);
-
+  
   /// @brief send response including error response body
   void sendErrorResponse(rest::ResponseCode, rest::ContentType,
                          uint64_t messageId, ErrorCode errorNum,
                          std::string_view errorMessage = {});
 
   /// @brief send simple response including response body
-  void sendSimpleResponse(rest::ResponseCode, rest::ContentType,
-                          uint64_t messageId, velocypack::Buffer<uint8_t>&&);
-
+  void sendSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
+                          velocypack::Buffer<uint8_t>&&);
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks the access rights for a specified path, includes automatic
   ///        exceptions for /_api/users to allow logins without authorization
   ////////////////////////////////////////////////////////////////////////////////
-  Flow canAccessPath(auth::TokenCache::Entry const&, GeneralRequest&) const;
-
+  Flow canAccessPath(auth::TokenCache::Entry const&,
+                     GeneralRequest&) const;
+  
   bool allowCorsCredentials(std::string const& origin) const;
-
+  
   /// handle an OPTIONS request, will send response
   void processCorsOptions(std::unique_ptr<GeneralRequest> req,
                           std::string const& origin);
-
+  
   /// check authentication headers
   auth::TokenCache::Entry checkAuthHeader(GeneralRequest& request);
-
+  
   /// decompress content
   bool handleContentEncoding(GeneralRequest&);
-
+  
  private:
   bool handleRequestSync(std::shared_ptr<RestHandler>);
-  bool handleRequestAsync(std::shared_ptr<RestHandler>,
-                          uint64_t* jobId = nullptr);
-
+  bool handleRequestAsync(std::shared_ptr<RestHandler>, uint64_t* jobId = nullptr);
+  
  protected:
+  
   GeneralServer& _server;
   ConnectionInfo _connectionInfo;
-
+  
   ConnectionStatistics::Item _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
   AuthenticationFeature* _auth;
@@ -160,3 +164,4 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
 };
 }  // namespace rest
 }  // namespace arangodb
+

@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/Algos/ShortestPath.h"
-
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/GraphStore.h"
@@ -78,8 +77,7 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   }
 };
 
-struct arangodb::pregel::algos::SPGraphFormat
-    : public InitGraphFormat<int64_t, int64_t> {
+struct arangodb::pregel::algos::SPGraphFormat : public InitGraphFormat<int64_t, int64_t> {
   std::string _sourceDocId, _targetDocId;
 
  public:
@@ -89,17 +87,15 @@ struct arangodb::pregel::algos::SPGraphFormat
         _sourceDocId(source),
         _targetDocId(target) {}
 
-  void copyVertexData(arangodb::velocypack::Options const&,
-                      std::string const& documentId,
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& documentId,
                       arangodb::velocypack::Slice /*document*/,
-                      int64_t& targetPtr,
-                      uint64_t& /*vertexIdRange*/) override {
+                      int64_t& targetPtr, uint64_t& /*vertexIdRange*/) override {
     targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 };
 
-ShortestPathAlgorithm::ShortestPathAlgorithm(
-    application_features::ApplicationServer& server, VPackSlice userParams)
+ShortestPathAlgorithm::ShortestPathAlgorithm(application_features::ApplicationServer& server,
+                                             VPackSlice userParams)
     : Algorithm(server, "ShortestPath") {
   VPackSlice val1 = userParams.get("source");
   VPackSlice val2 = userParams.get("target");
@@ -119,8 +115,8 @@ GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
   return new SPGraphFormat(_server, _source, _target);
 }
 
-VertexComputation<int64_t, int64_t, int64_t>*
-ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
+VertexComputation<int64_t, int64_t, int64_t>* ShortestPathAlgorithm::createComputation(
+    WorkerConfig const* _config) const {
   PregelID target = _config->documentIdToPregel(_target);
   return new SPComputation(target);
 }

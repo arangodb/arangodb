@@ -48,17 +48,14 @@ class AttributeAccessor {
   virtual ~AttributeAccessor() = default;
 
   /// @brief execute the accessor
-  virtual AqlValue get(CollectionNameResolver const& resolver,
-                       ExpressionContext const* context, bool& mustDestroy) = 0;
-
+  virtual AqlValue get(CollectionNameResolver const& resolver, ExpressionContext const* context, bool& mustDestroy) = 0;
+    
  public:
-  void replaceVariable(
-      std::unordered_map<VariableId, Variable const*> const& replacements);
+  void replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements);
 
   /// @brief the attribute names vector (e.g. [ "a", "b", "c" ] for a.b.c)
   static AttributeAccessor* create(arangodb::aql::AttributeNamePath&& path,
-                                   Variable const* variable,
-                                   bool dataIsFromCollection);
+                                   Variable const* variable, bool dataIsFromCollection);
 
  protected:
   /// @brief the accessed variable
@@ -67,3 +64,4 @@ class AttributeAccessor {
 
 }  // namespace aql
 }  // namespace arangodb
+

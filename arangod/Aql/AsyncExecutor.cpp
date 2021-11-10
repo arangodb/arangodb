@@ -23,30 +23,31 @@
 
 #include "AsyncExecutor.h"
 
-#include <algorithm>
-#include <utility>
-
 #include "Aql/AqlValue.h"
+#include "Aql/Query.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
-#include "Aql/SharedQueryState.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/SharedQueryState.h"
 #include "Aql/Stats.h"
+
 #include "Logger/LogMacros.h"
+
+#include <algorithm>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
-                                                      AsyncNode const* node)
-    : ExecutionBlock(engine, node), _sharedState(engine->sharedState()) {}
+ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(
+    ExecutionEngine* engine, AsyncNode const* node)
+    : ExecutionBlock(engine, node),
+      _sharedState(engine->sharedState()) {}
 
-std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack const& stack) {
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack const& stack) {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -59,15 +60,14 @@ ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack const& stack) {
   return res;
 }
 
-std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
-    AqlCallStack const& stack) {
-  //  if (getQuery().killed()) {
-  //    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  //  }
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(AqlCallStack const& stack) {
+  
+//  if (getQuery().killed()) {
+//    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+//  }
 
   std::lock_guard<std::mutex> guard(_mutex);
-
+  
   TRI_ASSERT(_dependencies.size() == 1);
 
   if (_internalState == AsyncState::InProgress) {
@@ -87,28 +87,27 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
   TRI_ASSERT(_internalState == AsyncState::Empty);
 
   _internalState = AsyncState::InProgress;
-  bool queued =
-      _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
-        std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
+  bool queued = _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
+    std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
 
-        try {
-          auto [state, skip, block] = _dependencies[0]->execute(stack);
-          if (isAsync) {
-            guard.lock();
-          }
-          _returnState = state;
-          _returnSkip = std::move(skip);
-          _returnBlock = std::move(block);
-
-          _internalState = AsyncState::GotResult;
-        } catch (...) {
-          if (isAsync) {
-            guard.lock();
-          }
-          _returnException = std::current_exception();
-          _internalState = AsyncState::GotException;
-        }
-      });
+    try {
+      auto [state, skip, block] = _dependencies[0]->execute(stack);
+      if (isAsync) {
+        guard.lock();
+      }
+      _returnState = state;
+      _returnSkip = std::move(skip);
+      _returnBlock = std::move(block);
+      
+      _internalState = AsyncState::GotResult;
+    } catch(...) {
+      if (isAsync) {
+        guard.lock();
+      }
+      _returnException = std::current_exception();
+      _internalState = AsyncState::GotException;
+    }
+  });
 
   if (!queued) {
     _internalState = AsyncState::Empty;
@@ -117,15 +116,15 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
   return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
 }
 
-std::pair<ExecutionState, Result> ExecutionBlockImpl<
-    AsyncExecutor>::initializeCursor(InputAqlItemRow const& input) {
-  //
-  //  if (getQuery().killed()) {
-  //    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  //  }
-
+std::pair<ExecutionState, Result> ExecutionBlockImpl<AsyncExecutor>::initializeCursor(
+    InputAqlItemRow const& input) {
+//
+//  if (getQuery().killed()) {
+//    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+//  }
+  
   TRI_ASSERT(_dependencies.size() == 1);
-
+  
   std::lock_guard<std::mutex> guard(_mutex);
   auto res = ExecutionBlock::initializeCursor(input);
   _returnBlock = nullptr;

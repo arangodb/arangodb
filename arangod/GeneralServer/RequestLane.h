@@ -118,7 +118,12 @@ enum class RequestLane {
   UNDEFINED,
 };
 
-enum class RequestPriority { MAINTENANCE = 0, HIGH = 1, MED = 2, LOW = 3 };
+enum class RequestPriority {
+  MAINTENANCE = 0,
+  HIGH = 1,
+  MED = 2,
+  LOW = 3
+};
 
 inline RequestPriority PriorityRequestLane(RequestLane lane) {
   switch (lane) {
@@ -168,3 +173,4 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
 }
 
 }  // namespace arangodb
+

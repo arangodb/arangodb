@@ -43,8 +43,7 @@ struct Options {
   static Options replicationDefaults();
 
   /// @brief adjust the global default values for transactions
-  static void setLimits(uint64_t maxTransactionSize,
-                        uint64_t intermediateCommitSize,
+  static void setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommitSize,
                         uint64_t intermediateCommitCount);
 
   /// @brief read the options from a vpack slice
@@ -61,12 +60,9 @@ struct Options {
   bool isIntermediateCommitEnabled() const noexcept;
 
   static constexpr double defaultLockTimeout = 900.0;
-  static std::uint64_t
-      defaultMaxTransactionSize;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
-  static std::uint64_t
-      defaultIntermediateCommitSize;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
-  static std::uint64_t
-      defaultIntermediateCommitCount;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+  static std::uint64_t defaultMaxTransactionSize; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+  static std::uint64_t defaultIntermediateCommitSize; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+  static std::uint64_t defaultIntermediateCommitCount; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
   /// @brief time (in seconds) that is spent waiting for a lock
   double lockTimeout = defaultLockTimeout;
@@ -74,7 +70,7 @@ struct Options {
   std::uint64_t intermediateCommitSize = defaultIntermediateCommitSize;
   std::uint64_t intermediateCommitCount = defaultIntermediateCommitCount;
   bool allowImplicitCollectionsForRead = true;
-  bool allowImplicitCollectionsForWrite = false;  // replication only!
+  bool allowImplicitCollectionsForWrite = false; // replication only!
 #ifdef USE_ENTERPRISE
   bool skipInaccessibleCollections = false;
 #endif
@@ -90,15 +86,14 @@ struct Options {
   /// abort the transaction should the coordinator die or be rebooted.
   /// the server id and reboot id are intentionally empty in single server
   /// case.
-  arangodb::cluster::RebootTracker::PeerState origin = {"",
-                                                        arangodb::RebootId(0)};
+  arangodb::cluster::RebootTracker::PeerState origin = {"", arangodb::RebootId(0)};
 };
 
 struct AllowImplicitCollectionsSwitcher {
   AllowImplicitCollectionsSwitcher(Options& options, bool allow) noexcept
-      : _options(options), _oldValue(options.allowImplicitCollectionsForRead) {
-    // previous value has been saved, now override value in options with
-    // disallow
+      : _options(options),
+        _oldValue(options.allowImplicitCollectionsForRead) {
+    // previous value has been saved, now override value in options with disallow
     options.allowImplicitCollectionsForRead = allow;
   }
 
@@ -113,3 +108,4 @@ struct AllowImplicitCollectionsSwitcher {
 
 }  // namespace transaction
 }  // namespace arangodb
+

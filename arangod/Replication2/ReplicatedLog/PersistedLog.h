@@ -22,11 +22,12 @@
 
 #pragma once
 
-#include <memory>
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
+
+#include <memory>
 
 namespace arangodb::replication2::replicated_log {
 
@@ -43,12 +44,9 @@ struct PersistedLog {
   };
 
   [[nodiscard]] auto id() const noexcept -> LogId { return _lid; }
-  virtual auto insert(PersistedLogIterator& iter, WriteOptions const&)
-      -> Result = 0;
-  virtual auto insertAsync(std::unique_ptr<PersistedLogIterator> iter,
-                           WriteOptions const&) -> futures::Future<Result> = 0;
-  virtual auto read(LogIndex start)
-      -> std::unique_ptr<PersistedLogIterator> = 0;
+  virtual auto insert(PersistedLogIterator& iter, WriteOptions const&) -> Result = 0;
+  virtual auto insertAsync(std::unique_ptr<PersistedLogIterator> iter, WriteOptions const&) -> futures::Future<Result> = 0;
+  virtual auto read(LogIndex start) -> std::unique_ptr<PersistedLogIterator> = 0;
   virtual auto removeFront(LogIndex stop) -> futures::Future<Result> = 0;
   virtual auto removeBack(LogIndex start) -> Result = 0;
 
@@ -58,4 +56,4 @@ struct PersistedLog {
   LogId _lid;
 };
 
-}  // namespace arangodb::replication2::replicated_log
+}  // namespace arangodb::replication2

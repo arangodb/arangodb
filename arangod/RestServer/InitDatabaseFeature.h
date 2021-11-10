@@ -27,8 +27,7 @@
 
 namespace arangodb {
 
-class InitDatabaseFeature final
-    : public application_features::ApplicationFeature {
+class InitDatabaseFeature final : public application_features::ApplicationFeature {
  public:
   InitDatabaseFeature(application_features::ApplicationServer& server,
                       std::vector<std::type_index> const& nonServerFeatures);
@@ -56,3 +55,4 @@ class InitDatabaseFeature final
 };
 
 }  // namespace arangodb
+

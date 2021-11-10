@@ -29,7 +29,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}  // namespace velocypack
+}
 namespace aql {
 struct Variable;
 
@@ -79,3 +79,4 @@ struct AggregateVarInfo final {
 
 }  // namespace aql
 }  // namespace arangodb
+

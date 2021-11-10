@@ -55,16 +55,14 @@ std::unordered_map<std::string, EngineInfo> createEngineMap() {
   std::unordered_map<std::string, EngineInfo> map;
   // rocksdb is not deprecated and the engine of choice
   map.try_emplace(arangodb::RocksDBEngine::EngineName,
-                  EngineInfo{std::type_index(typeid(arangodb::RocksDBEngine)),
-                             false, true});
+                  EngineInfo{std::type_index(typeid(arangodb::RocksDBEngine)), false, true});
   return map;
 }
 }  // namespace
 
 namespace arangodb {
 
-EngineSelectorFeature::EngineSelectorFeature(
-    application_features::ApplicationServer& server)
+EngineSelectorFeature::EngineSelectorFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "EngineSelector"),
       _engine(nullptr),
       _engineName("auto"),
@@ -74,14 +72,13 @@ EngineSelectorFeature::EngineSelectorFeature(
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
 
-void EngineSelectorFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--server.storage-engine",
                      "storage engine type "
                      "(note that the mmfiles engine is unavailable since "
                      "v3.7.0 and cannot be used anymore)",
-                     new DiscreteValuesParameter<StringParameter>(
-                         &_engineName, availableEngineNames()));
+                     new DiscreteValuesParameter<StringParameter>(&_engineName,
+                                                                  availableEngineNames()));
 }
 
 void EngineSelectorFeature::prepare() {
@@ -102,8 +99,7 @@ void EngineSelectorFeature::prepare() {
   if (!ServerState::instance()->isCoordinator() &&
       basics::FileUtils::isRegularFile(_engineFilePath)) {
     LOG_TOPIC("98b5c", DEBUG, Logger::STARTUP)
-        << "looking for previously selected engine in file '" << _engineFilePath
-        << "'";
+        << "looking for previously selected engine in file '" << _engineFilePath << "'";
     try {
       std::string content =
           basics::StringUtils::trim(basics::FileUtils::slurp(_engineFilePath));
@@ -151,15 +147,12 @@ void EngineSelectorFeature::prepare() {
   if (selected->second.deprecated) {
     if (!selected->second.allowNewDeployments) {
       LOG_TOPIC("23562", ERR, arangodb::Logger::STARTUP)
-          << "The " << _engineName
-          << " storage engine is deprecated and unsupported and will be "
-             "removed in a future version. "
+          << "The " << _engineName << " storage engine is deprecated and unsupported and will be removed in a future version. "
           << "Please plan for a migration to a different ArangoDB storage "
              "engine.";
 
       if (!ServerState::instance()->isCoordinator() &&
-          !basics::FileUtils::isRegularFile(_engineFilePath) &&
-          !_allowDeprecatedDeployments) {
+          !basics::FileUtils::isRegularFile(_engineFilePath) && !_allowDeprecatedDeployments) {
         LOG_TOPIC("ca0a7", FATAL, Logger::STARTUP)
             << "The " << _engineName
             << " storage engine cannot be used for new deployments.";
@@ -167,9 +160,7 @@ void EngineSelectorFeature::prepare() {
       }
     } else {
       LOG_TOPIC("80866", WARN, arangodb::Logger::STARTUP)
-          << "The " << _engineName
-          << " storage engine is deprecated and will be removed in a future "
-             "version. "
+          << "The " << _engineName << " storage engine is deprecated and will be removed in a future version. "
           << "Please plan for a migration to a different ArangoDB storage "
              "engine.";
     }
@@ -236,8 +227,7 @@ void EngineSelectorFeature::start() {
       basics::FileUtils::spit(_engineFilePath, _engineName, true);
     } catch (std::exception const& ex) {
       LOG_TOPIC("4ff0f", FATAL, Logger::STARTUP)
-          << "unable to write 'ENGINE' file '" << _engineFilePath
-          << "': " << ex.what()
+          << "unable to write 'ENGINE' file '" << _engineFilePath << "': " << ex.what()
           << ". please make sure the file/directory is writable for the "
              "arangod process and user";
       FATAL_ERROR_EXIT();
@@ -279,8 +269,7 @@ StorageEngine& EngineSelectorFeature::engine() {
   return *_engine;
 }
 
-template<typename As, typename std::enable_if<
-                          std::is_base_of<StorageEngine, As>::value, int>::type>
+template <typename As, typename std::enable_if<std::is_base_of<StorageEngine, As>::value, int>::type>
 As& EngineSelectorFeature::engine() {
   return *static_cast<As*>(_engine);
 }

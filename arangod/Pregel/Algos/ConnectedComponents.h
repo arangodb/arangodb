@@ -34,11 +34,9 @@ namespace algos {
 /// number of supersteps necessary is equal to the length of the maximum
 /// diameter of all components + 1
 /// doesn't necessarily leads to a correct result on unidirected graphs
-struct ConnectedComponents
-    : public SimpleAlgorithm<uint64_t, uint8_t, uint64_t> {
+struct ConnectedComponents : public SimpleAlgorithm<uint64_t, uint8_t, uint64_t> {
  public:
-  explicit ConnectedComponents(application_features::ApplicationServer& server,
-                               VPackSlice userParams)
+  explicit ConnectedComponents(application_features::ApplicationServer& server, VPackSlice userParams)
       : SimpleAlgorithm(server, "ConnectedComponents", userParams) {}
 
   bool supportsAsyncMode() const override { return true; }
@@ -52,10 +50,8 @@ struct ConnectedComponents
   MessageCombiner<uint64_t>* messageCombiner() const override {
     return new MinCombiner<uint64_t>();
   }
-  VertexComputation<uint64_t, uint8_t, uint64_t>* createComputation(
-      WorkerConfig const*) const override;
-  VertexCompensation<uint64_t, uint8_t, uint64_t>* createCompensation(
-      WorkerConfig const*) const override;
+  VertexComputation<uint64_t, uint8_t, uint64_t>* createComputation(WorkerConfig const*) const override;
+  VertexCompensation<uint64_t, uint8_t, uint64_t>* createCompensation(WorkerConfig const*) const override;
 };
 }  // namespace algos
 }  // namespace pregel

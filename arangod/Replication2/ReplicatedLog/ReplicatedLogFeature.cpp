@@ -22,8 +22,6 @@
 
 #include "ReplicatedLogFeature.h"
 
-#include <memory>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/application-exit.h"
@@ -32,6 +30,8 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "RestServer/MetricsFeature.h"
+
+#include <memory>
 
 using namespace arangodb::options;
 using namespace arangodb;
@@ -49,8 +49,8 @@ ReplicatedLogFeature::ReplicatedLogFeature(ApplicationServer& server)
   startsAfter<DatabaseFeaturePhase>();
 }
 
-auto ReplicatedLogFeature::metrics() const noexcept -> std::shared_ptr<
-    replication2::replicated_log::ReplicatedLogMetrics> const& {
+auto ReplicatedLogFeature::metrics() const noexcept
+    -> std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics> const& {
   return _replicatedLogMetrics;
 }
 
@@ -60,15 +60,13 @@ auto ReplicatedLogFeature::options() const noexcept
 }
 
 void ReplicatedLogFeature::prepare() {
-  if (ServerState::instance()->isCoordinator() ||
-      ServerState::instance()->isAgent()) {
+  if (ServerState::instance()->isCoordinator() || ServerState::instance()->isAgent()) {
     setEnabled(false);
     return;
   }
 }
 
-void ReplicatedLogFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void ReplicatedLogFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("replicatedlog", "Options for replicated logs");
 
   options->addOption("--replicatedlog.max-network-batch-size", "",
@@ -77,21 +75,17 @@ void ReplicatedLogFeature::collectOptions(
                      new SizeTParameter(&_options->_maxRocksDBWriteBatchSize));
 }
 
-void ReplicatedLogFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  if (_options->_maxNetworkBatchSize <
-      ReplicatedLogGlobalSettings::minNetworkBatchSize) {
+void ReplicatedLogFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (_options->_maxNetworkBatchSize < ReplicatedLogGlobalSettings::minNetworkBatchSize) {
     LOG_TOPIC("e83c3", FATAL, arangodb::Logger::REPLICATION2)
         << "Invalid value for `--max-network-batch-size`. The value must be at "
            "least "
         << ReplicatedLogGlobalSettings::minNetworkBatchSize;
     FATAL_ERROR_EXIT();
   }
-  if (_options->_maxRocksDBWriteBatchSize <
-      ReplicatedLogGlobalSettings::minRocksDBWriteBatchSize) {
+  if (_options->_maxRocksDBWriteBatchSize < ReplicatedLogGlobalSettings::minRocksDBWriteBatchSize) {
     LOG_TOPIC("e83c4", FATAL, arangodb::Logger::REPLICATION2)
-        << "Invalid value for `--max-rocksdb-write-batch-size`. The value must "
-           "be at "
+        << "Invalid value for `--max-rocksdb-write-batch-size`. The value must be at "
            "least "
         << ReplicatedLogGlobalSettings::minRocksDBWriteBatchSize;
     FATAL_ERROR_EXIT();

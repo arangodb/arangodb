@@ -37,11 +37,9 @@ namespace maintenance {
 class MaintenanceWorker : public Thread {
  public:
   explicit MaintenanceWorker(MaintenanceFeature& feature,
-                             std::unordered_set<std::string> const& labels =
-                                 std::unordered_set<std::string>());
+                    std::unordered_set<std::string> const& labels = std::unordered_set<std::string>());
 
-  MaintenanceWorker(MaintenanceFeature& feature,
-                    std::shared_ptr<Action>& directAction);
+  MaintenanceWorker(MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
 
   virtual ~MaintenanceWorker() { shutdown(); }
 
@@ -93,3 +91,4 @@ class MaintenanceWorker : public Thread {
 
 }  // namespace maintenance
 }  // namespace arangodb
+

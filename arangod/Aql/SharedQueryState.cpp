@@ -36,14 +36,12 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SharedQueryState::SharedQueryState(
-    application_features::ApplicationServer& server)
+SharedQueryState::SharedQueryState(application_features::ApplicationServer& server)
     : _server(server),
       _wakeupCb(nullptr),
       _numWakeups(0),
       _cbVersion(0),
-      _maxTasks(static_cast<unsigned>(
-          _server.getFeature<QueryRegistryFeature>().maxParallelism())),
+      _maxTasks(static_cast<unsigned>(_server.getFeature<QueryRegistryFeature>().maxParallelism())),
       _numTasks(0),
       _valid(true) {}
 
@@ -54,8 +52,8 @@ void SharedQueryState::invalidate() {
     _cbVersion++;
     _valid = false;
   }
-  _cv.notify_all();  // wakeup everyone else
-
+  _cv.notify_all(); // wakeup everyone else
+  
   if (_numTasks.load() > 0) {
     std::unique_lock<std::mutex> guard(_mutex);
     _cv.wait(guard, [&] { return _numTasks.load() == 0; });
@@ -68,7 +66,7 @@ void SharedQueryState::waitForAsyncWakeup() {
   if (!_valid) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
-
+  
   TRI_ASSERT(!_wakeupCb);
   _cv.wait(guard, [&] { return _numWakeups > 0 || !_valid; });
   TRI_ASSERT(_numWakeups > 0 || !_valid);
@@ -105,7 +103,7 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
     _cv.notify_all();
     return;
   }
-
+  
   unsigned n = _numWakeups++;
   if (!_wakeupCb) {
     guard.unlock();
@@ -119,12 +117,13 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
 
   queueHandler();
 }
-
+  
 void SharedQueryState::queueHandler() {
+  
   if (_numWakeups == 0 || !_wakeupCb || !_valid) {
     return;
   }
-
+  
   auto scheduler = SchedulerFeature::SCHEDULER;
   if (ADB_UNLIKELY(scheduler == nullptr)) {
     // We are shutting down
@@ -135,38 +134,38 @@ void SharedQueryState::queueHandler() {
                         ? RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR
                         : RequestLane::CLUSTER_AQL;
 
-  bool queued = scheduler->tryBoundedQueue(
-      lane, [self = shared_from_this(), cb = _wakeupCb, v = _cbVersion]() {
-        std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
+  bool queued = scheduler->tryBoundedQueue(lane, [self = shared_from_this(),
+                                        cb = _wakeupCb, v = _cbVersion]() {
+    std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
-        do {
-          bool cntn = false;
-          try {
-            cntn = cb();
-          } catch (...) {
-          }
+    do {
+      bool cntn = false;
+      try {
+        cntn = cb();
+      } catch (...) {
+      }
 
-          lck.lock();
-          if (v == self->_cbVersion) {
-            unsigned c = self->_numWakeups--;
-            TRI_ASSERT(c > 0);
-            if (c == 1 || !cntn || !self->_valid) {
-              break;
-            }
-          } else {
-            return;
-          }
-          lck.unlock();
-        } while (true);
+      lck.lock();
+      if (v == self->_cbVersion) {
+        unsigned c = self->_numWakeups--;
+        TRI_ASSERT(c > 0);
+        if (c == 1 || !cntn || !self->_valid) {
+          break;
+        }
+      } else {
+        return;
+      }
+      lck.unlock();
+    } while (true);
 
-        TRI_ASSERT(lck);
-        self->queueHandler();
-      });
+    TRI_ASSERT(lck);
+    self->queueHandler();
+  });
 
-  if (!queued) {  // just invalidate
-    _wakeupCb = nullptr;
-    _valid = false;
-    _cv.notify_all();
+  if (!queued) { // just invalidate
+     _wakeupCb = nullptr;
+     _valid = false;
+     _cv.notify_all();
   }
 }
 

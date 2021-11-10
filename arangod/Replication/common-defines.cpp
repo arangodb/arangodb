@@ -21,12 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Replication/common-defines.h"
-
 #include <time.h>
 
 #include "Basics/StaticStrings.h"
 #include "Basics/system-functions.h"
+#include "Replication/common-defines.h"
 
 namespace arangodb {
 
@@ -40,8 +39,7 @@ void TRI_GetTimeStampReplication(char* dst, size_t maxLength) {
 }
 
 /// @brief generate a timestamp string in a target buffer
-void TRI_GetTimeStampReplication(double timeStamp, char* dst,
-                                 size_t maxLength) {
+void TRI_GetTimeStampReplication(double timeStamp, char* dst, size_t maxLength) {
   struct tm tb;
   time_t tt = static_cast<time_t>(timeStamp);
   TRI_gmtime(tt, &tb);
@@ -49,8 +47,7 @@ void TRI_GetTimeStampReplication(double timeStamp, char* dst,
   strftime(dst, maxLength, "%Y-%m-%dT%H:%M:%SZ", &tb);
 }
 
-bool TRI_ExcludeCollectionReplication(std::string const& name,
-                                      bool includeSystem,
+bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem,
                                       bool includeFoxxQueues) {
   if (name.empty()) {
     // should not happen...
@@ -72,10 +69,10 @@ bool TRI_ExcludeCollectionReplication(std::string const& name,
       name == "_routing") {
     // these system collections will always be excluded
     return true;
-  }
-
-  if (!includeFoxxQueues && (name == StaticStrings::JobsCollection ||
-                             name == StaticStrings::QueuesCollection)) {
+  } 
+  
+  if (!includeFoxxQueues && 
+      (name == StaticStrings::JobsCollection || name == StaticStrings::QueuesCollection)) {
     return true;
   }
 

@@ -36,10 +36,9 @@ enum class VertexUniquenessLevel { NONE, PATH, GLOBAL };
 
 enum class EdgeUniquenessLevel { NONE, PATH, GLOBAL };
 
-std::ostream& operator<<(std::ostream& stream,
-                         VertexUniquenessLevel const& level);
-std::ostream& operator<<(std::ostream& stream,
-                         EdgeUniquenessLevel const& level);
+std::ostream& operator<<(std::ostream& stream, VertexUniquenessLevel const& level);
+std::ostream& operator<<(std::ostream& stream, EdgeUniquenessLevel const& level);
 
 }  // namespace graph
 }  // namespace arangodb
+

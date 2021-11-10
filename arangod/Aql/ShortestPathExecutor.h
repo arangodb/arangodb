@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
@@ -32,6 +30,8 @@
 #include "Aql/RegisterInfos.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathResult.h"
+
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 
@@ -49,7 +49,7 @@ class TraverserCache;
 
 namespace aql {
 
-template<BlockPassthrough>
+template <BlockPassthrough>
 class SingleRowFetcher;
 class OutputAqlItemRow;
 class NoStats;
@@ -75,11 +75,9 @@ class ShortestPathExecutorInfos {
     size_t operator()(OutputName v) const noexcept { return size_t(v); }
   };
 
-  ShortestPathExecutorInfos(
-      std::unique_ptr<graph::ShortestPathFinder>&& finder,
-      std::unordered_map<OutputName, RegisterId, OutputNameHash>&&
-          registerMapping,
-      InputVertex&& source, InputVertex&& target);
+  ShortestPathExecutorInfos(std::unique_ptr<graph::ShortestPathFinder>&& finder,
+                            std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
+                            InputVertex&& source, InputVertex&& target);
 
   ShortestPathExecutorInfos() = delete;
 
@@ -154,8 +152,7 @@ class ShortestPathExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough =
-        BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -171,8 +168,7 @@ class ShortestPathExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
-                                 OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
@@ -200,10 +196,8 @@ class ShortestPathExecutor {
    * In any case it will stay valid at least until the reference to the input
    * row is lost, or the builder is resetted.
    */
-  [[nodiscard]] auto getVertexId(
-      ShortestPathExecutorInfos::InputVertex const& vertex,
-      InputAqlItemRow& row, arangodb::velocypack::Builder& builder,
-      arangodb::velocypack::Slice& id) -> bool;
+  [[nodiscard]] auto getVertexId(ShortestPathExecutorInfos::InputVertex const& vertex,
+                                 InputAqlItemRow& row, arangodb::velocypack::Builder& builder, arangodb::velocypack::Slice& id) -> bool;
 
  private:
   Infos& _infos;
@@ -223,3 +217,4 @@ class ShortestPathExecutor {
 };
 }  // namespace aql
 }  // namespace arangodb
+

@@ -32,3 +32,4 @@ struct RocksDBV8Functions {
 };
 
 }  // namespace arangodb
+

@@ -31,8 +31,7 @@ auto aql::operator<<(std::ostream& out, AqlCallSet::DepCallPair const& callPair)
   return out << callPair.dependency << " => " << callPair.call;
 }
 
-auto aql::operator<<(std::ostream& out, AqlCallSet const& callSet)
-    -> std::ostream& {
+auto aql::operator<<(std::ostream& out, AqlCallSet const& callSet) -> std::ostream& {
   out << "[";
   auto first = true;
   for (auto const& it : callSet.calls) {

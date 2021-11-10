@@ -48,8 +48,7 @@ struct AsyncJobResult {
  public:
   AsyncJobResult();
 
-  AsyncJobResult(IdType jobId, Status status,
-                 std::shared_ptr<RestHandler>&& handler);
+  AsyncJobResult(IdType jobId, Status status, std::shared_ptr<RestHandler>&& handler);
 
   ~AsyncJobResult();
 
@@ -71,9 +70,7 @@ class AsyncJobManager {
   AsyncJobManager& operator=(AsyncJobManager const&) = delete;
 
  public:
-  typedef std::unordered_map<AsyncJobResult::IdType,
-                             std::pair<std::string, AsyncJobResult>>
-      JobList;
+  typedef std::unordered_map<AsyncJobResult::IdType, std::pair<std::string, AsyncJobResult>> JobList;
 
  public:
   AsyncJobManager();
@@ -94,8 +91,7 @@ class AsyncJobManager {
 
   std::vector<AsyncJobResult::IdType> pending(size_t maxCount);
   std::vector<AsyncJobResult::IdType> done(size_t maxCount);
-  std::vector<AsyncJobResult::IdType> byStatus(AsyncJobResult::Status,
-                                               size_t maxCount);
+  std::vector<AsyncJobResult::IdType> byStatus(AsyncJobResult::Status, size_t maxCount);
   void initAsyncJob(std::shared_ptr<RestHandler>);
   void finishAsyncJob(RestHandler*);
   std::pair<uint64_t, uint64_t> getNrPendingAndDone();
@@ -118,3 +114,4 @@ class AsyncJobManager {
 };
 }  // namespace rest
 }  // namespace arangodb
+

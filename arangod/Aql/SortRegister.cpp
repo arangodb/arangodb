@@ -40,8 +40,7 @@ namespace aql {
 SortRegister::SortRegister(RegisterId reg, SortElement const& element) noexcept
     : attributePath(element.attributePath), reg(reg), asc(element.ascending) {}
 
-void SortRegister::fill(ExecutionPlan const& /*execPlan*/,
-                        RegisterPlan const& regPlan,
+void SortRegister::fill(ExecutionPlan const& /*execPlan*/, RegisterPlan const& regPlan,
                         std::vector<SortElement> const& elements,
                         std::vector<SortRegister>& sortRegisters) {
   sortRegisters.reserve(elements.size());

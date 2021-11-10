@@ -28,8 +28,8 @@ namespace aql {
 
 /// @brief returns the current value of the steady clock.
 /// note that values produced by this function are not necessarily
-/// identical to unix timestamps, and are thus not meaningful by themselves.
-/// they are only meaningful to measure time differences, i.e. when
+/// identical to unix timestamps, and are thus not meaningful by themselves. 
+/// they are only meaningful to measure time differences, i.e. when 
 /// subtracting two of this function's return values from another.
 /// the values returned by this function are monotonically increasing,
 /// but not necessarily strictly monotonically increasing.
@@ -41,3 +41,4 @@ double elapsedSince(double previous);
 
 }  // namespace aql
 }  // namespace arangodb
+

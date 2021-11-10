@@ -21,10 +21,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Transactions.h"
-
 #include <v8.h>
-#include <velocypack/Slice.h>
+#include "Transactions.h"
 
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/ReadLocker.h"
@@ -42,6 +40,8 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbaseprivate.h"
 
+#include <velocypack/Slice.h>
+
 namespace arangodb {
 
 bool allowTransactions(v8::Isolate* isolate) {
@@ -52,11 +52,9 @@ bool allowTransactions(v8::Isolate* isolate) {
     // JavaScript transactions are not turned off, so allow them
     return true;
   }
-  // JavaScript transactions are turned off. However, we must still allow our
-  // internal ones
+  // JavaScript transactions are turned off. However, we must still allow our internal ones
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
-  return (v8security.isInternalContext(isolate) ||
-          v8security.isAdminScriptContext(isolate));
+  return (v8security.isInternalContext(isolate) || v8security.isAdminScriptContext(isolate));
 }
 
 Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
@@ -66,12 +64,11 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   //    TRI_V8_TRY_CATCH_BEGIN(isolate);
   //    TRI_V8_TRY_CATCH_END
   // outside of this function!
-
+  
   Result rv;
-
+  
   if (!allowTransactions(isolate)) {
-    return rv.reset(TRI_ERROR_FORBIDDEN,
-                    "JavaScript transactions are disabled");
+    return rv.reset(TRI_ERROR_FORBIDDEN, "JavaScript transactions are disabled");
   }
 
   READ_LOCKER(readLock, lock);
@@ -89,8 +86,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   v8::Handle<v8::Object> request = v8::Object::New(isolate);
   v8::Handle<v8::Value> jsPortTypeKey =
       TRI_V8_ASCII_STRING(isolate, "portType");
-  v8::Handle<v8::Value> jsPortTypeValue =
-      TRI_V8_ASCII_STD_STRING(isolate, portType);
+  v8::Handle<v8::Value> jsPortTypeValue = TRI_V8_ASCII_STD_STRING(isolate, portType);
   if (!request->Set(context, jsPortTypeKey, jsPortTypeValue).FromMaybe(false)) {
     rv.reset(TRI_ERROR_INTERNAL, "could not set portType");
     return rv;
@@ -146,15 +142,12 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   return rv;
 }
 
-Result executeTransactionJS(v8::Isolate* isolate,
-                            v8::Handle<v8::Value> const& arg,
-                            v8::Handle<v8::Value>& result,
-                            v8::TryCatch& tryCatch) {
+Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& arg,
+                            v8::Handle<v8::Value>& result, v8::TryCatch& tryCatch) {
   Result rv;
 
   if (!allowTransactions(isolate)) {
-    return rv.reset(TRI_ERROR_FORBIDDEN,
-                    "JavaScript transactions are disabled");
+    return rv.reset(TRI_ERROR_FORBIDDEN, "JavaScript transactions are disabled");
   }
 
   // treat the value as an object from now on
@@ -168,8 +161,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
   // is performed in `transaction::Options::fromVelocyPack`
   auto context = TRI_IGETC;
   if (TRI_HasProperty(context, isolate, object, "lockTimeout")) {
-    auto lockTimeout =
-        object->Get(context, TRI_V8_ASCII_STRING(isolate, "lockTimeout"));
+    auto lockTimeout = object->Get(context, TRI_V8_ASCII_STRING(isolate, "lockTimeout"));
     if (!lockTimeout.IsEmpty() &&
         !lockTimeout.FromMaybe(v8::Local<v8::Value>())->IsNumber()) {
       rv.reset(TRI_ERROR_BAD_PARAMETER,
@@ -182,8 +174,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
     if (!waitForSync.IsEmpty() &&
         !waitForSync.FromMaybe(v8::Local<v8::Value>())->IsBoolean() &&
         !waitForSync.FromMaybe(v8::Local<v8::Value>())->IsBooleanObject()) {
-      rv.reset(TRI_ERROR_BAD_PARAMETER,
-               "<waitForSync> must be a boolean value");
+      rv.reset(TRI_ERROR_BAD_PARAMETER, "<waitForSync> must be a boolean value");
       return rv;
     }
   }
@@ -215,8 +206,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
   // "collections"
   std::string collectionError;
 
-  auto maybeCollections =
-      object->Get(context, TRI_V8_ASCII_STRING(isolate, "collections"));
+  auto maybeCollections = object->Get(context, TRI_V8_ASCII_STRING(isolate, "collections"));
   if (!maybeCollections.IsEmpty() &&
       !maybeCollections.FromMaybe(v8::Local<v8::Value>())->IsObject()) {
     collectionError = "missing/invalid collections definition for transaction";
@@ -225,8 +215,8 @@ Result executeTransactionJS(v8::Isolate* isolate,
   }
 
   // extract collections
-  v8::Handle<v8::Object> collections = v8::Handle<v8::Object>::Cast(
-      maybeCollections.FromMaybe(v8::Local<v8::Value>()));
+  v8::Handle<v8::Object> collections = 
+    v8::Handle<v8::Object>::Cast(maybeCollections.FromMaybe(v8::Local<v8::Value>()));
 
   if (collections.IsEmpty()) {
     collectionError = "empty collections definition for transaction";
@@ -239,55 +229,53 @@ Result executeTransactionJS(v8::Isolate* isolate,
   std::vector<std::string> exclusiveCollections;
 
   if (TRI_HasProperty(context, isolate, collections, "allowImplicit")) {
-    trxOptions.allowImplicitCollectionsForRead = TRI_ObjectToBoolean(
-        isolate,
-        collections->Get(context, TRI_V8_ASCII_STRING(isolate, "allowImplicit"))
-            .FromMaybe(v8::Local<v8::Value>()));
+    trxOptions.allowImplicitCollectionsForRead =
+        TRI_ObjectToBoolean(isolate,
+                            collections->Get(context, 
+                                             TRI_V8_ASCII_STRING(isolate, "allowImplicit"))
+                            .FromMaybe(v8::Local<v8::Value>())
+                            );
   }
 
   auto getCollections =
-      [&isolate, &context](
-          v8::Handle<v8::Object> obj, std::vector<std::string>& collections,
-          char const* attributeName, std::string& collectionError) -> bool {
-    if (TRI_HasProperty(context, isolate, obj, attributeName)) {
-      auto localAttr =
-          obj->Get(context, TRI_V8_ASCII_STRING(isolate, attributeName))
-              .FromMaybe(v8::Local<v8::Value>());
-      if (localAttr->IsArray()) {
-        v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(localAttr);
+    [&isolate, &context](v8::Handle<v8::Object> obj, std::vector<std::string>& collections,
+                         char const* attributeName, std::string& collectionError) -> bool {
+      if (TRI_HasProperty(context, isolate, obj, attributeName)) {
+        auto localAttr = obj->Get(context, TRI_V8_ASCII_STRING(isolate, attributeName)).FromMaybe(v8::Local<v8::Value>());
+        if (localAttr->IsArray()) {
+          v8::Handle<v8::Array> names =
+            v8::Handle<v8::Array>::Cast(localAttr);
+          
 
-        for (uint32_t i = 0; i < names->Length(); ++i) {
-          v8::Handle<v8::Value> collection =
-              names->Get(context, i).FromMaybe(v8::Local<v8::Value>());
-          if (!collection->IsString()) {
-            collectionError += std::string(" Collection name #") +
-                               std::to_string(i) + " in array '" +
-                               attributeName + std::string("' is not a string");
-            return false;
+          for (uint32_t i = 0; i < names->Length(); ++i) {
+            v8::Handle<v8::Value> collection = names->Get(context, i).FromMaybe(v8::Local<v8::Value>());
+            if (!collection->IsString()) {
+              collectionError += std::string(" Collection name #") +
+                std::to_string(i) + " in array '" +
+                attributeName + std::string("' is not a string");
+              return false;
+            }
+
+            collections.emplace_back(TRI_ObjectToString(isolate, collection));
           }
-
-          collections.emplace_back(TRI_ObjectToString(isolate, collection));
-        }
-      } else if (localAttr->IsString()) {
-        collections.emplace_back(TRI_ObjectToString(isolate, localAttr));
-      } else {
-        collectionError +=
+        } else if (localAttr->IsString()) {
+          collections.emplace_back(TRI_ObjectToString(isolate, localAttr));
+        } else {
+          collectionError +=
             std::string(" There is no array in '") + attributeName + "'";
-        return false;
+          return false;
+        }
+        // intentionally falls through
       }
-      // intentionally falls through
-    }
-    return true;
-  };
+      return true;
+    };
 
   collectionError = "invalid collection definition for transaction: ";
   // collections.read
   bool isValid =
       (getCollections(collections, readCollections, "read", collectionError) &&
-       getCollections(collections, writeCollections, "write",
-                      collectionError) &&
-       getCollections(collections, exclusiveCollections, "exclusive",
-                      collectionError));
+       getCollections(collections, writeCollections, "write", collectionError) &&
+       getCollections(collections, exclusiveCollections, "exclusive", collectionError));
 
   if (!isValid) {
     rv.reset(TRI_ERROR_BAD_PARAMETER, collectionError);
@@ -308,9 +296,9 @@ Result executeTransactionJS(v8::Isolate* isolate,
   v8::Handle<v8::Value> params;
 
   if (TRI_HasProperty(context, isolate, object, "params")) {
-    params = v8::Handle<v8::Array>::Cast(
-        object->Get(context, TRI_V8_ASCII_STRING(isolate, "params"))
-            .FromMaybe(v8::Local<v8::Value>()));
+    params = v8::Handle<v8::Array>::Cast(object->Get(context,
+                                                     TRI_V8_ASCII_STRING(isolate, "params")
+                                                     ).FromMaybe(v8::Local<v8::Value>()));
   } else {
     params = v8::Undefined(isolate);
   }
@@ -323,8 +311,8 @@ Result executeTransactionJS(v8::Isolate* isolate,
   bool embed = false;
   auto maybeEmbed = object->Get(context, TRI_V8_ASCII_STRING(isolate, "embed"));
   if (!maybeEmbed.IsEmpty()) {
-    v8::Handle<v8::Value> v = v8::Handle<v8::Object>::Cast(
-        maybeEmbed.FromMaybe(v8::Local<v8::Value>()));
+    v8::Handle<v8::Value> v =
+      v8::Handle<v8::Object>::Cast(maybeEmbed.FromMaybe(v8::Local<v8::Value>()));
     embed = TRI_ObjectToBoolean(isolate, v);
   }
 
@@ -332,54 +320,48 @@ Result executeTransactionJS(v8::Isolate* isolate,
 
   // callback function
   v8::Handle<v8::Function> action;
-  auto maybeAction =
-      object->Get(context, TRI_V8_ASCII_STRING(isolate, "action"));
+  auto maybeAction = object->Get(context, TRI_V8_ASCII_STRING(isolate, "action"));
   if (!maybeAction.IsEmpty()) {
     if (maybeAction.FromMaybe(v8::Local<v8::Value>())->IsFunction()) {
-      action = v8::Handle<v8::Function>::Cast(
-          maybeAction.FromMaybe(v8::Local<v8::Value>()));
+      action = v8::Handle<v8::Function>::Cast(maybeAction.FromMaybe(v8::Local<v8::Value>()));
       v8::Local<v8::Value> v8_fnname = action->GetName();
       std::string fnname = TRI_ObjectToString(isolate, v8_fnname);
       if (fnname.length() == 0) {
-        action->SetName(
-            TRI_V8_ASCII_STRING(isolate, "userTransactionFunction"));
+        action->SetName(TRI_V8_ASCII_STRING(isolate, "userTransactionFunction"));
       }
     } else if (maybeAction.FromMaybe(v8::Local<v8::Value>())->IsString()) {
       // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-      v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(
-          current->Get(context, TRI_V8_ASCII_STRING(isolate, "Function"))
-              .FromMaybe(v8::Local<v8::Value>()));
-
-      // Invoke Function constructor to create function with the given body and
-      // the arguments
-      std::string body = TRI_ObjectToString(
-          isolate, TRI_GetProperty(context, isolate, object, "action"));
+      v8::Local<v8::Function> ctor =
+        v8::Local<v8::Function>::Cast(current->Get(context, TRI_V8_ASCII_STRING(isolate, "Function")
+                                                   ).FromMaybe(v8::Local<v8::Value>()));
+      
+      // Invoke Function constructor to create function with the given body and the
+      // arguments
+      std::string body =
+        TRI_ObjectToString(isolate,
+                           TRI_GetProperty(context, isolate, object, "action"));
       body = "return (" + body + ")(params);";
       v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                        TRI_V8_STD_STRING(isolate, body)};
-      v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 2, args)
-                                           .FromMaybe(v8::Local<v8::Object>());
+      v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 2, args).FromMaybe(v8::Local<v8::Object>());
 
       action = v8::Local<v8::Function>::Cast(function);
       if (tryCatch.HasCaught()) {
         if (!tryCatch.Message().IsEmpty()) {
-          v8::String::Utf8Value tryCatchMessage(isolate,
-                                                tryCatch.Message()->Get());
+          v8::String::Utf8Value tryCatchMessage(isolate, tryCatch.Message()->Get());
           if (*tryCatchMessage != nullptr) {
             actionError += " - ";
             actionError += *tryCatchMessage;
           }
         }
-        auto stacktraceV8 =
-            tryCatch.StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
+        auto stacktraceV8 = tryCatch.StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
         v8::String::Utf8Value tryCatchStackTrace(isolate, stacktraceV8);
         if (*tryCatchStackTrace != nullptr) {
           actionError += " - ";
           actionError += *tryCatchStackTrace;
         }
         rv.reset(TRI_ERROR_BAD_PARAMETER, actionError);
-        tryCatch
-            .Reset();  // reset as we have transferred the error message into
+        tryCatch.Reset();  // reset as we have transferred the error message into
         // the Result
         return rv;
       }
@@ -395,14 +377,13 @@ Result executeTransactionJS(v8::Isolate* isolate,
   transaction::V8Context ctx(vocbase, embed);
 
   // start actual transaction
-  transaction::Methods trx(std::shared_ptr<transaction::Context>(
-                               std::shared_ptr<transaction::Context>(), &ctx),
-                           readCollections, writeCollections,
-                           exclusiveCollections, trxOptions);
+  transaction::Methods trx(
+    std::shared_ptr<transaction::Context>(std::shared_ptr<transaction::Context>(), &ctx),
+    readCollections, writeCollections,
+    exclusiveCollections, trxOptions);
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (ServerState::instance()->isCoordinator()) {
-    // No one knows our Transaction ID yet, so we an run FAST_LOCK_ROUND and
-    // potentialy reroll it.
+    // No one knows our Transaction ID yet, so we an run FAST_LOCK_ROUND and potentialy reroll it.
     trx.addHint(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
   }
 
@@ -411,10 +392,11 @@ Result executeTransactionJS(v8::Isolate* isolate,
   if (rv.fail()) {
     return rv;
   }
-
-  auto guard = scopeGuard([&ctx]() noexcept { ctx.exitV8Context(); });
-  if (transaction::V8Context::isEmbedded()) {  // do not enter context if
-                                               // already embedded
+  
+  auto guard = scopeGuard([&ctx]() noexcept {
+    ctx.exitV8Context();
+  });
+  if (transaction::V8Context::isEmbedded()) { // do not enter context if already embedded
     guard.cancel();
   } else {
     ctx.enterV8Context();
@@ -423,8 +405,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
   try {
     v8::Handle<v8::Value> arguments = params;
 
-    result = action->Call(TRI_IGETC, current, 1, &arguments)
-                 .FromMaybe(v8::Local<v8::Value>());
+    result = action->Call(TRI_IGETC, current, 1, &arguments).FromMaybe(v8::Local<v8::Value>());
 
     if (tryCatch.HasCaught()) {
       trx.abort();

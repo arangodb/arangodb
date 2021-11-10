@@ -25,17 +25,19 @@
 
 #include "AqlValueMaterializer.h"
 
-#include <velocypack/Slice.h>
-
 #include "Basics/debugging.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
+
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 AqlValueMaterializer::AqlValueMaterializer(velocypack::Options const* options)
-    : options(options), materialized(), hasCopied(false) {}
+    : options(options),
+      materialized(),
+      hasCopied(false) {}
 
 AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer const& other)
     : options(other.options),
@@ -47,8 +49,7 @@ AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer const& other)
   }
 }
 
-AqlValueMaterializer& AqlValueMaterializer::operator=(
-    AqlValueMaterializer const& other) {
+AqlValueMaterializer& AqlValueMaterializer::operator=(AqlValueMaterializer const& other) {
   if (this != &other) {
     TRI_ASSERT(options == other.options);  // must be from same transaction
     options = other.options;
@@ -64,8 +65,7 @@ AqlValueMaterializer& AqlValueMaterializer::operator=(
   return *this;
 }
 
-AqlValueMaterializer::AqlValueMaterializer(
-    AqlValueMaterializer&& other) noexcept
+AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer&& other) noexcept
     : options(other.options),
       materialized(other.materialized),
       hasCopied(other.hasCopied) {
@@ -75,8 +75,7 @@ AqlValueMaterializer::AqlValueMaterializer(
   other.materialized = AqlValue();
 }
 
-AqlValueMaterializer& AqlValueMaterializer::operator=(
-    AqlValueMaterializer&& other) noexcept {
+AqlValueMaterializer& AqlValueMaterializer::operator=(AqlValueMaterializer&& other) noexcept {
   if (this != &other) {
     TRI_ASSERT(options == other.options);  // must be from same transaction
     options = other.options;

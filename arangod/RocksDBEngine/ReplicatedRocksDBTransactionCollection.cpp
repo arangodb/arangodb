@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
-
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -48,6 +47,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicatedRocksDBTransactionCollection.h"
+
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
@@ -58,12 +58,10 @@
 using namespace arangodb;
 
 ReplicatedRocksDBTransactionCollection::ReplicatedRocksDBTransactionCollection(
-    ReplicatedRocksDBTransactionState* trx, DataSourceId cid,
-    AccessMode::Type accessType)
+    ReplicatedRocksDBTransactionState* trx, DataSourceId cid, AccessMode::Type accessType)
     : RocksDBTransactionCollection(trx, cid, accessType) {}
 
-ReplicatedRocksDBTransactionCollection::
-    ~ReplicatedRocksDBTransactionCollection() {}
+ReplicatedRocksDBTransactionCollection::~ReplicatedRocksDBTransactionCollection() {}
 
 Result ReplicatedRocksDBTransactionCollection::beginTransaction() {
   auto* trx = static_cast<RocksDBTransactionState*>(_transaction);
@@ -73,15 +71,13 @@ Result ReplicatedRocksDBTransactionCollection::beginTransaction() {
 
   if (trx->isReadOnlyTransaction()) {
     if (trx->isSingleOperation()) {
-      _rocksMethods =
-          std::make_unique<RocksDBSingleOperationReadOnlyMethods>(trx, db);
+      _rocksMethods = std::make_unique<RocksDBSingleOperationReadOnlyMethods>(trx, db);
     } else {
       _rocksMethods = std::make_unique<RocksDBReadOnlyMethods>(trx, db);
     }
   } else {
     if (trx->isSingleOperation()) {
-      _rocksMethods =
-          std::make_unique<RocksDBSingleOperationTrxMethods>(trx, db);
+      _rocksMethods = std::make_unique<RocksDBSingleOperationTrxMethods>(trx, db);
     } else {
       _rocksMethods = std::make_unique<RocksDBTrxMethods>(trx, db);
     }
@@ -106,17 +102,13 @@ void ReplicatedRocksDBTransactionCollection::maybeDisableIndexing() {
   // single operation transaction or we are sure we are writing
   // unique keys
 
-  bool disableIndexing =
-      !AccessMode::isWriteOrExclusive(accessType()) ||
-      !std::any_of(collection()->getIndexes().begin(),
-                   collection()->getIndexes().end(), [](auto& idx) {
-                     // primary index is unique, but we can ignore it here.
-                     // for secondary unique indexes we need to turn off the
-                     // NO_INDEXING optimization
-                     return idx->type() !=
-                                Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
-                            idx->unique();
-                   });
+  bool disableIndexing = !AccessMode::isWriteOrExclusive(accessType()) ||
+    !std::any_of(collection()->getIndexes().begin(), collection()->getIndexes().end(),
+      [](auto& idx) {
+        // primary index is unique, but we can ignore it here.
+        // for secondary unique indexes we need to turn off the NO_INDEXING optimization
+        return idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX && idx->unique();
+      });
 
   if (disableIndexing) {
     // only turn it on when safe...
@@ -134,33 +126,29 @@ Result ReplicatedRocksDBTransactionCollection::abortTransaction() {
   return _rocksMethods->abortTransaction();
 }
 
-void ReplicatedRocksDBTransactionCollection::beginQuery(
-    bool isModificationQuery) {
+void ReplicatedRocksDBTransactionCollection::beginQuery(bool isModificationQuery) {
   auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
   if (trxMethods) {
     trxMethods->beginQuery(isModificationQuery);
   }
 }
 
-void ReplicatedRocksDBTransactionCollection::endQuery(
-    bool isModificationQuery) noexcept {
+void ReplicatedRocksDBTransactionCollection::endQuery(bool isModificationQuery) noexcept {
   auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
   if (trxMethods) {
     trxMethods->endQuery(isModificationQuery);
   }
 }
 
-TRI_voc_tick_t ReplicatedRocksDBTransactionCollection::lastOperationTick()
-    const noexcept {
+TRI_voc_tick_t ReplicatedRocksDBTransactionCollection::lastOperationTick() const noexcept {
   return _rocksMethods->lastOperationTick();
 }
 
 uint64_t ReplicatedRocksDBTransactionCollection::numCommits() const {
   return _rocksMethods->numCommits();
 }
-
-uint64_t ReplicatedRocksDBTransactionCollection::numOperations()
-    const noexcept {
+ 
+uint64_t ReplicatedRocksDBTransactionCollection::numOperations() const noexcept {
   return _rocksMethods->numOperations();
 }
 

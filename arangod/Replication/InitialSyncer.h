@@ -23,10 +23,6 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
-
-#include <mutex>
-
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Replication/ReplicationApplierConfiguration.h"
@@ -34,15 +30,18 @@
 #include "Replication/utilities.h"
 #include "Scheduler/Scheduler.h"
 
+#include <velocypack/Slice.h>
+
+#include <mutex>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
 class InitialSyncer : public Syncer {
  public:
-  explicit InitialSyncer(
-      ReplicationApplierConfiguration const&,
-      replutils::ProgressInfo::Setter s = [](std::string const&) -> void {});
+  explicit InitialSyncer(ReplicationApplierConfiguration const&,
+                         replutils::ProgressInfo::Setter s = [](std::string const&) -> void {});
 
   ~InitialSyncer();
 
@@ -66,9 +65,10 @@ class InitialSyncer : public Syncer {
  protected:
   replutils::BatchInfo _batch;
   replutils::ProgressInfo _progress;
-
+  
   /// recurring task to keep the batch alive
   std::mutex _batchPingMutex;
   Scheduler::WorkHandle _batchPingTimer;
 };
 }  // namespace arangodb
+

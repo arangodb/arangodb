@@ -25,15 +25,17 @@
 
 #pragma once
 
-#include "EdgeData.h"
-#include "MessageData.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/Algos/AIR/AbstractAccumulator.h"
-#include "Pregel/Algos/AIR/AccumulatorOptions.h"
-#include "Pregel/Algos/AIR/Accumulators.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/MessageFormat.h"
 #include "Pregel/VertexComputation.h"
+
+#include "Pregel/Algos/AIR/AbstractAccumulator.h"
+#include "Pregel/Algos/AIR/AccumulatorOptions.h"
+#include "Pregel/Algos/AIR/Accumulators.h"
+
+#include "EdgeData.h"
+#include "MessageData.h"
 #include "VertexData.h"
 
 namespace arangodb::pregel::algos::accumulators {
@@ -47,18 +49,15 @@ using message_type = MessageData;
 using graph_format = GraphFormat<vertex_type, edge_type>;
 using algorithm = Algorithm<vertex_type, edge_type, message_type>;
 using message_format = MessageFormat<message_type>;
-using vertex_computation =
-    VertexComputation<vertex_type, edge_type, message_type>;
+using vertex_computation = VertexComputation<vertex_type, edge_type, message_type>;
 using message_combiner = MessageCombiner<message_type>;
 
-using AccumulatorMap =
-    std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>,
-                       std::less<>>;
+using AccumulatorMap = std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>>;
 
 struct ProgrammablePregelAlgorithm : public algorithm {
  public:
-  explicit ProgrammablePregelAlgorithm(
-      application_features::ApplicationServer& server, VPackSlice userParams);
+  explicit ProgrammablePregelAlgorithm(application_features::ApplicationServer& server,
+                              VPackSlice userParams);
 
   bool supportsAsyncMode() const override;
   bool supportsCompensation() const override;
@@ -71,10 +70,8 @@ struct ProgrammablePregelAlgorithm : public algorithm {
 
   bool getBindParameter(std::string_view, VPackBuilder& into) const;
 
-  ::arangodb::pregel::MasterContext* masterContext(
-      VPackSlice userParams) const override;
-  ::arangodb::pregel::WorkerContext* workerContext(
-      VPackSlice userParams) const override;
+  ::arangodb::pregel::MasterContext* masterContext(VPackSlice userParams) const override;
+  ::arangodb::pregel::WorkerContext* workerContext(VPackSlice userParams) const override;
 
   IAggregator* aggregator(std::string const& name) const override;
 
@@ -87,4 +84,4 @@ struct ProgrammablePregelAlgorithm : public algorithm {
   VertexAccumulatorOptions _options;
 };
 
-}  // namespace arangodb::pregel::algos::accumulators
+}  // namespace arangodb

@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
-
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -33,6 +31,8 @@
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace basics {
@@ -52,8 +52,7 @@ class SortNode : public ExecutionNode {
   static std::string const& sorterTypeName(SorterType);
 
  public:
-  SortNode(ExecutionPlan* plan, ExecutionNodeId id,
-           SortElementVector const& elements, bool stable)
+  SortNode(ExecutionPlan* plan, ExecutionNodeId id, SortElementVector const& elements, bool stable)
       : ExecutionNode(plan, id),
         _reinsertInCluster(true),
         _elements(elements),
@@ -62,8 +61,7 @@ class SortNode : public ExecutionNode {
   SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
            SortElementVector const& elements, bool stable);
 
-  /// @brief if non-zero, limits the number of elements that the node will
-  /// return
+  /// @brief if non-zero, limits the number of elements that the node will return
   void setLimit(size_t limit) { _limit = limit; }
 
   size_t limit() const noexcept { return _limit; }
@@ -77,22 +75,19 @@ class SortNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    return cloneHelper(
-        std::make_unique<SortNode>(plan, _id, _elements, _stable),
-        withDependencies, withProperties);
+    return cloneHelper(std::make_unique<SortNode>(plan, _id, _elements, _stable),
+                       withDependencies, withProperties);
   }
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
-
-  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
-                            replacements) override;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -105,8 +100,7 @@ class SortNode : public ExecutionNode {
   SortElementVector const& elements() const { return _elements; }
 
   /// @brief returns all sort information
-  SortInformation getSortInformation(ExecutionPlan*,
-                                     arangodb::basics::StringBuffer*) const;
+  SortInformation getSortInformation(ExecutionPlan*, arangodb::basics::StringBuffer*) const;
 
   std::vector<std::pair<ExecutionNode*, bool>> getCalcNodePairs();
 
@@ -126,14 +120,13 @@ class SortNode : public ExecutionNode {
   /// @brief if this node is needed on DBServers in cluster.
   /// if set to false that means some optimizer rule
   /// has already included sorting in some other node and
-  /// this node is left in plan only in sake of GatherNode
+  /// this node is left in plan only in sake of GatherNode 
   /// to properly handle merging.
   bool _reinsertInCluster;
 
  protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&,
-                      unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
   /// @brief pairs, consisting of variable and sort direction
@@ -149,3 +142,4 @@ class SortNode : public ExecutionNode {
 
 }  // namespace aql
 }  // namespace arangodb
+

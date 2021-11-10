@@ -23,13 +23,13 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 struct OperationOptions;
@@ -38,12 +38,7 @@ class SingleCollectionTransaction;
 struct RestImportResult {
  public:
   RestImportResult()
-      : _numErrors(0),
-        _numEmpty(0),
-        _numCreated(0),
-        _numIgnored(0),
-        _numUpdated(0),
-        _errors() {}
+      : _numErrors(0), _numEmpty(0), _numCreated(0), _numIgnored(0), _numUpdated(0), _errors() {}
 
   ~RestImportResult() = default;
 
@@ -94,8 +89,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   ErrorCode handleSingleDocument(SingleCollectionTransaction& trx,
-                                 VPackBuilder& tempBuilder,
-                                 RestImportResult& result,
+                                 VPackBuilder& tempBuilder, RestImportResult& result,
                                  arangodb::velocypack::Builder& babies,
                                  arangodb::velocypack::Slice slice,
                                  bool isEdgeCollection, size_t i);
@@ -125,11 +119,9 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief perform the actual import (insert/update/replace) operations
   //////////////////////////////////////////////////////////////////////////////
 
-  Result performImport(SingleCollectionTransaction& trx,
-                       RestImportResult& result,
-                       std::string const& collectionName,
-                       VPackBuilder const& babies, bool complete,
-                       OperationOptions const& opOptions);
+  Result performImport(SingleCollectionTransaction& trx, RestImportResult& result,
+                       std::string const& collectionName, VPackBuilder const& babies,
+                       bool complete, OperationOptions const& opOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates the result
@@ -148,8 +140,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void createVelocyPackObject(VPackBuilder&, arangodb::velocypack::Slice const&,
-                              arangodb::velocypack::Slice const&, std::string&,
-                              size_t);
+                              arangodb::velocypack::Slice const&, std::string&, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks the keys, returns true if all values in the list are
@@ -191,3 +182,4 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   bool _ignoreMissing;
 };
 }  // namespace arangodb
+

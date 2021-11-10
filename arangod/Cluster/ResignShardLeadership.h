@@ -44,3 +44,4 @@ class ResignShardLeadership : public ActionBase, public ShardDefinition {
 
 }  // namespace maintenance
 }  // namespace arangodb
+

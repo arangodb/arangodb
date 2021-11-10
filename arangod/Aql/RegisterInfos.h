@@ -26,13 +26,13 @@
 
 #pragma once
 
-#include <Containers/HashSet.h>
+#include "Aql/types.h"
 
+#include <Containers/HashSet.h>
 #include <boost/container/flat_set.hpp>
+
 #include <memory>
 #include <unordered_set>
-
-#include "Aql/types.h"
 
 namespace arangodb {
 namespace aql {
@@ -45,8 +45,8 @@ namespace aql {
 class RegisterInfos {
  public:
   /**
-   * @brief Generic register information for ExecutionBlocks and related
-   * classes, like OutputAqlItemRow.
+   * @brief Generic register information for ExecutionBlocks and related classes,
+   *        like OutputAqlItemRow.
    * @param readableInputRegisters Registers the Block may use as input
    * @param writeableOutputRegisters Registers the Block writes into
    * @param nrInputRegisters Width of input AqlItemBlocks
@@ -64,17 +64,13 @@ class RegisterInfos {
    *   RegisterId register = it->second.registerId;
    */
 
-  RegisterInfos(RegIdSet readableInputRegisters,
-                RegIdSet writeableOutputRegisters,
+  RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
                 RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                RegIdSet const& registersToClear,
-                RegIdSetStack const& registersToKeep);
+                RegIdSet const& registersToClear, RegIdSetStack const& registersToKeep);
 
-  RegisterInfos(RegIdSet readableInputRegisters,
-                RegIdSet writeableOutputRegisters,
+  RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
                 RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                RegIdFlatSet registersToClear,
-                RegIdFlatSetStack registersToKeep);
+                RegIdFlatSet registersToClear, RegIdFlatSetStack registersToKeep);
 
   RegisterInfos(RegisterInfos&&) = default;
   RegisterInfos(RegisterInfos const&) = default;
@@ -135,3 +131,4 @@ class RegisterInfos {
 
 }  // namespace aql
 }  // namespace arangodb
+

@@ -22,13 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestSimpleHandler.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Dumper.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Aql/BindParameters.h"
 #include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
@@ -42,14 +35,19 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestSimpleHandler::RestSimpleHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response, arangodb::aql::QueryRegistry* queryRegistry)
-    : RestCursorHandler(server, request, response, queryRegistry),
-      _silent(true) {}
+RestSimpleHandler::RestSimpleHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response,
+                                     arangodb::aql::QueryRegistry* queryRegistry)
+    : RestCursorHandler(server, request, response, queryRegistry), _silent(true) {}
 
 RestStatus RestSimpleHandler::execute() {
   // extract the request type
@@ -82,8 +80,7 @@ RestStatus RestSimpleHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -105,8 +102,7 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
     collectionName = value.copyString();
 
-    if (!collectionName.empty() && collectionName[0] >= '0' &&
-        collectionName[0] <= '9') {
+    if (!collectionName.empty() && collectionName[0] >= '0' && collectionName[0] <= '9') {
       // If we have a numeric name we probably have to translate it.
       CollectionNameResolver resolver(_vocbase);
 
@@ -198,8 +194,7 @@ RestStatus RestSimpleHandler::handleQueryResult() {
   // If we get here some checks before have already failed, we are
   // in an invalid state now.
   TRI_ASSERT(false);
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -225,8 +220,7 @@ void RestSimpleHandler::handleQueryResultRemoveByKeys() {
   result.add("removed", VPackValue(removed));
   result.add("ignored", VPackValue(ignored));
   result.add(StaticStrings::Error, VPackValue(false));
-  result.add(StaticStrings::Code,
-             VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+  result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   if (!_silent) {
     result.add("old", _queryResult.data->slice());
   }
@@ -251,8 +245,7 @@ void RestSimpleHandler::handleQueryResultLookupByKeys() {
                VPackValue(static_cast<int>(_response->responseCode())));
   }
 
-  generateResult(rest::ResponseCode::OK, std::move(resultBuffer),
-                 _queryResult.context);
+  generateResult(rest::ResponseCode::OK, std::move(resultBuffer), _queryResult.context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -305,8 +298,7 @@ RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   data.openObject();  // bindVars
   data.add("@collection", VPackValue(collectionName));
   data.add(VPackValue("keys"));
-  arangodb::aql::BindParameters::stripCollectionNames(keys, collectionName,
-                                                      data);
+  arangodb::aql::BindParameters::stripCollectionNames(keys, collectionName, data);
   data.close();  // bindVars
   data.close();
 

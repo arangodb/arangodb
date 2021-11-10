@@ -23,16 +23,16 @@
 
 #pragma once
 
-#include <chrono>
-
 #include "Basics/Result.h"
+
+#include <chrono>
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}  // namespace velocypack
-
+}
+  
 struct HealthData {
   Result res;
   /// @brief timestamp of full last health check execution. we only execute the
@@ -46,4 +46,5 @@ struct HealthData {
   void toVelocyPack(velocypack::Builder& builder) const;
 };
 
-}  // namespace arangodb
+}
+

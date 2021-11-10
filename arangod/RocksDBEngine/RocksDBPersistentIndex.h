@@ -46,3 +46,4 @@ class RocksDBPersistentIndex final : public RocksDBVPackIndex {
 };
 
 }  // namespace arangodb
+

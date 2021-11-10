@@ -55,3 +55,4 @@ class CacheRebalancerThread final : public Thread {
 };
 
 };  // end namespace arangodb
+

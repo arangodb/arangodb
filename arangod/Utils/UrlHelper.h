@@ -24,9 +24,10 @@
 #pragma once
 
 #include <optional>
+#include <variant>
+
 #include <string>
 #include <utility>
-#include <variant>
 #include <vector>
 
 namespace arangodb {
@@ -94,8 +95,7 @@ class Port {
 
 class Authority {
  public:
-  Authority(std::optional<UserInfo> userInfo, Host host,
-            std::optional<Port> port);
+  Authority(std::optional<UserInfo> userInfo, Host host, std::optional<Port> port);
 
   std::optional<UserInfo> const& userInfo() const noexcept;
   Host const& host() const noexcept;
@@ -216,3 +216,4 @@ std::ostream& operator<<(std::ostream&, UserInfo const&);
 
 }  // namespace url
 }  // namespace arangodb
+

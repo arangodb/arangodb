@@ -30,3 +30,4 @@ struct TRI_v8_global_t;
 
 void TRI_InitV8Users(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
                      TRI_v8_global_t* v8g, v8::Isolate* isolate);
+

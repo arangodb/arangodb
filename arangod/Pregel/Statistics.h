@@ -27,8 +27,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Logger/LogMacros.h"
 #include "Pregel/Utils.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb {
 namespace pregel {
@@ -119,8 +119,7 @@ struct StatsManager {
       send += pair.second.sendCount;
       received += pair.second.receivedCount;
     }
-    LOG_TOPIC("26dad", TRACE, Logger::PREGEL)
-        << send << " - " << received << " : " << send - received;
+    LOG_TOPIC("26dad", TRACE, Logger::PREGEL) << send << " - " << received << " : " << send - received;
   }
 
   /// tests if active count is greater 0

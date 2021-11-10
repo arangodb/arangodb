@@ -52,8 +52,8 @@ void throwArrayExpectedException(AqlValue const& value) {
 }
 }  // namespace
 
-EnumerateListExecutorInfos::EnumerateListExecutorInfos(
-    RegisterId inputRegister, RegisterId outputRegister)
+EnumerateListExecutorInfos::EnumerateListExecutorInfos(RegisterId inputRegister,
+                                                       RegisterId outputRegister)
     : _inputRegister(inputRegister), _outputRegister(outputRegister) {}
 
 RegisterId EnumerateListExecutorInfos::getInputRegister() const noexcept {
@@ -64,15 +64,10 @@ RegisterId EnumerateListExecutorInfos::getOutputRegister() const noexcept {
   return _outputRegister;
 }
 
-EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
-                                             EnumerateListExecutorInfos& infos)
-    : _infos(infos),
-      _currentRow{CreateInvalidInputRowHint{}},
-      _inputArrayPosition(0),
-      _inputArrayLength(0) {}
+EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos& infos)
+    : _infos(infos), _currentRow{CreateInvalidInputRowHint{}}, _inputArrayPosition(0), _inputArrayLength(0) {}
 
-void EnumerateListExecutor::initializeNewRow(
-    AqlItemBlockInputRange& inputRange) {
+void EnumerateListExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange) {
   if (_currentRow) {
     inputRange.advanceDataRow();
   }
@@ -97,8 +92,7 @@ void EnumerateListExecutor::initializeNewRow(
 void EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
   bool mustDestroy;
   AqlValue const& inputList = _currentRow.getValue(_infos.getInputRegister());
-  AqlValue innerValue =
-      getAqlValue(inputList, _inputArrayPosition, mustDestroy);
+  AqlValue innerValue = getAqlValue(inputList, _inputArrayPosition, mustDestroy);
   AqlValueGuard guard(innerValue, mustDestroy);
 
   TRI_IF_FAILURE("EnumerateListBlock::getSome") {
@@ -116,8 +110,7 @@ size_t EnumerateListExecutor::skipArrayElement(size_t toSkip) {
   size_t skipped = 0;
 
   if (toSkip <= _inputArrayLength - _inputArrayPosition) {
-    // if we're skipping less or exact the amount of elements we can skip with
-    // toSkip
+    // if we're skipping less or exact the amount of elements we can skip with toSkip
     _inputArrayPosition += toSkip;
     skipped = toSkip;
   } else if (toSkip > _inputArrayLength - _inputArrayPosition) {
@@ -154,9 +147,8 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
   return {inputRange.upstreamState(), NoStats{}, upstreamCall};
 }
 
-std::tuple<ExecutorState, NoStats, size_t, AqlCall>
-EnumerateListExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
-                                     AqlCall& call) {
+std::tuple<ExecutorState, NoStats, size_t, AqlCall> EnumerateListExecutor::skipRowsRange(
+    AqlItemBlockInputRange& inputRange, AqlCall& call) {
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (inputRange.hasDataRow() && call.shouldSkip()) {
@@ -169,7 +161,7 @@ EnumerateListExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 
     TRI_ASSERT(_inputArrayPosition < _inputArrayLength);
 
-    auto const skip = std::invoke([&] {
+    auto const skip = std::invoke([&]{
       // if offset is > 0, we're in offset skip phase
       if (call.getOffset() > 0) {
         // we still need to skip offset entries
@@ -188,8 +180,7 @@ EnumerateListExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     // fullCount will always skip the complete array
     return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), AqlCall{}};
   }
-  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(),
-          AqlCall{}};
+  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), AqlCall{}};
 }
 
 void EnumerateListExecutor::initialize() {
@@ -200,8 +191,7 @@ void EnumerateListExecutor::initialize() {
 
 /// @brief create an AqlValue from the inVariable using the current _index
 AqlValue EnumerateListExecutor::getAqlValue(AqlValue const& inVarReg,
-                                            size_t const& pos,
-                                            bool& mustDestroy) {
+                                            size_t const& pos, bool& mustDestroy) {
   TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

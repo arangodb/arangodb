@@ -44,8 +44,7 @@ class LogicalCollection;
 
 class RocksDBRevisionReplicationIterator : public RevisionReplicationIterator {
  public:
-  RocksDBRevisionReplicationIterator(LogicalCollection&,
-                                     rocksdb::Snapshot const*);
+  RocksDBRevisionReplicationIterator(LogicalCollection&, rocksdb::Snapshot const*);
   RocksDBRevisionReplicationIterator(LogicalCollection&, transaction::Methods&);
 
   virtual bool hasMore() const override;

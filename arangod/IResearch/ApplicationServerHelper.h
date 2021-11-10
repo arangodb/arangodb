@@ -40,15 +40,15 @@ namespace iresearch {
 bool addFunction(arangodb::aql::AqlFunctionFeature& functions,
                  arangodb::aql::Function const& function);
 
-arangodb::aql::Function const* getFunction(
-    arangodb::aql::AqlFunctionFeature& functions, std::string const& name);
+arangodb::aql::Function const* getFunction(arangodb::aql::AqlFunctionFeature& functions,
+                                           std::string const& name);
 
-// FIXME: remove this overload after C++20 and use heterogenious lookup in
-// functions Feature
-inline arangodb::aql::Function const* getFunction(
-    arangodb::aql::AqlFunctionFeature& functions, std::string_view name) {
+// FIXME: remove this overload after C++20 and use heterogenious lookup in functions Feature
+inline arangodb::aql::Function const* getFunction(arangodb::aql::AqlFunctionFeature& functions,
+                                                  std::string_view  name) {
   return getFunction(functions, static_cast<std::string>(name));
 }
 
 }  // namespace iresearch
 }  // namespace arangodb
+

@@ -70,3 +70,4 @@ static_assert(sizeof(LocalDocumentId) == sizeof(LocalDocumentId::BaseType),
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::LocalDocumentId)
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::LocalDocumentId)
+

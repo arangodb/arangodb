@@ -31,8 +31,7 @@ namespace rest {
 
 class AcceptorUnixDomain final : public Acceptor {
  public:
-  AcceptorUnixDomain(rest::GeneralServer& server, rest::IoContext& ctx,
-                     Endpoint* endpoint)
+  AcceptorUnixDomain(rest::GeneralServer& server, rest::IoContext& ctx, Endpoint* endpoint)
       : Acceptor(server, ctx, endpoint), _acceptor(ctx.io_context) {}
 
  public:

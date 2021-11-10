@@ -107,8 +107,7 @@ class Utils {
   /// Dict of messages sent from WorkerContext to MasterContext after every GSS
   static std::string const workerToMasterMessagesKey;
 
-  /// Dict of messages sent from MasterContext to all WorkerContexts before
-  /// every GSS
+  /// Dict of messages sent from MasterContext to all WorkerContexts before every GSS
   static std::string const masterToWorkerMessagesKey;
 
   /// Communicates the # of active vertices to the conductor
@@ -133,12 +132,10 @@ class Utils {
   // pass the db name and either "worker" or "conductor" as target.
   static std::string baseUrl(std::string const& target);
 
-  static int64_t countDocuments(TRI_vocbase_t* vocbase,
-                                std::string const& collection);
+  static int64_t countDocuments(TRI_vocbase_t* vocbase, std::string const& collection);
 
   static ErrorCode resolveShard(ClusterInfo& ci, WorkerConfig const* config,
-                                std::string const& collectionName,
-                                std::string const& shardKey,
+                                std::string const& collectionName, std::string const& shardKey,
                                 arangodb::velocypack::StringRef vertexKey,
                                 std::string& responsibleShard);
 };

@@ -23,9 +23,9 @@
 
 #include "RocksDBReadOnlyMethods.h"
 
-#include <rocksdb/db.h>
-
 #include "RocksDBEngine/RocksDBTransactionState.h"
+
+#include <rocksdb/db.h>
 
 using namespace arangodb;
 
@@ -37,12 +37,13 @@ RocksDBReadOnlyMethods::RocksDBReadOnlyMethods(RocksDBTransactionState* state,
   _readOptions.fill_cache = _state->options().fillBlockCache;
 }
 
-RocksDBReadOnlyMethods::~RocksDBReadOnlyMethods() { releaseSnapshot(); }
+RocksDBReadOnlyMethods::~RocksDBReadOnlyMethods() {
+  releaseSnapshot();
+}
 
 Result RocksDBReadOnlyMethods::beginTransaction() {
   TRI_ASSERT(_readOptions.snapshot == nullptr);
-  _readOptions.snapshot =
-      _db->GetSnapshot();  // must call ReleaseSnapshot later
+  _readOptions.snapshot = _db->GetSnapshot();  // must call ReleaseSnapshot later
   return {};
 }
 
@@ -61,8 +62,7 @@ rocksdb::ReadOptions RocksDBReadOnlyMethods::iteratorReadOptions() const {
 }
 
 /// @brief acquire a database snapshot if we do not yet have one.
-/// Returns true if a snapshot was acquired, otherwise false (i.e., if we
-/// already had a snapshot)
+/// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
 bool RocksDBReadOnlyMethods::ensureSnapshot() {
   if (_readOptions.snapshot == nullptr) {
     _readOptions.snapshot = _db->GetSnapshot();
@@ -71,8 +71,7 @@ bool RocksDBReadOnlyMethods::ensureSnapshot() {
   return false;
 }
 
-rocksdb::SequenceNumber RocksDBReadOnlyMethods::GetSequenceNumber()
-    const noexcept {
+rocksdb::SequenceNumber RocksDBReadOnlyMethods::GetSequenceNumber() const noexcept {
   if (_readOptions.snapshot) {
     return _readOptions.snapshot->GetSequenceNumber();
   }
@@ -97,7 +96,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
   if (readOptionsCallback) {
     readOptionsCallback(opts);
   }
-
+  
   std::unique_ptr<rocksdb::Iterator> iterator(_db->NewIterator(opts, cf));
   if (iterator == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -105,10 +104,10 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
   }
   return iterator;
 }
-
+                                                                 
 void RocksDBReadOnlyMethods::releaseSnapshot() {
   if (_readOptions.snapshot != nullptr) {
-    _db->ReleaseSnapshot(_readOptions.snapshot);
+    _db->ReleaseSnapshot(_readOptions.snapshot); 
     _readOptions.snapshot = nullptr;
   }
 }

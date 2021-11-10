@@ -55,3 +55,4 @@ class RestAgencyCallbacksHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace rest
 }  // namespace arangodb
+

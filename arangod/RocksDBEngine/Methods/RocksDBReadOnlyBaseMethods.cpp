@@ -23,54 +23,52 @@
 
 #include "RocksDBReadOnlyBaseMethods.h"
 
+#include "RocksDBEngine/RocksDBTransactionState.h"
+
 #include <rocksdb/db.h>
 #include <rocksdb/status.h>
 
-#include "RocksDBEngine/RocksDBTransactionState.h"
-
 using namespace arangodb;
+  
+void RocksDBReadOnlyBaseMethods::prepareOperation(DataSourceId cid, RevisionId rid,
+                                              TRI_voc_document_operation_e operationType) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);                                          
+}
 
-void RocksDBReadOnlyBaseMethods::prepareOperation(
-    DataSourceId cid, RevisionId rid,
-    TRI_voc_document_operation_e operationType) {
+void RocksDBReadOnlyBaseMethods::rollbackOperation(TRI_voc_document_operation_e operationType) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);                                          
+}
+
+Result RocksDBReadOnlyBaseMethods::addOperation(DataSourceId collectionId, RevisionId revisionId,
+                                            TRI_voc_document_operation_e opType) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
-void RocksDBReadOnlyBaseMethods::rollbackOperation(
-    TRI_voc_document_operation_e operationType) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
-}
-
-Result RocksDBReadOnlyBaseMethods::addOperation(
-    DataSourceId collectionId, RevisionId revisionId,
-    TRI_voc_document_operation_e opType) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
-}
-
-rocksdb::Status RocksDBReadOnlyBaseMethods::GetForUpdate(
-    rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
-    rocksdb::PinnableSlice* val) {
+rocksdb::Status RocksDBReadOnlyBaseMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
+                                                         rocksdb::Slice const& key,
+                                                         rocksdb::PinnableSlice* val) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 rocksdb::Status RocksDBReadOnlyBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
-                                                RocksDBKey const&,
-                                                rocksdb::Slice const&, bool) {
+                                            RocksDBKey const&,
+                                            rocksdb::Slice const&, bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
-rocksdb::Status RocksDBReadOnlyBaseMethods::PutUntracked(
-    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const&, rocksdb::Slice const&) {
+rocksdb::Status RocksDBReadOnlyBaseMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
+                                                     RocksDBKey const&,
+                                                     rocksdb::Slice const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
-rocksdb::Status RocksDBReadOnlyBaseMethods::Delete(
-    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
+rocksdb::Status RocksDBReadOnlyBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
+                                               RocksDBKey const& key) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
-rocksdb::Status RocksDBReadOnlyBaseMethods::SingleDelete(
-    rocksdb::ColumnFamilyHandle*, RocksDBKey const&) {
+rocksdb::Status RocksDBReadOnlyBaseMethods::SingleDelete(rocksdb::ColumnFamilyHandle*,
+                                                     RocksDBKey const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 

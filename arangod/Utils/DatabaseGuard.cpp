@@ -22,13 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabaseGuard.h"
-
 #include "Basics/Exceptions.h"
 #include "RestServer/DatabaseFeature.h"
 
 namespace {
 
-template<typename T>
+template <typename T>
 TRI_vocbase_t& vocbase(arangodb::DatabaseFeature& feature, T& id) {
   auto* vocbase = feature.useDatabase(id);
 
@@ -42,9 +41,10 @@ TRI_vocbase_t& vocbase(arangodb::DatabaseFeature& feature, T& id) {
 }  // namespace
 
 namespace arangodb {
-
+  
 /// @brief create guard on existing db
-DatabaseGuard::DatabaseGuard(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {
+DatabaseGuard::DatabaseGuard(TRI_vocbase_t& vocbase) 
+    : _vocbase(vocbase) {
   if (!_vocbase.use()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }

@@ -31,10 +31,10 @@ namespace arangodb {
 class Index;
 class IndexIterator;
 
-namespace transaction {
+namespace transaction{
 class Methods;
 }
-
+  
 namespace traverser {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,3 +87,4 @@ class EdgeCollectionInfo {
 
 }  // namespace traverser
 }  // namespace arangodb
+

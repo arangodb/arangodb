@@ -30,19 +30,17 @@ namespace arangodb {
 namespace consensus {
 
 struct ResignLeadership : public Job {
-  ResignLeadership(Node const& snapshot, AgentInterface* agent,
-                   std::string const& jobId,
-                   std::string const& creator = std::string(),
-                   std::string const& server = std::string());
+  ResignLeadership(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+                 std::string const& creator = std::string(),
+                 std::string const& server = std::string());
 
-  ResignLeadership(Node const& snapshot, AgentInterface* agent,
-                   JOB_STATUS status, std::string const& jobId);
+  ResignLeadership(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
+                 std::string const& jobId);
 
   virtual ~ResignLeadership();
 
   virtual JOB_STATUS status() override final;
-  virtual bool create(
-      std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
+  virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
   virtual void run(bool&) override final;
   virtual bool start(bool&) override final;
   virtual Result abort(std::string const& reason) override final;
@@ -55,3 +53,4 @@ struct ResignLeadership : public Job {
 };
 }  // namespace consensus
 }  // namespace arangodb
+

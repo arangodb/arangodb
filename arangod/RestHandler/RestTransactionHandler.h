@@ -47,8 +47,8 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
     if (ServerState::instance()->isDBServer()) {
       bool isSyncReplication = false;
       // We do not care for the real value, enough if it is there.
-      std::ignore = _request->value(
-          StaticStrings::IsSynchronousReplicationString, isSyncReplication);
+      std::ignore = _request->value(StaticStrings::IsSynchronousReplicationString,
+                                    isSyncReplication);
       if (isSyncReplication) {
         return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
         // This leads to the high queue, we want replication requests (for
@@ -77,3 +77,4 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   void executeJSTransaction();
 };
 }  // namespace arangodb
+

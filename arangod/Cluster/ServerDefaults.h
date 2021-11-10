@@ -39,3 +39,4 @@ struct ServerDefaults {
 };
 
 }  // namespace arangodb
+

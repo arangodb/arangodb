@@ -37,17 +37,19 @@
 
 using namespace arangodb;
 
-ClusterTransactionCollection::ClusterTransactionCollection(
-    TransactionState* trx, DataSourceId cid, AccessMode::Type accessType)
+ClusterTransactionCollection::ClusterTransactionCollection(TransactionState* trx,
+                                                           DataSourceId cid,
+                                                           AccessMode::Type accessType)
     : TransactionCollection(trx, cid, accessType) {}
 
 ClusterTransactionCollection::~ClusterTransactionCollection() = default;
 
 /// @brief whether or not any write operations for the collection happened
-bool ClusterTransactionCollection::hasOperations() const { return false; }
+bool ClusterTransactionCollection::hasOperations() const {
+  return false;  
+}
 
-bool ClusterTransactionCollection::canAccess(
-    AccessMode::Type accessType) const {
+bool ClusterTransactionCollection::canAccess(AccessMode::Type accessType) const {
   // check if access type matches
   if (AccessMode::isWriteOrExclusive(accessType) &&
       !AccessMode::isWriteOrExclusive(_accessType)) {
@@ -65,10 +67,8 @@ Result ClusterTransactionCollection::lockUsage() {
     if (_transaction->vocbase().server().isStopping()) {
       return {TRI_ERROR_SHUTTING_DOWN};
     }
-    ClusterInfo& ci = _transaction->vocbase()
-                          .server()
-                          .getFeature<ClusterFeature>()
-                          .clusterInfo();
+    ClusterInfo& ci =
+        _transaction->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
     _collection = ci.getCollectionNT(_transaction->vocbase().name(),
                                      std::to_string(_cid.id()));
@@ -143,8 +143,7 @@ Result ClusterTransactionCollection::doLock(AccessMode::Type type) {
 
 /// @brief unlock a collection
 Result ClusterTransactionCollection::doUnlock(AccessMode::Type type) {
-  if (!AccessMode::isWriteOrExclusive(type) ||
-      !AccessMode::isWriteOrExclusive(_lockType)) {
+  if (!AccessMode::isWriteOrExclusive(type) || !AccessMode::isWriteOrExclusive(_lockType)) {
     _lockType = AccessMode::Type::NONE;
     return {};
   }
@@ -158,17 +157,14 @@ Result ClusterTransactionCollection::doUnlock(AccessMode::Type type) {
 
   TRI_ASSERT(isLocked());
 
-  if (!AccessMode::isWriteOrExclusive(type) &&
-      AccessMode::isWriteOrExclusive(_lockType)) {
+  if (!AccessMode::isWriteOrExclusive(type) && AccessMode::isWriteOrExclusive(_lockType)) {
     // do not remove a write-lock if a read-unlock was requested!
     return {};
   }
-  if (AccessMode::isWriteOrExclusive(type) &&
-      !AccessMode::isWriteOrExclusive(_lockType)) {
+  if (AccessMode::isWriteOrExclusive(type) && !AccessMode::isWriteOrExclusive(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
-    LOG_TOPIC("e8aab", ERR, arangodb::Logger::FIXME)
-        << "logic error in doUnlock";
+    LOG_TOPIC("e8aab", ERR, arangodb::Logger::FIXME) << "logic error in doUnlock";
     TRI_ASSERT(false);
     return {TRI_ERROR_INTERNAL, "logic error in doUnlock"};
   }

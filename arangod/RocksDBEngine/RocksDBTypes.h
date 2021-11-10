@@ -24,9 +24,9 @@
 
 #pragma once
 
-#include <rocksdb/slice.h>
-
 #include "Basics/Common.h"
+
+#include <rocksdb/slice.h>
 
 namespace arangodb {
 
@@ -91,7 +91,7 @@ enum class RocksDBLogType : char {
   DocumentRemoveV2 = 'E',
   SingleRemoveV2 = 'F',
   CollectionTruncate = 'G',
-  FlushSync = 'H',  // @see FlushFeature
+  FlushSync = 'H', // @see FlushFeature
   TrackedDocumentInsert = 'I',
   TrackedDocumentRemove = 'J',
 };
@@ -114,3 +114,4 @@ char rocksDBFormatVersion();
 char const* rocksDBLogTypeName(RocksDBLogType);
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
 }  // namespace arangodb
+

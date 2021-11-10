@@ -23,17 +23,17 @@
 
 #pragma once
 
+#include "Aql/AqlValue.h"
+
 #include <functional>
 #include <memory>
 #include <string>
-
-#include "Aql/AqlValue.h"
 
 namespace arangodb {
 namespace velocypack {
 class Slice;
 struct Options;
-}  // namespace velocypack
+}
 
 namespace aql {
 
@@ -41,11 +41,10 @@ struct Aggregator {
   Aggregator() = delete;
   Aggregator(Aggregator const&) = delete;
   Aggregator& operator=(Aggregator const&) = delete;
-
+  
   struct Factory {
     virtual ~Factory() = default;
-    virtual std::unique_ptr<Aggregator> operator()(
-        velocypack::Options const*) const = 0;
+    virtual std::unique_ptr<Aggregator> operator()(velocypack::Options const*) const = 0;
     virtual void createInPlace(void*, velocypack::Options const*) const = 0;
     virtual std::size_t getAggregatorSize() const = 0;
   };
@@ -66,9 +65,9 @@ struct Aggregator {
                                                     std::string const& type);
 
   /// @brief creates an aggregator from a velocypack slice
-  static std::unique_ptr<Aggregator> fromVPack(
-      velocypack::Options const*, arangodb::velocypack::Slice const&,
-      char const* nameAttribute);
+  static std::unique_ptr<Aggregator> fromVPack(velocypack::Options const*,
+                                               arangodb::velocypack::Slice const&,
+                                               char const* nameAttribute);
 
   /// @brief return a pointer to an aggregator factory for an aggregator type
   /// throws if the aggregator cannot be found
@@ -109,3 +108,4 @@ struct Aggregator {
 
 }  // namespace aql
 }  // namespace arangodb
+

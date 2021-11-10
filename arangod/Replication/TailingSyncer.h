@@ -24,12 +24,12 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-
 #include "Basics/Common.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "Replication/Syncer.h"
+
+#include <velocypack/Builder.h>
 
 struct TRI_vocbase_t;
 
@@ -54,8 +54,7 @@ struct ApplyStats {
 
 class TailingSyncer : public Syncer {
  public:
-  TailingSyncer(ReplicationApplier* applier,
-                ReplicationApplierConfiguration const&,
+  TailingSyncer(ReplicationApplier* applier, ReplicationApplierConfiguration const&,
                 TRI_voc_tick_t initialTick, bool useTick);
 
   virtual ~TailingSyncer();
@@ -64,7 +63,7 @@ class TailingSyncer : public Syncer {
   /// @brief run method, performs continuous synchronization
   /// catches exceptions
   Result run();
-
+  
  protected:
   /// @brief decide based on _leaderInfo which api to use
   virtual std::string tailingBaseUrl(std::string const& command);
@@ -92,10 +91,8 @@ class TailingSyncer : public Syncer {
 #endif
 
   /// @brief whether or not a collection should be excluded
-  bool skipMarker(TRI_voc_tick_t firstRegulaTick,
-                  arangodb::velocypack::Slice const& slice,
-                  TRI_voc_tick_t actualMarkerTick,
-                  TRI_replication_operation_e type);
+  bool skipMarker(TRI_voc_tick_t firstRegulaTick, arangodb::velocypack::Slice const& slice,
+                  TRI_voc_tick_t actualMarkerTick, TRI_replication_operation_e type);
 
   /// @brief whether or not a collection should be excluded
   bool isExcludedCollection(std::string const&) const;
@@ -113,8 +110,7 @@ class TailingSyncer : public Syncer {
   Result processDBMarker(TRI_replication_operation_e, velocypack::Slice const&);
 
   /// @brief process a document operation, based on the VelocyPack provided
-  Result processDocument(TRI_replication_operation_e,
-                         arangodb::velocypack::Slice const&);
+  Result processDocument(TRI_replication_operation_e, arangodb::velocypack::Slice const&);
 
   /// @brief renames a collection, based on the VelocyPack provided
   Result renameCollection(arangodb::velocypack::Slice const&);
@@ -132,14 +128,13 @@ class TailingSyncer : public Syncer {
 
   /// @brief apply a single marker from the continuous log
   Result applyLogMarker(arangodb::velocypack::Slice const& slice,
-                        ApplyStats& applyStats, TRI_voc_tick_t firstRegularTick,
-                        TRI_voc_tick_t markerTick,
+                        ApplyStats& applyStats,
+                        TRI_voc_tick_t firstRegularTick, TRI_voc_tick_t markerTick,
                         TRI_replication_operation_e type);
 
   /// @brief apply the data from the continuous log
-  Result applyLog(httpclient::SimpleHttpResult*,
-                  TRI_voc_tick_t firstRegularTick, ApplyStats& applyStats,
-                  arangodb::velocypack::Builder& builder,
+  Result applyLog(httpclient::SimpleHttpResult*, TRI_voc_tick_t firstRegularTick,
+                  ApplyStats& applyStats, arangodb::velocypack::Builder& builder,
                   uint64_t& ignoreCount);
 
   /// @brief perform a continuous sync with the leader
@@ -167,14 +162,13 @@ class TailingSyncer : public Syncer {
                       TRI_voc_tick_t firstRegularTick);
 
   /// @brief apply continuous synchronization data from a batch
-  arangodb::Result processLeaderLog(
-      std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-      arangodb::velocypack::Builder& builder, TRI_voc_tick_t& fetchTick,
-      TRI_voc_tick_t& lastScannedTick, TRI_voc_tick_t firstRegularTick,
-      uint64_t& ignoreCount, bool& worked, bool& mustFetchBatch);
+  arangodb::Result processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+                                    arangodb::velocypack::Builder& builder,
+                                    TRI_voc_tick_t& fetchTick, TRI_voc_tick_t& lastScannedTick,
+                                    TRI_voc_tick_t firstRegularTick, uint64_t& ignoreCount,
+                                    bool& worked, bool& mustFetchBatch);
 
-  arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll,
-                                        std::string const& key);
+  arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll, std::string const& key);
 
   arangodb::Result handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
                                                     TRI_voc_tick_t readTick,
@@ -189,9 +183,9 @@ class TailingSyncer : public Syncer {
   /// @brief whether or not the replication state file has been written at least
   /// once with non-empty values. this is required in situations when the
   /// replication applier is manually started and the leader has absolutely no
-  /// new data to provide, and the follower gets shut down. in that case, the
-  /// state file would never have been written with the initial start tick, so
-  /// the start tick would be lost. re-starting the follower and the replication
+  /// new data to provide, and the follower gets shut down. in that case, the state
+  /// file would never have been written with the initial start tick, so the
+  /// start tick would be lost. re-starting the follower and the replication
   /// applier with the ticks from the file would then result in a "no start tick
   /// provided" error
   bool _hasWrittenState;
@@ -222,8 +216,7 @@ class TailingSyncer : public Syncer {
   ReplicationMetricsFeature::TailingSyncStats _stats;
 
   /// @brief which transactions were open and need to be treated specially
-  std::unordered_map<TransactionId, std::unique_ptr<ReplicationTransaction>>
-      _ongoingTransactions;
+  std::unordered_map<TransactionId, std::unique_ptr<ReplicationTransaction>> _ongoingTransactions;
 
   /// @brief recycled builder for repeated document creation
   arangodb::velocypack::Builder _documentBuilder;
@@ -231,3 +224,4 @@ class TailingSyncer : public Syncer {
   static std::string const WalAccessUrl;
 };
 }  // namespace arangodb
+

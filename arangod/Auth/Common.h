@@ -24,9 +24,8 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
-
 #include "Basics/Common.h"
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace auth {
@@ -43,3 +42,4 @@ std::string convertFromAuthLevel(auth::Level lvl);
 
 }  // namespace auth
 }  // namespace arangodb
+

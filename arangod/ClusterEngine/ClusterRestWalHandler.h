@@ -46,3 +46,4 @@ class ClusterRestWalHandler : public RestBaseHandler {
   void properties();
 };
 }  // namespace arangodb
+

@@ -93,8 +93,7 @@ std::string QueryString::extractRegion(int line, int column) const {
   size_t const n = size();
 
   while ((static_cast<size_t>(p - s) < n) && (c = *p)) {
-    if (currentLine > line ||
-        (currentLine >= line && currentColumn >= column)) {
+    if (currentLine > line || (currentLine >= line && currentColumn >= column)) {
       break;
     }
 

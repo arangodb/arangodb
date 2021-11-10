@@ -31,7 +31,7 @@ namespace arangodb {
 
 namespace graph {
 
-template<class StepDetails>
+template <class StepDetails>
 class BaseStep {
  public:
   BaseStep(size_t prev = std::numeric_limits<size_t>::max(), size_t depth = 0,

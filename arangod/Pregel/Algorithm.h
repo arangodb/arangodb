@@ -24,7 +24,6 @@
 #pragma once
 
 #include <velocypack/Slice.h>
-
 #include <cstdint>
 #include <functional>
 
@@ -42,10 +41,10 @@ class ApplicationServer;
 }
 namespace pregel {
 
-template<typename V, typename E, typename M>
+template <typename V, typename E, typename M>
 class VertexComputation;
 
-template<typename V, typename E, typename M>
+template <typename V, typename E, typename M>
 class VertexCompensation;
 
 class IAggregator;
@@ -65,8 +64,7 @@ struct IAlgorithm {
     return nullptr;
   }
 
-  virtual MasterContext* masterContext(
-      arangodb::velocypack::Slice userParams) const {
+  virtual MasterContext* masterContext(arangodb::velocypack::Slice userParams) const {
     return nullptr;
   }
 
@@ -82,7 +80,7 @@ struct IAlgorithm {
 };
 
 // specify serialization, whatever
-template<typename V, typename E, typename M>
+template <typename V, typename E, typename M>
 struct Algorithm : IAlgorithm {
  public:
   // Data used by the algorithm at every vertex
@@ -95,10 +93,8 @@ struct Algorithm : IAlgorithm {
   using graph_format = GraphFormat<vertex_type, edge_type>;
   using message_format = MessageFormat<message_type>;
   using message_combiner = MessageCombiner<message_type>;
-  using vertex_computation =
-      VertexComputation<vertex_type, edge_type, message_type>;
-  using vertex_compensation =
-      VertexCompensation<vertex_type, edge_type, message_type>;
+  using vertex_computation = VertexComputation<vertex_type, edge_type, message_type>;
+  using vertex_compensation = VertexCompensation<vertex_type, edge_type, message_type>;
 
  public:
   virtual WorkerContext* workerContext(velocypack::Slice userParams) const {
@@ -128,13 +124,12 @@ struct Algorithm : IAlgorithm {
   }
 
  protected:
-  Algorithm(application_features::ApplicationServer& server,
-            std::string const& name)
+  Algorithm(application_features::ApplicationServer& server, std::string const& name)
       : IAlgorithm(name), _server(server) {}
   application_features::ApplicationServer& _server;
 };
 
-template<typename V, typename E, typename M>
+template <typename V, typename E, typename M>
 class SimpleAlgorithm : public Algorithm<V, E, M> {
  protected:
   std::string _sourceField, _resultField;

@@ -24,22 +24,21 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <analysis/analyzer.hpp>
-#include <analysis/analyzers.hpp>
 #include <chrono>
 #include <functional>
-#include <index/field_meta.hpp>
-#include <index/index_features.hpp>
 #include <memory>
 #include <ostream>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <utility>
+#include <vector>
+
+#include <analysis/analyzer.hpp>
+#include <analysis/analyzers.hpp>
+#include "analysis/token_streams.hpp"
+#include <index/index_features.hpp>
+#include <index/field_meta.hpp>
 #include <utils/async_utils.hpp>
 #include <utils/attributes.hpp>
 #include <utils/bit_utils.hpp>
@@ -48,20 +47,22 @@
 #include <utils/noncopyable.hpp>
 #include <utils/object_pool.hpp>
 #include <utils/string.hpp>
-#include <vector>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/Common.h"
-#include "Basics/Identifier.h"  // this include only need to make clang see << operator for Identifier
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/Identifier.h" // this include only need to make clang see << operator for Identifier
 #include "Cluster/ClusterTypes.h"
 #include "IResearch/IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearch/IResearchCommon.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "analysis/token_streams.hpp"
 
-struct TRI_vocbase_t;  // forward declaration
+struct TRI_vocbase_t; // forward declaration
 
 namespace arangodb {
 namespace application_features {
@@ -76,7 +77,10 @@ namespace iresearch {
 /// @enum FieldFeatures
 /// @brief supported field features
 ////////////////////////////////////////////////////////////////////////////////
-enum class FieldFeatures : uint32_t { NONE = 0, NORM = 1 };
+enum class FieldFeatures : uint32_t {
+  NONE = 0,
+  NORM = 1
+};
 
 ENABLE_BITMASK_ENUM(FieldFeatures);
 
@@ -92,11 +96,15 @@ class Features {
   constexpr Features() = default;
 
   constexpr Features(irs::IndexFeatures indexFeatures) noexcept
-      : Features{FieldFeatures::NONE, indexFeatures} {}
+    : Features{FieldFeatures::NONE, indexFeatures} {
+  }
 
-  constexpr Features(FieldFeatures fieldFeatures,
-                     irs::IndexFeatures indexFeatures) noexcept
-      : _fieldFeatures{fieldFeatures}, _indexFeatures{indexFeatures} {}
+  constexpr Features(
+      FieldFeatures fieldFeatures,
+      irs::IndexFeatures indexFeatures) noexcept
+    : _fieldFeatures{fieldFeatures},
+      _indexFeatures{indexFeatures} {
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds feature by name. Properly resolves field/index features
@@ -116,7 +124,8 @@ class Features {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief custom field features
   //////////////////////////////////////////////////////////////////////////////
-  std::vector<irs::type_info::type_id> fieldFeatures(LinkVersion version) const;
+  std::vector<irs::type_info::type_id> fieldFeatures(
+    LinkVersion version) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief index features
@@ -126,8 +135,7 @@ class Features {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief validate that features are supported by arangod an ensure that
-  /// their
+  /// @brief validate that features are supported by arangod an ensure that their
   ///        dependencies are met
   /// @return Result containing error description if any
   //////////////////////////////////////////////////////////////////////////////
@@ -156,7 +164,7 @@ class Features {
  private:
   FieldFeatures _fieldFeatures{FieldFeatures::NONE};
   irs::IndexFeatures _indexFeatures{irs::IndexFeatures::NONE};
-};  // Features
+}; // Features
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class AnalyzerPool
@@ -166,10 +174,12 @@ class AnalyzerPool : private irs::util::noncopyable {
  public:
   using ptr = std::shared_ptr<AnalyzerPool>;
 
-  using StoreFunc = VPackSlice (*)(irs::token_stream const* ctx,
-                                   VPackSlice slice, VPackBuffer<uint8_t>& buf);
+  using StoreFunc = VPackSlice(*)(
+    irs::token_stream const* ctx,
+    VPackSlice slice,
+    VPackBuffer<uint8_t>& buf);
 
-  // type tags for primitive token streams
+    // type tags for primitive token streams
   struct NullStreamTag {};
   struct BooleanStreamTag {};
   struct NumericStreamTag {};
@@ -179,7 +189,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   struct Builder {
     using ptr = irs::analysis::analyzer::ptr;
     static ptr make(irs::string_ref const& type, VPackSlice properties);
-
+    
     static ptr make(NullStreamTag) {
       return std::make_unique<irs::null_token_stream>();
     }
@@ -206,7 +216,7 @@ class AnalyzerPool : private irs::util::noncopyable {
 
   Features features() const noexcept { return _features; }
   irs::features_t fieldFeatures() const noexcept {
-    return {_fieldFeatures.data(), _fieldFeatures.size()};
+    return { _fieldFeatures.data(), _fieldFeatures.size() };
   }
   irs::IndexFeatures indexFeatures() const noexcept {
     return features().indexFeatures();
@@ -215,8 +225,8 @@ class AnalyzerPool : private irs::util::noncopyable {
   VPackSlice properties() const noexcept { return _properties; }
   irs::string_ref const& type() const noexcept { return _type; }
   AnalyzersRevision::Revision revision() const noexcept { return _revision; }
-  AnalyzerValueType inputType() const noexcept { return _inputType; }
-  AnalyzerValueType returnType() const noexcept { return _returnType; }
+  AnalyzerValueType inputType() const noexcept { return  _inputType; }
+  AnalyzerValueType returnType() const noexcept { return  _returnType; }
   StoreFunc storeFunc() const noexcept { return _storeFunc; }
   bool accepts(AnalyzerValueType types) const noexcept {
     return (_inputType & types) != AnalyzerValueType::Undefined;
@@ -226,10 +236,13 @@ class AnalyzerPool : private irs::util::noncopyable {
   }
 
   bool operator==(AnalyzerPool const& rhs) const;
-  bool operator!=(AnalyzerPool const& rhs) const { return !(*this == rhs); }
+  bool operator!=(AnalyzerPool const& rhs) const {
+    return !(*this == rhs);
+  }
 
   // definition to be stored in _analyzers collection or shown to the end user
-  void toVelocyPack(velocypack::Builder& builder, bool forPersistence = false);
+  void toVelocyPack(velocypack::Builder& builder,
+                    bool forPersistence = false);
 
   // definition to be stored/shown in a link definition
   void toVelocyPack(velocypack::Builder& builder,
@@ -239,30 +252,32 @@ class AnalyzerPool : private irs::util::noncopyable {
   // required for calling AnalyzerPool::init(...) and AnalyzerPool::setKey(...)
   friend class IResearchAnalyzerFeature;
 
-  void toVelocyPack(velocypack::Builder& builder, irs::string_ref const& name);
+  void toVelocyPack(velocypack::Builder& builder,
+                    irs::string_ref const& name);
 
-  bool init(irs::string_ref const& type, VPackSlice const properties,
-            AnalyzersRevision::Revision revision, Features features,
+  bool init(irs::string_ref const& type,
+            VPackSlice const properties,
+            AnalyzersRevision::Revision revision,
+            Features features,
             LinkVersion version);
   void setKey(irs::string_ref const& type);
 
   mutable CacheType _cache;  // cache of irs::analysis::analyzer
-  std::vector<irs::type_info::type_id>
-      _fieldFeatures;    // cached iresearch field features
-  std::string _config;   // non-null type + non-null properties + key
-  irs::string_ref _key;  // the key of the persisted configuration for this
-                         // pool, null == static analyzer
-  std::string _name;  // ArangoDB alias for an IResearch analyzer configuration.
-                      // Should be normalized name or static analyzer name see
-                      // assertion in ctor
+  std::vector<irs::type_info::type_id> _fieldFeatures; // cached iresearch field features
+  std::string _config;     // non-null type + non-null properties + key
+  irs::string_ref _key;    // the key of the persisted configuration for this pool,
+                           // null == static analyzer
+  std::string _name;       // ArangoDB alias for an IResearch analyzer configuration.
+                           // Should be normalized name or static analyzer name see
+                           // assertion in ctor
   VPackSlice _properties;  // IResearch analyzer configuration
   irs::string_ref _type;   // IResearch analyzer name
   Features _features;      // analyzer features
   StoreFunc _storeFunc{};
-  AnalyzerValueType _inputType{AnalyzerValueType::Undefined};
-  AnalyzerValueType _returnType{AnalyzerValueType::Undefined};
-  AnalyzersRevision::Revision _revision{AnalyzersRevision::MIN};
-};  // AnalyzerPool
+  AnalyzerValueType _inputType{ AnalyzerValueType::Undefined };
+  AnalyzerValueType _returnType{ AnalyzerValueType::Undefined };
+  AnalyzersRevision::Revision _revision{ AnalyzersRevision::MIN };
+}; // AnalyzerPool
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a cache of IResearch analyzer instances
@@ -279,8 +294,7 @@ class IResearchAnalyzerFeature final
   /// NIL == unprefixed analyzer name, i.e. active vocbase
   using AnalyzerName = std::pair<irs::string_ref, irs::string_ref>;
 
-  explicit IResearchAnalyzerFeature(
-      application_features::ApplicationServer& server);
+  explicit IResearchAnalyzerFeature(application_features::ApplicationServer& server);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions
@@ -296,8 +310,7 @@ class IResearchAnalyzerFeature final
   /// @param level access level
   /// @return analyzers in the specified vocbase are granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
-  static bool canUseVocbase(irs::string_ref const& vocbaseName,
-                            auth::Level const& level);
+  static bool canUseVocbase(irs::string_ref const& vocbaseName, auth::Level const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions
@@ -325,7 +338,8 @@ class IResearchAnalyzerFeature final
                                    irs::string_ref const& type,
                                    VPackSlice const properties,
                                    AnalyzersRevision::Revision revision,
-                                   Features features, LinkVersion version,
+                                   Features features,
+                                   LinkVersion version,
                                    bool extendedNames);
 
   static AnalyzerPool::ptr identity() noexcept;  // the identity analyzer
@@ -349,27 +363,25 @@ class IResearchAnalyzerFeature final
   ///         NIL == analyzer name have had no db name prefix
   /// @see analyzerReachableFromDb
   //////////////////////////////////////////////////////////////////////////////
-  static irs::string_ref extractVocbaseName(
-      irs::string_ref const& name) noexcept {
+  static irs::string_ref extractVocbaseName(irs::string_ref const& name) noexcept {
     return splitAnalyzerName(name).first;
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Loads (or reloads if necessary) analyzers available for use in
-  /// context of specified database.
+  /// @brief Loads (or reloads if necessary) analyzers available for use in context
+  /// of specified database.
   /// @param dbName database name
   /// @return overall load result
   //////////////////////////////////////////////////////////////////////////////
   Result loadAvailableAnalyzers(irs::string_ref const& dbName);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// Checks if analyzer db (identified by db name prefix extracted from
-  /// analyzer name) could be reached from specified db. Properly handles
-  /// special cases (e.g. NIL and EMPTY)
+  /// Checks if analyzer db (identified by db name prefix extracted from analyzer
+  /// name) could be reached from specified db.
+  /// Properly handles special cases (e.g. NIL and EMPTY)
   /// @param dbNameFromAnalyzer database name extracted from analyzer name
   /// @param currentDbName database name to check against (should not be empty!)
-  /// @param forGetters check special case for getting analyzer (not
-  /// creating/removing)
+  /// @param forGetters check special case for getting analyzer (not creating/removing)
   /// @return true if analyzer is reachable
   static bool analyzerReachableFromDb(irs::string_ref const& dbNameFromAnalyzer,
                                       irs::string_ref const& currentDbName,
@@ -382,8 +394,7 @@ class IResearchAnalyzerFeature final
   ///         EMPTY == system vocbase
   ///         NIL == unprefixed analyzer name, i.e. active vocbase
   ////////////////////////////////////////////////////////////////////////////////
-  static AnalyzerName splitAnalyzerName(
-      irs::string_ref const& analyzer) noexcept;
+  static AnalyzerName splitAnalyzerName(irs::string_ref const& analyzer) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief emplace an analyzer as per the specified parameters
@@ -402,21 +413,23 @@ class IResearchAnalyzerFeature final
   ///       allowed during recovery
   //////////////////////////////////////////////////////////////////////////////
   typedef std::pair<AnalyzerPool::ptr, bool> EmplaceResult;
-  Result emplace(EmplaceResult& result, irs::string_ref const& name,
-                 irs::string_ref const& type, VPackSlice const properties,
+  Result emplace(EmplaceResult& result,
+                 irs::string_ref const& name,
+                 irs::string_ref const& type,
+                 VPackSlice const properties,
                  Features features = {});
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Emplaces batch of analyzers within single analyzers revision.
-  /// Intended for use
-  ///        with restore/replication. Tries to load as many as possible
-  ///        analyzers skipping unparsable ones.
+  /// @brief Emplaces batch of analyzers within single analyzers revision. Intended for use
+  ///        with restore/replication. Tries to load as many as possible analyzers
+  ///        skipping unparsable ones.
   /// @param vocbase target vocbase
   /// @param dumpedAnalyzers VPack array of dumped data
   /// @return OK or first failure
   /// @note should not be used while inRecovery()
   //////////////////////////////////////////////////////////////////////////////
-  Result bulkEmplace(TRI_vocbase_t& vocbase, VPackSlice const dumpedAnalyzers);
+  Result bulkEmplace(TRI_vocbase_t& vocbase,
+                     VPackSlice const dumpedAnalyzers);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief removes all analyzers from database in single revision
@@ -438,10 +451,8 @@ class IResearchAnalyzerFeature final
     auto splittedName = splitAnalyzerName(name);
     TRI_ASSERT(splittedName.first.null() || !splittedName.first.empty());
     return get(name, splittedName,
-               splittedName.first.null()
-                   ? AnalyzersRevision::MIN  // built-in analyzers always has
-                                             // MIN revision
-                   : revision.getVocbaseRevision(splittedName.first),
+               splittedName.first.null() ? AnalyzersRevision::MIN // built-in analyzers always has MIN revision
+                 : revision.getVocbaseRevision(splittedName.first),
                onlyCached);
   }
 
@@ -469,8 +480,7 @@ class IResearchAnalyzerFeature final
   /// @param vocbase only visit analysers for this vocbase (nullptr == static)
   /// @return visitation compleated fully
   //////////////////////////////////////////////////////////////////////////////
-  bool visit(
-      std::function<bool(AnalyzerPool::ptr const&)> const& visitor) const;
+  bool visit(std::function<bool(AnalyzerPool::ptr const&)> const& visitor) const;
   bool visit(std::function<bool(AnalyzerPool::ptr const&)> const& visitor,
              TRI_vocbase_t const* vocbase) const;
 
@@ -484,21 +494,17 @@ class IResearchAnalyzerFeature final
   /// @brief return current known analyzers revision
   /// @param vocbase to get revision for
   /// @param forceLoadPlan force request to get latest available revision
-  /// @return revision number. always 0 for single server and before plan is
-  /// loaded
+  /// @return revision number. always 0 for single server and before plan is loaded
   ///////////////////////////////////////////////////////////////////////////////
-  AnalyzersRevision::Ptr getAnalyzersRevision(const TRI_vocbase_t& vocbase,
-                                              bool forceLoadPlan = false) const;
+  AnalyzersRevision::Ptr getAnalyzersRevision(const TRI_vocbase_t& vocbase, bool forceLoadPlan = false) const;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief return current known analyzers revision
   /// @param vocbase name to get revision for
   /// @param forceLoadPlan force request to get latest available revision
-  /// @return revision number. always 0 for single server and before plan is
-  /// loaded
+  /// @return revision number. always 0 for single server and before plan is loaded
   ///////////////////////////////////////////////////////////////////////////////
-  AnalyzersRevision::Ptr getAnalyzersRevision(
-      const irs::string_ref& vocbaseName, bool forceLoadPlan = false) const;
+  AnalyzersRevision::Ptr getAnalyzersRevision(const irs::string_ref& vocbaseName, bool forceLoadPlan = false) const;
 
   virtual void prepare() override;
   virtual void start() override;
@@ -508,37 +514,32 @@ class IResearchAnalyzerFeature final
  private:
   // map of caches of irs::analysis::analyzer pools indexed by analyzer name and
   // their associated metas
-  using Analyzers =
-      std::unordered_map<irs::hashed_string_ref, AnalyzerPool::ptr>;
+  using Analyzers = std::unordered_map<irs::hashed_string_ref, AnalyzerPool::ptr> ;
   using EmplaceAnalyzerResult = std::pair<Analyzers::iterator, bool>;
 
-  Analyzers
-      _analyzers;  // all analyzers known to this feature (including static)
-                   // (names are stored with expanded vocbase prefixes)
-  std::unordered_map<std::string, AnalyzersRevision::Revision>
-      _lastLoad;  // last revision for database was loaded
-  mutable basics::ReadWriteLock
-      _mutex;  // for use with member '_analyzers', '_lastLoad'
+  Analyzers _analyzers; // all analyzers known to this feature (including static)
+                        // (names are stored with expanded vocbase prefixes)
+  std::unordered_map<std::string, AnalyzersRevision::Revision> _lastLoad; // last revision for database was loaded
+  mutable basics::ReadWriteLock _mutex; // for use with member '_analyzers', '_lastLoad'
 
   static Analyzers const& getStaticAnalyzers();
 
-  Result removeFromCollection(irs::string_ref const& name,
-                              irs::string_ref const& vocbase);
-  Result cleanupAnalyzersCollection(
-      irs::string_ref const& database,
-      AnalyzersRevision::Revision buildingRevision);
-  Result finalizeRemove(irs::string_ref const& name,
-                        irs::string_ref const& vocbase);
+  Result removeFromCollection(irs::string_ref const& name, irs::string_ref const& vocbase);
+  Result cleanupAnalyzersCollection(irs::string_ref const& database,
+                                    AnalyzersRevision::Revision buildingRevision);
+  Result finalizeRemove(irs::string_ref const& name, irs::string_ref const& vocbase);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate analyzer parameters and emplace into map
   //////////////////////////////////////////////////////////////////////////////
   Result emplaceAnalyzer(
-      EmplaceAnalyzerResult& result,
-      iresearch::IResearchAnalyzerFeature::Analyzers& analyzers,
-      irs::string_ref const name, irs::string_ref const type,
-      VPackSlice const properties, Features const& features,
-      AnalyzersRevision::Revision revision);
+    EmplaceAnalyzerResult& result,
+    iresearch::IResearchAnalyzerFeature::Analyzers& analyzers,
+    irs::string_ref const name,
+    irs::string_ref const type,
+    VPackSlice const properties,
+    Features const& features,
+    AnalyzersRevision::Revision revision);
 
   AnalyzerPool::ptr get(irs::string_ref const& normalizedName,
                         AnalyzerName const& name,
@@ -575,3 +576,4 @@ class IResearchAnalyzerFeature final
 
 }  // namespace iresearch
 }  // namespace arangodb
+

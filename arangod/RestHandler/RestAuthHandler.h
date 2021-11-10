@@ -23,16 +23,15 @@
 
 #pragma once
 
-#include <chrono>
-
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+
+#include <chrono>
 
 namespace arangodb {
 class RestAuthHandler : public RestVocbaseBaseHandler {
  public:
-  RestAuthHandler(application_features::ApplicationServer&, GeneralRequest*,
-                  GeneralResponse*);
+  RestAuthHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAuthHandler"; }
@@ -44,3 +43,4 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
   RestStatus badRequest();
 };
 }  // namespace arangodb
+

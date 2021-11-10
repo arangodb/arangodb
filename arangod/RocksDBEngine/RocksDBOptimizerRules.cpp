@@ -50,36 +50,32 @@ using EN = arangodb::aql::ExecutionNode;
 
 namespace {
 
-std::initializer_list<ExecutionNode::NodeType> const
-    reduceExtractionToProjectionTypes = {ExecutionNode::ENUMERATE_COLLECTION,
-                                         ExecutionNode::INDEX};
+std::initializer_list<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
+    ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX};
 
 }  // namespace
 
 void RocksDBOptimizerRules::registerResources(OptimizerRulesFeature& feature) {
   // simplify an EnumerationCollectionNode that fetches an entire document to a
   // projection of this document
-  feature.registerRule(
-      "reduce-extraction-to-projection", reduceExtractionToProjectionRule,
-      OptimizerRule::reduceExtractionToProjectionRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+  feature.registerRule("reduce-extraction-to-projection",
+                       reduceExtractionToProjectionRule,
+                       OptimizerRule::reduceExtractionToProjectionRule,
+                       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // remove SORT RAND() LIMIT 1 if appropriate
-  feature.registerRule(
-      "remove-sort-rand-limit-1", removeSortRandRule,
-      OptimizerRule::removeSortRandRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+  feature.registerRule("remove-sort-rand-limit-1", removeSortRandRule,
+                       OptimizerRule::removeSortRandRule,
+                       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 }
 
 // simplify an EnumerationCollectionNode that fetches an entire document to a
 // projection of this document
 void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const& rule) {
   // These are all the nodes where we start traversing (including all
   // subqueries)
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
 
   plan->findNodesOfType(nodes, ::reduceExtractionToProjectionTypes, true);
@@ -89,12 +85,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
   std::unordered_set<arangodb::aql::AttributeNamePath> attributes;
 
   for (auto& n : nodes) {
-    // isDeterministic is false for EnumerateCollectionNodes when the "random"
-    // flag is set.
-    bool const isRandomOrder =
-        (n->getType() == EN::ENUMERATE_COLLECTION &&
-         !ExecutionNode::castTo<EnumerateCollectionNode*>(n)
-              ->isDeterministic());
+    // isDeterministic is false for EnumerateCollectionNodes when the "random" flag is set.
+    bool const isRandomOrder = 
+      (n->getType() == EN::ENUMERATE_COLLECTION && 
+       !ExecutionNode::castTo<EnumerateCollectionNode*>(n)->isDeterministic());
 
     bool stop = false;
     bool optimize = false;
@@ -111,33 +105,28 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       bool doRegularCheck = false;
 
       if (current->getType() == EN::REMOVE) {
-        RemoveNode const* removeNode =
-            ExecutionNode::castTo<RemoveNode const*>(current);
+        RemoveNode const* removeNode = ExecutionNode::castTo<RemoveNode const*>(current);
         if (removeNode->inVariable() == v) {
           // FOR doc IN collection REMOVE doc IN ...
-          attributes.emplace(
-              arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
+          attributes.emplace(arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
           optimize = true;
         } else {
           doRegularCheck = true;
         }
-      } else if (current->getType() == EN::UPDATE ||
-                 current->getType() == EN::REPLACE) {
+      } else if (current->getType() == EN::UPDATE || current->getType() == EN::REPLACE) {
         UpdateReplaceNode const* modificationNode =
             ExecutionNode::castTo<UpdateReplaceNode const*>(current);
 
         if (modificationNode->inKeyVariable() == v &&
             modificationNode->inDocVariable() != v) {
           // FOR doc IN collection UPDATE/REPLACE doc IN ...
-          attributes.emplace(
-              arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
+          attributes.emplace(arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
           optimize = true;
         } else {
           doRegularCheck = true;
         }
       } else if (current->getType() == EN::CALCULATION) {
-        Expression* exp =
-            ExecutionNode::castTo<CalculationNode*>(current)->expression();
+        Expression* exp = ExecutionNode::castTo<CalculationNode*>(current)->expression();
 
         if (exp != nullptr && exp->node() != nullptr) {
           AstNode const* node = exp->node();
@@ -163,8 +152,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
               stop = true;
               break;
             }
-            // insert attribute name into the set of attributes that we need for
-            // our projection
+            // insert attribute name into the set of attributes that we need for our projection
             attributes.emplace(AttributeNamePath(it.attributePath));
           }
         }
@@ -212,8 +200,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
     // projections are currently limited (arbitrarily to 5 attributes)
     if (optimize && !stop && !projections.empty() && projections.size() <= 5) {
-      if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
-          !isRandomOrder) {
+      if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION && !isRandomOrder) {
         // the node is still an EnumerateCollection... now check if we should
         // turn it into an index scan
         EnumerateCollectionNode const* en =
@@ -224,8 +211,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         auto& trx = plan->getAst()->query().trxForOptimization();
         std::shared_ptr<Index> picked;
         std::vector<std::shared_ptr<Index>> indexes;
-        if (!trx.isInaccessibleCollection(
-                en->collection()->getCollection()->name())) {
+        if (!trx.isInaccessibleCollection(en->collection()->getCollection()->name())) {
           indexes = en->collection()->getCollection()->getIndexes();
         }
 
@@ -235,21 +221,17 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             // index doesn't cover the projection
             return false;
           }
-          if (idx->type() !=
-                  arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
-              idx->type() !=
-                  arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX &&
-              idx->type() !=
-                  arangodb::Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX &&
-              idx->type() !=
-                  arangodb::Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+          if (idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
+              idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX &&
+              idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX &&
+              idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
             // only the above index types are supported
             return false;
           }
 
           if (idx->sparse()) {
-            // we cannot safely substitute a full collection scan with a sparse
-            // index scan, as the sparse index may be missing some documents
+            // we cannot safely substitute a full collection scan with a sparse index scan,
+            // as the sparse index may be missing some documents
             return false;
           }
 
@@ -281,14 +263,13 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           auto condition = std::make_unique<Condition>(plan->getAst());
           condition->normalize(plan.get());
           IndexIteratorOptions opts;
-          // we have already proven that we can use the covering index
-          // optimization, so force it - if we wouldn't force it here it would
-          // mean that for a FILTER-less query we would be a lot less efficient
-          // for some indexes
-          auto inode = new IndexNode(
-              plan.get(), plan->nextId(), en->collection(), en->outVariable(),
-              std::vector<transaction::Methods::IndexHandle>{picked},
-              std::move(condition), opts);
+          // we have already proven that we can use the covering index optimization,
+          // so force it - if we wouldn't force it here it would mean that for a
+          // FILTER-less query we would be a lot less efficient for some indexes
+          auto inode = new IndexNode(plan.get(), plan->nextId(),
+                                     en->collection(), en->outVariable(),
+                                     std::vector<transaction::Methods::IndexHandle>{picked},
+                                     std::move(condition), opts);
           en->CollectionAccessingNode::cloneInto(*inode);
           en->DocumentProducingNode::cloneInto(plan.get(), *inode);
           plan->registerNode(inode);
@@ -297,8 +278,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             inode->restrictToShard(en->restrictedShard());
           }
           // copy over specialization data from smart-joins rule
-          inode->setPrototype(en->prototypeCollection(),
-                              en->prototypeOutVariable());
+          inode->setPrototype(en->prototypeCollection(), en->prototypeOutVariable());
           n = inode;
           // need to update e, because it is used later
           e = dynamic_cast<DocumentProducingNode*>(n);
@@ -312,38 +292,34 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
       if (n->getType() == ExecutionNode::INDEX) {
         // need to update covering index support in an IndexNode
-        ExecutionNode::castTo<IndexNode*>(n)->setProjections(
-            std::move(projections));
+        ExecutionNode::castTo<IndexNode*>(n)->setProjections(std::move(projections));
       } else {
         // store projections in DocumentProducingNode
         e->setProjections(std::move(projections));
       }
 
       modified = true;
-    } else if (!stop && projections.empty() &&
-               n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
+    } else if (!stop && 
+               projections.empty() && 
+               n->getType() == ExecutionNode::ENUMERATE_COLLECTION && 
                !isRandomOrder) {
       // replace collection access with primary index access (which can be
       // faster given the fact that keys and values are stored together in
       // RocksDB, but average values are much bigger in the documents column
       // family than in the primary index colum family. thus in disk-bound
       // workloads scanning the documents via the primary index should be faster
-      EnumerateCollectionNode* en =
-          ExecutionNode::castTo<EnumerateCollectionNode*>(n);
+      EnumerateCollectionNode* en = ExecutionNode::castTo<EnumerateCollectionNode*>(n);
       auto const& hint = en->hint();
 
       auto& trx = plan->getAst()->query().trxForOptimization();
       std::shared_ptr<Index> picked;
       std::vector<std::shared_ptr<Index>> indexes;
-      if (!trx.isInaccessibleCollection(
-              en->collection()->getCollection()->name())) {
+      if (!trx.isInaccessibleCollection(en->collection()->getCollection()->name())) {
         indexes = en->collection()->getCollection()->getIndexes();
       }
 
-      auto selectIndexIfPossible =
-          [&picked](std::shared_ptr<Index> const& idx) -> bool {
-        if (idx->type() ==
-            arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      auto selectIndexIfPossible = [&picked](std::shared_ptr<Index> const& idx) -> bool {
+        if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
           picked = idx;
           return true;
         }
@@ -373,10 +349,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         IndexIteratorOptions opts;
         auto condition = std::make_unique<Condition>(plan->getAst());
         condition->normalize(plan.get());
-        auto inode = new IndexNode(
-            plan.get(), plan->nextId(), en->collection(), en->outVariable(),
-            std::vector<transaction::Methods::IndexHandle>{picked},
-            std::move(condition), opts);
+        auto inode = new IndexNode(plan.get(), plan->nextId(), en->collection(),
+                                   en->outVariable(),
+                                   std::vector<transaction::Methods::IndexHandle>{picked},
+                                   std::move(condition), opts);
         plan->registerNode(inode);
         plan->replaceNode(n, inode);
         en->CollectionAccessingNode::cloneInto(*inode);
@@ -390,11 +366,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 }
 
 /// @brief remove SORT RAND() if appropriate
-void RocksDBOptimizerRules::removeSortRandRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
+void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt,
+                                               std::unique_ptr<ExecutionPlan> plan,
+                                               OptimizerRule const& rule) {
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::SORT, true);
 
@@ -511,8 +486,7 @@ void RocksDBOptimizerRules::removeSortRandRule(
       // we found a node to modify!
       TRI_ASSERT(collectionNode->getType() == EN::ENUMERATE_COLLECTION);
       // set the random iteration flag for the EnumerateCollectionNode
-      ExecutionNode::castTo<EnumerateCollectionNode*>(collectionNode)
-          ->setRandom();
+      ExecutionNode::castTo<EnumerateCollectionNode*>(collectionNode)->setRandom();
 
       // remove the SortNode and the CalculationNode
       plan->unlinkNode(n);

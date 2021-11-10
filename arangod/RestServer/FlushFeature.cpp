@@ -32,14 +32,14 @@
 #include "Basics/encoding.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/StorageEngineFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/FlushThread.h"
 
 using namespace arangodb::application_features;
@@ -61,14 +61,13 @@ FlushFeature::FlushFeature(application_features::ApplicationServer& server)
 }
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--server.flush-interval", "interval (in microseconds) for flushing data",
-      new UInt64Parameter(&_flushInterval),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption("--server.flush-interval",
+                     "interval (in microseconds) for flushing data",
+                     new UInt64Parameter(&_flushInterval),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
-void FlushFeature::registerFlushSubscription(
-    const std::shared_ptr<FlushSubscription>& subscription) {
+void FlushFeature::registerFlushSubscription(const std::shared_ptr<FlushSubscription>& subscription) {
   if (!subscription) {
     return;
   }
@@ -84,8 +83,7 @@ void FlushFeature::registerFlushSubscription(
   _flushSubscriptions.emplace_back(subscription);
 }
 
-arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count,
-                                                  TRI_voc_tick_t& minTick) {
+arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t& minTick) {
   count = 0;
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
@@ -95,8 +93,7 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count,
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
     // find min tick and remove stale subscriptions
-    for (auto itr = _flushSubscriptions.begin();
-         itr != _flushSubscriptions.end();) {
+    for (auto itr = _flushSubscriptions.begin(); itr != _flushSubscriptions.end();) {
       auto entry = itr->lock();
 
       if (!entry) {
@@ -119,7 +116,7 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count,
   // WAL tick has to be synced prior to releasing it, if the storage
   // engine supports it
   //   engine->waitForSyncTick(minTick);
-
+  
   TRI_IF_FAILURE("FlushCrashAfterSyncingMinTick") {
     TRI_TerminateDebugging("crashing after syncing min tick");
   }
@@ -133,8 +130,7 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count,
   return {};
 }
 
-void FlushFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void FlushFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   if (_flushInterval < 1000) {
     // do not go below 1000 microseconds
     _flushInterval = 1000;
@@ -205,9 +201,8 @@ void FlushFeature::stop() {
     {
       std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
-      // release any remaining flush subscriptions so that they may get
-      // deallocated ASAP subscriptions could survive after
-      // FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
+      // release any remaining flush subscriptions so that they may get deallocated ASAP
+      // subscriptions could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
       _flushSubscriptions.clear();
       _stopped = true;
     }

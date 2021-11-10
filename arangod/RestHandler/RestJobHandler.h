@@ -94,3 +94,4 @@ class RestJobHandler : public RestBaseHandler {
   rest::AsyncJobManager* _jobManager;
 };
 }  // namespace arangodb
+

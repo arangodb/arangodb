@@ -22,12 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardingStrategy.h"
+#include "Basics/StaticStrings.h"
+#include "Cluster/ServerState.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "Basics/StaticStrings.h"
-#include "Cluster/ServerState.h"
 
 using namespace arangodb;
 

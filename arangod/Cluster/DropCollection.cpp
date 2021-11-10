@@ -41,9 +41,9 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-DropCollection::DropCollection(MaintenanceFeature& feature,
-                               ActionDescription const& d)
-    : ActionBase(feature, d), ShardDefinition(d.get(DATABASE), d.get(SHARD)) {
+DropCollection::DropCollection(MaintenanceFeature& feature, ActionDescription const& d)
+    : ActionBase(feature, d),
+      ShardDefinition(d.get(DATABASE), d.get(SHARD)) {
   std::stringstream error;
 
   if (!ShardDefinition::isValid()) {
@@ -51,8 +51,7 @@ DropCollection::DropCollection(MaintenanceFeature& feature,
   }
 
   if (!error.str().empty()) {
-    LOG_TOPIC("c7e42", ERR, Logger::MAINTENANCE)
-        << "DropCollection: " << error.str();
+    LOG_TOPIC("c7e42", ERR, Logger::MAINTENANCE) << "DropCollection: " << error.str();
     result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -68,8 +67,7 @@ bool DropCollection::first() {
       << "DropCollection: dropping local shard '" << database << "/" << shard;
 
   // Database still there?
-  auto* vocbase =
-      _feature.server().getFeature<DatabaseFeature>().lookupDatabase(database);
+  auto* vocbase = _feature.server().getFeature<DatabaseFeature>().lookupDatabase(database);
   if (vocbase != nullptr) {
     try {
       DatabaseGuard guard(*vocbase);
@@ -80,7 +78,7 @@ bool DropCollection::first() {
       if (found.ok()) {
         TRI_ASSERT(coll);
         LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
-            << "Dropping local collection " + shard;
+          << "Dropping local collection " + shard;
         result(Collections::drop(*coll, false, 2.5));
 
         // it is safe here to clear our replication failure statistics even
@@ -90,10 +88,8 @@ bool DropCollection::first() {
       } else {
         std::stringstream error;
 
-        error << "failed to lookup local collection " << database << "/"
-              << shard;
-        LOG_TOPIC("02722", ERR, Logger::MAINTENANCE)
-            << "DropCollection: " << error.str();
+        error << "failed to lookup local collection " << database << "/" << shard;
+        LOG_TOPIC("02722", ERR, Logger::MAINTENANCE) << "DropCollection: " << error.str();
         result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
 
         return false;
@@ -103,20 +99,17 @@ bool DropCollection::first() {
         // any error but database not found will be reported properly
         std::stringstream error;
 
-        error << "action " << _description << " failed with exception "
-              << e.what();
+        error << "action " << _description << " failed with exception " << e.what();
         LOG_TOPIC("761d2", ERR, Logger::MAINTENANCE) << error.str();
         result(e.code(), error.str());
 
         return false;
       }
-      // TRI_ERROR_ARANGO_DATABASE_NOT_FOUND will fallthrough here,
-      // intentionally
+      // TRI_ERROR_ARANGO_DATABASE_NOT_FOUND will fallthrough here, intentionally
     } catch (std::exception const& e) {
       std::stringstream error;
 
-      error << "action " << _description << " failed with exception "
-            << e.what();
+      error << "action " << _description << " failed with exception " << e.what();
       LOG_TOPIC("9dbd8", ERR, Logger::MAINTENANCE) << error.str();
       result(TRI_ERROR_INTERNAL, error.str());
 

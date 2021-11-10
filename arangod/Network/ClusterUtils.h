@@ -23,33 +23,33 @@
 
 #pragma once
 
+#include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
+
 #include <fuerte/types.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
-
-#include "Utils/OperationOptions.h"
-#include "Utils/OperationResult.h"
 
 namespace arangodb {
 namespace network {
 
 /// @brief Create Cluster Communication result for insert
-OperationResult clusterResultInsert(
-    fuerte::StatusCode responsecode,
-    std::shared_ptr<velocypack::Buffer<uint8_t>> body, OperationOptions options,
-    std::unordered_map<ErrorCode, size_t> errorCounter);
-OperationResult clusterResultDocument(
-    arangodb::fuerte::StatusCode code,
-    std::shared_ptr<VPackBuffer<uint8_t>> body, OperationOptions options,
-    std::unordered_map<ErrorCode, size_t> errorCounter);
-OperationResult clusterResultModify(
-    arangodb::fuerte::StatusCode code,
-    std::shared_ptr<VPackBuffer<uint8_t>> body, OperationOptions options,
-    std::unordered_map<ErrorCode, size_t> errorCounter);
-OperationResult clusterResultRemove(
-    arangodb::fuerte::StatusCode code,
-    std::shared_ptr<VPackBuffer<uint8_t>> body, OperationOptions options,
-    std::unordered_map<ErrorCode, size_t> errorCounter);
+OperationResult clusterResultInsert(fuerte::StatusCode responsecode,
+                                    std::shared_ptr<velocypack::Buffer<uint8_t>> body,
+                                    OperationOptions options,
+                                    std::unordered_map<ErrorCode, size_t> errorCounter);
+OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
+                                      std::shared_ptr<VPackBuffer<uint8_t>> body,
+                                      OperationOptions options,
+                                      std::unordered_map<ErrorCode, size_t> errorCounter);
+OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
+                                    std::shared_ptr<VPackBuffer<uint8_t>> body,
+                                    OperationOptions options,
+                                    std::unordered_map<ErrorCode, size_t> errorCounter);
+OperationResult clusterResultRemove(arangodb::fuerte::StatusCode code,
+                                    std::shared_ptr<VPackBuffer<uint8_t>> body,
+                                    OperationOptions options,
+                                    std::unordered_map<ErrorCode, size_t> errorCounter);
 
 }  // namespace network
 }  // namespace arangodb

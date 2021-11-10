@@ -24,19 +24,18 @@
 
 #pragma once
 
-#include <fuerte/detail/vst.h>
-
-#include <boost/lockfree/queue.hpp>
-
 #include "Basics/Common.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "Rest/VstRequest.h"
 #include "Rest/VstResponse.h"
 
+#include <fuerte/detail/vst.h>
+#include <boost/lockfree/queue.hpp>
+
 namespace arangodb {
 namespace rest {
 
-template<SocketType T>
+template <SocketType T>
 class VstCommTask final : public GeneralCommTask<T> {
  public:
   VstCommTask(GeneralServer& server, ConnectionInfo,
@@ -53,11 +52,10 @@ class VstCommTask final : public GeneralCommTask<T> {
 
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
-  virtual void sendResponse(std::unique_ptr<GeneralResponse>,
-                            RequestStatistics::Item) override;
+  virtual void sendResponse(std::unique_ptr<GeneralResponse>, RequestStatistics::Item) override;
 
-  virtual std::unique_ptr<GeneralResponse> createResponse(
-      rest::ResponseCode, uint64_t messageId) override;
+  virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
+                                                          uint64_t messageId) override;
 
  private:
   // Process the given incoming chunk.
@@ -104,6 +102,7 @@ class VstCommTask final : public GeneralCommTask<T> {
   static constexpr size_t maxChunkSize = 30 * 1024;
 
  private:
+
   std::string url(VstRequest const* req) const;
 
   std::map<uint64_t, Message> _messages;
@@ -129,3 +128,4 @@ class VstCommTask final : public GeneralCommTask<T> {
 };
 }  // namespace rest
 }  // namespace arangodb
+

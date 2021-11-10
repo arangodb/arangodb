@@ -21,13 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <Basics/Identifier.h>
+#include <unordered_map>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <unordered_map>
-
+#include <Basics/Identifier.h>
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/types.h"
 

@@ -22,11 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Auth/Common.h"
-
-#include <velocypack/StringRef.h>
-
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
+
+#include <velocypack/StringRef.h>
 
 using namespace arangodb;
 

@@ -61,11 +61,9 @@ class TraversalNode : public virtual GraphNode {
    public:
     explicit TraversalEdgeConditionBuilder(TraversalNode const*);
 
-    TraversalEdgeConditionBuilder(TraversalNode const*,
-                                  arangodb::velocypack::Slice const&);
+    TraversalEdgeConditionBuilder(TraversalNode const*, arangodb::velocypack::Slice const&);
 
-    TraversalEdgeConditionBuilder(TraversalNode const*,
-                                  TraversalEdgeConditionBuilder const*);
+    TraversalEdgeConditionBuilder(TraversalNode const*, TraversalEdgeConditionBuilder const*);
 
     ~TraversalEdgeConditionBuilder() = default;
 
@@ -78,8 +76,7 @@ class TraversalNode : public virtual GraphNode {
  public:
   TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start,
-                AstNode const* graph,
-                std::unique_ptr<Expression> pruneExpression,
+                AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
                 std::unique_ptr<graph::BaseOptions> options);
 
   TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
@@ -89,12 +86,10 @@ class TraversalNode : public virtual GraphNode {
   /// @brief Internal constructor to clone the node.
   TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                 std::vector<Collection*> const& edgeColls,
-                std::vector<Collection*> const& vertexColls,
-                Variable const* inVariable, std::string const& vertexId,
-                TRI_edge_direction_e defaultDirection,
+                std::vector<Collection*> const& vertexColls, Variable const* inVariable,
+                std::string const& vertexId, TRI_edge_direction_e defaultDirection,
                 std::vector<TRI_edge_direction_e> const& directions,
-                std::unique_ptr<graph::BaseOptions> options,
-                graph::Graph const* graph);
+                std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
 
  protected:
   /// @brief Clone constructor, used for constructors of derived classes.
@@ -114,8 +109,7 @@ class TraversalNode : public virtual GraphNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -124,8 +118,7 @@ class TraversalNode : public virtual GraphNode {
   /// @brief Test if this node uses an in variable or constant
   bool usesInVariable() const { return _inVariable != nullptr; }
 
-  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
-                            replacements) override;
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere
   void getVariablesUsedHere(VarSet& result) const override final;
@@ -183,8 +176,7 @@ class TraversalNode : public virtual GraphNode {
   ///        The condition will contain the local variable for it's accesses.
   void registerGlobalCondition(bool, AstNode const*);
 
-  /// @brief register a filter condition to be applied before the result is
-  /// returned.
+  /// @brief register a filter condition to be applied before the result is returned.
   ///        This condition validates the edge
   void registerPostFilterCondition(AstNode const* condition);
 
@@ -207,16 +199,14 @@ class TraversalNode : public virtual GraphNode {
 
  protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&,
-                      unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
 #endif
 
-  void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
-                            bool withProperties) const;
+  void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c, bool withProperties) const;
 
   // @brief Get reference to the Prune expression.
   //        You are not responsible for it!
@@ -259,8 +249,7 @@ class TraversalNode : public virtual GraphNode {
   std::vector<AstNode const*> _globalVertexConditions;
 
   /// @brief List of all depth specific conditions for edges
-  std::unordered_map<uint64_t, std::unique_ptr<TraversalEdgeConditionBuilder>>
-      _edgeConditions;
+  std::unordered_map<uint64_t, std::unique_ptr<TraversalEdgeConditionBuilder>> _edgeConditions;
 
   /// @brief List of all depth specific conditions for vertices
   std::unordered_map<uint64_t, AstNode*> _vertexConditions;

@@ -23,14 +23,6 @@
 
 #include "AqlUserFunctions.h"
 
-#include <v8.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <regex>
-
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryString.h"
@@ -49,17 +41,22 @@
 #include "V8/v8-utils.h"
 #include "V8Server/V8DealerFeature.h"
 
+#include <v8.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
+#include <regex>
+
 using namespace arangodb;
 
 namespace {
 // Must not start with `_`, may contain alphanumerical characters, should have
 // at least one set of double colons followed by more alphanumerical characters.
-std::regex const funcRegEx("[a-zA-Z0-9][a-zA-Z0-9_]*(::[a-zA-Z0-9_]+)+",
-                           std::regex::ECMAScript);
+std::regex const funcRegEx("[a-zA-Z0-9][a-zA-Z0-9_]*(::[a-zA-Z0-9_]+)+", std::regex::ECMAScript);
 
 // we may filter less restrictive:
-std::regex const funcFilterRegEx("[a-zA-Z0-9_]+(::[a-zA-Z0-9_]*)*",
-                                 std::regex::ECMAScript);
+std::regex const funcFilterRegEx("[a-zA-Z0-9_]+(::[a-zA-Z0-9_]*)*", std::regex::ECMAScript);
 
 bool isValidFunctionName(std::string const& testName) {
   return std::regex_match(testName, funcRegEx);
@@ -70,8 +67,7 @@ bool isValidFunctionNameFilter(std::string const& testName) {
 }
 
 void reloadAqlUserFunctions(application_features::ApplicationServer& server) {
-  if (server.hasFeature<V8DealerFeature>() &&
-      server.isEnabled<V8DealerFeature>() &&
+  if (server.hasFeature<V8DealerFeature>() && server.isEnabled<V8DealerFeature>() &&
       server.getFeature<V8DealerFeature>().isEnabled()) {
     std::string const def("reloadAql");
     server.getFeature<V8DealerFeature>().addGlobalContextMethod(def);
@@ -80,14 +76,13 @@ void reloadAqlUserFunctions(application_features::ApplicationServer& server) {
 
 }  // namespace
 
-Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase,
-                                        std::string const& functionName) {
+Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase, std::string const& functionName) {
   if (functionName.empty() || !isValidFunctionNameFilter(functionName)) {
     return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
                   std::string("error deleting AQL user function: '") +
                       functionName + "' contains invalid characters");
   }
-
+ 
   std::string UCFN = basics::StringUtils::toupper(functionName);
   Result res;
   {
@@ -98,16 +93,15 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase,
     }
 
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-    SingleCollectionTransaction trx(ctx, StaticStrings::AqlFunctionsCollection,
-                                    AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(ctx, StaticStrings::AqlFunctionsCollection, AccessMode::Type::WRITE);
 
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
     res = trx.begin();
 
     if (res.ok()) {
-      OperationResult result = trx.remove(StaticStrings::AqlFunctionsCollection,
-                                          builder.slice(), OperationOptions());
+      OperationResult result =
+          trx.remove(StaticStrings::AqlFunctionsCollection, builder.slice(), OperationOptions());
       res = trx.finish(result.result);
     }
   }
@@ -116,15 +110,15 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase,
     reloadAqlUserFunctions(vocbase.server());
   } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
     return res.reset(TRI_ERROR_QUERY_FUNCTION_NOT_FOUND,
-                     std::string("no AQL user function with name '") +
-                         functionName + "' found");
+                  std::string("no AQL user function with name '") +
+                      functionName + "' found");
   }
   return res;
 }
 
-Result arangodb::unregisterUserFunctionsGroup(
-    TRI_vocbase_t& vocbase, std::string const& functionFilterPrefix,
-    int& deleteCount) {
+Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
+                                              std::string const& functionFilterPrefix,
+                                              int& deleteCount) {
   deleteCount = 0;
 
   if (functionFilterPrefix.empty()) {
@@ -140,8 +134,7 @@ Result arangodb::unregisterUserFunctionsGroup(
   std::string uc(functionFilterPrefix);
   basics::StringUtils::toupperInPlace(uc);
 
-  if ((uc.length() < 2) || (uc[uc.length() - 1] != ':') ||
-      (uc[uc.length() - 2] != ':')) {
+  if ((uc.length() < 2) || (uc[uc.length() - 1] != ':') || (uc[uc.length() - 2] != ':')) {
     uc += "::";
   }
 
@@ -157,9 +150,8 @@ Result arangodb::unregisterUserFunctionsGroup(
       "REMOVE { _key: fn._key} in @@col RETURN 1");
 
   {
-    auto query = arangodb::aql::Query::create(
-        transaction::V8Context::CreateWhenRequired(vocbase, true),
-        arangodb::aql::QueryString(aql), std::move(binds));
+    auto query = arangodb::aql::Query::create(transaction::V8Context::CreateWhenRequired(vocbase, true),
+                                              arangodb::aql::QueryString(aql), std::move(binds));
     aql::QueryResult queryResult = query->executeSync();
 
     if (queryResult.result.fail()) {
@@ -183,19 +175,16 @@ Result arangodb::unregisterUserFunctionsGroup(
   return Result();
 }
 
-Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
-                                      velocypack::Slice userFunction,
+Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice userFunction,
                                       bool& replacedExisting) {
   replacedExisting = false;
 
   Result res;
 
   auto& server = vocbase.server();
-  if (!server.hasFeature<V8DealerFeature>() ||
-      !server.isEnabled<V8DealerFeature>() ||
+  if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>() ||
       !server.getFeature<V8DealerFeature>().isEnabled()) {
-    return res.reset(TRI_ERROR_DISABLED,
-                     "JavaScript operations are not available");
+    return res.reset(TRI_ERROR_DISABLED, "JavaScript operations are not available");
   }
 
   std::string name;
@@ -240,11 +229,9 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
   {
     ISOLATE;
     bool throwV8Exception = (isolate != nullptr);
-
-    JavaScriptSecurityContext securityContext =
-        JavaScriptSecurityContext::createRestrictedContext();
-    V8ConditionalContextGuard contextGuard(res, isolate, &vocbase,
-                                           securityContext);
+   
+    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
+    V8ConditionalContextGuard contextGuard(res, isolate, &vocbase, securityContext);
 
     if (res.fail()) {
       return res;
@@ -258,16 +245,16 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
     {
       v8::TryCatch tryCatch(isolate);
 
-      result = TRI_ExecuteJavaScriptString(
-          isolate, isolate->GetCurrentContext(),
-          TRI_V8_STD_STRING(isolate, testCode),
-          TRI_V8_ASCII_STRING(isolate, "userFunction"), false);
+      result = TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
+                                           TRI_V8_STD_STRING(isolate, testCode),
+                                           TRI_V8_ASCII_STRING(isolate,
+                                                               "userFunction"),
+                                           false);
 
       if (result.IsEmpty() || !result->IsFunction() || tryCatch.HasCaught()) {
         if (tryCatch.HasCaught()) {
           res.reset(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
-                    std::string(TRI_errno_string(
-                        TRI_ERROR_QUERY_FUNCTION_INVALID_CODE)) +
+                    std::string(TRI_errno_string(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE)) +
                         ": " + TRI_StringifyV8Exception(isolate, &tryCatch));
 
           if (!tryCatch.CanContinue()) {
@@ -279,8 +266,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
           }
         } else {
           res.reset(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
-                    std::string(TRI_errno_string(
-                        TRI_ERROR_QUERY_FUNCTION_INVALID_CODE)));
+                    std::string(TRI_errno_string(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE)));
         }
       }
     }
@@ -307,8 +293,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
 
     // find and load collection given by name or identifier
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-    SingleCollectionTransaction trx(ctx, StaticStrings::AqlFunctionsCollection,
-                                    AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(ctx, StaticStrings::AqlFunctionsCollection, AccessMode::Type::WRITE);
 
     res = trx.begin();
     if (res.fail()) {
@@ -316,8 +301,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
     }
 
     arangodb::OperationResult result =
-        trx.insert(StaticStrings::AqlFunctionsCollection,
-                   oneFunctionDocument.slice(), opOptions);
+        trx.insert(StaticStrings::AqlFunctionsCollection, oneFunctionDocument.slice(), opOptions);
 
     if (result.ok()) {
       VPackSlice oldSlice = result.slice().get(StaticStrings::Old);
@@ -352,8 +336,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
     std::string uc(functionFilterPrefix);
     basics::StringUtils::toupperInPlace(uc);
 
-    if ((uc.length() < 2) || (uc[uc.length() - 1] != ':') ||
-        (uc[uc.length() - 2] != ':')) {
+    if ((uc.length() < 2) || (uc[uc.length() - 1] != ':') || (uc[uc.length() - 2] != ':')) {
       uc += "::";
     }
 
@@ -366,9 +349,8 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
   binds->add("@col", VPackValue(StaticStrings::AqlFunctionsCollection));
   binds->close();
 
-  auto query = arangodb::aql::Query::create(
-      transaction::V8Context::CreateWhenRequired(vocbase, true),
-      arangodb::aql::QueryString(aql), std::move(binds));
+  auto query = arangodb::aql::Query::create(transaction::V8Context::CreateWhenRequired(vocbase, true),
+                                            arangodb::aql::QueryString(aql), std::move(binds));
   aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {

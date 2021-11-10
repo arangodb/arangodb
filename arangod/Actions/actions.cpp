@@ -39,8 +39,7 @@ using namespace arangodb::basics;
 static std::unordered_map<std::string, std::shared_ptr<TRI_action_t>> Actions;
 
 /// @brief prefix actions
-static std::unordered_map<std::string, std::shared_ptr<TRI_action_t>>
-    PrefixActions;
+static std::unordered_map<std::string, std::shared_ptr<TRI_action_t>> PrefixActions;
 
 /// @brief actions lock
 static ReadWriteLock ActionsLock;
@@ -50,13 +49,12 @@ TRI_action_result_t TRI_fake_action_t::execute(TRI_vocbase_t*,
                                                arangodb::GeneralRequest*,
                                                arangodb::GeneralResponse*,
                                                arangodb::Mutex*, void**) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, "TRI_fake_action_t::execute must never be called");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "TRI_fake_action_t::execute must never be called");
 }
 
 /// @brief defines an action
-std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(
-    std::string const& name, std::shared_ptr<TRI_action_t> action) {
+std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
+                                                      std::shared_ptr<TRI_action_t> action) {
   std::string url = name;
 
   // strip leading slash
@@ -91,8 +89,7 @@ std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(
 }
 
 /// @brief looks up an action
-std::shared_ptr<TRI_action_t> TRI_LookupActionVocBase(
-    arangodb::GeneralRequest* request) {
+std::shared_ptr<TRI_action_t> TRI_LookupActionVocBase(arangodb::GeneralRequest* request) {
   // check if we know a callback
   std::vector<std::string> suffixes = request->decodedSuffixes();
 

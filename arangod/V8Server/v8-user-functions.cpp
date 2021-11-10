@@ -21,22 +21,23 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-user-functions.h"
-
 #include <v8.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "VocBase/Methods/AqlUserFunctions.h"
 #include "v8-vocbaseprivate.h"
+
+#include "v8-user-functions.h"
+
+#include "VocBase/Methods/AqlUserFunctions.h"
 
 using namespace arangodb;
 
-static void JS_UnregisterAQLUserFunction(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_UnregisterAQLUserFunction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -56,8 +57,7 @@ static void JS_UnregisterAQLUserFunction(
   TRI_V8_TRY_CATCH_END;
 }
 
-static void JS_UnregisterAQLUserFunctionsGroup(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_UnregisterAQLUserFunctionsGroup(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -69,8 +69,7 @@ static void JS_UnregisterAQLUserFunctionsGroup(
   int deleteCount;
   auto& vocbase = GetContextVocBase(isolate);
   std::string functionFilterPrefix = TRI_ObjectToString(isolate, args[0]);
-  Result rv =
-      unregisterUserFunctionsGroup(vocbase, functionFilterPrefix, deleteCount);
+  Result rv = unregisterUserFunctionsGroup(vocbase, functionFilterPrefix, deleteCount);
 
   if (rv.fail()) {
     TRI_V8_THROW_EXCEPTION(rv);
@@ -80,8 +79,7 @@ static void JS_UnregisterAQLUserFunctionsGroup(
   TRI_V8_TRY_CATCH_END;
 }
 
-static void JS_RegisterAqlUserFunction(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_RegisterAqlUserFunction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -109,8 +107,7 @@ static void JS_RegisterAqlUserFunction(
   TRI_V8_TRY_CATCH_END;
 }
 
-static void JS_GetAqlUserFunctions(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_GetAqlUserFunctions(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -153,7 +150,8 @@ void TRI_InitV8UserFunctions(v8::Isolate* isolate, v8::Handle<v8::Context>) {
       isolate, TRI_V8_ASCII_STRING(isolate, "REGISTER_AQL_USER_FUNCTION"),
       JS_RegisterAqlUserFunction, true);
 
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "GET_AQL_USER_FUNCTIONS"),
-      JS_GetAqlUserFunctions, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "GET_AQL_USER_FUNCTIONS"),
+                               JS_GetAqlUserFunctions, true);
 }

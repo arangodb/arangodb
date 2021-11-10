@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "Cluster/ClusterTypes.h"
 
 namespace arangodb::network {
 class ConnectionPool;
@@ -31,13 +31,10 @@ class ConnectionPool;
 
 namespace arangodb::replication2::replicated_log {
 
-struct NetworkAttachedFollower
-    : arangodb::replication2::replicated_log::AbstractFollower {
-  explicit NetworkAttachedFollower(network::ConnectionPool* pool,
-                                   ParticipantId id, DatabaseID database,
-                                   LogId logId);
-  [[nodiscard]] auto getParticipantId() const noexcept
-      -> ParticipantId const& override;
+struct NetworkAttachedFollower : arangodb::replication2::replicated_log::AbstractFollower {
+  explicit NetworkAttachedFollower(network::ConnectionPool* pool, ParticipantId id,
+                                   DatabaseID database, LogId logId);
+  [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
   auto appendEntries(AppendEntriesRequest request)
       -> futures::Future<AppendEntriesResult> override;
 

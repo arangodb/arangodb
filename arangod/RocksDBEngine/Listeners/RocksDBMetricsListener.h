@@ -33,8 +33,7 @@ namespace application_features {
 class ApplicationServer;
 }
 
-/// @brief Gathers better metrics from RocksDB than we can get by scraping
-/// alone.
+/// @brief Gathers better metrics from RocksDB than we can get by scraping alone.
 class RocksDBMetricsListener : public rocksdb::EventListener {
  public:
   explicit RocksDBMetricsListener(application_features::ApplicationServer&);
@@ -47,3 +46,4 @@ class RocksDBMetricsListener : public rocksdb::EventListener {
 };
 
 }  // namespace arangodb
+

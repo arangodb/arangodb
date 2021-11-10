@@ -24,8 +24,6 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-
 #include <map>
 #include <mutex>
 #include <string>
@@ -36,6 +34,8 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
+
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 namespace httpclient {
@@ -54,8 +54,7 @@ namespace replutils {
 extern std::string const ReplicationUrl;
 
 struct Connection {
-  Connection(Syncer* syncer,
-             ReplicationApplierConfiguration const& applierConfig);
+  Connection(Syncer* syncer, ReplicationApplierConfiguration const& applierConfig);
 
   /// @brief determine if the client connection is open and valid
   bool valid() const;
@@ -78,13 +77,13 @@ struct Connection {
   void preventRecycling();
 
   /// @brief get an exclusive connection
-  template<typename F>
+  template <typename F>
   void lease(F&& func) & {
     std::lock_guard<std::mutex> guard(_mutex);
     std::forward<F>(func)(_client.get());
   }
 
-  template<typename F>
+  template <typename F>
   void lease(F&& func) const& {
     std::lock_guard<std::mutex> guard(_mutex);
     std::forward<F>(func)(_client.get());
@@ -110,8 +109,7 @@ struct ProgressInfo {
   /// @brief progress message
   std::string message{"not started"};
   /// @brief collections synced
-  std::map<DataSourceId, std::string>
-      processedCollections{};  // TODO worker safety
+  std::map<DataSourceId, std::string> processedCollections{};  // TODO worker safety
 
   // @brief constructor to optionally provide a setter/handler for messages
   explicit ProgressInfo(Setter);
@@ -127,7 +125,7 @@ struct ProgressInfo {
 
 struct LeaderInfo {
  private:
-  LeaderInfo() = default;  // used only internally
+  LeaderInfo() = default; // used only internally
 
  public:
   std::string endpoint;
@@ -135,7 +133,7 @@ struct LeaderInfo {
   ServerId serverId{0};
   int majorVersion{0};
   int minorVersion{0};
-  TRI_voc_tick_t lastLogTick{0};  // only used during initialSync
+  TRI_voc_tick_t lastLogTick{0}; // only used during initialSync
 
   explicit LeaderInfo(ReplicationApplierConfiguration const& applierConfig);
 
@@ -145,8 +143,7 @@ struct LeaderInfo {
   uint64_t version() const;
 
   /// @brief get leader state
-  Result getState(Connection& connection, bool isChildSyncer,
-                  char const* context);
+  Result getState(Connection& connection, bool isChildSyncer, char const* context);
 };
 
 struct BatchInfo {
@@ -163,18 +160,16 @@ struct BatchInfo {
   /// @brief send a "start batch" command
   /// @param patchCount try to patch count of this collection
   ///        only effective with the incremental sync
-  Result start(Connection& connection, ProgressInfo& progress,
-               LeaderInfo& leader, SyncerId const& syncerId,
-               char const* context, std::string const& patchCount = "");
+  Result start(Connection& connection, ProgressInfo& progress, LeaderInfo& leader,
+               SyncerId const& syncerId, char const* context, 
+               std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
-  Result extend(Connection& connection, ProgressInfo& progress,
-                SyncerId syncerId);
+  Result extend(Connection& connection, ProgressInfo& progress, SyncerId syncerId);
 
   /// @brief send a "finish batch" command
   // TODO worker-safety
-  Result finish(Connection& connection, ProgressInfo& progress,
-                SyncerId syncerId) noexcept;
+  Result finish(Connection& connection, ProgressInfo& progress, SyncerId syncerId) noexcept;
 };
 
 /// @brief generates basic source headers for ClusterComm requests
@@ -192,3 +187,4 @@ Result parseResponse(velocypack::Builder&, httpclient::SimpleHttpResult const*);
 
 }  // namespace replutils
 }  // namespace arangodb
+

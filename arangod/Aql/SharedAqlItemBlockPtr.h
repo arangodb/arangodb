@@ -34,8 +34,7 @@ class SharedAqlItemBlockPtr {
   inline explicit SharedAqlItemBlockPtr(AqlItemBlock* aqlItemBlock) noexcept;
 
   // allow implicit cast from nullptr:
-  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
-  // cppcheck-suppress noExplicitConstructor
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions) cppcheck-suppress noExplicitConstructor
   constexpr inline SharedAqlItemBlockPtr(std::nullptr_t) noexcept;
 
   constexpr inline SharedAqlItemBlockPtr() noexcept;
@@ -46,11 +45,9 @@ class SharedAqlItemBlockPtr {
 
   inline SharedAqlItemBlockPtr(SharedAqlItemBlockPtr&& other) noexcept;
 
-  inline SharedAqlItemBlockPtr& operator=(
-      SharedAqlItemBlockPtr const& other) noexcept;
+  inline SharedAqlItemBlockPtr& operator=(SharedAqlItemBlockPtr const& other) noexcept;
 
-  inline SharedAqlItemBlockPtr& operator=(
-      SharedAqlItemBlockPtr&& other) noexcept;
+  inline SharedAqlItemBlockPtr& operator=(SharedAqlItemBlockPtr&& other) noexcept;
 
   inline SharedAqlItemBlockPtr& operator=(std::nullptr_t) noexcept;
 
@@ -85,8 +82,7 @@ class SharedAqlItemBlockPtr {
   AqlItemBlock* _aqlItemBlock;
 };
 
-arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(
-    arangodb::aql::AqlItemBlock* aqlItemBlock) noexcept
+arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(arangodb::aql::AqlItemBlock* aqlItemBlock) noexcept
     : _aqlItemBlock(aqlItemBlock) {
   // This constructor should only be used for fresh AqlItemBlocks in the
   // AqlItemBlockManager. All other places should already have a
@@ -96,8 +92,7 @@ arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(
   _aqlItemBlock->incrRefCount();
 }
 
-constexpr arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(
-    std::nullptr_t) noexcept
+constexpr arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(std::nullptr_t) noexcept
     : _aqlItemBlock(nullptr) {}
 
 constexpr arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr() noexcept
@@ -105,30 +100,26 @@ constexpr arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr() noexcept
 
 SharedAqlItemBlockPtr::~SharedAqlItemBlockPtr() noexcept { decrRefCount(); }
 
-SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(
-    SharedAqlItemBlockPtr const& other) noexcept
+SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(SharedAqlItemBlockPtr const& other) noexcept
     : _aqlItemBlock(other._aqlItemBlock) {
   TRI_ASSERT(this != &other);
   incrRefCount();
 }
 
-SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(
-    SharedAqlItemBlockPtr&& other) noexcept
+SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(SharedAqlItemBlockPtr&& other) noexcept
     : _aqlItemBlock(other._aqlItemBlock) {
   TRI_ASSERT(this != &other);
   other._aqlItemBlock = nullptr;
 }
 
-SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(
-    SharedAqlItemBlockPtr const& other) noexcept {
+SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(SharedAqlItemBlockPtr const& other) noexcept {
   other.incrRefCount();
   decrRefCount();
   _aqlItemBlock = other._aqlItemBlock;
   return *this;
 }
 
-SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(
-    SharedAqlItemBlockPtr&& other) noexcept {
+SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(SharedAqlItemBlockPtr&& other) noexcept {
   TRI_ASSERT(this != &other);
   decrRefCount();
   _aqlItemBlock = other._aqlItemBlock;
@@ -136,8 +127,7 @@ SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(
   return *this;
 }
 
-SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(
-    std::nullptr_t) noexcept {
+SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(std::nullptr_t) noexcept {
   decrRefCount();
   _aqlItemBlock = nullptr;
   return *this;
@@ -181,13 +171,11 @@ bool SharedAqlItemBlockPtr::operator!=(std::nullptr_t) const noexcept {
   return _aqlItemBlock != nullptr;
 }
 
-bool SharedAqlItemBlockPtr::operator==(
-    SharedAqlItemBlockPtr const& other) const noexcept {
+bool SharedAqlItemBlockPtr::operator==(SharedAqlItemBlockPtr const& other) const noexcept {
   return _aqlItemBlock == other._aqlItemBlock;
 }
 
-bool SharedAqlItemBlockPtr::operator!=(
-    SharedAqlItemBlockPtr const& other) const noexcept {
+bool SharedAqlItemBlockPtr::operator!=(SharedAqlItemBlockPtr const& other) const noexcept {
   return _aqlItemBlock != other._aqlItemBlock;
 }
 
@@ -210,10 +198,12 @@ void SharedAqlItemBlockPtr::swap(SharedAqlItemBlockPtr& other) noexcept {
 }
 
 void arangodb::aql::SharedAqlItemBlockPtr::decrRefCount() noexcept {
-  if (_aqlItemBlock != nullptr && _aqlItemBlock->decrRefCount() == 0) {
+  if (_aqlItemBlock != nullptr &&
+      _aqlItemBlock->decrRefCount() == 0) {
     returnBlock();
   }
 }
 
 }  // namespace aql
 }  // namespace arangodb
+

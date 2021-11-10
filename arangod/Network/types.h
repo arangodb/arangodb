@@ -24,7 +24,6 @@
 #pragma once
 
 #include <fuerte/types.h>
-
 #include <chrono>
 
 namespace arangodb {
@@ -44,3 +43,4 @@ struct EndpointSpec {
 
 }  // namespace network
 }  // namespace arangodb
+

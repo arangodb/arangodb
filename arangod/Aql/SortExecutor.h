@@ -26,13 +26,13 @@
 
 #pragma once
 
-#include <cstddef>
-#include <memory>
-
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
+
+#include <cstddef>
+#include <memory>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -54,13 +54,13 @@ struct SortRegister;
 
 class SortExecutorInfos {
  public:
-  SortExecutorInfos(RegisterCount nrInputRegisters,
-                    RegisterCount nrOutputRegisters,
+  SortExecutorInfos(RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
                     RegIdFlatSet const& registersToClear,
                     std::vector<SortRegister> sortRegisters, std::size_t limit,
                     AqlItemBlockManager& manager,
-                    velocypack::Options const* options,
-                    arangodb::ResourceMonitor& resourceMonitor, bool stable);
+                    velocypack::Options const* options, 
+                    arangodb::ResourceMonitor& resourceMonitor,
+                    bool stable);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
@@ -104,8 +104,7 @@ class SortExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = false;
-    static constexpr BlockPassthrough allowsBlockPassthrough =
-        BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = AllRowsFetcher;
@@ -120,8 +119,7 @@ class SortExecutor {
   /**
    * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to
-   * upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputMatrix& inputMatrix, OutputAqlItemRow& output);
@@ -129,15 +127,13 @@ class SortExecutor {
   /**
    * @brief skip the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to
-   * upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputMatrix& inputMatrix, AqlCall& call);
 
-  [[nodiscard]] auto expectedNumberOfRowsNew(
-      AqlItemBlockInputMatrix const& input, AqlCall const& call) const noexcept
-      -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputMatrix const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
   void doSorting();
@@ -156,3 +152,4 @@ class SortExecutor {
 };
 }  // namespace aql
 }  // namespace arangodb
+

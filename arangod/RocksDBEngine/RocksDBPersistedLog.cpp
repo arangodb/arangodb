@@ -20,32 +20,29 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBPersistedLog.h"
-
 #include <Basics/Exceptions.h>
 #include <Basics/RocksDBUtils.h>
 #include <Basics/ScopeGuard.h>
 #include <Basics/debugging.h>
 #include <Replication2/ReplicatedLog/PersistedLog.h>
-
 #include <memory>
-#include <utility>
 
+#include <utility>
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBKey.h"
+#include "RocksDBPersistedLog.h"
 #include "RocksDBValue.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-RocksDBPersistedLog::RocksDBPersistedLog(
-    replication2::LogId id, uint64_t objectId,
-    std::shared_ptr<RocksDBLogPersistor> persistor)
+RocksDBPersistedLog::RocksDBPersistedLog(replication2::LogId id, uint64_t objectId,
+                                         std::shared_ptr<RocksDBLogPersistor> persistor)
     : PersistedLog(id), _objectId(objectId), _persistor(std::move(persistor)) {}
 
-auto RocksDBPersistedLog::insert(PersistedLogIterator& iter,
-                                 WriteOptions const& options) -> Result {
+auto RocksDBPersistedLog::insert(PersistedLogIterator& iter, WriteOptions const& options)
+    -> Result {
   rocksdb::WriteBatch wb;
   auto res = prepareWriteBatch(iter, wb);
   if (!res.ok()) {
@@ -99,9 +96,9 @@ struct RocksDBLogIterator : PersistedLogIterator {
       return std::nullopt;
     }
 
-    return std::optional<PersistingLogEntry>{
-        std::in_place, RocksDBKey::logIndex(_iter->key()),
-        RocksDBValue::data(_iter->value())};
+    return std::optional<PersistingLogEntry>{std::in_place,
+                                             RocksDBKey::logIndex(_iter->key()),
+                                             RocksDBValue::data(_iter->value())};
   }
 
   RocksDBKeyBounds const _bounds;
@@ -110,10 +107,8 @@ struct RocksDBLogIterator : PersistedLogIterator {
   bool _first = true;
 };
 
-auto RocksDBPersistedLog::read(LogIndex start)
-    -> std::unique_ptr<PersistedLogIterator> {
-  return std::make_unique<RocksDBLogIterator>(this, _persistor->_db,
-                                              _persistor->_cf, start);
+auto RocksDBPersistedLog::read(LogIndex start) -> std::unique_ptr<PersistedLogIterator> {
+  return std::make_unique<RocksDBLogIterator>(this, _persistor->_db, _persistor->_cf, start);
 }
 
 auto RocksDBPersistedLog::drop() -> Result {
@@ -123,8 +118,7 @@ auto RocksDBPersistedLog::drop() -> Result {
 
 auto RocksDBPersistedLog::removeFront(replication2::LogIndex stop)
     -> futures::Future<Result> {
-  return _persistor->persist(shared_from_this(),
-                             RocksDBLogPersistor::RemoveFront{stop}, {});
+  return _persistor->persist(shared_from_this(), RocksDBLogPersistor::RemoveFront{stop}, {});
 }
 
 auto RocksDBPersistedLog::removeBack(replication2::LogIndex start) -> Result {
@@ -152,33 +146,26 @@ auto RocksDBPersistedLog::prepareWriteBatch(PersistedLogIterator& iter,
   return {};
 }
 
-auto RocksDBPersistedLog::insertAsync(
-    std::unique_ptr<PersistedLogIterator> iter, WriteOptions const& opts)
-    -> futures::Future<Result> {
+auto RocksDBPersistedLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
+                                      WriteOptions const& opts) -> futures::Future<Result> {
   RocksDBLogPersistor::WriteOptions wo;
   wo.waitForSync = opts.waitForSync;
-  return _persistor->persist(
-      shared_from_this(), RocksDBLogPersistor::InsertEntries{std::move(iter)},
-      wo);
+  return _persistor->persist(shared_from_this(),
+                             RocksDBLogPersistor::InsertEntries{std::move(iter)}, wo);
 }
 
 auto RocksDBPersistedLog::prepareRemoveFront(replication2::LogIndex stop,
-                                             rocksdb::WriteBatch& wb)
-    -> Result {
+                                             rocksdb::WriteBatch& wb) -> Result {
   auto last = RocksDBKey();
   last.constructLogEntry(_objectId, stop);
   auto s = wb.DeleteRange(_persistor->_cf, getBounds().start(), last.string());
   return rocksutils::convertStatus(s);
 }
 
-RocksDBLogPersistor::RocksDBLogPersistor(
-    rocksdb::ColumnFamilyHandle* cf, rocksdb::DB* db,
-    std::shared_ptr<Executor> executor,
-    std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options)
-    : _cf(cf),
-      _db(db),
-      _executor(std::move(executor)),
-      _options(std::move(options)) {}
+RocksDBLogPersistor::RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf,
+                                         rocksdb::DB* db, std::shared_ptr<Executor> executor,
+                                         std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options)
+    : _cf(cf), _db(db), _executor(std::move(executor)), _options(std::move(options)) {}
 
 void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
   // This function is noexcept so in case an exception bubbles up we
@@ -228,9 +215,8 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
 
           if (lane._waitForSync) {
             if (auto s = _db->SyncWAL(); !s.ok()) {
-              // At this point we have to make sure that every previous log
-              // entry is synced as well. Otherwise we might get holes in the
-              // log.
+              // At this point we have to make sure that every previous log entry is synced
+              // as well. Otherwise we might get holes in the log.
               return rocksutils::convertStatus(s);
             }
           }
@@ -247,8 +233,7 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
 
     // resolve all promises with the result
     if (result.fail()) {
-      for (; nextReqToResolve != std::end(pendingRequests);
-           ++nextReqToResolve) {
+      for (; nextReqToResolve != std::end(pendingRequests); ++nextReqToResolve) {
         // If a promise is fulfilled before (with a value), nextReqToResolve
         // should always be increased as well; meaning we only exactly iterate
         // over the unfulfilled promises here.
@@ -259,9 +244,9 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
   }
 }
 
-auto RocksDBLogPersistor::persist(
-    std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
-    Action action, WriteOptions const& options) -> futures::Future<Result> {
+auto RocksDBLogPersistor::persist(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
+        Action action, WriteOptions const& options)
+    ->futures::Future<Result> {
   auto p = futures::Promise<Result>{};
   auto f = p.getFuture();
 
@@ -270,8 +255,7 @@ auto RocksDBLogPersistor::persist(
 
   {
     std::unique_lock guard(lane._persistorMutex);
-    lane._pendingPersistRequests.emplace_back(std::move(log), std::move(action),
-                                              std::move(p));
+    lane._pendingPersistRequests.emplace_back(std::move(log), std::move(action), std::move(p));
     bool const wantNewThread = lane._activePersistorThreads == 0 ||
                                (lane._pendingPersistRequests.size() > 100 &&
                                 lane._activePersistorThreads < 2);
@@ -286,19 +270,18 @@ auto RocksDBLogPersistor::persist(
   // We committed ourselves to start a thread
   size_t num_retries = 0;
   while (true) {
-    auto lambda = fu2::unique_function<void() noexcept>{
-        [self = shared_from_this(), &lane]() noexcept {
+    auto lambda =
+        fu2::unique_function<void() noexcept>{[self = shared_from_this(), &lane]() noexcept {
           self->runPersistorWorker(lane);
         }};
 
     try {
-      _executor->operator()(
-          std::move(lambda));  // may throw a QUEUE_FULL exception
+      _executor->operator()(std::move(lambda));  // may throw a QUEUE_FULL exception
       break;
     } catch (std::exception const& e) {
       LOG_TOPIC("213cb", WARN, Logger::REPLICATION2)
-          << "Could not post persistence request onto the scheduler: "
-          << e.what() << " Retries: " << num_retries;
+          << "Could not post persistence request onto the scheduler: " << e.what()
+          << " Retries: " << num_retries;
     } catch (...) {
       LOG_TOPIC("8553d", WARN, Logger::REPLICATION2)
           << "Could not post persistence request onto the scheduler."
@@ -314,8 +297,7 @@ auto RocksDBLogPersistor::persist(
   return f;
 }
 
-auto RocksDBLogPersistor::PersistRequest::execute(rocksdb::WriteBatch& wb)
-    -> Result {
+auto RocksDBLogPersistor::PersistRequest::execute(rocksdb::WriteBatch& wb) -> Result {
   struct ExecuteVisitor {
     auto operator()(InsertEntries const& what) -> Result {
       auto* log_ptr = dynamic_cast<RocksDBPersistedLog*>(req.log.get());

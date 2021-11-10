@@ -30,17 +30,18 @@ namespace aql {
 
 double stringToNumber(std::string const& value, bool& failed) noexcept;
 
-template<typename T>
+template <typename T>
 bool isUnsafeAddition(T l, T r);
 
-template<typename T>
+template <typename T>
 bool isUnsafeSubtraction(T l, T r);
 
-template<typename T>
+template <typename T>
 bool isUnsafeMultiplication(T l, T r);
 
-template<typename T>
+template <typename T>
 bool isUnsafeDivision(T l, T r);
 
 }  // namespace aql
 }  // namespace arangodb
+

@@ -23,10 +23,10 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 class LocalDocumentId;
@@ -68,8 +68,7 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
 
   bool getEdgesForVertex(std::string const& id, DataSourceId cid,
                          std::string const& collectionName,
-                         TRI_edge_direction_e direction,
-                         transaction::Methods& trx,
+                         TRI_edge_direction_e direction, transaction::Methods& trx,
                          std::function<void(LocalDocumentId const&)> const& cb);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -85,3 +84,4 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   bool validateCollection(std::string const& name);
 };
 }  // namespace arangodb
+

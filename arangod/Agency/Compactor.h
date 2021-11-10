@@ -66,3 +66,4 @@ class Compactor : public arangodb::Thread {
 
 }  // namespace consensus
 }  // namespace arangodb
+

@@ -22,13 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Collections.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Aql/Collection.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/AccessMode.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -48,9 +47,7 @@ Collection* Collections::get(std::string_view const name) const {
   return nullptr;
 }
 
-Collection* Collections::add(std::string const& name,
-                             AccessMode::Type accessType,
-                             Collection::Hint hint) {
+Collection* Collections::add(std::string const& name, AccessMode::Type accessType, Collection::Hint hint) {
   // check if collection already is in our map
   TRI_ASSERT(!name.empty());
   auto it = _collections.find(name);
@@ -60,8 +57,7 @@ Collection* Collections::add(std::string const& name,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS);
     }
 
-    auto collection =
-        std::make_unique<Collection>(name, _vocbase, accessType, hint);
+    auto collection = std::make_unique<Collection>(name, _vocbase, accessType, hint);
     it = _collections.try_emplace(name, std::move(collection)).first;
   } else {
     // note that the collection is used in both read & write ops
@@ -97,21 +93,19 @@ std::vector<std::string> Collections::collectionNames() const {
 }
 
 bool Collections::empty() const { return _collections.empty(); }
-
+  
 void Collections::toVelocyPack(velocypack::Builder& builder) const {
   builder.openArray();
   for (auto const& c : _collections) {
     builder.openObject();
     builder.add("name", VPackValue(c.first));
-    builder.add("type",
-                VPackValue(AccessMode::typeString(c.second->accessType())));
+    builder.add("type", VPackValue(AccessMode::typeString(c.second->accessType())));
     builder.close();
   }
   builder.close();
 }
 
-void Collections::visit(
-    std::function<bool(std::string const&, Collection&)> const& visitor) const {
+void Collections::visit(std::function<bool(std::string const&, Collection&)> const& visitor) const {
   for (auto const& it : _collections) {
     // stop iterating when visitor returns false
     if (!visitor(it.first, *it.second.get())) {

@@ -34,9 +34,9 @@ namespace rocksdb {
 /// @brief recalculate collection count on all DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-Result recalculateCountsOnAllDBServers(
-    application_features::ApplicationServer& server, std::string const& dbname,
-    std::string const& collname);
+Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& server,
+                                       std::string const& dbname,
+                                       std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for estimator sync on all DBServers
@@ -45,3 +45,4 @@ Result recalculateCountsOnAllDBServers(
 Result waitForEstimatorSync();
 }  // namespace rocksdb
 }  // namespace arangodb
+

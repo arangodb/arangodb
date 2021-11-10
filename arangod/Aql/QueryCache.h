@@ -37,7 +37,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class LogicalDataSource;  // forward declaration
+class LogicalDataSource; // forward declaration
 
 }
 
@@ -63,11 +63,11 @@ struct QueryCacheProperties {
 struct QueryCacheResultEntry {
   QueryCacheResultEntry() = delete;
 
-  QueryCacheResultEntry(
-      uint64_t hash, QueryString const& queryString,
-      std::shared_ptr<arangodb::velocypack::Builder> const& queryResult,
-      std::shared_ptr<arangodb::velocypack::Builder> const& bindVars,
-      std::unordered_map<std::string, std::string>&& dataSources);
+  QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
+                        std::shared_ptr<arangodb::velocypack::Builder> const& queryResult,
+                        std::shared_ptr<arangodb::velocypack::Builder> const& bindVars,
+                        std::unordered_map<std::string, std::string>&& dataSources
+  );
 
   ~QueryCacheResultEntry() = default;
 
@@ -89,7 +89,7 @@ struct QueryCacheResultEntry {
   double executionTime() const;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
-
+  
   /// current user has all permissions
   bool currentUserHasPermissions() const;
 };
@@ -145,15 +145,12 @@ struct QueryCacheDatabaseEntry {
   void link(QueryCacheResultEntry*);
 
   /// @brief hash table that maps query hashes to query results
-  std::unordered_map<uint64_t, std::shared_ptr<QueryCacheResultEntry>>
-      _entriesByHash;
+  std::unordered_map<uint64_t, std::shared_ptr<QueryCacheResultEntry>> _entriesByHash;
 
   /// @brief hash table that contains all data souce-specific query results
-  ///        maps from data sources GUIDs to a set of query results as defined
-  ///        in
+  ///        maps from data sources GUIDs to a set of query results as defined in
   /// _entriesByHash
-  std::unordered_map<std::string, std::pair<bool, std::unordered_set<uint64_t>>>
-      _entriesByDataSourceGuid;
+  std::unordered_map<std::string, std::pair<bool, std::unordered_set<uint64_t>>> _entriesByDataSourceGuid;
 
   /// @brief beginning of linked list of result entries
   QueryCacheResultEntry* _head;
@@ -212,12 +209,10 @@ class QueryCache {
       std::shared_ptr<arangodb::velocypack::Builder> const& bindVars) const;
 
   /// @brief store a query cache entry in the cache
-  void store(TRI_vocbase_t* vocbase,
-             std::shared_ptr<QueryCacheResultEntry> entry);
+  void store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultEntry> entry);
 
   /// @brief invalidate all queries for the given data sources
-  void invalidate(TRI_vocbase_t* vocbase,
-                  std::vector<std::string> const& dataSourceGuids);
+  void invalidate(TRI_vocbase_t* vocbase, std::vector<std::string> const& dataSourceGuids);
 
   /// @brief invalidate all queries for a particular data source
   void invalidate(TRI_vocbase_t* vocbase, std::string const& dataSourceGuid);
@@ -232,8 +227,7 @@ class QueryCache {
   static QueryCache* instance();
 
   /// @brief create a velocypack representation of the queries in the cache
-  void queriesToVelocyPack(TRI_vocbase_t* vocbase,
-                           arangodb::velocypack::Builder& builder) const;
+  void queriesToVelocyPack(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& builder) const;
 
  private:
   /// @brief invalidate all entries in the cache part
@@ -277,8 +271,8 @@ class QueryCache {
   mutable arangodb::basics::ReadWriteLock _entriesLock[numberOfParts];
 
   /// @brief cached query entries, organized per database
-  std::unordered_map<TRI_vocbase_t*, std::unique_ptr<QueryCacheDatabaseEntry>>
-      _entries[numberOfParts];
+  std::unordered_map<TRI_vocbase_t*, std::unique_ptr<QueryCacheDatabaseEntry>> _entries[numberOfParts];
 };
 }  // namespace aql
 }  // namespace arangodb
+

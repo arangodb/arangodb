@@ -23,9 +23,6 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 #include "Basics/Common.h"
 #include "Basics/LruCache.h"
 #include "Basics/Mutex.h"
@@ -34,6 +31,9 @@
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace auth {
@@ -65,9 +65,7 @@ class TokenCache {
     void setExpiry(double expiry) { _expiry = expiry; }
     double expiry() const noexcept { return _expiry; }
     bool expired() const { return _expiry != 0 && _expiry < TRI_microtime(); }
-    std::vector<std::string> const& allowedPaths() const {
-      return _allowedPaths;
-    }
+    std::vector<std::string> const& allowedPaths() const { return _allowedPaths; }
 
    private:
     /// username
@@ -81,12 +79,13 @@ class TokenCache {
   };
 
  public:
-  TokenCache::Entry checkAuthentication(
-      arangodb::rest::AuthenticationMethod authType, std::string const& secret);
+  
+  TokenCache::Entry checkAuthentication(arangodb::rest::AuthenticationMethod authType,
+                                        std::string const& secret);
 
   /// Clear the cache of username / password auth
   void invalidateBasicCache();
-
+  
 #ifdef USE_ENTERPRISE
   /// set new jwt secret, regenerate _jwtToken
   void setJwtSecrets(std::string const& active,
@@ -101,7 +100,7 @@ class TokenCache {
     TRI_ASSERT(!_jwtSuperToken.empty());
     return _jwtSuperToken;
   }
-
+  
   std::string jwtSecret() const;
 
  private:
@@ -114,9 +113,8 @@ class TokenCache {
   TokenCache::Entry validateJwtBody(std::string const&);
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
 
-  std::shared_ptr<velocypack::Builder> parseJson(std::string const& str,
-                                                 char const* hint);
-
+  std::shared_ptr<velocypack::Builder> parseJson(std::string const& str, char const* hint);
+  
   /// generate new superuser jwtToken
   void generateSuperToken();
 
@@ -128,7 +126,7 @@ class TokenCache {
   std::atomic<uint64_t> _basicCacheVersion{0};
 
   mutable arangodb::basics::ReadWriteLock _jwtSecretLock;
-
+    
 #ifdef USE_ENTERPRISE
   std::vector<std::string> _jwtPassiveSecrets;
 #endif
@@ -137,9 +135,10 @@ class TokenCache {
 
   mutable std::mutex _jwtCacheMutex;
   arangodb::basics::LruCache<std::string, TokenCache::Entry> _jwtCache;
-
+  
   /// Timeout in seconds
   double const _authTimeout;
 };
 }  // namespace auth
 }  // namespace arangodb
+

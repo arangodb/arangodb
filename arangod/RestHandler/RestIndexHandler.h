@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-
 #include <memory>
 #include <mutex>
 #include <string>
@@ -33,6 +31,8 @@
 #include "Basics/Result.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 class LogicalCollection;
 
@@ -40,7 +40,7 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestIndexHandler(application_features::ApplicationServer&, GeneralRequest*,
                    GeneralResponse*);
-
+  
   ~RestIndexHandler();
 
  public:
@@ -70,3 +70,4 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
   CreateInBackgroundData _createInBackgroundData;
 };
 }  // namespace arangodb
+

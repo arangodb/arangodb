@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AllRowsFetcher.h"
-
 #include <Logger/LogMacros.h>
 
 #include "Aql/AqlItemBlock.h"
@@ -32,8 +31,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix>
-AllRowsFetcher::execute(AqlCallStack& stack) {
+std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::execute(AqlCallStack& stack) {
   TRI_ASSERT(stack.peek().getOffset() == 0);
   TRI_ASSERT(!stack.peek().needsFullCount());
   // We allow a 0 hardLimit for bypassing
@@ -50,20 +48,17 @@ AllRowsFetcher::execute(AqlCallStack& stack) {
     auto [state, skipped, block] = _dependencyProxy->execute(stack);
     TRI_ASSERT(skipped.getSkipCount() == 0);
 
-    // we will either build a complete fetched AqlItemBlockInputMatrix or return
-    // an empty one
+    // we will either build a complete fetched AqlItemBlockInputMatrix or return an empty one
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(skipped.nothingSkipped());
       TRI_ASSERT(block == nullptr);
       // On waiting we have nothing to return
-      return {state, SkipResult{},
-              AqlItemBlockInputMatrix{ExecutorState::HASMORE}};
+      return {state, SkipResult{}, AqlItemBlockInputMatrix{ExecutorState::HASMORE}};
     }
     TRI_ASSERT(block != nullptr || state == ExecutionState::DONE);
 
     if (block != nullptr) {
-      // we need to store the block for later creation of
-      // AqlItemBlockInputMatrix
+      // we need to store the block for later creation of AqlItemBlockInputMatrix
       _aqlItemMatrix->addBlock(std::move(block));
     }
 
@@ -71,18 +66,15 @@ AllRowsFetcher::execute(AqlCallStack& stack) {
     if (_aqlItemMatrix->stoppedOnShadowRow() || state == ExecutionState::DONE) {
       if (state == ExecutionState::HASMORE) {
         return {state, skipped,
-                AqlItemBlockInputMatrix{ExecutorState::HASMORE,
-                                        _aqlItemMatrix.get()}};
+                AqlItemBlockInputMatrix{ExecutorState::HASMORE, _aqlItemMatrix.get()}};
       }
-      return {
-          state, skipped,
-          AqlItemBlockInputMatrix{ExecutorState::DONE, _aqlItemMatrix.get()}};
+      return {state, skipped,
+              AqlItemBlockInputMatrix{ExecutorState::DONE, _aqlItemMatrix.get()}};
     }
   }
 }
 
-AllRowsFetcher::AllRowsFetcher(
-    DependencyProxy<BlockPassthrough::Disable>& executionBlock)
+AllRowsFetcher::AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock)
     : _dependencyProxy(&executionBlock),
       _aqlItemMatrix(nullptr),
       _upstreamState(ExecutionState::HASMORE),

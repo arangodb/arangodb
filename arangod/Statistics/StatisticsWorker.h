@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Statistics/figures.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 struct TRI_vocbase_t;
 
@@ -61,12 +61,11 @@ class StatisticsWorker final : public Thread {
   void createCollections() const;
   void createCollection(std::string const&) const;
 
-  std::shared_ptr<arangodb::velocypack::Builder> lastEntry(
-      std::string const& collection, double start) const;
+  std::shared_ptr<arangodb::velocypack::Builder> lastEntry(std::string const& collection,
+                                                           double start) const;
 
   void avgPercentDistributon(velocypack::Builder& result, velocypack::Slice now,
-                             velocypack::Slice last,
-                             velocypack::Builder const&) const;
+                             velocypack::Slice last, velocypack::Builder const&) const;
 
   // save one statistics object
   void saveSlice(velocypack::Slice slice, std::string const& collection) const;
@@ -91,12 +90,12 @@ class StatisticsWorker final : public Thread {
   // invocation
   velocypack::Builder _rawBuilder;
   velocypack::Builder _tempBuilder;
-
+  
   velocypack::Builder _lastStoredValue;
 
   std::string _clusterId;
-  TRI_vocbase_t&
-      _vocbase;  // vocbase for querying/persisting statistics collections
+  TRI_vocbase_t& _vocbase;  // vocbase for querying/persisting statistics collections
 };
 
 }  // namespace arangodb
+

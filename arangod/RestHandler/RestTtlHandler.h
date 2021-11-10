@@ -28,8 +28,7 @@
 namespace arangodb {
 class RestTtlHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestTtlHandler(application_features::ApplicationServer&, GeneralRequest*,
-                 GeneralResponse*);
+  RestTtlHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestTtlHandler"; }
@@ -41,3 +40,4 @@ class RestTtlHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus handleProperties();
 };
 }  // namespace arangodb
+

@@ -156,3 +156,4 @@ class Scopes {
 };
 }  // namespace aql
 }  // namespace arangodb
+

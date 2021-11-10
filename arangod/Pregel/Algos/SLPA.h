@@ -24,7 +24,6 @@
 #pragma once
 
 #include <cmath>
-
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
 
@@ -46,18 +45,16 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
   unsigned _maxCommunities = 1;
 
  public:
-  explicit SLPA(application_features::ApplicationServer& server,
-                VPackSlice userParams)
-      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>(server, "slpa",
-                                                     userParams) {
+  explicit SLPA(application_features::ApplicationServer& server, VPackSlice userParams)
+      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>(server, "slpa", userParams) {
     arangodb::velocypack::Slice val = userParams.get("threshold");
     if (val.isNumber()) {
       _threshold = std::min(1.0, std::max(val.getDouble(), 0.0));
     }
     val = userParams.get("maxCommunities");
     if (val.isInteger()) {
-      _maxCommunities = (unsigned)std::min(
-          (uint64_t)32, std::max(val.getUInt(), (uint64_t)0));
+      _maxCommunities =
+          (unsigned)std::min((uint64_t)32, std::max(val.getUInt(), (uint64_t)0));
     }
   }
 
@@ -66,8 +63,7 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
     return new NumberMessageFormat<uint64_t>();
   }
 
-  VertexComputation<SLPAValue, int8_t, uint64_t>* createComputation(
-      WorkerConfig const*) const override;
+  VertexComputation<SLPAValue, int8_t, uint64_t>* createComputation(WorkerConfig const*) const override;
   WorkerContext* workerContext(velocypack::Slice userParams) const override;
 };
 }  // namespace algos

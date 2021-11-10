@@ -23,14 +23,14 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
+#include "Basics/debugging.h"
+
 #include <velocypack/StringRef.h>
+#include <velocypack/Slice.h>
 
 #include <cstdint>
 #include <functional>
 #include <string>
-
-#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace pregel {
@@ -58,44 +58,46 @@ struct PregelID {
   }
 
   bool isValid() const { return shard != InvalidPregelShard && !key.empty(); }
+
 };
 
-template<typename V, typename E>
+template <typename V, typename E>
 class GraphStore;
 
 // header entry for the edge file
-template<typename E>
+template <typename E>
 // cppcheck-suppress noConstructor
 class Edge {
-  template<typename V, typename E2>
+  template <typename V, typename E2>
   friend class GraphStore;
 
   // these members are initialized by the GraphStore
-  char* _toKey;              // uint64_t
-  uint16_t _toKeyLength;     // uint16_t
-  PregelShard _targetShard;  // uint16_t
+  char* _toKey;             // uint64_t
+  uint16_t _toKeyLength;    // uint16_t
+  PregelShard _targetShard; // uint16_t
 
   E _data;
 
  public:
-  velocypack::StringRef toKey() const {
-    return velocypack::StringRef(_toKey, _toKeyLength);
+
+  velocypack::StringRef toKey() const { return velocypack::StringRef(_toKey, _toKeyLength); }
+  E& data() noexcept {
+    return _data;
   }
-  E& data() noexcept { return _data; }
   PregelShard targetShard() const noexcept { return _targetShard; }
 };
 
-template<typename V, typename E>
+template <typename V, typename E>
 // cppcheck-suppress noConstructor
 class Vertex {
-  char const* _key;  // uint64_t
+  char const* _key; // uint64_t
 
   // these members are initialized by the GraphStore
-  Edge<E>* _edges;  // uint64_t
+  Edge<E>* _edges; // uint64_t
 
   // the number of edges per vertex is limited to 4G.
   // this should be more than enough
-  uint32_t _edgeCount;  // uint32_t
+  uint32_t _edgeCount; // uint32_t
 
   // combined uint16_t attribute fusing the active bit
   // and the length of the key in its other 15 bits. we do this
@@ -105,33 +107,34 @@ class Vertex {
   // not. in order to protect us from compilers that don't tightly
   // pack bitfield variables, we validate the size of the struct
   // via static_assert in the constructor of Vertex<V, E>.
-  uint16_t _active : 1;      // uint16_t (shared with _keyLength)
-  uint16_t _keyLength : 15;  // uint16_t (shared with _active)
+  uint16_t _active : 1; // uint16_t (shared with _keyLength)
+  uint16_t _keyLength : 15; // uint16_t (shared with _active)
 
-  PregelShard _shard;  // uint16_t
+  PregelShard _shard; // uint16_t
 
-  V _data;  // variable byte size
+  V _data; // variable byte size
 
  public:
   Vertex() noexcept
-      : _key(nullptr),
-        _edges(nullptr),
-        _edgeCount(0),
-        _active(1),
-        _keyLength(0),
-        _shard(InvalidPregelShard) {
+    : _key(nullptr),
+      _edges(nullptr),
+      _edgeCount(0),
+      _active(1),
+      _keyLength(0),
+      _shard(InvalidPregelShard) {
     TRI_ASSERT(keyLength() == 0);
     TRI_ASSERT(active());
 
     // make sure that Vertex has the smallest possible size, especially
-    // that the bitfield for _acitve and _keyLength takes up only 16 bits in
-    // total.
-    static_assert(sizeof(Vertex<V, E>) ==
-                      sizeof(char const*) + sizeof(Edge<E>*) +
-                          sizeof(uint32_t) +
-                          sizeof(uint16_t) +  // combined size of the bitfield
-                          sizeof(PregelShard) + std::max<size_t>(8U, sizeof(V)),
-                  "invalid size of Vertex");
+    // that the bitfield for _acitve and _keyLength takes up only 16 bits in total.
+    static_assert(
+        sizeof(Vertex<V, E>) == sizeof(char const*) +
+                                sizeof(Edge<E>*) +
+                                sizeof(uint32_t) +
+                                sizeof(uint16_t) + // combined size of the bitfield
+                                sizeof(PregelShard) +
+                                std::max<size_t>(8U, sizeof(V)),
+        "invalid size of Vertex");
   }
 
   // note: the destructor for this type is never called,
@@ -155,15 +158,10 @@ class Vertex {
   }
 
   // returns the number of associated edges
-  size_t getEdgeCount() const noexcept {
-    return static_cast<size_t>(_edgeCount);
-  }
+  size_t getEdgeCount() const noexcept { return static_cast<size_t>(_edgeCount); }
 
   // maximum number of edges that can be added for each vertex
-  static constexpr size_t maxEdgeCount() {
-    return static_cast<size_t>(
-        std::numeric_limits<decltype(_edgeCount)>::max());
-  }
+  static constexpr size_t maxEdgeCount() { return static_cast<size_t>(std::numeric_limits<decltype(_edgeCount)>::max()); }
 
   void setActive(bool bb) noexcept {
     _active = bb ? 1 : 0;
@@ -187,22 +185,18 @@ class Vertex {
 
   uint16_t keyLength() const noexcept { return _keyLength; }
 
-  velocypack::StringRef key() const {
-    return velocypack::StringRef(_key, keyLength());
-  }
+  velocypack::StringRef key() const { return velocypack::StringRef(_key, keyLength()); }
   V const& data() const& { return _data; }
   V& data() & { return _data; }
 
-  PregelID pregelId() const {
-    return PregelID(_shard, std::string(_key, keyLength()));
-  }
+  PregelID pregelId() const { return PregelID(_shard, std::string(_key, keyLength())); }
 };
 
 }  // namespace pregel
 }  // namespace arangodb
 
 namespace std {
-template<>
+template <>
 struct hash<arangodb::pregel::PregelID> {
   std::size_t operator()(const arangodb::pregel::PregelID& k) const noexcept {
     using std::hash;
@@ -218,3 +212,4 @@ struct hash<arangodb::pregel::PregelID> {
   }
 };
 }  // namespace std
+

@@ -37,9 +37,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTestHandler::RestTestHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestTestHandler::RestTestHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestTestHandler::~RestTestHandler() = default;
@@ -48,14 +47,12 @@ namespace {
 #define LANE_ENTRY(s) {#s, RequestLane::s},
 const std::map<std::string, RequestLane> lanes = {
     LANE_ENTRY(CLIENT_FAST) LANE_ENTRY(CLIENT_AQL) LANE_ENTRY(CLIENT_V8)
-        LANE_ENTRY(CLIENT_SLOW) LANE_ENTRY(AGENCY_INTERNAL)
-            LANE_ENTRY(AGENCY_CLUSTER) LANE_ENTRY(CLUSTER_INTERNAL)
-                LANE_ENTRY(CLUSTER_V8) LANE_ENTRY(CLUSTER_ADMIN)
-                    LANE_ENTRY(SERVER_REPLICATION) LANE_ENTRY(TASK_V8)};
+        LANE_ENTRY(CLIENT_SLOW) LANE_ENTRY(AGENCY_INTERNAL) LANE_ENTRY(AGENCY_CLUSTER)
+            LANE_ENTRY(CLUSTER_INTERNAL) LANE_ENTRY(CLUSTER_V8) LANE_ENTRY(CLUSTER_ADMIN)
+                LANE_ENTRY(SERVER_REPLICATION) LANE_ENTRY(TASK_V8)};
 }  // namespace
 
-ResultT<RequestLane> RestTestHandler::requestLaneFromString(
-    const std::string& str) {
+ResultT<RequestLane> RestTestHandler::requestLaneFromString(const std::string& str) {
   auto entry = lanes.find(str);
 
   if (entry != lanes.end()) {
@@ -71,8 +68,7 @@ RestStatus RestTestHandler::execute() {
   auto const type = _request->requestType();
 
   if (type != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
@@ -101,8 +97,7 @@ RestStatus RestTestHandler::execute() {
     return RestStatus::DONE;
   }
 
-  LOG_TOPIC("8c671", TRACE, Logger::FIXME)
-      << "Generating work on lane " << suffixes[0];
+  LOG_TOPIC("8c671", TRACE, Logger::FIXME) << "Generating work on lane " << suffixes[0];
 
   clock::duration duration = std::chrono::milliseconds(100);
 
@@ -127,30 +122,29 @@ RestStatus RestTestHandler::execute() {
   }
 
   auto self(shared_from_this());
-  bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(
-      res.get(), [this, self, duration]() {
-        auto stop = clock::now() + duration;
+  bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(res.get(), [this, self, duration]() {
+    auto stop = clock::now() + duration;
 
-        uint64_t count = 0;
+    uint64_t count = 0;
 
-        // Please think of a better method to generate work.
-        //  Do we actually need work or is a sleep ok?
-        while (clock::now() < stop) {
-          for (int i = 0; i < 10000; i++) {
-            count += i * i;
-          }
-        }
+    // Please think of a better method to generate work.
+    //  Do we actually need work or is a sleep ok?
+    while (clock::now() < stop) {
+      for (int i = 0; i < 10000; i++) {
+        count += i * i;
+      }
+    }
 
-        VPackBuffer<uint8_t> buffer;
-        VPackBuilder builder(buffer);
-        builder.openObject();
-        builder.add("count", VPackValue(count));
-        builder.close();
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    builder.openObject();
+    builder.add("count", VPackValue(count));
+    builder.close();
 
-        resetResponse(rest::ResponseCode::OK);
-        _response->setPayload(std::move(buffer));
-        wakeupHandler();
-      });
+    resetResponse(rest::ResponseCode::OK);
+    _response->setPayload(std::move(buffer));
+    wakeupHandler();
+  });
 
   if (ok) {
     return RestStatus::WAITING;

@@ -23,13 +23,6 @@
 
 #include "KShortestPathsExecutor.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/HashedStringRef.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <utility>
-
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -48,8 +41,16 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
-#include "Graph/algorithm-aliases.h"
 #include "Transaction/Helpers.h"
+
+#include "Graph/algorithm-aliases.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/HashedStringRef.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -66,98 +67,87 @@ static bool isValidId(VPackSlice id) {
 }
 }  // namespace
 
-template<class FinderType>
+template <class FinderType>
 KShortestPathsExecutorInfos<FinderType>::KShortestPathsExecutorInfos(
     RegisterId outputRegister, QueryContext& query,
-    std::unique_ptr<FinderType>&& finder, InputVertex&& source,
-    InputVertex&& target)
+    std::unique_ptr<FinderType>&& finder, InputVertex&& source, InputVertex&& target)
     : _query(query),
       _finder(std::move(finder)),
       _source(std::move(source)),
       _target(std::move(target)),
       _outputRegister(outputRegister) {}
 
-template<class FinderType>
+template <class FinderType>
 FinderType& KShortestPathsExecutorInfos<FinderType>::finder() const {
   TRI_ASSERT(_finder);
   return *_finder.get();
 }
 
-template<class FinderType>
+template <class FinderType>
 QueryContext& KShortestPathsExecutorInfos<FinderType>::query() noexcept {
   return _query;
 }
 
-template<class FinderType>
-auto KShortestPathsExecutorInfos<FinderType>::useRegisterForSourceInput() const
-    -> bool {
+template <class FinderType>
+auto KShortestPathsExecutorInfos<FinderType>::useRegisterForSourceInput() const -> bool {
   return _source.type == InputVertex::Type::REGISTER;
 }
 
-template<class FinderType>
-auto KShortestPathsExecutorInfos<FinderType>::useRegisterForTargetInput() const
-    -> bool {
+template <class FinderType>
+auto KShortestPathsExecutorInfos<FinderType>::useRegisterForTargetInput() const -> bool {
   return _target.type == InputVertex::Type::REGISTER;
 }
 
-template<class FinderType>
-auto KShortestPathsExecutorInfos<FinderType>::getSourceInputRegister() const
-    -> RegisterId {
+template <class FinderType>
+auto KShortestPathsExecutorInfos<FinderType>::getSourceInputRegister() const -> RegisterId {
   TRI_ASSERT(useRegisterForSourceInput());
   return _source.reg;
 }
 
-template<class FinderType>
-auto KShortestPathsExecutorInfos<FinderType>::getTargetInputRegister() const
-    -> RegisterId {
+template <class FinderType>
+auto KShortestPathsExecutorInfos<FinderType>::getTargetInputRegister() const -> RegisterId {
   TRI_ASSERT(useRegisterForTargetInput());
   return _target.reg;
 }
 
-template<class FinderType>
+template <class FinderType>
 auto KShortestPathsExecutorInfos<FinderType>::getSourceInputValue() const
     -> std::string const& {
   TRI_ASSERT(!useRegisterForSourceInput());
   return _source.value;
 }
 
-template<class FinderType>
+template <class FinderType>
 auto KShortestPathsExecutorInfos<FinderType>::getTargetInputValue() const
     -> std::string const& {
   TRI_ASSERT(!useRegisterForTargetInput());
   return _target.value;
 }
 
-template<class FinderType>
-auto KShortestPathsExecutorInfos<FinderType>::getOutputRegister() const
-    -> RegisterId {
+template <class FinderType>
+auto KShortestPathsExecutorInfos<FinderType>::getOutputRegister() const -> RegisterId {
   TRI_ASSERT(_outputRegister.isValid());
   return _outputRegister;
 }
 
-template<class FinderType>
+template <class FinderType>
 auto KShortestPathsExecutorInfos<FinderType>::getSourceVertex() const noexcept
     -> KShortestPathsExecutorInfos<FinderType>::InputVertex {
   return _source;
 }
 
-template<class FinderType>
+template <class FinderType>
 auto KShortestPathsExecutorInfos<FinderType>::getTargetVertex() const noexcept
     -> KShortestPathsExecutorInfos<FinderType>::InputVertex {
   return _target;
 }
 
-template<class FinderType>
-auto KShortestPathsExecutorInfos<FinderType>::cache() const
-    -> graph::TraverserCache* {
-  if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider<
-                                               SingleServerProviderStep>>> ||
-                std::is_same_v<FinderType,
-                               TracedKPathEnumerator<SingleServerProvider<
-                                   SingleServerProviderStep>>> ||
+template <class FinderType>
+auto KShortestPathsExecutorInfos<FinderType>::cache() const -> graph::TraverserCache* {
+  if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
+                std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
                 std::is_same_v<FinderType, KPathEnumerator<ClusterProvider>> ||
-                std::is_same_v<FinderType,
-                               TracedKPathEnumerator<ClusterProvider>>
+                std::is_same_v<FinderType, TracedKPathEnumerator<ClusterProvider>>
 
   ) {
     TRI_ASSERT(false);
@@ -167,9 +157,8 @@ auto KShortestPathsExecutorInfos<FinderType>::cache() const
   }
 }
 
-template<class FinderType>
-KShortestPathsExecutor<FinderType>::KShortestPathsExecutor(Fetcher& fetcher,
-                                                           Infos& infos)
+template <class FinderType>
+KShortestPathsExecutor<FinderType>::KShortestPathsExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _trx(infos.query().newTrxContext()),
       _inputRow{CreateInvalidInputRowHint{}},
@@ -190,16 +179,16 @@ KShortestPathsExecutor<FinderType>::KShortestPathsExecutor(Fetcher& fetcher,
 }
 
 // Shutdown query
-template<class FinderType>
+template <class FinderType>
 auto KShortestPathsExecutor<FinderType>::shutdown(int errorCode)
     -> std::pair<ExecutionState, Result> {
   _finder.destroyEngines();
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-template<class FinderType>
-auto KShortestPathsExecutor<FinderType>::produceRows(
-    AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+template <class FinderType>
+auto KShortestPathsExecutor<FinderType>::produceRows(AqlItemBlockInputRange& input,
+                                                     OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   while (!output.isFull()) {
     if (_finder.isDone()) {
@@ -219,9 +208,9 @@ auto KShortestPathsExecutor<FinderType>::produceRows(
   }
 }
 
-template<class FinderType>
-auto KShortestPathsExecutor<FinderType>::skipRowsRange(
-    AqlItemBlockInputRange& input, AqlCall& call)
+template <class FinderType>
+auto KShortestPathsExecutor<FinderType>::skipRowsRange(AqlItemBlockInputRange& input,
+                                                       AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   auto skipped = size_t{0};
 
@@ -249,9 +238,9 @@ auto KShortestPathsExecutor<FinderType>::skipRowsRange(
   }
 }
 
-template<class FinderType>
-auto KShortestPathsExecutor<FinderType>::fetchPaths(
-    AqlItemBlockInputRange& input) -> bool {
+template <class FinderType>
+auto KShortestPathsExecutor<FinderType>::fetchPaths(AqlItemBlockInputRange& input)
+    -> bool {
   TRI_ASSERT(_finder.isDone());
   _finder.clear();
   while (input.hasDataRow()) {
@@ -261,10 +250,8 @@ auto KShortestPathsExecutor<FinderType>::fetchPaths(
     TRI_ASSERT(_inputRow.isInitialized());
 
     // Check start and end for validity
-    if (getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder,
-                    source) &&
-        getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder,
-                    target)) {
+    if (getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder, source) &&
+        getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder, target)) {
       if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
         return _finder.startKShortestPathsTraversal(source, target);
       } else {
@@ -277,19 +264,14 @@ auto KShortestPathsExecutor<FinderType>::fetchPaths(
   return false;
 }
 
-template<class FinderType>
-auto KShortestPathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
-    -> void {
+template <class FinderType>
+auto KShortestPathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output) -> void {
   transaction::BuilderLeaser tmp{&_trx};
   tmp->clear();
-  if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider<
-                                               SingleServerProviderStep>>> ||
-                std::is_same_v<FinderType,
-                               TracedKPathEnumerator<SingleServerProvider<
-                                   SingleServerProviderStep>>> ||
+  if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
+                std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
                 std::is_same_v<FinderType, KPathEnumerator<ClusterProvider>> ||
-                std::is_same_v<FinderType,
-                               TracedKPathEnumerator<ClusterProvider>>) {
+                std::is_same_v<FinderType, TracedKPathEnumerator<ClusterProvider>>) {
     if (_finder.getNextPath(*tmp.builder())) {
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
@@ -313,7 +295,7 @@ auto KShortestPathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
   }
 }
 
-template<class FinderType>
+template <class FinderType>
 auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
                                                      InputAqlItemRow& row,
                                                      VPackBuilder& builder,
@@ -324,17 +306,11 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
       if (in.isObject()) {
         try {
           std::string idString;
-          // TODO:  calculate expression once e.g. header constexpr bool and
-          // check then here
-          if constexpr (
-              std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider<
-                                             SingleServerProviderStep>>> ||
-              std::is_same_v<FinderType,
-                             TracedKPathEnumerator<SingleServerProvider<
-                                 SingleServerProviderStep>>> ||
-              std::is_same_v<FinderType, KPathEnumerator<ClusterProvider>> ||
-              std::is_same_v<FinderType,
-                             TracedKPathEnumerator<ClusterProvider>>) {
+          // TODO:  calculate expression once e.g. header constexpr bool and check then here
+          if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
+                        std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
+                        std::is_same_v<FinderType, KPathEnumerator<ClusterProvider>> ||
+                        std::is_same_v<FinderType, TracedKPathEnumerator<ClusterProvider>>) {
             idString = _trx.extractIdString(in.slice());
           } else {
             idString = _finder.options().trx()->extractIdString(in.slice());
@@ -389,10 +365,9 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
   return false;
 }
 
-template<class FinderType>
+template <class FinderType>
 [[nodiscard]] auto KShortestPathsExecutor<FinderType>::stats() -> Stats {
-  if constexpr (std::is_same_v<FinderType,
-                               arangodb::graph::KShortestPathsFinder>) {
+  if constexpr (std::is_same_v<FinderType, arangodb::graph::KShortestPathsFinder>) {
     // No Stats available on original variant
     return TraversalStats{};
   } else {
@@ -400,34 +375,24 @@ template<class FinderType>
   }
 }
 
-template class ::arangodb::aql::KShortestPathsExecutorInfos<
-    arangodb::graph::KShortestPathsFinder>;
+template class ::arangodb::aql::KShortestPathsExecutorInfos<arangodb::graph::KShortestPathsFinder>;
 
 /* SingleServerProvider Section */
 
-template class ::arangodb::aql::KShortestPathsExecutorInfos<
-    KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
-template class ::arangodb::aql::KShortestPathsExecutorInfos<
-    TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
+template class ::arangodb::aql::KShortestPathsExecutorInfos<KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
+template class ::arangodb::aql::KShortestPathsExecutorInfos<TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
 
-template class ::arangodb::aql::KShortestPathsExecutor<
-    KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
-template class ::arangodb::aql::KShortestPathsExecutor<
-    TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
+template class ::arangodb::aql::KShortestPathsExecutor<KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
+template class ::arangodb::aql::KShortestPathsExecutor<TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
 
 /* ClusterProvider Section */
 
-template class ::arangodb::aql::KShortestPathsExecutorInfos<
-    KPathEnumerator<ClusterProvider>>;
-template class ::arangodb::aql::KShortestPathsExecutorInfos<
-    TracedKPathEnumerator<ClusterProvider>>;
+template class ::arangodb::aql::KShortestPathsExecutorInfos<KPathEnumerator<ClusterProvider>>;
+template class ::arangodb::aql::KShortestPathsExecutorInfos<TracedKPathEnumerator<ClusterProvider>>;
 
-template class ::arangodb::aql::KShortestPathsExecutor<
-    KPathEnumerator<ClusterProvider>>;
-template class ::arangodb::aql::KShortestPathsExecutor<
-    TracedKPathEnumerator<ClusterProvider>>;
+template class ::arangodb::aql::KShortestPathsExecutor<KPathEnumerator<ClusterProvider>>;
+template class ::arangodb::aql::KShortestPathsExecutor<TracedKPathEnumerator<ClusterProvider>>;
 
 /* Fallback Section - Can be removed completely after refactor is done */
 
-template class ::arangodb::aql::KShortestPathsExecutor<
-    arangodb::graph::KShortestPathsFinder>;
+template class ::arangodb::aql::KShortestPathsExecutor<arangodb::graph::KShortestPathsFinder>;

@@ -33,16 +33,16 @@ namespace iresearch {
 /// @returns true if values from the specified range [Min;Max] are adjacent,
 ///          false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-template<typename T>
+template <typename T>
 struct adjacencyChecker {
   typedef typename std::enable_if<std::is_enum<T>::value, T>::type type_t;
 
-  template<type_t Max>
+  template <type_t Max>
   static constexpr bool checkAdjacency() noexcept {
     return true;
   }
 
-  template<type_t Max, type_t Min, type_t... Types>
+  template <type_t Max, type_t Min, type_t... Types>
   static constexpr bool checkAdjacency() noexcept {
     typedef typename std::underlying_type<type_t>::type underlying_t;
 
@@ -53,3 +53,4 @@ struct adjacencyChecker {
 
 }  // namespace iresearch
 }  // namespace arangodb
+

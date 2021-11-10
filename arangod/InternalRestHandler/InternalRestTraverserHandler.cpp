@@ -23,11 +23,6 @@
 
 #include "InternalRestTraverserHandler.h"
 
-#include <Logger/LogMacros.h>
-
-#include <chrono>
-#include <thread>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ScopeGuard.h"
@@ -38,6 +33,10 @@
 #include "Rest/GeneralResponse.h"
 #include "Transaction/StandaloneContext.h"
 
+#include <Logger/LogMacros.h>
+#include <chrono>
+#include <thread>
+
 using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::rest;
@@ -45,8 +44,7 @@ using namespace arangodb::rest;
 InternalRestTraverserHandler::InternalRestTraverserHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response, aql::QueryRegistry* engineRegistry)
-    : RestVocbaseBaseHandler(server, request, response),
-      _registry(engineRegistry) {
+    : RestVocbaseBaseHandler(server, request, response), _registry(engineRegistry) {
   TRI_ASSERT(_registry != nullptr);
 }
 
@@ -77,8 +75,7 @@ RestStatus InternalRestTraverserHandler::execute() {
         break;
     }
   } catch (arangodb::basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
-                  ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {
     generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
@@ -106,8 +103,7 @@ void InternalRestTraverserHandler::queryEngine() {
   }
 
   std::string const& option = suffixes[0];
-  auto engineId =
-      static_cast<aql::EngineId>(basics::StringUtils::uint64(suffixes[1]));
+  auto engineId = static_cast<aql::EngineId>(basics::StringUtils::uint64(suffixes[1]));
   if (engineId == 0) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected TraveserEngineId to be an integer number");
@@ -163,10 +159,9 @@ void InternalRestTraverserHandler::queryEngine() {
   auto& registry = _registry;  // For the guard
   auto cleanup = scopeGuard([registry, &engineId]() noexcept {
     try {
-      registry->closeEngine(engineId);
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("dfc7a", ERR, Logger::AQL)
-          << "Failed to close engine: " << ex.what();
+        registry->closeEngine(engineId);
+    } catch(std::exception const& ex) {
+        LOG_TOPIC("dfc7a", ERR, Logger::AQL) << "Failed to close engine: " << ex.what();
     }
   });
 
@@ -262,14 +257,13 @@ void InternalRestTraverserHandler::destroyEngine() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 1) {
     // DELETE requires the id as path parameter
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected DELETE " + INTERNAL_TRAVERSER_PATH + "/<TraverserEngineId>");
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected DELETE " + INTERNAL_TRAVERSER_PATH +
+                      "/<TraverserEngineId>");
     return;
   }
 
-  auto engineId =
-      static_cast<aql::EngineId>(basics::StringUtils::uint64(suffixes[0]));
+  auto engineId = static_cast<aql::EngineId>(basics::StringUtils::uint64(suffixes[0]));
   bool found = _registry->destroyEngine(engineId, TRI_ERROR_NO_ERROR);
   generateResult(ResponseCode::OK, VPackSlice::booleanSlice(found));
 }

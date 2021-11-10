@@ -33,25 +33,25 @@
 #include "Logger/LogMacros.h"
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
-#include "Utilities/NameValidator.h"
 #include "Utils/Events.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/Methods/Databases.h"
 
 namespace arangodb {
 
-CreateDatabaseInfo::CreateDatabaseInfo(
-    application_features::ApplicationServer& server, ExecContext const& context)
+CreateDatabaseInfo::CreateDatabaseInfo(application_features::ApplicationServer& server,
+                                       ExecContext const& context)
     : _server(server), _context(context) {}
 
-ShardingPrototype CreateDatabaseInfo::shardingPrototype() const {
+ShardingPrototype CreateDatabaseInfo::shardingPrototype() const { 
   if (_name != StaticStrings::SystemDatabase) {
     return ShardingPrototype::Graphs;
   }
-  return _shardingPrototype;
+  return _shardingPrototype; 
 }
 
 void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
-  _shardingPrototype = type;
+  _shardingPrototype = type; 
 }
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
@@ -60,12 +60,11 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _valid = true;
-#endif
+#endif 
   return checkOptions();
 }
 
-Result CreateDatabaseInfo::load(VPackSlice const& options,
-                                VPackSlice const& users) {
+Result CreateDatabaseInfo::load(VPackSlice const& options, VPackSlice const& users) {
   Result res = extractOptions(options, true /*getId*/, true /*getUser*/);
   if (!res.ok()) {
     return res;
@@ -83,8 +82,7 @@ Result CreateDatabaseInfo::load(VPackSlice const& options,
   return checkOptions();
 }
 
-Result CreateDatabaseInfo::load(std::string const& name,
-                                VPackSlice const& options,
+Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& options,
                                 VPackSlice const& users) {
   _name = methods::Databases::normalizeName(name);
 
@@ -106,8 +104,7 @@ Result CreateDatabaseInfo::load(std::string const& name,
 }
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
-                                VPackSlice const& options,
-                                VPackSlice const& users) {
+                                VPackSlice const& options, VPackSlice const& users) {
   _name = methods::Databases::normalizeName(name);
   _id = id;
 
@@ -128,21 +125,18 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
   return checkOptions();
 }
 
-void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder,
-                                      bool withUsers) const {
+void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) const {
   TRI_ASSERT(_validId);
   TRI_ASSERT(builder.isOpenObject());
   std::string const idString(basics::StringUtils::itoa(_id));
   builder.add(StaticStrings::DatabaseId, VPackValue(idString));
   builder.add(StaticStrings::DatabaseName, VPackValue(_name));
-  builder.add(StaticStrings::DataSourceSystem,
-              VPackValue(_name == StaticStrings::SystemDatabase));
+  builder.add(StaticStrings::DataSourceSystem, VPackValue(_name == StaticStrings::SystemDatabase));
 
   if (ServerState::instance()->isCoordinator() ||
       ServerState::instance()->isDBServer()) {
-    addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern,
-                      _replicationVersion);
-  }
+    addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern, _replicationVersion);
+  } 
 
   if (withUsers) {
     builder.add(VPackValue("users"));
@@ -163,23 +157,19 @@ void CreateDatabaseInfo::UsersToVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-application_features::ApplicationServer& CreateDatabaseInfo::server() const {
-  return _server;
-}
+application_features::ApplicationServer& CreateDatabaseInfo::server() const { return _server; }
 
 Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
   if (users.isNone() || users.isNull()) {
     return Result();
   } else if (!users.isArray()) {
-    events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER),
-                           _context);
+    events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid users slice");
   }
 
   for (VPackSlice const& user : VPackArrayIterator(users)) {
     if (!user.isObject()) {
-      events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER),
-                             _context);
+      events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
       return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
     }
 
@@ -194,8 +184,7 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
         name = slice.copyString();
         userSet = true;
       } else {
-        events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER),
-                               _context);
+        events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
         return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
       }
     }
@@ -204,8 +193,7 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
     if (user.hasKey("passwd")) {
       VPackSlice passwd = user.get("passwd");
       if (!passwd.isString()) {
-        events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER),
-                               _context);
+        events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
         return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
       }
       password = passwd.copyString();
@@ -240,8 +228,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
     return Result();
   }
   if (!options.isObject()) {
-    events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER),
-                           _context);
+    events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
   }
 
@@ -282,8 +269,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
 Result CreateDatabaseInfo::checkOptions() {
   _validId = (_id != 0);
 
-  if (_replicationVersion == replication::Version::TWO &&
-      !replication2::EnableReplication2) {
+  if (_replicationVersion == replication::Version::TWO && !replication2::EnableReplication2) {
     LOG_TOPIC("8fdd7", ERR, Logger::REPLICATION2)
         << "Replication version 2 is disabled in this binary, but loading a "
            "version 2 database "
@@ -294,10 +280,9 @@ Result CreateDatabaseInfo::checkOptions() {
            "recreate the database with replication version 1 (the default), "
            "and then restore the data.";
   }
-
+  
   bool isSystem = _name == StaticStrings::SystemDatabase;
-  bool extendedNames =
-      _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
+  bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
 
   Result res;
 
@@ -308,9 +293,7 @@ Result CreateDatabaseInfo::checkOptions() {
   return res;
 }
 
-VocbaseOptions getVocbaseOptions(
-    application_features::ApplicationServer& server,
-    VPackSlice const& options) {
+VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server, VPackSlice const& options) {
   TRI_ASSERT(options.isObject());
   // Invalid options will be silently ignored. Default values will be used
   // instead.
@@ -331,8 +314,7 @@ VocbaseOptions getVocbaseOptions(
 
   {
     auto shardingSlice = options.get(StaticStrings::Sharding);
-    if (shardingSlice.isString() &&
-        shardingSlice.compareString("single") == 0) {
+    if (shardingSlice.isString() && shardingSlice.compareString("single") == 0) {
       vocbaseOptions.sharding = shardingSlice.copyString();
     }
   }
@@ -340,15 +322,13 @@ VocbaseOptions getVocbaseOptions(
   bool haveCluster = server.hasFeature<ClusterFeature>();
   {
     VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
-    bool isSatellite =
-        (replicationSlice.isString() &&
-         replicationSlice.compareString(StaticStrings::Satellite) == 0);
+    bool isSatellite = (replicationSlice.isString() &&
+                        replicationSlice.compareString(StaticStrings::Satellite) == 0);
     bool isNumber = replicationSlice.isNumber();
     isSatellite = isSatellite || (isNumber && replicationSlice.getUInt() == 0);
     if (!isSatellite && !isNumber) {
       if (haveCluster) {
-        vocbaseOptions.replicationFactor =
-            server.getFeature<ClusterFeature>().defaultReplicationFactor();
+        vocbaseOptions.replicationFactor = server.getFeature<ClusterFeature>().defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeee", ERR, Logger::CLUSTER)
             << "Cannot access ClusterFeature to determine replicationFactor";
@@ -357,14 +337,12 @@ VocbaseOptions getVocbaseOptions(
       vocbaseOptions.replicationFactor = 0;
     } else if (isNumber) {
       vocbaseOptions.replicationFactor =
-          replicationSlice
-              .getNumber<decltype(vocbaseOptions.replicationFactor)>();
+          replicationSlice.getNumber<decltype(vocbaseOptions.replicationFactor)>();
     }
 #ifndef USE_ENTERPRISE
     if (vocbaseOptions.replicationFactor == 0) {
       if (haveCluster) {
-        vocbaseOptions.replicationFactor =
-            server.getFeature<ClusterFeature>().defaultReplicationFactor();
+        vocbaseOptions.replicationFactor = server.getFeature<ClusterFeature>().defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeef", ERR, Logger::CLUSTER)
             << "Cannot access ClusterFeature to determine replicationFactor";
@@ -377,12 +355,11 @@ VocbaseOptions getVocbaseOptions(
   {
     // simon: new API in 3.6 no need to check legacy "minReplicationFactor"
     VPackSlice writeConcernSlice = options.get(StaticStrings::WriteConcern);
-    bool isNumber = (writeConcernSlice.isNumber() &&
-                     writeConcernSlice.getNumber<int>() > 0);
+    bool isNumber =
+        (writeConcernSlice.isNumber() && writeConcernSlice.getNumber<int>() > 0);
     if (!isNumber) {
       if (haveCluster) {
-        vocbaseOptions.writeConcern =
-            server.getFeature<ClusterFeature>().writeConcern();
+        vocbaseOptions.writeConcern = server.getFeature<ClusterFeature>().writeConcern();
       } else {
         LOG_TOPIC("eeeed", ERR, Logger::CLUSTER)
             << "Cannot access ClusterFeature to determine writeConcern";
@@ -394,8 +371,7 @@ VocbaseOptions getVocbaseOptions(
   }
 
   {
-    auto replicationVersionSlice =
-        options.get(StaticStrings::ReplicationVersion);
+    auto replicationVersionSlice = options.get(StaticStrings::ReplicationVersion);
     if (!replicationVersionSlice.isNone()) {
       auto res = replication::parseVersion(replicationVersionSlice);
       if (res.ok()) {
@@ -403,12 +379,11 @@ VocbaseOptions getVocbaseOptions(
 
         vocbaseOptions.replicationVersion = version;
       } else {
-        THROW_ARANGO_EXCEPTION(
-            std::move(res).result().withError([&](result::Error& err) {
-              err.resetErrorMessage(basics::StringUtils::concatT(
-                  "Error parsing ", StaticStrings::ReplicationVersion, ": ",
-                  err.errorMessage()));
-            }));
+        THROW_ARANGO_EXCEPTION(std::move(res).result().withError([&](result::Error& err) {
+          err.resetErrorMessage(
+              basics::StringUtils::concatT("Error parsing ", StaticStrings::ReplicationVersion,
+                                           ": ", err.errorMessage()));
+        }));
       }
     }
   }
@@ -417,17 +392,14 @@ VocbaseOptions getVocbaseOptions(
 }
 
 void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
-                       std::uint32_t replicationFactor,
-                       std::uint32_t writeConcern,
+                       std::uint32_t replicationFactor, std::uint32_t writeConcern,
                        replication::Version replicationVersion) {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(StaticStrings::Sharding, VPackValue(sharding));
   if (replicationFactor) {
-    builder.add(StaticStrings::ReplicationFactor,
-                VPackValue(replicationFactor));
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
   } else {  // 0 is satellite
-    builder.add(StaticStrings::ReplicationFactor,
-                VPackValue(StaticStrings::Satellite));
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
   }
   builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
   builder.add(StaticStrings::ReplicationVersion,

@@ -41,8 +41,7 @@ std::string const UNKNOWN("_unknown");
 namespace arangodb {
 
 // copy an existing resolver
-CollectionNameResolver::CollectionNameResolver(
-    CollectionNameResolver const& other)
+CollectionNameResolver::CollectionNameResolver(CollectionNameResolver const& other) 
     : CollectionNameResolver(other._vocbase) {
   READ_LOCKER(locker, other._lock);
   _resolvedIds = other._resolvedIds;
@@ -50,8 +49,7 @@ CollectionNameResolver::CollectionNameResolver(
   _dataSourceByName = other._dataSourceByName;
 }
 
-std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
-    DataSourceId id) const {
+std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(DataSourceId id) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   return std::dynamic_pointer_cast<LogicalCollection>(getDataSource(id));
 #else
@@ -63,8 +61,7 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
 #endif
 }
 
-std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
-    std::string const& nameOrId) const {
+std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(std::string const& nameOrId) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   return std::dynamic_pointer_cast<LogicalCollection>(getDataSource(nameOrId));
 #else
@@ -82,13 +79,13 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
 /// and need to look up a local collection name (or shard name).
 //////////////////////////////////////////////////////////////////////////////
 
-DataSourceId CollectionNameResolver::getCollectionIdLocal(
-    std::string const& name) const {
+DataSourceId CollectionNameResolver::getCollectionIdLocal(std::string const& name) const {
   if (!name.empty()) {
     if (name[0] >= '0' && name[0] <= '9') {
       // name is a numeric id
-      return DataSourceId{NumberUtils::atoi_zero<DataSourceId::BaseType>(
-          name.data(), name.data() + name.size())};
+      return DataSourceId{
+          NumberUtils::atoi_zero<DataSourceId::BaseType>(name.data(),
+                                                         name.data() + name.size())};
     }
 
     auto ds = _vocbase.lookupDataSource(name);
@@ -108,8 +105,7 @@ DataSourceId CollectionNameResolver::getCollectionIdLocal(
 /// cluster wide collection id is returned.
 //////////////////////////////////////////////////////////////////////////////
 
-DataSourceId CollectionNameResolver::getCollectionIdCluster(
-    std::string const& name) const {
+DataSourceId CollectionNameResolver::getCollectionIdCluster(std::string const& name) const {
   if (!ServerState::isRunningInCluster(_serverRole)) {
     return getCollectionIdLocal(name);
   }
@@ -118,8 +114,9 @@ DataSourceId CollectionNameResolver::getCollectionIdCluster(
   }
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
-    DataSourceId cid{NumberUtils::atoi_zero<DataSourceId::BaseType>(
-        name.data(), name.data() + name.size())};
+    DataSourceId cid{
+        NumberUtils::atoi_zero<DataSourceId::BaseType>(name.data(),
+                                                       name.data() + name.size())};
     auto collection = getCollection(cid);
     // Now validate the cid
     auto type = collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
@@ -148,8 +145,7 @@ DataSourceId CollectionNameResolver::getCollectionIdCluster(
   return DataSourceId::none();
 }
 
-std::shared_ptr<LogicalCollection>
-CollectionNameResolver::getCollectionStructCluster(
+std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollectionStructCluster(
     std::string const& name) const {
   if (!ServerState::isRunningInCluster(_serverRole)) {
     return _vocbase.lookupCollection(name);
@@ -157,10 +153,8 @@ CollectionNameResolver::getCollectionStructCluster(
 
   // We have to look up the collection info:
   return _vocbase.server().hasFeature<ClusterFeature>()
-             ? _vocbase.server()
-                   .getFeature<ClusterFeature>()
-                   .clusterInfo()
-                   .getCollectionNT(_vocbase.name(), name)
+             ? _vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
+                   _vocbase.name(), name)
              : nullptr;
 }
 
@@ -171,10 +165,8 @@ CollectionNameResolver::getCollectionStructCluster(
 /// coordinator it will use the cluster wide lookup.
 //////////////////////////////////////////////////////////////////////////////
 
-DataSourceId CollectionNameResolver::getCollectionId(
-    std::string const& name) const {
-  if (!ServerState::isRunningInCluster(_serverRole) ||
-      ServerState::isDBServer(_serverRole)) {
+DataSourceId CollectionNameResolver::getCollectionId(std::string const& name) const {
+  if (!ServerState::isRunningInCluster(_serverRole) || ServerState::isDBServer(_serverRole)) {
     return getCollectionIdLocal(name);
   }
   return getCollectionIdCluster(name);
@@ -210,8 +202,7 @@ std::string CollectionNameResolver::getCollectionName(DataSourceId cid) const {
 /// collection id
 //////////////////////////////////////////////////////////////////////////////
 
-std::string CollectionNameResolver::getCollectionNameCluster(
-    DataSourceId cid) const {
+std::string CollectionNameResolver::getCollectionNameCluster(DataSourceId cid) const {
   if (!ServerState::isClusterRole(_serverRole)) {
     // This handles the case of a standalone server
     return getCollectionName(cid);
@@ -235,12 +226,8 @@ std::string CollectionNameResolver::getCollectionNameCluster(
   }
 
   if (name == ::UNKNOWN) {
-    auto ci =
-        _vocbase.server()
-            .getFeature<ClusterFeature>()
-            .clusterInfo()
-            .getCollectionNT(_vocbase.name(),
-                             arangodb::basics::StringUtils::itoa(cid.id()));
+    auto ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
+        _vocbase.name(), arangodb::basics::StringUtils::itoa(cid.id()));
     if (ci != nullptr) {
       name = ci->name();
     }
@@ -259,18 +246,15 @@ std::string CollectionNameResolver::getCollectionNameCluster(
 /// wide collection name in the DBserver case
 //////////////////////////////////////////////////////////////////////////////
 
-std::string CollectionNameResolver::getCollectionName(
-    std::string const& nameOrId) const {
+std::string CollectionNameResolver::getCollectionName(std::string const& nameOrId) const {
   if (!nameOrId.empty() && (nameOrId[0] < '0' || nameOrId[0] > '9')) {
     return nameOrId;
   }
-  return getCollectionName(
-      DataSourceId{NumberUtils::atoi_zero<DataSourceId::BaseType>(
-          nameOrId.data(), nameOrId.data() + nameOrId.size())});
+  return getCollectionName(DataSourceId{NumberUtils::atoi_zero<DataSourceId::BaseType>(
+      nameOrId.data(), nameOrId.data() + nameOrId.size())});
 }
 
-std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
-    DataSourceId id) const {
+std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(DataSourceId id) const {
   decltype(_dataSourceById)::iterator itr;
 
   {
@@ -280,7 +264,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
       return itr->second;
     }
   }
-
+  
   // db server / standalone
   auto ptr = ServerState::isCoordinator(_serverRole)
                  ? getDataSource(std::to_string(id.id()))
@@ -294,10 +278,9 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
   return ptr;
 }
 
-std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
-    std::string const& nameOrId) const {
+std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(std::string const& nameOrId) const {
   decltype(_dataSourceByName)::iterator itr;
-
+  
   {
     READ_LOCKER(guard, _lock);
     itr = _dataSourceByName.find(nameOrId);
@@ -330,8 +313,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
   return ptr;
 }
 
-std::shared_ptr<LogicalView> CollectionNameResolver::getView(
-    DataSourceId id) const {
+std::shared_ptr<LogicalView> CollectionNameResolver::getView(DataSourceId id) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   return std::dynamic_pointer_cast<LogicalView>(getDataSource(id));
 #else
@@ -343,8 +325,7 @@ std::shared_ptr<LogicalView> CollectionNameResolver::getView(
 #endif
 }
 
-std::shared_ptr<LogicalView> CollectionNameResolver::getView(
-    std::string const& nameOrId) const {
+std::shared_ptr<LogicalView> CollectionNameResolver::getView(std::string const& nameOrId) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   return std::dynamic_pointer_cast<LogicalView>(getDataSource(nameOrId));
 #else
@@ -356,9 +337,8 @@ std::shared_ptr<LogicalView> CollectionNameResolver::getView(
 #endif
 }
 
-bool CollectionNameResolver::visitCollections(
-    std::function<bool(LogicalCollection&)> const& visitor,
-    DataSourceId id) const {
+bool CollectionNameResolver::visitCollections(std::function<bool(LogicalCollection&)> const& visitor,
+                                              DataSourceId id) const {
   auto dataSource = getDataSource(id);
 
   if (!dataSource) {
@@ -385,11 +365,8 @@ bool CollectionNameResolver::visitCollections(
 #endif
 
     // each CID in a view might need further resolution
-    return view->visitCollections([this, &visitor,
-                                   id](DataSourceId cid) -> bool {
-      return cid == id
-                 ? false
-                 : visitCollections(visitor, cid);  // avoid infinite recursion
+    return view->visitCollections([this, &visitor, id](DataSourceId cid) -> bool {
+      return cid == id ? false : visitCollections(visitor, cid);  // avoid infinite recursion
     });
   }
 
@@ -407,12 +384,8 @@ std::string CollectionNameResolver::lookupName(DataSourceId cid) const {
 
   // DBserver case of a shard:
   if (collection && collection->planId() != collection->id()) {
-    collection =
-        _vocbase.server()
-            .getFeature<ClusterFeature>()
-            .clusterInfo()
-            .getCollectionNT(collection->vocbase().name(),
-                             std::to_string(collection->planId().id()));
+    collection = _vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
+        collection->vocbase().name(), std::to_string(collection->planId().id()));
   }
 
   // can be empty, if collection unknown

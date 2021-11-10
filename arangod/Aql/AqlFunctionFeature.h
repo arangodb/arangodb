@@ -34,8 +34,7 @@ class Builder;
 
 namespace aql {
 
-class AqlFunctionFeature final
-    : public application_features::ApplicationFeature {
+class AqlFunctionFeature final : public application_features::ApplicationFeature {
  public:
   explicit AqlFunctionFeature(application_features::ApplicationServer& server);
 
@@ -70,3 +69,4 @@ class AqlFunctionFeature final
 
 }  // namespace aql
 }  // namespace arangodb
+

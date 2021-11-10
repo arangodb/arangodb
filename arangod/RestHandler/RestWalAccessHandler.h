@@ -52,3 +52,4 @@ class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
   void handleCommandDetermineOpenTransactions(WalAccess const* wal);
 };
 }  // namespace arangodb
+

@@ -48,11 +48,17 @@ struct QueryResult {
   QueryResult(QueryResult&& other) = default;
   QueryResult& operator=(QueryResult&& other) = default;
 
-  QueryResult() : result(), cached(false) {}
+  QueryResult()
+      : result(),
+        cached(false) {}
 
-  explicit QueryResult(Result const& res) : result(res), cached(false) {}
+  explicit QueryResult(Result const& res)
+      : result(res),
+        cached(false) {}
 
-  explicit QueryResult(Result&& res) : result(std::move(res)), cached(false) {}
+  explicit QueryResult(Result&& res)
+      : result(std::move(res)),
+        cached(false) {}
 
   virtual ~QueryResult() = default;
 
@@ -76,9 +82,7 @@ struct QueryResult {
   bool ok() const { return result.ok(); }
   bool fail() const { return result.fail(); }
   ErrorCode errorNumber() const { return result.errorNumber(); }
-  bool is(ErrorCode errorNumber) const {
-    return result.errorNumber() == errorNumber;
-  }
+  bool is(ErrorCode errorNumber) const { return result.errorNumber() == errorNumber; }
   bool isNot(ErrorCode errorNumber) const { return !is(errorNumber); }
   std::string_view errorMessage() const { return result.errorMessage(); }
 
@@ -93,3 +97,4 @@ struct QueryResult {
 };
 }  // namespace aql
 }  // namespace arangodb
+

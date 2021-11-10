@@ -61,3 +61,4 @@ class FlushThread final : public Thread {
 };
 
 }  // namespace arangodb
+

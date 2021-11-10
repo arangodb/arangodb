@@ -42,3 +42,4 @@ class DropCollection : public ActionBase, ShardDefinition {
 
 }  // namespace maintenance
 }  // namespace arangodb
+

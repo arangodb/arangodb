@@ -25,14 +25,14 @@
 #pragma once
 
 #include <velocypack/HashedStringRef.h>
-
-#include <numeric>
-#include <unordered_map>
-
 #include "Containers/HashSet.h"
+
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Providers/TypeAliases.h"
 #include "Graph/TraverserOptions.h"
+
+#include <numeric>
+#include <unordered_map>
 
 namespace arangodb {
 
@@ -42,11 +42,11 @@ class Builder;
 
 namespace graph {
 
-template<class ProviderType, class PathStoreType, class Step>
+template <class ProviderType, class PathStoreType, class Step>
 class SingleProviderPathResult : public PathResultInterface {
+
  public:
-  SingleProviderPathResult(Step step, ProviderType& provider,
-                           PathStoreType& store);
+  SingleProviderPathResult(Step step, ProviderType& provider, PathStoreType& store);
   auto clear() -> void;
   auto appendVertex(typename Step::Vertex v) -> void;
   auto prependVertex(typename Step::Vertex v) -> void;

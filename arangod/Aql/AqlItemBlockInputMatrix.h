@@ -44,7 +44,7 @@ class AqlItemBlockInputMatrix {
 
   void reset() noexcept { _lastRange.reset(); }
   bool hasBlock() const noexcept { return _lastRange.hasBlock(); }
-
+  
   bool hasShadowRow() const noexcept;
   bool hasDataRow() const noexcept;
   bool hasValidRow() const noexcept;
@@ -99,3 +99,4 @@ class AqlItemBlockInputMatrix {
 };
 
 }  // namespace arangodb::aql
+

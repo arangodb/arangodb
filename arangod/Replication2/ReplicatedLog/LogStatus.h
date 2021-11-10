@@ -22,12 +22,12 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 #include <optional>
 #include <unordered_map>
 #include <variant>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 #include "Replication2/ReplicatedLog/types.h"
 
@@ -70,8 +70,7 @@ struct UnconfiguredStatus {
 };
 
 struct LogStatus {
-  using VariantType =
-      std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
+  using VariantType = std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
 
   // default constructs as unconfigured status
   LogStatus() = default;
@@ -82,14 +81,12 @@ struct LogStatus {
   [[nodiscard]] auto getVariant() const noexcept -> VariantType const&;
 
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
-  [[nodiscard]] auto getLocalStatistics() const noexcept
-      -> std::optional<LogStatistics>;
+  [[nodiscard]] auto getLocalStatistics() const noexcept -> std::optional<LogStatistics>;
 
   static auto fromVelocyPack(velocypack::Slice slice) -> LogStatus;
   void toVelocyPack(velocypack::Builder& builder) const;
-
  private:
   VariantType _variant;
 };
 
-}  // namespace arangodb::replication2::replicated_log
+}

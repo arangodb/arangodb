@@ -31,7 +31,7 @@ class LogicalCollection;
 
 namespace transaction {
 namespace cluster {
-
+  
 void abortTransactions(LogicalCollection& coll);
 void abortLeaderTransactionsOnShard(DataSourceId cid);
 void abortFollowerTransactionsOnShard(DataSourceId cid);
@@ -40,3 +40,4 @@ void abortTransactionsWithFailedServers(ClusterInfo&);
 }  // namespace cluster
 }  // namespace transaction
 }  // namespace arangodb
+

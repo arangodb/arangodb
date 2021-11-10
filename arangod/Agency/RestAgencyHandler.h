@@ -76,3 +76,4 @@ class RestAgencyHandler : public RestVocbaseBaseHandler {
   consensus::Agent* _agent;
 };
 }  // namespace arangodb
+

@@ -23,15 +23,14 @@
 
 #include "RestLogInternalHandler.h"
 
-#include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
+#include "Replication2/ReplicatedLog/LogFollower.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-RestLogInternalHandler::RestLogInternalHandler(
-    application_features::ApplicationServer& server, GeneralRequest* req,
-    GeneralResponse* resp)
+RestLogInternalHandler::RestLogInternalHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* req, GeneralResponse* resp)
     : RestVocbaseBaseHandler(server, req, resp) {}
 RestLogInternalHandler::~RestLogInternalHandler() = default;
 
@@ -43,8 +42,7 @@ RestStatus RestLogInternalHandler::execute() {
   }
 
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
@@ -63,18 +61,15 @@ RestStatus RestLogInternalHandler::execute() {
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
   auto request = replicated_log::AppendEntriesRequest::fromVelocyPack(body);
-  auto f = _vocbase.getReplicatedLogFollowerById(logId)
-               ->appendEntries(request)
-               .thenValue([this](replicated_log::AppendEntriesResult&& res) {
-                 VPackBuilder builder;
-                 res.toVelocyPack(builder);
-                 // TODO fix the result type here. Currently we always return
-                 // the error under the
-                 //      `result` field. Maybe we want to change the HTTP status
-                 //      code as well? Don't forget to update the deserializer
-                 //      that reads the response!
-                 generateOk(rest::ResponseCode::ACCEPTED, builder.slice());
-               });
+  auto f = _vocbase.getReplicatedLogFollowerById(logId)->appendEntries(request).thenValue(
+      [this](replicated_log::AppendEntriesResult&& res) {
+        VPackBuilder builder;
+        res.toVelocyPack(builder);
+        // TODO fix the result type here. Currently we always return the error under the
+        //      `result` field. Maybe we want to change the HTTP status code as well?
+        //      Don't forget to update the deserializer that reads the response!
+        generateOk(rest::ResponseCode::ACCEPTED, builder.slice());
+      });
 
   return waitForFuture(std::move(f));
 }

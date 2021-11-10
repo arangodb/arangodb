@@ -29,14 +29,18 @@
 using namespace arangodb;
 using namespace arangodb::transaction;
 
-CountCache::CountCache(double ttl)
-    : count(CountCache::NotPopulated), expireStamp(0.0), ttl(ttl) {}
+CountCache::CountCache(double ttl) 
+    : count(CountCache::NotPopulated), 
+      expireStamp(0.0),
+      ttl(ttl) {}
 
 uint64_t CountCache::get() const {
   return count.load(std::memory_order_relaxed);
 }
 
-double CountCache::getTime() const { return TRI_microtime(); }
+double CountCache::getTime() const {
+  return TRI_microtime();
+}
 
 uint64_t CountCache::getWithTtl() const {
   // (1) - this acquire-load synchronizes with the release-store (2)

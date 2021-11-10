@@ -23,9 +23,10 @@
 
 #pragma once
 
+#include "Basics/Common.h"
+
 #include <v8.h>
 
-#include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/StaticStrings.h"
 
@@ -112,7 +113,7 @@ class V8Context {
   double const _creationStamp;
   /// @brief timestamp of when the context was last entered
   double _acquired;
-  /// @brief description of what the context is doing. pointer must be valid
+  /// @brief description of what the context is doing. pointer must be valid 
   /// through the entire program lifetime
   char const* _description;
   double _lastGcStamp;
@@ -141,3 +142,4 @@ class V8ContextEntryGuard {
 };
 
 }  // namespace arangodb
+

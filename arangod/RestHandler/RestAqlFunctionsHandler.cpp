@@ -22,18 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAqlFunctionsHandler.h"
+#include "Aql/AqlFunctionFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Aql/AqlFunctionFeature.h"
-
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAqlFunctionsHandler::RestAqlFunctionsHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestAqlFunctionsHandler::RestAqlFunctionsHandler(application_features::ApplicationServer& server,
+                                                 GeneralRequest* request,
+                                                 GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAqlFunctionsHandler::execute() {
@@ -53,7 +52,6 @@ RestStatus RestAqlFunctionsHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }

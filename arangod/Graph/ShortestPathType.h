@@ -41,3 +41,4 @@ struct ShortestPathType {
 
 }  // namespace graph
 }  // namespace arangodb
+

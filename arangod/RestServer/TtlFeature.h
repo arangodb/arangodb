@@ -30,7 +30,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}  // namespace velocypack
+}
 
 class TtlThread;
 
@@ -39,8 +39,7 @@ struct TtlStatistics {
   uint64_t runs = 0;
   // number of documents removed
   uint64_t documentsRemoved = 0;
-  // number of times the background thread stopped prematurely because it hit
-  // the configured limit
+  // number of times the background thread stopped prematurely because it hit the configured limit
   uint64_t limitReached = 0;
 
   TtlStatistics& operator+=(TtlStatistics const& other) {
@@ -49,18 +48,18 @@ struct TtlStatistics {
     limitReached += other.limitReached;
     return *this;
   }
-
+  
   TtlStatistics& operator+=(arangodb::velocypack::Slice const& other);
 
   void toVelocyPack(arangodb::velocypack::Builder& out) const;
 };
-
+  
 struct TtlProperties {
-  static constexpr uint64_t minFrequency = 1 * 1000;  // milliseconds
-  uint64_t frequency = 30 * 1000;                     // milliseconds
+  static constexpr uint64_t minFrequency = 1 * 1000; // milliseconds
+  uint64_t frequency = 30 * 1000; // milliseconds
   uint64_t maxTotalRemoves = 1000000;
   uint64_t maxCollectionRemoves = 1000000;
-
+  
   void toVelocyPack(arangodb::velocypack::Builder& out, bool isActive) const;
   Result fromVelocyPack(arangodb::velocypack::Slice const& properties);
 };
@@ -92,42 +91,41 @@ class TtlFeature final : public application_features::ApplicationFeature {
   /// the TTL thread has left the actual document removal routine
   void deactivate();
 
-  /// @brief whether or not expiring/removing outdated documents is currently
-  /// turned on
+  /// @brief whether or not expiring/removing outdated documents is currently turned on
   bool isActive() const;
 
   void statsToVelocyPack(arangodb::velocypack::Builder& out) const;
 
   void updateStats(TtlStatistics const& stats);
-
+  
   void propertiesToVelocyPack(arangodb::velocypack::Builder& out) const;
-  Result propertiesFromVelocyPack(arangodb::velocypack::Slice const& slice,
-                                  arangodb::velocypack::Builder& out);
-
+  Result propertiesFromVelocyPack(arangodb::velocypack::Slice const& slice, arangodb::velocypack::Builder& out);
+  
   TtlProperties properties() const;
-
+  
  private:
   void shutdownThread() noexcept;
-
+  
  private:
   /// @brief protects _properties and _active
   mutable Mutex _propertiesMutex;
   TtlProperties _properties;
-
+  
   /// @brief protects _statistics
-  mutable Mutex _statisticsMutex;
+  mutable Mutex _statisticsMutex; 
   TtlStatistics _statistics;
-
+  
   /// @brief protects _thread
-  mutable Mutex _threadMutex;
+  mutable Mutex _threadMutex; 
   std::unique_ptr<TtlThread> _thread;
-
-  /// @brief internal active flag, used by HeartbeatThread in active failover
-  /// setups the value is orthogonal to the user-facing _active flag
-  bool _allowRunning;
+ 
+  /// @brief internal active flag, used by HeartbeatThread in active failover setups
+  /// the value is orthogonal to the user-facing _active flag
+  bool _allowRunning; 
 
   /// @brief user-facing active flag, can be changed by end users
   bool _active;
 };
 
 }  // namespace arangodb
+

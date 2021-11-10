@@ -31,19 +31,16 @@ namespace pregel {
 namespace algos {
 
 /// Effective Closeness
-struct EffectiveCloseness
-    : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> {
-  explicit EffectiveCloseness(application_features::ApplicationServer& server,
-                              VPackSlice params)
-      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>(
-            server, "EffectiveCloseness", params) {}
+struct EffectiveCloseness : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> {
+  explicit EffectiveCloseness(application_features::ApplicationServer& server, VPackSlice params)
+      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>(server,
+                                                     "EffectiveCloseness", params) {}
 
   GraphFormat<ECValue, int8_t>* inputFormat() const override;
   MessageFormat<HLLCounter>* messageFormat() const override;
   MessageCombiner<HLLCounter>* messageCombiner() const override;
 
-  VertexComputation<ECValue, int8_t, HLLCounter>* createComputation(
-      WorkerConfig const*) const override;
+  VertexComputation<ECValue, int8_t, HLLCounter>* createComputation(WorkerConfig const*) const override;
 };
 }  // namespace algos
 }  // namespace pregel

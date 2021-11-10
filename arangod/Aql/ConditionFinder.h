@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include <cstdint>
-#include <unordered_map>
-
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/WalkerWorker.h"
+
+#include <cstdint>
+#include <unordered_map>
 
 namespace arangodb {
 namespace aql {
@@ -38,11 +38,9 @@ class SortCondition;
 struct Variable;
 
 /// @brief condition finder
-class ConditionFinder final
-    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+class ConditionFinder final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
-  ConditionFinder(ExecutionPlan* plan,
-                  std::unordered_map<ExecutionNodeId, ExecutionNode*>& changes);
+  ConditionFinder(ExecutionPlan* plan, std::unordered_map<ExecutionNodeId, ExecutionNode*>& changes);
 
   ~ConditionFinder() = default;
 
@@ -53,8 +51,7 @@ class ConditionFinder final
   bool producesEmptyResult() const { return _producesEmptyResult; }
 
  protected:
-  bool handleFilterCondition(ExecutionNode* en,
-                             std::unique_ptr<Condition> const& condition);
+  bool handleFilterCondition(ExecutionNode* en, std::unique_ptr<Condition> const& condition);
   void handleSortCondition(ExecutionNode* en, Variable const* outVar,
                            std::unique_ptr<Condition> const& condition,
                            std::unique_ptr<SortCondition>& sortCondition);
@@ -70,3 +67,4 @@ class ConditionFinder final
 };
 }  // namespace aql
 }  // namespace arangodb
+

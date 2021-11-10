@@ -23,5 +23,8 @@
 #pragma once
 
 namespace arangodb::transaction {
-enum class MethodsApi { Asynchronous, Synchronous };
+enum class MethodsApi {
+  Asynchronous,
+  Synchronous
+};
 }
