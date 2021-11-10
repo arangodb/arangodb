@@ -35,12 +35,8 @@
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
-#include "Aql/AqlFunctionFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/files.h"
-#include "Cluster/ClusterFeature.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
@@ -48,21 +44,11 @@
 #include "IResearchTestCompressor.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
-#include "Mocks/IResearchLinkMock.h"
-#include "RestServer/AqlFeature.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/ServerIdFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/ViewTypesFeature.h"
-#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/ExecContext.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -89,7 +75,7 @@ class IResearchLinkTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES, arangodb::LogLevel::FATAL>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::FATAL> {
  protected:
-  static constexpr size_t enc_block_size{13};
+  static constexpr size_t kEncBlockSize{13};
   arangodb::tests::mocks::MockAqlServer server;
   std::string testFilesystemPath;
 
@@ -132,7 +118,9 @@ class IResearchLinkTest
     TRI_CreateDirectory(testFilesystemPath.c_str(), systemError, systemErrorStr);
   }
 
-  ~IResearchLinkTest() { TRI_RemoveDirectory(testFilesystemPath.c_str()); }
+  ~IResearchLinkTest() override {
+    TRI_RemoveDirectory(testFilesystemPath.c_str());
+  }
 };
 
 // -----------------------------------------------------------------------------
@@ -153,8 +141,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     engine.views.clear();
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\" }");
+    auto collectionJson =
+        arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection);
     auto json = arangodb::velocypack::Parser::fromJson("{}");
@@ -174,11 +162,11 @@ TEST_F(IResearchLinkTest, test_defaults) {
     engine.views.clear();
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\" }");
+    auto collectionJson =
+        arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection);
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
+    auto json = arangodb::velocypack::Parser::fromJson(R"({ "view": "42" })");
     auto link = StorageEngineMock::buildLinkMock(arangodb::IndexId{1},
                                                  *logicalCollection, json->slice());
     EXPECT_NE(nullptr, link.get());
@@ -192,11 +180,11 @@ TEST_F(IResearchLinkTest, test_defaults) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
     auto linkJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"type\": \"arangosearch\", \"view\": \"42\" }");
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\" }");
+        R"({ "type": "arangosearch", "view": "42" })");
+    auto collectionJson =
+        arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"id\": 42, \"type\": \"arangosearch\" }");
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection);
     auto logicalView = vocbase.createView(viewJson->slice());
@@ -268,10 +256,10 @@ TEST_F(IResearchLinkTest, test_defaults) {
                           testDBInfo(server.server()));
     auto linkJson = arangodb::velocypack::Parser::fromJson(
         R"({ "type": "arangosearch", "view": "42", "version":1 })");
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\" }");
+    auto collectionJson =
+        arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"id\": 42, \"type\": \"arangosearch\" }");
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection);
     auto logicalView = vocbase.createView(viewJson->slice());
@@ -342,11 +330,11 @@ TEST_F(IResearchLinkTest, test_defaults) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
     auto linkJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"type\": \"arangosearch\", \"view\": \"42\" }");
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\" }");
+        R"({ "type": "arangosearch", "view": "42" })");
+    auto collectionJson =
+        arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"id\": 42, \"type\": \"arangosearch\" }");
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice());
@@ -440,12 +428,12 @@ TEST_F(IResearchLinkTest, test_defaults) {
 TEST_F(IResearchLinkTest, test_init) {
   // collection registered with view (collection initially not in view)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\", \"id\": 100 }");
+    auto collectionJson =
+        arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection", "id": 100 })");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"type\": \"arangosearch\", \"view\": \"42\" }");
+        R"({ "type": "arangosearch", "view": "42" })");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"id\": 42, \"type\": \"arangosearch\" }");
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -514,10 +502,10 @@ TEST_F(IResearchLinkTest, test_init) {
 
   // collection registered with view (collection initially is in view)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\", \"id\": 101 }");
+    auto collectionJson =
+        arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection", "id": 101 })");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"type\": \"arangosearch\", \"view\": \"43\" }");
+        R"({ "type": "arangosearch", "view": "43" })");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"id\": 43, \"type\": \"arangosearch\", "
         "\"collections\": [ 101 ] }");
@@ -598,12 +586,11 @@ TEST_F(IResearchLinkTest, test_self_token) {
   arangodb::iresearch::IResearchLink::AsyncLinkPtr self;
 
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\" }");
-    auto linkJson =
-        arangodb::velocypack::Parser::fromJson("{ \"view\": \"testView\" }");
+    auto collectionJson =
+        arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(R"({ "view": "testView" })");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
+        R"({ "name": "testView", "type":"arangosearch" })");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                     testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -632,12 +619,12 @@ TEST_F(IResearchLinkTest, test_self_token) {
 TEST_F(IResearchLinkTest, test_drop) {
   // collection drop (removes collection from view) subsequent destroy does not touch view
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\", \"id\": 100 }");
+    auto collectionJson =
+        arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection", "id": 100 })");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"type\": \"arangosearch\", \"view\": \"42\" }");
+        R"({ "type": "arangosearch", "view": "42" })");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"id\": 42, \"type\": \"arangosearch\" }");
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -734,12 +721,12 @@ TEST_F(IResearchLinkTest, test_drop) {
 TEST_F(IResearchLinkTest, test_unload) {
   // index unload does not touch the view (subsequent destroy)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\", \"id\": 100 }");
+    auto collectionJson =
+        arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection", "id": 100 })");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"type\": \"arangosearch\", \"view\": \"42\" }");
+        R"({ "type": "arangosearch", "view": "42" })");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"id\": 42, \"type\": \"arangosearch\" }");
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -813,8 +800,8 @@ TEST_F(IResearchLinkTest, test_unload) {
 }
 
 TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
-  static std::vector<std::string> const EMPTY;
-  auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
+  static std::vector<std::string> const kEmpty;
+  auto doc0 = arangodb::velocypack::Parser::fromJson(R"({ "abc": "def" })");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
@@ -824,8 +811,8 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
       "\"includeAllFields\": true }");
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
+  auto collectionJson =
+      arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \
     \"id\": 42, \
@@ -854,7 +841,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
@@ -876,8 +863,8 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
 }
 
 TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
-  static std::vector<std::string> const EMPTY;
-  auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
+  static std::vector<std::string> const kEmpty;
+  auto doc0 = arangodb::velocypack::Parser::fromJson(R"({ "abc": "def" })");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
@@ -886,8 +873,8 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
                              .string();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       R"({ "id": 42, "type": "arangosearch", "view": "42", "includeAllFields": true, "version":1 })");
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
+  auto collectionJson =
+      arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \
     \"id\": 42, \
@@ -916,7 +903,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
@@ -938,9 +925,9 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
 }
 
 TEST_F(IResearchLinkTest, test_write) {
-  static std::vector<std::string> const EMPTY;
-  auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
-  auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghi\": \"jkl\" }");
+  static std::vector<std::string> const kEmpty;
+  auto doc0 = arangodb::velocypack::Parser::fromJson(R"({ "abc": "def" })");
+  auto doc1 = arangodb::velocypack::Parser::fromJson(R"({ "ghi": "jkl" })");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
@@ -950,8 +937,8 @@ TEST_F(IResearchLinkTest, test_write) {
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
       "\"includeAllFields\": true }");
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
+  auto collectionJson =
+      arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \
     \"id\": 42, \
@@ -980,7 +967,7 @@ TEST_F(IResearchLinkTest, test_write) {
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -997,7 +984,7 @@ TEST_F(IResearchLinkTest, test_write) {
 
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -1011,7 +998,7 @@ TEST_F(IResearchLinkTest, test_write) {
 
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -1027,10 +1014,9 @@ TEST_F(IResearchLinkTest, test_write) {
 }
 
 TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
-  static std::vector<std::string> const EMPTY;
-  auto doc0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"abc\": \"def\", \"abc2\":\"aaa\", \"sort\":\"ps\"  }");
-  auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghi\": \"jkl\" }");
+  static std::vector<std::string> const kEmpty;
+  auto doc0 = arangodb::velocypack::Parser::fromJson(R"({ "abc": "def", "abc2":"aaa", "sort":"ps"  })");
+  auto doc1 = arangodb::velocypack::Parser::fromJson(R"({ "ghi": "jkl" })");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
@@ -1043,8 +1029,8 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
     }");
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
+  auto collectionJson =
+      arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \
     \"id\": 42, \
@@ -1053,12 +1039,12 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
   }");
-  std::set<std::string> compressed_values;
+  std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
-      [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out) -> irs::bytes_ref {
+      [&compressedValues](irs::byte_type* src, size_t size, irs::bstring& out) -> irs::bytes_ref {
     out.append(src, size);
-    compressed_values.emplace(reinterpret_cast<const char*>(src), size);
-    return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()), size);
+    compressedValues.emplace(reinterpret_cast<const char*>(src), size);
+    return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
   auto compressorRemover = irs::make_finally([]() {
     irs::compression::mock::test_compressor::functions().compress_mock = nullptr;
@@ -1085,7 +1071,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -1102,7 +1088,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
 
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -1118,15 +1104,13 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
   expected.emplace(reinterpret_cast<const char*>(abcSlice.start()), abcSlice.byteSize());
   auto abc2Slice = doc0->slice().get("abc2");
   expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
-  EXPECT_EQ(expected, compressed_values);
+  EXPECT_EQ(expected, compressedValues);
 }
 
 TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_with_sort) {
-  static std::vector<std::string> const EMPTY;
-  auto doc0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"abc\": \"def\", \"abc2\":\"aaa\", \"sort\":\"ps\"  }");
-  auto doc1 = arangodb::velocypack::Parser::fromJson(
-      "{ \"ghi\": \"jkl\", \"sort\":\"pp\" }");
+  static std::vector<std::string> const kEmpty;
+  auto doc0 = arangodb::velocypack::Parser::fromJson(R"({ "abc": "def", "abc2":"aaa", "sort":"ps"  })");
+  auto doc1 = arangodb::velocypack::Parser::fromJson(R"({ "ghi": "jkl", "sort":"pp" })");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
@@ -1140,8 +1124,8 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
     \"primarySortCompression\":\"test\",\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
     }");
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
+  auto collectionJson =
+      arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \
     \"id\": 42, \
@@ -1150,12 +1134,12 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
   }");
-  std::set<std::string> compressed_values;
+  std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
-      [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out) -> irs::bytes_ref {
+      [&compressedValues](irs::byte_type* src, size_t size, irs::bstring& out) -> irs::bytes_ref {
     out.append(src, size);
-    compressed_values.emplace(reinterpret_cast<const char*>(src), size);
-    return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()), size);
+    compressedValues.emplace(reinterpret_cast<const char*>(src), size);
+    return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
   auto compressorRemover = irs::make_finally([]() {
     irs::compression::mock::test_compressor::functions().compress_mock = nullptr;
@@ -1182,7 +1166,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -1199,7 +1183,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
 
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -1219,14 +1203,13 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
   expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
   auto sortSlice1 = doc1->slice().get("sort");
   expected.emplace(reinterpret_cast<const char*>(sortSlice1.start()), sortSlice1.byteSize());
-  EXPECT_EQ(expected, compressed_values);
+  EXPECT_EQ(expected, compressedValues);
 }
 
 TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
-  static std::vector<std::string> const EMPTY;
-  auto doc0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"abc\": \"def\", \"abc2\":\"aaa\", \"sort\":\"ps\" }");
-  auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghi\": \"jkl\" }");
+  static std::vector<std::string> const kEmpty;
+  auto doc0 = arangodb::velocypack::Parser::fromJson(R"({ "abc": "def", "abc2":"aaa", "sort":"ps" })");
+  auto doc1 = arangodb::velocypack::Parser::fromJson(R"({ "ghi": "jkl" })");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
@@ -1241,8 +1224,8 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
                       {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
                       {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
     }");
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
+  auto collectionJson =
+      arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \
     \"id\": 42, \
@@ -1253,12 +1236,12 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
                       {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
                       {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
   }");
-  std::set<std::string> compressed_values;
+  std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
-      [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out) -> irs::bytes_ref {
+      [&compressedValues](irs::byte_type* src, size_t size, irs::bstring& out) -> irs::bytes_ref {
     out.append(src, size);
-    compressed_values.emplace(reinterpret_cast<const char*>(src), size);
-    return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()), size);
+    compressedValues.emplace(reinterpret_cast<const char*>(src), size);
+    return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
   auto compressorRemover = irs::make_finally([]() {
     irs::compression::mock::test_compressor::functions().compress_mock = nullptr;
@@ -1285,7 +1268,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -1302,7 +1285,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
 
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -1318,15 +1301,13 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
   expected.emplace(reinterpret_cast<const char*>(abcSlice.start()), abcSlice.byteSize());
   auto abc2Slice = doc1->slice().get("ghi");
   expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
-  EXPECT_EQ(expected, compressed_values);
+  EXPECT_EQ(expected, compressedValues);
 }
 
 TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_with_sort) {
-  static std::vector<std::string> const EMPTY;
-  auto doc0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"abc\": \"def\", \"abc2\":\"aaa\", \"sort\":\"ps\" }");
-  auto doc1 = arangodb::velocypack::Parser::fromJson(
-      "{ \"ghi\": \"jkl\", \"sort\":\"pp\" }");
+  static std::vector<std::string> const kEmpty;
+  auto doc0 = arangodb::velocypack::Parser::fromJson(R"({ "abc": "def", "abc2":"aaa", "sort":"ps" })");
+  auto doc1 = arangodb::velocypack::Parser::fromJson(R"({ "ghi": "jkl", "sort":"pp" })");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
@@ -1342,8 +1323,8 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
                       {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
                       {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
     }");
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
+  auto collectionJson =
+      arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \
     \"id\": 42, \
@@ -1355,12 +1336,12 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
                       {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
                       {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
   }");
-  std::set<std::string> compressed_values;
+  std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
-      [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out) -> irs::bytes_ref {
+      [&compressedValues](irs::byte_type* src, size_t size, irs::bstring& out) -> irs::bytes_ref {
     out.append(src, size);
-    compressed_values.emplace(reinterpret_cast<const char*>(src), size);
-    return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()), size);
+    compressedValues.emplace(reinterpret_cast<const char*>(src), size);
+    return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
   auto compressorRemover = irs::make_finally([]() {
     irs::compression::mock::test_compressor::functions().compress_mock = nullptr;
@@ -1387,7 +1368,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -1404,7 +1385,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
 
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -1424,20 +1405,18 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
   expected.emplace(reinterpret_cast<const char*>(sortSlice1.start()), sortSlice1.byteSize());
   auto abc2Slice = doc1->slice().get("ghi");
   expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
-  EXPECT_EQ(expected, compressed_values);
+  EXPECT_EQ(expected, compressedValues);
 }
 
 TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_with_sort_encrypted) {
   auto linkCallbackRemover =
       arangodb::iresearch::IResearchLinkMock::setCallbakForScope([]() {
         return irs::directory_attributes{0, std::make_unique<iresearch::mock::test_encryption>(
-                                                enc_block_size)};
+                                                kEncBlockSize)};
       });
-  static std::vector<std::string> const EMPTY;
-  auto doc0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"abc\": \"def\", \"abc2\":\"aaa\", \"sort\":\"ps\" }");
-  auto doc1 = arangodb::velocypack::Parser::fromJson(
-      "{ \"ghi\": \"jkl\", \"sort\":\"pp\" }");
+  static std::vector<std::string> const kEmpty;
+  auto doc0 = arangodb::velocypack::Parser::fromJson(R"({ "abc": "def", "abc2":"aaa", "sort":"ps" })");
+  auto doc1 = arangodb::velocypack::Parser::fromJson(R"({ "ghi": "jkl", "sort":"pp" })");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
@@ -1453,8 +1432,8 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
                       {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
                       {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
     }");
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
+  auto collectionJson =
+      arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \
     \"id\": 42, \
@@ -1466,12 +1445,12 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
                       {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
                       {\"fields\":[\"ghi\"], \"compression\":\"test\"}]\
   }");
-  std::set<std::string> compressed_values;
+  std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
-      [&compressed_values](irs::byte_type* src, size_t size, irs::bstring& out) -> irs::bytes_ref {
+      [&compressedValues](irs::byte_type* src, size_t size, irs::bstring& out) -> irs::bytes_ref {
     out.append(src, size);
-    compressed_values.emplace(reinterpret_cast<const char*>(src), size);
-    return irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(out.data()), size);
+    compressedValues.emplace(reinterpret_cast<const char*>(src), size);
+    return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
   auto compressorRemover = irs::make_finally([]() {
     irs::compression::mock::test_compressor::functions().compress_mock = nullptr;
@@ -1492,7 +1471,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
           .string();
   irs::fs_directory directory(dataPath,
                               irs::directory_attributes(0, std::make_unique<iresearch::mock::test_encryption>(
-                                                               enc_block_size)));
+                                                               kEncBlockSize)));
 
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -1501,7 +1480,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -1518,7 +1497,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
 
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
+                                       kEmpty, kEmpty, kEmpty,
                                        arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -1538,7 +1517,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
   expected.emplace(reinterpret_cast<const char*>(sortSlice1.start()), sortSlice1.byteSize());
   auto abc2Slice = doc1->slice().get("ghi");
   expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
-  EXPECT_EQ(expected, compressed_values);
+  EXPECT_EQ(expected, compressedValues);
 }
 
 TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
