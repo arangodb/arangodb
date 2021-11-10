@@ -71,8 +71,6 @@ class Methods;
 /// needs to be derived from the JSON info in the agency's plan entry for the
 /// collection...
 
-typedef std::shared_ptr<LogicalCollection> LogicalCollectionPtr;
-
 class LogicalCollection : public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
@@ -102,6 +100,7 @@ class LogicalCollection : public LogicalDataSource {
     RemoteSmartEdge = 4,
     SmartToSatEdge = 8,
     SatToSmartEdge = 16,
+    SmartVertex = 32
   };
 
   /// @brief the category representing a logical collection
@@ -120,8 +119,6 @@ class LogicalCollection : public LogicalDataSource {
   uint32_t v8CacheVersion() const;
 
   TRI_col_type_e type() const;
-
-  std::string globallyUniqueId() const;
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
@@ -187,7 +184,7 @@ class LogicalCollection : public LogicalDataSource {
   TEST_VIRTUAL std::shared_ptr<ShardMap> shardIds() const;
 
   // mutation options for sharding
-  void setShardMap(std::shared_ptr<ShardMap> map) noexcept;
+  void setShardMap(const std::shared_ptr<ShardMap>& map) noexcept;
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   // query shard for a given document
@@ -213,10 +210,10 @@ class LogicalCollection : public LogicalDataSource {
   /// to fetch current values!
   /// @param tid the optional transaction ID to use
   IndexEstMap clusterIndexEstimates(bool allowUpdating,
-                                    TransactionId tid = TransactionId::none());
+                                    TransactionId tid = TransactionId::none()) const;
 
   /// @brief flushes the current index selectivity estimates
-  void flushClusterIndexEstimates();
+  void flushClusterIndexEstimates() const;
 
   /// @brief return all indexes of the collection
   std::vector<std::shared_ptr<Index>> getIndexes() const;
@@ -231,8 +228,8 @@ class LogicalCollection : public LogicalDataSource {
   bool allowUserKeys() const;
 
   // SECTION: Modification Functions
-  virtual Result drop() override;
-  virtual Result rename(std::string&& name) override;
+  Result drop() override;
+  Result rename(std::string&& name) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
@@ -262,7 +259,7 @@ class LogicalCollection : public LogicalDataSource {
                                                    OperationOptions const& options) const;
 
   /// @brief closes an open collection
-  ErrorCode close();
+  ErrorCode close() const;
 
   // SECTION: Indexes
 
@@ -283,24 +280,24 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Index access (local only)
 
   /// @brief processes a truncate operation
-  Result truncate(transaction::Methods& trx, OperationOptions& options);
+  Result truncate(transaction::Methods& trx, OperationOptions& options) const;
 
   /// @brief compact-data operation
-  void compact();
+  void compact() const;
 
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
-                ManagedDocumentResult& result, OperationOptions& options);
+                ManagedDocumentResult& result, OperationOptions& options) const;
 
   Result update(transaction::Methods*, velocypack::Slice newSlice,
                 ManagedDocumentResult& result, OperationOptions&,
-                ManagedDocumentResult& previousMdr);
+                ManagedDocumentResult& previousMdr) const;
 
   Result replace(transaction::Methods*, velocypack::Slice newSlice,
                  ManagedDocumentResult& result, OperationOptions&,
-                 ManagedDocumentResult& previousMdr);
+                 ManagedDocumentResult& previousMdr) const;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                OperationOptions& options, ManagedDocumentResult& previousMdr);
+                OperationOptions& options, ManagedDocumentResult& previousMdr) const;
 
   /// @brief Persist the connected physical collection.
   ///        This should be called AFTER the collection is successfully
@@ -353,11 +350,12 @@ class LogicalCollection : public LogicalDataSource {
 
   bool isSmartToSatEdgeCollection() const noexcept;
 
+  bool isSmartVertexCollection() const noexcept;
+
  protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
 
-  virtual Result appendVelocyPack(velocypack::Builder& builder,
-                                  Serialization context) const override;
+  Result appendVelocyPack(velocypack::Builder& builder, Serialization context) const override;
 
   Result updateSchema(VPackSlice schema);
 
