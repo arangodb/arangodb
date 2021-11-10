@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocBase/Identifiers/TransactionId.h"
+
 #include "VocBase/ticks.h"
 
 namespace arangodb {

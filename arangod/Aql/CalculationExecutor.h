@@ -23,16 +23,16 @@
 
 #pragma once
 
+#include <unordered_set>
+#include <vector>
+
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 #include "Transaction/Methods.h"
-
-#include <unordered_set>
-#include <vector>
 
 namespace arangodb {
 namespace transaction {
@@ -46,14 +46,14 @@ class AqlItemBlockInputRange;
 class Expression;
 class OutputAqlItemRow;
 class QueryContext;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 struct Variable;
 
 struct CalculationExecutorInfos {
-  CalculationExecutorInfos(RegisterId outputRegister, QueryContext& query,
-                           Expression& expression,
-                           std::vector<std::pair<VariableId, RegisterId>>&& expInVarToRegs);
+  CalculationExecutorInfos(
+      RegisterId outputRegister, QueryContext& query, Expression& expression,
+      std::vector<std::pair<VariableId, RegisterId>>&& expInVarToRegs);
 
   CalculationExecutorInfos() = delete;
   CalculationExecutorInfos(CalculationExecutorInfos&&) = default;
@@ -67,7 +67,8 @@ struct CalculationExecutorInfos {
 
   Expression& getExpression() const noexcept;
 
-  std::vector<std::pair<VariableId, RegisterId>> const& getVarToRegs() const noexcept;
+  std::vector<std::pair<VariableId, RegisterId>> const& getVarToRegs()
+      const noexcept;
 
  private:
   RegisterId _outputRegisterId;
@@ -80,12 +81,13 @@ struct CalculationExecutorInfos {
 
 enum class CalculationType { Condition, V8Condition, Reference };
 
-template <CalculationType calculationType>
+template<CalculationType calculationType>
 class CalculationExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Enable;
     /* This could be set to true after some investigation/fixes */
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
@@ -99,7 +101,8 @@ class CalculationExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
@@ -109,11 +112,13 @@ class CalculationExecutor {
   void doEvaluation(InputAqlItemRow& input, OutputAqlItemRow& output);
 
   // Only for V8Conditions
-  template <CalculationType U = calculationType, typename = std::enable_if_t<U == CalculationType::V8Condition>>
+  template<CalculationType U = calculationType,
+           typename = std::enable_if_t<U == CalculationType::V8Condition>>
   void enterContext();
 
   // Only for V8Conditions
-  template <CalculationType U = calculationType, typename = std::enable_if_t<U == CalculationType::V8Condition>>
+  template<CalculationType U = calculationType,
+           typename = std::enable_if_t<U == CalculationType::V8Condition>>
   void exitContext() noexcept;
 
   [[nodiscard]] bool shouldExitContextBetweenBlocks() const noexcept;
@@ -136,4 +141,3 @@ class CalculationExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

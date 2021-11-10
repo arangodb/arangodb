@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StandaloneContext.h"
+
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 
@@ -29,13 +30,13 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace transaction {
-  
+
 StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase)
-  : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
+    : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
 
 /// @brief get transaction state, determine commit responsibility
-/*virtual*/ std::shared_ptr<TransactionState> StandaloneContext::acquireState(transaction::Options const& options,
-                                                                              bool& responsibleForCommit) {
+/*virtual*/ std::shared_ptr<TransactionState> StandaloneContext::acquireState(
+    transaction::Options const& options, bool& responsibleForCommit) {
   if (_state) {
     responsibleForCommit = false;
   } else {
@@ -58,7 +59,8 @@ std::shared_ptr<Context> StandaloneContext::clone() const {
 }
 
 /// @brief create a context, returned in a shared ptr
-/*static*/ std::shared_ptr<transaction::Context> transaction::StandaloneContext::Create(TRI_vocbase_t& vocbase) {
+/*static*/ std::shared_ptr<transaction::Context>
+transaction::StandaloneContext::Create(TRI_vocbase_t& vocbase) {
   return std::make_shared<transaction::StandaloneContext>(vocbase);
 }
 

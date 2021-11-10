@@ -23,12 +23,12 @@
 
 #pragma once
 
+#include <velocypack/Builder.h>
+
 #include "Basics/Common.h"
 #include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/voc-types.h"
-
-#include <velocypack/Builder.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief macro to make sure we won't continue if we are inside a transaction
@@ -51,8 +51,8 @@ TRI_vocbase_t& GetContextVocBase(v8::Isolate* isolate);
 /// open afterwards.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val,
-                           bool extendedNames,
+bool ExtractDocumentHandle(v8::Isolate* isolate,
+                           v8::Handle<v8::Value> const val, bool extendedNames,
                            std::string& collectionName,
-                           arangodb::velocypack::Builder& builder, bool includeRev);
-
+                           arangodb::velocypack::Builder& builder,
+                           bool includeRev);

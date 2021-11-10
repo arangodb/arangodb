@@ -21,10 +21,11 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Basics/StaticStrings.h>
-#include <thread>
-
 #include "RestServer/AqlFeature.h"
+
+#include <Basics/StaticStrings.h>
+
+#include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"

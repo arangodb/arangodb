@@ -23,6 +23,9 @@
 
 #include "UpdateReplaceModifier.h"
 
+#include <velocypack/Collection.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ModificationExecutor.h"
@@ -31,13 +34,9 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Basics/Common.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "Logger/LogMacros.h"
 
 class CollectionNameResolver;
 
@@ -56,9 +55,10 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
 
   if (!inDoc.isObject()) {
     if (!_infos._ignoreErrors) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-                                     std::string("expecting 'Object', got: ") +
-                                         inDoc.slice().typeName() + std::string(" while handling: UPDATE or REPLACE"));
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+          std::string("expecting 'Object', got: ") + inDoc.slice().typeName() +
+              std::string(" while handling: UPDATE or REPLACE"));
     }
     return ModifierOperationType::SkipRow;
   }
@@ -67,7 +67,8 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
   //
   // We must never take _rev from the document if there is a key
   // expression.
-  CollectionNameResolver const& collectionNameResolver{_infos._query.resolver()};
+  CollectionNameResolver const& collectionNameResolver{
+      _infos._query.resolver()};
 
   auto key = std::string{};
   auto rev = std::string{};
@@ -95,8 +96,8 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
 
       // This deletes _rev if rev is empty or ignoreRevs is set in
       // options.
-      auto merger =
-          VPackCollection::merge(inDoc.slice(), _keyDocBuilder.slice(), false, true);
+      auto merger = VPackCollection::merge(inDoc.slice(),
+                                           _keyDocBuilder.slice(), false, true);
       accu.add(merger.slice());
     } else {
       accu.add(inDoc.slice());
@@ -107,10 +108,13 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
   }
 }
 
-futures::Future<OperationResult> UpdateReplaceModifierCompletion::transact(transaction::Methods& trx, VPackSlice const data) {
+futures::Future<OperationResult> UpdateReplaceModifierCompletion::transact(
+    transaction::Methods& trx, VPackSlice const data) {
   if (_infos._isReplace) {
-    return trx.replaceAsync(_infos._aqlCollection->name(), data, _infos._options);
+    return trx.replaceAsync(_infos._aqlCollection->name(), data,
+                            _infos._options);
   } else {
-    return trx.updateAsync(_infos._aqlCollection->name(), data, _infos._options);
+    return trx.updateAsync(_infos._aqlCollection->name(), data,
+                           _infos._options);
   }
 }

@@ -23,14 +23,14 @@
 
 #pragma once
 
+#include <fuerte/message.h>
+
+#include <mutex>
+
 #include "Aql/AqlExecuteResult.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/RegisterInfos.h"
-
-#include <fuerte/message.h>
-
-#include <mutex>
 
 namespace arangodb::fuerte {
 inline namespace v1 {
@@ -49,7 +49,7 @@ class RemoteExecutor final {};
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
-template <>
+template<>
 class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
  public:
   // TODO Even if it's not strictly necessary here, for consistency's sake the
@@ -57,13 +57,16 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   // moved into some RemoteExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, RemoteNode const* node,
                      RegisterInfos&& infos, std::string const& server,
-                     std::string const& distributeId, std::string const& queryId);
+                     std::string const& distributeId,
+                     std::string const& queryId);
 
   ~ExecutionBlockImpl() override = default;
 
-  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
+  std::pair<ExecutionState, Result> initializeCursor(
+      InputAqlItemRow const& input) override;
 
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(
+      AqlCallStack const& stack) override;
 
   std::string const& distributeId() const { return _distributeId; }
 
@@ -72,13 +75,12 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // only for asserts:
  public:
-
-
   std::string const& queryId() const { return _queryId; }
 #endif
 
  private:
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(
+      size_t atMost);
 
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 
@@ -87,8 +89,8 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   [[nodiscard]] auto deserializeExecuteCallResultBody(velocypack::Slice) const
       -> ResultT<AqlExecuteResult>;
-  [[nodiscard]] auto serializeExecuteCallBody(AqlCallStack const& callStack) const
-      -> velocypack::Buffer<uint8_t>;
+  [[nodiscard]] auto serializeExecuteCallBody(
+      AqlCallStack const& callStack) const -> velocypack::Buffer<uint8_t>;
 
   RegisterInfos const& registerInfos() const { return _registerInfos; }
 
@@ -96,20 +98,22 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   /// @brief internal method to send a request. Will register a callback to be
   /// reactivated
-  arangodb::Result sendAsyncRequest(fuerte::RestVerb type, std::string const& urlPart,
+  arangodb::Result sendAsyncRequest(fuerte::RestVerb type,
+                                    std::string const& urlPart,
                                     velocypack::Buffer<uint8_t>&& body);
 
   // _communicationMutex *must* be locked for this!
   unsigned generateRequestTicket();
 
-  void traceExecuteRequest(velocypack::Slice slice, AqlCallStack const& callStack);
+  void traceExecuteRequest(velocypack::Slice slice,
+                           AqlCallStack const& callStack);
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceInitializeCursorRequest(velocypack::Slice slice);
-  void traceRequest(char const* rpc, velocypack::Slice slice, std::string const& args);
+  void traceRequest(char const* rpc, velocypack::Slice slice,
+                    std::string const& args);
 
  private:
-
   RegisterInfos _registerInfos;
 
   QueryContext const& _query;
@@ -138,9 +142,8 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   bool const _isResponsibleForInitializeCursor;
 
   bool _requestInFlight;
-  
+
   unsigned _lastTicket;  /// used to check for canceled requests
 };
 
 }  // namespace arangodb::aql
-

@@ -26,6 +26,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Replication2/Version.h"
@@ -44,12 +45,18 @@ class ApplicationServer;
 
 struct DBUser {
   DBUser() = default;
-  DBUser(DBUser const&) = default;  // delete when info does not need to be copied anymore
+  DBUser(DBUser const&) =
+      default;  // delete when info does not need to be copied anymore
 
-  DBUser(std::string&& n, std::string&& p, bool a, std::shared_ptr<VPackBuilder> b)
-      : name(std::move(n)), password(std::move(p)), extra(std::move(b)), active(a) {}
+  DBUser(std::string&& n, std::string&& p, bool a,
+         std::shared_ptr<VPackBuilder> b)
+      : name(std::move(n)),
+        password(std::move(p)),
+        extra(std::move(b)),
+        active(a) {}
 
-  DBUser(std::string const& n, std::string const& p, bool a, std::shared_ptr<VPackBuilder> b)
+  DBUser(std::string const& n, std::string const& p, bool a,
+         std::shared_ptr<VPackBuilder> b)
       : name(n), password(p), extra(std::move(b)), active(a) {}
 
   DBUser& operator=(DBUser&& other) {
@@ -70,7 +77,8 @@ struct DBUser {
 
 class CreateDatabaseInfo {
  public:
-  CreateDatabaseInfo(application_features::ApplicationServer&, ExecContext const&);
+  CreateDatabaseInfo(application_features::ApplicationServer&,
+                     ExecContext const&);
   Result load(std::string const& name, uint64_t id);
 
   Result load(std::string const& name, VPackSlice const& options,
@@ -150,7 +158,8 @@ class CreateDatabaseInfo {
   ShardingPrototype _shardingPrototype = ShardingPrototype::Undefined;
 
   bool _validId = false;
-  bool _valid = false;  // required because TRI_ASSERT needs variable in Release mode.
+  bool _valid =
+      false;  // required because TRI_ASSERT needs variable in Release mode.
 };
 
 struct VocbaseOptions {
@@ -160,10 +169,12 @@ struct VocbaseOptions {
   replication::Version replicationVersion = replication::Version::ONE;
 };
 
-VocbaseOptions getVocbaseOptions(application_features::ApplicationServer&, velocypack::Slice const&);
+VocbaseOptions getVocbaseOptions(application_features::ApplicationServer&,
+                                 velocypack::Slice const&);
 
 void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
-                       std::uint32_t replicationFactor, std::uint32_t writeConcern,
+                       std::uint32_t replicationFactor,
+                       std::uint32_t writeConcern,
                        replication::Version replicationVersion);
 void addClusterOptions(velocypack::Builder&, VocbaseOptions const&);
 

@@ -23,16 +23,16 @@
 
 #pragma once
 
-#include "Aql/types.h"
-#include "Aql/Collection.h"
-#include "VocBase/AccessMode.h"
-
 #include <functional>
 #include <map>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include "Aql/Collection.h"
+#include "Aql/types.h"
+#include "VocBase/AccessMode.h"
 
 struct TRI_vocbase_t;
 
@@ -55,23 +55,25 @@ class Collections {
  public:
   Collection* get(std::string_view name) const;
 
-  Collection* add(std::string const& name, AccessMode::Type accessType, Collection::Hint hint);
+  Collection* add(std::string const& name, AccessMode::Type accessType,
+                  Collection::Hint hint);
 
   std::vector<std::string> collectionNames() const;
 
   bool empty() const;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
-  
-  void visit(std::function<bool(std::string const&, Collection&)> const& visitor) const;
+
+  void visit(std::function<bool(std::string const&, Collection&)> const&
+                 visitor) const;
 
  private:
   TRI_vocbase_t* _vocbase;
 
-  std::map<std::string, std::unique_ptr<aql::Collection>, std::less<>> _collections;
+  std::map<std::string, std::unique_ptr<aql::Collection>, std::less<>>
+      _collections;
 
   static size_t const MaxCollections = 2048;
 };
 }  // namespace aql
 }  // namespace arangodb
-

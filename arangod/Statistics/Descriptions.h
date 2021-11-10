@@ -23,10 +23,11 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <velocypack/Builder.h>
+
 #include <string>
+
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace application_features {
@@ -34,11 +35,7 @@ class ApplicationServer;
 }
 namespace stats {
 
-enum RequestStatisticsSource {
-  USER,
-  SUPERUSER,
-  ALL
-};
+enum RequestStatisticsSource { USER, SUPERUSER, ALL };
 
 enum class GroupType { System, Client, ClientUser, Http, Vst, Server };
 
@@ -84,7 +81,8 @@ class Descriptions final {
   std::vector<stats::Figure> const& figures() const { return _figures; }
 
   void serverStatistics(velocypack::Builder&) const;
-  void clientStatistics(velocypack::Builder&, RequestStatisticsSource source) const;
+  void clientStatistics(velocypack::Builder&,
+                        RequestStatisticsSource source) const;
   void httpStatistics(velocypack::Builder&) const;
   void processStatistics(velocypack::Builder&) const;
 
@@ -101,4 +99,3 @@ class Descriptions final {
 };
 }  // namespace stats
 }  // namespace arangodb
-

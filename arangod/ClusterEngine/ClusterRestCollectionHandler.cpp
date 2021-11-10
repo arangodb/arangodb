@@ -22,23 +22,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterRestCollectionHandler.h"
+
 #include "ClusterEngine/RocksDBMethods.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 
-ClusterRestCollectionHandler::ClusterRestCollectionHandler(application_features::ApplicationServer& server,
-                                                           GeneralRequest* request,
-                                                           GeneralResponse* response)
+ClusterRestCollectionHandler::ClusterRestCollectionHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestCollectionHandler(server, request, response) {}
 
-Result ClusterRestCollectionHandler::handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll,
-                                                           std::string const& suffix,
-                                                           velocypack::Builder& builder) {
+Result ClusterRestCollectionHandler::handleExtraCommandPut(
+    std::shared_ptr<LogicalCollection> coll, std::string const& suffix,
+    velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
-    Result res =
-        arangodb::rocksdb::recalculateCountsOnAllDBServers(server(), _vocbase.name(),
-                                                           coll->name());
+    Result res = arangodb::rocksdb::recalculateCountsOnAllDBServers(
+        server(), _vocbase.name(), coll->name());
     if (res.ok()) {
       VPackObjectBuilder guard(&builder);
       builder.add("result", VPackValue(true));

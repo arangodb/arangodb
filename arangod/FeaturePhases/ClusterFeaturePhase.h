@@ -35,4 +35,3 @@ class ClusterFeaturePhase : public ApplicationFeaturePhase {
 
 }  // namespace application_features
 }  // namespace arangodb
-

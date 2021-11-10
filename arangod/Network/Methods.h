@@ -23,6 +23,11 @@
 
 #pragma once
 
+#include <fuerte/message.h>
+
+#include <chrono>
+#include <memory>
+
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Futures/Future.h"
@@ -30,16 +35,12 @@
 #include "Network/ConnectionPool.h"
 #include "Network/types.h"
 
-#include <fuerte/message.h>
-
-#include <chrono>
-#include <memory>
-
 namespace arangodb {
 namespace velocypack {
-template<typename T> class Buffer;
+template<typename T>
+class Buffer;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace network {
 class ConnectionPool;
@@ -59,16 +60,16 @@ struct Response {
   Response& operator=(Response&& other) noexcept = default;
   Response(Response const& other) = delete;
   Response& operator=(Response const& other) = delete;
- 
+
   bool hasRequest() const noexcept { return _request != nullptr; }
   bool hasResponse() const noexcept { return _response != nullptr; }
-  
-  /// @brief return a reference to the request object. will throw an exception if
-  /// there is no valid request!
+
+  /// @brief return a reference to the request object. will throw an exception
+  /// if there is no valid request!
   arangodb::fuerte::Request& request() const;
-  
-  /// @brief return a reference to the response object. will throw an exception if
-  /// there is no valid response!
+
+  /// @brief return a reference to the response object. will throw an exception
+  /// if there is no valid response!
   arangodb::fuerte::Response& response() const;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -78,7 +79,8 @@ struct Response {
 
   /// @brief steal the response from here. this may return a unique_ptr
   /// containing a nullptr. it is the caller's responsibility to check that.
-  [[nodiscard]] std::unique_ptr<arangodb::fuerte::Response> stealResponse() noexcept;
+  [[nodiscard]] std::unique_ptr<arangodb::fuerte::Response>
+  stealResponse() noexcept;
 
   [[nodiscard]] bool ok() const {
     return fuerte::Error::NoError == this->error;
@@ -88,7 +90,7 @@ struct Response {
 
   // returns a slice of the payload if there was no error
   [[nodiscard]] velocypack::Slice slice() const;
-  
+
   [[nodiscard]] std::size_t payloadSize() const noexcept;
 
   fuerte::StatusCode statusCode() const;
@@ -100,9 +102,10 @@ struct Response {
   ///   - the fuerte error, if there was a connectivity error.
   [[nodiscard]] Result combinedResult() const;
 
-  [[nodiscard]] std::string destinationShard() const;  /// @brief shardId or empty
-  [[nodiscard]] std::string serverId() const;          /// @brief server ID
-  
+  [[nodiscard]] std::string destinationShard()
+      const;                                   /// @brief shardId or empty
+  [[nodiscard]] std::string serverId() const;  /// @brief server ID
+
  public:
   DestinationId destination;
   fuerte::Error error;
@@ -128,9 +131,10 @@ struct RequestOptions {
   bool skipScheduler = false;  // do not use Scheduler queue
   RequestLane continuationLane = RequestLane::CONTINUATION;
 
-  template <typename K, typename V>
+  template<typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {
-    this->parameters.insert_or_assign(std::forward<K>(key), std::forward<V>(val));
+    this->parameters.insert_or_assign(std::forward<K>(key),
+                                      std::forward<V>(val));
     return *this;
   }
 };
@@ -153,12 +157,12 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId destination,
 FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            arangodb::fuerte::RestVerb type, std::string path,
                            velocypack::Buffer<uint8_t> payload = {},
-                           RequestOptions const& options = {}, Headers headers = {});
+                           RequestOptions const& options = {},
+                           Headers headers = {});
 
-using Sender =
-    std::function<FutureRes(DestinationId const&, arangodb::fuerte::RestVerb, std::string const&,
-                            velocypack::Buffer<uint8_t>, RequestOptions const& options, Headers)>;
+using Sender = std::function<FutureRes(
+    DestinationId const&, arangodb::fuerte::RestVerb, std::string const&,
+    velocypack::Buffer<uint8_t>, RequestOptions const& options, Headers)>;
 
 }  // namespace network
 }  // namespace arangodb
-

@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerDefaults.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 
 using namespace arangodb;
 
-ServerDefaults::ServerDefaults(application_features::ApplicationServer& server) {
+ServerDefaults::ServerDefaults(
+    application_features::ApplicationServer& server) {
   auto const& cl = server.getFeature<ClusterFeature>();
   writeConcern = cl.writeConcern();
   replicationFactor = cl.defaultReplicationFactor();

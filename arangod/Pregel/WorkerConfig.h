@@ -23,11 +23,12 @@
 
 #pragma once
 
-#include <set>
-#include <map>
-
 #include <velocypack/velocypack-aliases.h>
+
 #include <algorithm>
+#include <map>
+#include <set>
+
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Graph.h"
@@ -36,14 +37,14 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace pregel {
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class Worker;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry common parameters
 ////////////////////////////////////////////////////////////////////////////////
 class WorkerConfig {
-  template <typename V, typename E, typename M>
+  template<typename V, typename E, typename M>
   friend class Worker;
 
  public:
@@ -68,19 +69,22 @@ class WorkerConfig {
   inline std::string const& database() const { return _vocbase->name(); }
 
   // collection shards on this worker
-  inline std::map<CollectionID, std::vector<ShardID>> const& vertexCollectionShards() const {
+  inline std::map<CollectionID, std::vector<ShardID>> const&
+  vertexCollectionShards() const {
     return _vertexCollectionShards;
   }
 
   // collection shards on this worker
-  inline std::map<CollectionID, std::vector<ShardID>> const& edgeCollectionShards() const {
+  inline std::map<CollectionID, std::vector<ShardID>> const&
+  edgeCollectionShards() const {
     return _edgeCollectionShards;
   }
 
-  inline std::unordered_map<CollectionID, std::string> const& collectionPlanIdMap() const {
+  inline std::unordered_map<CollectionID, std::string> const&
+  collectionPlanIdMap() const {
     return _collectionPlanIdMap;
   }
-  
+
   std::string const& shardIDToCollectionName(ShardID const& shard) const {
     auto const& it = _shardToCollectionName.find(shard);
     if (it != _shardToCollectionName.end()) {
@@ -121,8 +125,9 @@ class WorkerConfig {
     // TODO cache this? prob small
     return _localPShardIDs_hash.find(shardIndex) != _localPShardIDs_hash.end();
   }
-  
-  std::vector<ShardID> const& edgeCollectionRestrictions(ShardID const& shard) const;
+
+  std::vector<ShardID> const& edgeCollectionRestrictions(
+      ShardID const& shard) const;
 
   // convert an arangodb document id to a pregel id
   PregelID documentIdToPregel(std::string const& documentID) const;
@@ -134,7 +139,7 @@ class WorkerConfig {
 
   /// Let async
   bool _asynchronousMode = false;
-  bool _useMemoryMaps = false; /// always use mmaps
+  bool _useMemoryMaps = false;  /// always use mmaps
 
   size_t _parallelism = 1;
 
@@ -148,9 +153,11 @@ class WorkerConfig {
   std::map<ShardID, std::string> _shardToCollectionName;
 
   // Map from edge collection to their shards, only iterated over keep sorted
-  std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
-  
-  std::unordered_map<CollectionID, std::vector<ShardID>> _edgeCollectionRestrictions;
+  std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards,
+      _edgeCollectionShards;
+
+  std::unordered_map<CollectionID, std::vector<ShardID>>
+      _edgeCollectionRestrictions;
 
   /// cache these ids as much as possible, since we access them often
   std::unordered_map<std::string, PregelShard> _pregelShardIDs;

@@ -24,10 +24,10 @@
 
 #pragma once
 
+#include <chrono>
+
 #include "ActionBase.h"
 #include "ActionDescription.h"
-
-#include <chrono>
 
 namespace arangodb {
 namespace maintenance {
@@ -43,4 +43,3 @@ class DropIndex : public ActionBase {
 
 }  // namespace maintenance
 }  // namespace arangodb
-

@@ -23,16 +23,15 @@
 
 #include "WCC.h"
 
+#include <set>
+
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/Logger.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
-
-#include "Logger/Logger.h"
-
-#include <set>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -43,7 +42,8 @@ namespace {
 struct WCCComputation
     : public VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>> {
   WCCComputation() {}
-  void compute(MessageIterator<SenderMessage<uint64_t>> const& messages) override {
+  void compute(
+      MessageIterator<SenderMessage<uint64_t>> const& messages) override {
     bool shouldPropagate = selectMinimumOfLocalAndInput(messages);
     // We need to propagate on first step
     TRI_ASSERT(globalSuperstep() != 0 || shouldPropagate);
@@ -70,7 +70,8 @@ struct WCCComputation
    * component back. Will always return true in the very first step, as this
    * kicks of the algorithm and does not yet have input.
    */
-  bool selectMinimumOfLocalAndInput(MessageIterator<SenderMessage<uint64_t>> const& messages) {
+  bool selectMinimumOfLocalAndInput(
+      MessageIterator<SenderMessage<uint64_t>> const& messages) {
     // On first iteration, we need to propagate.
     // Otherwise the default is to stay silent, unless some message
     // sends a different component then us.
@@ -146,30 +147,32 @@ struct WCCGraphFormat final : public GraphFormat<WCCValue, uint64_t> {
   }
   size_t estimatedEdgeSize() const override { return sizeof(uint64_t); }
 
-  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+  void copyVertexData(arangodb::velocypack::Options const&,
+                      std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
                       WCCValue& targetPtr, uint64_t& vertexIdRange) override {
     targetPtr.component = vertexIdRange++;
   }
 
   void copyEdgeData(arangodb::velocypack::Options const&,
-                    arangodb::velocypack::Slice /*document*/, uint64_t& targetPtr) override {
+                    arangodb::velocypack::Slice /*document*/,
+                    uint64_t& targetPtr) override {
     targetPtr = std::numeric_limits<uint64_t>::max();
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b, WCCValue const* ptr) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b,
+                           WCCValue const* ptr) const override {
     b.add(_resultField, arangodb::velocypack::Value(ptr->component));
     return true;
   }
 };
 }  // namespace
 
-VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>>* WCC::createComputation(
-    WorkerConfig const* config) const {
+VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>>*
+WCC::createComputation(WorkerConfig const* config) const {
   return new ::WCCComputation();
 }
 
 GraphFormat<WCCValue, uint64_t>* WCC::inputFormat() const {
   return new ::WCCGraphFormat(_server, _resultField);
 }
-

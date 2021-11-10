@@ -23,9 +23,9 @@
 
 #include "ConnectionStatistics.h"
 
-#include "Rest/CommonDefines.h"
-
 #include <boost/lockfree/queue.hpp>
+
+#include "Rest/CommonDefines.h"
 
 using namespace arangodb;
 
@@ -37,7 +37,9 @@ static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
 
 static std::unique_ptr<ConnectionStatistics[]> _statisticsBuffer;
 
-static boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
+static boost::lockfree::queue<ConnectionStatistics*,
+                              boost::lockfree::capacity<QUEUE_SIZE>>
+    _freeList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -65,7 +67,7 @@ ConnectionStatistics::Item ConnectionStatistics::acquire() {
   ConnectionStatistics* statistics = nullptr;
 
   if (_freeList.pop(statistics)) {
-    return Item{ statistics };
+    return Item{statistics};
   }
 
   return Item{};

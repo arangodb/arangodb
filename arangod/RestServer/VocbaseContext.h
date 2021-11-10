@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include <atomic>
+
 #include "Rest/GeneralRequest.h"
 #include "Utils/ExecContext.h"
-
-#include <atomic>
 
 struct TRI_vocbase_t;
 
@@ -45,22 +45,20 @@ class VocbaseContext final : public arangodb::ExecContext {
 
   /// @brief upgrade to internal read-only user
   void forceReadOnly();
-  
+
 #ifdef USE_ENTERPRISE
   virtual std::string clientAddress() const override {
     return _request.connectionInfo().fullClient();
   }
-  virtual std::string requestUrl() const override {
-    return _request.fullUrl();
-  }
+  virtual std::string requestUrl() const override { return _request.fullUrl(); }
   virtual std::string authMethod() const override;
 #endif
-  
+
   /// @brief tells you if this execution was canceled
   virtual bool isCanceled() const override {
     return _canceled.load(std::memory_order_relaxed);
   }
-  
+
   /// cancel execution
   void cancel() { _canceled.store(true, std::memory_order_relaxed); }
 
@@ -69,15 +67,15 @@ class VocbaseContext final : public arangodb::ExecContext {
   GeneralRequest const& _request;
 #endif
   TRI_vocbase_t& _vocbase;
-  
+
   /// should be used to indicate a canceled request / thread
   std::atomic<bool> _canceled;
 
-  VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase, ExecContext::Type type,
-                 auth::Level systemLevel, auth::Level dbLevel, bool isAdminUser);
+  VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase,
+                 ExecContext::Type type, auth::Level systemLevel,
+                 auth::Level dbLevel, bool isAdminUser);
   VocbaseContext(VocbaseContext const&) = delete;
   VocbaseContext& operator=(VocbaseContext const&) = delete;
 };
 
 }  // namespace arangodb
-

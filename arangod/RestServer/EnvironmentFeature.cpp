@@ -21,13 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "EnvironmentFeature.h"
+
 #include <stdlib.h>
+
 #include <cmath>
 #include <cstdint>
 #include <string>
 #include <vector>
-
-#include "EnvironmentFeature.h"
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/SharedPRNGFeature.h"
@@ -52,7 +53,8 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-EnvironmentFeature::EnvironmentFeature(application_features::ApplicationServer& server)
+EnvironmentFeature::EnvironmentFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Environment") {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
@@ -85,8 +87,9 @@ void EnvironmentFeature::prepare() {
 #else
   _operatingSystem = "unknown";
 #endif
-        
-  LOG_TOPIC("75ddc", INFO, Logger::FIXME) << "detected operating system: " << _operatingSystem;
+
+  LOG_TOPIC("75ddc", INFO, Logger::FIXME)
+      << "detected operating system: " << _operatingSystem;
 
   if (sizeof(void*) == 4) {
     // 32 bit build
@@ -99,7 +102,8 @@ void EnvironmentFeature::prepare() {
 #ifdef __arm__
   // detect alignment settings for ARM
   {
-    LOG_TOPIC("6aec3", TRACE, arangodb::Logger::MEMORY) << "running CPU alignment check";
+    LOG_TOPIC("6aec3", TRACE, arangodb::Logger::MEMORY)
+        << "running CPU alignment check";
     // To change the alignment trap behavior, simply echo a number into
     // /proc/cpu/alignment.  The number is made up from various bits:
     //
@@ -122,7 +126,8 @@ void EnvironmentFeature::prepare() {
 
     std::string const filename("/proc/cpu/alignment");
     try {
-      std::string const cpuAlignment = arangodb::basics::FileUtils::slurp(filename);
+      std::string const cpuAlignment =
+          arangodb::basics::FileUtils::slurp(filename);
       auto start = cpuAlignment.find("User faults:");
 
       if (start != std::string::npos) {
@@ -146,7 +151,8 @@ void EnvironmentFeature::prepare() {
             std::stol(std::string(cpuAlignment.c_str() + start, end - start));
         if ((alignment & 2) == 0) {
           LOG_TOPIC("f1bb9", FATAL, arangodb::Logger::MEMORY)
-              << "possibly incompatible CPU alignment settings found in '" << filename
+              << "possibly incompatible CPU alignment settings found in '"
+              << filename
               << "'. this may cause arangod to abort with "
                  "SIGBUS. please set the value in '"
               << filename << "' to 2";
@@ -165,14 +171,16 @@ void EnvironmentFeature::prepare() {
 
     if (!alignmentDetected) {
       LOG_TOPIC("b8a20", WARN, arangodb::Logger::MEMORY)
-          << "unable to detect CPU alignment settings. could not process file '" << filename
+          << "unable to detect CPU alignment settings. could not process file '"
+          << filename
           << "'. this may cause arangod to abort with SIGBUS. it may be "
              "necessary to set the value in '"
           << filename << "' to 2";
     }
     std::string const proc_cpuinfo_filename("/proc/cpuinfo");
     try {
-      std::string const cpuInfo = arangodb::basics::FileUtils::slurp(proc_cpuinfo_filename);
+      std::string const cpuInfo =
+          arangodb::basics::FileUtils::slurp(proc_cpuinfo_filename);
       auto start = cpuInfo.find("ARMv6");
 
       if (start != std::string::npos) {
@@ -192,12 +200,14 @@ void EnvironmentFeature::prepare() {
   {
 #ifdef ARANGODB_HAVE_JEMALLOC
     char const* v = getenv("LD_PRELOAD");
-    if (v != nullptr &&
-        (strstr(v, "/valgrind/") != nullptr || strstr(v, "/vgpreload") != nullptr)) {
+    if (v != nullptr && (strstr(v, "/valgrind/") != nullptr ||
+                         strstr(v, "/vgpreload") != nullptr)) {
       // smells like Valgrind
       LOG_TOPIC("a2a1e", WARN, arangodb::Logger::MEMORY)
-          << "found LD_PRELOAD env variable value that looks like we are running under Valgrind. "
-          << "this is unsupported in combination with jemalloc and may cause undefined behavior at least with memcheck!";
+          << "found LD_PRELOAD env variable value that looks like we are "
+             "running under Valgrind. "
+          << "this is unsupported in combination with jemalloc and may cause "
+             "undefined behavior at least with memcheck!";
     }
 #endif
   }
@@ -215,7 +225,8 @@ void EnvironmentFeature::prepare() {
   // check overcommit_memory & overcommit_ratio
   try {
     std::string content;
-    auto rv = basics::FileUtils::slurp("/proc/sys/vm/overcommit_memory", content);
+    auto rv =
+        basics::FileUtils::slurp("/proc/sys/vm/overcommit_memory", content);
     if (rv.ok()) {
       uint64_t v = basics::StringUtils::uint64(content);
 
@@ -251,12 +262,15 @@ void EnvironmentFeature::prepare() {
           if (res == 0) {
             double swapSpace = static_cast<double>(info.totalswap);
             double ram = static_cast<double>(PhysicalMemory::getValue());
-            double rr = (ram >= swapSpace) ? 100.0 * ((ram - swapSpace) / ram) : 0.0;
+            double rr =
+                (ram >= swapSpace) ? 100.0 * ((ram - swapSpace) / ram) : 0.0;
             if (static_cast<double>(r) < 0.99 * rr) {
               LOG_TOPIC("b0a75", WARN, Logger::MEMORY)
                   << "/proc/sys/vm/overcommit_ratio is set to '" << r
                   << "'. It is recommended to set it to at least '"
-                  << std::llround(rr) << "' (100 * (max(0, (RAM - Swap Space)) / RAM)) to utilize all "
+                  << std::llround(rr)
+                  << "' (100 * (max(0, (RAM - Swap Space)) / RAM)) to utilize "
+                     "all "
                   << "available RAM. Setting it to this value will minimize "
                      "swap "
                   << "usage, but may result in more out-of-memory errors, "
@@ -264,7 +278,8 @@ void EnvironmentFeature::prepare() {
                   << "setting it to 100 will allow the system to use both all "
                   << "available RAM and swap space.";
               LOG_TOPIC("1041e", WARN, Logger::MEMORY)
-                  << "execute 'sudo bash -c \"echo " << std::llround(rr) << " > "
+                  << "execute 'sudo bash -c \"echo " << std::llround(rr)
+                  << " > "
                   << "/proc/sys/vm/overcommit_ratio\"'";
             }
           }
@@ -277,11 +292,12 @@ void EnvironmentFeature::prepare() {
 
   // Report memory and CPUs found:
   LOG_TOPIC("25362", INFO, Logger::MEMORY)
-    << "Available physical memory: " 
-    << PhysicalMemory::getValue() << " bytes" 
-    << (PhysicalMemory::overridden() ? " (overriden by environment variable)" : "")
-    << ", available cores: " << NumberOfCores::getValue()
-    << (NumberOfCores::overridden() ? " (overriden by environment variable)" : "");
+      << "Available physical memory: " << PhysicalMemory::getValue() << " bytes"
+      << (PhysicalMemory::overridden() ? " (overriden by environment variable)"
+                                       : "")
+      << ", available cores: " << NumberOfCores::getValue()
+      << (NumberOfCores::overridden() ? " (overriden by environment variable)"
+                                      : "");
 
   // test local ipv6 support
   try {
@@ -296,16 +312,19 @@ void EnvironmentFeature::prepare() {
   // test local ipv4 port range
   try {
     std::string content;
-    auto rv = basics::FileUtils::slurp("/proc/sys/net/ipv4/ip_local_port_range", content);
+    auto rv = basics::FileUtils::slurp("/proc/sys/net/ipv4/ip_local_port_range",
+                                       content);
     if (rv.ok()) {
-      std::vector<std::string> parts = basics::StringUtils::split(content, '\t');
+      std::vector<std::string> parts =
+          basics::StringUtils::split(content, '\t');
       if (parts.size() == 2) {
         uint64_t lower = basics::StringUtils::uint64(parts[0]);
         uint64_t upper = basics::StringUtils::uint64(parts[1]);
 
         if (lower > upper || (upper - lower) < 16384) {
           LOG_TOPIC("721da", WARN, arangodb::Logger::COMMUNICATION)
-              << "local port range for ipv4/ipv6 ports is " << lower << " - " << upper
+              << "local port range for ipv4/ipv6 ports is " << lower << " - "
+              << upper
               << ", which does not look right. it is recommended to make at "
                  "least 16K ports available";
           LOG_TOPIC("eb911", WARN, Logger::MEMORY)
@@ -324,7 +343,8 @@ void EnvironmentFeature::prepare() {
   // https://stackoverflow.com/questions/8893888/dropping-of-connections-with-tcp-tw-recycle
   try {
     std::string content;
-    auto rv = basics::FileUtils::slurp("/proc/sys/net/ipv4/tcp_tw_recycle", content);
+    auto rv =
+        basics::FileUtils::slurp("/proc/sys/net/ipv4/tcp_tw_recycle", content);
     if (rv.ok()) {
       uint64_t v = basics::StringUtils::uint64(content);
       if (v != 0) {
@@ -366,7 +386,8 @@ void EnvironmentFeature::prepare() {
     if (actual < expected) {
       LOG_TOPIC("118b0", WARN, arangodb::Logger::MEMORY)
           << "maximum number of memory mappings per process is " << actual
-          << ", which seems too low. it is recommended to set it to at least " << expected;
+          << ", which seems too low. it is recommended to set it to at least "
+          << expected;
       LOG_TOPIC("49528", WARN, Logger::MEMORY)
           << "execute 'sudo sysctl -w \"vm.max_map_count=" << expected << "\"'";
     }
@@ -375,7 +396,8 @@ void EnvironmentFeature::prepare() {
   // test zone_reclaim_mode
   try {
     std::string content;
-    auto rv = basics::FileUtils::slurp("/proc/sys/vm/zone_reclaim_mode", content);
+    auto rv =
+        basics::FileUtils::slurp("/proc/sys/vm/zone_reclaim_mode", content);
     if (rv.ok()) {
       uint64_t v = basics::StringUtils::uint64(content);
       if (v != 0) {
@@ -420,7 +442,7 @@ void EnvironmentFeature::prepare() {
                 << "'. It is recommended to set it to a value of 'never' "
                    "or 'madvise'";
             LOG_TOPIC("f3108", WARN, Logger::MEMORY)
-              << "execute 'sudo bash -c \"echo madvise > " << file << "\"'";
+                << "execute 'sudo bash -c \"echo madvise > " << file << "\"'";
           }
         }
       }
@@ -459,7 +481,8 @@ void EnvironmentFeature::prepare() {
   // check kernel ASLR settings
   try {
     std::string content;
-    auto rv = basics::FileUtils::slurp("/proc/sys/kernel/randomize_va_space", content);
+    auto rv = basics::FileUtils::slurp("/proc/sys/kernel/randomize_va_space",
+                                       content);
     if (rv.ok()) {
       uint64_t v = basics::StringUtils::uint64(content);
       // from man proc:
@@ -483,7 +506,8 @@ void EnvironmentFeature::prepare() {
           break;
       }
       if (s != nullptr) {
-        LOG_TOPIC("63a7a", DEBUG, Logger::FIXME) << "host ASLR is in use for " << s;
+        LOG_TOPIC("63a7a", DEBUG, Logger::FIXME)
+            << "host ASLR is in use for " << s;
       }
     }
   } catch (...) {

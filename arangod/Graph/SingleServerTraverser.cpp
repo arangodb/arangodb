@@ -22,6 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleServerTraverser.h"
+
+#include <velocypack/StringRef.h>
+
+#include <memory>
+
 #include "Aql/AqlValue.h"
 #include "Graph/BreadthFirstEnumerator.h"
 #include "Graph/EdgeCursor.h"
@@ -31,10 +36,6 @@
 #include "Graph/TraverserOptions.h"
 #include "Graph/WeightedEnumerator.h"
 #include "Transaction/Methods.h"
-
-#include <velocypack/StringRef.h>
-
-#include <memory>
 
 using namespace arangodb;
 using namespace arangodb::traverser;
@@ -47,12 +48,13 @@ SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts)
 
 SingleServerTraverser::~SingleServerTraverser() = default;
 
-void SingleServerTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid,
-                                                  VPackBuilder& result) {
+void SingleServerTraverser::addVertexToVelocyPack(
+    arangodb::velocypack::StringRef vid, VPackBuilder& result) {
   _opts->cache()->appendVertex(vid, result);
 }
 
-aql::AqlValue SingleServerTraverser::fetchVertexData(arangodb::velocypack::StringRef vid) {
+aql::AqlValue SingleServerTraverser::fetchVertexData(
+    arangodb::velocypack::StringRef vid) {
   arangodb::aql::AqlValue result;
   _opts->cache()->appendVertex(vid, result);
   return result;
@@ -80,15 +82,16 @@ void SingleServerTraverser::clear() {
   traverserCache()->clear();
 }
 
-bool SingleServerTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+bool SingleServerTraverser::getVertex(
+    VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
   return _vertexGetter->getVertex(edge, path);
 }
 
-bool SingleServerTraverser::getSingleVertex(VPackSlice edge,
-                                            arangodb::velocypack::StringRef sourceVertexId,
-                                            uint64_t depth,
-                                            arangodb::velocypack::StringRef& targetVertexId) {
-  return _vertexGetter->getSingleVertex(edge, sourceVertexId, depth, targetVertexId);
+bool SingleServerTraverser::getSingleVertex(
+    VPackSlice edge, arangodb::velocypack::StringRef sourceVertexId,
+    uint64_t depth, arangodb::velocypack::StringRef& targetVertexId) {
+  return _vertexGetter->getSingleVertex(edge, sourceVertexId, depth,
+                                        targetVertexId);
 }
 
 void SingleServerTraverser::createEnumerator() {
@@ -116,6 +119,7 @@ void SingleServerTraverser::createEnumerator() {
   }
 }
 
-bool SingleServerTraverser::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
+bool SingleServerTraverser::getVertex(arangodb::velocypack::StringRef vertex,
+                                      size_t depth) {
   return _vertexGetter->getVertex(vertex, depth);
 }

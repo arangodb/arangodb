@@ -20,6 +20,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "UpdateReplicatedLogAction.h"
+
 #include <optional>
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -32,18 +34,15 @@
 #include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "RestServer/DatabaseFeature.h"
-#include "UpdateReplicatedLogAction.h"
 #include "Utils/DatabaseGuard.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::replication2;
 
-
-
 bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
-
   struct LogActionContextMaintenance : algorithms::LogActionContext {
-    LogActionContextMaintenance(TRI_vocbase_t& vocbase, network::ConnectionPool* pool)
+    LogActionContextMaintenance(TRI_vocbase_t& vocbase,
+                                network::ConnectionPool* pool)
         : vocbase(vocbase), pool(pool) {}
 
     auto dropReplicatedLog(LogId id) -> arangodb::Result override {
@@ -54,8 +53,9 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
       return vocbase.ensureReplicatedLog(id, std::nullopt);
     }
     auto buildAbstractFollowerImpl(LogId id, ParticipantId participantId)
-    -> std::shared_ptr<replicated_log::AbstractFollower> override {
-      return std::make_shared<replicated_log::NetworkAttachedFollower>(pool, std::move(participantId), vocbase.name(), id);
+        -> std::shared_ptr<replicated_log::AbstractFollower> override {
+      return std::make_shared<replicated_log::NetworkAttachedFollower>(
+          pool, std::move(participantId), vocbase.name(), id);
     }
 
     TRI_vocbase_t& vocbase;
@@ -63,7 +63,8 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   };
 
   auto spec = std::invoke([&]() -> std::optional<agency::LogPlanSpecification> {
-    auto buffer = StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));
+    auto buffer =
+        StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
     if (!slice.isNone()) {
       return agency::LogPlanSpecification(agency::from_velocypack, slice);
@@ -76,15 +77,16 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto serverId = ServerState::instance()->getId();
   auto rebootId = ServerState::instance()->getRebootId();
 
-  network::ConnectionPool* pool = _feature.server().getFeature<NetworkFeature>().pool();
+  network::ConnectionPool* pool =
+      _feature.server().getFeature<NetworkFeature>().pool();
 
   auto const& database = _description.get(DATABASE);
   auto& df = _feature.server().getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);
   auto ctx = LogActionContextMaintenance{guard.database(), pool};
-  auto result =
-      replication2::algorithms::updateReplicatedLog(ctx, serverId, rebootId, logId,
-                                                    spec.has_value() ? &spec.value() : nullptr);
+  auto result = replication2::algorithms::updateReplicatedLog(
+      ctx, serverId, rebootId, logId,
+      spec.has_value() ? &spec.value() : nullptr);
 
   if (result.fail()) {
     LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)
@@ -96,5 +98,6 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
 }
 
 arangodb::maintenance::UpdateReplicatedLogAction::UpdateReplicatedLogAction(
-    arangodb::MaintenanceFeature& mf, arangodb::maintenance::ActionDescription const& desc)
+    arangodb::MaintenanceFeature& mf,
+    arangodb::maintenance::ActionDescription const& desc)
     : ActionBase(mf, desc) {}

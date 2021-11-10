@@ -24,14 +24,14 @@
 
 #pragma once
 
+#include <velocypack/Builder.h>
+
 #include "Aql/AqlCall.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
-
-#include <velocypack/Builder.h>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -40,15 +40,14 @@ namespace aql {
 
 class NoStats;
 class OutputAqlItemRow;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class SubqueryEndExecutorInfos {
  public:
-  SubqueryEndExecutorInfos(velocypack::Options const* options, 
-                           arangodb::ResourceMonitor& resourceMonitor, 
-                           RegisterId inReg,
-                           RegisterId outReg);
+  SubqueryEndExecutorInfos(velocypack::Options const* options,
+                           arangodb::ResourceMonitor& resourceMonitor,
+                           RegisterId inReg, RegisterId outReg);
 
   SubqueryEndExecutorInfos() = delete;
   SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&) = default;
@@ -72,7 +71,8 @@ class SubqueryEndExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
 
@@ -88,7 +88,8 @@ class SubqueryEndExecutor {
   // produceRows accumulates all input rows it can get into _accumulator, which
   // will then be read out by ExecutionBlockImpl
   // TODO: can the production of output be moved to produceRows again?
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
   // skipRowsRange consumes all data rows available on the input and just
   // ignores it. real skips of a subqueries will not execute the whole subquery
@@ -97,8 +98,9 @@ class SubqueryEndExecutor {
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(
+      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+      -> size_t;
 
   /**
    * @brief Consume the given shadow row and write the aggregated value to it
@@ -106,7 +108,8 @@ class SubqueryEndExecutor {
    * @param shadowRow The shadow row
    * @param output Output block
    */
-  auto consumeShadowRow(ShadowAqlItemRow shadowRow, OutputAqlItemRow& output) -> void;
+  auto consumeShadowRow(ShadowAqlItemRow shadowRow, OutputAqlItemRow& output)
+      -> void;
 
  private:
   enum class State {
@@ -119,9 +122,10 @@ class SubqueryEndExecutor {
   // control of it to hand over to an AqlValue
   class Accumulator {
    public:
-    explicit Accumulator(arangodb::ResourceMonitor& resourceMonitor, velocypack::Options const* options);
+    explicit Accumulator(arangodb::ResourceMonitor& resourceMonitor,
+                         velocypack::Options const* options);
     ~Accumulator();
-    
+
     void reset() noexcept;
 
     void addValue(AqlValue const& value);
@@ -146,4 +150,3 @@ class SubqueryEndExecutor {
 };
 }  // namespace aql
 }  // namespace arangodb
-

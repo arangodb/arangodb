@@ -22,35 +22,40 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Metrics.h"
+
+#include <type_traits>
+
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Basics/debugging.h"
-#include <type_traits>
 
 using namespace arangodb;
 
-std::ostream& operator<< (std::ostream& o, Metrics::counter_type const& s) {
+std::ostream& operator<<(std::ostream& o, Metrics::counter_type const& s) {
   o << s.load();
   return o;
 }
 
-std::ostream& operator<< (std::ostream& o, Counter const& s) {
+std::ostream& operator<<(std::ostream& o, Counter const& s) {
   o << s.load();
   return o;
 }
 
-std::ostream& operator<< (std::ostream& o, Metrics::hist_type const& v) {
+std::ostream& operator<<(std::ostream& o, Metrics::hist_type const& v) {
   o << "[";
   for (size_t i = 0; i < v.size(); ++i) {
-    if (i > 0) { o << ", "; }
+    if (i > 0) {
+      o << ", ";
+    }
     o << v.load(i);
   }
   o << "]";
   return o;
 }
 
-Metric::Metric(std::string const& name, std::string const& help, std::string const& labels)
-  : _name(name), _help(help), _labels(labels) {}
+Metric::Metric(std::string const& name, std::string const& help,
+               std::string const& labels)
+    : _name(name), _help(help), _labels(labels) {}
 
 Metric::~Metric() = default;
 
@@ -78,13 +83,9 @@ Counter& Counter::operator=(uint64_t const& n) {
   return *this;
 }
 
-void Counter::count() {
-  ++_b;
-}
+void Counter::count() { ++_b; }
 
-void Counter::count(uint64_t n) {
-  _b += n;
-}
+void Counter::count(uint64_t n) { _b += n; }
 
 std::ostream& Counter::print(std::ostream& o) const {
   o << _c;
@@ -96,11 +97,10 @@ uint64_t Counter::load() const {
   return _c.load();
 }
 
-void Counter::store(uint64_t const& n) {
-  _c.exchange(n);
-}
+void Counter::store(uint64_t const& n) { _c.exchange(n); }
 
-void Counter::toPrometheus(std::string& result, std::string const& globals, std::string const& alternativeName) const {
+void Counter::toPrometheus(std::string& result, std::string const& globals,
+                           std::string const& alternativeName) const {
   _b.push();
   result += !alternativeName.empty() ? alternativeName : name();
   result += "{";
@@ -118,10 +118,8 @@ void Counter::toPrometheus(std::string& result, std::string const& globals, std:
   result += "} " + std::to_string(load()) + "\n";
 }
 
-Counter::Counter(
-  uint64_t const& val, std::string const& name, std::string const& help,
-  std::string const& labels) :
-  Metric(name, help, labels), _c(val), _b(_c) {}
+Counter::Counter(uint64_t const& val, std::string const& name,
+                 std::string const& help, std::string const& labels)
+    : Metric(name, help, labels), _c(val), _b(_c) {}
 
 Counter::~Counter() { _b.push(); }
-

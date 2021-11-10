@@ -23,9 +23,8 @@
 
 #pragma once
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
-
 #include "Actions/actions.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
@@ -55,4 +54,3 @@ class RestActionHandler : public RestVocbaseBaseHandler {
   void* _data;
 };
 }  // namespace arangodb
-

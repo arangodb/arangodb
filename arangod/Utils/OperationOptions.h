@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include <string>
+
 #include "Basics/Common.h"
 #include "Utils/ExecContext.h"
-
-#include <string>
 
 namespace arangodb {
 namespace velocypack {
@@ -53,63 +53,68 @@ class ExecContext;
 /// i.e., it should observe the changes performed within the transaction so far,
 /// but not the changes performed by the query itself. For more details see
 /// RocksDBTrxMethods.
-enum class ReadOwnWrites : bool { no, yes, };
+enum class ReadOwnWrites : bool {
+  no,
+  yes,
+};
 
 /// @brief: mode to signal how operation should behave
 enum class IndexOperationMode : uint8_t { normal, internal, rollback };
 
 // a struct for keeping document modification operations in transactions
-#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#if defined(__GNUC__) && \
+    (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 
 struct OperationOptions {
-
-  /// @brief behavior when inserting a document by _key using INSERT with overwrite
-  /// when the target document already exists
+  /// @brief behavior when inserting a document by _key using INSERT with
+  /// overwrite when the target document already exists
   enum class OverwriteMode {
-    Unknown,  // undefined/not set
-    Conflict, // fail with unique constraint violation
-    Replace,  // replace the target document
-    Update,   // (partially) update the target document
-    Ignore    // keep the target document unmodified (no writes)
+    Unknown,   // undefined/not set
+    Conflict,  // fail with unique constraint violation
+    Replace,   // replace the target document
+    Update,    // (partially) update the target document
+    Ignore     // keep the target document unmodified (no writes)
   };
-  
+
   OperationOptions();
   explicit OperationOptions(ExecContext const&);
-  
+
 // The following code does not work with VisualStudi 2019's `cl`
 // Lets keep it for debugging on linux.
 #ifndef _WIN32
-  friend std::ostream& operator<<(std::ostream& os, OperationOptions const& ops);
+  friend std::ostream& operator<<(std::ostream& os,
+                                  OperationOptions const& ops);
 #endif
 
   bool isOverwriteModeSet() const {
     return (overwriteMode != OverwriteMode::Unknown);
   }
-  
+
   bool isOverwriteModeUpdateReplace() const {
-    return (overwriteMode == OverwriteMode::Update || overwriteMode == OverwriteMode::Replace);
+    return (overwriteMode == OverwriteMode::Update ||
+            overwriteMode == OverwriteMode::Replace);
   }
-  
+
   /// @brief stringifies the overwrite mode
-  static char const* stringifyOverwriteMode(OperationOptions::OverwriteMode mode);
+  static char const* stringifyOverwriteMode(
+      OperationOptions::OverwriteMode mode);
 
   /// @brief determine the overwrite mode from the string value
   static OverwriteMode determineOverwriteMode(velocypack::StringRef value);
-  
+
  public:
-  
   // for synchronous replication operations, we have to mark them such that
   // we can deny them if we are a (new) leader, and that we can deny other
   // operation if we are merely a follower. Finally, we must deny replications
   // from the wrong leader.
   std::string isSynchronousReplicationFrom;
- 
+
   IndexOperationMode indexOperationMode;
 
-  // INSERT ... OPTIONS { overwrite: true } behavior: 
+  // INSERT ... OPTIONS { overwrite: true } behavior:
   // - replace an existing document, update an existing document, or do nothing
   OverwriteMode overwriteMode;
 
@@ -143,13 +148,13 @@ struct OperationOptions {
   // restored by replicated and arangorestore
   bool isRestore;
 
-  // for replication; only set true if case insert/replace should have a read-only
-  // preflight phase, in which it checks whether a document can actually be inserted
-  // before carrying out the actual insert/replace.
-  // separating the check phase from the actual insert/replace allows running the
-  // preflight check without modifying the transaction's underlying WriteBatch object,
-  // so in case a unique constraint violation is detected, it does not need to be
-  // rebuilt (this would be _very_ expensive).
+  // for replication; only set true if case insert/replace should have a
+  // read-only preflight phase, in which it checks whether a document can
+  // actually be inserted before carrying out the actual insert/replace.
+  // separating the check phase from the actual insert/replace allows running
+  // the preflight check without modifying the transaction's underlying
+  // WriteBatch object, so in case a unique constraint violation is detected, it
+  // does not need to be rebuilt (this would be _very_ expensive).
   bool checkUniqueConstraintsInPreflight;
 
   // when truncating - should we also run the compaction?
@@ -161,9 +166,10 @@ struct OperationOptions {
   // header when putting together the requests for DB servers
   bool documentCallFromAql;
 
-  // whether or not indexing can be disabed. We must not disable indexing if we have to ensure
-  // that writes become visible to the current query.
-  // This is necessary for UPSERTS where the subquery relies on a non-unique secondary index.
+  // whether or not indexing can be disabed. We must not disable indexing if we
+  // have to ensure that writes become visible to the current query. This is
+  // necessary for UPSERTS where the subquery relies on a non-unique secondary
+  // index.
   bool canDisableIndexing = true;
 
   // get associated execution context
@@ -173,9 +179,9 @@ struct OperationOptions {
   ExecContext const* _context;
 };
 
-#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#if defined(__GNUC__) && \
+    (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic pop
 #endif
 
 }  // namespace arangodb
-

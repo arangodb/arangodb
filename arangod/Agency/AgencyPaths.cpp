@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyPaths.h"
+
 #include <Replication2/ReplicatedLog/LogCommon.h>
 
 using namespace arangodb;
@@ -50,11 +51,12 @@ auto aliases::target() -> std::shared_ptr<Root::Arango::Target const> {
   return root()->arango()->target();
 }
 
-auto aliases::supervision() -> std::shared_ptr<Root::Arango::Supervision const> {
+auto aliases::supervision()
+    -> std::shared_ptr<Root::Arango::Supervision const> {
   return root()->arango()->supervision();
 }
 
-auto Root::Arango::Plan::ReplicatedLogs::Database::log(replication2::LogId id) const
-    -> std::shared_ptr<const Log> {
+auto Root::Arango::Plan::ReplicatedLogs::Database::log(
+    replication2::LogId id) const -> std::shared_ptr<const Log> {
   return Log::make_shared(shared_from_this(), std::to_string(id.id()));
 }

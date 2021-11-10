@@ -23,14 +23,20 @@
 
 #include "BaseOptions.h"
 
+#include <Graph/Cache/RefactoredClusterTraverserCache.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Aql/AqlTransaction.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Expression.h"
 #include "Aql/ExecutorExpressionContext.h"
+#include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
@@ -45,19 +51,15 @@
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 
-#include <Graph/Cache/RefactoredClusterTraverserCache.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
 BaseOptions::LookupInfo::LookupInfo()
-    : indexCondition(nullptr), conditionNeedUpdate(false), conditionMemberToUpdate(0) {
+    : indexCondition(nullptr),
+      conditionNeedUpdate(false),
+      conditionMemberToUpdate(0) {
   // NOTE: We need exactly one in this case for the optimizer to update
   idxHandles.resize(1);
 }
@@ -65,14 +67,16 @@ BaseOptions::LookupInfo::LookupInfo()
 BaseOptions::LookupInfo::~LookupInfo() = default;
 
 BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
-                                    VPackSlice const& info, VPackSlice const& shards) {
+                                    VPackSlice const& info,
+                                    VPackSlice const& shards) {
   TRI_ASSERT(shards.isArray());
   idxHandles.reserve(shards.length());
 
-  conditionNeedUpdate =
-      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "condNeedUpdate", false);
-  conditionMemberToUpdate = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-      info, "condMemberToUpdate", 0);
+  conditionNeedUpdate = arangodb::basics::VelocyPackHelper::getBooleanValue(
+      info, "condNeedUpdate", false);
+  conditionMemberToUpdate =
+      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+          info, "condMemberToUpdate", 0);
 
   VPackSlice read = info.get("handle");
   if (!read.isObject()) {
@@ -117,7 +121,8 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
   indexCondition = query.ast()->createNode(read);
   read = info.get("nonConstContainer");
   if (read.isObject()) {
-    _nonConstContainer = NonConstExpressionContainer::fromVelocyPack(query.ast(), read);
+    _nonConstContainer =
+        NonConstExpressionContainer::fromVelocyPack(query.ast(), read);
   }
 }
 
@@ -138,7 +143,8 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
 
-  idxHandles[0]->toVelocyPack(result, Index::makeFlags(Index::Serialize::Basics));
+  idxHandles[0]->toVelocyPack(result,
+                              Index::makeFlags(Index::Serialize::Basics));
 
   if (expression != nullptr) {
     result.add(VPackValue("expression"));
@@ -176,15 +182,17 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
 }
 
 void BaseOptions::LookupInfo::initializeNonConstExpressions(
-    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Ast* ast,
+    std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
     aql::Variable const* indexVariable) {
-  _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(ast, varInfo, false, false,
-                                                       indexCondition, indexVariable);
+  _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(
+      ast, varInfo, false, false, indexCondition, indexVariable);
   // We cannot optimize V8 expressions
   TRI_ASSERT(!_nonConstContainer._hasV8Expression);
 }
 
-void BaseOptions::LookupInfo::calculateIndexExpressions(Ast* ast, ExpressionContext& ctx) {
+void BaseOptions::LookupInfo::calculateIndexExpressions(
+    Ast* ast, ExpressionContext& ctx) {
   if (_nonConstContainer._expressions.empty()) {
     return;
   }
@@ -254,7 +262,8 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
   }
 }
 
-BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info, VPackSlice collections)
+BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
+                         VPackSlice collections)
     : BaseOptions(query) {
   VPackSlice read = info.get("tmpVar");
   if (!read.isObject()) {
@@ -276,7 +285,8 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info, VP
   TRI_ASSERT(itLookup.size() == itCollections.size());
 
   while (itLookup.valid() && itCollections.valid()) {
-    _baseLookupInfos.emplace_back(query, itLookup.value(), itCollections.value());
+    _baseLookupInfos.emplace_back(query, itLookup.value(),
+                                  itCollections.value());
 
     itLookup.next();
     itCollections.next();
@@ -287,8 +297,8 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info, VP
   if (read.isInteger()) {
     _parallelism = read.getNumber<size_t>();
   }
-  _refactor = basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::GraphRefactorFlag,
-                                                        false);
+  _refactor = basics::VelocyPackHelper::getBooleanValue(
+      info, StaticStrings::GraphRefactorFlag, false);
 
   TRI_ASSERT(_produceVertices);
   read = info.get("produceVertices");
@@ -328,7 +338,8 @@ void BaseOptions::setVariable(aql::Variable const* variable) {
   _tmpVar = variable;
 }
 
-void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
+void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan,
+                                std::string const& collectionName,
                                 std::string const& attributeName,
                                 aql::AstNode* condition, bool onlyEdgeIndexes) {
   injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName,
@@ -339,7 +350,8 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
                                          aql::ExecutionPlan* plan,
                                          std::string const& collectionName,
                                          std::string const& attributeName,
-                                         aql::AstNode* condition, bool onlyEdgeIndexes) {
+                                         aql::AstNode* condition,
+                                         bool onlyEdgeIndexes) {
   LookupInfo info;
   info.indexCondition = condition->clone(plan->getAst());
   auto coll = _query.collections().get(collectionName);
@@ -347,10 +359,9 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  bool res =
-      aql::utils::getBestIndexHandleForFilterCondition(*coll, info.indexCondition, _tmpVar,
-                                                       1000, aql::IndexHint(),
-                                                       info.idxHandles[0], onlyEdgeIndexes);
+  bool res = aql::utils::getBestIndexHandleForFilterCondition(
+      *coll, info.indexCondition, _tmpVar, 1000, aql::IndexHint(),
+      info.idxHandles[0], onlyEdgeIndexes);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -362,7 +373,8 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   // it is used in. Such that the traverser can update the respective string
   // value in-place
 
-  std::pair<arangodb::aql::Variable const*, std::vector<basics::AttributeName>> pathCmp;
+  std::pair<arangodb::aql::Variable const*, std::vector<basics::AttributeName>>
+      pathCmp;
   for (size_t i = 0; i < info.indexCondition->numMembers(); ++i) {
     // We search through the nary-and and look for EQ - _from/_to
     auto eq = info.indexCondition->getMemberUnchecked(i);
@@ -378,7 +390,8 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
       if (pathCmp.first != _tmpVar) {
         continue;
       }
-      if (pathCmp.second.size() == 1 && pathCmp.second[0].name == attributeName) {
+      if (pathCmp.second.size() == 1 &&
+          pathCmp.second[0].name == attributeName) {
         info.conditionNeedUpdate = true;
         info.conditionMemberToUpdate = i;
         break;
@@ -388,8 +401,8 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   }
 
   ::arangodb::containers::HashSet<size_t> toRemove;
-  aql::Condition::collectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition,
-                                            toRemove, nullptr, false);
+  aql::Condition::collectOverlappingMembers(
+      plan, _tmpVar, condition, info.indexCondition, toRemove, nullptr, false);
   size_t n = condition->numMembers();
   if (n == toRemove.size()) {
     // FastPath, all covered.
@@ -403,7 +416,8 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
         condition->removeMemberUnchecked(n - 1);
       }
     }
-    info.expression = std::make_unique<aql::Expression>(plan->getAst(), condition);
+    info.expression =
+        std::make_unique<aql::Expression>(plan->getAst(), condition);
   }
   list.emplace_back(std::move(info));
 }
@@ -412,7 +426,8 @@ void BaseOptions::clearVariableValues() {
   _expressionCtx.clearVariableValues();
 }
 
-void BaseOptions::setVariableValue(aql::Variable const* var, aql::AqlValue const value) {
+void BaseOptions::setVariableValue(aql::Variable const* var,
+                                   aql::AqlValue const value) {
   _expressionCtx.setVariableValue(var, value);
 }
 
@@ -450,15 +465,16 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   result.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
 }
 
-arangodb::aql::Expression* BaseOptions::getEdgeExpression(size_t cursorId,
-                                                          bool& needToInjectVertex) const {
+arangodb::aql::Expression* BaseOptions::getEdgeExpression(
+    size_t cursorId, bool& needToInjectVertex) const {
   TRI_ASSERT(!_baseLookupInfos.empty());
   TRI_ASSERT(_baseLookupInfos.size() > cursorId);
   needToInjectVertex = !_baseLookupInfos[cursorId].conditionNeedUpdate;
   return _baseLookupInfos[cursorId].expression.get();
 }
 
-bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression, VPackSlice value) {
+bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
+                                     VPackSlice value) {
   if (expression == nullptr) {
     return true;
   }
@@ -480,7 +496,8 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression, VPac
 }
 
 void BaseOptions::initializeIndexConditions(
-    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Ast* ast,
+    std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
     aql::Variable const* indexVariable) {
   for (auto& it : _baseLookupInfos) {
     it.initializeNonConstExpressions(ast, varInfo, indexVariable);
@@ -493,8 +510,9 @@ void BaseOptions::calculateIndexExpressions(aql::Ast* ast) {
   }
 }
 
-double BaseOptions::costForLookupInfoList(std::vector<BaseOptions::LookupInfo> const& list,
-                                          size_t& createItems) const {
+double BaseOptions::costForLookupInfoList(
+    std::vector<BaseOptions::LookupInfo> const& list,
+    size_t& createItems) const {
   double cost = 0;
   createItems = 0;
   for (auto const& li : list) {
@@ -525,11 +543,13 @@ void BaseOptions::ensureCache() {
   TRI_ASSERT(_cache != nullptr);
 }
 
-void BaseOptions::activateCache(bool enableDocumentCache,
-                                std::unordered_map<ServerID, aql::EngineId> const* engines) {
+void BaseOptions::activateCache(
+    bool enableDocumentCache,
+    std::unordered_map<ServerID, aql::EngineId> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
-  _cache.reset(CacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
+  _cache.reset(
+      CacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
 }
 
 void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
@@ -541,7 +561,8 @@ arangodb::aql::FixedVarExpressionContext& BaseOptions::getExpressionCtx() {
   return _expressionCtx;
 }
 
-arangodb::aql::FixedVarExpressionContext const& BaseOptions::getExpressionCtx() const {
+arangodb::aql::FixedVarExpressionContext const& BaseOptions::getExpressionCtx()
+    const {
   return _expressionCtx;
 }
 

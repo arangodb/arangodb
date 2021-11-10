@@ -34,16 +34,17 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, TraverserOptions* opts)
-    : PathEnumerator(traverser, opts),
-      _searchDepth(0) {
-
+NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser,
+                                         TraverserOptions* opts)
+    : PathEnumerator(traverser, opts), _searchDepth(0) {
   TRI_ASSERT(opts->isUseBreadthFirst());
-  TRI_ASSERT(opts->uniqueVertices == arangodb::traverser::TraverserOptions::GLOBAL);
+  TRI_ASSERT(opts->uniqueVertices ==
+             arangodb::traverser::TraverserOptions::GLOBAL);
   TRI_ASSERT(!opts->hasDepthLookupInfo());
 }
 
-void NeighborsEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
+void NeighborsEnumerator::setStartVertex(
+    arangodb::velocypack::StringRef startVertex) {
   PathEnumerator::setStartVertex(startVertex);
 
   _allFound.clear();
@@ -112,7 +113,8 @@ bool NeighborsEnumerator::next() {
     // Do the full depth in one go.
     for (auto const& nextVertex : _lastDepth) {
       EdgeCursor* cursor = getCursor(nextVertex, _searchDepth);
-      cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice vertex, size_t cursorId) {
+      cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice vertex,
+                          size_t cursorId) {
         if (!keepEdge(eid, vertex, nextVertex, _searchDepth, cursorId)) {
           return;
         }
@@ -120,7 +122,8 @@ bool NeighborsEnumerator::next() {
         // Counting should be done in readAll
         if (!vertex.isString()) {
           TRI_ASSERT(vertex.isObject());
-          VPackSlice tmp = transaction::helpers::extractFromFromDocument(vertex);
+          VPackSlice tmp =
+              transaction::helpers::extractFromFromDocument(vertex);
           if (tmp.compareString(nextVertex.data(), nextVertex.length()) == 0) {
             tmp = transaction::helpers::extractToFromDocument(vertex);
           }
@@ -171,7 +174,8 @@ arangodb::aql::AqlValue NeighborsEnumerator::lastEdgeToAqlValue() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-arangodb::aql::AqlValue NeighborsEnumerator::pathToAqlValue(arangodb::velocypack::Builder& result) {
+arangodb::aql::AqlValue NeighborsEnumerator::pathToAqlValue(
+    arangodb::velocypack::Builder& result) {
   // If we get here the optimizer decided we do NOT need paths
   // But the Block asks for it.
   TRI_ASSERT(false);

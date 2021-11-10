@@ -23,6 +23,9 @@
 
 #include "QueryProfile.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Aql/Timing.h"
@@ -30,17 +33,12 @@
 #include "Basics/debugging.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief create a profile
 QueryProfile::QueryProfile(Query* query)
-    : _query(query), 
-      _lastStamp(query->startTime()), 
-      _tracked(false) {
+    : _query(query), _lastStamp(query->startTime()), _tracked(false) {
   for (auto& it : _timers) {
     it = 0.0;  // reset timers
   }
@@ -48,9 +46,7 @@ QueryProfile::QueryProfile(Query* query)
 }
 
 /// @brief destroy a profile
-QueryProfile::~QueryProfile() {
-  unregisterFromQueryList();
-}
+QueryProfile::~QueryProfile() { unregisterFromQueryList(); }
 
 void QueryProfile::registerInQueryList() {
   TRI_ASSERT(!_tracked);
@@ -97,14 +93,16 @@ double QueryProfile::setStateDone(QueryExecutionState::ValueType state) {
 }
 
 /// @brief sets the absolute end time for an execution state
-void QueryProfile::setStateEnd(QueryExecutionState::ValueType state, double time) {
+void QueryProfile::setStateEnd(QueryExecutionState::ValueType state,
+                               double time) {
   _timers[static_cast<int>(state)] = time - _lastStamp;
 }
 
 /// @brief convert the profile to VelocyPack
 void QueryProfile::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder, "profile", true);
-  for (auto state : ENUM_ITERATOR(QueryExecutionState::ValueType, INITIALIZATION, FINALIZATION)) {
+  for (auto state : ENUM_ITERATOR(QueryExecutionState::ValueType,
+                                  INITIALIZATION, FINALIZATION)) {
     double const value = _timers[static_cast<size_t>(state)];
 
     if (value >= 0.0) {

@@ -23,7 +23,9 @@
 
 #pragma once
 
-#include "Basics/Thread.h"
+#include <velocypack/Slice.h>
+
+#include <chrono>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
@@ -32,9 +34,6 @@
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "RestServer/MetricsFeature.h"
-
-#include <velocypack/Slice.h>
-#include <chrono>
 
 namespace arangodb {
 namespace application_features {
@@ -58,8 +57,9 @@ class HeartbeatBackgroundJobThread;
 class HeartbeatThread : public Thread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(application_features::ApplicationServer&, AgencyCallbackRegistry*,
-                  std::chrono::microseconds, uint64_t maxFailsBeforeWarning);
+  HeartbeatThread(application_features::ApplicationServer&,
+                  AgencyCallbackRegistry*, std::chrono::microseconds,
+                  uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
  public:
@@ -328,4 +328,3 @@ class HeartbeatThread : public Thread,
   Counter& _heartbeat_failure_counter;
 };
 }  // namespace arangodb
-

@@ -22,6 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-user-structures.h"
+
+#include <velocypack/Buffer.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
@@ -32,20 +38,16 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/Buffer.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 namespace arangodb {
-  
+
 DatabaseJavaScriptCache::~DatabaseJavaScriptCache() = default;
 
-v8::Handle<v8::Value> CacheKeySpace::keyGet(v8::Isolate* isolate, std::string const& key) {
+v8::Handle<v8::Value> CacheKeySpace::keyGet(v8::Isolate* isolate,
+                                            std::string const& key) {
   READ_LOCKER(readLocker, _lock);
 
   auto it = _hash.find(key);
-  
+
   if (it == _hash.end()) {
     return v8::Undefined(isolate);
   }
@@ -65,18 +67,19 @@ bool CacheKeySpace::keySet(v8::Isolate* isolate, std::string const& key,
     auto [it, emplaced] = _hash.insert_or_assign(key, std::move(buffer));
     return emplaced;
   }
-    
+
   auto [it, emplaced] = _hash.try_emplace(key, std::move(buffer));
   return emplaced;
 }
 
-} // namespace arangodb
+}  // namespace arangodb
 
 using namespace arangodb;
 
 /// @brief finds a keyspace by name
 /// note that at least the read-lock must be held to use this function
-static CacheKeySpace* GetKeySpace(TRI_vocbase_t& vocbase, std::string const& name) {
+static CacheKeySpace* GetKeySpace(TRI_vocbase_t& vocbase,
+                                  std::string const& name) {
   DatabaseJavaScriptCache* cache = vocbase._cacheData.get();
   auto it = cache->keyspaces.find(name);
 
@@ -110,7 +113,7 @@ static void JS_KeyspaceCreate(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   {
     WRITE_LOCKER(writeLocker, cache->lock);
-    
+
     if (cache->keyspaces.find(name) != cache->keyspaces.end()) {
       if (!ignoreExisting) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
@@ -166,7 +169,7 @@ static void JS_KeyspaceExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   DatabaseJavaScriptCache* cache = vocbase._cacheData.get();
 
   READ_LOCKER(readLocker, cache->lock);
-  
+
   if (cache->keyspaces.find(name) != cache->keyspaces.end()) {
     TRI_V8_RETURN_TRUE();
   }
@@ -190,13 +193,14 @@ static void JS_KeyGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Value> result;
 
   DatabaseJavaScriptCache* cache = vocbase._cacheData.get();
-  
+
   {
     READ_LOCKER(readLocker, cache->lock);
     auto keyspace = GetKeySpace(vocbase, name);
 
     if (keyspace == nullptr) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "keyspace does not exist");
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                     "keyspace does not exist");
     }
 
     result = keyspace->keyGet(isolate, key);
@@ -233,7 +237,8 @@ static void JS_KeySet(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto keyspace = GetKeySpace(vocbase, name);
 
     if (keyspace == nullptr) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "keyspace does not exist");
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                     "keyspace does not exist");
     }
 
     result = keyspace->keySet(isolate, key, args[2], replace);
@@ -248,7 +253,8 @@ static void JS_KeySet(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 /// @brief creates the user structures functions
-void TRI_InitV8UserStructures(v8::Isolate* isolate, v8::Handle<v8::Context> /*context*/) {
+void TRI_InitV8UserStructures(v8::Isolate* isolate,
+                              v8::Handle<v8::Context> /*context*/) {
   v8::HandleScope scope(isolate);
 
   // NOTE: the following functions are all experimental and might

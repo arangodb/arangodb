@@ -24,15 +24,13 @@
 
 #pragma once
 
-#include "Containers/HashSet.h"
+#include <set>
 
 #include "Basics/ResourceUsage.h"
-
+#include "Containers/HashSet.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Transaction/Methods.h"
-
-#include <set>
 
 namespace arangodb {
 
@@ -50,10 +48,11 @@ namespace graph {
 class PathValidatorOptions;
 struct TwoSidedEnumeratorOptions;
 
-template <class ProviderType, class Step>
+template<class ProviderType, class Step>
 class PathResult;
 
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidatorType>
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidatorType>
 class TwoSidedEnumerator {
  public:
   using Step = typename ProviderType::Step;  // public due to tracer access
@@ -70,7 +69,8 @@ class TwoSidedEnumerator {
   class Ball {
    public:
     Ball(Direction dir, ProviderType&& provider, GraphOptions const& options,
-         PathValidatorOptions validatorOptions, arangodb::ResourceMonitor& resourceMonitor);
+         PathValidatorOptions validatorOptions,
+         arangodb::ResourceMonitor& resourceMonitor);
     ~Ball();
     auto clear() -> void;
     auto reset(VertexRef center, size_t depth = 0) -> void;
@@ -81,11 +81,14 @@ class TwoSidedEnumerator {
     [[nodiscard]] auto doneWithDepth() const -> bool;
     auto testDepthZero(Ball& other, ResultList& results) -> void;
 
-    auto buildPath(Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> void;
+    auto buildPath(Step const& vertexInShell,
+                   PathResult<ProviderType, Step>& path) -> void;
 
     auto matchResultsInShell(Step const& match, ResultList& results,
-                             PathValidatorType const& otherSideValidator) -> void;
-    auto computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results) -> void;
+                             PathValidatorType const& otherSideValidator)
+        -> void;
+    auto computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results)
+        -> void;
 
     // Ensure that we have fetched all vertices
     // in the _results list.
@@ -119,8 +122,10 @@ class TwoSidedEnumerator {
   };
 
  public:
-  TwoSidedEnumerator(ProviderType&& forwardProvider, ProviderType&& backwardProvider,
-                     TwoSidedEnumeratorOptions&& options, PathValidatorOptions validatorOptions,
+  TwoSidedEnumerator(ProviderType&& forwardProvider,
+                     ProviderType&& backwardProvider,
+                     TwoSidedEnumeratorOptions&& options,
+                     PathValidatorOptions validatorOptions,
                      arangodb::ResourceMonitor& resourceMonitor);
   TwoSidedEnumerator(TwoSidedEnumerator const& other) = delete;
   TwoSidedEnumerator& operator=(TwoSidedEnumerator const& other) = delete;
@@ -208,4 +213,3 @@ class TwoSidedEnumerator {
 };
 }  // namespace graph
 }  // namespace arangodb
-

@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DMID.h"
+
+#include <cmath>
+
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -33,8 +36,6 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
-
-#include <cmath>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -93,7 +94,8 @@ static const float PROFTIABILITY_DELTA = 0.1f;
 
 static const bool LOG_AGGS = false;
 
-struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage> {
+struct DMIDComputation
+    : public VertexComputation<DMIDValue, float, DMIDMessage> {
   DMIDComputation() {}
 
   void compute(MessageIterator<DMIDMessage> const& messages) override {
@@ -109,7 +111,8 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
       superstep2(messages);
     }
 
-    if ((globalSuperstep() >= 3 && globalSuperstep() <= RW_ITERATIONBOUND + 3)) {
+    if ((globalSuperstep() >= 3 &&
+         globalSuperstep() <= RW_ITERATIONBOUND + 3)) {
       /**
        * TODO: Integrate a precision factor for the random walk phase. The
        * phase ends when the infinity norm of the difference between the
@@ -139,7 +142,8 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
       superstep7(messages);
     }
 
-    int64_t const& iterationCounter = getAggregatedValueRef<int64_t>(ITERATION_AGG);
+    int64_t const& iterationCounter =
+        getAggregatedValueRef<int64_t>(ITERATION_AGG);
     int64_t it = iterationCounter;
 
     if (globalSuperstep() >= rwFinished + 4 && (it % 3 == 1)) {
@@ -160,7 +164,7 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
   void superstep0(MessageIterator<DMIDMessage> const& messages) {
     DMIDMessage message(pregelId(), 0);
     RangeIterator<Edge<float>> edges = getEdges();
-    for(; edges.hasMore(); ++edges) {
+    for (; edges.hasMore(); ++edges) {
       Edge<float>* edge = *edges;
       message.weight = edge->data();  // edge weight
       sendMessage(edge, message);
@@ -234,7 +238,8 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
      * */
 
     VertexSumAggregator* agg = (VertexSumAggregator*)getWriteAggregator(DA_AGG);
-    agg->aggregate(this->shard(), this->key().toString(), 1.0 / context()->vertexCount());
+    agg->aggregate(this->shard(), this->key().toString(),
+                   1.0 / context()->vertexCount());
     // DoubleDenseVector init = new DoubleDenseVector(
     //                                               (int)
     //                                               getTotalNumVertices());
@@ -250,7 +255,8 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
    */
   void superstepRW(MessageIterator<DMIDMessage> const& messages) {
     DMIDValue* vertexState = mutableVertexData();
-    VertexSumAggregator const* curDA = (VertexSumAggregator*)getReadAggregator(DA_AGG);
+    VertexSumAggregator const* curDA =
+        (VertexSumAggregator*)getReadAggregator(DA_AGG);
 
     // DoubleDenseVector curDA = getAggregatedValue(DA_AGG);
     // DoubleSparseVector disCol = vertex.getValue().getDisCol();
@@ -267,7 +273,8 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
         newEntryDA += entry * it->second;
       }
     });
-    VertexSumAggregator* newDA = (VertexSumAggregator*)getWriteAggregator(DA_AGG);
+    VertexSumAggregator* newDA =
+        (VertexSumAggregator*)getWriteAggregator(DA_AGG);
     newDA->aggregate(this->shard(), this->key().toString(), newEntryDA);
   }
 
@@ -277,14 +284,17 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
    */
   void superstep4(MessageIterator<DMIDMessage> const& messages) {
     DMIDValue* vertexState = mutableVertexData();
-    VertexSumAggregator const* finalDA = (VertexSumAggregator*)getReadAggregator(DA_AGG);
+    VertexSumAggregator const* finalDA =
+        (VertexSumAggregator*)getReadAggregator(DA_AGG);
 
     // DoubleDenseVector finalDA = getAggregatedValue(DA_AGG);
     // vertex.getValue().getWeightedInDegree();
     double weightedInDegree = vertexState->weightedInDegree;
-    double lsAggValue = finalDA->getAggregatedValue(shard(), key().toString()) * weightedInDegree;
+    double lsAggValue = finalDA->getAggregatedValue(shard(), key().toString()) *
+                        weightedInDegree;
 
-    VertexSumAggregator* tmpLS = (VertexSumAggregator*)getWriteAggregator(LS_AGG);
+    VertexSumAggregator* tmpLS =
+        (VertexSumAggregator*)getWriteAggregator(LS_AGG);
     tmpLS->aggregate(this->shard(), this->key().toString(), lsAggValue);
 
     // finalDA->aggregateValue(shard(), key(), );
@@ -305,25 +315,28 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
    * */
   void superstep6(MessageIterator<DMIDMessage> const& messages) {
     // DoubleDenseVector vecLS = getAggregatedValue(LS_AGG);
-    VertexSumAggregator const* vecLS = (VertexSumAggregator*)getReadAggregator(LS_AGG);
+    VertexSumAggregator const* vecLS =
+        (VertexSumAggregator*)getReadAggregator(LS_AGG);
     for (DMIDMessage const* message : messages) {
       PregelID senderID = message->senderId;
       /** Weight= weightedInDegree */
 
       float senderWeight = message->weight;
 
-      float myInfluence = (float)vecLS->getAggregatedValue(this->shard(), this->key().toString());
+      float myInfluence = (float)vecLS->getAggregatedValue(
+          this->shard(), this->key().toString());
       myInfluence *= senderWeight;
 
       /**
        * hasEdgeToSender determines if sender has influence on this vertex
        */
       bool hasEdgeToSender = false;
-      
+
       for (auto edges = getEdges(); edges.hasMore(); ++edges) {
         Edge<float>* edge = *edges;
-        
-        if (edge->targetShard() == senderID.shard && edge->toKey() == senderID.key) {
+
+        if (edge->targetShard() == senderID.shard &&
+            edge->toKey() == senderID.key) {
           hasEdgeToSender = true;
           /**
            * Has this vertex more influence on the sender than the
@@ -379,7 +392,8 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
     }
 
     double leaderInit = 1.0 / leaderSet.size();
-    VertexSumAggregator* vecFD = (VertexSumAggregator*)getWriteAggregator(FD_AGG);
+    VertexSumAggregator* vecFD =
+        (VertexSumAggregator*)getWriteAggregator(FD_AGG);
     for (PregelID const& _id : leaderSet) {
       vecFD->aggregate(_id.shard, _id.key, leaderInit);
     }
@@ -398,7 +412,8 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
 
     /** Is this vertex a global leader? Global Leader do not change behavior */
     if (it == vertexState->membershipDegree.end() || profitability < 0) {
-      bool const& notAllAssigned = getAggregatedValueRef<bool>(NOT_ALL_ASSIGNED_AGG);
+      bool const& notAllAssigned =
+          getAggregatedValueRef<bool>(NOT_ALL_ASSIGNED_AGG);
       bool const& newMember = getAggregatedValueRef<bool>(NEW_MEMBER_AGG);
       if (notAllAssigned) {
         /** There are vertices that are not part of any community */
@@ -422,7 +437,8 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
         auto const& it2 = vertexState->membershipDegree.find(this->pregelId());
         /** In case of first init test again if vertex is leader,
          or if we do not have connections */
-        if (it2 == vertexState->membershipDegree.end() && getEdgeCount() > 0) {  // no
+        if (it2 == vertexState->membershipDegree.end() &&
+            getEdgeCount() > 0) {  // no
           for (auto const& pair : vertexState->membershipDegree) {
             /**
              * message of the form (ownID, community ID of interest)
@@ -510,7 +526,8 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
       }
       /** profitability threshold */
       auto const& threshold = getAggregatedValueRef<float>(PROFITABILITY_AGG);
-      auto const& iterationCounter = getAggregatedValueRef<int64_t>(ITERATION_AGG);
+      auto const& iterationCounter =
+          getAggregatedValueRef<int64_t>(ITERATION_AGG);
 
       size_t m = std::min(getEdgeCount(), messages.size());
       for (auto const& pair : membershipCounter) {
@@ -546,7 +563,8 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
   void initilaizeMemDeg() {
     DMIDValue* vertexState = mutableVertexData();
 
-    VertexSumAggregator const* vecGL = (VertexSumAggregator*)getReadAggregator(GL_AGG);
+    VertexSumAggregator const* vecGL =
+        (VertexSumAggregator*)getReadAggregator(GL_AGG);
     // DoubleSparseVector vecGL = getAggregatedValue(GL_AGG);
     // std::map<PregelID, float> newMemDeg;
 
@@ -572,7 +590,8 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
   }
 };
 
-VertexComputation<DMIDValue, float, DMIDMessage>* DMID::createComputation(WorkerConfig const* config) const {
+VertexComputation<DMIDValue, float, DMIDMessage>* DMID::createComputation(
+    WorkerConfig const* config) const {
   return new DMIDComputation();
 }
 
@@ -586,26 +605,31 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
         _resultField(result),
         _maxCommunities(mc) {}
 
-  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
-                      arangodb::velocypack::Slice document, DMIDValue& /*value*/,
+  void copyVertexData(arangodb::velocypack::Options const&,
+                      std::string const& /*documentId*/,
+                      arangodb::velocypack::Slice document,
+                      DMIDValue& /*value*/,
                       uint64_t& /*vertexIdRange*/) override {}
 
   void copyEdgeData(arangodb::velocypack::Options const&,
-                    arangodb::velocypack::Slice /*document*/, float& targetPtr) override {
+                    arangodb::velocypack::Slice /*document*/,
+                    float& targetPtr) override {
     targetPtr = 1.0f;
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b, DMIDValue const* ptr) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b,
+                           DMIDValue const* ptr) const override {
     if (ptr->membershipDegree.size() > 0) {
       std::vector<std::pair<PregelID, float>> communities;
       for (std::pair<PregelID, float> pair : ptr->membershipDegree) {
         communities.push_back(pair);
       }
-      std::sort(communities.begin(), communities.end(),
-                [ptr](std::pair<PregelID, float> a, std::pair<PregelID, float> b) {
-                  return ptr->membershipDegree.at(a.first) >
-                         ptr->membershipDegree.at(b.first);
-                });
+      std::sort(
+          communities.begin(), communities.end(),
+          [ptr](std::pair<PregelID, float> a, std::pair<PregelID, float> b) {
+            return ptr->membershipDegree.at(a.first) >
+                   ptr->membershipDegree.at(b.first);
+          });
       if (communities.empty()) {
         b.add(_resultField, VPackSlice::nullSlice());
       } else if (_maxCommunities == 1) {
@@ -616,8 +640,8 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
         // Output for DMID modularity calculator
         b.add(_resultField, VPackValue(VPackValueType::Array));
         for (auto const& pair : ptr->membershipDegree) {
-          size_t i = arangodb::basics::StringUtils::uint64_trusted(pair.first.key.data(),
-                                                                   pair.first.key.size());
+          size_t i = arangodb::basics::StringUtils::uint64_trusted(
+              pair.first.key.data(), pair.first.key.size());
           b.openArray();
           b.add(VPackValue(i));
           b.add(VPackValue(pair.second));
@@ -671,10 +695,12 @@ struct DMIDMasterContext : public MasterContext {
     }
     if (hasCascadingStarted && (newIterCount % 3 == 1)) {
       /** first step of one iteration */
-      int64_t const* restartCountWritable = getAggregatedValue<int64_t>(RESTART_COUNTER_AGG);
+      int64_t const* restartCountWritable =
+          getAggregatedValue<int64_t>(RESTART_COUNTER_AGG);
       int64_t restartCount = *restartCountWritable;
       bool const* newMember = getAggregatedValue<bool>(NEW_MEMBER_AGG);
-      bool const* notAllAssigned = getAggregatedValue<bool>(NOT_ALL_ASSIGNED_AGG);
+      bool const* notAllAssigned =
+          getAggregatedValue<bool>(NOT_ALL_ASSIGNED_AGG);
 
       if ((*notAllAssigned == true) && (*newMember == false)) {
         /**
@@ -686,7 +712,8 @@ struct DMIDMasterContext : public MasterContext {
         setAggregatedValue<int64_t>(RESTART_COUNTER_AGG, restartCount + 1);
         setAggregatedValue<float>(PROFITABILITY_AGG, newThreshold);
         setAggregatedValue<int64_t>(ITERATION_AGG, 1);
-        LOG_TOPIC("99eb1", INFO, Logger::PREGEL) << "Restarting with threshold " << newThreshold;
+        LOG_TOPIC("99eb1", INFO, Logger::PREGEL)
+            << "Restarting with threshold " << newThreshold;
       }
     }
 
@@ -703,17 +730,21 @@ struct DMIDMasterContext : public MasterContext {
 
     if (LOG_AGGS) {
       if (globalSuperstep() <= RW_ITERATIONBOUND + 4) {
-        VertexSumAggregator* convergedDA = getAggregator<VertexSumAggregator>(DA_AGG);
+        VertexSumAggregator* convergedDA =
+            getAggregator<VertexSumAggregator>(DA_AGG);
 
-        LOG_TOPIC("db510", INFO, Logger::PREGEL) << "Aggregator DA at step: " << globalSuperstep();
+        LOG_TOPIC("db510", INFO, Logger::PREGEL)
+            << "Aggregator DA at step: " << globalSuperstep();
         convergedDA->forEach([&](PregelID const& _id, double entry) {
           LOG_TOPIC("df98d", INFO, Logger::PREGEL) << _id.key;
         });
       }
       if (globalSuperstep() == RW_ITERATIONBOUND + 6) {
-        VertexSumAggregator* leadershipVector = getAggregator<VertexSumAggregator>(LS_AGG);
+        VertexSumAggregator* leadershipVector =
+            getAggregator<VertexSumAggregator>(LS_AGG);
         leadershipVector->forEach([&](PregelID const& _id, double entry) {
-          LOG_TOPIC("c82d2", INFO, Logger::PREGEL) << "Aggregator LS:" << _id.key;
+          LOG_TOPIC("c82d2", INFO, Logger::PREGEL)
+              << "Aggregator LS:" << _id.key;
         });
       }
     }

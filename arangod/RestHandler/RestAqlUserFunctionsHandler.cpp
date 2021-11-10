@@ -23,20 +23,20 @@
 
 #include "RestAqlUserFunctionsHandler.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "VocBase/Methods/AqlUserFunctions.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAqlUserFunctionsHandler::RestAqlUserFunctionsHandler(application_features::ApplicationServer& server,
-                                                         GeneralRequest* request,
-                                                         GeneralResponse* response)
+RestAqlUserFunctionsHandler::RestAqlUserFunctionsHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAqlUserFunctionsHandler::execute() {
@@ -64,7 +64,8 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     auto res = registerUserFunction(_vocbase, body, replacedExisting);
 
     if (res.ok()) {
-      auto code = replacedExisting ? rest::ResponseCode::OK : rest::ResponseCode::CREATED;
+      auto code = replacedExisting ? rest::ResponseCode::OK
+                                   : rest::ResponseCode::CREATED;
       VPackBuilder tmp;
       tmp.add(VPackValue(VPackValueType::Object));
       tmp.add(StaticStrings::Error, VPackValue(false));
@@ -83,7 +84,8 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     // DELETE /_api/aqlfunction/{name}
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
     if ((suffixes.size() != 1) || suffixes[0].empty()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "superfluous suffix, expecting "
                     "_api/aqlfunction/<functionname or prefix>");
       return RestStatus::DONE;
@@ -142,7 +144,8 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     // internal get
     VPackBuilder arrayOfFunctions;
-    auto res = toArrayUserFunctions(_vocbase, functionNamespace, arrayOfFunctions);
+    auto res =
+        toArrayUserFunctions(_vocbase, functionNamespace, arrayOfFunctions);
 
     // error handling
     if (res.ok()) {
@@ -153,6 +156,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     return RestStatus::DONE;
   }  // GET
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }

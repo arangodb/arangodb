@@ -23,6 +23,10 @@
 
 #include "RestControlPregelHandler.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -36,19 +40,16 @@
 #include "V8/v8-vpack.h"
 #include "VocBase/Methods/Tasks.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestControlPregelHandler::RestControlPregelHandler(application_features::ApplicationServer& server,
-                                                   GeneralRequest* request,
-                                                   GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response), _pregel(server.getFeature<pregel::PregelFeature>()) {}
+RestControlPregelHandler::RestControlPregelHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
+      _pregel(server.getFeature<pregel::PregelFeature>()) {}
 
 RestStatus RestControlPregelHandler::execute() {
   auto const type = _request->requestType();
@@ -67,14 +68,16 @@ RestStatus RestControlPregelHandler::execute() {
       break;
     }
     default: {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     }
   }
   return RestStatus::DONE;
 }
 
 /// @brief returns the short id of the server which should handle this request
-ResultT<std::pair<std::string, bool>> RestControlPregelHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>>
+RestControlPregelHandler::forwardingTarget() {
   auto base = RestVocbaseBaseHandler::forwardingTarget();
   if (base.ok() && !std::get<0>(base.get()).empty()) {
     return base;
@@ -127,7 +130,8 @@ void RestControlPregelHandler::startExecution() {
   // extract the collections
   std::vector<std::string> vertexCollections;
   std::vector<std::string> edgeCollections;
-  std::unordered_map<std::string, std::vector<std::string>> edgeCollectionRestrictions;
+  std::unordered_map<std::string, std::vector<std::string>>
+      edgeCollectionRestrictions;
   auto vc = body.get("vertexCollections");
   auto ec = body.get("edgeCollections");
   if (vc.isArray() && ec.isArray()) {
@@ -175,7 +179,8 @@ void RestControlPregelHandler::startExecution() {
   }
 
   auto res = _pregel.startExecution(_vocbase, algorithm, vertexCollections,
-                                    edgeCollections, edgeCollectionRestrictions, parameters);
+                                    edgeCollections, edgeCollectionRestrictions,
+                                    parameters);
   if (res.first.fail()) {
     generateError(res.first);
     return;
@@ -191,7 +196,8 @@ void RestControlPregelHandler::getExecutionStatus() {
 
   if (suffixes.empty()) {
     bool const allDatabases = _request->parsedValue("all", false);
-    bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+    bool const fanout = ServerState::instance()->isCoordinator() &&
+                        !_request->parsedValue("local", false);
 
     VPackBuilder builder;
     _pregel.toVelocyPack(_vocbase, builder, allDatabases, fanout);

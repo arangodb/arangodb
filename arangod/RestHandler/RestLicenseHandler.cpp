@@ -39,14 +39,15 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestLicenseHandler::RestLicenseHandler(application_features::ApplicationServer& server,
-                                       GeneralRequest* request, GeneralResponse* response)
-  : RestBaseHandler(server, request, response) {}
+RestLicenseHandler::RestLicenseHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 #ifndef USE_ENTERPRISE
 RestStatus RestLicenseHandler::execute() {
-
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security =
+      server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
@@ -54,50 +55,48 @@ RestStatus RestLicenseHandler::execute() {
     return RestStatus::DONE;
   }
 
-
   VPackBuilder builder;
-  switch(_request->requestType()) {
-  case RequestType::GET:
-    {
+  switch (_request->requestType()) {
+    case RequestType::GET: {
       VPackObjectBuilder b(&builder);
       builder.add("license", VPackValue("none"));
     }
-    generateResult(rest::ResponseCode::OK, builder.slice());
-    break;
-  case RequestType::PUT:
-    generateError(
-      rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_ONLY_ENTERPRISE,
-      "The community edition cannot be licensed.");
-    break;
-  default:
-    generateError(
-      rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
-      "Method not allowed. Only GET and PUT requests are handled.");
+      generateResult(rest::ResponseCode::OK, builder.slice());
+      break;
+    case RequestType::PUT:
+      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                    TRI_ERROR_ONLY_ENTERPRISE,
+                    "The community edition cannot be licensed.");
+      break;
+    default:
+      generateError(
+          rest::ResponseCode::METHOD_NOT_ALLOWED,
+          TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+          "Method not allowed. Only GET and PUT requests are handled.");
   }
 
   return RestStatus::DONE;
-
 }
 #endif
 
 /// @brief check for administrator rights
 arangodb::Result RestLicenseHandler::verifyPermitted() {
-  #ifdef USE_ENTERPRISE
+#ifdef USE_ENTERPRISE
   auto& feature = server().getFeature<arangodb::LicenseFeature>();
 
   // do we have admin rights (if rights are active)
   if (feature.onlySuperUser()) {
     if (!ExecContext::current().isSuperuser()) {
       return arangodb::Result(
-        TRI_ERROR_HTTP_FORBIDDEN, "you need super user rights for license operations");
+          TRI_ERROR_HTTP_FORBIDDEN,
+          "you need super user rights for license operations");
     }
   } else {
     if (!ExecContext::current().isAdminUser()) {
-      return arangodb::Result(
-        TRI_ERROR_HTTP_FORBIDDEN, "you need admin rights for license operations");
+      return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
+                              "you need admin rights for license operations");
     }
   }
-  #endif
+#endif
   return arangodb::Result();
-
 }

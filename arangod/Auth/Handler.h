@@ -24,12 +24,13 @@
 
 #pragma once
 
+#include <velocypack/Slice.h>
+
+#include <set>
+
 #include "Auth/Common.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
-
-#include <velocypack/Slice.h>
-#include <set>
 
 namespace arangodb {
 namespace auth {
@@ -79,4 +80,3 @@ class Handler {
 
 }  // namespace auth
 }  // namespace arangodb
-

@@ -25,16 +25,17 @@
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
-#include "Pregel/Utils.h"
 #include "Pregel/Reports.h"
+#include "Pregel/Utils.h"
 
 namespace arangodb {
 namespace pregel {
 
 class WorkerContext {
-  template <typename V, typename E, typename M>
+  template<typename V, typename E, typename M>
   friend class Worker;
 
   uint64_t _vertexCount, _edgeCount;
@@ -43,20 +44,18 @@ class WorkerContext {
   ReportManager* _reports;
 
  protected:
-  template <typename T>
+  template<typename T>
   inline void aggregate(std::string const& name, T const& value) {
     T const* ptr = &value;
     _writeAggregators->aggregate(name, ptr);
   }
 
-  template <typename T>
+  template<typename T>
   inline const T* getAggregatedValue(std::string const& name) {
     return (T*)_readAggregators->getAggregatedValue(name);
   }
 
-  AggregatorHandler& getWriteAggregators() {
-    return *_writeAggregators;
-  }
+  AggregatorHandler& getWriteAggregators() { return *_writeAggregators; }
 
   virtual void preApplication() {}
   virtual void preGlobalSuperstep(uint64_t gss) {}

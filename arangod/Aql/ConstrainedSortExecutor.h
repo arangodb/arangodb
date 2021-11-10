@@ -24,13 +24,13 @@
 
 #pragma once
 
-#include "Aql/ExecutionState.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/SharedAqlItemBlockPtr.h"
-
 #include <cstdint>
 #include <memory>
 #include <vector>
+
+#include "Aql/ExecutionState.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 
 namespace arangodb {
 namespace transaction {
@@ -39,7 +39,7 @@ class Methods;
 
 namespace aql {
 
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class AqlItemMatrix;
@@ -59,7 +59,8 @@ class ConstrainedSortExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = false;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -72,25 +73,31 @@ class ConstrainedSortExecutor {
   /**
    * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
   /**
    * @brief skip the next Rows of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
-  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                   AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
   /**
    * @brief This Executor knows how many rows it will produce and most by itself
-   *        It also knows that it could produce less if the upstream only has fewer rows.
+   *        It also knows that it could produce less if the upstream only has
+   * fewer rows.
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(
+      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+      -> size_t;
 
  private:
   bool compareInput(size_t rosPos, InputAqlItemRow const& row) const;
@@ -118,9 +125,8 @@ class ConstrainedSortExecutor {
   SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
   RegIdFlatSetStack _regsToKeep;
-  RegIdSet  _outputRegister = {};
+  RegIdSet _outputRegister = {};
   OutputAqlItemRow _heapOutputRow;
 };
 }  // namespace aql
 }  // namespace arangodb
-

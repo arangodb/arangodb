@@ -22,10 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationApplierState.h"
-#include "Replication/common-defines.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Replication/common-defines.h"
 
 using namespace arangodb;
 
@@ -57,7 +58,8 @@ ReplicationApplierState::ReplicationApplierState()
 
 ReplicationApplierState::~ReplicationApplierState() = default;
 
-ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierState const& other) {
+ReplicationApplierState& ReplicationApplierState::operator=(
+    ReplicationApplierState const& other) {
   reset(true);
 
   _phase = other._phase;
@@ -72,7 +74,8 @@ ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierSt
 
   _lastError.code = other._lastError.code;
   _lastError.message = other._lastError.message;
-  memcpy(&_lastError.time[0], &other._lastError.time[0], sizeof(_lastError.time));
+  memcpy(&_lastError.time[0], &other._lastError.time[0],
+         sizeof(_lastError.time));
 
   _failedConnects = other._failedConnects;
   _totalRequests = other._totalRequests;
@@ -97,7 +100,7 @@ void ReplicationApplierState::reset(bool resetPhase, bool reducedSet) {
   _failedConnects = 0;
   // don't need to reset the following
   // _totalFailedConnects = 0;
-  // _totalResyncs = 0; 
+  // _totalResyncs = 0;
   // _totalRequests = 0;
   // _totalEvents = 0;
   // _totalDocuments = 0;
@@ -109,7 +112,7 @@ void ReplicationApplierState::reset(bool resetPhase, bool reducedSet) {
   // _totalFetchInstances = 0;
   // _startTime[0] = '\0';
 
-  if (reducedSet) { 
+  if (reducedSet) {
     return;
   }
 
@@ -140,7 +143,8 @@ static std::string ActivityToString(ReplicationApplierState::ActivityPhase ph) {
   return "unknown";
 }
 
-void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) const {
+void ReplicationApplierState::toVelocyPack(VPackBuilder& result,
+                                           bool full) const {
   result.openObject();
 
   if (full) {
@@ -161,7 +165,8 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
       result.add("lastProcessedContinuousTick",
                  VPackValue(std::to_string(_lastProcessedContinuousTick)));
     } else {
-      result.add("lastProcessedContinuousTick", VPackValue(VPackValueType::Null));
+      result.add("lastProcessedContinuousTick",
+                 VPackValue(VPackValueType::Null));
     }
 
     // lastAvailableContinuousTick
@@ -169,7 +174,8 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
       result.add("lastAvailableContinuousTick",
                  VPackValue(std::to_string(_lastAvailableContinuousTick)));
     } else {
-      result.add("lastAvailableContinuousTick", VPackValue(VPackValueType::Null));
+      result.add("lastAvailableContinuousTick",
+                 VPackValue(VPackValueType::Null));
     }
 
     // safeResumeTick
@@ -209,13 +215,15 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
     if (_totalApplyInstances == 0) {
       result.add("averageApplyTime", VPackValue(0));
     } else {
-      result.add("averageApplyTime", VPackValue(_totalApplyTime / _totalApplyInstances));
+      result.add("averageApplyTime",
+                 VPackValue(_totalApplyTime / _totalApplyInstances));
     }
     result.add("totalFetchTime", VPackValue(_totalFetchTime));
     if (_totalFetchInstances == 0) {
       result.add("averageFetchTime", VPackValue(0));
     } else {
-      result.add("averageFetchTime", VPackValue(_totalFetchTime / _totalFetchInstances));
+      result.add("averageFetchTime",
+                 VPackValue(_totalFetchTime / _totalFetchInstances));
     }
 
     // lastError

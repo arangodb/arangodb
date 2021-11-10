@@ -21,11 +21,11 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestAdminStatisticsHandler.h"
+
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "RestAdminStatisticsHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
@@ -37,22 +37,24 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminStatisticsHandler::RestAdminStatisticsHandler(application_features::ApplicationServer& server,
-                                                       GeneralRequest* request,
-                                                       GeneralResponse* response)
+RestAdminStatisticsHandler::RestAdminStatisticsHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminStatisticsHandler::execute() {
   if (_request->requestType() != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security =
+      server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
 

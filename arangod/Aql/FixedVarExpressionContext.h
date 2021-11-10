@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include <unordered_map>
+
 #include "Aql/AqlValue.h"
 #include "Aql/QueryExpressionContext.h"
-
-#include <unordered_map>
 
 namespace arangodb {
 namespace velocypack {
@@ -38,7 +38,8 @@ class AqlItemBlock;
 
 class FixedVarExpressionContext final : public QueryExpressionContext {
  public:
-  explicit FixedVarExpressionContext(transaction::Methods& trx, QueryContext& query,
+  explicit FixedVarExpressionContext(transaction::Methods& trx,
+                                     QueryContext& query,
                                      AqlFunctionsInternalCache& cache);
 
   ~FixedVarExpressionContext() override = default;

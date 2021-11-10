@@ -23,16 +23,16 @@
 
 #pragma once
 
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
 #include "Replication/common-defines.h"
 #include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/voc-types.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
@@ -74,7 +74,8 @@ struct ReplicationApplierState {
 
   /// performs initial sync or running tailing syncer
   bool isActive() const {
-    return (_phase == ActivityPhase::INITIAL || _phase == ActivityPhase::TAILING);
+    return (_phase == ActivityPhase::INITIAL ||
+            _phase == ActivityPhase::TAILING);
   }
 
   /// performs initial sync or running tailing syncer
@@ -154,4 +155,3 @@ struct ReplicationApplierState {
 };
 
 }  // namespace arangodb
-

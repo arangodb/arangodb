@@ -25,6 +25,7 @@
 #include <Basics/ResultT.h>
 #include <Cluster/ClusterTypes.h>
 #include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
+
 #include <optional>
 
 #include "Futures/Future.h"
@@ -55,18 +56,23 @@ auto updateTermSpecification(DatabaseID const& database, LogId id,
                              std::optional<LogTerm> prevTerm = {})
     -> futures::Future<ResultT<uint64_t>>;
 
-auto updateElectionResult(arangodb::agency::envelope envelope, DatabaseID const& database,
-                          LogId id, LogCurrentSupervisionElection const& result)
+auto updateElectionResult(arangodb::agency::envelope envelope,
+                          DatabaseID const& database, LogId id,
+                          LogCurrentSupervisionElection const& result)
     -> arangodb::agency::envelope;
 
-auto deleteReplicatedLogTrx(arangodb::agency::envelope envelope, DatabaseID const& database,
-                            LogId id) -> arangodb::agency::envelope;
+auto deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
+                            DatabaseID const& database, LogId id)
+    -> arangodb::agency::envelope;
 auto deleteReplicatedLog(DatabaseID const& database, LogId id)
     -> futures::Future<ResultT<uint64_t>>;
 
-auto createReplicatedLogTrx(arangodb::agency::envelope envelope, DatabaseID const& database,
-                            LogPlanSpecification const& spec) -> arangodb::agency::envelope;
-auto createReplicatedLog(DatabaseID const& database, LogPlanSpecification const& spec)
+auto createReplicatedLogTrx(arangodb::agency::envelope envelope,
+                            DatabaseID const& database,
+                            LogPlanSpecification const& spec)
+    -> arangodb::agency::envelope;
+auto createReplicatedLog(DatabaseID const& database,
+                         LogPlanSpecification const& spec)
     -> futures::Future<ResultT<uint64_t>>;
 
-}
+}  // namespace arangodb::replication2::agency::methods

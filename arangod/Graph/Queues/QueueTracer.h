@@ -23,16 +23,16 @@
 
 #pragma once
 
-#include "Graph/Helpers/TraceEntry.h"
-#include "Basics/ResourceUsage.h"
-
 #include <unordered_map>
 #include <vector>
+
+#include "Basics/ResourceUsage.h"
+#include "Graph/Helpers/TraceEntry.h"
 
 namespace arangodb {
 namespace graph {
 
-template <class QueueImpl>
+template<class QueueImpl>
 class QueueTracer {
   using Step = typename QueueImpl::Step;
 
@@ -59,4 +59,3 @@ class QueueTracer {
 
 }  // namespace graph
 }  // namespace arangodb
-

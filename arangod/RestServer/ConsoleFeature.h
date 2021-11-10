@@ -23,11 +23,11 @@
 
 #pragma once
 
+#include <memory>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/OperationMode.h"
 #include "RestServer/ConsoleThread.h"
-
-#include <memory>
 
 namespace arangodb {
 
@@ -45,4 +45,3 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

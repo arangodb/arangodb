@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Basics/Common.h"
-
 #include "Rest/CommonDefines.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/StatisticsFeature.h"
@@ -157,7 +156,7 @@ class RequestStatistics {
 
     double ELAPSED_WHILE_QUEUED() const {
       if (_stat != nullptr) {
-        return  _stat->_queueEnd - _stat->_queueStart;
+        return _stat->_queueEnd - _stat->_queueStart;
       } else {
         return 0.0;
       }
@@ -172,7 +171,7 @@ class RequestStatistics {
     std::string timingsCsv() const;
 
    private:
-     RequestStatistics* _stat;
+    RequestStatistics* _stat;
   };
 
   static Item acquire();
@@ -185,7 +184,8 @@ class RequestStatistics {
     statistics::Distribution bytesReceived;
   };
 
-  static void getSnapshot(Snapshot& snapshot, stats::RequestStatisticsSource source);
+  static void getSnapshot(Snapshot& snapshot,
+                          stats::RequestStatisticsSource source);
 
  private:
   static void process(RequestStatistics*);
@@ -235,4 +235,3 @@ class RequestStatistics {
   bool _superuser;
 };
 }  // namespace arangodb
-

@@ -48,14 +48,15 @@ HotBackup::HotBackup(application_features::ApplicationServer& server)
   } else if (server.getFeature<EngineSelectorFeature>().isRocksDB()) {
     _engine = BACKUP_ENGINE::ROCKSDB;
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented for this storage engine");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "hot backup not implemented for this storage engine");
   }
 }
 
-
-arangodb::Result HotBackup::execute (
-  std::string const& command, VPackSlice const payload, VPackBuilder& report) {
-
+arangodb::Result HotBackup::execute(std::string const& command,
+                                    VPackSlice const payload,
+                                    VPackBuilder& report) {
   switch (_engine) {
     case BACKUP_ENGINE::ROCKSDB:
       return executeRocksDB(command, payload, report);
@@ -63,45 +64,45 @@ arangodb::Result HotBackup::execute (
       return executeCoordinator(command, payload, report);
   }
 
-  return arangodb::Result(
-    TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented for this storage engine");
+  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED,
+                          "hot backup not implemented for this storage engine");
 }
 
-
-arangodb::Result HotBackup::executeRocksDB(
-  std::string const& command, VPackSlice const payload, VPackBuilder& report) {
-
+arangodb::Result HotBackup::executeRocksDB(std::string const& command,
+                                           VPackSlice const payload,
+                                           VPackBuilder& report) {
 #ifdef USE_ENTERPRISE
   std::shared_ptr<RocksDBHotBackup> operation;
   auto& feature = _server.getFeature<HotBackupFeature>();
-  operation = RocksDBHotBackup::operationFactory(feature, command, payload, report);
+  operation =
+      RocksDBHotBackup::operationFactory(feature, command, payload, report);
 
   if (operation->valid()) {
     operation->execute();
-  } // if
+  }  // if
 
   operation->doAuditLog();
 
   // if !valid() then !success() already set
   if (!operation->success()) {
-    return arangodb::Result(operation->restResponseError(), operation->errorMessage());
+    return arangodb::Result(operation->restResponseError(),
+                            operation->errorMessage());
   }
 #endif
 
   return arangodb::Result();
-
 }
 
-
-arangodb::Result HotBackup::executeCoordinator(
-  std::string const& command, VPackSlice const payload, VPackBuilder& report) {
+arangodb::Result HotBackup::executeCoordinator(std::string const& command,
+                                               VPackSlice const payload,
+                                               VPackBuilder& report) {
 #ifdef USE_ENTERPRISE
   auto& feature = _server.getFeature<ClusterFeature>();
   if (command == "create") {
     return hotBackupCoordinator(feature, payload, report);
   } else if (command == "lock") {
-    return arangodb::Result(
-      TRI_ERROR_NOT_IMPLEMENTED, "backup locks not implemented on coordinators");
+    return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED,
+                            "backup locks not implemented on coordinators");
   } else if (command == "restore") {
     return hotRestoreCoordinator(feature, payload, report);
   } else if (command == "delete") {
@@ -113,8 +114,8 @@ arangodb::Result HotBackup::executeCoordinator(
   } else if (command == "download") {
     return downloadBackupsOnCoordinator(feature, payload, report);
   } else {
-    return arangodb::Result(
-      TRI_ERROR_NOT_IMPLEMENTED, command + " is not implemented on coordinators");
+    return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED,
+                            command + " is not implemented on coordinators");
   }
 #endif
 
@@ -122,4 +123,4 @@ arangodb::Result HotBackup::executeCoordinator(
   return arangodb::Result();
 }
 
-}
+}  // namespace arangodb

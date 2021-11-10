@@ -23,13 +23,13 @@
 
 #pragma once
 
+#include <optional>
+
 #include "Aql/AqlCallSet.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-
-#include <optional>
 
 namespace arangodb {
 
@@ -50,8 +50,9 @@ struct SortRegister;
 class SortingGatherExecutorInfos {
  public:
   SortingGatherExecutorInfos(std::vector<SortRegister>&& sortRegister,
-                             arangodb::aql::QueryContext& query, GatherNode::SortMode sortMode,
-                             size_t limit, GatherNode::Parallelism p);
+                             arangodb::aql::QueryContext& query,
+                             GatherNode::SortMode sortMode, size_t limit,
+                             GatherNode::Parallelism p);
   SortingGatherExecutorInfos() = delete;
   SortingGatherExecutorInfos(SortingGatherExecutorInfos&&) = default;
   SortingGatherExecutorInfos(SortingGatherExecutorInfos const&) = delete;
@@ -105,7 +106,8 @@ class SortingGatherExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
 
@@ -126,7 +128,8 @@ class SortingGatherExecutor {
    *   Stats: Stats gerenated here
    *   AqlCallSet: Request to specific upstream dependency
    */
-  [[nodiscard]] auto produceRows(MultiAqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(MultiAqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCallSet>;
 
   /**
@@ -140,7 +143,8 @@ class SortingGatherExecutor {
    *   size_t: Number of rows skipped
    *   AqlCallSet: Request to specific upstream dependency
    */
-  [[nodiscard]] auto skipRowsRange(MultiAqlItemBlockInputRange& input, AqlCall& call)
+  [[nodiscard]] auto skipRowsRange(MultiAqlItemBlockInputRange& input,
+                                   AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet>;
 
  private:
@@ -161,17 +165,21 @@ class SortingGatherExecutor {
    *  will produce an upstream call to be fulfilled.
    *
    * @param inputRange Range of all input dependencies
-   * @return std::optional<std::tuple<AqlCall, size_t>>  optional call for the dependnecy requiring input
+   * @return std::optional<std::tuple<AqlCall, size_t>>  optional call for the
+   * dependnecy requiring input
    */
-  [[nodiscard]] auto requiresMoreInput(MultiAqlItemBlockInputRange const& inputRange,
-                                       AqlCall const& clientCall) -> AqlCallSet;
+  [[nodiscard]] auto requiresMoreInput(
+      MultiAqlItemBlockInputRange const& inputRange, AqlCall const& clientCall)
+      -> AqlCallSet;
 
   /**
    * @brief Get the next row matching the sorting strategy
    *
-   * @return InputAqlItemRow best fit row. Might be invalid if all input is done.
+   * @return InputAqlItemRow best fit row. Might be invalid if all input is
+   * done.
    */
-  [[nodiscard]] auto nextRow(MultiAqlItemBlockInputRange& input) -> InputAqlItemRow;
+  [[nodiscard]] auto nextRow(MultiAqlItemBlockInputRange& input)
+      -> InputAqlItemRow;
 
   /**
    * @brief Initialize the Sorting strategy with the given input.
@@ -185,20 +193,23 @@ class SortingGatherExecutor {
 
   [[nodiscard]] auto limitReached() const noexcept -> bool;
 
-  [[nodiscard]] auto calculateUpstreamCall(AqlCall const& clientCall) const
-      noexcept -> AqlCallList;
+  [[nodiscard]] auto calculateUpstreamCall(
+      AqlCall const& clientCall) const noexcept -> AqlCallList;
 
  private:
-  // Flag if we are past the initialize phase (fetched one block for every dependency).
+  // Flag if we are past the initialize phase (fetched one block for every
+  // dependency).
   bool _initialized = false;
 
   // Total Number of dependencies
   size_t _numberDependencies;
 
-  // Input data to process, indexed by dependency, referenced by the SortingStrategy
+  // Input data to process, indexed by dependency, referenced by the
+  // SortingStrategy
   std::vector<ValueType> _inputRows;
 
-  /// @brief If we do a constrained sort, it holds the limit > 0. Otherwise, it's 0.
+  /// @brief If we do a constrained sort, it holds the limit > 0. Otherwise,
+  /// it's 0.
   size_t _limit;
 
   /// @brief Number of rows we've already written or skipped, up to _limit.
@@ -216,4 +227,3 @@ class SortingGatherExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

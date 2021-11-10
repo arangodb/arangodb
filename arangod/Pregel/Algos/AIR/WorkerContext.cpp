@@ -23,30 +23,36 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "WorkerContext.h"
+
 #include <Logger/LogMacros.h>
 #include <Logger/Logger.h>
-
-#include "WorkerContext.h"
 
 namespace arangodb::pregel::algos::accumulators {
 
 WorkerContext::WorkerContext(ProgrammablePregelAlgorithm const* algorithm)
     : _algo(algorithm) {
-  CustomAccumulatorDefinitions const& customDefinitions = _algo->options().customAccumulators;
+  CustomAccumulatorDefinitions const& customDefinitions =
+      _algo->options().customAccumulators;
   AccumulatorsDeclaration const& globalAccumulatorsDeclarations =
       _algo->options().globalAccumulators;
 
   for (auto const& acc : globalAccumulatorsDeclarations) {
-    _globalAccumulators.emplace(acc.first, instantiateAccumulator(acc.second, customDefinitions));
-    _globalAccumulatorsUpdates.emplace(acc.first, instantiateAccumulator(acc.second, customDefinitions));
+    _globalAccumulators.emplace(
+        acc.first, instantiateAccumulator(acc.second, customDefinitions));
+    _globalAccumulatorsUpdates.emplace(
+        acc.first, instantiateAccumulator(acc.second, customDefinitions));
   }
 }
 
-auto WorkerContext::globalAccumulators() const -> std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> const& {
+auto WorkerContext::globalAccumulators() const
+    -> std::unordered_map<std::string,
+                          std::unique_ptr<AccumulatorBase>> const& {
   return _globalAccumulators;
 }
 
-auto WorkerContext::globalAccumulatorsUpdates() const -> std::unordered_map<std::string, MutexAccumPair> const& {
+auto WorkerContext::globalAccumulatorsUpdates() const
+    -> std::unordered_map<std::string, MutexAccumPair> const& {
   return _globalAccumulatorsUpdates;
 }
 
@@ -65,14 +71,16 @@ void WorkerContext::preGlobalSuperstepMasterMessage(VPackSlice msg) {
   auto globalAccumulatorValues = msg.get("globalAccumulatorValues");
 
   if (globalAccumulatorValues.isNull() || !globalAccumulatorValues.isObject()) {
-    LOG_TOPIC("61a94", ERR, Logger::PREGEL) << "worker did not receive valid global accumulator values, but "
-              << globalAccumulatorValues.toJson();
+    LOG_TOPIC("61a94", ERR, Logger::PREGEL)
+        << "worker did not receive valid global accumulator values, but "
+        << globalAccumulatorValues.toJson();
     return;
   }
 
   for (auto&& upd : VPackObjectIterator(globalAccumulatorValues)) {
     if (!upd.key.isString()) {
-      LOG_TOPIC("60a94", ERR, Logger::PREGEL) << "global accumulator key is not a string, but " << upd.key.toJson();
+      LOG_TOPIC("60a94", ERR, Logger::PREGEL)
+          << "global accumulator key is not a string, but " << upd.key.toJson();
       continue;
     }
 
@@ -82,7 +90,9 @@ void WorkerContext::preGlobalSuperstepMasterMessage(VPackSlice msg) {
         iter != std::end(globalAccumulators())) {
       auto res = iter->second->setStateBySlice(upd.value);
       if (!res) {
-        getReportManager().report(ReportLevel::ERR).with("accumulator", accumName)
+        getReportManager()
+                .report(ReportLevel::ERR)
+                .with("accumulator", accumName)
             << "worker could not set accumulator value for global accumulator "
             << accumName << " could not be set, " << res.error().toString();
       }
@@ -103,7 +113,9 @@ void WorkerContext::postGlobalSuperstepMasterMessage(VPackBuilder& msg) {
         msg.add(VPackValue(acc.first));
         auto res = acc.second.accum->getStateUpdateIntoBuilder(msg);
         if (!res) {
-          getReportManager().report(ReportLevel::ERR).with("accumulator", acc.first)
+          getReportManager()
+                  .report(ReportLevel::ERR)
+                  .with("accumulator", acc.first)
               << "worker composing update for `" << acc.first
               << "` failed: " + res.error().toString();
         }
@@ -112,9 +124,10 @@ void WorkerContext::postGlobalSuperstepMasterMessage(VPackBuilder& msg) {
   }
 }
 
-greenspun::EvalResult WorkerContext::sendToGlobalAccumulator(std::string accumId,
-                                                             VPackSlice msg) const {
-  // For more information about the looking here, read the comment at _globalAccumulatorsUpdates.
+greenspun::EvalResult WorkerContext::sendToGlobalAccumulator(
+    std::string accumId, VPackSlice msg) const {
+  // For more information about the looking here, read the comment at
+  // _globalAccumulatorsUpdates.
   if (auto iter = _globalAccumulatorsUpdates.find(accumId);
       iter != std::end(_globalAccumulatorsUpdates)) {
     std::unique_lock guard(iter->second.mutex);

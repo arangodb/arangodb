@@ -23,10 +23,10 @@
 
 #pragma once
 
-#include "Aql/AqlCall.h"
-
 #include <optional>
 #include <vector>
+
+#include "Aql/AqlCall.h"
 
 namespace arangodb::velocypack {
 class Builder;
@@ -49,7 +49,8 @@ class AqlCallList {
  public:
   friend bool operator==(AqlCallList const& left, AqlCallList const& right);
 
-  friend auto operator<<(std::ostream& out, const arangodb::aql::AqlCallList& list)
+  friend auto operator<<(std::ostream& out,
+                         const arangodb::aql::AqlCallList& list)
       -> std::ostream&;
 
   /**
@@ -63,17 +64,18 @@ class AqlCallList {
 
   /**
    * @brief Construct a new Aql Call List object
-   *        This constructor will allow for a specific call, which is used for the ongoing subquery run.
-   *        And a default call, which should be used for every following subquery.
-   *        Simply speaking this constructor creates an endless list of
-   *        [specificCall, defaultCall, defaultCall, defaultCall, defaultCall,...]
-   *        calls. Whenever a subquery run is done the executor will have a new
-   *        call and can continue with the next run
-   * @param specificCall The call of the current subquery run. This call can be different from a defaultCall,
-   *                     but it must be producable by the defaultCall using only didSkip() and didProduce().
-   *                     Simply put: the specificCall is a defaultCall that has already applied some productions
-   *                     of aql rows.
-   * @param defaultCall The call to be used whenever a new SubqueryRun is started.
+   *        This constructor will allow for a specific call, which is used for
+   * the ongoing subquery run. And a default call, which should be used for
+   * every following subquery. Simply speaking this constructor creates an
+   * endless list of [specificCall, defaultCall, defaultCall, defaultCall,
+   * defaultCall,...] calls. Whenever a subquery run is done the executor will
+   * have a new call and can continue with the next run
+   * @param specificCall The call of the current subquery run. This call can be
+   * different from a defaultCall, but it must be producable by the defaultCall
+   * using only didSkip() and didProduce(). Simply put: the specificCall is a
+   * defaultCall that has already applied some productions of aql rows.
+   * @param defaultCall The call to be used whenever a new SubqueryRun is
+   * started.
    */
   AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall);
 
@@ -152,7 +154,7 @@ class AqlCallList {
 
 auto operator==(AqlCallList const& left, AqlCallList const& right) -> bool;
 
-auto operator<<(std::ostream& out, const arangodb::aql::AqlCallList& list) -> std::ostream&;
+auto operator<<(std::ostream& out, const arangodb::aql::AqlCallList& list)
+    -> std::ostream&;
 
 }  // namespace arangodb::aql
-

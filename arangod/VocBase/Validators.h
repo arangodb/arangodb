@@ -29,13 +29,13 @@
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
-#include <string>
 
+#include <string>
 #include <tao/json/forward.hpp>
 #include <validation/types.hpp>
 
 namespace tao::json {
-template <template <typename...> class Traits>
+template<template<typename...> class Traits>
 class basic_schema;
 }
 
@@ -56,7 +56,8 @@ struct ValidatorBase {
   explicit ValidatorBase(VPackSlice params);
   virtual ~ValidatorBase() = default;
 
-  // Validation function as it should be used in the logical collection or storage engine.
+  // Validation function as it should be used in the logical collection or
+  // storage engine.
   virtual Result validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert,
                           VPackOptions const*) const;
 

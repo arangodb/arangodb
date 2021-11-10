@@ -23,10 +23,12 @@
 
 #pragma once
 
+#include <velocypack/StringRef.h>
+
+#include <deque>
+
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
-#include <velocypack/StringRef.h>
-#include <deque>
 
 namespace arangodb {
 
@@ -45,6 +47,7 @@ class ShortestPathResult {
   friend class arangodb::graph::AttributeWeightShortestPathFinder;
   friend class arangodb::graph::ConstantWeightShortestPathFinder;
   friend class arangodb::graph::KShortestPathsFinder;
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Constructor. This is an abstract only class.
@@ -82,7 +85,7 @@ class ShortestPathResult {
 
   void addVertex(arangodb::velocypack::StringRef v);
   void addEdge(arangodb::graph::EdgeDocumentToken e);
-    
+
   static constexpr size_t resultItemMemoryUsage() {
     return sizeof(typename decltype(_vertices)::value_type) +
            sizeof(typename decltype(_edges)::value_type);

@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "Aql/AqlCallSet.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
@@ -31,12 +33,10 @@
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
-#include <memory>
-
 namespace arangodb::aql {
 
 class AqlItemBlock;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
 class SkipResult;
@@ -58,7 +58,7 @@ class MultiDependencySingleRowFetcher {
 
     auto getSkipped(size_t subqueryDepth) const -> size_t;
 
-    auto getFullCount(size_t subqueryDepth) const-> size_t;
+    auto getFullCount(size_t subqueryDepth) const -> size_t;
 
     auto clearCounts(size_t subqueryDepth) -> void;
 
@@ -105,7 +105,8 @@ class MultiDependencySingleRowFetcher {
 
  public:
   using DataRange = MultiAqlItemBlockInputRange;
-  explicit MultiDependencySingleRowFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
+  explicit MultiDependencySingleRowFetcher(
+      DependencyProxy<BlockPassthrough::Disable>& executionBlock);
   TEST_VIRTUAL ~MultiDependencySingleRowFetcher() = default;
 
   void init();
@@ -121,7 +122,8 @@ class MultiDependencySingleRowFetcher {
   size_t numberDependencies();
 
   [[nodiscard]] auto execute(AqlCallStack const&, AqlCallSet const&)
-      -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>>;
+      -> std::tuple<ExecutionState, SkipResult,
+                    std::vector<std::pair<size_t, AqlItemBlockInputRange>>>;
 
   [[nodiscard]] auto upstreamState() const -> ExecutionState;
 
@@ -154,7 +156,8 @@ class MultiDependencySingleRowFetcher {
   bool _didReturnSubquerySkips{false};
 
  private:
-  [[nodiscard]] auto executeForDependency(size_t dependency, AqlCallStack& stack)
+  [[nodiscard]] auto executeForDependency(size_t dependency,
+                                          AqlCallStack& stack)
       -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
 
   /**
@@ -166,14 +169,14 @@ class MultiDependencySingleRowFetcher {
 
   bool isDone(DependencyInfo const& info) const;
 
-
-  AqlCallStack adjustStackWithSkipReport(AqlCallStack const& stack, const size_t dependency);
+  AqlCallStack adjustStackWithSkipReport(AqlCallStack const& stack,
+                                         const size_t dependency);
 
   void reportSkipForDependency(AqlCallStack const& originalStack,
-                               SkipResult const& skipped, const size_t dependency);
+                               SkipResult const& skipped,
+                               const size_t dependency);
 
   void initializeReports(size_t subqueryDepth);
 };
 
 }  // namespace arangodb::aql
-

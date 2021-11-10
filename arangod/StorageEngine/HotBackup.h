@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include "Basics/Result.h"
-#include "Rest/CommonDefines.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/Result.h"
+#include "Rest/CommonDefines.h"
 
 namespace arangodb {
 namespace application_features {
@@ -40,45 +40,45 @@ class ClusterFeature;
 /// @brief HotBackup engine selector operations
 ////////////////////////////////////////////////////////////////////////////////
 
-enum BACKUP_ENGINE {ROCKSDB, CLUSTER};
+enum BACKUP_ENGINE { ROCKSDB, CLUSTER };
 
 class HotBackup {
-public:
- explicit HotBackup(application_features::ApplicationServer& server);
- virtual ~HotBackup() = default;
+ public:
+  explicit HotBackup(application_features::ApplicationServer& server);
+  virtual ~HotBackup() = default;
 
- /**
-  * @brief execute storage engine's command with payload and report back
-  * @param  command  backup command [create, delete, list, upload, download]
-  * @param  payload  JSON payload
-  * @param  report   operation's report
-  * @return
-  */
- arangodb::Result execute(std::string const& command, VPackSlice const payload,
-                          VPackBuilder& report);
-  
-private:
+  /**
+   * @brief execute storage engine's command with payload and report back
+   * @param  command  backup command [create, delete, list, upload, download]
+   * @param  payload  JSON payload
+   * @param  report   operation's report
+   * @return
+   */
+  arangodb::Result execute(std::string const& command, VPackSlice const payload,
+                           VPackBuilder& report);
 
+ private:
   /**
    * @brief select engine and lock transactions
    * @param  body  rest handling body
    */
-  arangodb::Result executeRocksDB(
-    std::string const& command, VPackSlice const payload, VPackBuilder& report);
+  arangodb::Result executeRocksDB(std::string const& command,
+                                  VPackSlice const payload,
+                                  VPackBuilder& report);
 
   /**
    * @brief select engine and create backup
    * @param  payload  rest handling payload
    */
-  arangodb::Result executeCoordinator(
-    std::string const& command, VPackSlice const payload, VPackBuilder& report);
-  
+  arangodb::Result executeCoordinator(std::string const& command,
+                                      VPackSlice const payload,
+                                      VPackBuilder& report);
+
 #ifdef USE_ENTERPRISE
   application_features::ApplicationServer& _server;
 #endif
   BACKUP_ENGINE _engine;
-  
-};// class HotBackup
 
-}
+};  // class HotBackup
 
+}  // namespace arangodb

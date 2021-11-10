@@ -22,23 +22,25 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-
-#include <cstdint>
 
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLogMetrics;
 }
 
 namespace arangodb {
-class ReplicatedLogFeature final : public application_features::ApplicationFeature {
+class ReplicatedLogFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit ReplicatedLogFeature(application_features::ApplicationServer& server);
+  explicit ReplicatedLogFeature(
+      application_features::ApplicationServer& server);
   ~ReplicatedLogFeature() override;
 
-  auto metrics() const noexcept
-      -> std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics> const&;
+  auto metrics() const noexcept -> std::shared_ptr<
+      replication2::replicated_log::ReplicatedLogMetrics> const&;
   auto options() const noexcept
       -> std::shared_ptr<replication2::ReplicatedLogGlobalSettings const>;
 
@@ -47,7 +49,8 @@ class ReplicatedLogFeature final : public application_features::ApplicationFeatu
   void prepare() override;
 
  private:
-  std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics> _replicatedLogMetrics;
+  std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics>
+      _replicatedLogMetrics;
   std::shared_ptr<replication2::ReplicatedLogGlobalSettings> _options;
 };
 

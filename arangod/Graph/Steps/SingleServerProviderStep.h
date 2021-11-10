@@ -22,20 +22,21 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Transaction/Methods.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
+#include "Transaction/Methods.h"
 
 #pragma once
 
 namespace arangodb {
 namespace graph {
 
-template <class StepType>
+template<class StepType>
 class SingleServerProvider;
 
-class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerProviderStep> {
+class SingleServerProviderStep
+    : public arangodb::graph::BaseStep<SingleServerProviderStep> {
  public:
   class Vertex {
    public:
@@ -103,8 +104,8 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerPr
 
   bool isResponsible(transaction::Methods* trx) const;
 
-  friend auto operator<<(std::ostream& out, SingleServerProviderStep const& step)
-      -> std::ostream&;
+  friend auto operator<<(std::ostream& out,
+                         SingleServerProviderStep const& step) -> std::ostream&;
 
  private:
   Vertex _vertex;

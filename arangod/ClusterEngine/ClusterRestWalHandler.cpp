@@ -23,6 +23,8 @@
 
 #include "ClusterRestWalHandler.h"
 
+#include <rocksdb/utilities/transaction_db.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -35,14 +37,12 @@
 #include "Transaction/ManagerFeature.h"
 #include "Utils/ExecContext.h"
 
-#include <rocksdb/utilities/transaction_db.h>
-
 using namespace arangodb;
 using namespace arangodb::rest;
 
-ClusterRestWalHandler::ClusterRestWalHandler(application_features::ApplicationServer& server,
-                                             GeneralRequest* request,
-                                             GeneralResponse* response)
+ClusterRestWalHandler::ClusterRestWalHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus ClusterRestWalHandler::execute() {
@@ -77,7 +77,8 @@ RestStatus ClusterRestWalHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -143,14 +144,16 @@ void ClusterRestWalHandler::flush() {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  generateResult(rest::ResponseCode::OK, arangodb::velocypack::Slice::emptyObjectSlice());
+  generateResult(rest::ResponseCode::OK,
+                 arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void ClusterRestWalHandler::transactions() {
   auto* mngr = transaction::ManagerFeature::manager();
   VPackBuilder builder;
   builder.openObject();
-  builder.add("runningTransactions", VPackValue(mngr->getActiveTransactionCount()));
+  builder.add("runningTransactions",
+              VPackValue(mngr->getActiveTransactionCount()));
   builder.close();
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED, builder.slice());
 }

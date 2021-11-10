@@ -29,10 +29,9 @@
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/TraversalNode.h"
+#include "Basics/StaticStrings.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LogMacros.h"
-
-#include "Basics/StaticStrings.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -40,7 +39,8 @@ using namespace arangodb::basics;
 using EN = arangodb::aql::ExecutionNode;
 
 namespace {
-AstNode* conditionWithInlineCalculations(ExecutionPlan const* plan, AstNode* cond) {
+AstNode* conditionWithInlineCalculations(ExecutionPlan const* plan,
+                                         AstNode* cond) {
   auto func = [&](AstNode* node) -> AstNode* {
     if (node->type == NODE_TYPE_REFERENCE) {
       auto variable = static_cast<Variable*>(node->getData());
@@ -115,7 +115,8 @@ static AstNodeType BuildSingleComparatorType(AstNode const* condition) {
   return type;
 }
 
-static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, AstNode* tmpVar) {
+static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition,
+                                          AstNode* tmpVar) {
   AstNodeType type = BuildSingleComparatorType(condition);
 
   auto replaceReference = [&tmpVar](AstNode* node) -> AstNode* {
@@ -247,10 +248,10 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
   }
 }
 
-static bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan, AstNode* parent, size_t testIndex,
-                                            TraversalNode* tn, Variable const* pathVar,
-                                            bool& conditionIsImpossible, size_t& swappedIndex,
-                                            int64_t& indexedAccessDepth) {
+static bool checkPathVariableAccessFeasible(
+    Ast* ast, ExecutionPlan* plan, AstNode* parent, size_t testIndex,
+    TraversalNode* tn, Variable const* pathVar, bool& conditionIsImpossible,
+    size_t& swappedIndex, int64_t& indexedAccessDepth) {
   AstNode* node = parent->getMemberUnchecked(testIndex);
   if (!IsSupportedNode(pathVar, node)) {
     return false;
@@ -317,7 +318,8 @@ static bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan, AstNo
         switch (node->type) {
           case NODE_TYPE_VALUE: {
             // we have var.edges[<this-here>]
-            if (node->value.type != VALUE_TYPE_INT || node->value.value._int < 0) {
+            if (node->value.type != VALUE_TYPE_INT ||
+                node->value.value._int < 0) {
               // Only positive indexed access allowed
               notSupported = true;
               return node;
@@ -496,14 +498,15 @@ static bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan, AstNo
   TRI_ASSERT(parentOfReplace != nullptr);
   if (depth == UINT64_MAX) {
     // Global Case
-    auto replaceNode =
-        BuildExpansionReplacement(ast, parentOfReplace->getMemberUnchecked(replaceIdx), tempNode);
+    auto replaceNode = BuildExpansionReplacement(
+        ast, parentOfReplace->getMemberUnchecked(replaceIdx), tempNode);
     parentOfReplace->changeMember(replaceIdx, replaceNode);
     ///////////
     // NOTE: We have to reload the NODE here, because we may have replaced
     // it entirely
     ///////////
-    auto cond = conditionWithInlineCalculations(plan, parent->getMemberUnchecked(testIndex));
+    auto cond = conditionWithInlineCalculations(
+        plan, parent->getMemberUnchecked(testIndex));
     tn->registerGlobalCondition(isEdge, cond);
   } else {
     conditionIsImpossible = !tn->isInRange(depth, isEdge);
@@ -515,7 +518,8 @@ static bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan, AstNo
     // Point Access
     parentOfReplace->changeMember(replaceIdx, tempNode);
 
-    auto cond = conditionWithInlineCalculations(plan, parent->getMemberUnchecked(testIndex));
+    auto cond = conditionWithInlineCalculations(
+        plan, parent->getMemberUnchecked(testIndex));
 
     // NOTE: We have to reload the NODE here, because we may have replaced
     // it entirely
@@ -524,7 +528,8 @@ static bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan, AstNo
   return true;
 }
 
-TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered)
+TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan,
+                                                   bool* planAltered)
     : _plan(plan),
       _condition(std::make_unique<Condition>(plan->getAst())),
       _planAltered(planAltered) {}
@@ -638,7 +643,8 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       auto coveredCondition = std::make_unique<Condition>(_plan->getAst());
 
       // Method to identify which optimization case we need to take care of.
-      // We can only optimize if we have a single variable (vertex / edge / path) per condition.
+      // We can only optimize if we have a single variable (vertex / edge /
+      // path) per condition.
       auto identifyCase = [&]() -> OptimizationCase {
         OptimizationCase result = OptimizationCase::NON_OPTIMIZABLE;
         for (auto const& var : varsUsedByCondition) {
@@ -688,9 +694,9 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
             size_t swappedIndex = 0;
             // If we get here we can optimize this condition
-            if (!checkPathVariableAccessFeasible(_plan->getAst(), _plan, andNode, i - 1,
-                                                 node, pathVar, conditionIsImpossible,
-                                                 swappedIndex, indexedAccessDepth)) {
+            if (!checkPathVariableAccessFeasible(
+                    _plan->getAst(), _plan, andNode, i - 1, node, pathVar,
+                    conditionIsImpossible, swappedIndex, indexedAccessDepth)) {
               if (conditionIsImpossible) {
                 // If we get here we cannot fulfill the condition
                 // So clear
@@ -701,7 +707,8 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             } else {
               TRI_ASSERT(!conditionIsImpossible);
 
-              // remember the original filter conditions if we can remove them later
+              // remember the original filter conditions if we can remove them
+              // later
               if (indexedAccessDepth == -1) {
                 coveredCondition->andCombine(cloned);
               } else if ((uint64_t)indexedAccessDepth <= options->maxDepth) {
@@ -723,11 +730,12 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
           case OptimizationCase::VERTEX:
           case OptimizationCase::EDGE: {
             // We have the Vertex or Edge variable in the statement
-            // Both have about the Same code and just differ in the used variable.
-            // auto usedVar = usedCase == OptimizationCase::VERTEX ? vertexVar : edgeVar;
+            // Both have about the Same code and just differ in the used
+            // variable. auto usedVar = usedCase == OptimizationCase::VERTEX ?
+            // vertexVar : edgeVar;
 
-            auto conditionToOptimize =
-                conditionWithInlineCalculations(_plan, andNode->getMemberUnchecked(i - 1));
+            auto conditionToOptimize = conditionWithInlineCalculations(
+                _plan, andNode->getMemberUnchecked(i - 1));
 
             // Create a clone before we modify the Condition
             AstNode* cloned = conditionToOptimize->clone(_plan->getAst());
@@ -778,7 +786,8 @@ bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
 }
 
-bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathVar) const {
+bool TraversalConditionFinder::isTrueOnNull(AstNode* node,
+                                            Variable const* pathVar) const {
   VarSet vars;
   Ast::getReferencedVariables(node, vars);
   if (vars.size() > 1) {

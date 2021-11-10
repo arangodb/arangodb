@@ -40,8 +40,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestSupervisionStateHandler::RestSupervisionStateHandler(application_features::ApplicationServer& server,
-                                                         GeneralRequest* request, GeneralResponse* response)
+RestSupervisionStateHandler::RestSupervisionStateHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestSupervisionStateHandler::execute() {
@@ -51,12 +52,14 @@ RestStatus RestSupervisionStateHandler::execute() {
   }
 
   if (_request->requestType() != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-  
+
   if (!ServerState::instance()->isCoordinator()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
     return RestStatus::DONE;
   }
 
@@ -66,20 +69,21 @@ RestStatus RestSupervisionStateHandler::execute() {
   return waitForFuture(
       AsyncAgencyComm()
           .getValues(targetPath)
-          .thenValue([this, self, targetPath = std::move(targetPath)](AgencyReadResult&& result) {
+          .thenValue([this, self, targetPath = std::move(targetPath)](
+                         AgencyReadResult&& result) {
             if (result.ok() && result.statusCode() == fuerte::StatusOK) {
               VPackBuffer<uint8_t> response;
               {
                 VPackBuilder bodyBuilder(response);
                 VPackObjectBuilder ob(&bodyBuilder);
-                bodyBuilder.add("ToDo",
-                                result.slice().at(0).get(targetPath->toDo()->vec()));
-                bodyBuilder.add("Pending",
-                                result.slice().at(0).get(targetPath->pending()->vec()));
+                bodyBuilder.add("ToDo", result.slice().at(0).get(
+                                            targetPath->toDo()->vec()));
+                bodyBuilder.add("Pending", result.slice().at(0).get(
+                                               targetPath->pending()->vec()));
                 bodyBuilder.add("Finished", result.slice().at(0).get(
                                                 targetPath->finished()->vec()));
-                bodyBuilder.add("Failed",
-                                result.slice().at(0).get(targetPath->failed()->vec()));
+                bodyBuilder.add("Failed", result.slice().at(0).get(
+                                              targetPath->failed()->vec()));
               }
 
               resetResponse(rest::ResponseCode::OK);
@@ -92,6 +96,7 @@ RestStatus RestSupervisionStateHandler::execute() {
             generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this, self](std::exception const&) {
-            generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR);
           }));
 }

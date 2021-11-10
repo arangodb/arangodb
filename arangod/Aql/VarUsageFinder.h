@@ -23,13 +23,13 @@
 
 #pragma once
 
-#include "Aql/Variable.h"
-#include "Aql/WalkerWorker.h"
-
 #include <Containers/Enumerate.h>
 
-#include <vector>
 #include <unordered_set>
+#include <vector>
+
+#include "Aql/Variable.h"
+#include "Aql/WalkerWorker.h"
 
 namespace arangodb::aql {
 
@@ -37,13 +37,14 @@ class ExecutionNode;
 
 /// @brief helper struct for findVarUsage
 
-template <class T>
+template<class T>
 struct VarUsageFinderT;
 
 using VarUsageFinder = VarUsageFinderT<ExecutionNode>;
 
-template <class T>
-struct VarUsageFinderT final : public WalkerWorker<T, WalkerUniqueness::NonUnique> {
+template<class T>
+struct VarUsageFinderT final
+    : public WalkerWorker<T, WalkerUniqueness::NonUnique> {
   VarSetStack _usedLaterStack{VarSet{}};
   VarSetStack _varsValidStack{VarSet{}};
 
@@ -92,4 +93,3 @@ struct VarUsageFinderT final : public WalkerWorker<T, WalkerUniqueness::NonUniqu
 };
 
 }  // namespace arangodb::aql
-

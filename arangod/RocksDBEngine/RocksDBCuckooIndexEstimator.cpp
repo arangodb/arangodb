@@ -22,17 +22,18 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Exceptions.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/WriteLocker.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
-#include "RocksDBEngine/RocksDBFormat.h"
 
 #include <snappy.h>
 
+#include "Basics/Exceptions.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
+#include "RocksDBEngine/RocksDBFormat.h"
+
 namespace arangodb {
 
-template <class Key>
+template<class Key>
 RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(uint64_t size)
     : _randState(0x2636283625154737ULL),
       _logSize(0),
@@ -61,8 +62,9 @@ RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(uint64_t size)
   initializeDefault();
 }
 
-template <class Key>
-RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(arangodb::velocypack::StringRef serialized)
+template<class Key>
+RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(
+    arangodb::velocypack::StringRef serialized)
     : _randState(0x2636283625154737ULL),
       _logSize(0),
       _size(0),
@@ -84,14 +86,15 @@ RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(arangodb::velocypa
   deserialize(serialized);
 }
 
-template <class Key>
+template<class Key>
 RocksDBCuckooIndexEstimator<Key>::~RocksDBCuckooIndexEstimator() {
   delete[] _slotBase;
   delete[] _counterBase;
 }
-  
-template <class Key>
-/*static*/ bool RocksDBCuckooIndexEstimator<Key>::isFormatSupported(arangodb::velocypack::StringRef serialized) {
+
+template<class Key>
+/*static*/ bool RocksDBCuckooIndexEstimator<Key>::isFormatSupported(
+    arangodb::velocypack::StringRef serialized) {
   TRI_ASSERT(serialized.size() > sizeof(_appliedSeq) + sizeof(char));
   switch (serialized[sizeof(_appliedSeq)]) {
     case SerializeFormat::UNCOMPRESSED:
@@ -114,11 +117,10 @@ template <class Key>
  * @param  serialized String for output
  * @param  commitSeq  Above that are still uncommited operations
  */
-template <class Key>
-void RocksDBCuckooIndexEstimator<Key>::serialize(std::string& serialized, 
-                                                 rocksdb::SequenceNumber maxCommitSeq, 
-                                                 SerializeFormat format) {
-
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::serialize(
+    std::string& serialized, rocksdb::SequenceNumber maxCommitSeq,
+    SerializeFormat format) {
   // We always have to start with the commit seq, type and then the length
 
   // commit seq, above that is an uncommited operations
@@ -131,21 +133,24 @@ void RocksDBCuckooIndexEstimator<Key>::serialize(std::string& serialized,
     // Sorry we need a consistent state, so we have to read-lock
     READ_LOCKER(locker, _lock);
 
-    appliedSeq = std::max(appliedSeq, _appliedSeq.load(std::memory_order_acquire));
-    TRI_ASSERT(appliedSeq != std::numeric_limits<rocksdb::SequenceNumber>::max());
+    appliedSeq =
+        std::max(appliedSeq, _appliedSeq.load(std::memory_order_acquire));
+    TRI_ASSERT(appliedSeq !=
+               std::numeric_limits<rocksdb::SequenceNumber>::max());
     rocksutils::uint64ToPersistent(serialized, appliedSeq);
-      
+
     // type byte
     serialized += format;
-      
+
     // note where we left off. we need this for the compressed format later
     size_t leftOff = serialized.size();
 
     // length
     uint64_t serialLength =
         (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
-         sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) + sizeof(_niceSize) +
-         sizeof(_logSize) + (_size * kSlotSize * kSlotsPerBucket)) +
+         sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
+         sizeof(_niceSize) + sizeof(_logSize) +
+         (_size * kSlotSize * kSlotsPerBucket)) +
         (_size * kCounterSize * kSlotsPerBucket);
 
     serialized.reserve(sizeof(uint64_t) + serialLength);
@@ -165,7 +170,8 @@ void RocksDBCuckooIndexEstimator<Key>::serialize(std::string& serialized,
       // we compress data in a scratch buffer, because compression input and
       // output must not overlap.
       std::string scratch;
-      snappy::Compress(serialized.data() + leftOff, serialized.size() - leftOff, &scratch);
+      snappy::Compress(serialized.data() + leftOff, serialized.size() - leftOff,
+                       &scratch);
 
       // scratch now contains the compressed value of UNCOMPRESSED
 
@@ -174,14 +180,15 @@ void RocksDBCuckooIndexEstimator<Key>::serialize(std::string& serialized,
       // byte following the format byte, so we can now append the compressed
       // data instead.
       serialized.resize(leftOff);
-     
+
       // append compressed size
       rocksutils::uint64ToPersistent(serialized, scratch.size());
       // append compressed blob
       serialized.append(scratch);
     }
 
-    bool havePendingUpdates = !_insertBuffers.empty() || !_removalBuffers.empty() ||
+    bool havePendingUpdates = !_insertBuffers.empty() ||
+                              !_removalBuffers.empty() ||
                               !_truncateBuffer.empty();
     _needToPersist.store(havePendingUpdates, std::memory_order_release);
   }
@@ -189,7 +196,7 @@ void RocksDBCuckooIndexEstimator<Key>::serialize(std::string& serialized,
   _appliedSeq.store(appliedSeq, std::memory_order_release);
 }
 
-template <class Key>
+template<class Key>
 void RocksDBCuckooIndexEstimator<Key>::appendHeader(std::string& result) const {
   rocksutils::uint64ToPersistent(result, _size);
   rocksutils::uint64ToPersistent(result, _nrUsed);
@@ -199,24 +206,27 @@ void RocksDBCuckooIndexEstimator<Key>::appendHeader(std::string& result) const {
   rocksutils::uint64ToPersistent(result, _logSize);
 }
 
-template <class Key>
-void RocksDBCuckooIndexEstimator<Key>::appendDataBlob(std::string& result) const {
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::appendDataBlob(
+    std::string& result) const {
   // Size is as follows: nrOfBuckets * kSlotsPerBucket * SlotSize
   TRI_ASSERT((_size * kSlotSize * kSlotsPerBucket) <= _slotAllocSize);
-  for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket); i += kSlotSize) {
+  for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket);
+       i += kSlotSize) {
     rocksutils::uint16ToPersistent(result,
-        *(reinterpret_cast<uint16_t*>(_base + i)));
+                                   *(reinterpret_cast<uint16_t*>(_base + i)));
   }
 
   TRI_ASSERT((_size * kCounterSize * kSlotsPerBucket) <= _counterAllocSize);
-  for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket); i += kCounterSize) {
-    rocksutils::uint32ToPersistent(result,
-        *(reinterpret_cast<uint32_t*>(_counters + i)));
+  for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket);
+       i += kCounterSize) {
+    rocksutils::uint32ToPersistent(
+        result, *(reinterpret_cast<uint32_t*>(_counters + i)));
   }
 }
 
 /// @brief only call directly during startup/recovery; otherwise buffer
-template <class Key>
+template<class Key>
 void RocksDBCuckooIndexEstimator<Key>::clear() {
   WRITE_LOCKER(locker, _lock);
   // Reset Stats
@@ -237,17 +247,18 @@ void RocksDBCuckooIndexEstimator<Key>::clear() {
   _needToPersist.store(true, std::memory_order_release);
 }
 
-template <class Key>
-Result RocksDBCuckooIndexEstimator<Key>::bufferTruncate(rocksdb::SequenceNumber seq) {
-    Result res = basics::catchVoidToResult([&]() -> void {
-      WRITE_LOCKER(locker, _lock);
-      _truncateBuffer.emplace(seq);
-      _needToPersist.store(true, std::memory_order_release);
-    });
-    return res;
-  }
+template<class Key>
+Result RocksDBCuckooIndexEstimator<Key>::bufferTruncate(
+    rocksdb::SequenceNumber seq) {
+  Result res = basics::catchVoidToResult([&]() -> void {
+    WRITE_LOCKER(locker, _lock);
+    _truncateBuffer.emplace(seq);
+    _needToPersist.store(true, std::memory_order_release);
+  });
+  return res;
+}
 
-template <class Key>
+template<class Key>
 double RocksDBCuckooIndexEstimator<Key>::computeEstimate() {
   READ_LOCKER(locker, _lock);
   if (0 == _nrTotal) {
@@ -264,7 +275,7 @@ double RocksDBCuckooIndexEstimator<Key>::computeEstimate() {
   return (static_cast<double>(_nrUsed) / static_cast<double>(_nrTotal));
 }
 
-template <class Key>
+template<class Key>
 bool RocksDBCuckooIndexEstimator<Key>::lookup(Key const& k) const {
   // look up a key, return either false if no pair with key k is
   // found or true.
@@ -284,7 +295,7 @@ bool RocksDBCuckooIndexEstimator<Key>::lookup(Key const& k) const {
 }
 
 /// @brief only call directly during startup/recovery; otherwise buffer
-template <class Key>
+template<class Key>
 bool RocksDBCuckooIndexEstimator<Key>::insert(Key const& k) {
   // insert the key k
   //
@@ -323,7 +334,7 @@ bool RocksDBCuckooIndexEstimator<Key>::insert(Key const& k) {
 }
 
 /// @brief only call directly during startup/recovery; otherwise buffer
-template <class Key>
+template<class Key>
 bool RocksDBCuckooIndexEstimator<Key>::remove(Key const& k) {
   // remove one element with key k, if one is in the table. Return true if
   // a key was removed and false otherwise.
@@ -376,10 +387,10 @@ bool RocksDBCuckooIndexEstimator<Key>::remove(Key const& k) {
  * @param  removals Vector of hashes to remove
  * @return          May return error if any functions throw (e.g. alloc)
  */
-template <class Key>
-Result RocksDBCuckooIndexEstimator<Key>::bufferUpdates(rocksdb::SequenceNumber seq, 
-                                                       std::vector<Key>&& inserts,
-                                                       std::vector<Key>&& removals) {
+template<class Key>
+Result RocksDBCuckooIndexEstimator<Key>::bufferUpdates(
+    rocksdb::SequenceNumber seq, std::vector<Key>&& inserts,
+    std::vector<Key>&& removals) {
   TRI_ASSERT(!inserts.empty() || !removals.empty());
   Result res = basics::catchVoidToResult([&]() -> void {
     WRITE_LOCKER(locker, _lock);
@@ -396,8 +407,9 @@ Result RocksDBCuckooIndexEstimator<Key>::bufferUpdates(rocksdb::SequenceNumber s
 }
 
 /// @brief call with output from committableSeq(current), and before serialize
-template <class Key>
-rocksdb::SequenceNumber RocksDBCuckooIndexEstimator<Key>::applyUpdates(rocksdb::SequenceNumber commitSeq) {
+template<class Key>
+rocksdb::SequenceNumber RocksDBCuckooIndexEstimator<Key>::applyUpdates(
+    rocksdb::SequenceNumber commitSeq) {
   rocksdb::SequenceNumber appliedSeq = 0;
   Result res = basics::catchVoidToResult([&]() -> void {
     std::vector<Key> inserts;
@@ -481,8 +493,9 @@ rocksdb::SequenceNumber RocksDBCuckooIndexEstimator<Key>::applyUpdates(rocksdb::
   return appliedSeq;
 }
 
-template <class Key>
-void RocksDBCuckooIndexEstimator<Key>::deserialize(arangodb::velocypack::StringRef serialized) {
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::deserialize(
+    arangodb::velocypack::StringRef serialized) {
   // minimum size
   TRI_ASSERT(serialized.size() > sizeof(_appliedSeq) + 1);
 
@@ -498,7 +511,8 @@ void RocksDBCuckooIndexEstimator<Key>::deserialize(arangodb::velocypack::StringR
   if (format == SerializeFormat::UNCOMPRESSED) {
     // UNCOMPRESSED format.
     // we have a subroutine which we can invoke on it.
-    return deserializeUncompressedBody(serialized.substr(current - serialized.data()));
+    return deserializeUncompressedBody(
+        serialized.substr(current - serialized.data()));
   }
 
   if (format == SerializeFormat::COMPRESSED) {
@@ -508,22 +522,25 @@ void RocksDBCuckooIndexEstimator<Key>::deserialize(arangodb::velocypack::StringR
 
     // read compressed length
     uint64_t compressedLength = rocksutils::uint64FromPersistent(current);
-    TRI_ASSERT(compressedLength == serialized.size() - sizeof(uint64_t) - sizeof(SerializeFormat) - sizeof(uint64_t));
+    TRI_ASSERT(compressedLength == serialized.size() - sizeof(uint64_t) -
+                                       sizeof(SerializeFormat) -
+                                       sizeof(uint64_t));
 
     current += sizeof(uint64_t);
 
     // uncompress data in scratch buffer
     std::string scratch;
     if (!snappy::Uncompress(current, compressedLength, &scratch)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
-          "unable to uncompress data in compressed index selectivity estimates");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to uncompress data in compressed "
+                                     "index selectivity estimates");
     }
     // now scratch contains the UNCOMPRESSED data
 
     // from now on, we have an UNCOMPRESSED value, and can pretend
     // it was always like this
-    return deserializeUncompressedBody(arangodb::velocypack::StringRef(scratch));
+    return deserializeUncompressedBody(
+        arangodb::velocypack::StringRef(scratch));
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -531,13 +548,13 @@ void RocksDBCuckooIndexEstimator<Key>::deserialize(arangodb::velocypack::StringR
       "unable to restore index estimates: invalid format found");
 }
 
-template <class Key>
-void RocksDBCuckooIndexEstimator<Key>::deserializeUncompressedBody(arangodb::velocypack::StringRef serialized) {
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::deserializeUncompressedBody(
+    arangodb::velocypack::StringRef serialized) {
   // Assert that we have at least the member variables
-  constexpr size_t minRequiredSize = 
-    sizeof(uint64_t) + sizeof(_size) +
-    sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
-    sizeof(_niceSize) + sizeof(_logSize);
+  constexpr size_t minRequiredSize =
+      sizeof(uint64_t) + sizeof(_size) + sizeof(_nrUsed) + sizeof(_nrCuckood) +
+      sizeof(_nrTotal) + sizeof(_niceSize) + sizeof(_logSize);
   TRI_ASSERT(serialized.size() > minRequiredSize);
   if (serialized.size() <= minRequiredSize) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -557,7 +574,7 @@ void RocksDBCuckooIndexEstimator<Key>::deserializeUncompressedBody(arangodb::vel
 
   if (_size <= 256) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-        "unable to unserialize index estimates");
+                                   "unable to unserialize index estimates");
   }
 
   _nrUsed = rocksutils::uint64FromPersistent(current);
@@ -579,31 +596,33 @@ void RocksDBCuckooIndexEstimator<Key>::deserializeUncompressedBody(arangodb::vel
 
   // Validate that we have enough data in the serialized format.
   TRI_ASSERT(serialized.size() ==
-      sizeof(uint64_t) + sizeof(_size) + sizeof(_nrUsed) +
-      sizeof(_nrCuckood) + sizeof(_nrTotal) + sizeof(_niceSize) +
-      sizeof(_logSize) + (_size * kSlotSize * kSlotsPerBucket) +
-      (_size * kCounterSize * kSlotsPerBucket));
+             sizeof(uint64_t) + sizeof(_size) + sizeof(_nrUsed) +
+                 sizeof(_nrCuckood) + sizeof(_nrTotal) + sizeof(_niceSize) +
+                 sizeof(_logSize) + (_size * kSlotSize * kSlotsPerBucket) +
+                 (_size * kCounterSize * kSlotsPerBucket));
 
   // Insert the raw data
   // Size is as follows: nrOfBuckets * kSlotsPerBucket * SlotSize
   TRI_ASSERT((_size * kSlotSize * kSlotsPerBucket) <= _slotAllocSize);
 
-  for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket); i += kSlotSize) {
+  for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket);
+       i += kSlotSize) {
     *(reinterpret_cast<uint16_t*>(_base + i)) =
-      rocksutils::uint16FromPersistent(current);
+        rocksutils::uint16FromPersistent(current);
     current += kSlotSize;
   }
 
   TRI_ASSERT((_size * kCounterSize * kSlotsPerBucket) <= _counterAllocSize);
 
-  for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket); i += kCounterSize) {
+  for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket);
+       i += kCounterSize) {
     *(reinterpret_cast<uint32_t*>(_counters + i)) =
-      rocksutils::uint32FromPersistent(current);
+        rocksutils::uint32FromPersistent(current);
     current += kCounterSize;
   }
 }
 
-template <class Key>
+template<class Key>
 void RocksDBCuckooIndexEstimator<Key>::initializeDefault() {
   _niceSize = 256;
   _logSize = 8;
@@ -624,7 +643,7 @@ void RocksDBCuckooIndexEstimator<Key>::initializeDefault() {
   }
 }
 
-template <class Key>
+template<class Key>
 void RocksDBCuckooIndexEstimator<Key>::deriveSizesAndAlloc() {
   _sizeMask = _niceSize - 1;
   _sizeShift = static_cast<uint32_t>((64 - _logSize) / 2);

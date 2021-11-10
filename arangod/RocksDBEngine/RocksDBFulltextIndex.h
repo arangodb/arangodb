@@ -23,6 +23,9 @@
 
 #pragma once
 
+#include <set>
+#include <string>
+
 #include "Basics/Result.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
@@ -30,9 +33,6 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-
-#include <set>
-#include <string>
 
 namespace arangodb {
 class LocalDocumentId;
@@ -76,8 +76,9 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  void toVelocyPack(velocypack::Builder&,
-                    std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(
+      velocypack::Builder&,
+      std::underlying_type<Index::Serialize>::type) const override;
 
   bool matchesDefinition(VPackSlice const&) const override;
 
@@ -87,11 +88,10 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
     return (_minWordLength == minWordLength && fieldString == field);
   }
 
-  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
-                                                      aql::AstNode const* node, 
-                                                      aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts,
-                                                      ReadOwnWrites readOwnWrites) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(
+      transaction::Methods* trx, aql::AstNode const* node,
+      aql::Variable const* reference, IndexIteratorOptions const& opts,
+      ReadOwnWrites readOwnWrites) override;
 
   arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
   Result executeQuery(transaction::Methods* trx, FulltextQuery const& query,
@@ -101,7 +101,8 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& /*options*/, bool /*performChecks*/) override;
+                OperationOptions const& /*options*/,
+                bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
@@ -117,9 +118,9 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   /// @brief minimum word length
   int _minWordLength;
 
-  arangodb::Result applyQueryToken(transaction::Methods* trx, FulltextQueryToken const&,
+  arangodb::Result applyQueryToken(transaction::Methods* trx,
+                                   FulltextQueryToken const&,
                                    std::set<LocalDocumentId>& resultSet);
 };
 
 }  // namespace arangodb
-

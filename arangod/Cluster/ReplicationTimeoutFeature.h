@@ -23,17 +23,18 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "RestServer/Metrics.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-
 namespace arangodb {
 
-class ReplicationTimeoutFeature : public application_features::ApplicationFeature {
+class ReplicationTimeoutFeature
+    : public application_features::ApplicationFeature {
  public:
-  explicit ReplicationTimeoutFeature(application_features::ApplicationServer& server);
+  explicit ReplicationTimeoutFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -45,4 +46,3 @@ class ReplicationTimeoutFeature : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-

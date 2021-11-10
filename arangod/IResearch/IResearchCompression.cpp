@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchCompression.h"
-#include "Basics/debugging.h"
+
 #include <utils/lz4compression.hpp>
+
+#include "Basics/debugging.h"
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 #include "../tests/IResearch/IResearchTestCompressor.h"
 #endif
@@ -31,7 +33,8 @@
 namespace arangodb {
 namespace iresearch {
 
-irs::string_ref columnCompressionToString(irs::type_info::type_id type) noexcept {
+irs::string_ref columnCompressionToString(
+    irs::type_info::type_id type) noexcept {
   if (ADB_UNLIKELY(type == nullptr)) {
     TRI_ASSERT(false);
     return irs::string_ref::EMPTY;
@@ -39,13 +42,16 @@ irs::string_ref columnCompressionToString(irs::type_info::type_id type) noexcept
   auto const mangled_name = type().name();
   TRI_ASSERT(!mangled_name.empty());
   auto demangled_start = mangled_name.end() - 1;
-  while (demangled_start != mangled_name.begin() && *(demangled_start-1) != ':') {
+  while (demangled_start != mangled_name.begin() &&
+         *(demangled_start - 1) != ':') {
     demangled_start--;
   }
-  return irs::string_ref(demangled_start, std::distance(demangled_start, mangled_name.end()));
+  return irs::string_ref(demangled_start,
+                         std::distance(demangled_start, mangled_name.end()));
 }
 
-irs::type_info::type_id columnCompressionFromString(irs::string_ref const& c) noexcept {
+irs::type_info::type_id columnCompressionFromString(
+    irs::string_ref const& c) noexcept {
   TRI_ASSERT(!c.null());
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   if (c == "test") {
@@ -57,7 +63,7 @@ irs::type_info::type_id columnCompressionFromString(irs::string_ref const& c) no
   }
   if (c == "none") {
     return irs::type<irs::compression::none>::id();
-  } 
+  }
   return nullptr;
 }
 
@@ -67,4 +73,3 @@ irs::type_info::type_id getDefaultCompression() noexcept {
 
 }  // namespace iresearch
 }  // namespace arangodb
-

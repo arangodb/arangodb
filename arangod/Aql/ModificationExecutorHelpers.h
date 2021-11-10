@@ -23,18 +23,18 @@
 
 #pragma once
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <string>
+
 #include "Aql/AqlValue.h"
 #include "Aql/ModificationOptions.h"
 #include "Basics/Result.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <string>
 
 namespace arangodb {
 namespace aql {
@@ -46,7 +46,8 @@ namespace ModificationExecutorHelpers {
 // Extracts key from input AqlValue value.
 //
 // * if value is a string, this string is assigned to key
-// * if value is an object, we extract the entry _key into key if it is a string,
+// * if value is an object, we extract the entry _key into key if it is a
+// string,
 //   or signal an error otherwise.
 // * if value is anything else, we return an error.
 Result getKey(CollectionNameResolver const& resolver, AqlValue const& value,
@@ -55,14 +56,16 @@ Result getKey(CollectionNameResolver const& resolver, AqlValue const& value,
 // Extracts rev from input AqlValue value.
 //
 // * value has to be an objectis a string, this string is assigned to key
-// * if value is an object, we extract the entry _key into key if it is a string,
+// * if value is an object, we extract the entry _key into key if it is a
+// string,
 //   or signal an error otherwise.
 // * if value is anything else, we return an error.
 Result getRevision(CollectionNameResolver const& resolver,
                    AqlValue const& value, std::string& key);
 
 Result getKeyAndRevision(CollectionNameResolver const& resolver,
-                         AqlValue const& value, std::string& key, std::string& rev);
+                         AqlValue const& value, std::string& key,
+                         std::string& rev);
 
 // Builds an object "{ _key: key }"
 void buildKeyDocument(VPackBuilder& builder, std::string const& key);
@@ -87,7 +90,8 @@ void throwOperationResultException(ModificationExecutorInfos const& infos,
                                    OperationResult const& operationResult);
 
 // Converts ModificationOptions to OperationOptions
-OperationOptions convertOptions(ModificationOptions const& in, Variable const* outVariableNew,
+OperationOptions convertOptions(ModificationOptions const& in,
+                                Variable const* outVariableNew,
                                 Variable const* outVariableOld);
 
 AqlValue getDocumentOrNull(VPackSlice const& elm, std::string const& key);
@@ -95,4 +99,3 @@ AqlValue getDocumentOrNull(VPackSlice const& elm, std::string const& key);
 }  // namespace ModificationExecutorHelpers
 }  // namespace aql
 }  // namespace arangodb
-

@@ -24,14 +24,14 @@
 
 #pragma once
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Aql/Collection.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace aql {
@@ -65,15 +65,16 @@ struct IgnoreDocumentNotFound : BoolWrapper {
 };
 
 struct ModificationExecutorInfos {
-  ModificationExecutorInfos(ExecutionEngine* engine, 
-                            RegisterId input1RegisterId, RegisterId input2RegisterId,
-                            RegisterId input3RegisterId, RegisterId outputNewRegisterId,
-                            RegisterId outputOldRegisterId, RegisterId outputRegisterId,
-                            arangodb::aql::QueryContext& query, OperationOptions options,
-                            aql::Collection const* aqlCollection, ProducesResults producesResults,
-                            ConsultAqlWriteFilter consultAqlWriteFilter,
-                            IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
-                            IgnoreDocumentNotFound ignoreDocumentNotFound);
+  ModificationExecutorInfos(
+      ExecutionEngine* engine, RegisterId input1RegisterId,
+      RegisterId input2RegisterId, RegisterId input3RegisterId,
+      RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
+      RegisterId outputRegisterId, arangodb::aql::QueryContext& query,
+      OperationOptions options, aql::Collection const* aqlCollection,
+      ProducesResults producesResults,
+      ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
+      DoCount doCount, IsReplace isReplace,
+      IgnoreDocumentNotFound ignoreDocumentNotFound);
 
   ModificationExecutorInfos() = delete;
   ModificationExecutorInfos(ModificationExecutorInfos&&) = default;
@@ -109,4 +110,3 @@ struct ModificationExecutorInfos {
 
 }  // namespace aql
 }  // namespace arangodb
-

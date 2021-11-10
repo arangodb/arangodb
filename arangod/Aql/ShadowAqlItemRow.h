@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "Aql/SharedAqlItemBlockPtr.h"
-
 #include <cstddef>
+
+#include "Aql/SharedAqlItemBlockPtr.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -48,10 +48,11 @@ struct CreateInvalidShadowRowHint {
  * Note that this class will be copied a lot, and therefore should be small
  * and not do too complex things when copied!
  *
- * This row is used to indicate a separator between different executions of a subquery.
- * It will contain the data of the subquery input (former used in initializeCursor).
- * We can never write to ShadowRow again, only SubqueryEnd nodes are allowed transform
- * a ShadowRow into an AqlOutputRow again, and add the result of the subquery to it.
+ * This row is used to indicate a separator between different executions of a
+ * subquery. It will contain the data of the subquery input (former used in
+ * initializeCursor). We can never write to ShadowRow again, only SubqueryEnd
+ * nodes are allowed transform a ShadowRow into an AqlOutputRow again, and add
+ * the result of the subquery to it.
  */
 
 class ShadowAqlItemRow {
@@ -68,22 +69,26 @@ class ShadowAqlItemRow {
   ///        ShadowRow. There might be empty registers on deeper levels.
   [[nodiscard]] RegisterCount getNumRegisters() const noexcept;
 
-  /// @brief a ShadowRow is relevant iff it indicates an end of subquery block on the subquery context
-  ///        we are in right now. This will only be of importance on nested subqueries.
-  ///        Within the inner subquery all shadowrows of this inner are relevant. All shadowRows
-  ///        of the outer subquery are NOT relevant
-  ///        Also note: There is a guarantee that a non-relevant shadowrow, can only be encountered
-  ///        right after a shadowrow. And only in descending nesting level. (eg 1. inner most, 2. inner, 3. outer most)
+  /// @brief a ShadowRow is relevant iff it indicates an end of subquery block
+  /// on the subquery context
+  ///        we are in right now. This will only be of importance on nested
+  ///        subqueries. Within the inner subquery all shadowrows of this inner
+  ///        are relevant. All shadowRows of the outer subquery are NOT relevant
+  ///        Also note: There is a guarantee that a non-relevant shadowrow, can
+  ///        only be encountered right after a shadowrow. And only in descending
+  ///        nesting level. (eg 1. inner most, 2. inner, 3. outer most)
   [[nodiscard]] bool isRelevant() const noexcept;
 
-  /// @brief Test if this shadow row is initialized, eg has a block and has a valid depth.
+  /// @brief Test if this shadow row is initialized, eg has a block and has a
+  /// valid depth.
   [[nodiscard]] bool isInitialized() const;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /**
    * @brief Compare the underlying block. Only for assertions.
    */
-  [[nodiscard]] bool internalBlockIs(SharedAqlItemBlockPtr const& other, size_t index) const;
+  [[nodiscard]] bool internalBlockIs(SharedAqlItemBlockPtr const& other,
+                                     size_t index) const;
 #endif
 
   /**
@@ -101,12 +106,14 @@ class ShadowAqlItemRow {
   [[nodiscard]] size_t getShadowDepthValue() const;
 
   /// @brief get the depthValue of the shadow row as int64_t >= 0
-  ///        NOTE: Innermost query will have depth 0. Outermost query wil have highest depth.
+  ///        NOTE: Innermost query will have depth 0. Outermost query wil have
+  ///        highest depth.
   [[nodiscard]] uint64_t getDepth() const;
 
   // Check whether the rows are *identical*, that is,
   // the same row in the same block.
-  [[nodiscard]] bool isSameBlockAndIndex(ShadowAqlItemRow const& other) const noexcept;
+  [[nodiscard]] bool isSameBlockAndIndex(
+      ShadowAqlItemRow const& other) const noexcept;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // This checks whether the rows are equivalent, in the sense that they hold
@@ -139,4 +146,3 @@ class ShadowAqlItemRow {
 
 }  // namespace aql
 }  // namespace arangodb
-

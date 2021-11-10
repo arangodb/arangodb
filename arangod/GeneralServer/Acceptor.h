@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Basics/Common.h"
-
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/IoContext.h"
@@ -34,9 +33,9 @@ namespace rest {
 
 /// Abstract class handling the socket acceptor
 class Acceptor {
-
  public:
-  Acceptor(rest::GeneralServer& server, rest::IoContext& context, Endpoint* endpoint);
+  Acceptor(rest::GeneralServer& server, rest::IoContext& context,
+           Endpoint* endpoint);
   virtual ~Acceptor() = default;
 
  public:

@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <memory>
+
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace application_features {
@@ -35,23 +35,22 @@ namespace rest {
 class RestHandler;
 }
 
-template <typename H>
+template<typename H>
 class RestHandlerCreator : public H {
  public:
-  template <typename D>
-  static std::shared_ptr<rest::RestHandler> createData(application_features::ApplicationServer& server,
-                                                       GeneralRequest* request,
-                                                       GeneralResponse* response, void* data) {
+  template<typename D>
+  static std::shared_ptr<rest::RestHandler> createData(
+      application_features::ApplicationServer& server, GeneralRequest* request,
+      GeneralResponse* response, void* data) {
     return std::make_shared<H>(server, request, response, (D)data);
   }
 
-  static std::shared_ptr<rest::RestHandler> createNoData(application_features::ApplicationServer& server,
-                                                         GeneralRequest* request,
-                                                         GeneralResponse* response, void*) {
+  static std::shared_ptr<rest::RestHandler> createNoData(
+      application_features::ApplicationServer& server, GeneralRequest* request,
+      GeneralResponse* response, void*) {
     return std::make_shared<H>(server, request, response);
   }
 
   // TODO consolidate methods using variadic templates
 };
 }  // namespace arangodb
-

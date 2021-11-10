@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MaxMapCountFeature.h"
+
+#include <algorithm>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
@@ -33,19 +36,19 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-#include <algorithm>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-MaxMapCountFeature::MaxMapCountFeature(application_features::ApplicationServer& server)
+MaxMapCountFeature::MaxMapCountFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "MaxMapCount") {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
-void MaxMapCountFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+void MaxMapCountFeature::collectOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
   options->addObsoleteOption(
       "--server.check-max-memory-mappings",
       "check the maximum number of memory mappings at startup", true);
@@ -59,8 +62,7 @@ uint64_t MaxMapCountFeature::actualMaxMappings() {
 #ifdef __linux__
   // test max_map_count value in /proc/sys/vm
   try {
-    std::string value =
-        basics::FileUtils::slurp("/proc/sys/vm/max_map_count");
+    std::string value = basics::FileUtils::slurp("/proc/sys/vm/max_map_count");
 
     maxMappings = basics::StringUtils::uint64(value);
   } catch (...) {

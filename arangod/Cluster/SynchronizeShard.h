@@ -24,13 +24,13 @@
 
 #pragma once
 
+#include <chrono>
+
 #include "Basics/ResultT.h"
 #include "Cluster/ActionBase.h"
 #include "Cluster/ActionDescription.h"
 #include "Replication/utilities.h"
 #include "VocBase/voc-types.h"
-
-#include <chrono>
 
 namespace arangodb {
 namespace network {
@@ -59,41 +59,36 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
 
  private:
   arangodb::Result getReadLock(network::ConnectionPool* pool,
-                               std::string const& endpoint, 
-                               std::string const& collection, 
-                               std::string const& clientId,
-                               uint64_t rlid, 
-                               bool soft, 
-                               double timeout);
+                               std::string const& endpoint,
+                               std::string const& collection,
+                               std::string const& clientId, uint64_t rlid,
+                               bool soft, double timeout);
 
   arangodb::Result startReadLockOnLeader(std::string const& endpoint,
                                          std::string const& collection,
-                                         std::string const& clientId, 
-                                         uint64_t& rlid,
-                                         bool soft, 
+                                         std::string const& clientId,
+                                         uint64_t& rlid, bool soft,
                                          double timeout = 300.0);
 
   arangodb::ResultT<TRI_voc_tick_t> catchupWithReadLock(
-      std::string const& ep, 
-      LogicalCollection const& collection,
-      std::string const& clientId, 
-      std::string const& leader, TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
-
-  arangodb::Result catchupWithExclusiveLock(
-      std::string const& ep, 
-      LogicalCollection& collection, 
-      std::string const& clientId,
-      std::string const& leader, SyncerId syncerId,
+      std::string const& ep, LogicalCollection const& collection,
+      std::string const& clientId, std::string const& leader,
       TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
 
-  /// @brief Short, informative description of the replication client, passed to the server
+  arangodb::Result catchupWithExclusiveLock(
+      std::string const& ep, LogicalCollection& collection,
+      std::string const& clientId, std::string const& leader, SyncerId syncerId,
+      TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
+
+  /// @brief Short, informative description of the replication client, passed to
+  /// the server
   std::string _clientInfoString;
 
-  /// @brief information about the leader, reused across multiple replication steps
+  /// @brief information about the leader, reused across multiple replication
+  /// steps
   arangodb::replutils::LeaderInfo _leaderInfo;
   uint64_t _followingTermId;
 };
 
 }  // namespace maintenance
 }  // namespace arangodb
-

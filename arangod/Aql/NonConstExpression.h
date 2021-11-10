@@ -22,10 +22,10 @@
 
 #pragma once
 
-#include "Aql/Expression.h"
-
 #include <memory>
 #include <vector>
+
+#include "Aql/Expression.h"
 
 namespace arangodb {
 
@@ -36,8 +36,9 @@ struct NonConstExpression {
   std::unique_ptr<Expression> expression;
   std::vector<size_t> const indexPath;
 
-  NonConstExpression(std::unique_ptr<Expression> exp, std::vector<size_t> idxPath);
+  NonConstExpression(std::unique_ptr<Expression> exp,
+                     std::vector<size_t> idxPath);
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb

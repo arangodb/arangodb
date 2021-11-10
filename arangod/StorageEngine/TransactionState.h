@@ -23,6 +23,9 @@
 
 #pragma once
 
+#include <map>
+#include <variant>
+
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterTypes.h"
@@ -36,9 +39,6 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
-
-#include <map>
-#include <variant>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
@@ -74,7 +74,8 @@ class TransactionState {
     virtual ~Cookie() = default;
   };
 
-  [[nodiscard]] static bool ServerIdLessThan(ServerID const& lhs, ServerID const& rhs) {
+  [[nodiscard]] static bool ServerIdLessThan(ServerID const& lhs,
+                                             ServerID const& rhs) {
     return lhs < rhs;
   }
 
@@ -107,9 +108,7 @@ class TransactionState {
   [[nodiscard]] ServerState::RoleEnum serverRole() const { return _serverRole; }
 
   [[nodiscard]] transaction::Options& options() { return _options; }
-  [[nodiscard]] transaction::Options const& options() const {
-    return _options;
-  }
+  [[nodiscard]] transaction::Options const& options() const { return _options; }
   [[nodiscard]] TRI_vocbase_t& vocbase() const { return _vocbase; }
   [[nodiscard]] TransactionId id() const { return _id; }
   [[nodiscard]] transaction::Status status() const noexcept { return _status; }
@@ -149,22 +148,23 @@ class TransactionState {
   }
 
   /// @brief return the collection from a transaction
-  [[nodiscard]] TransactionCollection* collection(DataSourceId cid,
-                                                  AccessMode::Type accessType) const;
+  [[nodiscard]] TransactionCollection* collection(
+      DataSourceId cid, AccessMode::Type accessType) const;
 
   /// @brief return the collection from a transaction
-  [[nodiscard]] TransactionCollection* collection(std::string const& name,
-                                                  AccessMode::Type accessType) const;
+  [[nodiscard]] TransactionCollection* collection(
+      std::string const& name, AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
   [[nodiscard]] Result addCollection(DataSourceId cid, std::string const& cname,
-                                     AccessMode::Type accessType, bool lockUsage);
+                                     AccessMode::Type accessType,
+                                     bool lockUsage);
 
   /// @brief use all participating collections of a transaction
   [[nodiscard]] Result useCollections();
 
   /// @brief run a callback on all collections of the transaction
-  template <typename F>
+  template<typename F>
   void allCollections(F&& cb) {
     for (auto& trxCollection : _collections) {
       TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
@@ -226,7 +226,8 @@ class TransactionState {
   }
 
   /// @brief servers already contacted
-  [[nodiscard]] ::arangodb::containers::HashSet<std::string> const& knownServers() const {
+  [[nodiscard]] ::arangodb::containers::HashSet<std::string> const&
+  knownServers() const {
     return _knownServers;
   }
 
@@ -247,9 +248,11 @@ class TransactionState {
   ///       transaction is committed
   [[nodiscard]] virtual TRI_voc_tick_t lastOperationTick() const noexcept = 0;
 
-  void acceptAnalyzersRevision(QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
+  void acceptAnalyzersRevision(
+      QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
-  [[nodiscard]] QueryAnalyzerRevisions const& analyzersRevision() const noexcept {
+  [[nodiscard]] QueryAnalyzerRevisions const& analyzersRevision()
+      const noexcept {
     return _analyzersRevision;
   }
 
@@ -265,9 +268,9 @@ class TransactionState {
   /// Only allowed on coordinators.
   void coordinatorRerollTransactionId();
 
- protected: 
+ protected:
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
-    DataSourceId cid, AccessMode::Type accessType) = 0;
+      DataSourceId cid, AccessMode::Type accessType) = 0;
 
   /// @brief find a collection in the transaction's list of collections
   struct CollectionNotFound {
@@ -293,7 +296,7 @@ class TransactionState {
   /// @brief check if current user can access this collection
   Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
                                    AccessMode::Type);
-  
+
   /// @brief helper function for addCollection
   Result addCollectionInternal(DataSourceId cid, std::string const& cname,
                                AccessMode::Type accessType, bool lockUsage);
@@ -306,7 +309,8 @@ class TransactionState {
   /// @brief current status
   transaction::Status _status = transaction::Status::CREATED;
 
-  arangodb::containers::SmallVectorWithArena<TransactionCollection*> _collections;
+  arangodb::containers::SmallVectorWithArena<TransactionCollection*>
+      _collections;
 
   transaction::Hints _hints{};  // hints; set on _nestingLevel == 0
 
@@ -328,4 +332,3 @@ class TransactionState {
 };
 
 }  // namespace arangodb
-

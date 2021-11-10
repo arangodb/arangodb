@@ -23,6 +23,9 @@
 
 #pragma once
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <memory>
 
 #include "Agency/AgencyCommon.h"
@@ -30,9 +33,6 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace consensus {
@@ -74,10 +74,10 @@ class Inception : public Thread {
 
   Agent& _agent;                            //< @brief The agent
   arangodb::basics::ConditionVariable _cv;  //< @brief For proper shutdown
-  std::unordered_map<std::string, size_t> _acked;  //< @brief acknowledged config version
-  mutable arangodb::Mutex _vLock;                  //< @brieg Guard _acked
+  std::unordered_map<std::string, size_t>
+      _acked;                      //< @brief acknowledged config version
+  mutable arangodb::Mutex _vLock;  //< @brieg Guard _acked
 };
 
 }  // namespace consensus
 }  // namespace arangodb
-

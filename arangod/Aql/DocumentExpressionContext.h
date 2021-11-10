@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "Aql/QueryExpressionContext.h"
-
 #include <velocypack/Slice.h>
+
+#include "Aql/QueryExpressionContext.h"
 
 namespace arangodb {
 namespace aql {
@@ -33,7 +33,8 @@ namespace aql {
 class DocumentExpressionContext final : public QueryExpressionContext {
  public:
   DocumentExpressionContext(transaction::Methods& trx, QueryContext& query,
-                            AqlFunctionsInternalCache& cache, arangodb::velocypack::Slice document) noexcept;
+                            AqlFunctionsInternalCache& cache,
+                            arangodb::velocypack::Slice document) noexcept;
 
   ~DocumentExpressionContext() = default;
 

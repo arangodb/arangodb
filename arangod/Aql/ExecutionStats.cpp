@@ -22,18 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionStats.h"
-#include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
+
 using namespace arangodb::aql;
 
 /// @brief convert the statistics to VelocyPack
-void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) const {
+void ExecutionStats::toVelocyPack(VPackBuilder& builder,
+                                  bool reportFullCount) const {
   builder.openObject();
   builder.add("writesExecuted", VPackValue(writesExecuted));
   builder.add("writesIgnored", VPackValue(writesIgnored));
@@ -86,7 +88,8 @@ void ExecutionStats::add(ExecutionStats const& summand) {
     if (alias != _nodeAliases.end()) {
       nid = alias->second;
       if (nid.id() == ExecutionNodeId::InternalNode) {
-        // ignore this value, it is an internal node that we do not want to expose
+        // ignore this value, it is an internal node that we do not want to
+        // expose
         continue;
       }
     }
@@ -101,7 +104,8 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   }
 }
 
-void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid, ExecutionNodeStats const& stats) {
+void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid,
+                             ExecutionNodeStats const& stats) {
   auto const alias = _nodeAliases.find(nid);
   if (alias != _nodeAliases.end()) {
     nid = alias->second;
@@ -110,7 +114,7 @@ void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid, ExecutionNodeSt
       return;
     }
   }
-  
+
   auto it = _nodes.find(nid);
   if (it != _nodes.end()) {
     it->second += stats;
@@ -148,7 +152,8 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
   }
 
   if (slice.hasKey("peakMemoryUsage")) {
-    peakMemoryUsage = std::max<size_t>(peakMemoryUsage, slice.get("peakMemoryUsage").getNumber<int64_t>());
+    peakMemoryUsage = std::max<size_t>(
+        peakMemoryUsage, slice.get("peakMemoryUsage").getNumber<int64_t>());
   }
 
   // note: fullCount is an optional attribute!
@@ -162,7 +167,8 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
   if (slice.hasKey("nodes")) {
     ExecutionNodeStats node;
     for (VPackSlice val : VPackArrayIterator(slice.get("nodes"))) {
-      auto nid = ExecutionNodeId{val.get("id").getNumber<ExecutionNodeId::BaseType>()};
+      auto nid =
+          ExecutionNodeId{val.get("id").getNumber<ExecutionNodeId::BaseType>()};
       node.calls = val.get("calls").getNumber<size_t>();
       node.items = val.get("items").getNumber<size_t>();
       node.runtime = val.get("runtime").getNumber<double>();

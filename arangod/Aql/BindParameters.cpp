@@ -22,9 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/BindParameters.h"
-#include "Basics/Exceptions.h"
-#include "Basics/ResourceUsage.h"
-#include "Basics/debugging.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -34,20 +31,24 @@
 
 #include <utility>
 
+#include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
+#include "Basics/debugging.h"
+
 using namespace arangodb::aql;
 
 BindParameters::BindParameters(ResourceMonitor& resourceMonitor)
-    : _resourceMonitor(resourceMonitor), 
-      _processed(false) {}
+    : _resourceMonitor(resourceMonitor), _processed(false) {}
 
-BindParameters::BindParameters(ResourceMonitor& resourceMonitor,
-                               std::shared_ptr<arangodb::velocypack::Builder> builder)
+BindParameters::BindParameters(
+    ResourceMonitor& resourceMonitor,
+    std::shared_ptr<arangodb::velocypack::Builder> builder)
     : _resourceMonitor(resourceMonitor),
-      _builder(std::move(builder)), 
+      _builder(std::move(builder)),
       _processed(false) {
   process();
 }
-    
+
 BindParameters::~BindParameters() {
   std::size_t memoryUsed = 0;
   for (auto const& it : _parameters) {
@@ -78,14 +79,17 @@ VPackSlice BindParameters::markUsed(std::string const& name) noexcept {
 
   // mark the bind parameter as being used
   (*it).second.second = true;
-        
+
   // return parameter value
   TRI_ASSERT(!(*it).second.first.isNone());
-  return(*it).second.first;
+  return (*it).second.first;
 }
-  
+
 /// @brief run a visitor function on all bind parameters
-void BindParameters::visit(std::function<void(std::string const& key, arangodb::velocypack::Slice value, bool used)> const& visitor) const {
+void BindParameters::visit(
+    std::function<void(std::string const& key,
+                       arangodb::velocypack::Slice value, bool used)> const&
+        visitor) const {
   for (auto const& it : _parameters) {
     visitor(it.first, it.second.first, it.second.second);
   }
@@ -108,8 +112,9 @@ void BindParameters::stripCollectionNames(VPackSlice keys,
       if (p != nullptr && strncmp(s, c, p - s) == 0) {
         // key begins with collection name + '/', now strip it in place for
         // further comparisons
-        result.add(VPackValue(
-         std::string(p + 1, static_cast<size_t>(l - static_cast<std::ptrdiff_t>(p - s) - 1))));
+        result.add(VPackValue(std::string(
+            p + 1,
+            static_cast<size_t>(l - static_cast<std::ptrdiff_t>(p - s) - 1))));
         continue;
       }
     }
@@ -127,11 +132,11 @@ void BindParameters::process() {
   if (_builder == nullptr || _builder->slice().isNone()) {
     _processed = true;
   }
-  
+
   if (_processed) {
     return;
   }
-    
+
   TRI_ASSERT(_builder != nullptr);
   VPackSlice slice = _builder->slice();
   TRI_ASSERT(!slice.isNone());
@@ -147,12 +152,14 @@ void BindParameters::process() {
     VPackSlice value(it.value);
 
     if (value.isNone()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, key.c_str());
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
+                                    key.c_str());
     }
 
     if (key[0] == '@' && !value.isString()) {
       // collection bind parameter
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, key.c_str());
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
+                                    key.c_str());
     }
 
     ResourceUsageScope guard(_resourceMonitor, memoryUsage(key, value));
@@ -165,7 +172,8 @@ void BindParameters::process() {
 
   _processed = true;
 }
-    
-std::size_t BindParameters::memoryUsage(std::string const& key, VPackSlice value) const noexcept {
+
+std::size_t BindParameters::memoryUsage(std::string const& key,
+                                        VPackSlice value) const noexcept {
   return 32 + key.size() + value.byteSize();
 }

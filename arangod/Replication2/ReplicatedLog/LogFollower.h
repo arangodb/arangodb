@@ -22,6 +22,13 @@
 
 #pragma once
 
+#include <Basics/Guarded.h>
+#include <Futures/Future.h>
+
+#include <map>
+#include <memory>
+#include <mutex>
+
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
@@ -30,13 +37,6 @@
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/types.h"
-
-#include <Basics/Guarded.h>
-#include <Futures/Future.h>
-
-#include <map>
-#include <memory>
-#include <mutex>
 
 namespace arangodb::replication2::replicated_log {
 
@@ -48,7 +48,8 @@ class LogFollower final : public ILogParticipant,
                           public std::enable_shared_from_this<LogFollower> {
  public:
   ~LogFollower() override;
-  LogFollower(LoggerContext const&, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+  LogFollower(LoggerContext const&,
+              std::shared_ptr<ReplicatedLogMetrics> logMetrics,
               ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
               std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog);
 
@@ -57,11 +58,14 @@ class LogFollower final : public ILogParticipant,
       -> futures::Future<AppendEntriesResult> override;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
-  [[nodiscard]] auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
+  [[nodiscard]] auto
+  resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
-  [[nodiscard]] auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
-  [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
+  [[nodiscard]] auto waitForIterator(LogIndex index)
+      -> WaitForIteratorFuture override;
+  [[nodiscard]] auto getParticipantId() const noexcept
+      -> ParticipantId const& override;
   [[nodiscard]] auto getLogIterator(LogIndex firstIndex) const
       -> std::unique_ptr<LogIterator>;
   [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
@@ -72,7 +76,8 @@ class LogFollower final : public ILogParticipant,
  private:
   struct GuardedFollowerData {
     GuardedFollowerData() = delete;
-    GuardedFollowerData(LogFollower const& self, std::unique_ptr<LogCore> logCore,
+    GuardedFollowerData(LogFollower const& self,
+                        std::unique_ptr<LogCore> logCore,
                         InMemoryLog inMemoryLog);
 
     [[nodiscard]] auto getLocalStatistics() const noexcept -> LogStatistics;
@@ -80,7 +85,8 @@ class LogFollower final : public ILogParticipant,
         -> std::unique_ptr<LogRangeIterator>;
     [[nodiscard]] auto checkCompaction() -> Result;
     auto checkCommitIndex(LogIndex newCommitIndex, LogIndex newLCI,
-                          std::unique_ptr<WaitForQueue> outQueue) noexcept -> DeferredAction;
+                          std::unique_ptr<WaitForQueue> outQueue) noexcept
+        -> DeferredAction;
 
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;
@@ -100,10 +106,11 @@ class LogFollower final : public ILogParticipant,
   // We use the unshackled mutex because guards are captured by futures.
   // When using a std::mutex we would have to release the mutex in the same
   // thread. Using the UnshackledMutex this is no longer required.
-  Guarded<GuardedFollowerData, arangodb::basics::UnshackledMutex> _guardedFollowerData;
+  Guarded<GuardedFollowerData, arangodb::basics::UnshackledMutex>
+      _guardedFollowerData;
 
-  [[nodiscard]] auto appendEntriesPreFlightChecks(GuardedFollowerData const&,
-                                                  AppendEntriesRequest const&) const noexcept
+  [[nodiscard]] auto appendEntriesPreFlightChecks(
+      GuardedFollowerData const&, AppendEntriesRequest const&) const noexcept
       -> std::optional<AppendEntriesResult>;
 };
 

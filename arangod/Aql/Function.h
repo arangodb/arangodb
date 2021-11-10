@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include "Aql/Functions.h"
-
 #include <cstdint>
 #include <string>
-#include <utility>
 #include <type_traits>
+#include <utility>
+
+#include "Aql/Functions.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -61,18 +61,18 @@ struct Function {
     // pushed down to DB servers in OneShard mode but are in normal Cluster
     // mode.
 
-    /// @brief whether or not the function may be executed on DB servers, 
+    /// @brief whether or not the function may be executed on DB servers,
     /// general cluster case (non-OneShard)
     /// note: in almost all circumstances it is also useful to set the flag
     /// CanRunOnDBServerOneShard in addition!
     CanRunOnDBServerCluster = 4,
-    
+
     /// @brief whether or not the function may be executed on DB servers,
-    /// OneShard databases. 
+    /// OneShard databases.
     /// note: this flag must be set in addition to CanRunOnDBServerCluster
-    /// to make a function run on DB servers in OneShard mode! 
+    /// to make a function run on DB servers in OneShard mode!
     CanRunOnDBServerOneShard = 8,
-    
+
     /// @brief whether or not the function may read documents from the database
     CanReadDocuments = 16,
 
@@ -87,9 +87,11 @@ struct Function {
   };
 
   /// @brief helper for building flags
-  template <typename... Args>
-  static inline std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) noexcept {
-    return static_cast<std::underlying_type<Flags>::type>(flag) | makeFlags(args...);
+  template<typename... Args>
+  static inline std::underlying_type<Flags>::type makeFlags(
+      Flags flag, Args... args) noexcept {
+    return static_cast<std::underlying_type<Flags>::type>(flag) |
+           makeFlags(args...);
   }
 
   static std::underlying_type<Flags>::type makeFlags() noexcept;
@@ -102,13 +104,12 @@ struct Function {
            FunctionImplementation implementation);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  Function(std::string const& name,
-           FunctionImplementation implementation);
+  Function(std::string const& name, FunctionImplementation implementation);
 #endif
 
   /// @brief whether or not the function is based on V8
   bool hasV8Implementation() const noexcept;
-  
+
   /// @brief whether or not the function is based on cxx
   bool hasCxxImplementation() const noexcept;
 
@@ -154,4 +155,3 @@ struct Function {
 };
 }  // namespace aql
 }  // namespace arangodb
-

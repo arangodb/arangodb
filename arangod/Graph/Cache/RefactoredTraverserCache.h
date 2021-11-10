@@ -23,16 +23,16 @@
 
 #pragma once
 
+#include <velocypack/HashedStringRef.h>
+
+#include <map>
+#include <unordered_set>
+
 #include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
 #include "Basics/StringHeap.h"
 #include "VocBase/ManagedDocumentResult.h"
-
-#include <velocypack/HashedStringRef.h>
-
-#include <map>
-#include <unordered_set>
 
 namespace arangodb {
 
@@ -64,8 +64,10 @@ class RefactoredTraverserCache {
  public:
   explicit RefactoredTraverserCache(
       arangodb::transaction::Methods* trx, aql::QueryContext* query,
-      arangodb::ResourceMonitor& resourceMonitor, arangodb::aql::TraversalStats& stats,
-      std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap);
+      arangodb::ResourceMonitor& resourceMonitor,
+      arangodb::aql::TraversalStats& stats,
+      std::unordered_map<std::string, std::vector<std::string>> const&
+          collectionToShardMap);
   ~RefactoredTraverserCache();
 
   RefactoredTraverserCache(RefactoredTraverserCache const&) = delete;
@@ -80,7 +82,8 @@ class RefactoredTraverserCache {
   /// @brief Inserts the real document stored within the token
   ///        into the given builder.
   //////////////////////////////////////////////////////////////////////////////
-  void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn, velocypack::Builder& builder);
+  void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn,
+                            velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts only the edges _id value into the given builder.
@@ -91,15 +94,17 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document identified by the _id string
   //////////////////////////////////////////////////////////////////////////////
-  void insertVertexIntoResult(aql::TraversalStats& stats,
-                              arangodb::velocypack::HashedStringRef const& idString,
-                              velocypack::Builder& builder, bool writeIdIfNotFound);
+  void insertVertexIntoResult(
+      aql::TraversalStats& stats,
+      arangodb::velocypack::HashedStringRef const& idString,
+      velocypack::Builder& builder, bool writeIdIfNotFound);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Persist the given id string. The return value is guaranteed to
   ///        stay valid as long as this cache is valid
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::HashedStringRef persistString(arangodb::velocypack::HashedStringRef idString);
+  arangodb::velocypack::HashedStringRef persistString(
+      arangodb::velocypack::HashedStringRef idString);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -107,7 +112,7 @@ class RefactoredTraverserCache {
   ///        if this returns false the result is unmodified
   //////////////////////////////////////////////////////////////////////////////
 
-  template <typename ResultType>
+  template<typename ResultType>
   bool appendVertex(aql::TraversalStats& stats,
                     arangodb::velocypack::HashedStringRef const& idString,
                     ResultType& result);
@@ -119,11 +124,13 @@ class RefactoredTraverserCache {
   ///        value not the document itself.
   //////////////////////////////////////////////////////////////////////////////
 
-  template <typename ResultType>
-  bool appendEdge(graph::EdgeDocumentToken const& etkn, bool onlyId, ResultType& result);
+  template<typename ResultType>
+  bool appendEdge(graph::EdgeDocumentToken const& etkn, bool onlyId,
+                  ResultType& result);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Helper Method to extract collection Name from given VertexIdentifier
+  /// @brief Helper Method to extract collection Name from given
+  /// VertexIdentifier
   ///        Will translate to ShardName in case of Satellite Graphs
   //////////////////////////////////////////////////////////////////////////////
 
@@ -154,7 +161,8 @@ class RefactoredTraverserCache {
   std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
 
  private:
-  std::unordered_map<std::string, std::vector<std::string>> const& _collectionToShardMap;
+  std::unordered_map<std::string, std::vector<std::string>> const&
+      _collectionToShardMap;
   arangodb::ResourceMonitor& _resourceMonitor;
 
   /// @brief whether or not to allow adding of previously unknown collections
@@ -164,4 +172,3 @@ class RefactoredTraverserCache {
 
 }  // namespace graph
 }  // namespace arangodb
-

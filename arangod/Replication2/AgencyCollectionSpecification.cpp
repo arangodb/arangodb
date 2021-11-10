@@ -20,20 +20,20 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "AgencyCollectionSpecification.h"
+
+#include <Basics/StaticStrings.h>
+#include <Basics/debugging.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include <Basics/debugging.h>
-#include <Basics/StaticStrings.h>
-
-#include "AgencyCollectionSpecification.h"
 
 using namespace arangodb::replication2::agency;
 using namespace arangodb::basics;
 
 CollectionGroup::CollectionGroup(VPackSlice slice)
     : id(CollectionGroupId{
-          slice.get(StaticStrings::Id).extract<CollectionGroupId::Identifier::BaseType>()}),
+          slice.get(StaticStrings::Id)
+              .extract<CollectionGroupId::Identifier::BaseType>()}),
       attributes(slice.get("attributes")) {
   {
     auto cs = slice.get("collections");

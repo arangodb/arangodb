@@ -26,11 +26,11 @@
 
 #pragma once
 
+#include <memory>
+
 #include "Aql/ExecutionState.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
-
-#include <memory>
 
 namespace arangodb::aql {
 
@@ -40,7 +40,7 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class RegisterInfos;
 class FilterStats;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class FilterExecutorInfos {
@@ -67,7 +67,8 @@ class FilterExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -83,7 +84,8 @@ class FilterExecutor {
   /**
    * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputRange& input, OutputAqlItemRow& output);
@@ -91,17 +93,18 @@ class FilterExecutor {
   /**
    * @brief skip the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(
+      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+      -> size_t;
 
  private:
   Infos& _infos;
 };
 
 }  // namespace arangodb::aql
-

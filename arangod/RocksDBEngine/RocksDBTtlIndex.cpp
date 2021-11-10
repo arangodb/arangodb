@@ -22,25 +22,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTtlIndex.h"
-#include "Basics/FloatingPoint.h"
-#include "Basics/StaticStrings.h"
-#include "Transaction/Helpers.h"
-#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/FloatingPoint.h"
+#include "Basics/StaticStrings.h"
+#include "Transaction/Helpers.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 
 RocksDBTtlIndex::RocksDBTtlIndex(IndexId iid, LogicalCollection& coll,
                                  arangodb::velocypack::Slice const& info)
     : RocksDBSkiplistIndex(iid, coll, info),
-      _expireAfter(info.get(StaticStrings::IndexExpireAfter).getNumericValue<double>()) {
+      _expireAfter(
+          info.get(StaticStrings::IndexExpireAfter).getNumericValue<double>()) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // ttl index must always be non-unique, but sparse
-  TRI_ASSERT(!info.get(StaticStrings::IndexUnique).getBool()); 
-  TRI_ASSERT(info.get(StaticStrings::IndexSparse).getBool()); 
+  TRI_ASSERT(!info.get(StaticStrings::IndexUnique).getBool());
+  TRI_ASSERT(info.get(StaticStrings::IndexSparse).getBool());
 #endif
 }
 
@@ -52,12 +54,15 @@ bool RocksDBTtlIndex::matchesDefinition(VPackSlice const& info) const {
   }
   // compare our own attribute, "expireAfter"
   TRI_ASSERT(info.isObject());
-  double const expireAfter = info.get(StaticStrings::IndexExpireAfter).getNumber<double>();
-  return FloatingPoint<double>{expireAfter}.AlmostEquals(FloatingPoint<double>{_expireAfter});
+  double const expireAfter =
+      info.get(StaticStrings::IndexExpireAfter).getNumber<double>();
+  return FloatingPoint<double>{expireAfter}.AlmostEquals(
+      FloatingPoint<double>{_expireAfter});
 }
 
-void RocksDBTtlIndex::toVelocyPack(arangodb::velocypack::Builder& builder,
-                                   std::underlying_type<Index::Serialize>::type flags) const {
+void RocksDBTtlIndex::toVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    std::underlying_type<Index::Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(StaticStrings::IndexExpireAfter, VPackValue(_expireAfter));
@@ -67,11 +72,12 @@ void RocksDBTtlIndex::toVelocyPack(arangodb::velocypack::Builder& builder,
 /// @brief inserts a document into the index
 Result RocksDBTtlIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
                                LocalDocumentId const& documentId,
-                               velocypack::Slice doc, OperationOptions const& options,
+                               velocypack::Slice doc,
+                               OperationOptions const& options,
                                bool performChecks) {
   double timestamp = getTimestamp(doc);
   if (timestamp < 0) {
-    // index attribute not present or invalid. nothing to do 
+    // index attribute not present or invalid. nothing to do
     return Result();
   }
   transaction::BuilderLeaser leased(&trx);
@@ -79,7 +85,8 @@ Result RocksDBTtlIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
   leased->add(getAttribute(), VPackValue(timestamp));
   leased->close();
 
-  return RocksDBVPackIndex::insert(trx, mthds, documentId, leased->slice(), options, performChecks);
+  return RocksDBVPackIndex::insert(trx, mthds, documentId, leased->slice(),
+                                   options, performChecks);
 }
 
 /// @brief removes a document from the index
@@ -88,16 +95,17 @@ Result RocksDBTtlIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
                                velocypack::Slice doc) {
   double timestamp = getTimestamp(doc);
   if (timestamp < 0) {
-    // index attribute not present or invalid. nothing to do 
+    // index attribute not present or invalid. nothing to do
     return Result();
   }
   transaction::BuilderLeaser leased(&trx);
   leased->openObject();
   leased->add(getAttribute(), VPackValue(timestamp));
-  leased->close(); 
+  leased->close();
   return RocksDBVPackIndex::remove(trx, mthds, documentId, leased->slice());
 }
- 
-double RocksDBTtlIndex::getTimestamp(arangodb::velocypack::Slice const& doc) const {
+
+double RocksDBTtlIndex::getTimestamp(
+    arangodb::velocypack::Slice const& doc) const {
   return Index::getTimestamp(doc, getAttribute());
 }

@@ -22,6 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IndexFactory.h"
+
+#include <limits.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <regex>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
@@ -36,14 +45,6 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
-#include <limits.h>
-
-#include <regex>
-
 namespace {
 
 using namespace arangodb;
@@ -52,29 +53,25 @@ struct InvalidIndexFactory : public IndexTypeFactory {
   InvalidIndexFactory(application_features::ApplicationServer& server)
       : IndexTypeFactory(server) {}
 
-  bool equal(velocypack::Slice,
-             velocypack::Slice,
+  bool equal(velocypack::Slice, velocypack::Slice,
              std::string const&) const override {
     return false;  // invalid definitions are never equal
   }
 
   std::shared_ptr<Index> instantiate(LogicalCollection&,
-                                     velocypack::Slice definition,
-                                     IndexId, bool) const override {
+                                     velocypack::Slice definition, IndexId,
+                                     bool) const override {
     std::string type = basics::VelocyPackHelper::getStringValue(
         definition, StaticStrings::IndexType, "");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid index type '" + type + "'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid index type '" + type + "'");
   }
 
-  Result normalize(
-      velocypack::Builder&,
-      velocypack::Slice definition,
-      bool,
-      TRI_vocbase_t const&) const override {
+  Result normalize(velocypack::Builder&, velocypack::Slice definition, bool,
+                   TRI_vocbase_t const&) const override {
     std::string type = basics::VelocyPackHelper::getStringValue(
         definition, StaticStrings::IndexType, "");
-    return Result(TRI_ERROR_BAD_PARAMETER,
-                  "invalid index type '" + type + "'");
+    return Result(TRI_ERROR_BAD_PARAMETER, "invalid index type '" + type + "'");
   }
 };
 
@@ -82,18 +79,19 @@ struct InvalidIndexFactory : public IndexTypeFactory {
 
 namespace arangodb {
 
-IndexTypeFactory::IndexTypeFactory(application_features::ApplicationServer& server)
+IndexTypeFactory::IndexTypeFactory(
+    application_features::ApplicationServer& server)
     : _server(server) {}
 
-bool IndexTypeFactory::equal(Index::IndexType type,
-                             velocypack::Slice lhs,
+bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
                              velocypack::Slice rhs,
                              bool attributeOrderMatters) const {
   // unique must be identical if present
   auto value = lhs.get(StaticStrings::IndexUnique);
 
   if (value.isBoolean() &&
-      !basics::VelocyPackHelper::equal(value, rhs.get(StaticStrings::IndexUnique), false)) {
+      !basics::VelocyPackHelper::equal(
+          value, rhs.get(StaticStrings::IndexUnique), false)) {
     return false;
   }
 
@@ -101,7 +99,8 @@ bool IndexTypeFactory::equal(Index::IndexType type,
   value = lhs.get(StaticStrings::IndexSparse);
 
   if (value.isBoolean() &&
-      !basics::VelocyPackHelper::equal(value, rhs.get(StaticStrings::IndexSparse), false)) {
+      !basics::VelocyPackHelper::equal(
+          value, rhs.get(StaticStrings::IndexSparse), false)) {
     return false;
   }
 
@@ -125,11 +124,13 @@ bool IndexTypeFactory::equal(Index::IndexType type,
   } else if (Index::IndexType::TRI_IDX_TYPE_TTL_INDEX == type) {
     value = lhs.get(StaticStrings::IndexExpireAfter);
 
-    if (value.isNumber() && rhs.get(StaticStrings::IndexExpireAfter).isNumber()) {
+    if (value.isNumber() &&
+        rhs.get(StaticStrings::IndexExpireAfter).isNumber()) {
       double const expireAfter = value.getNumber<double>();
       value = rhs.get(StaticStrings::IndexExpireAfter);
 
-      if (!FloatingPoint<double>{expireAfter}.AlmostEquals(FloatingPoint<double>{value.getNumber<double>()})) {
+      if (!FloatingPoint<double>{expireAfter}.AlmostEquals(
+              FloatingPoint<double>{value.getNumber<double>()})) {
         return false;
       }
     }
@@ -185,23 +186,25 @@ IndexFactory::IndexFactory(application_features::ApplicationServer& server)
 
 void IndexFactory::clear() { _factories.clear(); }
 
-Result IndexFactory::emplace(std::string const& type, IndexTypeFactory const& factory) {
+Result IndexFactory::emplace(std::string const& type,
+                             IndexTypeFactory const& factory) {
   if (_server.hasFeature<BootstrapFeature>()) {
     auto& feature = _server.getFeature<BootstrapFeature>();
     // ensure new factories are not added at runtime since that would require
     // additional locks
     if (feature.isReady()) {
       return Result(TRI_ERROR_INTERNAL,
-                              std::string("index factory registration is only "
-                                          "allowed during server startup"));
+                    std::string("index factory registration is only "
+                                "allowed during server startup"));
     }
   }
 
   if (!_factories.try_emplace(type, &factory).second) {
-    return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, std::string("index factory previously registered during index factory "
-                                                                               "registration for index type '") +
-                                                                       type +
-                                                                       "'");
+    return Result(
+        TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+        std::string("index factory previously registered during index factory "
+                    "registration for index type '") +
+            type + "'");
   }
 
   return Result();
@@ -212,7 +215,7 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     velocypack::Builder& normalized,  // normalized definition (out-param)
     bool isCreation,                  // definition for index creation
     TRI_vocbase_t const& vocbase      // index vocbase
-    ) const {
+) const {
   auto type = definition.get(StaticStrings::IndexType);
 
   if (!type.isString()) {
@@ -245,10 +248,13 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     if (nameSlice.isString() && (nameSlice.getStringLength() != 0)) {
       name = nameSlice.copyString();
     } else {
-      // we should set the name for special types explicitly elsewhere, but just in case...
-      if (Index::type(type.copyString()) == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      // we should set the name for special types explicitly elsewhere, but just
+      // in case...
+      if (Index::type(type.copyString()) ==
+          Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         name = StaticStrings::IndexNamePrimary;
-      } else if (Index::type(type.copyString()) == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      } else if (Index::type(type.copyString()) ==
+                 Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
         name = StaticStrings::IndexNameEdge;
       } else {
         // generate a name
@@ -256,7 +262,8 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
       }
     }
 
-    bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNamesForCollections(); 
+    bool extendedNames =
+        _server.getFeature<DatabaseFeature>().extendedNamesForCollections();
     if (!IndexNameValidator::isAllowedName(extendedNames, name)) {
       return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
@@ -273,17 +280,20 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
   }
 }
 
-const IndexTypeFactory& IndexFactory::factory(std::string const& type) const noexcept {
+const IndexTypeFactory& IndexFactory::factory(
+    std::string const& type) const noexcept {
   auto itr = _factories.find(type);
-  TRI_ASSERT(itr == _factories.end() || false == !(itr->second));  // IndexFactory::emplace(...) inserts non-nullptr
+  TRI_ASSERT(
+      itr == _factories.end() ||
+      false ==
+          !(itr->second));  // IndexFactory::emplace(...) inserts non-nullptr
 
   return itr == _factories.end() ? *_invalid : *(itr->second);
 }
 
-std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice definition,
-                                                           bool generateKey,
-                                                           LogicalCollection& collection,
-                                                           bool isClusterConstructor) const {
+std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
+    velocypack::Slice definition, bool generateKey,
+    LogicalCollection& collection, bool isClusterConstructor) const {
   auto id = validateSlice(definition, generateKey, isClusterConstructor);
   auto type = definition.get(StaticStrings::IndexType);
 
@@ -293,10 +303,13 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice def
   }
 
   auto& factory = IndexFactory::factory(type.copyString());
-  std::shared_ptr<Index> index = factory.instantiate(collection, definition, id, isClusterConstructor);
+  std::shared_ptr<Index> index =
+      factory.instantiate(collection, definition, id, isClusterConstructor);
 
   if (!index) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to instantiate index, factory returned null instance");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "failed to instantiate index, factory returned null instance");
   }
 
   return index;
@@ -309,12 +322,13 @@ std::vector<std::string> IndexFactory::supportedIndexes() const {
                                   "geo",      "fulltext", "zkd"};
 }
 
-std::unordered_map<std::string, std::string> IndexFactory::indexAliases() const {
+std::unordered_map<std::string, std::string> IndexFactory::indexAliases()
+    const {
   return std::unordered_map<std::string, std::string>();
 }
 
-IndexId IndexFactory::validateSlice(velocypack::Slice info,
-                                    bool generateKey, bool isClusterConstructor) {
+IndexId IndexFactory::validateSlice(velocypack::Slice info, bool generateKey,
+                                    bool isClusterConstructor) {
   if (!info.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "expecting object for index definition");
@@ -331,7 +345,8 @@ IndexId IndexFactory::validateSlice(velocypack::Slice info,
   } else if (!generateKey) {
     // In the restore case it is forbidden to NOT have id
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER, "cannot restore index without index identifier");
+        TRI_ERROR_BAD_PARAMETER,
+        "cannot restore index without index identifier");
   }
 
   if (iid.empty() && !isClusterConstructor) {
@@ -348,19 +363,22 @@ IndexId IndexFactory::validateSlice(velocypack::Slice info,
   return iid;
 }
 
-Result IndexFactory::validateFieldsDefinition(VPackSlice definition, 
-                                              size_t minFields, size_t maxFields,
+Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
+                                              size_t minFields,
+                                              size_t maxFields,
                                               bool allowSubAttributes) {
-  if (basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::Error, false)) {
+  if (basics::VelocyPackHelper::getBooleanValue(definition,
+                                                StaticStrings::Error, false)) {
     // We have an error here.
     return Result(TRI_ERROR_BAD_PARAMETER);
   }
-  
+
   std::unordered_set<velocypack::StringRef> fields;
   auto fieldsSlice = definition.get(StaticStrings::IndexFields);
 
   if (fieldsSlice.isArray()) {
-    std::regex const idRegex("^(.+\\.)?" + StaticStrings::IdString + "$", std::regex::ECMAScript);
+    std::regex const idRegex("^(.+\\.)?" + StaticStrings::IdString + "$",
+                             std::regex::ECMAScript);
 
     // "fields" is a list of fields
     for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
@@ -368,21 +386,21 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "index field names must be non-empty strings");
       }
-      
+
       velocypack::StringRef f(it);
 
       if (f.empty()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "index field names must be non-empty strings");
       }
-      
+
       if (fields.find(f) != fields.end()) {
         // duplicate attribute name
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "duplicate attribute name in index fields list");
       }
 
-      if (!allowSubAttributes && f.find('.') != std::string::npos) { 
+      if (!allowSubAttributes && f.find('.') != std::string::npos) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "cannot index a sub-attribute in this type of index");
       }
@@ -391,11 +409,11 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "_id attribute cannot be indexed");
       }
-      
+
       fields.insert(f);
     }
   }
-  
+
   size_t cc = fields.size();
   if (cc < minFields || cc > maxFields) {
     return Result(TRI_ERROR_BAD_PARAMETER,
@@ -406,19 +424,21 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
 }
 
 /// @brief process the fields list, deduplicate it, and add it to the json
-Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& builder,
-                                        size_t minFields, size_t maxFields,
-                                        bool create, bool allowExpansion,
+Result IndexFactory::processIndexFields(VPackSlice definition,
+                                        VPackBuilder& builder, size_t minFields,
+                                        size_t maxFields, bool create,
+                                        bool allowExpansion,
                                         bool allowSubAttributes) {
   TRI_ASSERT(builder.isOpenObject());
 
-  Result res = validateFieldsDefinition(definition, minFields, maxFields, allowSubAttributes);
+  Result res = validateFieldsDefinition(definition, minFields, maxFields,
+                                        allowSubAttributes);
   if (res.fail()) {
     return res;
   }
 
   auto fieldsSlice = definition.get(StaticStrings::IndexFields);
-  
+
   TRI_ASSERT(fieldsSlice.isArray());
 
   builder.add(velocypack::Value(StaticStrings::IndexFields));
@@ -432,13 +452,13 @@ Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& bui
     builder.add(it);
   }
 
-
   builder.close();
   return Result();
 }
 
 /// @brief process the unique flag and add it to the json
-void IndexFactory::processIndexUniqueFlag(VPackSlice definition, VPackBuilder& builder) {
+void IndexFactory::processIndexUniqueFlag(VPackSlice definition,
+                                          VPackBuilder& builder) {
   bool unique = basics::VelocyPackHelper::getBooleanValue(
       definition, StaticStrings::IndexUnique.c_str(), false);
 
@@ -452,8 +472,7 @@ void IndexFactory::processIndexSparseFlag(VPackSlice definition,
     bool sparseBool = basics::VelocyPackHelper::getBooleanValue(
         definition, StaticStrings::IndexSparse.c_str(), false);
 
-    builder.add(StaticStrings::IndexSparse,
-                velocypack::Value(sparseBool));
+    builder.add(StaticStrings::IndexSparse, velocypack::Value(sparseBool));
   } else if (create) {
     // not set. now add a default value
     builder.add(StaticStrings::IndexSparse, velocypack::Value(false));
@@ -461,17 +480,21 @@ void IndexFactory::processIndexSparseFlag(VPackSlice definition,
 }
 
 /// @brief process the deduplicate flag and add it to the json
-void IndexFactory::processIndexDeduplicateFlag(VPackSlice definition, VPackBuilder& builder) {
-  bool dup = basics::VelocyPackHelper::getBooleanValue(definition, "deduplicate", true);
+void IndexFactory::processIndexDeduplicateFlag(VPackSlice definition,
+                                               VPackBuilder& builder) {
+  bool dup = basics::VelocyPackHelper::getBooleanValue(definition,
+                                                       "deduplicate", true);
   builder.add("deduplicate", VPackValue(dup));
 }
 
 /// @brief process the geojson flag and add it to the json
-void IndexFactory::processIndexGeoJsonFlag(VPackSlice definition, VPackBuilder& builder) {
+void IndexFactory::processIndexGeoJsonFlag(VPackSlice definition,
+                                           VPackBuilder& builder) {
   auto fieldsSlice = definition.get(StaticStrings::IndexFields);
 
   if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
-    // only add geoJson for indexes with a single field (with needs to be an array)
+    // only add geoJson for indexes with a single field (with needs to be an
+    // array)
     bool geoJson =
         basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
 
@@ -481,16 +504,18 @@ void IndexFactory::processIndexGeoJsonFlag(VPackSlice definition, VPackBuilder& 
 
 /// @brief enhances the json of a hash, skiplist or persistent index
 Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
-                                             VPackBuilder& builder, bool create) {
-  Result res = processIndexFields(definition, builder, 1, INT_MAX, create, true);
+                                             VPackBuilder& builder,
+                                             bool create) {
+  Result res =
+      processIndexFields(definition, builder, 1, INT_MAX, create, true);
 
   if (res.ok()) {
     processIndexSparseFlag(definition, builder, create);
     processIndexUniqueFlag(definition, builder);
     processIndexDeduplicateFlag(definition, builder);
 
-    bool bck = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexInBackground,
-                                                         false);
+    bool bck = basics::VelocyPackHelper::getBooleanValue(
+        definition, StaticStrings::IndexInBackground, false);
     builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
   }
 
@@ -500,12 +525,12 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
 /// @brief enhances the json of a ttl index
 Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
                                          VPackBuilder& builder, bool create) {
-  Result res = processIndexFields(definition, builder, 1, 1, create, false, false);
-  
+  Result res =
+      processIndexFields(definition, builder, 1, 1, create, false, false);
+
   auto value = definition.get(StaticStrings::IndexUnique);
   if (value.isBoolean() && value.getBoolean()) {
-    return Result(TRI_ERROR_BAD_PARAMETER,
-                  "a TTL index cannot be unique");
+    return Result(TRI_ERROR_BAD_PARAMETER, "a TTL index cannot be unique");
   }
 
   if (res.ok()) {
@@ -525,8 +550,8 @@ Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
     }
     builder.add(StaticStrings::IndexExpireAfter, v);
 
-    bool bck = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexInBackground,
-                                                         false);
+    bool bck = basics::VelocyPackHelper::getBooleanValue(
+        definition, StaticStrings::IndexInBackground, false);
     builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
   }
 
@@ -534,17 +559,19 @@ Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
 }
 
 /// @brief enhances the json of a geo, geo1 or geo2 index
-Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition, VPackBuilder& builder,
-                                         bool create, int minFields, int maxFields) {
-  Result res = processIndexFields(definition, builder, minFields, maxFields, create, false);
+Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition,
+                                         VPackBuilder& builder, bool create,
+                                         int minFields, int maxFields) {
+  Result res = processIndexFields(definition, builder, minFields, maxFields,
+                                  create, false);
 
   if (res.ok()) {
     builder.add(StaticStrings::IndexSparse, velocypack::Value(true));
     builder.add(StaticStrings::IndexUnique, velocypack::Value(false));
     IndexFactory::processIndexGeoJsonFlag(definition, builder);
 
-    bool bck = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexInBackground,
-                                                         false);
+    bool bck = basics::VelocyPackHelper::getBooleanValue(
+        definition, StaticStrings::IndexInBackground, false);
     builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
   }
 
@@ -553,7 +580,8 @@ Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition, VPackBuilder& bu
 
 /// @brief enhances the json of a fulltext index
 Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
-                                              VPackBuilder& builder, bool create) {
+                                              VPackBuilder& builder,
+                                              bool create) {
   Result res = processIndexFields(definition, builder, 1, 1, create, false);
 
   if (res.ok()) {
@@ -577,8 +605,8 @@ Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
 
     builder.add("minLength", VPackValue(minWordLength));
 
-    bool bck = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexInBackground,
-                                                         false);
+    bool bck = basics::VelocyPackHelper::getBooleanValue(
+        definition, StaticStrings::IndexInBackground, false);
     builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
   }
 
@@ -587,7 +615,7 @@ Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
 
 /// @brief enhances the json of a zkd index
 Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
-                                              VPackBuilder& builder, bool create) {
+                                         VPackBuilder& builder, bool create) {
   if (auto fieldValueTypes = definition.get("fieldValueTypes");
       !fieldValueTypes.isString() || !fieldValueTypes.isEqualString("double")) {
     return Result(
@@ -597,18 +625,20 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
   }
 
   builder.add("fieldValueTypes", VPackValue("double"));
-  Result res = processIndexFields(definition, builder, 1, INT_MAX, create, false);
+  Result res =
+      processIndexFields(definition, builder, 1, INT_MAX, create, false);
 
   if (res.ok()) {
-    if (auto isSparse = definition.get(StaticStrings::IndexSparse).isTrue(); isSparse) {
+    if (auto isSparse = definition.get(StaticStrings::IndexSparse).isTrue();
+        isSparse) {
       return Result(TRI_ERROR_BAD_PARAMETER,
                     "zkd index does not support sparse property");
     }
 
     processIndexUniqueFlag(definition, builder);
 
-    bool bck = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexInBackground,
-                                                         false);
+    bool bck = basics::VelocyPackHelper::getBooleanValue(
+        definition, StaticStrings::IndexInBackground, false);
     builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
   }
 

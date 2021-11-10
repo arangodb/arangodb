@@ -23,24 +23,27 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/Metrics.h"
-
-#include <cstdint>
 
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
 
-class ReplicationMetricsFeature final : public application_features::ApplicationFeature {
+class ReplicationMetricsFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit ReplicationMetricsFeature(application_features::ApplicationServer& server);
+  explicit ReplicationMetricsFeature(
+      application_features::ApplicationServer& server);
 
   struct InitialSyncStats {
-    explicit InitialSyncStats(ReplicationMetricsFeature& feature, bool autoPublish) noexcept
+    explicit InitialSyncStats(ReplicationMetricsFeature& feature,
+                              bool autoPublish) noexcept
         : feature(feature), autoPublish(autoPublish) {}
-    
+
     // will update the system-wide statistics with the current values
     ~InitialSyncStats() noexcept;
 
@@ -48,7 +51,7 @@ class ReplicationMetricsFeature final : public application_features::Application
 
     /// @brief updates the system-wide metrics
     void publish();
-    
+
     /// @brief resets the local statistics
     void reset() noexcept;
 
@@ -82,9 +85,11 @@ class ReplicationMetricsFeature final : public application_features::Application
     // total time spent waiting on response for initial call to
     // /_api/replication/keys
     double waitedForInitial = 0.0;
-    // total time spent waiting for responses to /_api/replication/keys?type=keys
+    // total time spent waiting for responses to
+    // /_api/replication/keys?type=keys
     double waitedForKeys = 0.0;
-    // total time spent waiting for responses to /_api/replication/keys?type=docs
+    // total time spent waiting for responses to
+    // /_api/replication/keys?type=docs
     double waitedForDocs = 0.0;
     double waitedForInsertions = 0.0;
     double waitedForRemovals = 0.0;
@@ -93,20 +98,21 @@ class ReplicationMetricsFeature final : public application_features::Application
   };
 
   struct TailingSyncStats {
-    explicit TailingSyncStats(ReplicationMetricsFeature& feature, bool autoPublish) noexcept
+    explicit TailingSyncStats(ReplicationMetricsFeature& feature,
+                              bool autoPublish) noexcept
         : feature(feature), autoPublish(autoPublish) {}
-    
+
     // will update the system-wide statistics with the current values
     ~TailingSyncStats() noexcept;
 
     ReplicationMetricsFeature& feature;
-    
+
     /// @brief updates the system-wide metrics
     void publish();
-    
+
     /// @brief resets the local statistics
     void reset() noexcept;
-    
+
     TailingSyncStats& operator+=(TailingSyncStats const& other) noexcept;
 
     // total number of requests to /_api/wal/tail
@@ -130,7 +136,7 @@ class ReplicationMetricsFeature final : public application_features::Application
 
  private:
   // dump statistics
-  
+
   // total number of requests to /_api/replication/dump
   Counter& _numDumpRequests;
   // total number of bytes received for dump requests
@@ -143,7 +149,7 @@ class ReplicationMetricsFeature final : public application_features::Application
   Counter& _waitedForDumpApply;
 
   // initial sync statistics
-  
+
   // total number of requests to /_api/replication/keys?type=keys
   Counter& _numSyncKeysRequests;
   // total number of requests to /_api/replication/keys?type=docs
@@ -165,9 +171,9 @@ class ReplicationMetricsFeature final : public application_features::Application
   Counter& _waitedForSyncDocs;
   Counter& _waitedForSyncInsertions;
   Counter& _waitedForSyncRemovals;
-  
+
   // tailing statistics
-  
+
   // total number of requests to tailing API
   Counter& _numTailingRequests;
   // required follow tick value ... is not present on leader ...
@@ -195,5 +201,4 @@ class ReplicationMetricsFeature final : public application_features::Application
   Counter& _syncOpsTotal;
 };
 
-} // namespace arangodb
-
+}  // namespace arangodb

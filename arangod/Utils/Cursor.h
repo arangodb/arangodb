@@ -23,13 +23,13 @@
 
 #pragma once
 
+#include <velocypack/Iterator.h>
+
 #include "Aql/ExecutionState.h"
 #include "Basics/Common.h"
 #include "Basics/system-functions.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
-
-#include <velocypack/Iterator.h>
 
 namespace arangodb {
 
@@ -70,7 +70,7 @@ class Cursor {
   inline double ttl() const { return _ttl; }
 
   inline double expires() const { return _expires; }
-  
+
   inline bool isUsed() const { return _isUsed; }
 
   inline bool isDeleted() const { return _isDeleted; }
@@ -114,7 +114,8 @@ class Cursor {
    * free this thread on DONE we have a result. Second: Result If State==DONE
    * this contains Error information or NO_ERROR. On NO_ERROR result is filled.
    */
-  virtual std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result) = 0;
+  virtual std::pair<aql::ExecutionState, Result> dump(
+      velocypack::Builder& result) = 0;
 
   /**
    * @brief Dump the cursor result. This is guaranteed to return the result in
@@ -125,7 +126,7 @@ class Cursor {
    * @return ErrorResult, if something goes wrong
    */
   virtual Result dumpSync(velocypack::Builder& result) = 0;
-  
+
   /// Set wakeup handler on streaming cursor
   virtual void setWakeupHandler(std::function<bool()> const& cb) {}
   virtual void resetWakeupHandler() {}
@@ -140,4 +141,3 @@ class Cursor {
   std::atomic<bool> _isUsed;
 };
 }  // namespace arangodb
-

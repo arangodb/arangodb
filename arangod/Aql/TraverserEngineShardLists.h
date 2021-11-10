@@ -23,11 +23,11 @@
 
 #pragma once
 
-#include "Cluster/ClusterTypes.h"
-
 #include <set>
 #include <unordered_map>
 #include <vector>
+
+#include "Cluster/ClusterTypes.h"
 
 namespace arangodb {
 namespace aql {
@@ -39,9 +39,10 @@ class QueryContext;
 // on DB servers.
 class TraverserEngineShardLists {
  public:
-  TraverserEngineShardLists(GraphNode const*, ServerID const& server,
-                            std::unordered_map<ShardID, ServerID> const& shardMapping,
-                            QueryContext& query);
+  TraverserEngineShardLists(
+      GraphNode const*, ServerID const& server,
+      std::unordered_map<ShardID, ServerID> const& shardMapping,
+      QueryContext& query);
 
   ~TraverserEngineShardLists() = default;
 
@@ -55,10 +56,11 @@ class TraverserEngineShardLists {
 #endif
 
  private:
-  std::vector<ShardID> getAllLocalShards(std::unordered_map<ShardID, ServerID> const& shardMapping,
-                                         ServerID const& server,
-                                         std::shared_ptr<std::vector<std::string>> shardIds,
-                                         bool allowReadFromFollower);
+  std::vector<ShardID> getAllLocalShards(
+      std::unordered_map<ShardID, ServerID> const& shardMapping,
+      ServerID const& server,
+      std::shared_ptr<std::vector<std::string>> shardIds,
+      bool allowReadFromFollower);
 
  private:
   // The graph node we need to serialize

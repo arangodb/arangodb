@@ -21,9 +21,9 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstdint>
-
 #include "Cache/Transaction.h"
+
+#include <cstdint>
 
 namespace arangodb::cache {
 

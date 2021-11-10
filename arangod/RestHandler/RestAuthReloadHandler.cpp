@@ -23,22 +23,22 @@
 
 #include "RestAuthReloadHandler.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Utils/ExecContext.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAuthReloadHandler::RestAuthReloadHandler(application_features::ApplicationServer& server,
-                                             GeneralRequest* request,
-                                             GeneralResponse* response)
+RestAuthReloadHandler::RestAuthReloadHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAuthReloadHandler::execute() {
@@ -56,9 +56,10 @@ RestStatus RestAuthReloadHandler::execute() {
   VPackBuilder result;
   result.openObject(true);
   result.add(StaticStrings::Error, VPackValue(false));
-  result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+  result.add(StaticStrings::Code,
+             VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   result.close();
-  
+
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
 }

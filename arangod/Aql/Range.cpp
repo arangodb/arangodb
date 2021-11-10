@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Range.h"
+
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
@@ -59,9 +60,10 @@ bool Range::isIn(int64_t value) const {
   // e.g. 10..1
   return value <= _low && value >= _high;
 }
-  
+
 void Range::throwIfTooBigForMaterialization(uint64_t values) {
   if (values > MaterializationLimit) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, "range is too big to be materialized");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
+                                   "range is too big to be materialized");
   }
 }

@@ -23,18 +23,17 @@
 
 #pragma once
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <functional>
 #include <memory>
 #include <tuple>
 #include <type_traits>
 #include <vector>
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "Basics/debugging.h"
-
 #include "AgencyComm.h"
+#include "Basics/debugging.h"
 
 namespace arangodb::agency {
 
@@ -43,25 +42,25 @@ struct no_op_deleter {
   void operator()(void*) const {};
 };
 
-template <typename T>
+template<typename T>
 using moving_ptr = std::unique_ptr<T, no_op_deleter>;
 
-template <typename V>
+template<typename V>
 void add_to_builder(VPackBuilder& b, V const& v) {
   b.add(VPackValue(v));
 }
 
-template <>
+template<>
 inline void add_to_builder(VPackBuilder& b, VPackSlice const& v) {
   b.add(v);
 }
 
-template <typename K, typename V>
+template<typename K, typename V>
 void add_to_builder(VPackBuilder& b, K const& key, V const& v) {
   b.add(key, VPackValue(v));
 }
 
-template <typename K>
+template<typename K>
 inline void add_to_builder(VPackBuilder& b, K const& key, VPackSlice const& v) {
   b.add(key, v);
 }
@@ -75,7 +74,7 @@ struct envelope {
       _builder->close();
       return envelope(_builder.release());
     }
-    template <typename K>
+    template<typename K>
     read_trx key(K&& k) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       return std::move(*this);
@@ -91,7 +90,7 @@ struct envelope {
 
   struct write_trx;
   struct precs_trx {
-    template <typename K, typename V>
+    template<typename K, typename V>
     precs_trx isEqual(K&& k, V&& v) && {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
@@ -101,7 +100,7 @@ struct envelope {
       return std::move(*this);
     }
 
-    template <typename K>
+    template<typename K>
     precs_trx isEmpty(K&& k) && {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
@@ -110,7 +109,7 @@ struct envelope {
       return std::move(*this);
     }
 
-    template <typename K>
+    template<typename K>
     precs_trx isNotEmpty(K&& k) && {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
@@ -130,7 +129,9 @@ struct envelope {
 
     envelope end(std::string const& clientId = {}) {
       _builder->close();
-      _builder->add(VPackValue(clientId.empty() ? AgencyWriteTransaction::randomClientId() : clientId));
+      _builder->add(VPackValue(clientId.empty()
+                                   ? AgencyWriteTransaction::randomClientId()
+                                   : clientId));
       _builder->close();
       return envelope(_builder.release());
     }
@@ -150,17 +151,19 @@ struct envelope {
     envelope end(std::string const& clientId = {}) {
       _builder->close();
       _builder->add(VPackSlice::emptyObjectSlice());
-      _builder->add(VPackValue(clientId.empty() ? AgencyWriteTransaction::randomClientId() : clientId));
+      _builder->add(VPackValue(clientId.empty()
+                                   ? AgencyWriteTransaction::randomClientId()
+                                   : clientId));
       _builder->close();
       return envelope(_builder.release());
     }
-    template <typename K, typename V>
+    template<typename K, typename V>
     write_trx key(K&& k, V&& v) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       detail::add_to_builder(*_builder.get(), std::forward<V>(v));
       return std::move(*this);
     }
-    template <typename K, typename F>
+    template<typename K, typename F>
     write_trx emplace(K&& k, F&& f) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
@@ -168,7 +171,7 @@ struct envelope {
       _builder->close();
       return std::move(*this);
     }
-    template <typename K, typename F>
+    template<typename K, typename F>
     write_trx emplace_object(K&& k, F&& f) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
@@ -179,7 +182,7 @@ struct envelope {
       return std::move(*this);
     }
 
-    template <typename K, typename V>
+    template<typename K, typename V>
     write_trx set(K&& k, V&& v) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
@@ -189,7 +192,7 @@ struct envelope {
       return std::move(*this);
     }
 
-    template <typename K>
+    template<typename K>
     write_trx remove(K&& k) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
@@ -198,7 +201,7 @@ struct envelope {
       return std::move(*this);
     }
 
-    template <typename K>
+    template<typename K>
     write_trx inc(K&& k, uint64_t delta = 1) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
@@ -243,4 +246,4 @@ struct envelope {
   builder_ptr _builder;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::agency

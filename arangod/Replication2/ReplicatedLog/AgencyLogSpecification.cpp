@@ -22,22 +22,23 @@
 
 #include "AgencyLogSpecification.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <type_traits>
+
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <type_traits>
-
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 
-auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
+auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const
+    -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Term, VPackValue(term.value));
   {
@@ -57,7 +58,8 @@ auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const -> void
   }
 }
 
-LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t, VPackSlice slice)
+LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t,
+                                                   VPackSlice slice)
     : term(slice.get(StaticStrings::Term).extract<LogTerm>()),
       config(slice.get(StaticStrings::Config)) {
   for (auto const& [key, value] :
@@ -90,26 +92,29 @@ LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice)
   }
 }
 
-LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term, LogConfig config,
-                                                   std::optional<Leader> leader,
-                                                   std::unordered_map<ParticipantId, Participant> participants)
+LogPlanTermSpecification::LogPlanTermSpecification(
+    LogTerm term, LogConfig config, std::optional<Leader> leader,
+    std::unordered_map<ParticipantId, Participant> participants)
     : term(term),
       config(config),
       leader(std::move(leader)),
       participants(std::move(participants)) {}
 
-LogPlanSpecification::LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
-                                           LogConfig config)
+LogPlanSpecification::LogPlanSpecification(
+    LogId id, std::optional<LogPlanTermSpecification> term, LogConfig config)
     : id(id), currentTerm(std::move(term)), targetConfig(config) {}
 
-LogCurrentLocalState::LogCurrentLocalState(from_velocypack_t, VPackSlice slice) {
+LogCurrentLocalState::LogCurrentLocalState(from_velocypack_t,
+                                           VPackSlice slice) {
   auto spearheadSlice = slice.get(StaticStrings::Spearhead);
   spearhead.term = spearheadSlice.get(StaticStrings::Term).extract<LogTerm>();
-  spearhead.index = spearheadSlice.get(StaticStrings::Index).extract<LogIndex>();
+  spearhead.index =
+      spearheadSlice.get(StaticStrings::Index).extract<LogIndex>();
   term = slice.get(StaticStrings::Term).extract<LogTerm>();
 }
 
-LogCurrentLocalState::LogCurrentLocalState(LogTerm term, TermIndexPair spearhead) noexcept
+LogCurrentLocalState::LogCurrentLocalState(LogTerm term,
+                                           TermIndexPair spearhead) noexcept
     : term(term), spearhead(spearhead) {}
 
 auto LogCurrentLocalState::toVelocyPack(VPackBuilder& builder) const -> void {
@@ -130,19 +135,23 @@ LogCurrent::LogCurrent(from_velocypack_t, VPackSlice slice) {
   }
 }
 
-LogCurrentSupervision::LogCurrentSupervision(from_velocypack_t, VPackSlice slice) {
+LogCurrentSupervision::LogCurrentSupervision(from_velocypack_t,
+                                             VPackSlice slice) {
   if (auto es = slice.get("election"); !es.isNone()) {
     election = LogCurrentSupervisionElection{from_velocypack, es};
   }
 }
 
-LogCurrentSupervisionElection::LogCurrentSupervisionElection(from_velocypack_t, VPackSlice slice)
+LogCurrentSupervisionElection::LogCurrentSupervisionElection(from_velocypack_t,
+                                                             VPackSlice slice)
     : term(slice.get(StaticStrings::Term).extract<LogTerm>()),
-      participantsRequired(slice.get("participantsRequired").getNumericValue<std::size_t>()),
+      participantsRequired(
+          slice.get("participantsRequired").getNumericValue<std::size_t>()),
       participantsAvailable(
           slice.get("participantsAvailable").getNumericValue<std::size_t>()) {
   for (auto [key, value] : VPackObjectIterator(slice.get("details"))) {
-    detail.emplace(key.copyString(), value.get("code").getNumericValue<ErrorCode>());
+    detail.emplace(key.copyString(),
+                   value.get("code").getNumericValue<ErrorCode>());
   }
 }
 
@@ -167,7 +176,8 @@ auto LogCurrentSupervision::toVelocyPack(VPackBuilder& builder) const -> void {
   }
 }
 
-auto LogCurrentSupervisionElection::toVelocyPack(VPackBuilder& builder) const -> void {
+auto LogCurrentSupervisionElection::toVelocyPack(VPackBuilder& builder) const
+    -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Term, VPackValue(term.value));
   builder.add("participantsRequired", VPackValue(participantsRequired));
@@ -205,7 +215,8 @@ auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept
 }
 
 auto agency::operator==(const LogCurrentSupervisionElection& left,
-                        const LogCurrentSupervisionElection& right) noexcept -> bool {
+                        const LogCurrentSupervisionElection& right) noexcept
+    -> bool {
   return left.term == right.term &&
          left.participantsAvailable == right.participantsAvailable &&
          left.participantsRequired == right.participantsRequired &&

@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "ExecutionStats.h"
-
 #include <cstddef>
+
+#include "ExecutionStats.h"
 
 namespace arangodb::aql {
 
@@ -43,7 +43,7 @@ class LimitStats {
   void incrFullCountBy(size_t amount) noexcept;
 
   [[nodiscard]] auto getFullCount() const noexcept -> std::size_t;
-  
+
   auto operator+=(LimitStats const& other) noexcept -> void {
     incrFullCountBy(other.getFullCount());
   }
@@ -53,10 +53,9 @@ class LimitStats {
   // Don't forget to update operator== when adding new members!
 };
 
-auto operator+=(ExecutionStats& executionStats, LimitStats const& limitStats) noexcept
-    -> ExecutionStats&;
+auto operator+=(ExecutionStats& executionStats,
+                LimitStats const& limitStats) noexcept -> ExecutionStats&;
 
 auto operator==(LimitStats const&, LimitStats const&) noexcept -> bool;
 
 }  // namespace arangodb::aql
-

@@ -23,13 +23,13 @@
 
 #pragma once
 
-#include "Basics/ReadWriteSpinLock.h"
-#include "Cache/BucketState.h"
-#include "Cache/Common.h"
-
 #include <cstdint>
 #include <limits>
 #include <memory>
+
+#include "Basics/ReadWriteSpinLock.h"
+#include "Cache/BucketState.h"
+#include "Cache/Common.h"
 
 namespace arangodb {
 namespace cache {
@@ -53,7 +53,8 @@ class Table : public std::enable_shared_from_this<Table> {
  private:
   struct GenericBucket {
     BucketState _state;
-    static constexpr std::size_t paddingSize = BUCKET_SIZE - sizeof(BucketState);
+    static constexpr std::size_t paddingSize =
+        BUCKET_SIZE - sizeof(BucketState);
     std::uint8_t _padding[paddingSize];
     GenericBucket();
     bool lock(std::uint64_t maxTries);
@@ -83,7 +84,7 @@ class Table : public std::enable_shared_from_this<Table> {
 
     Table* source() const;
 
-    template <typename BucketType>
+    template<typename BucketType>
     BucketType& bucket() const;
 
     void release();
@@ -107,7 +108,7 @@ class Table : public std::enable_shared_from_this<Table> {
 
     std::vector<BucketLocker> lockAllBuckets();
 
-    template <typename BucketType>
+    template<typename BucketType>
     bool applyToAllBuckets(std::function<bool(BucketType&)> cb);
 
    private:
@@ -162,8 +163,9 @@ class Table : public std::enable_shared_from_this<Table> {
   /// the auxiliary table. The second member of the returned pair is the source
   /// table for the bucket returned as the first member.
   //////////////////////////////////////////////////////////////////////////////
-  BucketLocker fetchAndLockBucket(std::uint32_t hash,
-                                  std::uint64_t maxTries = std::numeric_limits<std::uint64_t>::max());
+  BucketLocker fetchAndLockBucket(
+      std::uint32_t hash,
+      std::uint64_t maxTries = std::numeric_limits<std::uint64_t>::max());
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Sets the auxiliary table.
@@ -210,7 +212,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// table.
   //////////////////////////////////////////////////////////////////////////////
   bool slotFilled() noexcept;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Report that multiple slots were filled
   //////////////////////////////////////////////////////////////////////////////
@@ -224,7 +226,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// smaller table.
   //////////////////////////////////////////////////////////////////////////////
   bool slotEmptied() noexcept;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Report that multiple slots were emptied
   //////////////////////////////////////////////////////////////////////////////
@@ -269,4 +271,3 @@ class Table : public std::enable_shared_from_this<Table> {
 
 };  // end namespace cache
 };  // end namespace arangodb
-

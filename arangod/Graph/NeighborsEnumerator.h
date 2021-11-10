@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include <velocypack/Slice.h>
+
 #include "Basics/Common.h"
 #include "Graph/PathEnumerator.h"
-
-#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace graph {
@@ -66,4 +66,3 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
 
 }  // namespace graph
 }  // namespace arangodb
-

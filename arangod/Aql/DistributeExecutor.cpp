@@ -23,6 +23,9 @@
 
 #include "DistributeExecutor.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Aql/AqlCallStack.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
@@ -35,16 +38,13 @@
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 
-DistributeExecutorInfos::DistributeExecutorInfos(std::vector<std::string> clientIds,
-                                                 Collection const* collection, RegisterId regId,
-                                                 ScatterNode::ScatterType type,
-                                                 std::vector<aql::Collection*> satellites)
+DistributeExecutorInfos::DistributeExecutorInfos(
+    std::vector<std::string> clientIds, Collection const* collection,
+    RegisterId regId, ScatterNode::ScatterType type,
+    std::vector<aql::Collection*> satellites)
     : ClientsExecutorInfos(std::move(clientIds)),
       _regId(regId),
       _collection(collection),
@@ -57,12 +57,13 @@ auto DistributeExecutorInfos::registerId() const noexcept -> RegisterId {
   return _regId;
 }
 
-auto DistributeExecutorInfos::scatterType() const noexcept -> ScatterNode::ScatterType {
+auto DistributeExecutorInfos::scatterType() const noexcept
+    -> ScatterNode::ScatterType {
   return _type;
 }
 
-auto DistributeExecutorInfos::getResponsibleClient(arangodb::velocypack::Slice value) const
-    -> ResultT<std::string> {
+auto DistributeExecutorInfos::getResponsibleClient(
+    arangodb::velocypack::Slice value) const -> ResultT<std::string> {
   std::string shardId;
   auto res = _logCol->getResponsibleShard(value, true, shardId);
 
@@ -79,8 +80,8 @@ auto DistributeExecutorInfos::getResponsibleClient(arangodb::velocypack::Slice v
   return shardId;
 }
 
-auto DistributeExecutorInfos::shouldDistributeToAll(arangodb::velocypack::Slice value) const
-    -> bool {
+auto DistributeExecutorInfos::shouldDistributeToAll(
+    arangodb::velocypack::Slice value) const -> bool {
   if (_satellites.empty()) {
     // We can only distribute to all on Satellite Collections
     return false;
@@ -95,7 +96,8 @@ auto DistributeExecutorInfos::shouldDistributeToAll(arangodb::velocypack::Slice 
   VPackStringRef vid(id);
   size_t pos = vid.find('/');
   if (pos == std::string::npos) {
-    // Invalid input. Let the sharding take care of it, one server shall complain
+    // Invalid input. Let the sharding take care of it, one server shall
+    // complain
     return false;
   }
   vid = vid.substr(0, pos);
@@ -111,9 +113,9 @@ auto DistributeExecutorInfos::shouldDistributeToAll(arangodb::velocypack::Slice 
 DistributeExecutor::DistributeExecutor(DistributeExecutorInfos const& infos)
     : _infos(infos) {}
 
-auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
-                                         std::unordered_map<std::string, ClientBlockData>& blockMap)
-    -> void {
+auto DistributeExecutor::distributeBlock(
+    SharedAqlItemBlockPtr const& block, SkipResult skipped,
+    std::unordered_map<std::string, ClientBlockData>& blockMap) -> void {
   std::unordered_map<std::string, std::vector<std::size_t>> choosenMap;
   choosenMap.reserve(blockMap.size());
 
@@ -135,7 +137,8 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, Ski
 
         if (!input.isObject()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL, "DistributeExecutor requires an object as input");
+              TRI_ERROR_INTERNAL,
+              "DistributeExecutor requires an object as input");
         }
         // NONE is ignored.
         // Object is processd
@@ -152,8 +155,9 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, Ski
             // We can only have clients we are prepared for
             TRI_ASSERT(blockMap.find(client) != blockMap.end());
             if (ADB_UNLIKELY(blockMap.find(client) == blockMap.end())) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-                  std::string("unexpected client id '") + client + "' found in blockMap");
+              THROW_ARANGO_EXCEPTION_MESSAGE(
+                  TRI_ERROR_INTERNAL, std::string("unexpected client id '") +
+                                          client + "' found in blockMap");
             }
             choosenMap[client].emplace_back(i);
           }
@@ -189,9 +193,8 @@ auto DistributeExecutor::getClient(VPackSlice input) const -> std::string {
   return res.get();
 }
 
-ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
-                                                           DistributeNode const* node,
-                                                           RegisterInfos registerInfos,
-                                                           DistributeExecutorInfos&& executorInfos)
+ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
+    ExecutionEngine* engine, DistributeNode const* node,
+    RegisterInfos registerInfos, DistributeExecutorInfos&& executorInfos)
     : BlocksWithClientsImpl(engine, node, std::move(registerInfos),
                             std::move(executorInfos)) {}

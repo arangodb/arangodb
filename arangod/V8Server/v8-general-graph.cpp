@@ -22,7 +22,7 @@
 /// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-users.h"
+#include <velocypack/Slice.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -42,8 +42,7 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Slice.h>
+#include "v8-users.h"
 
 using namespace arangodb;
 using namespace arangodb::velocypack;
@@ -79,7 +78,8 @@ static void JS_DropGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   TRI_ASSERT(graph.get() != nullptr);
 
-  OperationResult result = gmngr.removeGraph(*(graph.get()), true, dropCollections);
+  OperationResult result =
+      gmngr.removeGraph(*(graph.get()), true, dropCollections);
 
   VPackBuilder obj;
   obj.add(VPackValue(VPackValueType::Object, true));
@@ -162,7 +162,8 @@ static void JS_GetGraphs(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!result.isEmpty()) {
     transaction::StandaloneContext ctx(vocbase);
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice().get("graphs"), ctx.getVPackOptions()));
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice().get("graphs"),
+                                ctx.getVPackOptions()));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -253,74 +254,14 @@ static void JS_CreateGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_AddEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_AddEdgeDefinitions(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 2 || args.Length() > 3) {
-    TRI_V8_THROW_EXCEPTION_USAGE("_extendEdgeDefinitions(<edgeDefinition>[, <options>])");
-  }
-  if (!args[0]->IsString()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
-  }
-  std::string graphName = TRI_ObjectToString(isolate, args[0]);
-  if (graphName.empty()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
-  }
-
-  VPackBuilder edgeDefinition;
-  TRI_V8ToVPack(isolate, edgeDefinition, args[1], false);
-
-  VPackBuilder options;
-  if (args.Length() == 3) {
-    // We have options
-    TRI_V8ToVPack(isolate, options, args[2], false);
-  }
-  if (!options.slice().isObject()) {
-    options.clear();
-    // Fake empty options, silently ignore errors for now.
-    // Empty Options.
-    options.openObject();
-    options.close();
-  }
-
-  auto& vocbase = GetContextVocBase(isolate);
-  GraphManager gmngr{vocbase};
-  auto graph = gmngr.lookupGraphByName(graphName);
-  if (graph.fail()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(graph.errorNumber(), graph.errorMessage());
-  }
-  TRI_ASSERT(graph.get() != nullptr);
-
-  auto ctx = transaction::V8Context::Create(vocbase, true);
-  GraphOperations gops{*graph.get(), vocbase, ctx};
-  OperationResult r = gops.addEdgeDefinition(edgeDefinition.slice(), options.slice(), false);
-
-  if (r.fail()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-  }
-
-  graph = gmngr.lookupGraphByName(graphName);
-  if (graph.fail()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(graph.errorNumber(), graph.errorMessage());
-  }
-  TRI_ASSERT(graph.get() != nullptr);
-
-  VPackBuilder result;
-  result.openObject();
-  graph.get()->graphForClient(result);
-  result.close();
-
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
-  TRI_V8_TRY_CATCH_END
-}
-
-static void JS_EditEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() < 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("_editEdgeDefinitions(<edgeDefinition>, [<options>])");
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "_extendEdgeDefinitions(<edgeDefinition>[, <options>])");
   }
   if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
@@ -357,8 +298,7 @@ static void JS_EditEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& ar
   auto ctx = transaction::V8Context::Create(vocbase, true);
   GraphOperations gops{*graph.get(), vocbase, ctx};
   OperationResult r =
-      gops.editEdgeDefinition(edgeDefinition.slice(), options.slice(), false,
-                              edgeDefinition.slice().get("collection").copyString());
+      gops.addEdgeDefinition(edgeDefinition.slice(), options.slice(), false);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -379,7 +319,74 @@ static void JS_EditEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_RemoveVertexCollection(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_EditEdgeDefinitions(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() < 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "_editEdgeDefinitions(<edgeDefinition>, [<options>])");
+  }
+  if (!args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+  }
+  std::string graphName = TRI_ObjectToString(isolate, args[0]);
+  if (graphName.empty()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+  }
+
+  VPackBuilder edgeDefinition;
+  TRI_V8ToVPack(isolate, edgeDefinition, args[1], false);
+
+  VPackBuilder options;
+  if (args.Length() == 3) {
+    // We have options
+    TRI_V8ToVPack(isolate, options, args[2], false);
+  }
+  if (!options.slice().isObject()) {
+    options.clear();
+    // Fake empty options, silently ignore errors for now.
+    // Empty Options.
+    options.openObject();
+    options.close();
+  }
+
+  auto& vocbase = GetContextVocBase(isolate);
+  GraphManager gmngr{vocbase};
+  auto graph = gmngr.lookupGraphByName(graphName);
+  if (graph.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(graph.errorNumber(), graph.errorMessage());
+  }
+  TRI_ASSERT(graph.get() != nullptr);
+
+  auto ctx = transaction::V8Context::Create(vocbase, true);
+  GraphOperations gops{*graph.get(), vocbase, ctx};
+  OperationResult r = gops.editEdgeDefinition(
+      edgeDefinition.slice(), options.slice(), false,
+      edgeDefinition.slice().get("collection").copyString());
+
+  if (r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  }
+
+  graph = gmngr.lookupGraphByName(graphName);
+  if (graph.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(graph.errorNumber(), graph.errorMessage());
+  }
+  TRI_ASSERT(graph.get() != nullptr);
+
+  VPackBuilder result;
+  result.openObject();
+  graph.get()->graphForClient(result);
+  result.close();
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_RemoveVertexCollection(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -423,7 +430,8 @@ static void JS_RemoveVertexCollection(v8::FunctionCallbackInfo<v8::Value> const&
 
   auto ctx = transaction::V8Context::Create(vocbase, true);
   GraphOperations gops{*graph.get(), vocbase, ctx};
-  OperationResult r = gops.eraseOrphanCollection(false, vertexName, dropCollection);
+  OperationResult r =
+      gops.eraseOrphanCollection(false, vertexName, dropCollection);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -444,7 +452,8 @@ static void JS_RemoveVertexCollection(v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_AddVertexCollection(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_AddVertexCollection(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -498,7 +507,8 @@ static void JS_AddVertexCollection(v8::FunctionCallbackInfo<v8::Value> const& ar
   }
   builder.close();
 
-  OperationResult r = gops.addOrphanCollection(builder.slice(), false, createCollection);
+  OperationResult r =
+      gops.addOrphanCollection(builder.slice(), false, createCollection);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -519,7 +529,8 @@ static void JS_AddVertexCollection(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_DropEdgeDefinition(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_DropEdgeDefinition(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -560,7 +571,8 @@ static void JS_DropEdgeDefinition(v8::FunctionCallbackInfo<v8::Value> const& arg
 
   auto ctx = transaction::V8Context::Create(vocbase, true);
   GraphOperations gops{*graph.get(), vocbase, ctx};
-  OperationResult r = gops.eraseEdgeDefinition(false, edgeDefinitionName, dropCollections);
+  OperationResult r =
+      gops.eraseEdgeDefinition(false, edgeDefinitionName, dropCollections);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -581,8 +593,10 @@ static void JS_DropEdgeDefinition(v8::FunctionCallbackInfo<v8::Value> const& arg
   TRI_V8_TRY_CATCH_END
 }
 
-static void InitV8GeneralGraphClass(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
-                                    TRI_v8_global_t* v8g, v8::Isolate* isolate) {
+static void InitV8GeneralGraphClass(v8::Handle<v8::Context> context,
+                                    TRI_vocbase_t* vocbase,
+                                    TRI_v8_global_t* v8g,
+                                    v8::Isolate* isolate) {
   /* FULL API
    * _edgeCollections
    * _vertexCollections(bool excludeOrphans)
@@ -644,22 +658,24 @@ static void InitV8GeneralGraphClass(v8::Handle<v8::Context> context, TRI_vocbase
 
   v8g->GeneralGraphTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoGraphCtor"));
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "ArangoGraphCtor"),
-                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "ArangoGraphCtor"),
+      ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // TODO WE DO NOT NEED THIS. Update _create to return a graph object properly
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  v8::Handle<v8::Object> aa =
+      rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(isolate,
-                                 TRI_V8_ASCII_STRING(isolate, "ArangoGraph"), aa);
+    TRI_AddGlobalVariableVocbase(
+        isolate, TRI_V8_ASCII_STRING(isolate, "ArangoGraph"), aa);
   }
 }
 
 #ifdef USE_ENTERPRISE
-static void InitV8SmartGraphClass(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
-                                  TRI_v8_global_t* v8g, v8::Isolate* isolate) {
+static void InitV8SmartGraphClass(v8::Handle<v8::Context> context,
+                                  TRI_vocbase_t* vocbase, TRI_v8_global_t* v8g,
+                                  v8::Isolate* isolate) {
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
 
@@ -691,13 +707,13 @@ static void InitV8SmartGraphClass(v8::Handle<v8::Context> context, TRI_vocbase_t
 
   v8g->SmartGraphTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoSmartGraphCtor"));
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "ArangoSmartGraphCtor"),
-                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "ArangoSmartGraphCtor"),
+      ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  v8::Handle<v8::Object> aa =
+      rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(
         isolate, TRI_V8_ASCII_STRING(isolate, "ArangoSmartGraph"), aa);
@@ -705,8 +721,10 @@ static void InitV8SmartGraphClass(v8::Handle<v8::Context> context, TRI_vocbase_t
 }
 #endif
 
-static void InitV8GeneralGraphModule(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
-                                     TRI_v8_global_t* v8g, v8::Isolate* isolate) {
+static void InitV8GeneralGraphModule(v8::Handle<v8::Context> context,
+                                     TRI_vocbase_t* vocbase,
+                                     TRI_v8_global_t* v8g,
+                                     v8::Isolate* isolate) {
   /* These functions still have a JS only implementation
    * JS ONLY:
    * _edgeDefinitions
@@ -726,12 +744,18 @@ static void InitV8GeneralGraphModule(v8::Handle<v8::Context> context, TRI_vocbas
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(0);
 
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_create"), JS_CreateGraph);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_drop"), JS_DropGraph);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_exists"), JS_GraphExists);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_graph"), JS_GetGraph);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_list"), JS_GetGraphKeys);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_listObjects"), JS_GetGraphs);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_create"),
+                       JS_CreateGraph);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_drop"),
+                       JS_DropGraph);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_exists"),
+                       JS_GraphExists);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_graph"),
+                       JS_GetGraph);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_list"),
+                       JS_GetGraphKeys);
+  TRI_AddMethodVocbase(
+      isolate, rt, TRI_V8_ASCII_STRING(isolate, "_listObjects"), JS_GetGraphs);
 
   v8g->GeneralGraphModuleTempl.Reset(isolate, rt);
   ft->SetClassName(
@@ -741,15 +765,17 @@ static void InitV8GeneralGraphModule(v8::Handle<v8::Context> context, TRI_vocbas
       ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  v8::Handle<v8::Object> aa =
+      rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(
         isolate, TRI_V8_ASCII_STRING(isolate, "ArangoGeneralGraphModule"), aa);
   }
 }
 
-void TRI_InitV8GeneralGraph(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
-                            TRI_v8_global_t* v8g, v8::Isolate* isolate) {
+void TRI_InitV8GeneralGraph(v8::Handle<v8::Context> context,
+                            TRI_vocbase_t* vocbase, TRI_v8_global_t* v8g,
+                            v8::Isolate* isolate) {
   InitV8GeneralGraphModule(context, vocbase, v8g, isolate);
   InitV8GeneralGraphClass(context, vocbase, v8g, isolate);
 #ifdef USE_ENTERPRISE

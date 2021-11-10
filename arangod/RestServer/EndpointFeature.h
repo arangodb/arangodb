@@ -24,7 +24,6 @@
 #pragma once
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-
 #include "Endpoint/EndpointList.h"
 
 namespace arangodb {
@@ -54,4 +53,3 @@ class EndpointFeature final : public HttpEndpointProvider {
 };
 
 }  // namespace arangodb
-

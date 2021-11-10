@@ -24,17 +24,19 @@
 #pragma once
 
 #include <unicode/locid.h>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 
-class LanguageCheckFeature final : public application_features::ApplicationFeature {
+class LanguageCheckFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit LanguageCheckFeature(application_features::ApplicationServer& server);
+  explicit LanguageCheckFeature(
+      application_features::ApplicationServer& server);
   ~LanguageCheckFeature();
 
   void start() override final;
 };
 
 }  // namespace arangodb
-

@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "Basics/debugging.h"
-
 #include <type_traits>
+
+#include "Basics/debugging.h"
 
 namespace arangodb::aql {
 
@@ -113,14 +113,14 @@ static_assert(sizeof(RegisterId) == sizeof(uint32_t));
 }  // namespace arangodb::aql
 
 namespace std {
-template <>
+template<>
 struct hash<arangodb::aql::RegisterId> {
   size_t operator()(arangodb::aql::RegisterId const& x) const noexcept {
     return std::hash<unsigned>()(x.value());
   }
 };
 
-template <>
+template<>
 struct equal_to<arangodb::aql::RegisterId> {
   bool operator()(arangodb::aql::RegisterId const& lhs,
                   arangodb::aql::RegisterId const& rhs) const noexcept {
@@ -128,4 +128,3 @@ struct equal_to<arangodb::aql::RegisterId> {
   }
 };
 }  // namespace std
-

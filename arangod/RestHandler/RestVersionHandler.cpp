@@ -21,15 +21,16 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestVersionHandler.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
-#include "RestVersionHandler.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -39,23 +40,25 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler(application_features::ApplicationServer& server,
-                                       GeneralRequest* request, GeneralResponse* response)
+RestVersionHandler::RestVersionHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestVersionHandler::execute() {
   VPackBuilder result;
 
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security =
+      server().getFeature<ServerSecurityFeature>();
 
   bool const allowInfo = security.canAccessHardenedApi();
 
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
 #ifdef USE_ENTERPRISE
-    result.add("license", VPackValue("enterprise"));
+  result.add("license", VPackValue("enterprise"));
 #else
-    result.add("license", VPackValue("community"));
+  result.add("license", VPackValue("community"));
 #endif
 
   if (allowInfo) {
@@ -71,7 +74,9 @@ RestStatus RestVersionHandler::execute() {
       result.add("mode", VPackValue(serverFeature.operationModeString()));
       auto serverState = ServerState::instance();
       if (serverState != nullptr) {
-        result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
+        result.add(
+            "role",
+            VPackValue(ServerState::roleToString(serverState->getRole())));
       }
 
       std::string host = ServerState::instance()->getHost();

@@ -21,13 +21,14 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "SupervisorFeature.h"
+
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <cstdint>
 
-#include "SupervisorFeature.h"
+#include <cstdint>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -106,21 +107,26 @@ static void HUPHandler(int) {
   }
 }
 
-SupervisorFeature::SupervisorFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Supervisor"), _supervisor(false), _clientPid(0) {
+SupervisorFeature::SupervisorFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature(server, "Supervisor"),
+      _supervisor(false),
+      _clientPid(0) {
   setOptional(true);
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<DaemonFeature>();
 }
 
-void SupervisorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--supervisor",
-                     "background the server, starts a supervisor",
-                     new BooleanParameter(&_supervisor),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+void SupervisorFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  options->addOption(
+      "--supervisor", "background the server, starts a supervisor",
+      new BooleanParameter(&_supervisor),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
-void SupervisorFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void SupervisorFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
   if (_supervisor) {
     try {
       DaemonFeature& daemon = server().getFeature<DaemonFeature>();
@@ -154,7 +160,8 @@ void SupervisorFeature::daemonize() {
   arangodb::signals::unmaskAllSignals();
 
   if (!server().hasFeature<LoggerFeature>()) {
-    LOG_TOPIC("4e6ee", FATAL, Logger::STARTUP) << "unknown feature 'Logger', giving up";
+    LOG_TOPIC("4e6ee", FATAL, Logger::STARTUP)
+        << "unknown feature 'Logger', giving up";
     FATAL_ERROR_EXIT();
   }
 
@@ -192,7 +199,8 @@ void SupervisorFeature::daemonize() {
 
       TRI_SetProcessTitle("arangodb [supervisor]");
 
-      LOG_TOPIC("639f2", DEBUG, Logger::STARTUP) << "supervisor mode: within parent";
+      LOG_TOPIC("639f2", DEBUG, Logger::STARTUP)
+          << "supervisor mode: within parent";
 
       CLIENT_PID = _clientPid;
       DONE = false;
@@ -227,7 +235,8 @@ void SupervisorFeature::daemonize() {
             if (t < MIN_TIME_ALIVE_IN_SEC) {
               LOG_TOPIC("9db96", ERR, Logger::STARTUP)
                   << "child process " << _clientPid
-                  << " terminated unexpectedly, exit status " << WEXITSTATUS(status)
+                  << " terminated unexpectedly, exit status "
+                  << WEXITSTATUS(status)
                   << ". the child process only survived for " << t
                   << " seconds. this is lower than the minimum threshold value "
                      "of "
@@ -238,7 +247,8 @@ void SupervisorFeature::daemonize() {
               done = true;
             } else {
               LOG_TOPIC("1ae4a", ERR, Logger::STARTUP)
-                  << "child process " << _clientPid << " terminated unexpectedly, exit status "
+                  << "child process " << _clientPid
+                  << " terminated unexpectedly, exit status "
                   << WEXITSTATUS(status) << ". " << restartMessage;
 
               done = false;
@@ -251,8 +261,9 @@ void SupervisorFeature::daemonize() {
             case 9:   // SIGKILL
             case 15:  // SIGTERM
               LOG_TOPIC("50f4e", INFO, Logger::STARTUP)
-                  << "child process " << _clientPid << " terminated normally, exit status "
-                  << s << " (" << arangodb::signals::name(s) << "). " << noRestartMessage;
+                  << "child process " << _clientPid
+                  << " terminated normally, exit status " << s << " ("
+                  << arangodb::signals::name(s) << "). " << noRestartMessage;
 
               done = true;
               horrible = false;
@@ -264,8 +275,9 @@ void SupervisorFeature::daemonize() {
 
               if (t < MIN_TIME_ALIVE_IN_SEC) {
                 LOG_TOPIC("4a3a6", ERR, Logger::STARTUP)
-                    << "child process " << _clientPid << " terminated unexpectedly, signal "
-                    << s << " (" << arangodb::signals::name(s)
+                    << "child process " << _clientPid
+                    << " terminated unexpectedly, signal " << s << " ("
+                    << arangodb::signals::name(s)
                     << "). the child process only survived for " << t
                     << " seconds. this is lower than the minimum threshold "
                        "value of "
@@ -277,13 +289,15 @@ void SupervisorFeature::daemonize() {
 #ifdef WCOREDUMP
                 if (WCOREDUMP(status)) {
                   LOG_TOPIC("195c5", WARN, Logger::STARTUP)
-                      << "child process " << _clientPid << " also produced a core dump";
+                      << "child process " << _clientPid
+                      << " also produced a core dump";
                 }
 #endif
               } else {
                 LOG_TOPIC("97c53", ERR, Logger::STARTUP)
-                    << "child process " << _clientPid << " terminated unexpectedly, signal "
-                    << s << " (" << arangodb::signals::name(s) << "). " << restartMessage;
+                    << "child process " << _clientPid
+                    << " terminated unexpectedly, signal " << s << " ("
+                    << arangodb::signals::name(s) << "). " << restartMessage;
 
                 done = false;
               }
@@ -313,7 +327,8 @@ void SupervisorFeature::daemonize() {
       LogAppender::allowStdLogging(false);
       DaemonFeature::remapStandardFileDescriptors();
 
-      LOG_TOPIC("abe90", DEBUG, Logger::STARTUP) << "supervisor mode: within child";
+      LOG_TOPIC("abe90", DEBUG, Logger::STARTUP)
+          << "supervisor mode: within child";
       TRI_SetProcessTitle("arangodb [server]");
 
 #ifdef TRI_HAVE_PRCTL
@@ -333,7 +348,8 @@ void SupervisorFeature::daemonize() {
     }
   }
 
-  LOG_TOPIC("85f0b", DEBUG, Logger::STARTUP) << "supervisor mode: finished (exit " << result << ")";
+  LOG_TOPIC("85f0b", DEBUG, Logger::STARTUP)
+      << "supervisor mode: finished (exit " << result << ")";
 
   Logger::flush();
   Logger::shutdown();

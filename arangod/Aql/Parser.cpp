@@ -23,21 +23,20 @@
 
 #include "Parser.h"
 
-#include "Basics/Common.h"
-#include "Basics/ScopeGuard.h"
+#include <sstream>
+
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
-
-#include <sstream>
+#include "Basics/Common.h"
+#include "Basics/ScopeGuard.h"
 
 using namespace arangodb::aql;
 
 /// @brief create the parser
-Parser::Parser(QueryContext& query,
-               Ast& ast, QueryString& qs)
+Parser::Parser(QueryContext& query, Ast& ast, QueryString& qs)
     : _query(query),
       _ast(ast),
       _queryString(qs),
@@ -59,7 +58,8 @@ Parser::Parser(QueryContext& query,
 Parser::~Parser() = default;
 
 /// @brief set data for write queries
-bool Parser::configureWriteQuery(AstNode const* collectionNode, AstNode* optionNode) {
+bool Parser::configureWriteQuery(AstNode const* collectionNode,
+                                 AstNode* optionNode) {
   bool isExclusiveAccess = false;
 
   if (optionNode != nullptr) {
@@ -126,7 +126,7 @@ QueryResult Parser::parseWithDetails() {
   result.bindParameters = _ast.bindParameters();
   auto builder = std::make_shared<VPackBuilder>();
   _ast.toVelocyPack(*builder, false);
-  result.data = std::move(builder); 
+  result.data = std::move(builder);
 
   return result;
 }
@@ -145,7 +145,8 @@ void Parser::registerParseError(ErrorCode errorCode, char const* format,
 }
 
 /// @brief register a parse error, position is specified as line / column
-void Parser::registerParseError(ErrorCode errorCode, std::string_view data, int line, int column) {
+void Parser::registerParseError(ErrorCode errorCode, std::string_view data,
+                                int line, int column) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
   TRI_ASSERT(data.data() != nullptr);
 
@@ -177,7 +178,8 @@ void Parser::registerParseError(ErrorCode errorCode, std::string_view data, int 
 
 /// @brief register a warning
 void Parser::registerWarning(ErrorCode errorCode, std::string_view data,
-                             [[maybe_unused]] int line, [[maybe_unused]] int column) {
+                             [[maybe_unused]] int line,
+                             [[maybe_unused]] int column) {
   // ignore line and column for now
   _query.warnings().registerWarning(errorCode, data);
 }
@@ -211,7 +213,8 @@ void Parser::pushArrayElement(AstNode* node) {
 }
 
 /// @brief push an AstNode into the object element on top of the stack
-void Parser::pushObjectElement(char const* attributeName, size_t nameLength, AstNode* node) {
+void Parser::pushObjectElement(char const* attributeName, size_t nameLength,
+                               AstNode* node) {
   auto object = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(object != nullptr);
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
@@ -231,7 +234,7 @@ void Parser::pushObjectElement(AstNode* attributeName, AstNode* node) {
 /// @brief push a temporary value on the parser's stack
 void Parser::pushStack(void* value) {
   TRI_ASSERT(value != nullptr);
-  _stack.emplace_back(value); 
+  _stack.emplace_back(value);
 }
 
 /// @brief pop a temporary value from the parser's stack

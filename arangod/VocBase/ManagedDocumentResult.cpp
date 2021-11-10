@@ -22,11 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ManagedDocumentResult.h"
-#include "Transaction/Helpers.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Transaction/Helpers.h"
 
 using namespace arangodb;
 

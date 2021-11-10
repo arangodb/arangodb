@@ -23,6 +23,9 @@
 
 #pragma once
 
+#include <iosfwd>
+#include <memory>
+
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
@@ -34,9 +37,6 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <iosfwd>
-#include <memory>
-
 namespace arangodb {
 namespace aql {
 
@@ -44,11 +44,11 @@ struct AqlCall;
 class AqlItemBlockInputRange;
 class InputAqlItemRow;
 class RegisterInfos;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 class NoStats;
 
-template <typename T>
+template<typename T>
 class MaterializerExecutorInfos {
  public:
   MaterializerExecutorInfos(T collectionSource, RegisterId inNmDocId,
@@ -82,12 +82,13 @@ class MaterializerExecutorInfos {
   aql::QueryContext& _query;
 };
 
-template <typename T>
+template<typename T>
 class MaterializeExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -101,7 +102,8 @@ class MaterializeExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
@@ -109,7 +111,8 @@ class MaterializeExecutor {
   /**
    * @brief skip the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
@@ -131,9 +134,10 @@ class MaterializeExecutor {
     arangodb::IndexIterator::DocumentCallback const _callback;
 
    private:
-    static arangodb::IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
+    static arangodb::IndexIterator::DocumentCallback copyDocumentCallback(
+        ReadContext& ctx);
   };
-  
+
   transaction::Methods _trx;
   ReadContext _readDocumentContext;
   Infos const& _infos;
@@ -144,4 +148,3 @@ class MaterializeExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

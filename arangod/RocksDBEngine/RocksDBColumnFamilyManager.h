@@ -24,8 +24,9 @@
 
 #pragma once
 
-#include "RocksDBEngine/RocksDBCommon.h"
 #include <rocksdb/db.h>
+
+#include "RocksDBEngine/RocksDBCommon.h"
 
 namespace arangodb {
 
@@ -68,14 +69,15 @@ struct RocksDBColumnFamilyManager {
   static char const* name(rocksdb::ColumnFamilyHandle* handle,
                           NameMode mode = NameMode::External);
 
-  static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies> const& allHandles();
+  static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies> const&
+  allHandles();
 
  private:
   static std::array<char const*, numberOfColumnFamilies> _internalNames;
   static std::array<char const*, numberOfColumnFamilies> _externalNames;
-  static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies> _handles;
+  static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies>
+      _handles;
   static rocksdb::ColumnFamilyHandle* _defaultHandle;
 };
 
 }  // namespace arangodb
-

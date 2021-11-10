@@ -23,18 +23,17 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#include <map>
+#include <set>
+#include <stack>
 
 #include "Aql/QuerySnippet.h"
 #include "Aql/ShardLocking.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTypes.h"
 #include "VocBase/AccessMode.h"
-
-#include <map>
-#include <set>
-#include <stack>
 
 namespace arangodb {
 namespace network {
@@ -66,7 +65,8 @@ class EngineInfoContainerDBServerServerBased {
 
   // Open a new snippet, this snippt will be used to produce data
   // for the given sinkNode (RemoteNode only for now)
-  void openSnippet(GatherNode const* sinkGatherNode, ExecutionNodeId idOfSinkNode);
+  void openSnippet(GatherNode const* sinkGatherNode,
+                   ExecutionNodeId idOfSinkNode);
 
   // Closes the given snippet and let it use
   // the given queryid of the coordinator as data provider.
@@ -84,9 +84,10 @@ class EngineInfoContainerDBServerServerBased {
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
   //   simon: in v3.7 we get a global QueryId for all snippets on a server
-  Result buildEngines(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-                      MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverQueryIds,
-                      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
+  Result buildEngines(
+      std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+      MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverQueryIds,
+      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.
@@ -94,17 +95,25 @@ class EngineInfoContainerDBServerServerBased {
 
  private:
   /**
-   * @brief Helper method to generate the Request to be send to a specific database server.
-   * this request contains all the necessary information to create a transaction with correct shard
-   * locking, as well as QuerySnippets and GraphEngines on the receiver side.
+   * @brief Helper method to generate the Request to be send to a specific
+   * database server. this request contains all the necessary information to
+   * create a transaction with correct shard locking, as well as QuerySnippets
+   * and GraphEngines on the receiver side.
    *
    * @param clusterQueryId cluster-wide query id (used from 3.8 onwards)
-   * @param infoBuilder (mutable) the request body will be written into this builder.
-   * @param server The DatabaseServer we suppose to send the request to, used to identify the shards on this server
+   * @param infoBuilder (mutable) the request body will be written into this
+   * builder.
+   * @param server The DatabaseServer we suppose to send the request to, used to
+   * identify the shards on this server
    * @param nodesById A vector to get Nodes by their id.
-   * @param nodeAliases (mutable) A map of node-aliases, if a server is responsible for more then one shard we need to duplicate some nodes in the query (e.g. an IndexNode can only access one shard at a time) this list can map cloned node -> original node ids.
+   * @param nodeAliases (mutable) A map of node-aliases, if a server is
+   * responsible for more then one shard we need to duplicate some nodes in the
+   * query (e.g. an IndexNode can only access one shard at a time) this list can
+   * map cloned node -> original node ids.
    *
-   * @return A vector with one entry per GraphNode in the query (in order) it indicates if this Server has created a GraphEngine for this Node and needs to participate in the GraphOperation or not.
+   * @return A vector with one entry per GraphNode in the query (in order) it
+   * indicates if this Server has created a GraphEngine for this Node and needs
+   * to participate in the GraphOperation or not.
    */
   std::vector<bool> buildEngineInfo(
       QueryId clusterQueryId, VPackBuilder& infoBuilder, ServerID const& server,
@@ -115,7 +124,8 @@ class EngineInfoContainerDBServerServerBased {
       transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
       std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
       aql::ServerQueryIdList& serverToQueryId, std::mutex& serverToQueryIdLock,
-      network::ConnectionPool* pool, network::RequestOptions const& options) const;
+      network::ConnectionPool* pool,
+      network::RequestOptions const& options) const;
 
   [[nodiscard]] bool isNotSatelliteLeader(VPackSlice infoSlice) const;
 
@@ -129,7 +139,8 @@ class EngineInfoContainerDBServerServerBased {
    *
    * @param errorCode error Code to be send to DBServers for logging.
    * @param dbname Name of the database this query is executed in.
-   * @param serverQueryIds A map of QueryIds of the format: (remoteNodeId:shardId)
+   * @param serverQueryIds A map of QueryIds of the format:
+   * (remoteNodeId:shardId)
    * -> queryid.
    */
   std::vector<futures::Future<network::Response>> cleanupEngines(
@@ -137,24 +148,29 @@ class EngineInfoContainerDBServerServerBased {
       aql::ServerQueryIdList& serverQueryIds) const;
 
   // Insert the Locking information into the message to be send to DBServers
-  void addLockingPart(arangodb::velocypack::Builder& builder, ServerID const& server) const;
+  void addLockingPart(arangodb::velocypack::Builder& builder,
+                      ServerID const& server) const;
 
   // Insert the Options information into the message to be send to DBServers
-  void addOptionsPart(arangodb::velocypack::Builder& builder, ServerID const& server) const;
+  void addOptionsPart(arangodb::velocypack::Builder& builder,
+                      ServerID const& server) const;
 
   // Insert the Variables information into the message to be send to DBServers
   void addVariablesPart(arangodb::velocypack::Builder& builder) const;
 
   // Insert the Snippets information into the message to be send to DBServers
-  void addSnippetPart(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-                      arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
-                      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
-                      ServerID const& server) const;
+  void addSnippetPart(
+      std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+      arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
+      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+      ServerID const& server) const;
 
-  // Insert the TraversalEngine information into the message to be send to DBServers
-  std::vector<bool> addTraversalEnginesPart(arangodb::velocypack::Builder& builder,
-                                            std::unordered_map<ShardID, ServerID> const& shardMapping,
-                                            ServerID const& server) const;
+  // Insert the TraversalEngine information into the message to be send to
+  // DBServers
+  std::vector<bool> addTraversalEnginesPart(
+      arangodb::velocypack::Builder& builder,
+      std::unordered_map<ShardID, ServerID> const& shardMapping,
+      ServerID const& server) const;
 
   // Parse the response of a DBServer to a setup request
   Result parseResponse(VPackSlice response, MapRemoteToSnippet& queryIds,
@@ -165,7 +181,9 @@ class EngineInfoContainerDBServerServerBased {
   void injectVertexCollections(GraphNode* node);
 
  private:
-  std::stack<std::shared_ptr<QuerySnippet>, std::vector<std::shared_ptr<QuerySnippet>>> _snippetStack;
+  std::stack<std::shared_ptr<QuerySnippet>,
+             std::vector<std::shared_ptr<QuerySnippet>>>
+      _snippetStack;
 
   std::vector<std::shared_ptr<QuerySnippet>> _closedSnippets;
 

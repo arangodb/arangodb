@@ -23,12 +23,12 @@
 
 #pragma once
 
+#include <vector>
+
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryExpressionContext.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
-
-#include <vector>
 
 namespace arangodb {
 namespace aql {
@@ -38,10 +38,10 @@ class InputAqlItemRow;
 
 class ExecutorExpressionContext final : public QueryExpressionContext {
  public:
-  ExecutorExpressionContext(transaction::Methods& trx,
-                            QueryContext& context,
-                            AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
-                            std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister);
+  ExecutorExpressionContext(
+      transaction::Methods& trx, QueryContext& context,
+      AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
+      std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister);
 
   ~ExecutorExpressionContext() override = default;
 

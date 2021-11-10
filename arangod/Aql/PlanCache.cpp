@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PlanCache.h"
+
+#include <velocypack/Builder.h>
+
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
@@ -29,8 +32,6 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/Builder.h>
 
 using namespace arangodb::aql;
 
@@ -44,8 +45,9 @@ PlanCache::PlanCache() : _lock(), _plans() {}
 PlanCache::~PlanCache() = default;
 
 /// @brief lookup a plan in the cache
-std::shared_ptr<PlanCacheEntry> PlanCache::lookup(TRI_vocbase_t* vocbase, uint64_t queryHash,
-                                                  QueryString const& queryString) {
+std::shared_ptr<PlanCacheEntry> PlanCache::lookup(
+    TRI_vocbase_t* vocbase, uint64_t queryHash,
+    QueryString const& queryString) {
   READ_LOCKER(readLocker, _lock);
 
   auto it = _plans.find(vocbase);
@@ -68,11 +70,11 @@ std::shared_ptr<PlanCacheEntry> PlanCache::lookup(TRI_vocbase_t* vocbase, uint64
 
 /// @brief store a plan in the cache
 void PlanCache::store(TRI_vocbase_t* vocbase, uint64_t hash,
-                      QueryString const& queryString, ExecutionPlan const* plan) {
-  auto entry =
-      std::make_unique<PlanCacheEntry>(queryString.extract(SIZE_MAX),
-                                       plan->toVelocyPack(plan->getAst(), true,
-                                                          ExplainRegisterPlan::Yes));
+                      QueryString const& queryString,
+                      ExecutionPlan const* plan) {
+  auto entry = std::make_unique<PlanCacheEntry>(
+      queryString.extract(SIZE_MAX),
+      plan->toVelocyPack(plan->getAst(), true, ExplainRegisterPlan::Yes));
 
   WRITE_LOCKER(writeLocker, _lock);
 

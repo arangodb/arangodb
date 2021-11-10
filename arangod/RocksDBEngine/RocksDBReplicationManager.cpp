@@ -23,10 +23,13 @@
 
 #include "RocksDBReplicationManager.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/system-functions.h"
 #include "Basics/ResultT.h"
+#include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -34,9 +37,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -101,14 +101,14 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 //////////////////////////////////////////////////////////////////////////////
 
 RocksDBReplicationContext* RocksDBReplicationManager::createContext(
-    RocksDBEngine& engine, double ttl, SyncerId const syncerId, ServerId const clientId,
-    std::string const& patchCount) {
+    RocksDBEngine& engine, double ttl, SyncerId const syncerId,
+    ServerId const clientId, std::string const& patchCount) {
   // patchCount should only be set on single servers or DB servers
-  TRI_ASSERT(patchCount.empty() ||
-             (ServerState::instance()->isSingleServer() || ServerState::instance()->isDBServer())); 
- 
-  auto context =
-      std::make_unique<RocksDBReplicationContext>(engine, ttl, syncerId, clientId);
+  TRI_ASSERT(patchCount.empty() || (ServerState::instance()->isSingleServer() ||
+                                    ServerState::instance()->isDBServer()));
+
+  auto context = std::make_unique<RocksDBReplicationContext>(
+      engine, ttl, syncerId, clientId);
 
   TRI_ASSERT(context->isUsed());
 
@@ -127,28 +127,32 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext(
       // protocol. now check if any other context has the same patchCount
       // value set. in this case, the other context is responsible for applying
       // count patches, and we have to drop ours
-      
+
       // note: it is safe here to access the patchCount() method of any context,
-      // as the only place that modifies a context's _patchCount instance variable,
-      // is the call to setPatchcount() a few lines below. there is no concurrency
-      // here, as this method here is executed under a mutex. in addition, _contexts
-      // is only modified under this same mutex, 
-      bool foundOther = 
-        _contexts.end() != std::find_if(_contexts.begin(), _contexts.end(), [&patchCount](decltype(_contexts)::value_type const& entry) {
-          return entry.second->patchCount() == patchCount;
-        });
+      // as the only place that modifies a context's _patchCount instance
+      // variable, is the call to setPatchcount() a few lines below. there is no
+      // concurrency here, as this method here is executed under a mutex. in
+      // addition, _contexts is only modified under this same mutex,
+      bool foundOther =
+          _contexts.end() !=
+          std::find_if(
+              _contexts.begin(), _contexts.end(),
+              [&patchCount](decltype(_contexts)::value_type const& entry) {
+                return entry.second->patchCount() == patchCount;
+              });
       if (!foundOther) {
-        // no other context exists that has "leadership" for patching counts to the
-        // same collection/shard
+        // no other context exists that has "leadership" for patching counts to
+        // the same collection/shard
         context->setPatchCount(patchCount);
       }
-      // if we found a different context here, then the other context is responsible
-      // for applying count patches.
+      // if we found a different context here, then the other context is
+      // responsible for applying count patches.
     }
 
-    bool inserted =_contexts.try_emplace(id, context.get()).second;
+    bool inserted = _contexts.try_emplace(id, context.get()).second;
     if (!inserted) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to insert replication context");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to insert replication context");
     }
   }
 
@@ -175,7 +179,8 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
       return false;
     }
 
-    LOG_TOPIC("71233", TRACE, Logger::REPLICATION) << "removing replication context " << id;
+    LOG_TOPIC("71233", TRACE, Logger::REPLICATION)
+        << "removing replication context " << id;
 
     context = it->second;
     TRI_ASSERT(context != nullptr);
@@ -207,7 +212,8 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 /// it must be returned later using release()
 ////////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId id, double ttl) {
+RocksDBReplicationContext* RocksDBReplicationManager::find(
+    RocksDBReplicationId id, double ttl) {
   RocksDBReplicationContext* context = nullptr;
 
   {
@@ -226,8 +232,9 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId 
     TRI_ASSERT(context != nullptr);
 
     if (context->isDeleted()) {
-      LOG_TOPIC("86214", WARN, Logger::REPLICATION) << "Trying to use deleted "
-                                           << "replication context with id " << id;
+      LOG_TOPIC("86214", WARN, Logger::REPLICATION)
+          << "Trying to use deleted "
+          << "replication context with id " << id;
       // already deleted
       return nullptr;
     }
@@ -243,8 +250,8 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId 
 /// populates clientId
 //////////////////////////////////////////////////////////////////////////////
 
-ResultT<std::tuple<SyncerId, ServerId, std::string>> RocksDBReplicationManager::extendLifetime(
-    RocksDBReplicationId id, double ttl) {
+ResultT<std::tuple<SyncerId, ServerId, std::string>>
+RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   auto it = _contexts.find(id);
@@ -354,7 +361,8 @@ void RocksDBReplicationManager::drop(LogicalCollection* collection) {
   TRI_ASSERT(collection != nullptr);
 
   LOG_TOPIC("fe4bb", TRACE, Logger::REPLICATION)
-      << "dropping all replication contexts for collection " << collection->name();
+      << "dropping all replication contexts for collection "
+      << collection->name();
 
   bool found = false;
   {
@@ -375,7 +383,8 @@ void RocksDBReplicationManager::drop(LogicalCollection* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBReplicationManager::dropAll() {
-  LOG_TOPIC("bc8a8", TRACE, Logger::REPLICATION) << "deleting all replication contexts";
+  LOG_TOPIC("bc8a8", TRACE, Logger::REPLICATION)
+      << "deleting all replication contexts";
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
@@ -427,7 +436,8 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
           LOG_TOPIC("26ab2", TRACE, Logger::REPLICATION)
               << "force-deleting context " << context->id();
         } else {
-          LOG_TOPIC("be214", TRACE, Logger::REPLICATION) << "context " << context->id() << " is expired";
+          LOG_TOPIC("be214", TRACE, Logger::REPLICATION)
+              << "context " << context->id() << " is expired";
         }
         context->setDeleted();
       }
@@ -460,9 +470,9 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
   }
 
   if (foundUsed > 0 || foundUsedDeleted > 0) {
-    LOG_TOPIC("7b2b0", TRACE, Logger::REPLICATION) 
-      << "garbage-collection found used contexts: " << foundUsed 
-      << ", used deleted contexts: " << foundUsedDeleted;
+    LOG_TOPIC("7b2b0", TRACE, Logger::REPLICATION)
+        << "garbage-collection found used contexts: " << foundUsed
+        << ", used deleted contexts: " << foundUsedDeleted;
   }
 
   return (!found.empty());

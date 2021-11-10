@@ -23,19 +23,19 @@
 
 #include "AqlExecuteResult.h"
 
-#include "Aql/AqlItemBlockManager.h"
-#include "Basics/Exceptions.h"
-#include "Basics/ResultT.h"
-#include "Basics/StaticStrings.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
 #include <map>
 #include <string_view>
 #include <utility>
+
+#include "Aql/AqlItemBlockManager.h"
+#include "Basics/Exceptions.h"
+#include "Basics/ResultT.h"
+#include "Basics/StaticStrings.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -74,8 +74,9 @@ auto AqlExecuteResult::block() const noexcept -> SharedAqlItemBlockPtr const& {
   return _block;
 }
 
-void AqlExecuteResult::toVelocyPack(velocypack::Builder& builder,
-                                    velocypack::Options const* const options) const {
+void AqlExecuteResult::toVelocyPack(
+    velocypack::Builder& builder,
+    velocypack::Options const* const options) const {
   using namespace arangodb::velocypack;
   auto const stateToValue = [](ExecutionState state) -> Value {
     switch (state) {
@@ -109,9 +110,10 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
     -> ResultT<AqlExecuteResult> {
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
-    return Result(TRI_ERROR_TYPE_ERROR,
-                  "When deserializating AqlExecuteResult: Expected object, got "s +
-                      slice.typeName());
+    return Result(
+        TRI_ERROR_TYPE_ERROR,
+        "When deserializating AqlExecuteResult: Expected object, got "s +
+            slice.typeName());
   }
 
   auto expectedPropertiesFound = std::map<std::string_view, bool>{};
@@ -123,7 +125,8 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
   auto skipped = SkipResult{};
   auto block = SharedAqlItemBlockPtr{};
 
-  auto const readState = [](velocypack::Slice slice) -> ResultT<ExecutionState> {
+  auto const readState =
+      [](velocypack::Slice slice) -> ResultT<ExecutionState> {
     if (ADB_UNLIKELY(!slice.isString())) {
       auto message = std::string{
           "When deserializing AqlExecuteResult: When reading state: "
@@ -146,7 +149,9 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
     }
   };
 
-  auto const readBlock = [&itemBlockManager](velocypack::Slice slice) -> ResultT<SharedAqlItemBlockPtr> {
+  auto const readBlock =
+      [&itemBlockManager](
+          velocypack::Slice slice) -> ResultT<SharedAqlItemBlockPtr> {
     if (slice.isNull()) {
       return SharedAqlItemBlockPtr{nullptr};
     }
@@ -157,9 +162,8 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
   for (auto const it : velocypack::ObjectIterator(slice)) {
     auto const keySlice = it.key;
     if (ADB_UNLIKELY(!keySlice.isString())) {
-      return Result(
-          TRI_ERROR_TYPE_ERROR,
-          "When deserializing AqlExecuteResult: Key is not a string");
+      return Result(TRI_ERROR_TYPE_ERROR,
+                    "When deserializing AqlExecuteResult: Key is not a string");
     }
     auto const key = getStringView(keySlice);
 

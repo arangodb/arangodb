@@ -25,12 +25,12 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
 #include "GeneralServer/IoContext.h"
 #include "GeneralServer/SslServerFeature.h"
-
-#include <mutex>
 
 namespace arangodb {
 namespace application_features {
@@ -56,9 +56,9 @@ class GeneralServer {
   void registerTask(std::shared_ptr<rest::CommTask>);
   void unregisterTask(rest::CommTask*);
   void setEndpointList(EndpointList const* list);
-  void startListening(); /// start accepting connections
-  void stopListening(); /// stop accepting new connections
-  void stopConnections(); /// stop connections
+  void startListening();   /// start accepting connections
+  void stopListening();    /// stop accepting new connections
+  void stopConnections();  /// stop connections
   void stopWorking();
 
   IoContext& selectIoContext();
@@ -88,4 +88,3 @@ class GeneralServer {
 };
 }  // namespace rest
 }  // namespace arangodb
-

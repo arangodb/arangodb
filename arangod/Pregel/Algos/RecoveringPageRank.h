@@ -24,6 +24,7 @@
 #pragma once
 
 #include <velocypack/Slice.h>
+
 #include "Pregel/Algorithm.h"
 
 namespace arangodb {
@@ -51,8 +52,10 @@ struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
     return new SumCombiner<float>();
   }
 
-  VertexComputation<float, float, float>* createComputation(WorkerConfig const*) const override;
-  VertexCompensation<float, float, float>* createCompensation(WorkerConfig const*) const override;
+  VertexComputation<float, float, float>* createComputation(
+      WorkerConfig const*) const override;
+  VertexCompensation<float, float, float>* createCompensation(
+      WorkerConfig const*) const override;
   IAggregator* aggregator(std::string const& name) const override;
 };
 }  // namespace algos

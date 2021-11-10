@@ -26,13 +26,13 @@
 
 #include "CountCollectExecutor.h"
 
+#include <utility>
+
 #include "Aql/AqlValue.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Basics/Exceptions.h"
-
-#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -74,7 +74,8 @@ auto CountCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           AqlCall{0, true, 0, AqlCall::LimitType::HARD}};
 }
 
-auto CountCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+auto CountCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                         AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   TRI_IF_FAILURE("CountCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -96,9 +97,9 @@ auto CountCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aql
           AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
 }
 
-auto CountCollectExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                                   AqlCall const& call) const
-    noexcept -> size_t {
+auto CountCollectExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+    -> size_t {
   auto subqueries = input.countShadowRows();
   if (subqueries > 0) {
     // We will return 1 row for every subquery execution.
@@ -110,7 +111,8 @@ auto CountCollectExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const&
   return std::min<size_t>(1, call.getLimit());
 }
 
-const CountCollectExecutor::Infos& CountCollectExecutor::infos() const noexcept {
+const CountCollectExecutor::Infos& CountCollectExecutor::infos()
+    const noexcept {
   return _infos;
 }
 

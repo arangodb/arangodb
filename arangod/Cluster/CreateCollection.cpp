@@ -23,7 +23,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CreateCollection.h"
-#include "MaintenanceFeature.h"
+
+#include <velocypack/Compare.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -33,16 +37,12 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "MaintenanceFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
-
-#include <velocypack/Compare.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -52,7 +52,8 @@ using namespace arangodb::methods;
 constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
 constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 
-CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescription const& desc)
+CreateCollection::CreateCollection(MaintenanceFeature& feature,
+                                   ActionDescription const& desc)
     : ActionBase(feature, desc),
       ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
@@ -121,15 +122,13 @@ bool CreateCollection::first() {
 
     auto& cluster = _feature.server().getFeature<ClusterFeature>();
 
-    bool waitForRepl =
-        (props.get(WAIT_FOR_SYNC_REPL).isBool())
-            ? props.get(WAIT_FOR_SYNC_REPL).getBool()
-            : cluster.createWaitsForSyncReplication();
+    bool waitForRepl = (props.get(WAIT_FOR_SYNC_REPL).isBool())
+                           ? props.get(WAIT_FOR_SYNC_REPL).getBool()
+                           : cluster.createWaitsForSyncReplication();
 
-    bool enforceReplFact =
-        (props.get(ENF_REPL_FACT).isBool())
-            ? props.get(ENF_REPL_FACT).getBool()
-            : true;
+    bool enforceReplFact = (props.get(ENF_REPL_FACT).isBool())
+                               ? props.get(ENF_REPL_FACT).getBool()
+                               : true;
 
     TRI_col_type_e type = static_cast<TRI_col_type_e>(
         props.get(StaticStrings::DataSourceType).getNumber<uint32_t>());
@@ -170,28 +169,27 @@ bool CreateCollection::first() {
     }
 
     if (res.fail()) {
-      // If this is TRI_ERROR_ARANGO_DUPLICATE_NAME, then we assume that a previous
-      // incarnation of ourselves has already done the work. This can happen, if
-      // the timing of phaseOne runs is unfortunate with asynchronous creation of
-      // shards.
-      // In this case, we do not report an error and do not increase the version
-      // number of the shard in `setState` below.
+      // If this is TRI_ERROR_ARANGO_DUPLICATE_NAME, then we assume that a
+      // previous incarnation of ourselves has already done the work. This can
+      // happen, if the timing of phaseOne runs is unfortunate with asynchronous
+      // creation of shards. In this case, we do not report an error and do not
+      // increase the version number of the shard in `setState` below.
       if (res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
         LOG_TOPIC("9db9c", INFO, Logger::MAINTENANCE)
-        << "local collection " << database << "/" << shard
-        << " already found, ignoring...";
+            << "local collection " << database << "/" << shard
+            << " already found, ignoring...";
         result(TRI_ERROR_NO_ERROR);
         _doNotIncrement = true;
         return false;
       }
       std::stringstream error;
-      error << "creating local shard '" << database << "/" << shard << "' for central '"
-            << database << "/" << collection << "' failed: " << res;
+      error << "creating local shard '" << database << "/" << shard
+            << "' for central '" << database << "/" << collection
+            << "' failed: " << res;
       LOG_TOPIC("63687", ERR, Logger::MAINTENANCE) << error.str();
 
       res.reset(TRI_ERROR_FAILED, error.str());
       result(res);
-      
     }
 
   } catch (std::exception const& e) {

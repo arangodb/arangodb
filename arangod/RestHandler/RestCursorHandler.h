@@ -23,15 +23,14 @@
 
 #pragma once
 
-#include "Aql/QueryResult.h"
-#include "Basics/Common.h"
-#include "Basics/Mutex.h"
-#include "RestHandler/RestVocbaseBaseHandler.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Aql/QueryResult.h"
+#include "Basics/Common.h"
+#include "Basics/Mutex.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
@@ -204,4 +203,3 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   std::shared_ptr<arangodb::velocypack::Builder> _options;
 };
 }  // namespace arangodb
-

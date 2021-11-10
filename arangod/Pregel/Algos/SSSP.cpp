@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SSSP.h"
+
 #include "Pregel/Algorithm.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
@@ -80,9 +81,11 @@ struct SSSPGraphFormat : public InitGraphFormat<int64_t, int64_t> {
       : InitGraphFormat<int64_t, int64_t>(server, result, 0, 1),
         _sourceDocId(source) {}
 
-  void copyVertexData(arangodb::velocypack::Options const&, std::string const& documentId,
+  void copyVertexData(arangodb::velocypack::Options const&,
+                      std::string const& documentId,
                       arangodb::velocypack::Slice /*document*/,
-                      int64_t& targetPtr, uint64_t& /*vertexIdRange*/) override {
+                      int64_t& targetPtr,
+                      uint64_t& /*vertexIdRange*/) override {
     targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 };
@@ -102,7 +105,7 @@ struct SSSPCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
   }
 };
 
-VertexCompensation<int64_t, int64_t, int64_t>* SSSPAlgorithm::createCompensation(
-    WorkerConfig const* config) const {
+VertexCompensation<int64_t, int64_t, int64_t>*
+SSSPAlgorithm::createCompensation(WorkerConfig const* config) const {
   return new SSSPCompensation();
 }

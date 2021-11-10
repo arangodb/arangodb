@@ -23,15 +23,15 @@
 
 #pragma once
 
+#include <fuerte/types.h>
+#include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
+
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "Utils/OperationResult.h"
-
-#include <fuerte/types.h>
-#include <velocypack/Buffer.h>
-#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace velocypack {
@@ -48,20 +48,23 @@ namespace network {
 /// @brief resolve 'shard:' or 'server:' url to actual endpoint
 ErrorCode resolveDestination(NetworkFeature const&, DestinationId const& dest,
                              network::EndpointSpec&);
-ErrorCode resolveDestination(ClusterInfo&, DestinationId const& dest, network::EndpointSpec&);
+ErrorCode resolveDestination(ClusterInfo&, DestinationId const& dest,
+                             network::EndpointSpec&);
 
-Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& b,
-                      ErrorCode defaultError);
+Result resultFromBody(
+    std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& b,
+    ErrorCode defaultError);
 Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& b,
                       ErrorCode defaultError);
 Result resultFromBody(arangodb::velocypack::Slice b, ErrorCode defaultError);
 
 /// @brief extract the error from a cluster response
-template <typename T>
+template<typename T>
 OperationResult opResultFromBody(T const& body, ErrorCode defaultErrorCode,
                                  OperationOptions&& options) {
-  return OperationResult(arangodb::network::resultFromBody(body, defaultErrorCode),
-                         std::move(options));
+  return OperationResult(
+      arangodb::network::resultFromBody(body, defaultErrorCode),
+      std::move(options));
 }
 
 /// @brief extract the error code form the body

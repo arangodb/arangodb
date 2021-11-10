@@ -23,17 +23,17 @@
 
 #pragma once
 
+#include <utility>
+
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 
-#include <utility>
-
 namespace arangodb {
 namespace aql {
 
-template <BlockPassthrough allowsPassThrough>
+template<BlockPassthrough allowsPassThrough>
 class SingleRowFetcher;
 class NoStats;
 class RegisterInfos;
@@ -43,7 +43,8 @@ class SubqueryStartExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
 
@@ -58,7 +59,8 @@ class SubqueryStartExecutor {
   // state as it can happen that after producing the copied data row the output
   // is full, and hence we need to return ExecutorState::HASMORE to be able to
   // produce the shadow row
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
   // skipRowsRange just skips input rows and reports how many rows it skipped
@@ -67,10 +69,12 @@ class SubqueryStartExecutor {
 
   // Produce a shadow row *if* we have either skipped or output a datarow
   // previously
-  auto produceShadowRow(AqlItemBlockInputRange& input, OutputAqlItemRow& output) -> bool;
+  auto produceShadowRow(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> bool;
 
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(
+      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+      -> size_t;
 
  private:
   // Upstream state, used to determine if we are done with all subqueries

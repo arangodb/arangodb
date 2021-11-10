@@ -25,6 +25,11 @@
 
 #pragma once
 
+#include <rocksdb/iterator.h>
+#include <rocksdb/options.h>
+#include <rocksdb/status.h>
+#include <rocksdb/utilities/transaction_db.h>
+
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
@@ -34,11 +39,6 @@
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
-
-#include <rocksdb/iterator.h>
-#include <rocksdb/options.h>
-#include <rocksdb/status.h>
-#include <rocksdb/utilities/transaction_db.h>
 
 namespace rocksdb {
 class Comparator;
@@ -57,17 +57,17 @@ class RocksDBEngine;
 
 namespace rocksutils {
 
-/// @brief throws an exception of appropriate type if the iterator's status is !ok().
-/// does nothing if the iterator's status is ok().
-/// this function can be used by IndexIterators to verify that an iterator is still
-/// in good shape
+/// @brief throws an exception of appropriate type if the iterator's status is
+/// !ok(). does nothing if the iterator's status is ok(). this function can be
+/// used by IndexIterators to verify that an iterator is still in good shape
 void checkIteratorStatus(rocksdb::Iterator const* iterator);
 
 /// @brief count all keys in the given column family
 std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);
 
 /// @brief iterate over all keys in range and count them
-std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, bool prefix_same_as_start);
+std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&,
+                          bool prefix_same_as_start);
 
 /// @brief whether or not the specified range has keys
 bool hasKeys(rocksdb::DB*, RocksDBKeyBounds const&, bool prefix_same_as_start);
@@ -80,21 +80,24 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
 /// @brief compacts the entire key range of the database.
 /// warning: may cause a full rewrite of the entire database, which will
 /// take long for large databases - use with care!
-Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLeve);
+Result compactAll(rocksdb::DB* db, bool changeLevel,
+                  bool compactBottomMostLeve);
 
 // optional switch to std::function to reduce amount of includes and
 // to avoid template
 // this helper is not meant for transactional usage!
-template <typename T>  // T is an invokeable that takes a rocksdb::Iterator*
-void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds, T callback) {
+template<typename T>  // T is an invokeable that takes a rocksdb::Iterator*
+void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds,
+                   T callback) {
   rocksdb::Slice const end = bounds.end();
-  
+
   rocksdb::ReadOptions options;
   options.iterate_upper_bound = &end;  // safe to use on rocksb::DB directly
   options.prefix_same_as_start = true;
   options.verify_checksums = false;
   options.fill_cache = false;
-  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(options, bounds.columnFamily()));
+  std::unique_ptr<rocksdb::Iterator> it(
+      db->NewIterator(options, bounds.columnFamily()));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     callback(it.get());
   }
@@ -102,4 +105,3 @@ void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds, T
 
 }  // namespace rocksutils
 }  // namespace arangodb
-

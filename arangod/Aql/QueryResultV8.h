@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "Aql/QueryResult.h"
-
 #include <v8.h>
+
+#include "Aql/QueryResult.h"
 
 namespace arangodb {
 namespace aql {
@@ -36,29 +36,25 @@ struct QueryResultV8 : public QueryResult {
 
   QueryResultV8(QueryResultV8&& other) = default;
 
-  explicit QueryResultV8(QueryResult&& other)
-      : QueryResult(std::move(other)) {}
+  explicit QueryResultV8(QueryResult&& other) : QueryResult(std::move(other)) {}
 
   QueryResultV8() : QueryResult() {}
-  
-  explicit QueryResultV8(Result const& res) 
-      : QueryResult(res) {}
-  
-  explicit QueryResultV8(Result&& res) 
-      : QueryResult(std::move(res)) {}
-  
+
+  explicit QueryResultV8(Result const& res) : QueryResult(res) {}
+
+  explicit QueryResultV8(Result&& res) : QueryResult(std::move(res)) {}
+
   void reset(Result const& result) {
     QueryResult::reset(result);
     v8Data.Clear();
   }
-  
+
   void reset(Result&& result) {
     QueryResult::reset(std::move(result));
     v8Data.Clear();
   }
-  
+
   v8::Local<v8::Array> v8Data;
 };
 }  // namespace aql
 }  // namespace arangodb
-

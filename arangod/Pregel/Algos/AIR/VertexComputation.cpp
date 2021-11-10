@@ -31,14 +31,14 @@
 
 #include "Greenspun/Extractor.h"
 #include "Greenspun/Primitives.h"
-
 #include "WorkerContext.h"
 
 using namespace arangodb::pregel;
 
 namespace arangodb::pregel::algos::accumulators {
 
-VertexComputation::VertexComputation(ProgrammablePregelAlgorithm const& algorithm)
+VertexComputation::VertexComputation(
+    ProgrammablePregelAlgorithm const& algorithm)
     : _algorithm(algorithm) {
   InitMachine(_airMachine);
 
@@ -50,37 +50,47 @@ void VertexComputation::registerLocalFunctions() {
   _airMachine.setFunctionMember("accum-clear!",  // " name:id -> void ",
                                 &VertexComputation::air_accumClear, this);
 
-  _airMachine.setFunctionMember("accum-set!",  // " name:id -> value:any -> void ",
-                                &VertexComputation::air_accumSet, this);
+  _airMachine.setFunctionMember(
+      "accum-set!",  // " name:id -> value:any -> void ",
+      &VertexComputation::air_accumSet, this);
 
   _airMachine.setFunctionMember("accum-ref",  // " name:id -> value:any ",
                                 &VertexComputation::air_accumRef, this);
 
-  _airMachine.setFunctionMember("send-to-accum",  // " name:id -> to-vertex:pid -> value:any -> void ",
-                                &VertexComputation::air_sendToAccum, this);
+  _airMachine.setFunctionMember(
+      "send-to-accum",  // " name:id -> to-vertex:pid -> value:any -> void ",
+      &VertexComputation::air_sendToAccum, this);
 
-  _airMachine.setFunctionMember("send-to-all-neighbours",  // " name:id -> value:any -> void ",
-                                &VertexComputation::air_sendToAllNeighbors, this);
-  _airMachine.setFunctionMember("send-to-all-neighbors",  // " name:id -> value:any -> void ",
-                                &VertexComputation::air_sendToAllNeighbors, this);
+  _airMachine.setFunctionMember(
+      "send-to-all-neighbours",  // " name:id -> value:any -> void ",
+      &VertexComputation::air_sendToAllNeighbors, this);
+  _airMachine.setFunctionMember(
+      "send-to-all-neighbors",  // " name:id -> value:any -> void ",
+      &VertexComputation::air_sendToAllNeighbors, this);
 
   // Global Accumulators
-  _airMachine.setFunctionMember("global-accum-ref",  // " name:id -> value:any ",
-                                &VertexComputation::air_globalAccumRef, this);
+  _airMachine.setFunctionMember(
+      "global-accum-ref",  // " name:id -> value:any ",
+      &VertexComputation::air_globalAccumRef, this);
 
-  _airMachine.setFunctionMember("send-to-global-accum",  // " name:id -> value:any -> void ",
-                                &VertexComputation::air_sendToGlobalAccum, this);
+  _airMachine.setFunctionMember(
+      "send-to-global-accum",  // " name:id -> value:any -> void ",
+      &VertexComputation::air_sendToGlobalAccum, this);
 
   //
-  _airMachine.setFunctionMember("this-outbound-edges",  // " name:id -> value:any -> void ",
-                                &VertexComputation::air_outboundEdges, this);
+  _airMachine.setFunctionMember(
+      "this-outbound-edges",  // " name:id -> value:any -> void ",
+      &VertexComputation::air_outboundEdges, this);
 
   _airMachine.setFunctionMember("this-outbound-edges-count",  //,
-                                &VertexComputation::air_numberOutboundEdges, this);
+                                &VertexComputation::air_numberOutboundEdges,
+                                this);
   _airMachine.setFunctionMember("this-outdegree",  //,
-                                &VertexComputation::air_numberOutboundEdges, this);
+                                &VertexComputation::air_numberOutboundEdges,
+                                this);
 
-  _airMachine.setFunctionMember("this-doc", &VertexComputation::air_thisDoc, this);
+  _airMachine.setFunctionMember("this-doc", &VertexComputation::air_thisDoc,
+                                this);
 
   _airMachine.setFunctionMember("this-vertex-id",  // " () -> value:any ",
                                 &VertexComputation::air_thisVertexId, this);
@@ -94,19 +104,24 @@ void VertexComputation::registerLocalFunctions() {
   _airMachine.setFunctionMember("vertex-count",  // ,
                                 &VertexComputation::air_numberOfVertices, this);
 
-  _airMachine.setFunctionMember(StaticStrings::VertexComputationGlobalSuperstep,  //,
-                                &VertexComputation::air_globalSuperstep, this);
+  _airMachine.setFunctionMember(
+      StaticStrings::VertexComputationGlobalSuperstep,  //,
+      &VertexComputation::air_globalSuperstep, this);
 
   _airMachine.setPrintCallback([this](std::string const& msg) {
-    auto const& phase_index = getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
+    auto const& phase_index =
+        getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
     auto const& phase = _algorithm.options().phases.at(phase_index);
     this->getReportManager()
             .report(ReportLevel::DEBUG)
             .with(StaticStrings::VertexComputationPregelId, pregelId())
-            .with(StaticStrings::VertexComputationVertexId, vertexData()._documentId)
+            .with(StaticStrings::VertexComputationVertexId,
+                  vertexData()._documentId)
             .with(StaticStrings::VertexComputationPhase, phase.name)
-            .with(StaticStrings::VertexComputationGlobalSuperstep, globalSuperstep())
-            .with(StaticStrings::VertexComputationPhaseStep, phaseGlobalSuperstep())
+            .with(StaticStrings::VertexComputationGlobalSuperstep,
+                  globalSuperstep())
+            .with(StaticStrings::VertexComputationPhaseStep,
+                  phaseGlobalSuperstep())
         << msg;
   });
 }
@@ -150,9 +165,9 @@ greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
                               "` not found");
 }
 
-greenspun::EvalResult VertexComputation::air_accumRef_helper(VPackSlice const params,
-                                                             VPackBuilder& result,
-                                                             vertex_type const* vertexDataPtr) {
+greenspun::EvalResult VertexComputation::air_accumRef_helper(
+    VPackSlice const params, VPackBuilder& result,
+    vertex_type const* vertexDataPtr) {
   auto res = greenspun::extract<std::string>(params);
   if (res.fail()) {
     return std::move(res).error();
@@ -162,8 +177,9 @@ greenspun::EvalResult VertexComputation::air_accumRef_helper(VPackSlice const pa
 
   if (auto iter = vertexDataPtr->_vertexAccumulators.find(accumId);
       iter != std::end(vertexDataPtr->_vertexAccumulators)) {
-    return iter->second->getIntoBuilder(result).mapError(
-        [](auto& err) { err.wrapMessage("when getting value of accumulator"); });
+    return iter->second->getIntoBuilder(result).mapError([](auto& err) {
+      err.wrapMessage("when getting value of accumulator");
+    });
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
@@ -175,9 +191,8 @@ greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
   return air_accumRef_helper(params, result, &vertexData());
 }
 
-greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx,
-                                                         VPackSlice const params,
-                                                         VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_sendToAccum(
+    greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto res = greenspun::extract<std::string, VPackSlice, VPackSlice>(params);
   if (res.fail()) {
     return res.error();
@@ -210,9 +225,8 @@ greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx
                               "` not found");
 }
 
-greenspun::EvalResult VertexComputation::air_sendToAllNeighbors(greenspun::Machine& ctx,
-                                                                VPackSlice const params,
-                                                                VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_sendToAllNeighbors(
+    greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto res = greenspun::extract<std::string, VPackSlice>(params);
   if (res.fail()) {
     return res.error();
@@ -225,9 +239,8 @@ greenspun::EvalResult VertexComputation::air_sendToAllNeighbors(greenspun::Machi
 }
 
 /* Global accumulators */
-greenspun::EvalResult VertexComputation::air_globalAccumRef(greenspun::Machine& ctx,
-                                                            VPackSlice const params,
-                                                            VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_globalAccumRef(
+    greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto res = greenspun::extract<std::string>(params);
   if (res.fail()) {
     return std::move(res).error();
@@ -239,9 +252,8 @@ greenspun::EvalResult VertexComputation::air_globalAccumRef(greenspun::Machine& 
                               "` not found");
 }
 
-greenspun::EvalResult VertexComputation::air_sendToGlobalAccum(greenspun::Machine& ctx,
-                                                               VPackSlice const params,
-                                                               VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_sendToGlobalAccum(
+    greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto res = greenspun::extract<std::string, VPackSlice>(params);
   if (res.fail()) {
     return res.error();
@@ -259,9 +271,8 @@ greenspun::EvalResult VertexComputation::air_sendToGlobalAccum(greenspun::Machin
 }
 
 /*  Graph stuff */
-greenspun::EvalResult VertexComputation::air_outboundEdges(greenspun::Machine& ctx,
-                                                           VPackSlice const params,
-                                                           VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_outboundEdges(
+    greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto res = greenspun::extract<>(params);
   if (res.fail()) {
     return res.error();
@@ -300,9 +311,8 @@ greenspun::EvalResult VertexComputation::air_numberOutboundEdges(
   return {};
 }
 
-greenspun::EvalResult VertexComputation::air_numberOfVertices(greenspun::Machine& ctx,
-                                                              VPackSlice const params,
-                                                              VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_numberOfVertices(
+    greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto res = greenspun::extract<>(params);
   if (res.fail()) {
     return res.error();
@@ -336,21 +346,20 @@ greenspun::EvalResult VertexComputation::air_thisDoc(greenspun::Machine& ctx,
   return {};
 }
 
-greenspun::EvalResult VertexComputation::air_thisVertexId(greenspun::Machine& ctx,
-                                                          VPackSlice const params,
-                                                          VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_thisVertexId(
+    greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   result.add(VPackValue(this->vertexData()._documentId));
   return {};
 }
 
-greenspun::EvalResult VertexComputation::air_thisUniqueId(greenspun::Machine& ctx,
-                                                          VPackSlice const params,
-                                                          VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_thisUniqueId(
+    greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto pid = pregelId();
 
   // asserts to check truth of uniqueness here.
   TRI_ASSERT(this->vertexData()._vertexId <= std::uint64_t{1} << 48);
-  static_assert(std::is_unsigned_v<decltype(pid.shard)> && std::numeric_limits<decltype(pid.shard)>::max() < (1ul << 16));
+  static_assert(std::is_unsigned_v<decltype(pid.shard)> &&
+                std::numeric_limits<decltype(pid.shard)>::max() < (1ul << 16));
 
   uint64_t combined = this->vertexData()._vertexId;
   combined <<= 16;
@@ -360,9 +369,8 @@ greenspun::EvalResult VertexComputation::air_thisUniqueId(greenspun::Machine& ct
   return {};
 }
 
-greenspun::EvalResult VertexComputation::air_thisPregelId(greenspun::Machine& ctx,
-                                                          VPackSlice const params,
-                                                          VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_thisPregelId(
+    greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto id = pregelId();
   {
     VPackObjectBuilder ob(&result);
@@ -373,9 +381,8 @@ greenspun::EvalResult VertexComputation::air_thisPregelId(greenspun::Machine& ct
   return {};
 }
 
-greenspun::EvalResult VertexComputation::air_globalSuperstep(greenspun::Machine& ctx,
-                                                             VPackSlice const params,
-                                                             VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_globalSuperstep(
+    greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   result.add(VPackValue(globalSuperstep()));
   return {};
 }
@@ -399,29 +406,35 @@ void VertexComputation::traceMessage(MessageData const* msg) {
       bool traceMessage = true;
       auto const& traceOptions = iter->second;
       if (traceOptions.filter) {
-        TraceMessagesFilterOptions const& filterOptions = traceOptions.filter.value();
+        TraceMessagesFilterOptions const& filterOptions =
+            traceOptions.filter.value();
         if (!filterOptions.byAccumulator.empty() &&
             filterOptions.byAccumulator.find(accumName) ==
                 std::end(filterOptions.byAccumulator)) {
           traceMessage = false;
         }
         if (!filterOptions.bySender.empty() &&
-            filterOptions.bySender.find(msg->sender()) == std::end(filterOptions.bySender)) {
+            filterOptions.bySender.find(msg->sender()) ==
+                std::end(filterOptions.bySender)) {
           traceMessage = false;
         }
       }
 
       if (traceMessage) {
-        auto const& phase_index = getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
+        auto const& phase_index = getAggregatedValueRef<uint32_t>(
+            StaticStrings::VertexComputationPhase);
         auto const& phase = _algorithm.options().phases.at(phase_index);
 
         getReportManager()
             .report(ReportLevel::INFO)
             .with(StaticStrings::VertexComputationPregelId, pregelId())
-            .with(StaticStrings::VertexComputationVertexId, vertexData()._documentId)
+            .with(StaticStrings::VertexComputationVertexId,
+                  vertexData()._documentId)
             .with(StaticStrings::VertexComputationPhase, phase.name)
-            .with(StaticStrings::VertexComputationGlobalSuperstep, globalSuperstep())
-            .with(StaticStrings::VertexComputationPhaseStep, phaseGlobalSuperstep())
+            .with(StaticStrings::VertexComputationGlobalSuperstep,
+                  globalSuperstep())
+            .with(StaticStrings::VertexComputationPhaseStep,
+                  phaseGlobalSuperstep())
             .with(StaticStrings::VertexComputationMessage, msg->_value.toJson())
             .with(StaticStrings::AccumulatorSender, msg->_sender)
             .with(StaticStrings::AccumulatorName, accumName);
@@ -440,20 +453,26 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
     traceMessage(msg);
     auto res = accum->updateByMessage(*msg);
     if (res.fail()) {
-      auto const& phase_index = getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
+      auto const& phase_index = getAggregatedValueRef<uint32_t>(
+          StaticStrings::VertexComputationPhase);
       auto const& phase = _algorithm.options().phases.at(phase_index);
       getReportManager()
               .report(ReportLevel::ERR)
               .with(StaticStrings::VertexComputationPregelId, pregelId())
-              .with(StaticStrings::VertexComputationVertexId, vertexData()._documentId)
+              .with(StaticStrings::VertexComputationVertexId,
+                    vertexData()._documentId)
               .with(StaticStrings::VertexComputationPhase, phase.name)
-              .with(StaticStrings::VertexComputationGlobalSuperstep, globalSuperstep())
-              .with(StaticStrings::VertexComputationPhaseStep, phaseGlobalSuperstep())
-              .with(StaticStrings::VertexComputationMessage, msg->_value.toJson())
+              .with(StaticStrings::VertexComputationGlobalSuperstep,
+                    globalSuperstep())
+              .with(StaticStrings::VertexComputationPhaseStep,
+                    phaseGlobalSuperstep())
+              .with(StaticStrings::VertexComputationMessage,
+                    msg->_value.toJson())
               .with(StaticStrings::AccumulatorSender, msg->_sender)
               .with(StaticStrings::AccumulatorName, accumName)
-          << "in phase `" << phase.name << "` processing incoming messages for accumulator `"
-          << accumName << "` failed: " << res.error().toString();
+          << "in phase `" << phase.name
+          << "` processing incoming messages for accumulator `" << accumName
+          << "` failed: " << res.error().toString();
       return std::move(res).error();
     }
 
@@ -462,7 +481,8 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
   return accumChanged;
 }
 
-greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPackSlice program) {
+greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx,
+                                                    VPackSlice program) {
   VPackBuilder resultBuilder;
 
   // A valid pregel program can at the moment return one of four values:
@@ -488,7 +508,8 @@ greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPa
       if (rs.stringRef().equals(StaticStrings::VertexComputationVoteActive)) {
         this->voteActive();
         return {};
-      } else if (rs.stringRef().equals(StaticStrings::VertexComputationVoteHalt)) {
+      } else if (rs.stringRef().equals(
+                     StaticStrings::VertexComputationVoteHalt)) {
         this->voteHalt();
         return {};
       }
@@ -497,8 +518,9 @@ greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPa
     voteHalt();
     return greenspun::EvalError(
         "pregel program returned " + rs.toJson() +
-        ", expecting one of `true`, `false`, `" + StaticStrings::VertexComputationVoteHalt +
-        "`, or `" + StaticStrings::VertexComputationVoteActive + "`");
+        ", expecting one of `true`, `false`, `" +
+        StaticStrings::VertexComputationVoteHalt + "`, or `" +
+        StaticStrings::VertexComputationVoteActive + "`");
   };
 
   auto evalResult = Evaluate(ctx, program, resultBuilder);
@@ -513,8 +535,10 @@ greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPa
   }
 }
 
-void VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
-  auto const& phase_index = getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
+void VertexComputation::compute(
+    MessageIterator<MessageData> const& incomingMessages) {
+  auto const& phase_index =
+      getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
   auto const& phase = _algorithm.options().phases.at(phase_index);
 
   auto phaseStep = phaseGlobalSuperstep();
@@ -524,10 +548,13 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
       getReportManager()
               .report(ReportLevel::ERR)
               .with(StaticStrings::VertexComputationPregelId, pregelId())
-              .with(StaticStrings::VertexComputationVertexId, vertexData()._documentId)
+              .with(StaticStrings::VertexComputationVertexId,
+                    vertexData()._documentId)
               .with(StaticStrings::VertexComputationPhase, phase.name)
-              .with(StaticStrings::VertexComputationGlobalSuperstep, globalSuperstep())
-              .with(StaticStrings::VertexComputationPhaseStep, phaseGlobalSuperstep())
+              .with(StaticStrings::VertexComputationGlobalSuperstep,
+                    globalSuperstep())
+              .with(StaticStrings::VertexComputationPhaseStep,
+                    phaseGlobalSuperstep())
           << "in phase `" << phase.name
           << "` initial reset failed: " << res.error().toString();
       return;
@@ -535,14 +562,18 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
   }
 
   if (phaseStep == 0) {
-    if (auto res = runProgram(_airMachine, phase.initProgram.slice()); res.fail()) {
+    if (auto res = runProgram(_airMachine, phase.initProgram.slice());
+        res.fail()) {
       getReportManager()
               .report(ReportLevel::ERR)
               .with(StaticStrings::VertexComputationPregelId, pregelId())
-              .with(StaticStrings::VertexComputationVertexId, vertexData()._documentId)
+              .with(StaticStrings::VertexComputationVertexId,
+                    vertexData()._documentId)
               .with(StaticStrings::VertexComputationPhase, phase.name)
-              .with(StaticStrings::VertexComputationGlobalSuperstep, globalSuperstep())
-              .with(StaticStrings::VertexComputationPhaseStep, phaseGlobalSuperstep())
+              .with(StaticStrings::VertexComputationGlobalSuperstep,
+                    globalSuperstep())
+              .with(StaticStrings::VertexComputationPhaseStep,
+                    phaseGlobalSuperstep())
           << "in phase `" << phase.name
           << "` init-program failed: " << res.error().toString();
     }
@@ -558,14 +589,18 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
       return;
     }
 
-    if (auto res = runProgram(_airMachine, phase.updateProgram.slice()); res.fail()) {
+    if (auto res = runProgram(_airMachine, phase.updateProgram.slice());
+        res.fail()) {
       getReportManager()
               .report(ReportLevel::ERR)
               .with(StaticStrings::VertexComputationPregelId, pregelId())
-              .with(StaticStrings::VertexComputationVertexId, vertexData()._documentId)
+              .with(StaticStrings::VertexComputationVertexId,
+                    vertexData()._documentId)
               .with(StaticStrings::VertexComputationPhase, phase.name)
-              .with(StaticStrings::VertexComputationGlobalSuperstep, globalSuperstep())
-              .with(StaticStrings::VertexComputationPhaseStep, phaseGlobalSuperstep())
+              .with(StaticStrings::VertexComputationGlobalSuperstep,
+                    globalSuperstep())
+              .with(StaticStrings::VertexComputationPhaseStep,
+                    phaseGlobalSuperstep())
           << "in phase `" << phase.name
           << "` update-program failed: " << res.error().toString();
     }

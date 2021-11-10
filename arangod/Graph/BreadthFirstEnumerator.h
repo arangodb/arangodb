@@ -23,11 +23,11 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-#include "Graph/PathEnumerator.h"
-
 #include <memory>
 #include <vector>
+
+#include "Basics/Common.h"
+#include "Graph/PathEnumerator.h"
 
 namespace arangodb {
 
@@ -39,7 +39,8 @@ struct TraverserOptions;
 namespace graph {
 class EdgeCursor;
 
-class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator {
+class BreadthFirstEnumerator final
+    : public arangodb::traverser::PathEnumerator {
  private:
   /// @brief One entry in the schreier vector
   struct PathStep {
@@ -126,7 +127,8 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
    *
    * @return true if the vertex is already in the path
    */
-  bool pathContainsVertex(size_t index, arangodb::velocypack::StringRef vertex) const;
+  bool pathContainsVertex(size_t index,
+                          arangodb::velocypack::StringRef vertex) const;
 
   /**
    * @brief Helper function to validate if the path contains the given
@@ -137,7 +139,8 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
    *
    * @return true if the edge is already in the path
    */
-  bool pathContainsEdge(size_t index, graph::EdgeDocumentToken const& edge) const;
+  bool pathContainsEdge(size_t index,
+                        graph::EdgeDocumentToken const& edge) const;
 
   /**
    * @brief Reset iterators to search within next depth
@@ -150,7 +153,8 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 
   aql::AqlValue edgeToAqlValue(size_t index);
 
-  aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result, size_t index);
+  aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result,
+                                      size_t index);
 
   velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result,
                                        size_t index, bool fromPrune);

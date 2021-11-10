@@ -23,6 +23,13 @@
 
 #include "RestVocbaseBaseHandler.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Exception.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -47,17 +54,9 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Dumper.h>
-#include <velocypack/Exception.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief agency public path
@@ -76,7 +75,7 @@ std::string const RestVocbaseBaseHandler::AGENCY_PRIV_PATH =
 /// @brief analyzer path
 ////////////////////////////////////////////////////////////////////////////////
 /*static*/ std::string const RestVocbaseBaseHandler::ANALYZER_PATH =
-  "/_api/analyzer";
+    "/_api/analyzer";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch path
@@ -216,9 +215,9 @@ std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
     "/_internal/traverser";
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler(application_features::ApplicationServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response),
       _context(*static_cast<VocbaseContext*>(request->requestContext())),
       _vocbase(_context.vocbase()) {
@@ -228,9 +227,11 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(application_features::Application
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;
 
 /// @brief returns the short id of the server which should handle this request
-ResultT<std::pair<std::string, bool>> RestVocbaseBaseHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>>
+RestVocbaseBaseHandler::forwardingTarget() {
   bool found = false;
-  std::string const& value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value =
+      _request->header(StaticStrings::TransactionId, found);
   if (found) {
     TransactionId tid = TransactionId::none();
     std::size_t pos = 0;
@@ -242,7 +243,8 @@ ResultT<std::pair<std::string, bool>> RestVocbaseBaseHandler::forwardingTarget()
       uint32_t sourceServer = tid.serverId();
       if (sourceServer != ServerState::instance()->getShortId()) {
         auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-        return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+        return {
+            std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
       }
     }
   }
@@ -255,11 +257,11 @@ ResultT<std::pair<std::string, bool>> RestVocbaseBaseHandler::forwardingTarget()
 /// optionally url-encodes
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string RestVocbaseBaseHandler::assembleDocumentId(std::string const& collectionName,
-                                                       std::string const& key,
-                                                       bool urlEncode) {
+std::string RestVocbaseBaseHandler::assembleDocumentId(
+    std::string const& collectionName, std::string const& key, bool urlEncode) {
   if (urlEncode) {
-    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::urlEncode(key);
+    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR +
+           StringUtils::urlEncode(key);
   }
   return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
 }
@@ -268,32 +270,32 @@ std::string RestVocbaseBaseHandler::assembleDocumentId(std::string const& collec
 /// @brief Generate a result for successful save
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateSaved(arangodb::OperationResult const& result,
-                                           std::string const& collectionName,
-                                           TRI_col_type_e type,
-                                           VPackOptions const* options, bool isMultiple) {
-  generate20x(result, collectionName, type, options, isMultiple, rest::ResponseCode::CREATED);
+void RestVocbaseBaseHandler::generateSaved(
+    arangodb::OperationResult const& result, std::string const& collectionName,
+    TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
+  generate20x(result, collectionName, type, options, isMultiple,
+              rest::ResponseCode::CREATED);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Generate a result for successful delete
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDeleted(arangodb::OperationResult const& result,
-                                             std::string const& collectionName,
-                                             TRI_col_type_e type,
-                                             VPackOptions const* options, bool isMultiple) {
-  generate20x(result, collectionName, type, options, isMultiple, rest::ResponseCode::OK);
+void RestVocbaseBaseHandler::generateDeleted(
+    arangodb::OperationResult const& result, std::string const& collectionName,
+    TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
+  generate20x(result, collectionName, type, options, isMultiple,
+              rest::ResponseCode::OK);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a HTTP 20x response
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generate20x(arangodb::OperationResult const& result,
-                                         std::string const& collectionName, TRI_col_type_e type,
-                                         VPackOptions const* options, bool isMultiple,
-                                         rest::ResponseCode waitForSyncResponseCode) {
+void RestVocbaseBaseHandler::generate20x(
+    arangodb::OperationResult const& result, std::string const& collectionName,
+    TRI_col_type_e type, VPackOptions const* options, bool isMultiple,
+    rest::ResponseCode waitForSyncResponseCode) {
   if (result.options.waitForSync) {
     resetResponse(waitForSyncResponseCode);
   } else {
@@ -317,16 +319,18 @@ void RestVocbaseBaseHandler::generate20x(arangodb::OperationResult const& result
   } else {
     TRI_ASSERT(slice.isObject() || slice.isArray());
     if (slice.isObject()) {
-      _response->setHeaderNC(StaticStrings::Etag,
-                             "\"" + slice.get(StaticStrings::RevString).copyString() +
-                                 "\"");
+      _response->setHeaderNC(
+          StaticStrings::Etag,
+          "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
       // pre 1.4 location headers withdrawn for >= 3.0
-      std::string escapedHandle(
-          assembleDocumentId(collectionName,
-                             slice.get(StaticStrings::KeyString).copyString(), true));
-      _response->setHeaderNC(StaticStrings::Location,
-                             std::string("/_db/" + StringUtils::urlEncode(_request->databaseName()) +
-                                         DOCUMENT_PATH + "/" + escapedHandle));
+      std::string escapedHandle(assembleDocumentId(
+          collectionName, slice.get(StaticStrings::KeyString).copyString(),
+          true));
+      _response->setHeaderNC(
+          StaticStrings::Location,
+          std::string("/_db/" +
+                      StringUtils::urlEncode(_request->databaseName()) +
+                      DOCUMENT_PATH + "/" + escapedHandle));
     }
   }
 
@@ -358,9 +362,10 @@ void RestVocbaseBaseHandler::generateForbidden() {
 void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
                                                    bool precFailed) {
   TRI_ASSERT(opres.errorNumber() == TRI_ERROR_ARANGO_CONFLICT);
-  const auto code = precFailed ? ResponseCode::PRECONDITION_FAILED : ResponseCode::CONFLICT;
+  const auto code =
+      precFailed ? ResponseCode::PRECONDITION_FAILED : ResponseCode::CONFLICT;
   resetResponse(code);
-  
+
   VPackSlice slice = opres.slice();
   if (slice.isObject()) {  // single document case
     std::string const rev =
@@ -377,8 +382,10 @@ void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
 
     if (slice.isObject()) {
       builder.add(StaticStrings::IdString, slice.get(StaticStrings::IdString));
-      builder.add(StaticStrings::KeyString, slice.get(StaticStrings::KeyString));
-      builder.add(StaticStrings::RevString, slice.get(StaticStrings::RevString));
+      builder.add(StaticStrings::KeyString,
+                  slice.get(StaticStrings::KeyString));
+      builder.add(StaticStrings::RevString,
+                  slice.get(StaticStrings::RevString));
     } else {
       builder.add("result", slice);
     }
@@ -402,14 +409,15 @@ void RestVocbaseBaseHandler::generateNotModified(RevisionId rid) {
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input, bool generateBody,
+void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
+                                              bool generateBody,
                                               VPackOptions const* options) {
   VPackSlice document = input.resolveExternal();
 
   std::string rev;
   if (document.isObject()) {
-    rev =
-        VelocyPackHelper::getStringValue(document, StaticStrings::RevString, "");
+    rev = VelocyPackHelper::getStringValue(document, StaticStrings::RevString,
+                                           "");
   }
 
   // and generate a response
@@ -435,10 +443,9 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input, bool gene
 /// used by the others.
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateTransactionError(std::string const& collectionName,
-                                                      OperationResult const& result,
-                                                      std::string const& key,
-                                                      RevisionId rev) {
+void RestVocbaseBaseHandler::generateTransactionError(
+    std::string const& collectionName, OperationResult const& result,
+    std::string const& key, RevisionId rev) {
   auto const code = result.errorNumber();
   switch (static_cast<int>(code)) {
     case static_cast<int>(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND):
@@ -480,13 +487,14 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
         builder.add(StaticStrings::KeyString, VPackValue(key));
         builder.add(StaticStrings::RevString, VPackValue(rev.toString()));
         builder.close();
-      
+
         generateConflictError(tmp, /*precFailed*/ rev.isSet());
       }
       return;
 
     default:
-      generateError(GeneralResponse::responseCode(code), code, result.errorMessage());
+      generateError(GeneralResponse::responseCode(code), code,
+                    result.errorMessage());
   }
 }
 
@@ -494,7 +502,8 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
 /// @brief extracts the revision
 ////////////////////////////////////////////////////////////////////////////////
 
-RevisionId RestVocbaseBaseHandler::extractRevision(char const* header, bool& isValid) const {
+RevisionId RestVocbaseBaseHandler::extractRevision(char const* header,
+                                                   bool& isValid) const {
   isValid = true;
   bool found;
   std::string const& etag = _request->header(header, found);
@@ -546,26 +555,31 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 }
 
 std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
-    std::string const& collectionName, AccessMode::Type type, OperationOptions const& opOptions) const {
+    std::string const& collectionName, AccessMode::Type type,
+    OperationOptions const& opOptions) const {
   bool found = false;
-  std::string const& value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value =
+      _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    auto tmp = std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase),
-                                                         collectionName, type);
-    if (!opOptions.isSynchronousReplicationFrom.empty() && ServerState::instance()->isDBServer()) {
+    auto tmp = std::make_unique<SingleCollectionTransaction>(
+        transaction::StandaloneContext::Create(_vocbase), collectionName, type);
+    if (!opOptions.isSynchronousReplicationFrom.empty() &&
+        ServerState::instance()->isDBServer()) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     }
     return tmp;
   }
-  
+
   TransactionId tid = TransactionId::none();
   std::size_t pos = 0;
   try {
     tid = TransactionId{std::stoull(value, &pos, 10)};
-  } catch (...) {}
+  } catch (...) {
+  }
   if (!tid.isSet() || (tid.isLegacyTransactionId() &&
-                   ServerState::instance()->isRunningInCluster())) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
+                       ServerState::instance()->isRunningInCluster())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid transaction ID");
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
@@ -577,42 +591,47 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
                                      "cannot start a managed transaction here");
     }
-    std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
+    std::string const& trxDef =
+        _request->header(StaticStrings::TransactionBody, found);
     if (found) {
       auto trxOpts = VPackParser::fromJson(trxDef);
-      Result res =
-          mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
-                                !opOptions.isSynchronousReplicationFrom.empty());
+      Result res = mgr->ensureManagedTrx(
+          _vocbase, tid, trxOpts->slice(),
+          !opOptions.isSynchronousReplicationFrom.empty());
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
     }
   }
- 
-  // if we have a read operation and the x-arango-aql-document-call header is set,
-  // it means this is a request by the DOCUMENT function inside an AQL query. in 
-  // this case, we cannot be sure to lease the transaction context successfully, 
-  // because the AQL query may have already acquired the write lock on the context
-  // for the entire duration of the query. if this is the case, then the query
-  // already has the lock, and it is ok if we lease the context here without 
-  // acquiring it again.
+
+  // if we have a read operation and the x-arango-aql-document-call header is
+  // set, it means this is a request by the DOCUMENT function inside an AQL
+  // query. in this case, we cannot be sure to lease the transaction context
+  // successfully, because the AQL query may have already acquired the write
+  // lock on the context for the entire duration of the query. if this is the
+  // case, then the query already has the lock, and it is ok if we lease the
+  // context here without acquiring it again.
   bool const isSideUser =
-      (ServerState::instance()->isDBServer() &&
-       AccessMode::isRead(type) &&
+      (ServerState::instance()->isDBServer() && AccessMode::isRead(type) &&
        !_request->header(StaticStrings::AqlDocumentCall).empty());
 
-  std::shared_ptr<transaction::Context> ctx = mgr->leaseManagedTrx(tid, type, isSideUser);
-  
+  std::shared_ptr<transaction::Context> ctx =
+      mgr->leaseManagedTrx(tid, type, isSideUser);
+
   if (!ctx) {
-    LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id " << tid << " not found";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction ") + std::to_string(tid.id()) + " not found");
+    LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS)
+        << "Transaction with id " << tid << " not found";
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_TRANSACTION_NOT_FOUND,
+        std::string("transaction ") + std::to_string(tid.id()) + " not found");
   }
   std::unique_ptr<transaction::Methods> trx;
   if (ServerState::instance()->isDBServer() &&
       !opOptions.isSynchronousReplicationFrom.empty()) {
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
     // inject at least the required collection name
-    trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName, type);
+    trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName,
+                                                 type);
   } else {
     trx = std::make_unique<transaction::Methods>(std::move(ctx));
   }
@@ -620,9 +639,11 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
 }
 
 /// @brief create proper transaction context, including the proper IDs
-std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
+std::shared_ptr<transaction::Context>
+RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
   bool found = false;
-  std::string const& value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value =
+      _request->header(StaticStrings::TransactionId, found);
   if (!found) {
     return std::make_shared<transaction::StandaloneContext>(_vocbase);
   }
@@ -631,28 +652,34 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   std::size_t pos = 0;
   try {
     tid = TransactionId{std::stoull(value, &pos, 10)};
-  } catch (...) {}
+  } catch (...) {
+  }
   if (tid.empty() || (tid.isLegacyTransactionId() &&
                       ServerState::instance()->isRunningInCluster())) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid transaction ID");
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
   if (pos > 0 && pos < value.size()) {
-    if (!tid.isLeaderTransactionId() || !ServerState::instance()->isDBServer()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
-                                     "illegal to start a managed transaction here");
+    if (!tid.isLeaderTransactionId() ||
+        !ServerState::instance()->isDBServer()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+          "illegal to start a managed transaction here");
     }
     if (value.compare(pos, std::string::npos, " aql") == 0) {
       return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
     } else if (value.compare(pos, std::string::npos, " begin") == 0) {
       // this means we lazily start a transaction
-      std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
+      std::string const& trxDef =
+          _request->header(StaticStrings::TransactionBody, found);
       if (found) {
         auto trxOpts = VPackParser::fromJson(trxDef);
-        Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(), false);
+        Result res =
+            mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(), false);
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
         }
@@ -662,10 +689,12 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
 
   auto ctx = mgr->leaseManagedTrx(tid, mode, /*isSideUser*/ false);
   if (!ctx) {
-    LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
+    LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS)
+        << "Transaction with id '" << tid << "' not found";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND,
                                    std::string("transaction '") +
-                                       std::to_string(tid.id()) + "' not found");
+                                       std::to_string(tid.id()) +
+                                       "' not found");
   }
   return ctx;
 }

@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GlobalReplicationApplier.h"
+
+#include <velocypack/Builder.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Logger/LogMacros.h"
@@ -33,12 +36,11 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
-#include <velocypack/Builder.h>
-
 using namespace arangodb;
 
 /// @brief server-global replication applier for all databases
-GlobalReplicationApplier::GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration)
+GlobalReplicationApplier::GlobalReplicationApplier(
+    ReplicationApplierConfiguration const& configuration)
     : ReplicationApplier(configuration, "global database") {}
 
 GlobalReplicationApplier::~GlobalReplicationApplier() {
@@ -73,7 +75,8 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 
   StorageEngine& engine =
       _configuration._server.getFeature<EngineSelectorFeature>().engine();
-  auto res = engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
+  auto res =
+      engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -95,17 +98,19 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
 
   TRI_ASSERT(!builder.isEmpty());
 
-  return ReplicationApplierConfiguration::fromVelocyPack(engine.server(),
-                                                         builder.slice(), std::string());
+  return ReplicationApplierConfiguration::fromVelocyPack(
+      engine.server(), builder.slice(), std::string());
 }
 
-std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() const {
+std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer()
+    const {
   return arangodb::GlobalInitialSyncer::create(_configuration);
 }
 
 std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick) const {
-  return arangodb::GlobalTailingSyncer::create(_configuration, initialTick, useTick);
+  return arangodb::GlobalTailingSyncer::create(_configuration, initialTick,
+                                               useTick);
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {

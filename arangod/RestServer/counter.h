@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "dynarray.h"
-#include <unordered_set>
-
 #include <atomic>
 #include <mutex>
+#include <unordered_set>
+
+#include "dynarray.h"
 
 namespace gcl {
 
@@ -177,7 +177,7 @@ and then exchanging out of the main counter.
 Consequently,
 every count will be extracted by one and only one exchange operation.
 
-However, that exchange operation can be expensive because 
+However, that exchange operation can be expensive because
 it and the broker increment operations
 require write atomicity to the same broker object.
 To reduce that concurrency cost,
@@ -360,11 +360,10 @@ which enables buffers to connect to all of them.
 
 namespace counter {
 
-enum class atomicity
-{
-    none, // permits access to only one thread
-    semi, // allows multiple readers, but only one writer
-    full  // allows multiple readers and writers
+enum class atomicity {
+  none,  // permits access to only one thread
+  semi,  // allows multiple readers, but only one writer
+  full   // allows multiple readers and writers
 };
 
 /*
@@ -372,111 +371,122 @@ enum class atomicity
    They serve as base classes for the public types.
 */
 
-template< typename Integral, atomicity Atomicity >
+template<typename Integral, atomicity Atomicity>
 class bumper;
 
-template< typename Integral >
-class bumper< Integral, atomicity::none >
-{
-    bumper( const bumper& ) = delete;
-    bumper& operator=( const bumper& ) = delete;
-public:
-    void operator +=( Integral by ) { value_ += by; }
-    void operator -=( Integral by ) { value_ -= by; }
-    void operator ++() { *this += 1; }
-    void operator ++(int) { *this += 1; }
-    void operator --() { *this -= 1; }
-    void operator --(int) { *this -= 1; }
-protected:
-    constexpr bumper( Integral in ) : value_( in ) {}
-    constexpr bumper() : value_( 0 ) {}
-    Integral load() const { return value_; }
-    Integral exchange( Integral to )
-        { Integral tmp = value_; value_ = to; return tmp; }
-    Integral value_;
-    template< typename, atomicity >
-    friend class bumper_array;
-    template< typename, atomicity, atomicity >
-    friend class buffer_array;
-    friend struct std::dynarray< bumper >;
+template<typename Integral>
+class bumper<Integral, atomicity::none> {
+  bumper(const bumper&) = delete;
+  bumper& operator=(const bumper&) = delete;
+
+ public:
+  void operator+=(Integral by) { value_ += by; }
+  void operator-=(Integral by) { value_ -= by; }
+  void operator++() { *this += 1; }
+  void operator++(int) { *this += 1; }
+  void operator--() { *this -= 1; }
+  void operator--(int) { *this -= 1; }
+
+ protected:
+  constexpr bumper(Integral in) : value_(in) {}
+  constexpr bumper() : value_(0) {}
+  Integral load() const { return value_; }
+  Integral exchange(Integral to) {
+    Integral tmp = value_;
+    value_ = to;
+    return tmp;
+  }
+  Integral value_;
+  template<typename, atomicity>
+  friend class bumper_array;
+  template<typename, atomicity, atomicity>
+  friend class buffer_array;
+  friend struct std::dynarray<bumper>;
 };
 
-template< typename Integral >
-class bumper< Integral, atomicity::semi >
-{
-    bumper( const bumper& ) = delete;
-    bumper& operator=( const bumper& ) = delete;
-public:
-    void operator +=( Integral by )
-        { value_.store( value_.load( std::memory_order_relaxed ) + by,
-                        std::memory_order_relaxed ); }
-    void operator -=( Integral by )
-        { value_.store( value_.load( std::memory_order_relaxed ) - by,
-                        std::memory_order_relaxed ); }
-    void operator ++() { *this += 1; }
-    void operator ++(int) { *this += 1; }
-    void operator --() { *this -= 1; }
-    void operator --(int) { *this -= 1; }
-protected:
-    constexpr bumper( Integral in ) : value_( in ) {}
-    constexpr bumper() : value_( 0 ) {}
-    Integral load() const { return value_.load( std::memory_order_relaxed ); }
-    Integral exchange( Integral to )
-        { Integral tmp = value_.load( std::memory_order_relaxed );
-          value_.store( to, std::memory_order_relaxed ); return tmp; }
-    std::atomic< Integral > value_;
-    template< typename, atomicity >
-    friend class bumper_array;
-    template< typename, atomicity, atomicity >
-    friend class buffer_array;
-    friend struct std::dynarray< bumper >;
+template<typename Integral>
+class bumper<Integral, atomicity::semi> {
+  bumper(const bumper&) = delete;
+  bumper& operator=(const bumper&) = delete;
+
+ public:
+  void operator+=(Integral by) {
+    value_.store(value_.load(std::memory_order_relaxed) + by,
+                 std::memory_order_relaxed);
+  }
+  void operator-=(Integral by) {
+    value_.store(value_.load(std::memory_order_relaxed) - by,
+                 std::memory_order_relaxed);
+  }
+  void operator++() { *this += 1; }
+  void operator++(int) { *this += 1; }
+  void operator--() { *this -= 1; }
+  void operator--(int) { *this -= 1; }
+
+ protected:
+  constexpr bumper(Integral in) : value_(in) {}
+  constexpr bumper() : value_(0) {}
+  Integral load() const { return value_.load(std::memory_order_relaxed); }
+  Integral exchange(Integral to) {
+    Integral tmp = value_.load(std::memory_order_relaxed);
+    value_.store(to, std::memory_order_relaxed);
+    return tmp;
+  }
+  std::atomic<Integral> value_;
+  template<typename, atomicity>
+  friend class bumper_array;
+  template<typename, atomicity, atomicity>
+  friend class buffer_array;
+  friend struct std::dynarray<bumper>;
 };
 
-template< typename Integral >
-class bumper< Integral, atomicity::full >
-{
-    bumper( const bumper& ) = delete;
-    bumper& operator=( const bumper& ) = delete;
-public:
-    void operator +=( Integral by )
-        { value_.fetch_add( by, std::memory_order_relaxed ); }
-    void operator -=( Integral by )
-        { value_.fetch_sub( by, std::memory_order_relaxed ); }
-    void operator ++() { *this += 1; }
-    void operator ++(int) { *this += 1; }
-    void operator --() { *this -= 1; }
-    void operator --(int) { *this -= 1; }
-protected:
-    constexpr bumper( Integral in ) : value_( in ) {}
-    constexpr bumper() : value_( 0 ) {}
-    Integral load() const { return value_.load( std::memory_order_relaxed ); }
-    Integral exchange( Integral to )
-        { return value_.exchange( to, std::memory_order_relaxed ); }
-    std::atomic< Integral > value_;
-    template< typename, atomicity >
-    friend class bumper_array;
-    template< typename, atomicity, atomicity >
-    friend class buffer_array;
-    friend struct std::dynarray< bumper >;
+template<typename Integral>
+class bumper<Integral, atomicity::full> {
+  bumper(const bumper&) = delete;
+  bumper& operator=(const bumper&) = delete;
+
+ public:
+  void operator+=(Integral by) {
+    value_.fetch_add(by, std::memory_order_relaxed);
+  }
+  void operator-=(Integral by) {
+    value_.fetch_sub(by, std::memory_order_relaxed);
+  }
+  void operator++() { *this += 1; }
+  void operator++(int) { *this += 1; }
+  void operator--() { *this -= 1; }
+  void operator--(int) { *this -= 1; }
+
+ protected:
+  constexpr bumper(Integral in) : value_(in) {}
+  constexpr bumper() : value_(0) {}
+  Integral load() const { return value_.load(std::memory_order_relaxed); }
+  Integral exchange(Integral to) {
+    return value_.exchange(to, std::memory_order_relaxed);
+  }
+  std::atomic<Integral> value_;
+  template<typename, atomicity>
+  friend class bumper_array;
+  template<typename, atomicity, atomicity>
+  friend class buffer_array;
+  friend struct std::dynarray<bumper>;
 };
 
 /*
    The simplex counters.
 */
 
-template< typename Integral,
-          atomicity Atomicity = atomicity::full >
-class simplex
-: public bumper< Integral, Atomicity >
-{
-    typedef bumper< Integral, Atomicity > base_type;
-public:
-    constexpr simplex() : base_type( 0 ) {}
-    constexpr simplex( Integral in ) : base_type( in ) {}
-    simplex( const simplex& ) = delete;
-    simplex& operator=( const simplex& ) = delete;
-    Integral load() const { return base_type::load(); }
-    Integral exchange( Integral to ) { return base_type::exchange( to ); }
+template<typename Integral, atomicity Atomicity = atomicity::full>
+class simplex : public bumper<Integral, Atomicity> {
+  typedef bumper<Integral, Atomicity> base_type;
+
+ public:
+  constexpr simplex() : base_type(0) {}
+  constexpr simplex(Integral in) : base_type(in) {}
+  simplex(const simplex&) = delete;
+  simplex& operator=(const simplex&) = delete;
+  Integral load() const { return base_type::load(); }
+  Integral exchange(Integral to) { return base_type::exchange(to); }
 };
 
 /*
@@ -488,25 +498,25 @@ public:
    are not reflected in the queries on the prime.
 */
 
-template< typename Integral,
-          atomicity PrimeAtomicity = atomicity::full,
-          atomicity BufferAtomicity = atomicity::none >
-class buffer
-: public bumper< Integral, BufferAtomicity >
-{
-    typedef bumper< Integral, PrimeAtomicity > prime_type;
-    typedef bumper< Integral, BufferAtomicity > base_type;
-public:
-    buffer() = delete;
-    buffer( prime_type& p ) : base_type( 0 ), prime_( p ) {}
-    buffer( const buffer& ) = delete;
-    buffer& operator=( const buffer& ) = delete;
-    void push()
-        { Integral value = base_type::exchange( 0 );
-          if ( value != 0 ) prime_ += value; }
-    ~buffer() { push(); }
-private:
-    prime_type& prime_;
+template<typename Integral, atomicity PrimeAtomicity = atomicity::full,
+         atomicity BufferAtomicity = atomicity::none>
+class buffer : public bumper<Integral, BufferAtomicity> {
+  typedef bumper<Integral, PrimeAtomicity> prime_type;
+  typedef bumper<Integral, BufferAtomicity> base_type;
+
+ public:
+  buffer() = delete;
+  buffer(prime_type& p) : base_type(0), prime_(p) {}
+  buffer(const buffer&) = delete;
+  buffer& operator=(const buffer&) = delete;
+  void push() {
+    Integral value = base_type::exchange(0);
+    if (value != 0) prime_ += value;
+  }
+  ~buffer() { push(); }
+
+ private:
+  prime_type& prime_;
 };
 
 /*
@@ -519,433 +529,404 @@ private:
    which means that you cannot extract counts early.
 */
 
-template< typename Integral > class strong_broker;
+template<typename Integral>
+class strong_broker;
 
-template< typename Integral > class strong_duplex
-: public bumper< Integral, atomicity::full >
-{
-    typedef bumper< Integral, atomicity::full > base_type;
-    typedef strong_broker< Integral > broker_type;
-    friend class strong_broker< Integral >;
-public:
-    strong_duplex() : base_type( 0 ) {}
-    strong_duplex( Integral in ) : base_type( in ) {}
-    Integral load() const;
-    Integral exchange( Integral to );
-    ~strong_duplex();
-private:
-    void insert( broker_type* child );
-    void erase( broker_type* child, Integral by );
-    mutable std::mutex serializer_;
-    typedef std::unordered_set< broker_type* > set_type;
-    set_type children_;
+template<typename Integral>
+class strong_duplex : public bumper<Integral, atomicity::full> {
+  typedef bumper<Integral, atomicity::full> base_type;
+  typedef strong_broker<Integral> broker_type;
+  friend class strong_broker<Integral>;
+
+ public:
+  strong_duplex() : base_type(0) {}
+  strong_duplex(Integral in) : base_type(in) {}
+  Integral load() const;
+  Integral exchange(Integral to);
+  ~strong_duplex();
+
+ private:
+  void insert(broker_type* child);
+  void erase(broker_type* child, Integral by);
+  mutable std::mutex serializer_;
+  typedef std::unordered_set<broker_type*> set_type;
+  set_type children_;
 };
 
-template< typename Integral > class strong_broker
-: public bumper< Integral, atomicity::full >
-{
-    typedef bumper< Integral, atomicity::full > base_type;
-    typedef strong_duplex< Integral > duplex_type;
-    friend class strong_duplex< Integral >;
-public:
-    strong_broker( duplex_type& p );
-    strong_broker() = delete;
-    strong_broker( const strong_broker& ) = delete;
-    strong_broker& operator=( const strong_broker& ) = delete;
-    ~strong_broker();
-private:
-    Integral poll() const { return base_type::load(); }
-    Integral drain() { return base_type::exchange( 0 ); }
-    duplex_type& prime_;
+template<typename Integral>
+class strong_broker : public bumper<Integral, atomicity::full> {
+  typedef bumper<Integral, atomicity::full> base_type;
+  typedef strong_duplex<Integral> duplex_type;
+  friend class strong_duplex<Integral>;
+
+ public:
+  strong_broker(duplex_type& p);
+  strong_broker() = delete;
+  strong_broker(const strong_broker&) = delete;
+  strong_broker& operator=(const strong_broker&) = delete;
+  ~strong_broker();
+
+ private:
+  Integral poll() const { return base_type::load(); }
+  Integral drain() { return base_type::exchange(0); }
+  duplex_type& prime_;
 };
 
-template< typename Integral >
-void strong_duplex< Integral >::insert( broker_type* child )
-{
-    std::lock_guard< std::mutex > _( serializer_ );
-    assert( children_.insert( child ).second );
+template<typename Integral>
+void strong_duplex<Integral>::insert(broker_type* child) {
+  std::lock_guard<std::mutex> _(serializer_);
+  assert(children_.insert(child).second);
 }
 
-template< typename Integral >
-void strong_duplex< Integral >::erase( broker_type* child, Integral by )
-{
-    this->operator +=( by );
-    std::lock_guard< std::mutex > _( serializer_ );
-    assert( children_.erase( child ) == 1 );
+template<typename Integral>
+void strong_duplex<Integral>::erase(broker_type* child, Integral by) {
+  this->operator+=(by);
+  std::lock_guard<std::mutex> _(serializer_);
+  assert(children_.erase(child) == 1);
 }
 
-template< typename Integral >
-Integral strong_duplex< Integral >::load() const
-{
-    typedef typename set_type::iterator iterator;
-    Integral tmp = 0;
-    {
-        std::lock_guard< std::mutex > _( serializer_ );
-        iterator rollcall = children_.begin();
-        for ( ; rollcall != children_.end(); ++rollcall )
-            tmp += (*rollcall)->poll();
-    }
-    return tmp + base_type::load();
+template<typename Integral>
+Integral strong_duplex<Integral>::load() const {
+  typedef typename set_type::iterator iterator;
+  Integral tmp = 0;
+  {
+    std::lock_guard<std::mutex> _(serializer_);
+    iterator rollcall = children_.begin();
+    for (; rollcall != children_.end(); ++rollcall) tmp += (*rollcall)->poll();
+  }
+  return tmp + base_type::load();
 }
 
-template< typename Integral >
-Integral strong_duplex< Integral >::exchange( Integral to )
-{
-    typedef typename set_type::iterator iterator;
-    Integral tmp = 0;
-    {
-        std::lock_guard< std::mutex > _( serializer_ );
-        iterator rollcall = children_.begin();
-        for ( ; rollcall != children_.end(); ++rollcall )
-            tmp += (*rollcall)->drain();
-    }
-    return tmp + base_type::exchange( to );
+template<typename Integral>
+Integral strong_duplex<Integral>::exchange(Integral to) {
+  typedef typename set_type::iterator iterator;
+  Integral tmp = 0;
+  {
+    std::lock_guard<std::mutex> _(serializer_);
+    iterator rollcall = children_.begin();
+    for (; rollcall != children_.end(); ++rollcall) tmp += (*rollcall)->drain();
+  }
+  return tmp + base_type::exchange(to);
 }
 
-template< typename Integral >
-strong_duplex< Integral >::~strong_duplex()
-{
-    std::lock_guard< std::mutex > _( serializer_ );
-    assert( children_.size() == 0 );
+template<typename Integral>
+strong_duplex<Integral>::~strong_duplex() {
+  std::lock_guard<std::mutex> _(serializer_);
+  assert(children_.size() == 0);
 }
 
-template< typename Integral >
-strong_broker< Integral >::strong_broker( duplex_type& p )
-:
-    base_type( 0 ),
-    prime_( p )
-{
-    prime_.insert( this );
+template<typename Integral>
+strong_broker<Integral>::strong_broker(duplex_type& p)
+    : base_type(0), prime_(p) {
+  prime_.insert(this);
 }
 
-template< typename Integral >
-strong_broker< Integral >::~strong_broker()
-{
-    prime_.erase( this, base_type::load() );
+template<typename Integral>
+strong_broker<Integral>::~strong_broker() {
+  prime_.erase(this, base_type::load());
 }
 
-template< typename Integral > class weak_broker;
+template<typename Integral>
+class weak_broker;
 
-template< typename Integral > class weak_duplex
-: public bumper< Integral, atomicity::full >
-{
-    typedef bumper< Integral, atomicity::full > base_type;
-    typedef weak_broker< Integral > broker_type;
-    friend class weak_broker< Integral >;
-public:
-    weak_duplex() : base_type( 0 ) {}
-    weak_duplex( Integral in ) : base_type( in ) {}
-    weak_duplex( const weak_duplex& ) = delete;
-    weak_duplex& operator=( const weak_duplex& ) = delete;
-    Integral load() const;
-    ~weak_duplex();
-private:
-    void insert( broker_type* child );
-    void erase( broker_type* child, Integral by );
-    mutable std::mutex serializer_;
-    typedef std::unordered_set< broker_type* > set_type;
-    set_type children_;
+template<typename Integral>
+class weak_duplex : public bumper<Integral, atomicity::full> {
+  typedef bumper<Integral, atomicity::full> base_type;
+  typedef weak_broker<Integral> broker_type;
+  friend class weak_broker<Integral>;
+
+ public:
+  weak_duplex() : base_type(0) {}
+  weak_duplex(Integral in) : base_type(in) {}
+  weak_duplex(const weak_duplex&) = delete;
+  weak_duplex& operator=(const weak_duplex&) = delete;
+  Integral load() const;
+  ~weak_duplex();
+
+ private:
+  void insert(broker_type* child);
+  void erase(broker_type* child, Integral by);
+  mutable std::mutex serializer_;
+  typedef std::unordered_set<broker_type*> set_type;
+  set_type children_;
 };
 
-template< typename Integral > class weak_broker
-: public bumper< Integral, atomicity::semi >
-{
-    typedef bumper< Integral, atomicity::semi > base_type;
-    typedef weak_duplex< Integral > duplex_type;
-    friend class weak_duplex< Integral >;
-public:
-    weak_broker( duplex_type& p );
-    weak_broker() = delete;
-    weak_broker( const weak_broker& ) = delete;
-    weak_broker& operator=( const weak_broker& ) = delete;
-    ~weak_broker();
-private:
-    Integral poll() const { return base_type::load(); }
-    duplex_type& prime_;
+template<typename Integral>
+class weak_broker : public bumper<Integral, atomicity::semi> {
+  typedef bumper<Integral, atomicity::semi> base_type;
+  typedef weak_duplex<Integral> duplex_type;
+  friend class weak_duplex<Integral>;
+
+ public:
+  weak_broker(duplex_type& p);
+  weak_broker() = delete;
+  weak_broker(const weak_broker&) = delete;
+  weak_broker& operator=(const weak_broker&) = delete;
+  ~weak_broker();
+
+ private:
+  Integral poll() const { return base_type::load(); }
+  duplex_type& prime_;
 };
 
-template< typename Integral >
-void weak_duplex< Integral >::insert( broker_type* child )
-{
-    std::lock_guard< std::mutex > _( serializer_ );
-    assert( children_.insert( child ).second );
+template<typename Integral>
+void weak_duplex<Integral>::insert(broker_type* child) {
+  std::lock_guard<std::mutex> _(serializer_);
+  assert(children_.insert(child).second);
 }
 
-template< typename Integral >
-void weak_duplex< Integral >::erase( broker_type* child, Integral by )
-{
-    std::lock_guard< std::mutex > _( serializer_ );
-    this->operator +=( by );
-    assert( children_.erase( child ) == 1 );
+template<typename Integral>
+void weak_duplex<Integral>::erase(broker_type* child, Integral by) {
+  std::lock_guard<std::mutex> _(serializer_);
+  this->operator+=(by);
+  assert(children_.erase(child) == 1);
 }
 
-template< typename Integral >
-Integral weak_duplex< Integral >::load() const
-{
-    typedef typename set_type::iterator iterator;
-    Integral tmp = 0;
-    {
-        std::lock_guard< std::mutex > _( serializer_ );
-        iterator rollcall = children_.begin();
-        for ( ; rollcall != children_.end(); ++rollcall )
-            tmp += (*rollcall)->poll();
-        tmp += base_type::load();
-    }
-    return tmp;
+template<typename Integral>
+Integral weak_duplex<Integral>::load() const {
+  typedef typename set_type::iterator iterator;
+  Integral tmp = 0;
+  {
+    std::lock_guard<std::mutex> _(serializer_);
+    iterator rollcall = children_.begin();
+    for (; rollcall != children_.end(); ++rollcall) tmp += (*rollcall)->poll();
+    tmp += base_type::load();
+  }
+  return tmp;
 }
 
-template< typename Integral >
-weak_duplex< Integral >::~weak_duplex()
-{
-    std::lock_guard< std::mutex > _( serializer_ );
-    assert( children_.size() == 0 );
+template<typename Integral>
+weak_duplex<Integral>::~weak_duplex() {
+  std::lock_guard<std::mutex> _(serializer_);
+  assert(children_.size() == 0);
 }
 
-template< typename Integral >
-weak_broker< Integral >::weak_broker( duplex_type& p )
-:
-    base_type( 0 ),
-    prime_( p )
-{
-    prime_.insert( this );
+template<typename Integral>
+weak_broker<Integral>::weak_broker(duplex_type& p) : base_type(0), prime_(p) {
+  prime_.insert(this);
 }
 
-template< typename Integral >
-weak_broker< Integral >::~weak_broker()
-{
-    prime_.erase( this, base_type::load() );
+template<typename Integral>
+weak_broker<Integral>::~weak_broker() {
+  prime_.erase(this, base_type::load());
 }
-
 
 // Counter arrays.
 
+template<typename Integral, atomicity Atomicity = atomicity::full>
+class bumper_array {
+ public:
+  typedef bumper<Integral, Atomicity> value_type;
 
-template< typename Integral,
-          atomicity Atomicity = atomicity::full >
-class bumper_array
-{
-public:
-    typedef bumper< Integral, Atomicity > value_type;
-private:
-    typedef std::dynarray< value_type > storage_type;
-public:
-    typedef typename storage_type::size_type size_type;
-    bumper_array() = delete;
-    bumper_array( size_type size ) : storage( size ) {}
-    bumper_array( const bumper_array& ) = delete;
-    bumper_array& operator=( const bumper_array& ) = delete;
-    value_type& operator[]( size_type idx ) { return storage[ idx ]; }
-    size_type size() const { return storage.size(); }
-protected:
-    Integral load( size_type idx ) const { return storage[ idx ].load(); }
-    Integral exchange( size_type idx, Integral value )
-        { return storage[ idx ].exchange( value ); }
-private:
-    storage_type storage;
+ private:
+  typedef std::dynarray<value_type> storage_type;
+
+ public:
+  typedef typename storage_type::size_type size_type;
+  bumper_array() = delete;
+  bumper_array(size_type size) : storage(size) {}
+  bumper_array(const bumper_array&) = delete;
+  bumper_array& operator=(const bumper_array&) = delete;
+  value_type& operator[](size_type idx) { return storage[idx]; }
+  size_type size() const { return storage.size(); }
+
+ protected:
+  Integral load(size_type idx) const { return storage[idx].load(); }
+  Integral exchange(size_type idx, Integral value) {
+    return storage[idx].exchange(value);
+  }
+
+ private:
+  storage_type storage;
 };
 
-template< typename Integral,
-          atomicity Atomicity = atomicity::full >
-class simplex_array
-: public bumper_array< Integral, Atomicity >
-{
-    typedef bumper_array< Integral, Atomicity > base_type;
-public:
-    typedef typename base_type::value_type value_type;
-    typedef typename base_type::size_type size_type;
-    simplex_array() = delete;
-    constexpr simplex_array( size_type size ) : base_type( size ) {}
-    simplex_array( const simplex_array& ) = delete;
-    simplex_array& operator=( const simplex_array& ) = delete;
-    Integral load( size_type idx ) const{ return base_type::load( idx ); }
-    Integral exchange( size_type idx, Integral value )
-        { return base_type::exchange( idx, value ); }
-    value_type& operator[]( size_type idx ) { return base_type::operator[]( idx ); }
-    size_type size() const { return base_type::size(); }
+template<typename Integral, atomicity Atomicity = atomicity::full>
+class simplex_array : public bumper_array<Integral, Atomicity> {
+  typedef bumper_array<Integral, Atomicity> base_type;
+
+ public:
+  typedef typename base_type::value_type value_type;
+  typedef typename base_type::size_type size_type;
+  simplex_array() = delete;
+  constexpr simplex_array(size_type size) : base_type(size) {}
+  simplex_array(const simplex_array&) = delete;
+  simplex_array& operator=(const simplex_array&) = delete;
+  Integral load(size_type idx) const { return base_type::load(idx); }
+  Integral exchange(size_type idx, Integral value) {
+    return base_type::exchange(idx, value);
+  }
+  value_type& operator[](size_type idx) { return base_type::operator[](idx); }
+  size_type size() const { return base_type::size(); }
 };
 
-template< typename Integral,
-          atomicity PrimeAtomicity = atomicity::full,
-          atomicity BufferAtomicity = atomicity::full >
-class buffer_array
-: public bumper_array< Integral, BufferAtomicity >
-{
-    typedef bumper_array< Integral, BufferAtomicity > base_type;
-    typedef bumper_array< Integral, PrimeAtomicity > prime_type;
-public:
-    typedef typename base_type::value_type value_type;
-    typedef typename base_type::size_type size_type;
-    buffer_array() = delete;
-    buffer_array( prime_type& p ) : base_type( p.size() ), prime_( p ) {}
-    buffer_array( const buffer_array& ) = delete;
-    buffer_array& operator=( const buffer_array& ) = delete;
-    void push( size_type idx )
-        { Integral value = base_type::operator[]( idx ).exchange( 0 );
-          if ( value != 0 ) prime_[ idx ] += value; }
-    void push();
-    size_type size() const { return base_type::size(); }
-    ~buffer_array() { push(); }
-private:
-    prime_type& prime_;
+template<typename Integral, atomicity PrimeAtomicity = atomicity::full,
+         atomicity BufferAtomicity = atomicity::full>
+class buffer_array : public bumper_array<Integral, BufferAtomicity> {
+  typedef bumper_array<Integral, BufferAtomicity> base_type;
+  typedef bumper_array<Integral, PrimeAtomicity> prime_type;
+
+ public:
+  typedef typename base_type::value_type value_type;
+  typedef typename base_type::size_type size_type;
+  buffer_array() = delete;
+  buffer_array(prime_type& p) : base_type(p.size()), prime_(p) {}
+  buffer_array(const buffer_array&) = delete;
+  buffer_array& operator=(const buffer_array&) = delete;
+  void push(size_type idx) {
+    Integral value = base_type::operator[](idx).exchange(0);
+    if (value != 0) prime_[idx] += value;
+  }
+  void push();
+  size_type size() const { return base_type::size(); }
+  ~buffer_array() { push(); }
+
+ private:
+  prime_type& prime_;
 };
 
-template< typename Integral,
-          atomicity BufferAtomicity, atomicity PrimeAtomicity >
-void
-buffer_array< Integral, BufferAtomicity, PrimeAtomicity >::push()
-{
-    int size = base_type::size();
-    for ( int i = 0; i < size; ++i )
-        push( i );
+template<typename Integral, atomicity BufferAtomicity, atomicity PrimeAtomicity>
+void buffer_array<Integral, BufferAtomicity, PrimeAtomicity>::push() {
+  int size = base_type::size();
+  for (int i = 0; i < size; ++i) push(i);
 }
 
 // Duplex arrays
 
-template< typename Integral > class strong_broker_array;
+template<typename Integral>
+class strong_broker_array;
 
-template< typename Integral > class strong_duplex_array
-: public bumper_array< Integral, atomicity::full >
-{
-    typedef bumper_array< Integral, atomicity::full > base_type;
-    typedef strong_broker_array< Integral > broker_type;
-    friend class strong_broker_array< Integral >;
-public:
-    typedef typename base_type::value_type value_type;
-    typedef typename base_type::size_type size_type;
-    strong_duplex_array() = delete;
-    constexpr strong_duplex_array( size_type size )
-      : base_type( size ) {}
-    strong_duplex_array( const strong_duplex_array& ) = delete;
-    strong_duplex_array& operator=( const strong_duplex_array& ) = delete;
-    value_type& operator[]( size_type idx ) { return base_type::operator[]( idx ); }
-    size_type size() const { return base_type::size(); }
-    ~strong_duplex_array();
-private:
-    void insert( broker_type* child );
-    void erase( broker_type* child, Integral by );
-    mutable std::mutex serializer_;
-    typedef std::unordered_set< broker_type* > set_type;
-    set_type children_;
+template<typename Integral>
+class strong_duplex_array : public bumper_array<Integral, atomicity::full> {
+  typedef bumper_array<Integral, atomicity::full> base_type;
+  typedef strong_broker_array<Integral> broker_type;
+  friend class strong_broker_array<Integral>;
+
+ public:
+  typedef typename base_type::value_type value_type;
+  typedef typename base_type::size_type size_type;
+  strong_duplex_array() = delete;
+  constexpr strong_duplex_array(size_type size) : base_type(size) {}
+  strong_duplex_array(const strong_duplex_array&) = delete;
+  strong_duplex_array& operator=(const strong_duplex_array&) = delete;
+  value_type& operator[](size_type idx) { return base_type::operator[](idx); }
+  size_type size() const { return base_type::size(); }
+  ~strong_duplex_array();
+
+ private:
+  void insert(broker_type* child);
+  void erase(broker_type* child, Integral by);
+  mutable std::mutex serializer_;
+  typedef std::unordered_set<broker_type*> set_type;
+  set_type children_;
 };
 
-template< typename Integral > class strong_broker_array
-: public bumper_array< Integral, atomicity::semi >
-{
-    typedef bumper_array< Integral, atomicity::semi > base_type;
-    typedef strong_duplex_array< Integral > duplex_type;
-    friend class strong_duplex_array< Integral >;
-public:
-    typedef typename base_type::value_type value_type;
-    typedef typename base_type::size_type size_type;
-    strong_broker_array() = delete;
-    strong_broker_array( duplex_type& p );
-    strong_broker_array( const strong_broker_array& ) = delete;
-    strong_broker_array& operator=( const strong_broker_array& ) = delete;
-    size_type size() const { return base_type::size(); }
-    ~strong_broker_array();
-private:
-    Integral poll( size_type idx )
-      { return base_type::operator[]( idx ).load(); }
-    Integral drain( size_type idx )
-      { return base_type::operator[]( idx ).exchange( 0 ); }
-    duplex_type& prime_;
+template<typename Integral>
+class strong_broker_array : public bumper_array<Integral, atomicity::semi> {
+  typedef bumper_array<Integral, atomicity::semi> base_type;
+  typedef strong_duplex_array<Integral> duplex_type;
+  friend class strong_duplex_array<Integral>;
+
+ public:
+  typedef typename base_type::value_type value_type;
+  typedef typename base_type::size_type size_type;
+  strong_broker_array() = delete;
+  strong_broker_array(duplex_type& p);
+  strong_broker_array(const strong_broker_array&) = delete;
+  strong_broker_array& operator=(const strong_broker_array&) = delete;
+  size_type size() const { return base_type::size(); }
+  ~strong_broker_array();
+
+ private:
+  Integral poll(size_type idx) { return base_type::operator[](idx).load(); }
+  Integral drain(size_type idx) {
+    return base_type::operator[](idx).exchange(0);
+  }
+  duplex_type& prime_;
 };
 
-template< typename Integral >
-strong_duplex_array< Integral >::~strong_duplex_array()
-{
-    std::lock_guard< std::mutex > _( serializer_ );
-    assert( children_.size() == 0 );
+template<typename Integral>
+strong_duplex_array<Integral>::~strong_duplex_array() {
+  std::lock_guard<std::mutex> _(serializer_);
+  assert(children_.size() == 0);
 }
 
-template< typename Integral >
-strong_broker_array< Integral >::strong_broker_array( duplex_type& p )
-:
-    base_type( p.size() ),
-    prime_( p )
-{
-    prime_.insert( this );
+template<typename Integral>
+strong_broker_array<Integral>::strong_broker_array(duplex_type& p)
+    : base_type(p.size()), prime_(p) {
+  prime_.insert(this);
 }
 
-template< typename Integral >
-strong_broker_array< Integral >::~strong_broker_array()
-{
-    prime_.erase( this, base_type::load() );
+template<typename Integral>
+strong_broker_array<Integral>::~strong_broker_array() {
+  prime_.erase(this, base_type::load());
 }
 
+template<typename Integral>
+class weak_broker_array;
 
-template< typename Integral > class weak_broker_array;
+template<typename Integral>
+class weak_duplex_array : public bumper_array<Integral, atomicity::full> {
+  typedef bumper_array<Integral, atomicity::full> base_type;
+  typedef weak_broker_array<Integral> broker_type;
+  friend class weak_broker_array<Integral>;
 
-template< typename Integral > class weak_duplex_array
-: public bumper_array< Integral, atomicity::full >
-{
-    typedef bumper_array< Integral, atomicity::full > base_type;
-    typedef weak_broker_array< Integral > broker_type;
-    friend class weak_broker_array< Integral >;
-public:
-    typedef typename base_type::value_type value_type;
-    typedef typename base_type::size_type size_type;
-    weak_duplex_array() = delete;
-    constexpr weak_duplex_array( size_type size )
-      : base_type( size ) {}
-    weak_duplex_array( const weak_duplex_array& ) = delete;
-    weak_duplex_array& operator=( const weak_duplex_array& ) = delete;
-    value_type& operator[]( size_type idx ) { return base_type::operator[]( idx ); }
-    size_type size() const { return base_type::size(); }
-    ~weak_duplex_array();
-private:
-    void insert( broker_type* child );
-    void erase( broker_type* child, Integral by );
-    mutable std::mutex serializer_;
-    typedef std::unordered_set< broker_type* > set_type;
-    set_type children_;
+ public:
+  typedef typename base_type::value_type value_type;
+  typedef typename base_type::size_type size_type;
+  weak_duplex_array() = delete;
+  constexpr weak_duplex_array(size_type size) : base_type(size) {}
+  weak_duplex_array(const weak_duplex_array&) = delete;
+  weak_duplex_array& operator=(const weak_duplex_array&) = delete;
+  value_type& operator[](size_type idx) { return base_type::operator[](idx); }
+  size_type size() const { return base_type::size(); }
+  ~weak_duplex_array();
+
+ private:
+  void insert(broker_type* child);
+  void erase(broker_type* child, Integral by);
+  mutable std::mutex serializer_;
+  typedef std::unordered_set<broker_type*> set_type;
+  set_type children_;
 };
 
-template< typename Integral > class weak_broker_array
-: public bumper_array< Integral, atomicity::semi >
-{
-    typedef bumper_array< Integral, atomicity::semi > base_type;
-    typedef weak_duplex_array< Integral > duplex_type;
-    friend class weak_duplex_array< Integral >;
-public:
-    typedef typename base_type::value_type value_type;
-    typedef typename base_type::size_type size_type;
-    weak_broker_array() = delete;
-    weak_broker_array( duplex_type& p );
-    weak_broker_array( const weak_broker_array& ) = delete;
-    weak_broker_array& operator=( const weak_broker_array& ) = delete;
-    size_type size() const { return base_type::size(); }
-    ~weak_broker_array();
-private:
-    Integral poll( size_type idx )
-      { return base_type::operator[]( idx ).load(); }
-    duplex_type& prime_;
+template<typename Integral>
+class weak_broker_array : public bumper_array<Integral, atomicity::semi> {
+  typedef bumper_array<Integral, atomicity::semi> base_type;
+  typedef weak_duplex_array<Integral> duplex_type;
+  friend class weak_duplex_array<Integral>;
+
+ public:
+  typedef typename base_type::value_type value_type;
+  typedef typename base_type::size_type size_type;
+  weak_broker_array() = delete;
+  weak_broker_array(duplex_type& p);
+  weak_broker_array(const weak_broker_array&) = delete;
+  weak_broker_array& operator=(const weak_broker_array&) = delete;
+  size_type size() const { return base_type::size(); }
+  ~weak_broker_array();
+
+ private:
+  Integral poll(size_type idx) { return base_type::operator[](idx).load(); }
+  duplex_type& prime_;
 };
 
-template< typename Integral >
-weak_duplex_array< Integral >::~weak_duplex_array()
-{
-    std::lock_guard< std::mutex > _( serializer_ );
-    assert( children_.size() == 0 );
+template<typename Integral>
+weak_duplex_array<Integral>::~weak_duplex_array() {
+  std::lock_guard<std::mutex> _(serializer_);
+  assert(children_.size() == 0);
 }
 
-template< typename Integral >
-weak_broker_array< Integral >::weak_broker_array( duplex_type& p )
-:
-    base_type( p.size() ),
-    prime_( p )
-{
-    prime_.insert( this );
+template<typename Integral>
+weak_broker_array<Integral>::weak_broker_array(duplex_type& p)
+    : base_type(p.size()), prime_(p) {
+  prime_.insert(this);
 }
 
-template< typename Integral >
-weak_broker_array< Integral >::~weak_broker_array()
-{
-    prime_.erase( this, base_type::load() );
+template<typename Integral>
+weak_broker_array<Integral>::~weak_broker_array() {
+  prime_.erase(this, base_type::load());
 }
 
+}  // namespace counter
 
-
-} // namespace counter
-
-} // namespace gcl
+}  // namespace gcl

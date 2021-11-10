@@ -23,14 +23,15 @@
 
 #pragma once
 
+#include <velocypack/Slice.h>
+
+#include <set>
+
 #include "Basics/Common.h"
 #include "Futures/Future.h"
 #include "Transaction/MethodsApi.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
-
-#include <velocypack/Slice.h>
-#include <set>
 
 namespace arangodb {
 
@@ -47,9 +48,9 @@ struct IsServerIdLessThan {
 using SortedServersSet = std::set<ServerID, IsServerIdLessThan>;
 
 /// @brief begin a transaction on all followers
-Future<Result> beginTransactionOnLeaders(TransactionState&,
-                                         ClusterTrxMethods::SortedServersSet const& leaders,
-                                         transaction::MethodsApi api);
+Future<Result> beginTransactionOnLeaders(
+    TransactionState&, ClusterTrxMethods::SortedServersSet const& leaders,
+    transaction::MethodsApi api);
 
 /// @brief commit a transaction on a subordinate
 Future<arangodb::Result> commitTransaction(transaction::Methods& trx,
@@ -60,12 +61,12 @@ Future<arangodb::Result> abortTransaction(transaction::Methods& trx,
                                           transaction::MethodsApi api);
 
 /// @brief add the transaction ID header for servers
-template <typename MapT>
+template<typename MapT>
 void addTransactionHeader(transaction::Methods const& trx,
                           ServerID const& server, MapT& headers);
 
 /// @brief add transaction ID header for setting up AQL snippets
-template <typename MapT>
+template<typename MapT>
 void addAQLTransactionHeader(transaction::Methods const& trx,
                              ServerID const& server, MapT& headers);
 
@@ -74,4 +75,3 @@ bool isElCheapo(transaction::Methods const& trx);
 bool isElCheapo(TransactionState const& state);
 }  // namespace ClusterTrxMethods
 }  // namespace arangodb
-

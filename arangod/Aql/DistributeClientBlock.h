@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include <deque>
+
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/SkipResult.h"
-
-#include <deque>
 
 namespace arangodb {
 namespace aql {
@@ -100,4 +100,3 @@ class DistributeClientBlock {
 
 }  // namespace aql
 }  // namespace arangodb
-

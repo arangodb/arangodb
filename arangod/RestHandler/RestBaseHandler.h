@@ -24,7 +24,6 @@
 #pragma once
 
 #include "GeneralServer/RestHandler.h"
-
 #include "Rest/GeneralResponse.h"
 
 namespace arangodb {
@@ -47,15 +46,16 @@ class RestBaseHandler : public rest::RestHandler {
 
  public:
   // generates a result from VelocyPack
-  template <typename Payload>
+  template<typename Payload>
   void generateResult(rest::ResponseCode, Payload&&);
 
   // generates a result from VelocyPack
-  template <typename Payload>
-  void generateResult(rest::ResponseCode, Payload&&, velocypack::Options const*);
+  template<typename Payload>
+  void generateResult(rest::ResponseCode, Payload&&,
+                      velocypack::Options const*);
 
   // generates a result from VelocyPack
-  template <typename Payload>
+  template<typename Payload>
   void generateResult(rest::ResponseCode, Payload&&,
                       std::shared_ptr<transaction::Context> context);
 
@@ -71,12 +71,10 @@ class RestBaseHandler : public rest::RestHandler {
   void generateCanceled();
 
  protected:
-  
   /// @brief parses the body as VelocyPack, generates body
   arangodb::velocypack::Slice parseVPackBody(bool& success);
 
-  template <typename Payload>
+  template<typename Payload>
   void writeResult(Payload&&, arangodb::velocypack::Options const& options);
 };
 }  // namespace arangodb
-

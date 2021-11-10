@@ -22,17 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortStringStorage.h"
+
+#include <cstring>
+
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Basics/tri-strings.h"
 
-#include <cstring>
-
 using namespace arangodb::aql;
 
 /// @brief create a short string storage instance
-ShortStringStorage::ShortStringStorage(arangodb::ResourceMonitor& resourceMonitor, size_t blockSize)
+ShortStringStorage::ShortStringStorage(
+    arangodb::ResourceMonitor& resourceMonitor, size_t blockSize)
     : _resourceMonitor(resourceMonitor),
       _blockSize(blockSize),
       _current(nullptr),
@@ -68,7 +70,8 @@ char* ShortStringStorage::registerString(char const* p, size_t length) {
 }
 
 /// @brief register a short string, unescaping it
-char* ShortStringStorage::unescape(char const* p, size_t length, size_t* outLength) {
+char* ShortStringStorage::unescape(char const* p, size_t length,
+                                   size_t* outLength) {
   TRI_ASSERT(length <= maxStringLength);
 
   if (_current == nullptr || (_current + length + 1 > _end)) {
@@ -95,7 +98,7 @@ void ShortStringStorage::allocateBlock() {
     ResourceUsageScope scope(_resourceMonitor, _blockSize);
 
     _blocks.emplace_back(std::make_unique<char[]>(_blockSize));
-  
+
     // now we are responsible for memory usage tracking
     scope.steal();
   }

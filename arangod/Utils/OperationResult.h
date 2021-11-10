@@ -23,17 +23,17 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
-#include "Basics/Result.h"
-#include "Utils/OperationOptions.h"
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <unordered_map>
+
+#include "Basics/Common.h"
+#include "Basics/Result.h"
+#include "Basics/debugging.h"
+#include "Utils/OperationOptions.h"
 
 namespace arangodb {
 
@@ -110,4 +110,3 @@ struct OperationResult final {
 };
 
 }  // namespace arangodb
-

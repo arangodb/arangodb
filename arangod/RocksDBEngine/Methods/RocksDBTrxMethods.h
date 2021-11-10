@@ -23,26 +23,28 @@
 
 #pragma once
 
-#include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
-
 #include <memory>
 #include <utility>
 #include <vector>
 
+#include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
+
 namespace arangodb {
-  
+
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
  public:
-  explicit RocksDBTrxMethods(RocksDBTransactionState*, rocksdb::TransactionDB* db);
-  
+  explicit RocksDBTrxMethods(RocksDBTransactionState*,
+                             rocksdb::TransactionDB* db);
+
   ~RocksDBTrxMethods();
 
   Result beginTransaction() override;
 
   rocksdb::ReadOptions iteratorReadOptions() const override;
-  
-  void prepareOperation(DataSourceId cid, RevisionId rid, TRI_voc_document_operation_e operationType) override;
+
+  void prepareOperation(DataSourceId cid, RevisionId rid,
+                        TRI_voc_document_operation_e operationType) override;
 
   /// @brief undo the effects of the previous prepareOperation call
   void rollbackOperation(TRI_voc_document_operation_e operationType) override;
@@ -52,24 +54,24 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// performed
   Result checkIntermediateCommit(bool& hasPerformedIntermediateCommit) override;
 
-  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
-                      rocksdb::Slice const&, rocksdb::PinnableSlice*, ReadOwnWrites) override;
+  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
+                      rocksdb::PinnableSlice*, ReadOwnWrites) override;
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
                                                  ReadOptionsCallback) override;
 
   bool iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const override;
-  
+
   void beginQuery(bool isModificationQuery);
   void endQuery(bool isModificationQuery) noexcept;
-  
+
  private:
   friend class RocksDBStreamingTrxMethods;
-  
+
   bool hasIntermediateCommitsEnabled() const noexcept;
-  
+
   void cleanupTransaction() override;
-  
+
   void createTransaction() override;
 
   /// @brief Trigger an intermediate commit.
@@ -82,7 +84,8 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// @brief check sizes and call internalCommit if too big
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
   /// performed
-  Result checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit);
+  Result checkIntermediateCommit(uint64_t newSize,
+                                 bool& hasPerformedIntermediateCommit);
 
   void initializeReadWriteBatch();
   void releaseReadWriteBatch() noexcept;
@@ -90,28 +93,30 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// @brief used for read-only trx and intermediate commits
   /// For intermediate commits this MUST ONLY be used for iterators
   rocksdb::Snapshot const* _iteratorReadSnapshot{nullptr};
-  
-  /// @brief this WriteBatch can be used to satisfy read operations in a streaming trx.
-  /// _readWriteBatch can have three different states:
+
+  /// @brief this WriteBatch can be used to satisfy read operations in a
+  /// streaming trx. _readWriteBatch can have three different states:
   ///   - nullptr
   ///   - pointing to a copy (_ownsReadWriteBatch == true)
-  ///   - pointing to _rockTransaction's underlying WriteBatch (_ownsReadWriteBatch == false)
+  ///   - pointing to _rockTransaction's underlying WriteBatch
+  ///   (_ownsReadWriteBatch == false)
   ///
-  /// If _readWriteBatch is null, read operations without read-own-writes semantic are
-  /// performed directly on the DB using the snapshot, otherwise on _rocksTransaction. 
-  /// When a modification query is started, the current WriteBatch from _rocksTransaction
-  /// is copied and stored in _readWriteBatch.
-  /// Once the modification query is finished, the copy is released and _readWriteBatch
-  /// is set to point to the trx's underlying WriteBatch. This is necessary to ensure
-  /// that subsequent read operations within the same streaming transaction see the
-  /// previously performed writes.
-  /// If _readWriteBatch is not null, read-operations without read-own-writes semantic
-  /// are performed on _readWriteBatch, otherwise on _rocksTransaction.
+  /// If _readWriteBatch is null, read operations without read-own-writes
+  /// semantic are performed directly on the DB using the snapshot, otherwise on
+  /// _rocksTransaction. When a modification query is started, the current
+  /// WriteBatch from _rocksTransaction is copied and stored in _readWriteBatch.
+  /// Once the modification query is finished, the copy is released and
+  /// _readWriteBatch is set to point to the trx's underlying WriteBatch. This
+  /// is necessary to ensure that subsequent read operations within the same
+  /// streaming transaction see the previously performed writes. If
+  /// _readWriteBatch is not null, read-operations without read-own-writes
+  /// semantic are performed on _readWriteBatch, otherwise on _rocksTransaction.
   ///
-  /// If the transaction is globally managed (e.g., a streaming trx), we already set
-  /// _readWriteBatch to point to the trx's underlying WriteBatch at the begin of the
-  /// transaction. This is necessary to ensure that read operations performed as part
-  /// of the trx observe the correct transaction state, regardless of any AQL queries.
+  /// If the transaction is globally managed (e.g., a streaming trx), we already
+  /// set _readWriteBatch to point to the trx's underlying WriteBatch at the
+  /// begin of the transaction. This is necessary to ensure that read operations
+  /// performed as part of the trx observe the correct transaction state,
+  /// regardless of any AQL queries.
   rocksdb::WriteBatchWithIndex* _readWriteBatch{nullptr};
   bool _ownsReadWriteBatch{false};
 
@@ -120,4 +125,3 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
 };
 
 }  // namespace arangodb
-

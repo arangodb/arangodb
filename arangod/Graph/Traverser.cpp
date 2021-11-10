@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Traverser.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
@@ -30,15 +34,12 @@
 #include "Transaction/Methods.h"
 #include "VocBase/KeyGenerator.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::graph;
 
-bool Traverser::VertexGetter::getVertex(VPackSlice edge,
-                                        arangodb::traverser::EnumeratedPath& path) {
+bool Traverser::VertexGetter::getVertex(
+    VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
   // getSingleVertex will populate s and register the underlying character data
   // if the vertex is found.
   arangodb::velocypack::StringRef s;
@@ -50,10 +51,9 @@ bool Traverser::VertexGetter::getVertex(VPackSlice edge,
   return true;
 }
 
-bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
-                                              arangodb::velocypack::StringRef cmp,
-                                              uint64_t depth,
-                                              arangodb::velocypack::StringRef& result) {
+bool Traverser::VertexGetter::getSingleVertex(
+    arangodb::velocypack::Slice edge, arangodb::velocypack::StringRef cmp,
+    uint64_t depth, arangodb::velocypack::StringRef& result) {
   VPackSlice resSlice = edge;
   if (!resSlice.isString()) {
     resSlice = transaction::helpers::extractFromFromDocument(edge);
@@ -83,11 +83,13 @@ bool Traverser::VertexGetter::pointsIntoTraverserCache() const noexcept {
 }
 #endif
 
-bool Traverser::VertexGetter::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
+bool Traverser::VertexGetter::getVertex(arangodb::velocypack::StringRef vertex,
+                                        size_t depth) {
   return _traverser->vertexMatchesConditions(vertex, depth);
 }
 
-bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+bool Traverser::UniqueVertexGetter::getVertex(
+    VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
   // getSingleVertex will populate s and register the underlying character data
   // if the vertex is found.
   arangodb::velocypack::StringRef s;
@@ -99,14 +101,15 @@ bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, arangodb::travers
   return true;
 }
 
-bool Traverser::UniqueVertexGetter::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
+bool Traverser::UniqueVertexGetter::getVertex(
+    arangodb::velocypack::StringRef vertex, size_t depth) {
   if (_returnedVertices.find(vertex) != _returnedVertices.end()) {
     // This vertex is not unique.
     _traverser->traverserCache()->increaseFilterCounter();
     return false;
   }
 
-  if(!_traverser->vertexMatchesConditions(vertex, depth)) {
+  if (!_traverser->vertexMatchesConditions(vertex, depth)) {
     return false;
   }
 
@@ -114,10 +117,9 @@ bool Traverser::UniqueVertexGetter::getVertex(arangodb::velocypack::StringRef ve
   return true;
 }
 
-bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
-                                                    arangodb::velocypack::StringRef cmp,
-                                                    uint64_t depth,
-                                                    arangodb::velocypack::StringRef& result) {
+bool Traverser::UniqueVertexGetter::getSingleVertex(
+    arangodb::velocypack::Slice edge, arangodb::velocypack::StringRef cmp,
+    uint64_t depth, arangodb::velocypack::StringRef& result) {
   VPackSlice resSlice = edge;
   if (!resSlice.isString()) {
     resSlice = transaction::helpers::extractFromFromDocument(edge);
@@ -158,16 +160,15 @@ bool Traverser::UniqueVertexGetter::pointsIntoTraverserCache() const noexcept {
 }
 #endif
 
-void Traverser::UniqueVertexGetter::reset(arangodb::velocypack::StringRef const& startVertex) {
+void Traverser::UniqueVertexGetter::reset(
+    arangodb::velocypack::StringRef const& startVertex) {
   _returnedVertices.clear();
   // The startVertex always counts as visited!
   _returnedVertices.emplace(startVertex);
 }
 
 Traverser::Traverser(arangodb::traverser::TraverserOptions* opts)
-    : _trx(opts->trx()),
-      _done(true),
-      _opts(opts) {
+    : _trx(opts->trx()), _done(true), _opts(opts) {
   if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
   } else {
@@ -177,14 +178,14 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts)
 
 Traverser::~Traverser() = default;
 
-bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
-                                                           arangodb::velocypack::StringRef vid,
-                                                           uint64_t depth, size_t cursorId) {
+bool arangodb::traverser::Traverser::edgeMatchesConditions(
+    VPackSlice e, arangodb::velocypack::StringRef vid, uint64_t depth,
+    size_t cursorId) {
   return _opts->evaluateEdgeExpression(e, vid, depth, cursorId);
 }
 
-bool arangodb::traverser::Traverser::vertexMatchesConditions(arangodb::velocypack::StringRef v,
-                                                             uint64_t depth) {
+bool arangodb::traverser::Traverser::vertexMatchesConditions(
+    arangodb::velocypack::StringRef v, uint64_t depth) {
   if (_opts->vertexHasFilter(depth)) {
     // We always need to destroy this vertex
     aql::AqlValue vertex = fetchVertexData(v);

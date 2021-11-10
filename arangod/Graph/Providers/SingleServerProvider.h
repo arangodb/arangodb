@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include "Aql/TraversalStats.h"
+#include "Basics/ResourceUsage.h"
 #include "Graph/Cache/RefactoredTraverserCache.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -31,13 +33,10 @@
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
 
-#include "Aql/TraversalStats.h"
-#include "Basics/ResourceUsage.h"
-
 namespace arangodb {
 
 namespace futures {
-template <typename T>
+template<typename T>
 class Future;
 }
 
@@ -52,10 +51,11 @@ class HashedStringRef;
 
 namespace graph {
 
-// TODO: we need to control from the outside if and which parts of the vertex - (will be implemented in the future via template parameters)
-// data should be returned. This is most-likely done via a template parameter like
-// this: template<ProduceVertexData>
-template <class StepType>
+// TODO: we need to control from the outside if and which parts of the vertex -
+// (will be implemented in the future via template parameters) data should be
+// returned. This is most-likely done via a template parameter like this:
+// template<ProduceVertexData>
+template<class StepType>
 class SingleServerProvider {
  public:
   using Options = BaseProviderOptions;
@@ -70,14 +70,17 @@ class SingleServerProvider {
 
   SingleServerProvider& operator=(SingleServerProvider const&) = delete;
 
-  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
+      -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;  // index
 
-  void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
-  void insertEdgeIdIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
+  void insertEdgeIntoResult(EdgeDocumentToken edge,
+                            arangodb::velocypack::Builder& builder);
+  void insertEdgeIdIntoResult(EdgeDocumentToken edge,
+                              arangodb::velocypack::Builder& builder);
 
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder,

@@ -23,16 +23,16 @@
 
 #pragma once
 
+#include <memory>
+#include <queue>
+#include <unordered_set>
+#include <utility>
+
 #include "Aql/AqlCallStack.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
-
-#include <memory>
-#include <queue>
-#include <unordered_set>
-#include <utility>
 
 namespace arangodb::aql {
 class ExecutionBlock;
@@ -43,7 +43,7 @@ class SkipResult;
  * @brief Thin interface to access the methods of ExecutionBlock that are
  * necessary for the row Fetchers. Makes it easier to test the Fetchers.
  */
-template <BlockPassthrough allowBlockPassthrough>
+template<BlockPassthrough allowBlockPassthrough>
 class DependencyProxy {
  public:
   /**
@@ -61,7 +61,8 @@ class DependencyProxy {
    * The constructor MAY NOT access the dependencies, nor the itemBlockManager.
    * This is because the dependencies will be added to the ExecutionBlock only
    * after construction, and to allow derived subclasses for testing (read
-   * DependencyProxyMock) to create them *after* the parent class was constructed.
+   * DependencyProxyMock) to create them *after* the parent class was
+   * constructed.
    */
   DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
                   RegisterCount nrInputRegisters);
@@ -69,10 +70,11 @@ class DependencyProxy {
   TEST_VIRTUAL ~DependencyProxy() = default;
 
   // TODO Implement and document properly!
-  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack& stack);
+  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+  execute(AqlCallStack& stack);
 
-  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeForDependency(
-      size_t dependency, AqlCallStack& stack);
+  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+  executeForDependency(size_t dependency, AqlCallStack& stack);
 
   [[nodiscard]] RegisterCount getNrInputRegisters() const;
 
@@ -95,9 +97,9 @@ class DependencyProxy {
   RegisterCount const _nrInputRegisters;
   std::string _distributeId;
 
-  // only modified in case of multiple dependencies + Passthrough otherwise always 0
+  // only modified in case of multiple dependencies + Passthrough otherwise
+  // always 0
   size_t _currentDependency;
 };
 
 }  // namespace arangodb::aql
-

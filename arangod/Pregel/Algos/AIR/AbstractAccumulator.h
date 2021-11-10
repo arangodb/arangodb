@@ -25,14 +25,14 @@
 
 #pragma once
 #include <Greenspun/EvalResult.h>
+
 #include <iostream>
 #include <numeric>
 
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
-
 #include "AccumulatorOptions.h"
 #include "MessageData.h"
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
 
 namespace arangodb {
 namespace pregel {
@@ -40,7 +40,7 @@ namespace algos {
 namespace accumulators {
 class VertexData;
 
-template <typename T>
+template<typename T>
 class Accumulator;
 
 struct AccumulatorBase {
@@ -55,39 +55,48 @@ struct AccumulatorBase {
   // Resets the accumulator to a well-known value
   virtual auto clear() -> greenspun::EvalResult = 0;
   virtual auto setBySlice(VPackSlice v) -> greenspun::EvalResult = 0;
-  virtual auto getIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
+  virtual auto getIntoBuilder(VPackBuilder& result)
+      -> greenspun::EvalResult = 0;
 
   // This conflates two operations: updating the accumulator, and passing the
-  // sender of the update message into the accumulator, i.e. the message passing and
-  // the accumulator operation
-  // One of these two operations should also be obsolete. This will need some consideration
-  // wrt "efficiency" (whether velocypack is the best format for messages here. It probably is,
-  // in particular since we can prevent copying stuff around)
-  virtual auto updateByMessageSlice(VPackSlice msg) -> greenspun::EvalResultT<UpdateResult> = 0;
-  virtual auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> = 0;
+  // sender of the update message into the accumulator, i.e. the message passing
+  // and the accumulator operation One of these two operations should also be
+  // obsolete. This will need some consideration wrt "efficiency" (whether
+  // velocypack is the best format for messages here. It probably is, in
+  // particular since we can prevent copying stuff around)
+  virtual auto updateByMessageSlice(VPackSlice msg)
+      -> greenspun::EvalResultT<UpdateResult> = 0;
+  virtual auto updateByMessage(MessageData const& msg)
+      -> greenspun::EvalResultT<UpdateResult> = 0;
 
   // used to set state on WorkerContext from message by MasterContext
   virtual auto setStateBySlice(VPackSlice msg) -> greenspun::EvalResult = 0;
   // used to set state on WorkerContext from message by MasterContext
-  virtual auto getStateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
+  virtual auto getStateIntoBuilder(VPackBuilder& result)
+      -> greenspun::EvalResult = 0;
   // used to send updates from WorkerContext to MasterContext, output of this
   // is given to aggregateStateBySlice on MasterContext
-  virtual auto getStateUpdateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
-  // used to aggregate states on MasterContext after receiving messages from WorkerContexts.
-  virtual auto aggregateStateBySlice(VPackSlice msg) -> greenspun::EvalResult = 0;
+  virtual auto getStateUpdateIntoBuilder(VPackBuilder& result)
+      -> greenspun::EvalResult = 0;
+  // used to aggregate states on MasterContext after receiving messages from
+  // WorkerContexts.
+  virtual auto aggregateStateBySlice(VPackSlice msg)
+      -> greenspun::EvalResult = 0;
 
-  virtual auto finalizeIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
+  virtual auto finalizeIntoBuilder(VPackBuilder& result)
+      -> greenspun::EvalResult = 0;
 };
 
 template<typename T>
 constexpr auto always_false_v = false;
 
-template <typename T>
+template<typename T>
 class Accumulator : public AccumulatorBase {
  public:
   using data_type = T;
 
-  explicit Accumulator(AccumulatorOptions const&, CustomAccumulatorDefinitions const&) {}
+  explicit Accumulator(AccumulatorOptions const&,
+                       CustomAccumulatorDefinitions const&) {}
   ~Accumulator() override = default;
 
   auto clear() -> greenspun::EvalResult override {
@@ -124,34 +133,38 @@ class Accumulator : public AccumulatorBase {
   }
 
   auto updateBySlice(VPackSlice s) -> greenspun::EvalResultT<UpdateResult> {
-      if constexpr (std::is_same_v<T, bool>) {
-        return this->update(s.getBool());
-      } else if constexpr (std::is_arithmetic_v<T>) {
-        return this->update(s.getNumericValue<T>());
-      } else if constexpr (std::is_same_v<VPackSlice, T>) {
-        return this->update(s);
-      } else if constexpr (std::is_same_v<std::string, T>) {
-        return this->update(s.copyString());
-      } else {
-        static_assert(always_false_v<T>);
-      }
+    if constexpr (std::is_same_v<T, bool>) {
+      return this->update(s.getBool());
+    } else if constexpr (std::is_arithmetic_v<T>) {
+      return this->update(s.getNumericValue<T>());
+    } else if constexpr (std::is_same_v<VPackSlice, T>) {
+      return this->update(s);
+    } else if constexpr (std::is_same_v<std::string, T>) {
+      return this->update(s.copyString());
+    } else {
+      static_assert(always_false_v<T>);
+    }
   }
 
-  auto updateByMessageSlice(VPackSlice msg) -> greenspun::EvalResultT<UpdateResult> override {
+  auto updateByMessageSlice(VPackSlice msg)
+      -> greenspun::EvalResultT<UpdateResult> override {
     return updateBySlice(msg.get("value"));
   }
 
-  auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override {
+  auto updateByMessage(MessageData const& msg)
+      -> greenspun::EvalResultT<UpdateResult> override {
     return updateBySlice(msg._value.slice());
   }
 
   auto setStateBySlice(VPackSlice s) -> greenspun::EvalResult override {
     return setBySlice(s);
   }
-  auto getStateIntoBuilder(VPackBuilder& msg) -> greenspun::EvalResult override {
+  auto getStateIntoBuilder(VPackBuilder& msg)
+      -> greenspun::EvalResult override {
     return getIntoBuilder(msg);
   }
-  auto getStateUpdateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override {
+  auto getStateUpdateIntoBuilder(VPackBuilder& result)
+      -> greenspun::EvalResult override {
     return getIntoBuilder(result);
   }
   auto aggregateStateBySlice(VPackSlice msg) -> greenspun::EvalResult override {
@@ -167,16 +180,18 @@ class Accumulator : public AccumulatorBase {
     return {};
   }
 
-  auto finalizeIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override {
+  auto finalizeIntoBuilder(VPackBuilder& result)
+      -> greenspun::EvalResult override {
     return getIntoBuilder(result);
   }
 
-protected:
+ protected:
   data_type _value;
 };
 
-std::unique_ptr<AccumulatorBase> instantiateAccumulator(AccumulatorOptions const& options,
-                                                        CustomAccumulatorDefinitions const& customDefinitions);
+std::unique_ptr<AccumulatorBase> instantiateAccumulator(
+    AccumulatorOptions const& options,
+    CustomAccumulatorDefinitions const& customDefinitions);
 bool isValidAccumulatorOptions(AccumulatorOptions const& options);
 
 }  // namespace accumulators

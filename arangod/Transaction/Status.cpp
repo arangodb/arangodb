@@ -23,8 +23,8 @@
 
 #include "Transaction/Status.h"
 
-#include <iostream>
 #include <cstring>
+#include <iostream>
 
 namespace arangodb {
 namespace transaction {
@@ -46,7 +46,8 @@ Status statusFromString(char const* str, size_t len) {
   return Status::UNDEFINED;
 }
 
-std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::transaction::Status const& s) {
   stream << arangodb::transaction::statusString(s);
   return stream;
 }

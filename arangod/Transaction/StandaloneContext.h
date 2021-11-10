@@ -23,9 +23,8 @@
 
 #pragma once
 
-#include "SmartContext.h"
-
 #include "Basics/Common.h"
+#include "SmartContext.h"
 #include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
@@ -38,23 +37,20 @@ namespace transaction {
 /// Can be used to reuse transaction state between multiple
 /// transaction::Methods instances.
 struct StandaloneContext final : public SmartContext {
-  
   explicit StandaloneContext(TRI_vocbase_t& vocbase);
-  
+
   /// @brief get transaction state, determine commit responsiblity
-  std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
-                                                 bool& responsibleForCommit) override;
-  
+  std::shared_ptr<TransactionState> acquireState(
+      transaction::Options const& options, bool& responsibleForCommit) override;
+
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
-  
+
   std::shared_ptr<Context> clone() const override;
-  
+
   /// @brief create a context, returned in a shared ptr
   static std::shared_ptr<transaction::Context> Create(TRI_vocbase_t& vocbase);
 };
 
-
 }  // namespace transaction
 }  // namespace arangodb
-

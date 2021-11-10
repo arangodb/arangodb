@@ -23,9 +23,8 @@
 
 #pragma once
 
-#include "RestHandler/RestBaseHandler.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
 class RestShutdownHandler : public RestBaseHandler {
@@ -39,4 +38,3 @@ class RestShutdownHandler : public RestBaseHandler {
   RestStatus execute() override;
 };
 }  // namespace arangodb
-

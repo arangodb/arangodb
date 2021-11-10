@@ -23,6 +23,9 @@
 
 #include "GlobalTailingSyncer.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
@@ -32,29 +35,29 @@
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/ReplicationFeature.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 
-GlobalTailingSyncer::GlobalTailingSyncer(ReplicationApplierConfiguration const& configuration,
-                                         TRI_voc_tick_t initialTick, bool useTick)
-    : TailingSyncer(configuration._server.getFeature<ReplicationFeature>().globalReplicationApplier(),
+GlobalTailingSyncer::GlobalTailingSyncer(
+    ReplicationApplierConfiguration const& configuration,
+    TRI_voc_tick_t initialTick, bool useTick)
+    : TailingSyncer(configuration._server.getFeature<ReplicationFeature>()
+                        .globalReplicationApplier(),
                     configuration, initialTick, useTick),
       _queriedTranslations(false) {
   _ignoreDatabaseMarkers = false;
   _state.databaseName = StaticStrings::SystemDatabase;
 }
 
-std::shared_ptr<GlobalTailingSyncer> GlobalTailingSyncer::create(ReplicationApplierConfiguration const& configuration,
-                                                                 TRI_voc_tick_t initialTick, bool useTick) {
+std::shared_ptr<GlobalTailingSyncer> GlobalTailingSyncer::create(
+    ReplicationApplierConfiguration const& configuration,
+    TRI_voc_tick_t initialTick, bool useTick) {
   // enable make_shared on a class with a private constructor
   struct Enabler final : GlobalTailingSyncer {
     Enabler(ReplicationApplierConfiguration const& configuration,
-           TRI_voc_tick_t initialTick, bool useTick) 
-      : GlobalTailingSyncer(configuration, initialTick, useTick) {}
+            TRI_voc_tick_t initialTick, bool useTick)
+        : GlobalTailingSyncer(configuration, initialTick, useTick) {}
   };
 
   return std::make_shared<Enabler>(configuration, initialTick, useTick);
@@ -76,7 +79,7 @@ std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
 
 /// @brief save the current applier state
 Result GlobalTailingSyncer::saveApplierState() {
-  return  _applier->persistStateResult(false);
+  return _applier->persistStateResult(false);
 }
 
 bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {

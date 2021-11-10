@@ -23,18 +23,17 @@
 
 #pragma once
 
-#include "Aql/ExecutionNodeId.h"
-
 #include <cstdint>
 #include <map>
 
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionNodeStats.h"
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace aql {
 
 struct ExecutionStats {
@@ -42,7 +41,7 @@ struct ExecutionStats {
 
   /// @brief instantiate the statistics from VelocyPack
   explicit ExecutionStats(arangodb::velocypack::Slice const& slice);
- 
+
  public:
   /// @brief convert the statistics to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
@@ -59,7 +58,8 @@ struct ExecutionStats {
   void addAlias(aql::ExecutionNodeId from, aql::ExecutionNodeId to) {
     _nodeAliases.emplace(from, to);
   }
-  void setAliases(std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>&& aliases) {
+  void setAliases(
+      std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>&& aliases) {
     _nodeAliases = std::move(aliases);
   }
 
@@ -102,10 +102,9 @@ struct ExecutionStats {
   ///        will be counted as the target instead
   ///        within nodes.
   std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> _nodeAliases;
-  
+
   ///  @brief statistics per ExecutionNodes
   std::map<aql::ExecutionNodeId, ExecutionNodeStats> _nodes;
 };
 }  // namespace aql
 }  // namespace arangodb
-
