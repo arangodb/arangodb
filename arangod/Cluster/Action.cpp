@@ -45,7 +45,7 @@ using namespace arangodb::maintenance;
 using factories_t =
     std::unordered_map<std::string, std::function<std::unique_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>>;
 
-static factories_t const factories = factories_t{
+static factories_t factories = factories_t{
 
     {CREATE_COLLECTION,
      [](MaintenanceFeature& f, ActionDescription const& a) {
@@ -205,6 +205,13 @@ bool Action::operator<(Action const& other) const {
   }
   return false;
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+void Action::addNewFactoryForTest(std::string const& name,
+      std::function<std::unique_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>&& factory) {
+  factories.emplace(name, std::move(factory));
+}
+#endif
 
 namespace std {
 ostream& operator<<(ostream& out, arangodb::maintenance::Action const& d) {
