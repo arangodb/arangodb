@@ -22,18 +22,16 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AqlItemBlockHelper.h"
-#include "RowFetcherHelper.h"
-#include "gtest/gtest.h"
-
-#include "Mocks/Death_Test.h"
-
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SubqueryEndExecutor.h"
+#include "AqlItemBlockHelper.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Mocks/Death_Test.h"
+#include "RowFetcherHelper.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -51,14 +49,16 @@ class SubqueryEndExecutorTest : public ::testing::Test {
  protected:
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor,
+                                       SerializationFormat::SHADOWROWS};
   SubqueryEndExecutorInfos _infos;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher{
       itemBlockManager, VPackParser::fromJson("[]")->steal(), false};
 
-  void ExpectedValues(OutputAqlItemRow& itemRow,
-                      std::vector<std::vector<std::string>> const& expectedStrings,
-                      std::unordered_map<size_t, uint64_t> const& shadowRows) const {
+  void ExpectedValues(
+      OutputAqlItemRow& itemRow,
+      std::vector<std::vector<std::string>> const& expectedStrings,
+      std::unordered_map<size_t, uint64_t> const& shadowRows) const {
     auto block = itemRow.stealBlock();
 
     ASSERT_EQ(expectedStrings.size(), block->numRows());
@@ -78,8 +78,10 @@ class SubqueryEndExecutorTest : public ::testing::Test {
             << "expected row " << rowIdx << " to be a shadow row";
 
         InputAqlItemRow input{block, rowIdx};
-        for (RegisterId::value_t colIdx = 0; colIdx < block->numRegisters(); colIdx++) {
-          auto expected = VPackParser::fromJson(expectedStrings.at(rowIdx).at(colIdx));
+        for (RegisterId::value_t colIdx = 0; colIdx < block->numRegisters();
+             colIdx++) {
+          auto expected =
+              VPackParser::fromJson(expectedStrings.at(rowIdx).at(colIdx));
           auto value = input.getValue(RegisterId{colIdx}).slice();
           EXPECT_TRUE(VelocyPackHelper::equal(value, expected->slice(), false))
               << value.toJson() << " != " << expected->toJson();
@@ -93,7 +95,8 @@ TEST_F(SubqueryEndExecutorTest, check_properties) {
   EXPECT_TRUE(SubqueryEndExecutor::Properties::preservesOrder)
       << "The block has no effect on ordering of elements, it adds additional "
          "rows only.";
-  EXPECT_EQ(SubqueryEndExecutor::Properties::allowsBlockPassthrough, ::arangodb::aql::BlockPassthrough::Disable)
+  EXPECT_EQ(SubqueryEndExecutor::Properties::allowsBlockPassthrough,
+            ::arangodb::aql::BlockPassthrough::Disable)
       << "The block cannot be passThrough, as it increases the number of rows.";
   EXPECT_TRUE(SubqueryEndExecutor::Properties::inputSizeRestrictsOutputSize)
       << "The block produces one output row per input row plus potentially a "

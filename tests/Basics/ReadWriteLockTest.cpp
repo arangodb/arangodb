@@ -22,12 +22,11 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <chrono>
+
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-
 #include "gtest/gtest.h"
-
-#include <chrono>
 
 using namespace arangodb::basics;
 
@@ -37,7 +36,7 @@ TEST(ReadWriteLockTest, testTryLockWrite) {
   ASSERT_FALSE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
-  
+
   // try lock write
   ASSERT_TRUE(lock.tryLockWrite());
   ASSERT_TRUE(lock.isLocked());
@@ -49,14 +48,14 @@ TEST(ReadWriteLockTest, testTryLockWrite) {
   ASSERT_TRUE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_TRUE(lock.isLockedWrite());
-  
+
   // try write-locking again, with timeout
   ASSERT_FALSE(lock.lockWrite(std::chrono::microseconds(1000)));
   ASSERT_TRUE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_TRUE(lock.isLockedWrite());
-  
-  // try read-locking 
+
+  // try read-locking
   ASSERT_FALSE(lock.tryLockRead());
   ASSERT_TRUE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
@@ -69,7 +68,7 @@ TEST(ReadWriteLockTest, testLockWrite) {
   ASSERT_FALSE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
-  
+
   // lock write
   lock.lockWrite();
   ASSERT_TRUE(lock.isLocked());
@@ -81,14 +80,14 @@ TEST(ReadWriteLockTest, testLockWrite) {
   ASSERT_TRUE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_TRUE(lock.isLockedWrite());
-  
+
   // try write-locking again, with timeout
   ASSERT_FALSE(lock.lockWrite(std::chrono::microseconds(1000)));
   ASSERT_TRUE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_TRUE(lock.isLockedWrite());
-  
-  // try read-locking 
+
+  // try read-locking
   ASSERT_FALSE(lock.tryLockRead());
   ASSERT_TRUE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
@@ -101,7 +100,7 @@ TEST(ReadWriteLockTest, testTryLockRead) {
   ASSERT_FALSE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
-  
+
   // try lock read
   ASSERT_TRUE(lock.tryLockRead());
   ASSERT_TRUE(lock.isLocked());
@@ -113,19 +112,19 @@ TEST(ReadWriteLockTest, testTryLockRead) {
   ASSERT_TRUE(lock.isLocked());
   ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
-  
+
   // read-lock again
   lock.lockRead();
   ASSERT_TRUE(lock.isLocked());
   ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
-  
-  // try write-locking 
+
+  // try write-locking
   ASSERT_FALSE(lock.tryLockWrite());
   ASSERT_TRUE(lock.isLocked());
   ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
-  
+
   // try write-locking again, with timeout
   ASSERT_FALSE(lock.lockWrite(std::chrono::microseconds(1000)));
   ASSERT_TRUE(lock.isLocked());
@@ -138,14 +137,14 @@ TEST(ReadWriteLockTest, testTryLockRead) {
   ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
   ASSERT_FALSE(lock.tryLockWrite());
-  
+
   // unlock one another level
   lock.unlock();
   ASSERT_TRUE(lock.isLocked());
   ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
   ASSERT_FALSE(lock.tryLockWrite());
-  
+
   // unlock final level
   lock.unlock();
   ASSERT_FALSE(lock.isLocked());
@@ -160,7 +159,7 @@ TEST(ReadWriteLockTest, testLockRead) {
   ASSERT_FALSE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
-  
+
   // lock read
   lock.lockRead();
   ASSERT_TRUE(lock.isLocked());
@@ -172,19 +171,19 @@ TEST(ReadWriteLockTest, testLockRead) {
   ASSERT_TRUE(lock.isLocked());
   ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
-  
+
   // read-lock again
   lock.lockRead();
   ASSERT_TRUE(lock.isLocked());
   ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
-  
-  // try write-locking 
+
+  // try write-locking
   ASSERT_FALSE(lock.tryLockWrite());
   ASSERT_TRUE(lock.isLocked());
   ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
-  
+
   // try write-locking again, with timeout
   ASSERT_FALSE(lock.lockWrite(std::chrono::microseconds(1000)));
   ASSERT_TRUE(lock.isLocked());
@@ -197,14 +196,14 @@ TEST(ReadWriteLockTest, testLockRead) {
   ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
   ASSERT_FALSE(lock.tryLockWrite());
-  
+
   // unlock one another level
   lock.unlock();
   ASSERT_TRUE(lock.isLocked());
   ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
   ASSERT_FALSE(lock.tryLockWrite());
-  
+
   // unlock final level
   lock.unlock();
   ASSERT_FALSE(lock.isLocked());
@@ -219,7 +218,7 @@ TEST(ReadWriteLockTest, testLockWriteAttempted) {
   ASSERT_FALSE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
-  
+
   // lock write
   ASSERT_TRUE(lock.lockWrite(std::chrono::microseconds(1000000)));
   ASSERT_TRUE(lock.isLocked());
@@ -231,7 +230,7 @@ TEST(ReadWriteLockTest, testLockWriteAttempted) {
   ASSERT_TRUE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_TRUE(lock.isLockedWrite());
-  
+
   ASSERT_FALSE(lock.tryLockRead());
   ASSERT_TRUE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());

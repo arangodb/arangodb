@@ -24,9 +24,9 @@
 #ifndef TESTS_AQL_EXECUTIONBLOCKPIPELINE_H
 #define TESTS_AQL_EXECUTIONBLOCKPIPELINE_H
 
-#include "Aql/ExecutionBlock.h"
-
 #include <deque>
+
+#include "Aql/ExecutionBlock.h"
 
 using namespace arangodb::aql;
 

@@ -22,18 +22,16 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchQueryCommon.h"
+#include <velocypack/Iterator.h>
 
 #include "Aql/OptimizerRulesFeature.h"
 #include "IResearch/IResearchView.h"
+#include "IResearchQueryCommon.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
-
-#include <velocypack/Iterator.h>
-
 #include "utils/string_utils.hpp"
 
 extern const char* ARGV0;  // defined in main.cpp
@@ -54,7 +52,8 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
     \"type\": \"arangosearch\" \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
@@ -99,9 +98,8 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
     }})";
 
     auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
+        static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -110,7 +108,8 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    view->properties(builder,
+                     arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -129,9 +128,9 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
   {
     arangodb::OperationOptions opt;
 
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
-                                       arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+        EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -140,20 +139,20 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
-      auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+          resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
       size_t i = 0;
 
-      std::shared_ptr<arangodb::LogicalCollection> collections[]{logicalCollection1,
-                                                                 logicalCollection2};
+      std::shared_ptr<arangodb::LogicalCollection> collections[]{
+          logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
         auto const res =
-          collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
+            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -168,7 +167,8 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
   }
 
   // -----------------------------------------------------------------------------
-  // --SECTION--                                              'collections' option
+  // --SECTION--                                              'collections'
+  // option
   // -----------------------------------------------------------------------------
 
   // collection by name
@@ -179,10 +179,11 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
         "RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
-        {"A", &insertedDocs[0]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[0]}};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -200,9 +201,10 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -211,14 +213,12 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
   // FILTER must always follow SEARCH
   {
     std::string const query =
-      "FOR d IN testView FILTER d.seq == 1' SEARCH d.name == 'A' RETURN d";
+        "FOR d IN testView FILTER d.seq == 1' SEARCH d.name == 'A' RETURN d";
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_QUERY_PARSE));
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryFilterTest,
-  IResearchQueryFilterTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryFilterTest, IResearchQueryFilterTest,
+                        GetLinkVersions());

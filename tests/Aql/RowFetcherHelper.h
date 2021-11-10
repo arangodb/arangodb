@@ -27,6 +27,10 @@
 #ifndef ARANGOD_AQL_TESTS_ROW_FETCHER_HELPER_H
 #define ARANGOD_AQL_TESTS_ROW_FETCHER_HELPER_H
 
+#include <velocypack/Buffer.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ConstFetcher.h"
@@ -38,10 +42,6 @@
 #include "Basics/Common.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
-
-#include <velocypack/Buffer.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 
 namespace arangodb {
 
@@ -58,7 +58,7 @@ namespace aql {
 /**
  * @brief Mock for SingleRowFetcher
  */
-template <::arangodb::aql::BlockPassthrough passBlocksThrough>
+template<::arangodb::aql::BlockPassthrough passBlocksThrough>
 class SingleRowFetcherHelper
     : public arangodb::aql::SingleRowFetcher<passBlocksThrough> {
  public:
@@ -67,9 +67,10 @@ class SingleRowFetcherHelper
                          arangodb::aql::SharedAqlItemBlockPtr input);
 
   // backwards compatible constructor
-  SingleRowFetcherHelper(arangodb::aql::AqlItemBlockManager& manager,
-                         std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& vPackBuffer,
-                         bool returnsWaiting);
+  SingleRowFetcherHelper(
+      arangodb::aql::AqlItemBlockManager& manager,
+      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& vPackBuffer,
+      bool returnsWaiting);
 
   virtual ~SingleRowFetcherHelper();
 
@@ -123,13 +124,15 @@ class SingleRowFetcherHelper
   std::unordered_set<size_t> _didWaitAt;
   arangodb::aql::AqlItemBlockManager& _itemBlockManager;
   arangodb::aql::SharedAqlItemBlockPtr _itemBlock;
-  arangodb::aql::InputAqlItemRow _lastReturnedRow{arangodb::aql::CreateInvalidInputRowHint{}};
+  arangodb::aql::InputAqlItemRow _lastReturnedRow{
+      arangodb::aql::CreateInvalidInputRowHint{}};
 };
 
 class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
  public:
-  ConstFetcherHelper(arangodb::aql::AqlItemBlockManager& itemBlockManager,
-                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer);
+  ConstFetcherHelper(
+      arangodb::aql::AqlItemBlockManager& itemBlockManager,
+      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer);
   virtual ~ConstFetcherHelper();
 
  private:

@@ -21,9 +21,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-
 #include "Aql/AqlCallList.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb::aql;
 
@@ -97,7 +96,8 @@ TEST_F(AqlCallListTest, multiple_calls) {
     // Modifying has no side effect on default call
     popped.didProduce(1);
     EXPECT_FALSE(popped == defaultCall);
-    // Indirect test, modifing pop has no side-effect on the internal default call.
+    // Indirect test, modifing pop has no side-effect on the internal default
+    // call.
   }
 }
 
@@ -152,7 +152,8 @@ TEST_F(AqlCallListTest, multiple_calls_peek) {
       popped.didProduce(1);
       EXPECT_FALSE(popped == defaultCall);
     }
-    // Indirect test, modifing pop has no side-effect on the internal default call.
+    // Indirect test, modifing pop has no side-effect on the internal default
+    // call.
   }
 }
 

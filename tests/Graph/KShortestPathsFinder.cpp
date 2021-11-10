@@ -21,9 +21,11 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
+#include "Graph/KShortestPathsFinder.h"
 
-#include "fakeit.hpp"
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -31,7 +33,6 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "Graph/KShortestPathsFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Random/RandomGenerator.h"
@@ -45,10 +46,8 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include "fakeit.hpp"
+#include "gtest/gtest.h"
 
 // test setup
 #include "../Mocks/Servers.h"
@@ -128,7 +127,8 @@ TEST_F(KShortestPathsFinderTest, path_of_length_1) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
+  auto cpr =
+      checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 
@@ -141,8 +141,9 @@ TEST_F(KShortestPathsFinderTest, path_of_length_4) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo.get(), result, {"1", "2", "3", "4"},
-                       {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
+  auto cpr =
+      checkPath(spo.get(), result, {"1", "2", "3", "4"},
+                {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 

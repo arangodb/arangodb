@@ -22,15 +22,14 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
+#include "Cache/FrequencyBuffer.h"
 
 #include <cstdint>
 #include <memory>
 
 #include "ApplicationFeatures/SharedPRNGFeature.h"
-#include "Cache/FrequencyBuffer.h"
-
 #include "Mocks/Servers.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;

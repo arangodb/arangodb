@@ -21,24 +21,22 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-
-#include "fakeit.hpp"
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
 #include "Aql/QueryWarnings.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Graph/GraphTestTools.h"
 #include "Graph/TraverserOptions.h"
 #include "Transaction/Methods.h"
-#include "Basics/GlobalResourceMonitor.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include "fakeit.hpp"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -60,7 +58,8 @@ class ClusterTraverserCacheTest : public ::testing::Test {
   ~ClusterTraverserCacheTest() = default;
 };
 
-TEST_F(ClusterTraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_not_cached) {
+TEST_F(ClusterTraverserCacheTest,
+       it_should_return_a_null_aqlvalue_if_vertex_not_cached) {
   std::unordered_map<ServerID, aql::EngineId> engines;
   std::string vertexId = "UnitTest/Vertex";
   std::string expectedMessage = "vertex '" + vertexId + "' not found";
@@ -80,7 +79,8 @@ TEST_F(ClusterTraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_not
   ASSERT_TRUE(all[0].second == expectedMessage);
 }
 
-TEST_F(ClusterTraverserCacheTest, it_should_insert_a_null_vpack_if_vertex_not_cached) {
+TEST_F(ClusterTraverserCacheTest,
+       it_should_insert_a_null_vpack_if_vertex_not_cached) {
   std::unordered_map<ServerID, aql::EngineId> engines;
   std::string vertexId = "UnitTest/Vertex";
   std::string expectedMessage = "vertex '" + vertexId + "' not found";
@@ -107,7 +107,8 @@ class RefactoredClusterTraverserCacheTest : public ::testing::Test {
   arangodb::GlobalResourceMonitor _globalMonitor{};
   arangodb::ResourceMonitor _monitor{_globalMonitor};
   std::unique_ptr<arangodb::graph::RefactoredClusterTraverserCache> _cache =
-      std::make_unique<arangodb::graph::RefactoredClusterTraverserCache>(_monitor);
+      std::make_unique<arangodb::graph::RefactoredClusterTraverserCache>(
+          _monitor);
 
   RefactoredClusterTraverserCacheTest() {}
 
@@ -116,7 +117,8 @@ class RefactoredClusterTraverserCacheTest : public ::testing::Test {
   arangodb::graph::RefactoredClusterTraverserCache& cache() { return *_cache; }
 
   void TearDown() override {
-    // After every test ensure that the ResourceMonitor is conting down to 0 again
+    // After every test ensure that the ResourceMonitor is conting down to 0
+    // again
     _cache.reset();
     EXPECT_EQ(_monitor.current(), 0)
         << "Resource Monitor is not reset to 0 after deletion of the cache.";
@@ -272,8 +274,9 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice) {
   HashedStringRef key{doc.get("_key")};
 
   // We simulate that we get the same Document data from two sources.
-  // To make sure we keep the first copy, we try to insert a different value for the same _key
-  // This will not happen in production, just to varify results here.
+  // To make sure we keep the first copy, we try to insert a different value for
+  // the same _key This will not happen in production, just to varify results
+  // here.
   auto data2 = VPackParser::fromJson(R"({"_key":"123", "value":456})");
   VPackSlice doc2 = data2->slice();
   HashedStringRef key2{doc2.get("_key")};
@@ -317,8 +320,9 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_same_edge_twice) {
   HashedStringRef id{doc.get("_id")};
 
   // We simulate that we get the same Edge data from two sources.
-  // To make sure we keep the first copy, we try to insert different _from and _to values for the same _key
-  // This will not happen in production, just to varify results here.
+  // To make sure we keep the first copy, we try to insert different _from and
+  // _to values for the same _key This will not happen in production, just to
+  // varify results here.
   auto data2 = VPackParser::fromJson(
       R"({"_id": "xyz/123", "_key": "123", "_from": "a/b", "_to": "b/a"})");
   VPackSlice doc2 = data2->slice();
@@ -356,14 +360,16 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_same_edge_twice) {
   }
 }
 
-TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice_after_clear) {
+TEST_F(RefactoredClusterTraverserCacheTest,
+       cache_same_vertex_twice_after_clear) {
   auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
   VPackSlice doc = data->slice();
   HashedStringRef key{doc.get("_key")};
 
   // We simulate that we get the same Document data from two sources.
-  // To make sure we keep the first copy, we try to insert a different value for the same _key
-  // This will not happen in production, just to varify results here.
+  // To make sure we keep the first copy, we try to insert a different value for
+  // the same _key This will not happen in production, just to varify results
+  // here.
   auto data2 = VPackParser::fromJson(R"({"_key":"123", "value":456})");
   VPackSlice doc2 = data2->slice();
   HashedStringRef key2{doc2.get("_key")};
@@ -493,7 +499,8 @@ TEST_F(RefactoredClusterTraverserCacheTest, persist_same_string_twice) {
       << "We counted the same string ref multiple times.";
 }
 
-TEST_F(RefactoredClusterTraverserCacheTest, persist_same_string_twice_after_clear) {
+TEST_F(RefactoredClusterTraverserCacheTest,
+       persist_same_string_twice_after_clear) {
   auto data = VPackParser::fromJson(R"("123")");
   VPackSlice doc = data->slice();
   HashedStringRef key{doc};
@@ -543,8 +550,9 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_same_edge_twice_after_clear) {
   HashedStringRef id{doc.get("_id")};
 
   // We simulate that we get the same Document data from two sources.
-  // To make sure we keep the first copy, we try to insert a different value for the same _key
-  // This will not happen in production, just to varify results here.
+  // To make sure we keep the first copy, we try to insert a different value for
+  // the same _key This will not happen in production, just to varify results
+  // here.
   auto data2 = VPackParser::fromJson(
       R"({"_id": "xyz/123", "_key": "123", "_from": "a/b", "_to": "b/a"})");
   VPackSlice doc2 = data2->slice();

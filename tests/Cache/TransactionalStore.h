@@ -25,12 +25,12 @@
 #ifndef UNITTESTS_CACHE_TRANSACTIONAL_STORE_H
 #define UNITTESTS_CACHE_TRANSACTIONAL_STORE_H
 
-#include <chrono>
-
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
+
+#include <chrono>
 
 #include "Basics/StringBuffer.h"
 #include "Cache/Manager.h"

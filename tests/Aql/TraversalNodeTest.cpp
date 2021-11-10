@@ -21,7 +21,7 @@
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
+#include <memory>
 
 #include "Aql/Ast.h"
 #include "Aql/Expression.h"
@@ -30,8 +30,7 @@
 #include "Graph/BaseOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Mocks/Servers.h"
-
-#include <memory>
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -53,7 +52,8 @@ class TraversalNodeTest : public ::testing::Test {
  public:
   TraversalNodeTest() {
     auto ast = _query->ast();
-    _start = ast->createNodeValueString(_startNode.c_str(), _startNode.length());
+    _start =
+        ast->createNodeValueString(_startNode.c_str(), _startNode.length());
     _direction = ast->createNodeDirection(0, 1);
     AstNode* edges = ast->createNodeArray(0);
     _graph = ast->createNodeCollectionList(edges, _query->resolver());
@@ -68,8 +68,9 @@ class TraversalNodeTest : public ::testing::Test {
     return _otherQuery->plan();
   }
 
-  TraversalNode createNode(ExecutionNodeId id,
-                           std::unique_ptr<traverser::TraverserOptions> opts) const {
+  TraversalNode createNode(
+      ExecutionNodeId id,
+      std::unique_ptr<traverser::TraverserOptions> opts) const {
     std::unique_ptr<Expression> pruneExp = nullptr;
     return TraversalNode{plan(), id,     &_query->vocbase(),  _direction,
                          _start, _graph, std::move(pruneExp), std::move(opts)};
@@ -89,8 +90,8 @@ TEST_F(TraversalNodeTest, clone_should_preserve_isSmart) {
     for (bool value : std::vector<bool>{false, true}) {
       auto p = keepPlan ? plan() : otherPlan(true);
       original.setIsSmart(value);
-      auto clone =
-          ExecutionNode::castTo<TraversalNode*>(original.clone(p, false, !keepPlan));
+      auto clone = ExecutionNode::castTo<TraversalNode*>(
+          original.clone(p, false, !keepPlan));
       if (keepPlan) {
         EXPECT_NE(clone->id(), original.id()) << "Clone did keep the id";
       } else {
@@ -111,8 +112,8 @@ TEST_F(TraversalNodeTest, clone_should_preserve_isDisjoint) {
     for (bool value : std::vector<bool>{false, true}) {
       auto p = keepPlan ? plan() : otherPlan(true);
       original.setIsDisjoint(value);
-      auto clone =
-          ExecutionNode::castTo<TraversalNode*>(original.clone(p, false, !keepPlan));
+      auto clone = ExecutionNode::castTo<TraversalNode*>(
+          original.clone(p, false, !keepPlan));
       if (keepPlan) {
         EXPECT_NE(clone->id(), original.id()) << "Clone did keep the id";
       } else {

@@ -22,14 +22,15 @@
 
 #include "StateMachineTestHelper.h"
 
+#include <Replication2/Mocks/ReplicatedLogMetricsMock.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-#include <Replication2/Mocks/ReplicatedLogMetricsMock.h>
 #include "Replication2/Mocks/PersistedLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
-void arangodb::TestLogEntry::toVelocyPack(arangodb::velocypack::Builder& builder) const {
+void arangodb::TestLogEntry::toVelocyPack(
+    arangodb::velocypack::Builder& builder) const {
   velocypack::ObjectBuilder ob(&builder);
   builder.add("payload", velocypack::Value(payload));
 }
@@ -49,5 +50,6 @@ auto StateMachineTest::createReplicatedLog()
   auto core = std::make_unique<replicated_log::LogCore>(persisted);
   auto metrics = std::make_shared<ReplicatedLogMetricsMock>();
   auto options = std::make_shared<ReplicatedLogGlobalSettings>();
-  return std::make_shared<replicated_log::ReplicatedLog>(std::move(core), metrics, options, LoggerContext(Logger::REPLICATION2));
+  return std::make_shared<replicated_log::ReplicatedLog>(
+      std::move(core), metrics, options, LoggerContext(Logger::REPLICATION2));
 }

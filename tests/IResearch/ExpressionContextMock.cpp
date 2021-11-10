@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExpressionContextMock.h"
+
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
@@ -35,13 +36,13 @@ ExpressionContextMock::~ExpressionContextMock() {
 }
 
 arangodb::aql::AqlValue ExpressionContextMock::getVariableValue(
-    arangodb::aql::Variable const* variable,
-    bool doCopy,
+    arangodb::aql::Variable const* variable, bool doCopy,
     bool& mustDestroy) const {
   auto it = vars.find(variable->name);
   if (vars.end() == it) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Can't find variable " + variable->name);
-//    return {};
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "Can't find variable " + variable->name);
+    //    return {};
   }
 
   if (doCopy) {
@@ -52,11 +53,11 @@ arangodb::aql::AqlValue ExpressionContextMock::getVariableValue(
   mustDestroy = false;
   return it->second;
 }
-  
-//TRI_vocbase_t& ExpressionContextMock::vocbase() const {
+
+// TRI_vocbase_t& ExpressionContextMock::vocbase() const {
 //  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 //}
 //
-//arangodb::aql::Query* ExpressionContextMock::query() const {
+// arangodb::aql::Query* ExpressionContextMock::query() const {
 //  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 //}

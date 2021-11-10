@@ -25,11 +25,10 @@
 #ifndef UNITTESTS_CACHE_MOCK_SCHEDULER_H
 #define UNITTESTS_CACHE_MOCK_SCHEDULER_H
 
+#include <boost/asio/io_service.hpp>
 #include <memory>
 #include <thread>
 #include <vector>
-
-#include <boost/asio/io_service.hpp>
 
 #include "Basics/asio_ns.h"
 

@@ -21,21 +21,21 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AqlItemBlockHelper.h"
-#include "gtest/gtest.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <boost/container/flat_set.hpp>
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "AqlItemBlockHelper.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-#include <boost/container/flat_set.hpp>
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -49,10 +49,12 @@ class AqlShadowItemRowTest : public ::testing::Test {
  protected:
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor,
+                                       SerializationFormat::SHADOWROWS};
 
-  void AssertResultRow(InputAqlItemRow const& input, VPackSlice result,
-                       std::unordered_set<RegisterId> const& regsToIgnore = {}) {
+  void AssertResultRow(
+      InputAqlItemRow const& input, VPackSlice result,
+      std::unordered_set<RegisterId> const& regsToIgnore = {}) {
     ASSERT_TRUE(result.isArray());
     ASSERT_TRUE(input.isInitialized());
     ASSERT_EQ(input.getNumRegisters(), static_cast<size_t>(result.length()));
@@ -60,24 +62,26 @@ class AqlShadowItemRowTest : public ::testing::Test {
       if (regsToIgnore.find(i) == regsToIgnore.end()) {
         auto val = input.getValue(i);
         ASSERT_TRUE(VelocyPackHelper::equal(val.slice(), result.at(i), false))
-            << "Comparing failed on entry " << i << " reason: " << val.slice().toJson()
+            << "Comparing failed on entry " << i
+            << " reason: " << val.slice().toJson()
             << " is not equal to: " << result.at(i).toJson();
       }
     }
   }
 
-  void InsertNewShadowRowAfterEachDataRow(size_t targetNumberOfRows,
-                                          SharedAqlItemBlockPtr const& inputBlock,
-                                          SharedAqlItemBlockPtr& outputBlock) {
+  void InsertNewShadowRowAfterEachDataRow(
+      size_t targetNumberOfRows, SharedAqlItemBlockPtr const& inputBlock,
+      SharedAqlItemBlockPtr& outputBlock) {
     auto numRegisters = inputBlock->numRegisters();
-    outputBlock = itemBlockManager.requestBlock(targetNumberOfRows, numRegisters);
+    outputBlock =
+        itemBlockManager.requestBlock(targetNumberOfRows, numRegisters);
     // We do not add or remove anything, just move
     auto outputRegisters = RegIdSet{};
     size_t maxShadowRowDepth = 0;
     for (size_t rowIdx = 0; rowIdx < inputBlock->numRows(); ++rowIdx) {
       if (inputBlock->isShadowRow(rowIdx)) {
-        maxShadowRowDepth =
-            std::max(maxShadowRowDepth, inputBlock->getShadowRowDepth(rowIdx) + 1);
+        maxShadowRowDepth = std::max(maxShadowRowDepth,
+                                     inputBlock->getShadowRowDepth(rowIdx) + 1);
       }
     }
 
@@ -87,7 +91,8 @@ class AqlShadowItemRowTest : public ::testing::Test {
     }
 
     RegIdFlatSetStack registersToKeep;
-    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
+    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2,
+                    [&] { return protoRegSet; });
 
     auto registersToClear = RegIdFlatSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
@@ -130,8 +135,8 @@ class AqlShadowItemRowTest : public ::testing::Test {
     size_t maxShadowRowDepth = 0;
     for (size_t rowIdx = 0; rowIdx < inputBlock->numRows(); ++rowIdx) {
       if (inputBlock->isShadowRow(rowIdx)) {
-        maxShadowRowDepth =
-            std::max(maxShadowRowDepth, inputBlock->getShadowRowDepth(rowIdx) + 1);
+        maxShadowRowDepth = std::max(maxShadowRowDepth,
+                                     inputBlock->getShadowRowDepth(rowIdx) + 1);
       }
     }
 
@@ -141,7 +146,8 @@ class AqlShadowItemRowTest : public ::testing::Test {
     }
 
     RegIdFlatSetStack registersToKeep;
-    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
+    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2,
+                    [&] { return protoRegSet; });
 
     auto registersToClear = RegIdFlatSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
@@ -149,7 +155,8 @@ class AqlShadowItemRowTest : public ::testing::Test {
 
     AqlValue shadowRowData{VPackSlice::emptyArraySlice()};
 
-    // Let this go out of scope before assertions, to make sure no references are bound here.
+    // Let this go out of scope before assertions, to make sure no references
+    // are bound here.
     for (size_t rowIdx = 0; rowIdx < inputBlock->numRows(); ++rowIdx) {
       ASSERT_FALSE(testee.isFull());
 

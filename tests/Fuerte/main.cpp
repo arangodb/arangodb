@@ -1,9 +1,8 @@
+#include <fuerte/VpackInit.h>
 #include <stdlib.h>
 
-#include <fuerte/VpackInit.h>
-
-#include "gtest/gtest.h"
 #include "common.h"
+#include "gtest/gtest.h"
 
 // as it is not const this var has external linkage
 // it is assigned a value in main
@@ -20,9 +19,9 @@ std::vector<std::string> parse_args(int const& argc, char const* const* argv) {
 
 int main(int argc, char** argv) {
   arangodb::fuerte::helper::VpackInit vpack;
-  
-  ::testing::InitGoogleTest(&argc, argv);  // removes google test parameters
-  auto arguments = parse_args(argc, argv);      // init √global Schmutz
+
+  ::testing::InitGoogleTest(&argc, argv);   // removes google test parameters
+  auto arguments = parse_args(argc, argv);  // init √global Schmutz
 
   const std::string endpointArg = "--endpoint=";
   const std::string authArg = "--authentication=";
@@ -33,6 +32,6 @@ int main(int argc, char** argv) {
       myAuthentication = arg.substr(authArg.size());
     }
   }
-  
+
   return RUN_ALL_TESTS();
 }

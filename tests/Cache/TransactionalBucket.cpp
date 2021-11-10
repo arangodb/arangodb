@@ -22,13 +22,13 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
+#include "Cache/TransactionalBucket.h"
 
 #include <cstdint>
 #include <string>
 
 #include "Basics/debugging.h"
-#include "Cache/TransactionalBucket.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb::cache;
 
@@ -64,8 +64,9 @@ TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
 
-  std::uint32_t hashes[9] = {1, 2, 3, 4, 5,
-                             6, 7, 8, 9};  // don't have to be real, but should be unique and non-zero
+  std::uint32_t hashes[9] = {
+      1, 2, 3, 4, 5,
+      6, 7, 8, 9};  // don't have to be real, but should be unique and non-zero
   std::uint64_t keys[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
   std::uint64_t values[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
   CachedValue* ptrs[9];
@@ -89,13 +90,15 @@ TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
     }
   }
   for (std::size_t i = 0; i < 7; i++) {
-    CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+    CachedValue* res =
+        bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
   // check that insert is ignored if full
   bucket->insert(hashes[8], ptrs[8]);
-  CachedValue* res = bucket->find(hashes[8], ptrs[8]->key(), ptrs[8]->keySize());
+  CachedValue* res =
+      bucket->find(hashes[8], ptrs[8]->key(), ptrs[8]->keySize());
   ASSERT_EQ(nullptr, res);
 
   bucket->unlock();
@@ -110,7 +113,8 @@ TEST(CacheTransactionalBucketTest, verify_that_removal_works_as_expected) {
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
 
-  std::uint32_t hashes[3] = {1, 2, 3};  // don't have to be real, but should be unique and non-zero
+  std::uint32_t hashes[3] = {
+      1, 2, 3};  // don't have to be real, but should be unique and non-zero
   std::uint64_t keys[3] = {0, 1, 2};
   std::uint64_t values[3] = {0, 1, 2};
   CachedValue* ptrs[3];
@@ -127,7 +131,8 @@ TEST(CacheTransactionalBucketTest, verify_that_removal_works_as_expected) {
     bucket->insert(hashes[i], ptrs[i]);
   }
   for (std::size_t i = 0; i < 3; i++) {
-    CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+    CachedValue* res =
+        bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
@@ -157,8 +162,9 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
 
-  std::uint32_t hashes[9] = {1, 2, 3, 4, 5,
-                             6, 7, 8, 9};  // don't have to be real, but should be unique and non-zero
+  std::uint32_t hashes[9] = {
+      1, 2, 3, 4, 5,
+      6, 7, 8, 9};  // don't have to be real, but should be unique and non-zero
   std::uint64_t keys[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
   std::uint64_t values[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
   CachedValue* ptrs[9];
@@ -182,7 +188,8 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
     }
   }
   for (std::size_t i = 0; i < 8; i++) {
-    CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+    CachedValue* res =
+        bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
@@ -190,7 +197,8 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
   CachedValue* candidate = bucket->evictionCandidate();
   ASSERT_EQ(candidate, ptrs[0]);
   bucket->evict(candidate, false);
-  CachedValue* res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
+  CachedValue* res =
+      bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
   ASSERT_EQ(nullptr, res);
   ASSERT_FALSE(bucket->isFull());
 
@@ -220,8 +228,8 @@ TEST(CacheTransactionalBucketTest, verify_that_banishing_works_as_expected) {
   bool success;
   CachedValue* res;
 
-  std::uint32_t hashes[8] = {1, 1, 2, 3, 4,
-                             5, 6, 7};  // don't have to be real, want some overlap
+  std::uint32_t hashes[8] = {
+      1, 1, 2, 3, 4, 5, 6, 7};  // don't have to be real, want some overlap
   std::uint64_t keys[8] = {0, 1, 2, 3, 4, 5, 6, 7};
   std::uint64_t values[8] = {0, 1, 2, 3, 4, 5, 6, 7};
   CachedValue* ptrs[8];

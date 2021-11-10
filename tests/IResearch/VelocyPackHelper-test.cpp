@@ -22,11 +22,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-#include <unordered_set>
-
 #include "IResearch/VelocyPackHelper.h"
 
+#include <unordered_set>
+
+#include "gtest/gtest.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"

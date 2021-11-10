@@ -21,18 +21,17 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <cmath>
 #include <thread>
-
-#include "gtest/gtest.h"
 
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/SyncerId.h"
 #include "VocBase/Identifiers/ServerId.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 
@@ -63,12 +62,14 @@ static double now() {
 
 static void sleepUntilAfter(double timestamp) {
   using Duration = std::chrono::duration<double>;
-  using TimePoint = std::chrono::time_point<std::chrono::steady_clock, Duration>;
+  using TimePoint =
+      std::chrono::time_point<std::chrono::steady_clock, Duration>;
   Duration doubleDur = Duration(timestamp);
   TimePoint timePoint(doubleDur);
   std::this_thread::sleep_until(timePoint);
   while (timestamp >= now()) {
-    // wait until we've definitely passed the ttl in terms of timestamp precision
+    // wait until we've definitely passed the ttl in terms of timestamp
+    // precision
   }
   EXPECT_LT(timestamp, now());
 };
@@ -76,7 +77,8 @@ static void sleepUntilAfter(double timestamp) {
 enum class RetryRv { RETRY, DONE };
 
 // Allows to retry undeterministic code.
-static void retryUpTo(int const maxTries, std::function<RetryRv(void)> const& callback) {
+static void retryUpTo(int const maxTries,
+                      std::function<RetryRv(void)> const& callback) {
   int failures;
   bool done = false;
   for (failures = 0; !done && failures < maxTries; failures++) {
@@ -131,7 +133,8 @@ TEST_P(ReplicationClientsProgressTrackerTest_SingleClient, test_track_tick) {
   ASSERT_EQ(1, testee.lowestServedValue());
 }
 
-TEST_P(ReplicationClientsProgressTrackerTest_SingleClient, test_garbage_collect) {
+TEST_P(ReplicationClientsProgressTrackerTest_SingleClient,
+       test_garbage_collect) {
   double constexpr ttl = 1.0;
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 
@@ -254,7 +257,8 @@ INSTANTIATE_TEST_CASE_P(ReplicationClientsProgressTrackerTest_SingleClient,
                                         std::make_pair(SyncerId{42}, 0),
                                         std::make_pair(SyncerId{42}, 23)));
 
-class ReplicationClientsProgressTrackerTest_MultiClient : public ::testing::Test {
+class ReplicationClientsProgressTrackerTest_MultiClient
+    : public ::testing::Test {
  protected:
   ReplicationClientsProgressTracker testee{};
 
@@ -271,7 +275,8 @@ class ReplicationClientsProgressTrackerTest_MultiClient : public ::testing::Test
   Client const clientB{SyncerId{0}, ServerId{23}};
   // should not clash with clientB, as the syncerId should have preference!
   Client const clientC{SyncerId{69}, ServerId{23}};
-  // all clientD*s should behave the same, as clientId should be ignored iff syncerId != 0.
+  // all clientD*s should behave the same, as clientId should be ignored iff
+  // syncerId != 0.
   Client const clientD1{SyncerId{23}, ServerId{0}};
   Client const clientD2{SyncerId{23}, ServerId{27}};
   Client const clientD3{SyncerId{23}, ServerId{3}};
@@ -280,7 +285,8 @@ class ReplicationClientsProgressTrackerTest_MultiClient : public ::testing::Test
       tickOfD{UINT64_MAX};
 };
 
-TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, intermittent_tracks_with_mixed_id_types) {
+TEST_F(ReplicationClientsProgressTrackerTest_MultiClient,
+       intermittent_tracks_with_mixed_id_types) {
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
   // Track first client, A
   // State {A: 100}
@@ -357,7 +363,8 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient,
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 }
 
-TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, test_ignored_clients) {
+TEST_F(ReplicationClientsProgressTrackerTest_MultiClient,
+       test_ignored_clients) {
   Client ignoredClient{SyncerId{0}, ServerId{0}};
 
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());

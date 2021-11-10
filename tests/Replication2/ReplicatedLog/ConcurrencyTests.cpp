@@ -20,23 +20,21 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Basics/ScopeGuard.h>
+#include <Basics/application-exit.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <functional>
 
 #include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "TestHelper.h"
 
-#include <Basics/ScopeGuard.h>
-#include <Basics/application-exit.h>
-
-#include <functional>
-
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::test;
-
 
 struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
   using ThreadIdx = uint16_t;
@@ -100,33 +98,36 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
     return str;
   };
 
-  constexpr static auto alternatinglyInsertAndRead = [](ThreadIdx const threadIdx,
-                                                        ThreadCoordinationData& data) {
-    using namespace std::chrono_literals;
-    auto log = std::dynamic_pointer_cast<LogLeader>(data.log);
-    ASSERT_NE(log, nullptr);
-    data.threadsReady.fetch_add(1);
-    while (!data.go.load()) {
-    }
+  constexpr static auto alternatinglyInsertAndRead =
+      [](ThreadIdx const threadIdx, ThreadCoordinationData& data) {
+        using namespace std::chrono_literals;
+        auto log = std::dynamic_pointer_cast<LogLeader>(data.log);
+        ASSERT_NE(log, nullptr);
+        data.threadsReady.fetch_add(1);
+        while (!data.go.load()) {
+        }
 
-    for (auto i = std::uint32_t{0}; i < maxIter && !data.stopClientThreads.load(); ++i) {
-      auto const payload = LogPayload::createFromString(genPayload(threadIdx, i));
-      auto const idx = log->insert(payload, false, LogLeader::doNotTriggerAsyncReplication);
-      std::this_thread::sleep_for(1ns);
-      auto fut = log->waitFor(idx);
-      fut.get();
-      auto snapshot = log->getReplicatedLogSnapshot();
-      ASSERT_LT(0, idx.value);
-      ASSERT_LE(idx.value, snapshot.size());
-      auto const& entry = snapshot[idx.value - 1];
-      EXPECT_EQ(idx, entry.entry().logIndex());
-      EXPECT_EQ(payload, entry.entry().logPayload());
-      if (i == 1000) {
-        // we should have done at least a few iterations before finishing
-        data.threadsSatisfied.fetch_add(1, std::memory_order_relaxed);
-      }
-    }
-  };
+        for (auto i = std::uint32_t{0};
+             i < maxIter && !data.stopClientThreads.load(); ++i) {
+          auto const payload =
+              LogPayload::createFromString(genPayload(threadIdx, i));
+          auto const idx = log->insert(payload, false,
+                                       LogLeader::doNotTriggerAsyncReplication);
+          std::this_thread::sleep_for(1ns);
+          auto fut = log->waitFor(idx);
+          fut.get();
+          auto snapshot = log->getReplicatedLogSnapshot();
+          ASSERT_LT(0, idx.value);
+          ASSERT_LE(idx.value, snapshot.size());
+          auto const& entry = snapshot[idx.value - 1];
+          EXPECT_EQ(idx, entry.entry().logIndex());
+          EXPECT_EQ(payload, entry.entry().logPayload());
+          if (i == 1000) {
+            // we should have done at least a few iterations before finishing
+            data.threadsSatisfied.fetch_add(1, std::memory_order_relaxed);
+          }
+        }
+      };
 
   constexpr static auto insertManyThenRead = [](ThreadIdx const threadIdx,
                                                 ThreadCoordinationData& data) {
@@ -144,8 +145,10 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
     for (auto i = std::uint32_t{0};
          i < maxIter && !data.stopClientThreads.load(); i += batch) {
       for (auto k = 0; k < batch && i + k < maxIter; ++k) {
-        auto const payload = LogPayload::createFromString(genPayload(threadIdx, i + k));
-        idxs[k] = log->insert(payload, false, LogLeader::doNotTriggerAsyncReplication);
+        auto const payload =
+            LogPayload::createFromString(genPayload(threadIdx, i + k));
+        idxs[k] = log->insert(payload, false,
+                              LogLeader::doNotTriggerAsyncReplication);
       }
       std::this_thread::sleep_for(1ns);
       auto fut = log->waitFor(idxs.back());
@@ -153,7 +156,8 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
       auto snapshot = log->getReplicatedLogSnapshot();
       for (auto k = 0; k < batch && i + k < maxIter; ++k) {
         using namespace std::string_literals;
-        auto const payload = std::optional(LogPayload::createFromString(genPayload(threadIdx, i + k)));
+        auto const payload = std::optional(
+            LogPayload::createFromString(genPayload(threadIdx, i + k)));
         auto const idx = idxs[k];
         ASSERT_LT(0, idx.value);
         ASSERT_LE(idx.value, snapshot.size());
@@ -162,7 +166,8 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
         EXPECT_EQ(payload, entry.entry().logPayload())
             << VPackSlice(payload->dummy.data()).toJson() << " "
             << (entry.entry().logPayload()
-                    ? VPackSlice(entry.entry().logPayload()->dummy.data()).toJson()
+                    ? VPackSlice(entry.entry().logPayload()->dummy.data())
+                          .toJson()
                     : "std::nullopt"s);
       }
       if (i == 10 * batch) {
@@ -190,7 +195,8 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
 
   constexpr static auto runFollowerReplicationWithIntermittentPauses =
       // NOLINTNEXTLINE(performance-unnecessary-value-param)
-      [](std::vector<DelayedFollowerLog*> followers, ThreadCoordinationData& data) {
+      [](std::vector<DelayedFollowerLog*> followers,
+         ThreadCoordinationData& data) {
         using namespace std::chrono_literals;
         for (auto i = 0;;) {
           for (auto* follower : followers) {
@@ -227,8 +233,10 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
 
   std::vector<std::thread> clientThreads;
   auto threadCounter = uint16_t{0};
-  clientThreads.emplace_back(alternatinglyInsertAndRead, threadCounter++, std::ref(data));
-  clientThreads.emplace_back(insertManyThenRead, threadCounter++, std::ref(data));
+  clientThreads.emplace_back(alternatinglyInsertAndRead, threadCounter++,
+                             std::ref(data));
+  clientThreads.emplace_back(insertManyThenRead, threadCounter++,
+                             std::ref(data));
 
   ASSERT_EQ(clientThreads.size(), threadCounter);
   while (data.threadsReady.load() < clientThreads.size()) {
@@ -267,27 +275,31 @@ TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
   auto follower1Log = makeReplicatedLog(LogId{2});
   auto follower2Log = makeReplicatedLog(LogId{3});
 
-  auto follower1 = follower1Log->becomeFollower("follower1", LogTerm{1}, "leader");
-  auto follower2 = follower2Log->becomeFollower("follower2", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader("leader", LogTerm{1},
-                              {std::static_pointer_cast<AbstractFollower>(follower1),
-                               std::static_pointer_cast<AbstractFollower>(follower2)},
-                              2);
+  auto follower1 =
+      follower1Log->becomeFollower("follower1", LogTerm{1}, "leader");
+  auto follower2 =
+      follower2Log->becomeFollower("follower2", LogTerm{1}, "leader");
+  auto leader = leaderLog->becomeLeader(
+      "leader", LogTerm{1},
+      {std::static_pointer_cast<AbstractFollower>(follower1),
+       std::static_pointer_cast<AbstractFollower>(follower2)},
+      2);
 
   auto data = ThreadCoordinationData{leader};
 
   // start replication
   auto replicationThread =
       std::thread{runReplicationWithIntermittentPauses, std::ref(data)};
-  auto followerReplicationThread =
-      std::thread{runFollowerReplicationWithIntermittentPauses,
-                  std::vector{follower1.get(), follower2.get()}, std::ref(data)};
+  auto followerReplicationThread = std::thread{
+      runFollowerReplicationWithIntermittentPauses,
+      std::vector{follower1.get(), follower2.get()}, std::ref(data)};
 
   std::vector<std::thread> clientThreads;
   auto threadCounter = uint16_t{0};
-  clientThreads.emplace_back(alternatinglyInsertAndRead, threadCounter++, std::ref(data));
-  clientThreads.emplace_back(insertManyThenRead, threadCounter++, std::ref(data));
+  clientThreads.emplace_back(alternatinglyInsertAndRead, threadCounter++,
+                             std::ref(data));
+  clientThreads.emplace_back(insertManyThenRead, threadCounter++,
+                             std::ref(data));
 
   ASSERT_EQ(clientThreads.size(), threadCounter);
   while (data.threadsReady.load() < clientThreads.size()) {

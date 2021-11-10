@@ -22,55 +22,59 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchQueryCommon.h"
+#include <velocypack/Iterator.h>
 
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
-#include "IResearch/IResearchFilterFactory.h"
+#include "IResearchQueryCommon.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
-
 #include "search/boolean_filter.hpp"
+#include "search/levenshtein_filter.hpp"
+#include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
-#include "search/prefix_filter.hpp"
-#include "search/levenshtein_filter.hpp"
-
-#include <velocypack/Iterator.h>
 
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
-bool findEmptyNodes(TRI_vocbase_t& vocbase, std::string const& queryString,
-                    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr) {
+bool findEmptyNodes(
+    TRI_vocbase_t& vocbase, std::string const& queryString,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr) {
   auto options = VPackParser::fromJson(
       //    "{ \"tracing\" : 1 }"
       "{ }");
 
-  auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                             bindVars, arangodb::aql::QueryOptions(options->slice()));
+  auto query = arangodb::aql::Query::create(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::aql::QueryString(queryString), bindVars,
+      arangodb::aql::QueryOptions(options->slice()));
 
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
-  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  arangodb::containers::SmallVector<
+      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
-  // try to find `EnumerateViewNode`s and process corresponding filters and sorts
-  query->plan()->findNodesOfType(nodes, arangodb::aql::ExecutionNode::NORESULTS, true);
+  // try to find `EnumerateViewNode`s and process corresponding filters and
+  // sorts
+  query->plan()->findNodesOfType(nodes, arangodb::aql::ExecutionNode::NORESULTS,
+                                 true);
   return !nodes.empty();
 }
 
@@ -78,19 +82,23 @@ class IResearchQueryOptimizationTest : public IResearchQueryTest {
  protected:
   std::deque<arangodb::ManagedDocumentResult> insertedDocs;
 
-  void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
+  void addLinkToCollection(
+      std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
     auto versionStr = std::to_string(static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(
-    "{ \"links\" : {"
-      "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " }"
-    "}}");
+        "{ \"links\" : {"
+        "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " +
+        versionStr +
+        " }"
+        "}}");
     EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    view->properties(builder,
+                     arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -134,13 +142,13 @@ class IResearchQueryOptimizationTest : public IResearchQueryTest {
       arangodb::OperationOptions opt;
       static std::vector<std::string> const EMPTY;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase()),
-          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
+          EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection
-      auto builder = VPackParser::fromJson(
-          "[{ \"values\" : [ \"A\", \"C\", \"B\" ] }]");
+      auto builder =
+          VPackParser::fromJson("[{ \"values\" : [ \"A\", \"C\", \"B\" ] }]");
 
       auto root = builder->slice();
       ASSERT_TRUE(root.isArray());
@@ -153,7 +161,8 @@ class IResearchQueryOptimizationTest : public IResearchQueryTest {
       }
 
       EXPECT_TRUE(trx.commit().ok());
-      EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view)
+      EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(
+                       *logicalCollection1, *view)
                        ->commit()
                        .ok()));
     }
@@ -161,31 +170,32 @@ class IResearchQueryOptimizationTest : public IResearchQueryTest {
 };
 
 std::vector<std::string> optimizerOptionsAvailable = {
-  "",
-  " OPTIONS {\"conditionOptimization\":\"auto\"} ",
-  " OPTIONS {\"conditionOptimization\":\"nodnf\"} ",
-  " OPTIONS {\"conditionOptimization\":\"noneg\"} ",
-  " OPTIONS {\"conditionOptimization\":\"none\"} "
-};
+    "", " OPTIONS {\"conditionOptimization\":\"auto\"} ",
+    " OPTIONS {\"conditionOptimization\":\"nodnf\"} ",
+    " OPTIONS {\"conditionOptimization\":\"noneg\"} ",
+    " OPTIONS {\"conditionOptimization\":\"none\"} "};
 
 constexpr size_t disabledDnfOptimizationStart = 2;
-} // namespace
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
 // dedicated to https://github.com/arangodb/arangodb/issues/8294
-  // a IN [ x ] && a == y, x < y
+// a IN [ x ] && a == y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_1) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
 
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ '@', 'A' ] AND d.values == 'C' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ '@', "
+                                  "'A' ] AND d.values == 'C' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -198,22 +208,24 @@ TEST_P(IResearchQueryOptimizationTest, test_1) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
-
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -234,23 +246,27 @@ TEST_P(IResearchQueryOptimizationTest, test_1) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a == y, x == y
+// a IN [ x ] && a == y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_2) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C', 'B', 'A' ] AND d.values "
-        "== 'A'") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C', "
+                                  "'B', 'A' ] AND d.values "
+                                  "== 'A'") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -263,23 +279,27 @@ TEST_P(IResearchQueryOptimizationTest, test_2) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -303,22 +323,26 @@ TEST_P(IResearchQueryOptimizationTest, test_2) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a == y, x > y
+// a IN [ x ] && a == y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_3) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C', 'B' ] AND d.values == 'A' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C', "
+                                  "'B' ] AND d.values == 'A' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -330,18 +354,21 @@ TEST_P(IResearchQueryOptimizationTest, test_3) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -365,22 +392,26 @@ TEST_P(IResearchQueryOptimizationTest, test_3) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a == y, x < y
+// a IN [ x ] && a == y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_4) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ '@', 'A' ] AND d.values != 'D' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ '@', "
+                                  "'A' ] AND d.values != 'D' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -392,18 +423,21 @@ TEST_P(IResearchQueryOptimizationTest, test_4) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       }
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -427,22 +461,26 @@ TEST_P(IResearchQueryOptimizationTest, test_4) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a == y, x < y
+// a IN [ x ] && a == y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_5) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ '@', 'A' ] AND d.values != 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ '@', "
+                                  "'A' ] AND d.values != 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -454,18 +492,21 @@ TEST_P(IResearchQueryOptimizationTest, test_5) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       }
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -488,22 +529,26 @@ TEST_P(IResearchQueryOptimizationTest, test_5) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a == y, x > y
+// a IN [ x ] && a == y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_6) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C', 'D' ] AND d.values != 'D' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C', "
+                                  "'D' ] AND d.values != 'D' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -515,18 +560,21 @@ TEST_P(IResearchQueryOptimizationTest, test_6) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
       }
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -551,61 +599,68 @@ TEST_P(IResearchQueryOptimizationTest, test_6) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  /*
-  //FIXME
-  // a IN [ x ] && a == y, x == y
+/*
+//FIXME
+// a IN [ x ] && a == y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_7) {
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'A', 'A' ] AND d.values != 'A'") + o +) + o + "RETURN d";
+  std::string const query =
+    std::string("FOR d IN testView SEARCH d.values IN [ 'A', 'A' ] AND d.values
+!= 'A'") + o +) + o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-    vocbase(), query, {
-        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
-      }
-    ));
-
-  EXPECT_TRUE(findEmptyNodes(vocbase(), query));
-
-    std::vector<arangodb::velocypack::Slice> expectedDocs {
-    };
-
-  auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_EQ(expectedDocs.size(), resultIt.size());
-
-    // Check documents
-    auto expectedDoc = expectedDocs.begin();
-    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
-      auto const actualDoc = resultIt.value();
-      auto const resolved = actualDoc.resolveExternals();
-
-      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true));
+  EXPECT_TRUE(arangodb::tests::assertRules(
+  vocbase(), query, {
+      arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
     }
-    EXPECT_EQ(expectedDoc, expectedDocs.end());
-  }
-  */
+  ));
 
-  // a IN [ x ] && a != y, x > y
+EXPECT_TRUE(findEmptyNodes(vocbase(), query));
+
+  std::vector<arangodb::velocypack::Slice> expectedDocs {
+  };
+
+auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
+  ASSERT_TRUE(queryResult.result.ok());
+
+  auto result = queryResult.data->slice();
+  EXPECT_TRUE(result.isArray());
+
+  arangodb::velocypack::ArrayIterator resultIt(result);
+  ASSERT_EQ(expectedDocs.size(), resultIt.size());
+
+  // Check documents
+  auto expectedDoc = expectedDocs.begin();
+  for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+    auto const actualDoc = resultIt.value();
+    auto const resolved = actualDoc.resolveExternals();
+
+    EXPECT_EQ(0,
+arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc),
+resolved, true));
+  }
+  EXPECT_EQ(expectedDoc, expectedDocs.end());
+}
+*/
+
+// a IN [ x ] && a != y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_8) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C', 'B' ] AND d.values != 'A' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C', "
+                                  "'B' ] AND d.values != 'A' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -617,18 +672,21 @@ TEST_P(IResearchQueryOptimizationTest, test_8) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -651,22 +709,26 @@ TEST_P(IResearchQueryOptimizationTest, test_8) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a != y, x > y
+// a IN [ x ] && a != y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_9) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C', 'B' ] AND d.values != '@' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C', "
+                                  "'B' ] AND d.values != '@' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -678,18 +740,21 @@ TEST_P(IResearchQueryOptimizationTest, test_9) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -714,22 +779,26 @@ TEST_P(IResearchQueryOptimizationTest, test_9) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a < y, x < y
+// a IN [ x ] && a < y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_10) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'A', 'B' ] AND d.values < 'C' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'A', "
+                                  "'B' ] AND d.values < 'C' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -741,18 +810,21 @@ TEST_P(IResearchQueryOptimizationTest, test_10) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -778,22 +850,26 @@ TEST_P(IResearchQueryOptimizationTest, test_10) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a < y, x == y
+// a IN [ x ] && a < y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_11) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'A', 'C' ] AND d.values < 'C' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'A', "
+                                  "'C' ] AND d.values < 'C' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -805,18 +881,21 @@ TEST_P(IResearchQueryOptimizationTest, test_11) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -842,22 +921,26 @@ TEST_P(IResearchQueryOptimizationTest, test_11) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a < y, x > y
+// a IN [ x ] && a < y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_12) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'D', 'C' ] AND d.values < 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'D', "
+                                  "'C' ] AND d.values < 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -869,18 +952,21 @@ TEST_P(IResearchQueryOptimizationTest, test_12) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -906,23 +992,27 @@ TEST_P(IResearchQueryOptimizationTest, test_12) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a <= y, x < y
+// a IN [ x ] && a <= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_13) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
 
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'B', 'C' ] AND d.values <= 'D' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'B', "
+                                  "'C' ] AND d.values <= 'D' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -934,18 +1024,21 @@ TEST_P(IResearchQueryOptimizationTest, test_13) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -971,21 +1064,25 @@ TEST_P(IResearchQueryOptimizationTest, test_13) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
-  // a IN [ x ] && a <= y, x == y
+// a IN [ x ] && a <= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_14) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'B', 'C' ] AND d.values <= 'C' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'B', "
+                                  "'C' ] AND d.values <= 'C' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -997,18 +1094,21 @@ TEST_P(IResearchQueryOptimizationTest, test_14) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -1034,21 +1134,25 @@ TEST_P(IResearchQueryOptimizationTest, test_14) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
-  // a IN [ x ] && a <= y, x > y
+// a IN [ x ] && a <= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_15) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'B', 'C' ] AND d.values <= 'A' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'B', "
+                                  "'C' ] AND d.values <= 'A' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1060,18 +1164,21 @@ TEST_P(IResearchQueryOptimizationTest, test_15) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -1097,21 +1204,25 @@ TEST_P(IResearchQueryOptimizationTest, test_15) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
-  // a IN [ x ] && a >= y, x < y
+// a IN [ x ] && a >= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_16) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ '@', 'A' ] AND d.values >= 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ '@', "
+                                  "'A' ] AND d.values >= 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1123,18 +1234,21 @@ TEST_P(IResearchQueryOptimizationTest, test_16) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -1160,23 +1274,27 @@ TEST_P(IResearchQueryOptimizationTest, test_16) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a >= y, x == y
+// a IN [ x ] && a >= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_17) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
 
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ '@', 'A' ] AND d.values >= 'A' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ '@', "
+                                  "'A' ] AND d.values >= 'A' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1188,18 +1306,21 @@ TEST_P(IResearchQueryOptimizationTest, test_17) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -1225,21 +1346,25 @@ TEST_P(IResearchQueryOptimizationTest, test_17) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
-  // a IN [ x ] && a >= y, x > y
+// a IN [ x ] && a >= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_18) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C', 'D' ] AND d.values >= 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C', "
+                                  "'D' ] AND d.values >= 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1251,18 +1376,21 @@ TEST_P(IResearchQueryOptimizationTest, test_18) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -1288,23 +1416,27 @@ TEST_P(IResearchQueryOptimizationTest, test_18) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a > y, x < y
+// a IN [ x ] && a > y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_19) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
 
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ '@', 'A' ] AND d.values > 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ '@', "
+                                  "'A' ] AND d.values > 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1316,18 +1448,21 @@ TEST_P(IResearchQueryOptimizationTest, test_19) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -1353,22 +1488,26 @@ TEST_P(IResearchQueryOptimizationTest, test_19) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a > y, x == y
+// a IN [ x ] && a > y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_20) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C', 'B' ] AND d.values > 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C', "
+                                  "'B' ] AND d.values > 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -1381,18 +1520,21 @@ TEST_P(IResearchQueryOptimizationTest, test_20) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -1418,22 +1560,26 @@ TEST_P(IResearchQueryOptimizationTest, test_20) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a > y, x > y
+// a IN [ x ] && a > y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_21) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C', 'D' ] AND d.values > 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C', "
+                                  "'D' ] AND d.values > 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1445,18 +1591,21 @@ TEST_P(IResearchQueryOptimizationTest, test_21) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -1482,23 +1631,27 @@ TEST_P(IResearchQueryOptimizationTest, test_21) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a IN [ y ]
+// a IN [ x ] && a IN [ y ]
 TEST_P(IResearchQueryOptimizationTest, test_22) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'A', 'B' ] AND d.values IN [ "
-        "'A', 'B', 'C' ]") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'A', "
+                                  "'B' ] AND d.values IN [ "
+                                  "'A', 'B', 'C' ]") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -1512,12 +1665,14 @@ TEST_P(IResearchQueryOptimizationTest, test_22) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
       {
@@ -1525,17 +1680,20 @@ TEST_P(IResearchQueryOptimizationTest, test_22) {
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = sub.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -1560,22 +1718,26 @@ TEST_P(IResearchQueryOptimizationTest, test_22) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a == y, x < y
+// a IN [ x ] && a == y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_23) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'B' ] AND d.values == 'C' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'B' "
+                                  "] AND d.values == 'C' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -1586,12 +1748,14 @@ TEST_P(IResearchQueryOptimizationTest, test_23) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -1616,21 +1780,25 @@ TEST_P(IResearchQueryOptimizationTest, test_23) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
-  // a IN [ x ] && a == y, x == y
+// a IN [ x ] && a == y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_24) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C' ] AND d.values == 'C' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C' "
+                                  "] AND d.values == 'C' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1640,7 +1808,8 @@ TEST_P(IResearchQueryOptimizationTest, test_24) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -1664,22 +1833,26 @@ TEST_P(IResearchQueryOptimizationTest, test_24) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a == y, x > y
+// a IN [ x ] && a == y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_25) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C' ] AND d.values == 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C' "
+                                  "] AND d.values == 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -1690,12 +1863,14 @@ TEST_P(IResearchQueryOptimizationTest, test_25) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -1719,22 +1894,26 @@ TEST_P(IResearchQueryOptimizationTest, test_25) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
-  // a IN [ x ] && a != y, x < y
+// a IN [ x ] && a != y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_26) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'A' ] AND d.values != 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'A' "
+                                  "] AND d.values != 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -1746,23 +1925,27 @@ TEST_P(IResearchQueryOptimizationTest, test_26) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
 
@@ -1786,28 +1969,32 @@ TEST_P(IResearchQueryOptimizationTest, test_26) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a IN [ x ] && a != y, x == y
+// a IN [ x ] && a != y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_27) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C' ] AND d.values != 'C' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C' "
+                                  "] AND d.values != 'C' ") +
+                              o + "RETURN d";
 
     if (optimizeType < disabledDnfOptimizationStart) {
       EXPECT_TRUE(findEmptyNodes(vocbase(), query));
     } else {
       // no optimization will give us redundant nodes, but that is expected
-      EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-        { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+      EXPECT_TRUE(arangodb::tests::assertRules(
+          vocbase(), query,
+          {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
       EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     }
 
@@ -1819,12 +2006,14 @@ TEST_P(IResearchQueryOptimizationTest, test_27) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         assertFilterOptimized(vocbase(), query, expected);
       } else {
@@ -1833,12 +2022,14 @@ TEST_P(IResearchQueryOptimizationTest, test_27) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
 
         assertFilterOptimized(vocbase(), query, expected);
@@ -1862,24 +2053,28 @@ TEST_P(IResearchQueryOptimizationTest, test_27) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a IN [ x ] && a != y, x > y
+// a IN [ x ] && a != y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_28) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN ['B'] AND d.values != 'C'") + o + " RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values IN ['B'] AND d.values != 'C'") +
+        o + " RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -1891,23 +2086,27 @@ TEST_P(IResearchQueryOptimizationTest, test_28) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -1930,23 +2129,27 @@ TEST_P(IResearchQueryOptimizationTest, test_28) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
-  // a IN [ x ] && a < y, x < y
+// a IN [ x ] && a < y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_29) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'B' ] AND d.values < 'C' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'B' "
+                                  "] AND d.values < 'C' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1957,18 +2160,21 @@ TEST_P(IResearchQueryOptimizationTest, test_29) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -1994,23 +2200,27 @@ TEST_P(IResearchQueryOptimizationTest, test_29) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a IN [ x ] && a < y, x == y
+// a IN [ x ] && a < y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_30) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C' ] AND d.values < 'C' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C' "
+                                  "] AND d.values < 'C' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2020,12 +2230,14 @@ TEST_P(IResearchQueryOptimizationTest, test_30) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -2051,22 +2263,26 @@ TEST_P(IResearchQueryOptimizationTest, test_30) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a < y, x > y
+// a IN [ x ] && a < y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_31) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C' ] AND d.values < 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C' "
+                                  "] AND d.values < 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2076,12 +2292,14 @@ TEST_P(IResearchQueryOptimizationTest, test_31) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -2107,23 +2325,27 @@ TEST_P(IResearchQueryOptimizationTest, test_31) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a IN [ x ] && a <= y, x < y
+// a IN [ x ] && a <= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_32) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'B' ] AND d.values <= 'C' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'B' "
+                                  "] AND d.values <= 'C' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2134,18 +2356,21 @@ TEST_P(IResearchQueryOptimizationTest, test_32) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -2171,24 +2396,28 @@ TEST_P(IResearchQueryOptimizationTest, test_32) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a IN [x] && a <= y, x == y
+// a IN [x] && a <= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_33) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'B' ] AND d.values <= 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'B' "
+                                  "] AND d.values <= 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2199,18 +2428,21 @@ TEST_P(IResearchQueryOptimizationTest, test_33) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -2236,23 +2468,27 @@ TEST_P(IResearchQueryOptimizationTest, test_33) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a IN [ x ] && a <= y, x > y
+// a IN [ x ] && a <= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_34) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'C' ] AND d.values <= 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'C' "
+                                  "] AND d.values <= 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2262,12 +2498,14 @@ TEST_P(IResearchQueryOptimizationTest, test_34) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -2292,22 +2530,26 @@ TEST_P(IResearchQueryOptimizationTest, test_34) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
-  // a IN [ x ] && a >= y, x < y
+// a IN [ x ] && a >= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_35) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'A' ] AND d.values >= 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'A' "
+                                  "] AND d.values >= 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2318,24 +2560,28 @@ TEST_P(IResearchQueryOptimizationTest, test_35) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -2361,24 +2607,28 @@ TEST_P(IResearchQueryOptimizationTest, test_35) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a IN [ x ] && a >= y, x == y
+// a IN [ x ] && a >= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_36) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN [ 'B' ] AND d.values >= 'B' ") + o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH d.values IN [ 'B' "
+                                  "] AND d.values >= 'B' ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2389,18 +2639,21 @@ TEST_P(IResearchQueryOptimizationTest, test_36) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -2426,23 +2679,27 @@ TEST_P(IResearchQueryOptimizationTest, test_36) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
-  // a IN [x] && a >= y, x > y
+// a IN [x] && a >= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_37) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN ['C'] AND d.values >= 'B'") + o + " RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values IN ['C'] AND d.values >= 'B'") +
+        o + " RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2453,18 +2710,21 @@ TEST_P(IResearchQueryOptimizationTest, test_37) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -2490,23 +2750,27 @@ TEST_P(IResearchQueryOptimizationTest, test_37) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
-  // a IN [x] && a > y, x < y
+// a IN [x] && a > y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_38) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN ['A'] AND d.values > 'B'") + o + " RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values IN ['A'] AND d.values > 'B'") +
+        o + " RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2517,24 +2781,28 @@ TEST_P(IResearchQueryOptimizationTest, test_38) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -2560,23 +2828,27 @@ TEST_P(IResearchQueryOptimizationTest, test_38) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
-  // a IN [x] && a > y, x == y
+// a IN [x] && a > y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_39) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN ['B'] AND d.values > 'B'") + o + " RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values IN ['B'] AND d.values > 'B'") +
+        o + " RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2587,24 +2859,28 @@ TEST_P(IResearchQueryOptimizationTest, test_39) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -2630,24 +2906,28 @@ TEST_P(IResearchQueryOptimizationTest, test_39) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a IN [x] && a > y, x > y
+// a IN [x] && a > y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_40) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN ['C'] AND d.values > 'B'") + o + " RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values IN ['C'] AND d.values > 'B'") +
+        o + " RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2658,18 +2938,21 @@ TEST_P(IResearchQueryOptimizationTest, test_40) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -2695,23 +2978,27 @@ TEST_P(IResearchQueryOptimizationTest, test_40) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a == x && a == y, x < y
+// a == x && a == y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_41) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'B' AND d.values == 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'B' AND d.values == 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2721,12 +3008,14 @@ TEST_P(IResearchQueryOptimizationTest, test_41) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2750,71 +3039,80 @@ TEST_P(IResearchQueryOptimizationTest, test_41) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a == x && a == y, x == y
-  TEST_P(IResearchQueryOptimizationTest, test_42) {
-    for (auto& o : optimizerOptionsAvailable) {
-      SCOPED_TRACE(o);
-      std::string const query =
-        std::string("FOR d IN testView SEARCH d.values == 'C' AND d.values == 'C'") + o + "RETURN d";
+// a == x && a == y, x == y
+TEST_P(IResearchQueryOptimizationTest, test_42) {
+  for (auto& o : optimizerOptionsAvailable) {
+    SCOPED_TRACE(o);
+    std::string const query =
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'C' AND d.values == 'C'") +
+        o + "RETURN d";
 
-      EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-        { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-      EXPECT_FALSE(findEmptyNodes(vocbase(), query));
-      // check structure
+    EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
       {
-        irs::Or expected;
-        auto& root = expected.add<irs::And>();
-        {
-          auto& filter = root.add<irs::by_term>();
-          *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
-        }
-        assertFilterOptimized(vocbase(), query, expected);
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
-
-      std::vector<arangodb::velocypack::Slice> expectedDocs{
-          arangodb::velocypack::Slice(insertedDocs[0].vpack()),
-      };
-
-      auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
-      ASSERT_TRUE(queryResult.result.ok());
-
-      auto result = queryResult.data->slice();
-      EXPECT_TRUE(result.isArray());
-
-      arangodb::velocypack::ArrayIterator resultIt(result);
-      ASSERT_EQ(expectedDocs.size(), resultIt.size());
-
-      // Check documents
-      auto expectedDoc = expectedDocs.begin();
-      for (; resultIt.valid(); resultIt.next(), ++expectedDoc) {
-        auto const actualDoc = resultIt.value();
-        auto const resolved = actualDoc.resolveExternals();
-
-        EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-          arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
-      }
-      EXPECT_EQ(expectedDoc, expectedDocs.end());
+      assertFilterOptimized(vocbase(), query, expected);
     }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs{
+        arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
+}
 
 // a == x && a == y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_43) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'C' AND d.values == 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'C' AND d.values == 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-        { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2824,12 +3122,14 @@ TEST_P(IResearchQueryOptimizationTest, test_43) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2853,23 +3153,27 @@ TEST_P(IResearchQueryOptimizationTest, test_43) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a == x && a != y, x < y
+// a == x && a != y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_44) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'A' AND d.values != 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'A' AND d.values != 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-        { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2880,23 +3184,27 @@ TEST_P(IResearchQueryOptimizationTest, test_44) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -2919,28 +3227,32 @@ TEST_P(IResearchQueryOptimizationTest, test_44) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a == x && a != y, x == y
+// a == x && a != y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_45) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'C' AND d.values != 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'C' AND d.values != 'C'") +
+        o + "RETURN d";
     if (optimizeType < disabledDnfOptimizationStart) {
       // FIXME EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
       //  { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
       EXPECT_TRUE(findEmptyNodes(vocbase(), query));
     } else {
-      EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-        { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+      EXPECT_TRUE(arangodb::tests::assertRules(
+          vocbase(), query,
+          {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
       EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     }
     // check structure
@@ -2951,12 +3263,14 @@ TEST_P(IResearchQueryOptimizationTest, test_45) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
 
         assertFilterOptimized(vocbase(), query, expected);
@@ -2966,12 +3280,14 @@ TEST_P(IResearchQueryOptimizationTest, test_45) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
 
         assertFilterOptimized(vocbase(), query, expected);
@@ -2994,24 +3310,28 @@ TEST_P(IResearchQueryOptimizationTest, test_45) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     optimizeType++;
   }
 }
 
-  // a == x && a != y, x > y
+// a == x && a != y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_46) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'B' AND d.values != 'C'")  + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'B' AND d.values != 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-        { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3022,23 +3342,27 @@ TEST_P(IResearchQueryOptimizationTest, test_46) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -3061,24 +3385,28 @@ TEST_P(IResearchQueryOptimizationTest, test_46) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a == x && a < y, x < y
+// a == x && a < y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_47) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'B' AND d.values < 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'B' AND d.values < 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-        { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3089,18 +3417,21 @@ TEST_P(IResearchQueryOptimizationTest, test_47) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -3126,23 +3457,27 @@ TEST_P(IResearchQueryOptimizationTest, test_47) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a == x && a < y, x == y
+// a == x && a < y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_48) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'C' AND d.values < 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'C' AND d.values < 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3152,12 +3487,14 @@ TEST_P(IResearchQueryOptimizationTest, test_48) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -3183,22 +3520,26 @@ TEST_P(IResearchQueryOptimizationTest, test_48) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a == x && a < y, x > y
+// a == x && a < y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_49) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'C' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'C' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3208,12 +3549,14 @@ TEST_P(IResearchQueryOptimizationTest, test_49) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -3239,23 +3582,27 @@ TEST_P(IResearchQueryOptimizationTest, test_49) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a == x && a <= y, x < y
+// a == x && a <= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_50) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'B' AND d.values <= 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'B' AND d.values <= 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3266,18 +3613,21 @@ TEST_P(IResearchQueryOptimizationTest, test_50) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -3303,24 +3653,28 @@ TEST_P(IResearchQueryOptimizationTest, test_50) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a == x && a <= y, x == y
+// a == x && a <= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_51) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'B' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'B' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3330,13 +3684,15 @@ TEST_P(IResearchQueryOptimizationTest, test_51) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       if (optimizeType >= disabledDnfOptimizationStart) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -3362,23 +3718,27 @@ TEST_P(IResearchQueryOptimizationTest, test_51) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a == x && a <= y, x > y
+// a == x && a <= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_52) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'C' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'C' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3388,12 +3748,14 @@ TEST_P(IResearchQueryOptimizationTest, test_52) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -3419,23 +3781,27 @@ TEST_P(IResearchQueryOptimizationTest, test_52) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a == x && a >= y, x < y
+// a == x && a >= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_53) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'A' AND d.values >= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'A' AND d.values >= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3446,24 +3812,28 @@ TEST_P(IResearchQueryOptimizationTest, test_53) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -3489,24 +3859,28 @@ TEST_P(IResearchQueryOptimizationTest, test_53) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a == x && a >= y, x == y
+// a == x && a >= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_54) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'B' AND d.values >= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'B' AND d.values >= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3516,13 +3890,15 @@ TEST_P(IResearchQueryOptimizationTest, test_54) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       if (optimizeType >= disabledDnfOptimizationStart) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -3548,24 +3924,28 @@ TEST_P(IResearchQueryOptimizationTest, test_54) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a == x && a >= y, x > y
+// a == x && a >= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_55) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'C' AND d.values >= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'C' AND d.values >= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3575,13 +3955,15 @@ TEST_P(IResearchQueryOptimizationTest, test_55) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       if (optimizeType >= disabledDnfOptimizationStart) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -3607,24 +3989,28 @@ TEST_P(IResearchQueryOptimizationTest, test_55) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a == x && a > y, x < y
+// a == x && a > y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_56) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'A' AND d.values > 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'A' AND d.values > 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3635,24 +4021,28 @@ TEST_P(IResearchQueryOptimizationTest, test_56) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -3678,23 +4068,27 @@ TEST_P(IResearchQueryOptimizationTest, test_56) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
-  // a == x && a > y, x == y
+// a == x && a > y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_57) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'B' AND d.values > 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'B' AND d.values > 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3705,24 +4099,28 @@ TEST_P(IResearchQueryOptimizationTest, test_57) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -3748,24 +4146,28 @@ TEST_P(IResearchQueryOptimizationTest, test_57) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a == x && a > y, x > y
+// a == x && a > y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_58) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values == 'C' AND d.values > 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values == 'C' AND d.values > 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3775,13 +4177,15 @@ TEST_P(IResearchQueryOptimizationTest, test_58) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       if (optimizeType >= disabledDnfOptimizationStart) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -3807,23 +4211,27 @@ TEST_P(IResearchQueryOptimizationTest, test_58) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a != x && a == y, x < y
+// a != x && a == y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_59) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != '@' AND d.values == 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != '@' AND d.values == 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3833,12 +4241,14 @@ TEST_P(IResearchQueryOptimizationTest, test_59) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -3862,22 +4272,26 @@ TEST_P(IResearchQueryOptimizationTest, test_59) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a == y, x < y
+// a != x && a == y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_60) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'A' AND d.values == 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'A' AND d.values == 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3887,12 +4301,14 @@ TEST_P(IResearchQueryOptimizationTest, test_60) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -3915,28 +4331,32 @@ TEST_P(IResearchQueryOptimizationTest, test_60) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a == y, x == y
+// a != x && a == y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_61) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
 
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'A' AND d.values == 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'A' AND d.values == 'A'") +
+        o + "RETURN d";
     if (optimizeType < disabledDnfOptimizationStart) {
       // FIXME EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
       //  { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
       EXPECT_TRUE(findEmptyNodes(vocbase(), query));
     } else {
-      EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-        { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+      EXPECT_TRUE(arangodb::tests::assertRules(
+          vocbase(), query,
+          {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
       EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     }
@@ -3948,12 +4368,14 @@ TEST_P(IResearchQueryOptimizationTest, test_61) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
 
         assertFilterOptimized(vocbase(), query, expected);
@@ -3963,12 +4385,14 @@ TEST_P(IResearchQueryOptimizationTest, test_61) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
 
         assertFilterOptimized(vocbase(), query, expected);
@@ -3992,23 +4416,27 @@ TEST_P(IResearchQueryOptimizationTest, test_61) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a != x && a == y, x > y
+// a != x && a == y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_62) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'D' AND d.values == 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'D' AND d.values == 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4018,12 +4446,14 @@ TEST_P(IResearchQueryOptimizationTest, test_62) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -4048,22 +4478,26 @@ TEST_P(IResearchQueryOptimizationTest, test_62) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a == y, x > y
+// a != x && a == y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_63) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'B' AND d.values == 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'B' AND d.values == 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4073,12 +4507,14 @@ TEST_P(IResearchQueryOptimizationTest, test_63) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -4101,22 +4537,26 @@ TEST_P(IResearchQueryOptimizationTest, test_63) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a != y, x < y
+// a != x && a != y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_64) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != '@' AND d.values != 'D'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != '@' AND d.values != 'D'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4126,12 +4566,14 @@ TEST_P(IResearchQueryOptimizationTest, test_64) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
       }
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -4156,22 +4598,26 @@ TEST_P(IResearchQueryOptimizationTest, test_64) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a != y, x < y
+// a != x && a != y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_65) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'A' AND d.values != 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'A' AND d.values != 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4181,12 +4627,14 @@ TEST_P(IResearchQueryOptimizationTest, test_65) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -4209,21 +4657,25 @@ TEST_P(IResearchQueryOptimizationTest, test_65) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
-  // a != x && a != y, x == y
+// a != x && a != y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_66) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'D' AND d.values != 'D'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'D' AND d.values != 'D'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4233,7 +4685,8 @@ TEST_P(IResearchQueryOptimizationTest, test_66) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -4257,22 +4710,26 @@ TEST_P(IResearchQueryOptimizationTest, test_66) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a != y, x == y
+// a != x && a != y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_67) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'A' AND d.values != 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'A' AND d.values != 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4282,7 +4739,8 @@ TEST_P(IResearchQueryOptimizationTest, test_67) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -4304,22 +4762,26 @@ TEST_P(IResearchQueryOptimizationTest, test_67) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a != y, x > y
+// a != x && a != y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_68) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'B' AND d.values != 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'B' AND d.values != 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4329,12 +4791,14 @@ TEST_P(IResearchQueryOptimizationTest, test_68) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -4356,21 +4820,25 @@ TEST_P(IResearchQueryOptimizationTest, test_68) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
-  // a != x && a < y, x < y
+// a != x && a < y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_69) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != '0' AND d.values < 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != '0' AND d.values < 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4380,12 +4848,14 @@ TEST_P(IResearchQueryOptimizationTest, test_69) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -4410,22 +4880,26 @@ TEST_P(IResearchQueryOptimizationTest, test_69) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a < y, x == y
+// a != x && a < y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_70) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'A' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'A' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4435,12 +4909,14 @@ TEST_P(IResearchQueryOptimizationTest, test_70) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -4463,22 +4939,26 @@ TEST_P(IResearchQueryOptimizationTest, test_70) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a < y, x == y
+// a != x && a < y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_71) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != '@' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != '@' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4488,12 +4968,14 @@ TEST_P(IResearchQueryOptimizationTest, test_71) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -4519,22 +5001,26 @@ TEST_P(IResearchQueryOptimizationTest, test_71) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a < y, x == y
+// a != x && a < y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_72) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'D' AND d.values < 'D'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'D' AND d.values < 'D'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4544,12 +5030,14 @@ TEST_P(IResearchQueryOptimizationTest, test_72) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -4575,22 +5063,26 @@ TEST_P(IResearchQueryOptimizationTest, test_72) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a < y, x > y
+// a != x && a < y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_73) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'D' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'D' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4600,12 +5092,14 @@ TEST_P(IResearchQueryOptimizationTest, test_73) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -4631,22 +5125,26 @@ TEST_P(IResearchQueryOptimizationTest, test_73) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a < y, x > y
+// a != x && a < y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_74) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'C' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'C' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4656,12 +5154,14 @@ TEST_P(IResearchQueryOptimizationTest, test_74) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -4685,22 +5185,26 @@ TEST_P(IResearchQueryOptimizationTest, test_74) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a <= y, x < y
+// a != x && a <= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_75) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != '0' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != '0' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4710,12 +5214,14 @@ TEST_P(IResearchQueryOptimizationTest, test_75) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -4741,21 +5247,25 @@ TEST_P(IResearchQueryOptimizationTest, test_75) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
-  // a != x && a <= y, x < y
+// a != x && a <= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_76) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'A' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'A' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4765,12 +5275,14 @@ TEST_P(IResearchQueryOptimizationTest, test_76) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -4794,22 +5306,26 @@ TEST_P(IResearchQueryOptimizationTest, test_76) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a <= y, x == y
+// a != x && a <= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_77) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'D' AND d.values <= 'D'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'D' AND d.values <= 'D'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4819,12 +5335,14 @@ TEST_P(IResearchQueryOptimizationTest, test_77) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -4850,22 +5368,26 @@ TEST_P(IResearchQueryOptimizationTest, test_77) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a <= y, x == y
+// a != x && a <= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_78) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'B' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'B' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4875,12 +5397,14 @@ TEST_P(IResearchQueryOptimizationTest, test_78) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -4904,22 +5428,26 @@ TEST_P(IResearchQueryOptimizationTest, test_78) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a <= y, x > y
+// a != x && a <= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_79) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'D' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'D' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4929,12 +5457,14 @@ TEST_P(IResearchQueryOptimizationTest, test_79) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -4960,22 +5490,26 @@ TEST_P(IResearchQueryOptimizationTest, test_79) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a <= y, x > y
+// a != x && a <= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_80) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'C' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'C' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4985,12 +5519,14 @@ TEST_P(IResearchQueryOptimizationTest, test_80) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -5014,22 +5550,26 @@ TEST_P(IResearchQueryOptimizationTest, test_80) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a >= y, x < y
+// a != x && a >= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_81) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != '0' AND d.values >= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != '0' AND d.values >= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5039,12 +5579,14 @@ TEST_P(IResearchQueryOptimizationTest, test_81) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -5070,22 +5612,26 @@ TEST_P(IResearchQueryOptimizationTest, test_81) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a >= y, x < y
+// a != x && a >= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_82) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'A' AND d.values >= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'A' AND d.values >= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5095,12 +5641,14 @@ TEST_P(IResearchQueryOptimizationTest, test_82) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -5124,21 +5672,25 @@ TEST_P(IResearchQueryOptimizationTest, test_82) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a >= y, x == y
+// a != x && a >= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_83) {
   for (auto& o : optimizerOptionsAvailable) {
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != '0' AND d.values >= '0'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != '0' AND d.values >= '0'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     SCOPED_TRACE(o);
@@ -5149,12 +5701,14 @@ TEST_P(IResearchQueryOptimizationTest, test_83) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -5180,22 +5734,26 @@ TEST_P(IResearchQueryOptimizationTest, test_83) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a >= y, x == y
+// a != x && a >= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_84) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'A' AND d.values >= 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'A' AND d.values >= 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5205,12 +5763,14 @@ TEST_P(IResearchQueryOptimizationTest, test_84) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -5234,22 +5794,26 @@ TEST_P(IResearchQueryOptimizationTest, test_84) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a >= y, x > y
+// a != x && a >= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_85) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'D' AND d.values >= 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'D' AND d.values >= 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5259,12 +5823,14 @@ TEST_P(IResearchQueryOptimizationTest, test_85) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -5290,24 +5856,28 @@ TEST_P(IResearchQueryOptimizationTest, test_85) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a >= y, x > y
+// a != x && a >= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_86) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'C' AND d.values >= 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'C' AND d.values >= 'A'") +
+        o + "RETURN d";
 
-      EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-        { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-      EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+    EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
     {
       irs::Or expected;
@@ -5315,12 +5885,14 @@ TEST_P(IResearchQueryOptimizationTest, test_86) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -5344,22 +5916,26 @@ TEST_P(IResearchQueryOptimizationTest, test_86) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a > y, x < y
+// a != x && a > y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_87) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != '0' AND d.values > 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != '0' AND d.values > 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5369,12 +5945,14 @@ TEST_P(IResearchQueryOptimizationTest, test_87) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -5400,22 +5978,26 @@ TEST_P(IResearchQueryOptimizationTest, test_87) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a > y, x < y
+// a != x && a > y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_88) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'A' AND d.values > 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'A' AND d.values > 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5425,12 +6007,14 @@ TEST_P(IResearchQueryOptimizationTest, test_88) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -5454,22 +6038,26 @@ TEST_P(IResearchQueryOptimizationTest, test_88) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a > y, x == y
+// a != x && a > y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_89) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != '0' AND d.values > '0'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != '0' AND d.values > '0'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5479,12 +6067,14 @@ TEST_P(IResearchQueryOptimizationTest, test_89) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -5510,22 +6100,26 @@ TEST_P(IResearchQueryOptimizationTest, test_89) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a > y, x == y
+// a != x && a > y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_90) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'A' AND d.values > 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'A' AND d.values > 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5535,12 +6129,14 @@ TEST_P(IResearchQueryOptimizationTest, test_90) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -5564,22 +6160,26 @@ TEST_P(IResearchQueryOptimizationTest, test_90) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a > y, x > y
+// a != x && a > y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_91) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'D' AND d.values > 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'D' AND d.values > 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5589,12 +6189,14 @@ TEST_P(IResearchQueryOptimizationTest, test_91) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -5620,22 +6222,26 @@ TEST_P(IResearchQueryOptimizationTest, test_91) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a != x && a > y, x > y
+// a != x && a > y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_92) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values != 'C' AND d.values > 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values != 'C' AND d.values > 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5645,12 +6251,14 @@ TEST_P(IResearchQueryOptimizationTest, test_92) {
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -5674,23 +6282,27 @@ TEST_P(IResearchQueryOptimizationTest, test_92) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a < x && a == y, x < y
+// a < x && a == y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_93) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'B' AND d.values == 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'B' AND d.values == 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5701,12 +6313,14 @@ TEST_P(IResearchQueryOptimizationTest, test_93) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
 
@@ -5714,13 +6328,15 @@ TEST_P(IResearchQueryOptimizationTest, test_93) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -5745,24 +6361,28 @@ TEST_P(IResearchQueryOptimizationTest, test_93) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     optimizeType++;
   }
 }
 
-  // a < x && a == y, x == y
+// a < x && a == y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_94) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'B' AND d.values == 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'B' AND d.values == 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5773,25 +6393,29 @@ TEST_P(IResearchQueryOptimizationTest, test_94) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -5816,24 +6440,28 @@ TEST_P(IResearchQueryOptimizationTest, test_94) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a == y, x > y
+// a < x && a == y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_95) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'C' AND d.values == 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'C' AND d.values == 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5844,7 +6472,8 @@ TEST_P(IResearchQueryOptimizationTest, test_95) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -5852,7 +6481,8 @@ TEST_P(IResearchQueryOptimizationTest, test_95) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -5877,24 +6507,28 @@ TEST_P(IResearchQueryOptimizationTest, test_95) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a != y, x < y
+// a < x && a != y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_96) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'B' AND d.values != 'D'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'B' AND d.values != 'D'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5905,25 +6539,29 @@ TEST_P(IResearchQueryOptimizationTest, test_96) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -5948,24 +6586,28 @@ TEST_P(IResearchQueryOptimizationTest, test_96) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a != y, x < y
+// a < x && a != y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_97) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'B' AND d.values != 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'B' AND d.values != 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5976,25 +6618,29 @@ TEST_P(IResearchQueryOptimizationTest, test_97) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -6017,24 +6663,28 @@ TEST_P(IResearchQueryOptimizationTest, test_97) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a != y, x == y
+// a < x && a != y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_98) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'D' AND d.values != 'D'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'D' AND d.values != 'D'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6045,25 +6695,29 @@ TEST_P(IResearchQueryOptimizationTest, test_98) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -6088,24 +6742,28 @@ TEST_P(IResearchQueryOptimizationTest, test_98) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a != y, x == y
+// a < x && a != y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_99) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'B' AND d.values != 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'B' AND d.values != 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6116,25 +6774,29 @@ TEST_P(IResearchQueryOptimizationTest, test_99) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -6157,24 +6819,28 @@ TEST_P(IResearchQueryOptimizationTest, test_99) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a != y, x > y
+// a < x && a != y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_100) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'C' AND d.values != '0'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'C' AND d.values != '0'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6185,12 +6851,14 @@ TEST_P(IResearchQueryOptimizationTest, test_100) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
 
@@ -6198,13 +6866,15 @@ TEST_P(IResearchQueryOptimizationTest, test_100) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -6229,24 +6899,28 @@ TEST_P(IResearchQueryOptimizationTest, test_100) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a != y, x > y
+// a < x && a != y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_101) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'C' AND d.values != 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'C' AND d.values != 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6257,25 +6931,29 @@ TEST_P(IResearchQueryOptimizationTest, test_101) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -6298,24 +6976,28 @@ TEST_P(IResearchQueryOptimizationTest, test_101) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a < y, x < y
+// a < x && a < y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_102) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'B' AND d.values < 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'B' AND d.values < 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6325,7 +7007,8 @@ TEST_P(IResearchQueryOptimizationTest, test_102) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -6333,7 +7016,8 @@ TEST_P(IResearchQueryOptimizationTest, test_102) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -6359,23 +7043,27 @@ TEST_P(IResearchQueryOptimizationTest, test_102) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a < y, x == y
+// a < x && a < y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_103) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'B' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'B' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6385,7 +7073,8 @@ TEST_P(IResearchQueryOptimizationTest, test_103) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -6410,14 +7099,15 @@ TEST_P(IResearchQueryOptimizationTest, test_103) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a < x && a < y, x > y
+// a < x && a < y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_104) {
   std::vector<arangodb::velocypack::Slice> expectedDocs{
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -6426,10 +7116,13 @@ TEST_P(IResearchQueryOptimizationTest, test_104) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'C' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'C' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -6441,14 +7134,16 @@ TEST_P(IResearchQueryOptimizationTest, test_104) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -6469,23 +7164,27 @@ TEST_P(IResearchQueryOptimizationTest, test_104) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
-  // a < x && a <= y, x < y
+// a < x && a <= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_105) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'B' AND d.values <= 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'B' AND d.values <= 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6495,14 +7194,16 @@ TEST_P(IResearchQueryOptimizationTest, test_105) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
       if (optimizeType >= disabledDnfOptimizationStart) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -6528,24 +7229,28 @@ TEST_P(IResearchQueryOptimizationTest, test_105) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a <= y, x == y
+// a < x && a <= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_106) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'C' AND d.values <= 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'C' AND d.values <= 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6555,14 +7260,16 @@ TEST_P(IResearchQueryOptimizationTest, test_106) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
       if (optimizeType >= disabledDnfOptimizationStart) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -6588,24 +7295,28 @@ TEST_P(IResearchQueryOptimizationTest, test_106) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a <= y, x > y
+// a < x && a <= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_107) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'C' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'C' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6616,14 +7327,16 @@ TEST_P(IResearchQueryOptimizationTest, test_107) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -6648,24 +7361,28 @@ TEST_P(IResearchQueryOptimizationTest, test_107) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a >= y, x < y
+// a < x && a >= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_108) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'B' AND d.values >= 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'B' AND d.values >= 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6676,26 +7393,30 @@ TEST_P(IResearchQueryOptimizationTest, test_108) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -6721,24 +7442,28 @@ TEST_P(IResearchQueryOptimizationTest, test_108) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a >= y, x == y
+// a < x && a >= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_109) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'B' AND d.values >= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'B' AND d.values >= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6749,26 +7474,30 @@ TEST_P(IResearchQueryOptimizationTest, test_109) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -6794,24 +7523,28 @@ TEST_P(IResearchQueryOptimizationTest, test_109) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a >= y, x > y
+// a < x && a >= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_110) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'C' AND d.values >= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'C' AND d.values >= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6822,26 +7555,30 @@ TEST_P(IResearchQueryOptimizationTest, test_110) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -6867,24 +7604,28 @@ TEST_P(IResearchQueryOptimizationTest, test_110) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a > y, x < y
+// a < x && a > y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_111) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'B' AND d.values > 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'B' AND d.values > 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6895,26 +7636,30 @@ TEST_P(IResearchQueryOptimizationTest, test_111) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -6938,24 +7683,28 @@ TEST_P(IResearchQueryOptimizationTest, test_111) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a > y, x == y
+// a < x && a > y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_112) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'B' AND d.values > 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'B' AND d.values > 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6966,26 +7715,30 @@ TEST_P(IResearchQueryOptimizationTest, test_112) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -7011,24 +7764,28 @@ TEST_P(IResearchQueryOptimizationTest, test_112) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a < x && a > y, x > y
+// a < x && a > y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_113) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values < 'C' AND d.values > 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values < 'C' AND d.values > 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7039,26 +7796,30 @@ TEST_P(IResearchQueryOptimizationTest, test_113) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -7084,24 +7845,28 @@ TEST_P(IResearchQueryOptimizationTest, test_113) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a == y, x < y
+// a <= x && a == y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_114) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'A' AND d.values == 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'A' AND d.values == 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7112,25 +7877,29 @@ TEST_P(IResearchQueryOptimizationTest, test_114) {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -7155,24 +7924,28 @@ TEST_P(IResearchQueryOptimizationTest, test_114) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a == y, x == y
+// a <= x && a == y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_115) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'A' AND d.values == 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'A' AND d.values == 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7183,14 +7956,16 @@ TEST_P(IResearchQueryOptimizationTest, test_115) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7214,24 +7989,28 @@ TEST_P(IResearchQueryOptimizationTest, test_115) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a == y, x > y
+// a <= x && a == y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_116) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'B' AND d.values == 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'B' AND d.values == 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7242,14 +8021,16 @@ TEST_P(IResearchQueryOptimizationTest, test_116) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7273,24 +8054,28 @@ TEST_P(IResearchQueryOptimizationTest, test_116) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a != y, x < y
+// a <= x && a != y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_117) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'A' AND d.values != 'D'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'A' AND d.values != 'D'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7301,25 +8086,29 @@ TEST_P(IResearchQueryOptimizationTest, test_117) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -7344,24 +8133,28 @@ TEST_P(IResearchQueryOptimizationTest, test_117) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a != y, x < y
+// a <= x && a != y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_118) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'A' AND d.values != 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'A' AND d.values != 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7372,25 +8165,29 @@ TEST_P(IResearchQueryOptimizationTest, test_118) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -7413,24 +8210,28 @@ TEST_P(IResearchQueryOptimizationTest, test_118) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a != y, x == y
+// a <= x && a != y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_119) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'B' AND d.values != 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'B' AND d.values != 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7441,25 +8242,29 @@ TEST_P(IResearchQueryOptimizationTest, test_119) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -7482,24 +8287,28 @@ TEST_P(IResearchQueryOptimizationTest, test_119) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a != y, x == y
+// a <= x && a != y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_120) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'D' AND d.values != 'D'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'D' AND d.values != 'D'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7510,25 +8319,29 @@ TEST_P(IResearchQueryOptimizationTest, test_120) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -7553,24 +8366,28 @@ TEST_P(IResearchQueryOptimizationTest, test_120) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a != y, x > y
+// a <= x && a != y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_121) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'C' AND d.values != '@'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'C' AND d.values != '@'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7581,25 +8398,29 @@ TEST_P(IResearchQueryOptimizationTest, test_121) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -7624,24 +8445,28 @@ TEST_P(IResearchQueryOptimizationTest, test_121) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a != y, x > y
+// a <= x && a != y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_122) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'C' AND d.values != 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'C' AND d.values != 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7652,25 +8477,29 @@ TEST_P(IResearchQueryOptimizationTest, test_122) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -7693,24 +8522,28 @@ TEST_P(IResearchQueryOptimizationTest, test_122) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a < y, x < y
+// a <= x && a < y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_123) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'A' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'A' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7720,14 +8553,16 @@ TEST_P(IResearchQueryOptimizationTest, test_123) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
       if (optimizeType >= disabledDnfOptimizationStart) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -7753,24 +8588,28 @@ TEST_P(IResearchQueryOptimizationTest, test_123) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a < y, x == y
+// a <= x && a < y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_124) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'B' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'B' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7781,14 +8620,16 @@ TEST_P(IResearchQueryOptimizationTest, test_124) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -7813,23 +8654,27 @@ TEST_P(IResearchQueryOptimizationTest, test_124) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
-  // a <= x && a < y, x > y
+// a <= x && a < y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_125) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'C' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'C' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7840,14 +8685,16 @@ TEST_P(IResearchQueryOptimizationTest, test_125) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -7872,24 +8719,28 @@ TEST_P(IResearchQueryOptimizationTest, test_125) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a <= y, x < y
+// a <= x && a <= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_126) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'A' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'A' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7899,14 +8750,16 @@ TEST_P(IResearchQueryOptimizationTest, test_126) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
       if (optimizeType >= disabledDnfOptimizationStart) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -7932,23 +8785,27 @@ TEST_P(IResearchQueryOptimizationTest, test_126) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a <= y, x == y
+// a <= x && a <= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_127) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'B' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'B' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7958,7 +8815,8 @@ TEST_P(IResearchQueryOptimizationTest, test_127) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -7983,23 +8841,27 @@ TEST_P(IResearchQueryOptimizationTest, test_127) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a <= x && a <= y, x > y
+// a <= x && a <= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_128) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'C' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'C' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8010,14 +8872,16 @@ TEST_P(IResearchQueryOptimizationTest, test_128) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -8042,24 +8906,28 @@ TEST_P(IResearchQueryOptimizationTest, test_128) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a >= y, x < y
+// a <= x && a >= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_129) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'A' AND d.values >= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'A' AND d.values >= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8070,26 +8938,30 @@ TEST_P(IResearchQueryOptimizationTest, test_129) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -8115,24 +8987,28 @@ TEST_P(IResearchQueryOptimizationTest, test_129) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a >= y, x == y
+// a <= x && a >= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_130) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'A' AND d.values >= 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'A' AND d.values >= 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8143,26 +9019,30 @@ TEST_P(IResearchQueryOptimizationTest, test_130) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -8188,24 +9068,28 @@ TEST_P(IResearchQueryOptimizationTest, test_130) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a >= y, x > y
+// a <= x && a >= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_131) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'C' AND d.values >= 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'C' AND d.values >= 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8216,26 +9100,30 @@ TEST_P(IResearchQueryOptimizationTest, test_131) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -8261,24 +9149,28 @@ TEST_P(IResearchQueryOptimizationTest, test_131) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a > y, x < y
+// a <= x && a > y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_132) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'A' AND d.values > 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'A' AND d.values > 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8289,26 +9181,30 @@ TEST_P(IResearchQueryOptimizationTest, test_132) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -8334,24 +9230,28 @@ TEST_P(IResearchQueryOptimizationTest, test_132) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a > y, x == y
+// a <= x && a > y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_133) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'A' AND d.values > 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'A' AND d.values > 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8362,26 +9262,30 @@ TEST_P(IResearchQueryOptimizationTest, test_133) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -8407,24 +9311,28 @@ TEST_P(IResearchQueryOptimizationTest, test_133) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a <= x && a > y, x > y
+// a <= x && a > y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_134) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values <= 'C' AND d.values > 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values <= 'C' AND d.values > 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8435,26 +9343,30 @@ TEST_P(IResearchQueryOptimizationTest, test_134) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
           filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -8480,24 +9392,28 @@ TEST_P(IResearchQueryOptimizationTest, test_134) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a >= x && a == y, x < y
+// a >= x && a == y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_135) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'A' AND d.values == 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'A' AND d.values == 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8508,14 +9424,16 @@ TEST_P(IResearchQueryOptimizationTest, test_135) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -8539,23 +9457,27 @@ TEST_P(IResearchQueryOptimizationTest, test_135) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
-  // a >= x && a == y, x == y
+// a >= x && a == y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_136) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'A' AND d.values == 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'A' AND d.values == 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8566,14 +9488,16 @@ TEST_P(IResearchQueryOptimizationTest, test_136) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -8597,23 +9521,27 @@ TEST_P(IResearchQueryOptimizationTest, test_136) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a >= x && a == y, x > y
+// a >= x && a == y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_137) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'B' AND d.values == 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'B' AND d.values == 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8623,13 +9551,15 @@ TEST_P(IResearchQueryOptimizationTest, test_137) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -8653,22 +9583,26 @@ TEST_P(IResearchQueryOptimizationTest, test_137) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
-  // a >= x && a != y, x < y
+// a >= x && a != y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_138) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'A' AND d.values != 'D'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'A' AND d.values != 'D'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8679,25 +9613,29 @@ TEST_P(IResearchQueryOptimizationTest, test_138) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -8722,24 +9660,28 @@ TEST_P(IResearchQueryOptimizationTest, test_138) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a >= x && a != y, x < y
+// a >= x && a != y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_139) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'A' AND d.values != 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'A' AND d.values != 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8750,25 +9692,29 @@ TEST_P(IResearchQueryOptimizationTest, test_139) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -8791,24 +9737,28 @@ TEST_P(IResearchQueryOptimizationTest, test_139) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a >= x && a != y, x == y
+// a >= x && a != y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_140) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= '@' AND d.values != '@'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= '@' AND d.values != '@'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8819,25 +9769,29 @@ TEST_P(IResearchQueryOptimizationTest, test_140) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -8862,24 +9816,28 @@ TEST_P(IResearchQueryOptimizationTest, test_140) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a >= x && a != y, x == y
+// a >= x && a != y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_141) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'A' AND d.values != 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'A' AND d.values != 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8890,25 +9848,29 @@ TEST_P(IResearchQueryOptimizationTest, test_141) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -8931,23 +9893,27 @@ TEST_P(IResearchQueryOptimizationTest, test_141) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
-  // a >= x && a != y, x > y
+// a >= x && a != y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_142) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'B' AND d.values != 'D'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'B' AND d.values != 'D'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8958,25 +9924,29 @@ TEST_P(IResearchQueryOptimizationTest, test_142) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -9001,24 +9971,28 @@ TEST_P(IResearchQueryOptimizationTest, test_142) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a >= x && a != y, x > y
+// a >= x && a != y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_143) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'B' AND d.values != 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'B' AND d.values != 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9029,25 +10003,29 @@ TEST_P(IResearchQueryOptimizationTest, test_143) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -9070,23 +10048,27 @@ TEST_P(IResearchQueryOptimizationTest, test_143) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a >= x && a < y, x < y
+// a >= x && a < y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_144) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'A' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'A' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9096,13 +10078,15 @@ TEST_P(IResearchQueryOptimizationTest, test_144) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -9128,22 +10112,26 @@ TEST_P(IResearchQueryOptimizationTest, test_144) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a >= x && a < y, x == y
+// a >= x && a < y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_145) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'B' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'B' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9153,13 +10141,15 @@ TEST_P(IResearchQueryOptimizationTest, test_145) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -9185,22 +10175,26 @@ TEST_P(IResearchQueryOptimizationTest, test_145) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a >= x && a < y, x > y
+// a >= x && a < y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_146) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'C' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'C' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9210,13 +10204,15 @@ TEST_P(IResearchQueryOptimizationTest, test_146) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -9242,22 +10238,26 @@ TEST_P(IResearchQueryOptimizationTest, test_146) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a >= x && a <= y, x < y
+// a >= x && a <= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_147) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'A' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'A' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9267,13 +10267,15 @@ TEST_P(IResearchQueryOptimizationTest, test_147) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -9299,22 +10301,26 @@ TEST_P(IResearchQueryOptimizationTest, test_147) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a >= x && a <= y, x == y
+// a >= x && a <= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_148) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'B' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'B' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9324,13 +10330,15 @@ TEST_P(IResearchQueryOptimizationTest, test_148) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -9355,21 +10363,25 @@ TEST_P(IResearchQueryOptimizationTest, test_148) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
-  // a >= x && a <= y, x > y
+// a >= x && a <= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_149) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'C' AND d.values <= 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'C' AND d.values <= 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9379,13 +10391,15 @@ TEST_P(IResearchQueryOptimizationTest, test_149) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -9410,23 +10424,27 @@ TEST_P(IResearchQueryOptimizationTest, test_149) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a >= x && a >= y, x < y
+// a >= x && a >= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_150) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'A' AND d.values >= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'A' AND d.values >= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9437,14 +10455,16 @@ TEST_P(IResearchQueryOptimizationTest, test_150) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -9470,23 +10490,27 @@ TEST_P(IResearchQueryOptimizationTest, test_150) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a >= x && a >= y, x == y
+// a >= x && a >= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_151) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'B' AND d.values >= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'B' AND d.values >= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9496,7 +10520,8 @@ TEST_P(IResearchQueryOptimizationTest, test_151) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -9522,23 +10547,27 @@ TEST_P(IResearchQueryOptimizationTest, test_151) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a >= x && a >= y, x > y
+// a >= x && a >= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_152) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'C' AND d.values >= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'C' AND d.values >= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9548,14 +10577,16 @@ TEST_P(IResearchQueryOptimizationTest, test_152) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
       if (optimizeType >= disabledDnfOptimizationStart) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -9581,24 +10612,28 @@ TEST_P(IResearchQueryOptimizationTest, test_152) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a >= x && a > y, x < y
+// a >= x && a > y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_153) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'A' AND d.values > 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'A' AND d.values > 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9609,14 +10644,16 @@ TEST_P(IResearchQueryOptimizationTest, test_153) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -9642,24 +10679,28 @@ TEST_P(IResearchQueryOptimizationTest, test_153) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a >= x && a > y, x == y
+// a >= x && a > y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_154) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'B' AND d.values > 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'B' AND d.values > 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9670,14 +10711,16 @@ TEST_P(IResearchQueryOptimizationTest, test_154) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -9703,24 +10746,28 @@ TEST_P(IResearchQueryOptimizationTest, test_154) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a >= x && a > y, x > y
+// a >= x && a > y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_155) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values >= 'B' AND d.values > 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values >= 'B' AND d.values > 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9730,7 +10777,8 @@ TEST_P(IResearchQueryOptimizationTest, test_155) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -9738,7 +10786,8 @@ TEST_P(IResearchQueryOptimizationTest, test_155) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -9764,24 +10813,28 @@ TEST_P(IResearchQueryOptimizationTest, test_155) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a > x && a == y, x < y
+// a > x && a == y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_156) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'A' AND d.values == 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'A' AND d.values == 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9792,14 +10845,16 @@ TEST_P(IResearchQueryOptimizationTest, test_156) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -9823,23 +10878,27 @@ TEST_P(IResearchQueryOptimizationTest, test_156) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a > x && a == y, x == y
+// a > x && a == y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_157) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'B' AND d.values == 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'B' AND d.values == 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9849,13 +10908,15 @@ TEST_P(IResearchQueryOptimizationTest, test_157) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -9879,22 +10940,26 @@ TEST_P(IResearchQueryOptimizationTest, test_157) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a > x && a == y, x > y
+// a > x && a == y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_158) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'B' AND d.values == 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'B' AND d.values == 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9904,13 +10969,15 @@ TEST_P(IResearchQueryOptimizationTest, test_158) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -9934,23 +11001,27 @@ TEST_P(IResearchQueryOptimizationTest, test_158) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a > x && a != y, x < y
+// a > x && a != y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_159) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'A' AND d.values != 'D'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'A' AND d.values != 'D'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9961,25 +11032,29 @@ TEST_P(IResearchQueryOptimizationTest, test_159) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -10004,24 +11079,28 @@ TEST_P(IResearchQueryOptimizationTest, test_159) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a > x && a != y, x < y
+// a > x && a != y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_160) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'A' AND d.values != 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'A' AND d.values != 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10032,25 +11111,29 @@ TEST_P(IResearchQueryOptimizationTest, test_160) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -10073,24 +11156,28 @@ TEST_P(IResearchQueryOptimizationTest, test_160) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a > x && a != y, x == y
+// a > x && a != y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_161) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > '@' AND d.values != '@'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > '@' AND d.values != '@'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10101,25 +11188,29 @@ TEST_P(IResearchQueryOptimizationTest, test_161) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -10144,24 +11235,28 @@ TEST_P(IResearchQueryOptimizationTest, test_161) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a > x && a != y, x == y
+// a > x && a != y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_162) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'A' AND d.values != 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'A' AND d.values != 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -10173,25 +11268,29 @@ TEST_P(IResearchQueryOptimizationTest, test_162) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -10214,24 +11313,28 @@ TEST_P(IResearchQueryOptimizationTest, test_162) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     optimizeType++;
   }
 }
 
-  // a > x && a != y, x > y
+// a > x && a != y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_163) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'B' AND d.values != '@'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'B' AND d.values != '@'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10242,25 +11345,29 @@ TEST_P(IResearchQueryOptimizationTest, test_163) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -10285,24 +11392,28 @@ TEST_P(IResearchQueryOptimizationTest, test_163) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a > x && a != y, x > y
+// a > x && a != y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_164) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'B' AND d.values != 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'B' AND d.values != 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10313,25 +11424,29 @@ TEST_P(IResearchQueryOptimizationTest, test_164) {
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       } else {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
       }
       assertFilterOptimized(vocbase(), query, expected);
@@ -10354,23 +11469,27 @@ TEST_P(IResearchQueryOptimizationTest, test_164) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a > x && a < y, x < y
+// a > x && a < y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_165) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'A' AND d.values < 'C'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'A' AND d.values < 'C'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10380,13 +11499,15 @@ TEST_P(IResearchQueryOptimizationTest, test_165) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -10412,22 +11533,26 @@ TEST_P(IResearchQueryOptimizationTest, test_165) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a > x && a < y, x == y
+// a > x && a < y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_166) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'B' AND d.values < 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'B' AND d.values < 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
     {
@@ -10436,13 +11561,15 @@ TEST_P(IResearchQueryOptimizationTest, test_166) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -10470,22 +11597,26 @@ TEST_P(IResearchQueryOptimizationTest, test_166) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a > x && a < y, x > y
+// a > x && a < y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_167) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'C' AND d.values < 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'C' AND d.values < 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10495,13 +11626,15 @@ TEST_P(IResearchQueryOptimizationTest, test_167) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -10525,22 +11658,26 @@ TEST_P(IResearchQueryOptimizationTest, test_167) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a > x && a <= y, x < y
+// a > x && a <= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_168) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'A' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'A' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10550,13 +11687,15 @@ TEST_P(IResearchQueryOptimizationTest, test_168) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -10582,22 +11721,26 @@ TEST_P(IResearchQueryOptimizationTest, test_168) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a > x && a <= y, x == y
+// a > x && a <= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_169) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'B' AND d.values <= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'B' AND d.values <= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10607,13 +11750,15 @@ TEST_P(IResearchQueryOptimizationTest, test_169) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -10639,22 +11784,26 @@ TEST_P(IResearchQueryOptimizationTest, test_169) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a > x && a <= y, x > y
+// a > x && a <= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_170) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'B' AND d.values <= 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'B' AND d.values <= 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10664,13 +11813,15 @@ TEST_P(IResearchQueryOptimizationTest, test_170) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.max =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -10696,23 +11847,27 @@ TEST_P(IResearchQueryOptimizationTest, test_170) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a > x && a >= y, x < y
+// a > x && a >= y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_171) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'A' AND d.values >= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'A' AND d.values >= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10723,14 +11878,16 @@ TEST_P(IResearchQueryOptimizationTest, test_171) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       }
 
@@ -10756,24 +11913,28 @@ TEST_P(IResearchQueryOptimizationTest, test_171) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a > x && a >= y, x == y
+// a > x && a >= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_172) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'B' AND d.values >= 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'B' AND d.values >= 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10783,14 +11944,16 @@ TEST_P(IResearchQueryOptimizationTest, test_172) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
       if (optimizeType >= disabledDnfOptimizationStart) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -10816,24 +11979,28 @@ TEST_P(IResearchQueryOptimizationTest, test_172) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a > x && a >= y, x > y
+// a > x && a >= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_173) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'B' AND d.values >= 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'B' AND d.values >= 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10843,14 +12010,16 @@ TEST_P(IResearchQueryOptimizationTest, test_173) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
       if (optimizeType >= disabledDnfOptimizationStart) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         }
       }
@@ -10876,24 +12045,28 @@ TEST_P(IResearchQueryOptimizationTest, test_173) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a > x && a > y, x < y
+// a > x && a > y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_174) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'A' AND d.values > 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'A' AND d.values > 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10904,14 +12077,16 @@ TEST_P(IResearchQueryOptimizationTest, test_174) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -10937,23 +12112,27 @@ TEST_P(IResearchQueryOptimizationTest, test_174) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
   }
 }
 
-  // a > x && a > y, x == y
+// a > x && a > y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_175) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'B' AND d.values > 'B'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'B' AND d.values > 'B'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10963,7 +12142,8 @@ TEST_P(IResearchQueryOptimizationTest, test_175) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
 
@@ -10989,23 +12169,27 @@ TEST_P(IResearchQueryOptimizationTest, test_175) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
-  // a > x && a > y, x > y
+// a > x && a > y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_176) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values > 'B' AND d.values > 'A'") + o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH d.values > 'B' AND d.values > 'A'") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11015,14 +12199,16 @@ TEST_P(IResearchQueryOptimizationTest, test_176) {
       {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       }
       if (optimizeType >= disabledDnfOptimizationStart) {
         {
           auto& filter = root.add<irs::by_range>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
           filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         }
       }
@@ -11048,8 +12234,9 @@ TEST_P(IResearchQueryOptimizationTest, test_176) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -11062,10 +12249,12 @@ TEST_P(IResearchQueryOptimizationTest, test_177) {
     SCOPED_TRACE(o);
 
     std::string const query =
-      std::string("FOR d IN testView SEARCH  NOT( NOT (d.values == 'B'))") + o + "RETURN d";
+        std::string("FOR d IN testView SEARCH  NOT( NOT (d.values == 'B'))") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11075,7 +12264,8 @@ TEST_P(IResearchQueryOptimizationTest, test_177) {
       {
         auto& filter = root.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -11100,8 +12290,9 @@ TEST_P(IResearchQueryOptimizationTest, test_177) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -11117,12 +12308,14 @@ TEST_P(IResearchQueryOptimizationTest, test_178) {
       {
         auto& filter = andFilter.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       {
         auto& filter = andFilter.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
     }
     // right part B && A
@@ -11131,12 +12324,14 @@ TEST_P(IResearchQueryOptimizationTest, test_178) {
       {
         auto& filter = andFilter.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       {
         auto& filter = andFilter.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
     }
   };
@@ -11146,7 +12341,8 @@ TEST_P(IResearchQueryOptimizationTest, test_178) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("values");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
     }
 
     {
@@ -11154,29 +12350,35 @@ TEST_P(IResearchQueryOptimizationTest, test_178) {
       {
         auto& filter = sub.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
       {
         auto& filter = sub.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
     }
   };
 
-  std::vector<std::function<void(irs::Or&)>> structureChecks =
-      { dnfConvertedExpected, dnfConvertedExpected, nonConvertedExpected, nonConvertedExpected, nonConvertedExpected };
+  std::vector<std::function<void(irs::Or&)>> structureChecks = {
+      dnfConvertedExpected, dnfConvertedExpected, nonConvertedExpected,
+      nonConvertedExpected, nonConvertedExpected};
   ASSERT_EQ(structureChecks.size(), optimizerOptionsAvailable.size());
 
   size_t structCheckIdx = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH  d.values == 'B' AND  ( d.values == 'C'  OR d.values == 'A' ) ") +
-      o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH  d.values == 'B' AND  ( d.values == 'C'  "
+            "OR d.values == 'A' ) ") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11205,8 +12407,9 @@ TEST_P(IResearchQueryOptimizationTest, test_178) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
 
@@ -11214,7 +12417,8 @@ TEST_P(IResearchQueryOptimizationTest, test_178) {
   }
 }
 
-// check DNF conversion disabled  but IN nodes processed (sorted and deduplicated)!
+// check DNF conversion disabled  but IN nodes processed (sorted and
+// deduplicated)!
 TEST_P(IResearchQueryOptimizationTest, test_179) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
@@ -11225,12 +12429,14 @@ TEST_P(IResearchQueryOptimizationTest, test_179) {
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
@@ -11238,12 +12444,14 @@ TEST_P(IResearchQueryOptimizationTest, test_179) {
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
     }
@@ -11254,12 +12462,14 @@ TEST_P(IResearchQueryOptimizationTest, test_179) {
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
@@ -11267,12 +12477,14 @@ TEST_P(IResearchQueryOptimizationTest, test_179) {
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
     }
@@ -11285,12 +12497,14 @@ TEST_P(IResearchQueryOptimizationTest, test_179) {
       {
         auto& filter = sub.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = sub.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
     }
     {
@@ -11300,43 +12514,51 @@ TEST_P(IResearchQueryOptimizationTest, test_179) {
         {
           auto& filter = or2.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = or2.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
-        auto& or2 = filter .add<irs::Or>();
+        auto& or2 = filter.add<irs::Or>();
         {
           auto& filter = or2.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = or2.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
     }
   };
 
-  std::vector<std::function<void(irs::Or&)>> structureChecks =
-  { dnfConvertedExpected, dnfConvertedExpected, nonConvertedExpected, nonConvertedExpected, nonConvertedExpected };
+  std::vector<std::function<void(irs::Or&)>> structureChecks = {
+      dnfConvertedExpected, dnfConvertedExpected, nonConvertedExpected,
+      nonConvertedExpected, nonConvertedExpected};
   ASSERT_EQ(structureChecks.size(), optimizerOptionsAvailable.size());
 
   size_t structCheckIdx = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH  d.values IN ['A', 'C'] AND  ( d.values IN ['C', 'B', 'C']  OR d.values IN ['A', 'B'] ) ") +
-      o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH  d.values IN ['A', 'C'] AND  ( d.values "
+            "IN ['C', 'B', 'C']  OR d.values IN ['A', 'B'] ) ") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11365,8 +12587,9 @@ TEST_P(IResearchQueryOptimizationTest, test_179) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
 
@@ -11374,7 +12597,8 @@ TEST_P(IResearchQueryOptimizationTest, test_179) {
   }
 }
 
-// check DNF conversion disabled (with root disjunction)  but IN nodes processed (sorted and deduplicated)!
+// check DNF conversion disabled (with root disjunction)  but IN nodes processed
+// (sorted and deduplicated)!
 TEST_P(IResearchQueryOptimizationTest, test_180) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
@@ -11385,26 +12609,14 @@ TEST_P(IResearchQueryOptimizationTest, test_180) {
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
-        }
-      }
-      {
-        auto& andFilter = root.add<irs::And>();
-        auto& part = andFilter.add<irs::Or>();
-        {
-          auto& filter = part.add<irs::by_term>();
-          *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
-        }
-        {
-          auto& filter = part.add<irs::by_term>();
-          *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
@@ -11413,12 +12625,30 @@ TEST_P(IResearchQueryOptimizationTest, test_180) {
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+      }
+      {
+        auto& andFilter = root.add<irs::And>();
+        auto& part = andFilter.add<irs::Or>();
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
     }
@@ -11431,12 +12661,14 @@ TEST_P(IResearchQueryOptimizationTest, test_180) {
       {
         auto& filter = sub.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = sub.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
     }
     {
@@ -11444,12 +12676,14 @@ TEST_P(IResearchQueryOptimizationTest, test_180) {
       {
         auto& filter = orFilter.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       {
         auto& filter = orFilter.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
     }
     {
@@ -11457,29 +12691,35 @@ TEST_P(IResearchQueryOptimizationTest, test_180) {
       {
         auto& filter = orFilter.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = orFilter.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
     }
   };
 
-  std::vector<std::function<void(irs::Or&)>> structureChecks =
-  { dnfConvertedExpected, dnfConvertedExpected, nonConvertedExpected, nonConvertedExpected, nonConvertedExpected };
+  std::vector<std::function<void(irs::Or&)>> structureChecks = {
+      dnfConvertedExpected, dnfConvertedExpected, nonConvertedExpected,
+      nonConvertedExpected, nonConvertedExpected};
   ASSERT_EQ(structureChecks.size(), optimizerOptionsAvailable.size());
 
   size_t structCheckIdx = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH  d.values IN ['A', 'C'] OR  ( d.values IN ['C', 'B', 'C']  OR d.values IN ['A', 'B'] ) ") +
-      o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH  d.values IN ['A', 'C'] OR  ( d.values "
+            "IN ['C', 'B', 'C']  OR d.values IN ['A', 'B'] ) ") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11508,8 +12748,9 @@ TEST_P(IResearchQueryOptimizationTest, test_180) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
 
@@ -11517,7 +12758,8 @@ TEST_P(IResearchQueryOptimizationTest, test_180) {
   }
 }
 
-// check DNF conversion disabled (with root disjunction and conjunction inside)  but IN nodes processed (sorted and deduplicated)!
+// check DNF conversion disabled (with root disjunction and conjunction inside)
+// but IN nodes processed (sorted and deduplicated)!
 TEST_P(IResearchQueryOptimizationTest, test_181) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
@@ -11526,12 +12768,14 @@ TEST_P(IResearchQueryOptimizationTest, test_181) {
       {
         auto& filter = orFilter.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = orFilter.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
     }
     {
@@ -11541,12 +12785,14 @@ TEST_P(IResearchQueryOptimizationTest, test_181) {
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
@@ -11554,12 +12800,14 @@ TEST_P(IResearchQueryOptimizationTest, test_181) {
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = part.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
     }
@@ -11571,12 +12819,14 @@ TEST_P(IResearchQueryOptimizationTest, test_181) {
       {
         auto& filter = orFilter.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = orFilter.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
     }
     {
@@ -11586,12 +12836,14 @@ TEST_P(IResearchQueryOptimizationTest, test_181) {
         {
           auto& filter = orFilter.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
         {
           auto& filter = orFilter.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
         }
       }
       {
@@ -11599,30 +12851,36 @@ TEST_P(IResearchQueryOptimizationTest, test_181) {
         {
           auto& filter = orFilter.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
         }
         {
           auto& filter = orFilter.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
-          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->term =
+              irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
       }
     }
   };
 
-  std::vector<std::function<void(irs::Or&)>> structureChecks =
-  { dnfConvertedExpected, dnfConvertedExpected, nonConvertedExpected, nonConvertedExpected, nonConvertedExpected };
+  std::vector<std::function<void(irs::Or&)>> structureChecks = {
+      dnfConvertedExpected, dnfConvertedExpected, nonConvertedExpected,
+      nonConvertedExpected, nonConvertedExpected};
   ASSERT_EQ(structureChecks.size(), optimizerOptionsAvailable.size());
 
   size_t structCheckIdx = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH  d.values IN ['A', 'C'] OR  ( d.values IN ['C', 'B', 'C']  AND d.values IN ['A', 'B'] ) ") +
-      o + "RETURN d";
+        std::string(
+            "FOR d IN testView SEARCH  d.values IN ['A', 'C'] OR  ( d.values "
+            "IN ['C', 'B', 'C']  AND d.values IN ['A', 'B'] ) ") +
+        o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11651,15 +12909,15 @@ TEST_P(IResearchQueryOptimizationTest, test_181) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
 
     structCheckIdx++;
   }
 }
-
 
 // check Negation conversion disabled
 TEST_P(IResearchQueryOptimizationTest, test_182) {
@@ -11670,7 +12928,8 @@ TEST_P(IResearchQueryOptimizationTest, test_182) {
       {
         auto& filter = notFilter.filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
     }
     {
@@ -11678,38 +12937,47 @@ TEST_P(IResearchQueryOptimizationTest, test_182) {
       {
         auto& filter = notFilter.filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
     }
   };
 
   auto nonConvertedExpected = [](irs::Or& expected) {
-    auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>().add<irs::And>();
+    auto& root = expected.add<irs::And>()
+                     .add<irs::Not>()
+                     .filter<irs::And>()
+                     .add<irs::And>();
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("values");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("values");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
     }
   };
 
-  std::vector<std::function<void(irs::Or&)>> structureChecks =
-  { negationConvertedExpected, negationConvertedExpected, negationConvertedExpected, nonConvertedExpected, nonConvertedExpected };
+  std::vector<std::function<void(irs::Or&)>> structureChecks = {
+      negationConvertedExpected, negationConvertedExpected,
+      negationConvertedExpected, nonConvertedExpected, nonConvertedExpected};
   ASSERT_EQ(structureChecks.size(), optimizerOptionsAvailable.size());
 
   size_t structCheckIdx = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH  NOT (d.values == 'A' AND  d.values == 'B') ") +
-      o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH  NOT (d.values == "
+                                  "'A' AND  d.values == 'B') ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11736,8 +13004,9 @@ TEST_P(IResearchQueryOptimizationTest, test_182) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
 
@@ -11754,7 +13023,8 @@ TEST_P(IResearchQueryOptimizationTest, test_183) {
       {
         auto& filter = notFilter.filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
     }
     {
@@ -11762,38 +13032,47 @@ TEST_P(IResearchQueryOptimizationTest, test_183) {
       {
         auto& filter = notFilter.filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
     }
   };
 
   auto nonConvertedExpected = [](irs::Or& expected) {
-    auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>().add<irs::Or>();
+    auto& root = expected.add<irs::And>()
+                     .add<irs::Not>()
+                     .filter<irs::And>()
+                     .add<irs::Or>();
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("values");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("values");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
     }
   };
 
-  std::vector<std::function<void(irs::Or&)>> structureChecks =
-  { negationConvertedExpected, negationConvertedExpected, negationConvertedExpected, nonConvertedExpected, nonConvertedExpected };
+  std::vector<std::function<void(irs::Or&)>> structureChecks = {
+      negationConvertedExpected, negationConvertedExpected,
+      negationConvertedExpected, nonConvertedExpected, nonConvertedExpected};
   ASSERT_EQ(structureChecks.size(), optimizerOptionsAvailable.size());
 
   size_t structCheckIdx = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
-    std::string const query =
-      std::string("FOR d IN testView SEARCH  NOT (d.values == 'A' OR  d.values == 'B') ") +
-      o + "RETURN d";
+    std::string const query = std::string(
+                                  "FOR d IN testView SEARCH  NOT (d.values == "
+                                  "'A' OR  d.values == 'B') ") +
+                              o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11820,8 +13099,9 @@ TEST_P(IResearchQueryOptimizationTest, test_183) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
 
@@ -11835,10 +13115,14 @@ TEST_P(IResearchQueryOptimizationTest, test_184) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH  (d.values == 'A' OR d.values == 'B' OR d.values == 'A') AND  (d.values == 'A' OR d.values == 'C' OR d.values == 'C') ") +
-      o + "RETURN d";
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+        std::string(
+            "FOR d IN testView SEARCH  (d.values == 'A' OR d.values == 'B' OR "
+            "d.values == 'A') AND  (d.values == 'A' OR d.values == 'C' OR "
+            "d.values == 'C') ") +
+        o + "RETURN d";
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure only for non-optimized
@@ -11851,29 +13135,33 @@ TEST_P(IResearchQueryOptimizationTest, test_184) {
       {
         auto& filter = left.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = left.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       auto& right = andFilter.add<irs::Or>();
       {
         auto& filter = right.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = right.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
     }
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+        arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
@@ -11891,8 +13179,9 @@ TEST_P(IResearchQueryOptimizationTest, test_184) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -11905,10 +13194,13 @@ TEST_P(IResearchQueryOptimizationTest, test_185) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH  (d.values IN ['A', 'B', 'A']) AND  (d.values == 'A' OR d.values == 'C' OR d.values == 'C') ") +
-      o + "RETURN d";
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+        std::string(
+            "FOR d IN testView SEARCH  (d.values IN ['A', 'B', 'A']) AND  "
+            "(d.values == 'A' OR d.values == 'C' OR d.values == 'C') ") +
+        o + "RETURN d";
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure only for non-optimized
@@ -11921,29 +13213,33 @@ TEST_P(IResearchQueryOptimizationTest, test_185) {
       {
         auto& filter = left.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = left.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
       }
       auto& right = andFilter.add<irs::Or>();
       {
         auto& filter = right.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
       }
       {
         auto& filter = right.add<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
-        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
       }
 
       assertFilterOptimized(vocbase(), query, expected);
     }
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+        arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
@@ -11961,8 +13257,9 @@ TEST_P(IResearchQueryOptimizationTest, test_185) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -11973,20 +13270,22 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
   // empty prefix case wrapped
   {
     irs::Or expected;
-    auto& filter = expected.add<irs::And>().add<irs::And>().add<irs::by_edit_distance>();
+    auto& filter =
+        expected.add<irs::And>().add<irs::And>().add<irs::by_edit_distance>();
     *filter.mutable_field() = mangleString("name", "test_analyzer");
     auto* opts = filter.mutable_options();
     opts->max_distance = 2;
     opts->max_terms = 63;
-    opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-    opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
     opts->with_transpositions = false;
     assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH ANALYZER(LEVENSHTEIN_MATCH(d.name, 'foobar', 2, false, 63) "
-      "AND STARTS_WITH(d.name, 'foo'), 'test_analyzer') "
-      "RETURN d",
-      expected);
+        vocbase(),
+        "FOR d IN testView SEARCH ANALYZER(LEVENSHTEIN_MATCH(d.name, 'foobar', "
+        "2, false, 63) "
+        "AND STARTS_WITH(d.name, 'foo'), 'test_analyzer') "
+        "RETURN d",
+        expected);
   }
   // empty prefix case unwrapped
   {
@@ -11996,15 +13295,15 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 2;
     opts->max_terms = 63;
-    opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-    opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
     opts->with_transpositions = false;
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'foobar', 2, false, 63) "
-      "AND STARTS_WITH(d.name, 'foo') "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'foobar', 2, false, 63) "
+                          "AND STARTS_WITH(d.name, 'foo') "
+                          "RETURN d",
+                          expected);
   }
   // full prefix match
   {
@@ -12014,15 +13313,15 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 2;
     opts->max_terms = 63;
-    opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-    opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
     opts->with_transpositions = false;
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
-      "AND STARTS_WITH(d.name, 'foo') "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'bar', 2, false, 63, 'foo') "
+                          "AND STARTS_WITH(d.name, 'foo') "
+                          "RETURN d",
+                          expected);
   }
   // full prefix match + explicit allow
   {
@@ -12032,16 +13331,16 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 2;
     opts->max_terms = 63;
-    opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-    opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
     opts->with_transpositions = false;
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
-      "AND STARTS_WITH(d.name, 'foo') "
-      "OPTIONS {\"filterOptimization\": -1 } "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'bar', 2, false, 63, 'foo') "
+                          "AND STARTS_WITH(d.name, 'foo') "
+                          "OPTIONS {\"filterOptimization\": -1 } "
+                          "RETURN d",
+                          expected);
   }
   // substring prefix match
   {
@@ -12051,15 +13350,15 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 2;
     opts->max_terms = 63;
-    opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-    opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
     opts->with_transpositions = false;
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
-      "AND STARTS_WITH(d.name, 'fo') "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'bar', 2, false, 63, 'foo') "
+                          "AND STARTS_WITH(d.name, 'fo') "
+                          "RETURN d",
+                          expected);
   }
   // prefix enlargement case
   {
@@ -12069,15 +13368,15 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 2;
     opts->max_terms = 63;
-    opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-    opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
     opts->with_transpositions = false;
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'obar', 2, false, 63, 'fo') "
-      "AND STARTS_WITH(d.name, 'foo') "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'obar', 2, false, 63, 'fo') "
+                          "AND STARTS_WITH(d.name, 'foo') "
+                          "RETURN d",
+                          expected);
   }
   // prefix enlargement to the whole target
   {
@@ -12087,15 +13386,15 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 2;
     opts->max_terms = 63;
-    opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foobar"));
-    opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref(""));
+    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foobar"));
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref(""));
     opts->with_transpositions = false;
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'obar', 2, false, 63, 'fo') "
-      "AND STARTS_WITH(d.name, 'foobar') "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'obar', 2, false, 63, 'fo') "
+                          "AND STARTS_WITH(d.name, 'foobar') "
+                          "RETURN d",
+                          expected);
   }
   // empty prefix enlargement to the whole target
   {
@@ -12105,37 +13404,37 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 2;
     opts->max_terms = 63;
-    opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foobar"));
-    opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref(""));
+    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foobar"));
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref(""));
     opts->with_transpositions = false;
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'foobar', 2, false, 63) "
-      "AND STARTS_WITH(d.name, 'foobar') "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'foobar', 2, false, 63) "
+                          "AND STARTS_WITH(d.name, 'foobar') "
+                          "RETURN d",
+                          expected);
   }
   // make it empty with prefix
   {
     irs::Or expected;
     expected.add<irs::And>().add<irs::empty>();
     assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH STARTS_WITH(d.name, 'foobar12345')"
-      "AND LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo')"
-      "RETURN d",
-      expected);
+        vocbase(),
+        "FOR d IN testView SEARCH STARTS_WITH(d.name, 'foobar12345')"
+        "AND LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo')"
+        "RETURN d",
+        expected);
   }
   // make it empty
   {
     irs::Or expected;
     expected.add<irs::And>().add<irs::empty>();
     assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH STARTS_WITH(d.name, 'foobar12345')"
-      "AND LEVENSHTEIN_MATCH(d.name, 'foobar', 2, false, 63)"
-      "RETURN d",
-      expected);
+        vocbase(),
+        "FOR d IN testView SEARCH STARTS_WITH(d.name, 'foobar12345')"
+        "AND LEVENSHTEIN_MATCH(d.name, 'foobar', 2, false, 63)"
+        "RETURN d",
+        expected);
   }
   // empty prefix case - not match
   {
@@ -12147,8 +13446,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref(""));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("foobar"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref(""));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foobar"));
       opts->with_transpositions = false;
     }
     {
@@ -12156,14 +13455,15 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("boo"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'foobar', 2, false, 63) "
-      "AND STARTS_WITH(d.name, 'boo') "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'foobar', 2, false, 63) "
+                          "AND STARTS_WITH(d.name, 'boo') "
+                          "RETURN d",
+                          expected);
   }
   // prefix not match
   {
@@ -12175,8 +13475,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
       opts->with_transpositions = false;
     }
     {
@@ -12184,14 +13484,15 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("boo"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
-      "AND STARTS_WITH(d.name, 'boo') "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'bar', 2, false, 63, 'foo') "
+                          "AND STARTS_WITH(d.name, 'boo') "
+                          "RETURN d",
+                          expected);
   }
   // prefix too long
   {
@@ -12203,8 +13504,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
       opts->with_transpositions = false;
     }
     {
@@ -12212,14 +13513,15 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foobard"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
-      "AND STARTS_WITH(d.name, 'foobard') "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'bar', 2, false, 63, 'foo') "
+                          "AND STARTS_WITH(d.name, 'foobard') "
+                          "RETURN d",
+                          expected);
   }
   // scorers block optimization
   {
@@ -12231,8 +13533,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
       opts->with_transpositions = false;
     }
     {
@@ -12240,14 +13542,15 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
-      "AND STARTS_WITH(d.name, 'foo') SORT BM25(d) "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'bar', 2, false, 63, 'foo') "
+                          "AND STARTS_WITH(d.name, 'foo') SORT BM25(d) "
+                          "RETURN d",
+                          expected);
   }
   // scorers block optimization + allow
   {
@@ -12259,8 +13562,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
       opts->with_transpositions = false;
     }
     {
@@ -12268,14 +13571,16 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
-      "AND STARTS_WITH(d.name, 'foo') OPTIONS {\"filterOptimization\": -1} SORT BM25(d) "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'bar', 2, false, 63, 'foo') "
+                          "AND STARTS_WITH(d.name, 'foo') OPTIONS "
+                          "{\"filterOptimization\": -1} SORT BM25(d) "
+                          "RETURN d",
+                          expected);
   }
   // merging forbidden
   {
@@ -12287,8 +13592,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
       opts->with_transpositions = false;
     }
     {
@@ -12296,15 +13601,16 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
-      "AND STARTS_WITH(d.name, 'foo') "
-      "OPTIONS {\"filterOptimization\": 0 } "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'bar', 2, false, 63, 'foo') "
+                          "AND STARTS_WITH(d.name, 'foo') "
+                          "OPTIONS {\"filterOptimization\": 0 } "
+                          "RETURN d",
+                          expected);
   }
   // multiprefixes is not merged
   {
@@ -12316,8 +13622,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
       opts->with_transpositions = false;
     }
     {
@@ -12328,23 +13634,25 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
         *starts.mutable_field() = mangleString("name", "identity");
         auto* opt = starts.mutable_options();
         opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-        opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+        opt->scored_terms_limit =
+            arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
       }
       {
         auto& starts = orFilter.add<irs::by_prefix>();
         *starts.mutable_field() = mangleString("name", "identity");
         auto* opt = starts.mutable_options();
         opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("boo"));
-        opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+        opt->scored_terms_limit =
+            arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
       }
     }
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
-      "AND STARTS_WITH(d.name, ['foo', 'boo'], 2) "
-      "OPTIONS {\"filterOptimization\": 0 } "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'bar', 2, false, 63, 'foo') "
+                          "AND STARTS_WITH(d.name, ['foo', 'boo'], 2) "
+                          "OPTIONS {\"filterOptimization\": 0 } "
+                          "RETURN d",
+                          expected);
   }
   // name not match
   {
@@ -12356,8 +13664,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("boo"));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("boo"));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
       opts->with_transpositions = false;
     }
     {
@@ -12365,14 +13673,15 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name2", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("boo"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'boo') "
-      "AND STARTS_WITH(d.name2, 'boo') "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'bar', 2, false, 63, 'boo') "
+                          "AND STARTS_WITH(d.name2, 'boo') "
+                          "RETURN d",
+                          expected);
   }
   // prefix could not be enlarged
   {
@@ -12384,8 +13693,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("obar"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("obar"));
       opts->with_transpositions = false;
     }
     {
@@ -12393,14 +13702,15 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foa"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'obar', 2, false, 63, 'fo') "
-      "AND STARTS_WITH(d.name, 'foa') "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'obar', 2, false, 63, 'fo') "
+                          "AND STARTS_WITH(d.name, 'foa') "
+                          "RETURN d",
+                          expected);
   }
   // prefix could not be enlarged (prefix does not match)
   {
@@ -12412,8 +13722,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("obar"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("obar"));
       opts->with_transpositions = false;
     }
     {
@@ -12421,14 +13731,15 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("fao"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'obar', 2, false, 63, 'fo') "
-      "AND STARTS_WITH(d.name, 'fao') "
-      "RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'obar', 2, false, 63, 'fo') "
+                          "AND STARTS_WITH(d.name, 'fao') "
+                          "RETURN d",
+                          expected);
   }
   // merge multiple
   {
@@ -12438,19 +13749,19 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 2;
     opts->max_terms = 63;
-    opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foooab"));
-    opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foooab"));
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
     opts->with_transpositions = false;
-    assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'r', 2, false, 63, 'foooab') "
-      " AND STARTS_WITH(d.name, 'f') "
-      " AND STARTS_WITH(d.name, 'foo')"
-      " AND STARTS_WITH(d.name, 'fo') "
-      " AND STARTS_WITH(d.name, 'foooab') "
-      " OPTIONS {\"conditionOptimization\":\"none\"} "
-      " RETURN d",
-      expected);
+    assertFilterOptimized(vocbase(),
+                          "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
+                          "'r', 2, false, 63, 'foooab') "
+                          " AND STARTS_WITH(d.name, 'f') "
+                          " AND STARTS_WITH(d.name, 'foo')"
+                          " AND STARTS_WITH(d.name, 'fo') "
+                          " AND STARTS_WITH(d.name, 'foooab') "
+                          " OPTIONS {\"conditionOptimization\":\"none\"} "
+                          " RETURN d",
+                          expected);
   }
   // merge multiple resort
   {
@@ -12460,20 +13771,20 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 2;
     opts->max_terms = 63;
-    opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foooab"));
-    opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foooab"));
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
     opts->with_transpositions = false;
     assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH "
-      " STARTS_WITH(d.name, 'f') "
-      " AND STARTS_WITH(d.name, 'foo')"
-      " AND STARTS_WITH(d.name, 'fo') "
-      " AND STARTS_WITH(d.name, 'foooab') "
-      " AND LEVENSHTEIN_MATCH(d.name, 'r', 2, false, 63, 'foooab') "
-      " OPTIONS {\"conditionOptimization\":\"none\"} "
-      " RETURN d",
-      expected);
+        vocbase(),
+        "FOR d IN testView SEARCH "
+        " STARTS_WITH(d.name, 'f') "
+        " AND STARTS_WITH(d.name, 'foo')"
+        " AND STARTS_WITH(d.name, 'fo') "
+        " AND STARTS_WITH(d.name, 'foooab') "
+        " AND LEVENSHTEIN_MATCH(d.name, 'r', 2, false, 63, 'foooab') "
+        " OPTIONS {\"conditionOptimization\":\"none\"} "
+        " RETURN d",
+        expected);
   }
   // merge multiple resort 2 levs
   {
@@ -12485,8 +13796,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foooab"));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foooab"));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
       opts->with_transpositions = false;
     }
     {
@@ -12495,22 +13806,22 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("poo"));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("poo"));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
       opts->with_transpositions = false;
     }
     assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH "
-      " STARTS_WITH(d.name, 'f') "
-      " AND STARTS_WITH(d.name, 'poo')"
-      " AND LEVENSHTEIN_MATCH(d.name, 'poor', 2, false, 63) "
-      " AND STARTS_WITH(d.name, 'fo') "
-      " AND STARTS_WITH(d.name, 'foooab') "
-      " AND LEVENSHTEIN_MATCH(d.name, 'r', 2, false, 63, 'foooab') "
-      " OPTIONS {\"conditionOptimization\":\"none\"} "
-      " RETURN d",
-      expected);
+        vocbase(),
+        "FOR d IN testView SEARCH "
+        " STARTS_WITH(d.name, 'f') "
+        " AND STARTS_WITH(d.name, 'poo')"
+        " AND LEVENSHTEIN_MATCH(d.name, 'poor', 2, false, 63) "
+        " AND STARTS_WITH(d.name, 'fo') "
+        " AND STARTS_WITH(d.name, 'foooab') "
+        " AND LEVENSHTEIN_MATCH(d.name, 'r', 2, false, 63, 'foooab') "
+        " OPTIONS {\"conditionOptimization\":\"none\"} "
+        " RETURN d",
+        expected);
   }
   // merge multiple resort 2 levs moar sorting
   {
@@ -12522,8 +13833,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foooab"));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foooab"));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
       opts->with_transpositions = false;
     }
     {
@@ -12532,26 +13843,24 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       auto* opts = filter.mutable_options();
       opts->max_distance = 2;
       opts->max_terms = 63;
-      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("poo"));
-      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+      opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("poo"));
+      opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
       opts->with_transpositions = false;
     }
     assertFilterOptimized(
-      vocbase(),
-      "FOR d IN testView SEARCH "
-      " STARTS_WITH(d.name, 'f') "
-      " AND STARTS_WITH(d.name, 'poo')"
-      " AND STARTS_WITH(d.name, 'fo') "
-      " AND STARTS_WITH(d.name, 'foooab') "
-      " AND LEVENSHTEIN_MATCH(d.name, 'poor', 2, false, 63) "
-      " AND LEVENSHTEIN_MATCH(d.name, 'r', 2, false, 63, 'foooab') "
-      " OPTIONS {\"conditionOptimization\":\"none\"} "
-      " RETURN d",
-      expected);
+        vocbase(),
+        "FOR d IN testView SEARCH "
+        " STARTS_WITH(d.name, 'f') "
+        " AND STARTS_WITH(d.name, 'poo')"
+        " AND STARTS_WITH(d.name, 'fo') "
+        " AND STARTS_WITH(d.name, 'foooab') "
+        " AND LEVENSHTEIN_MATCH(d.name, 'poor', 2, false, 63) "
+        " AND LEVENSHTEIN_MATCH(d.name, 'r', 2, false, 63, 'foooab') "
+        " OPTIONS {\"conditionOptimization\":\"none\"} "
+        " RETURN d",
+        expected);
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryOptimizationTest,
-  IResearchQueryOptimizationTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryOptimizationTest,
+                        IResearchQueryOptimizationTest, GetLinkVersions());

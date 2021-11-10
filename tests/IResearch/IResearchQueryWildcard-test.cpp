@@ -21,16 +21,14 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchQueryCommon.h"
+#include <velocypack/Iterator.h>
 
 #include "IResearch/IResearchView.h"
+#include "IResearchQueryCommon.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Iterator.h>
-
 #include "utils/string_utils.hpp"
 
 extern const char* ARGV0;  // defined in main.cpp
@@ -42,7 +40,8 @@ class IResearchQuerWildcardTest : public IResearchQueryTest {};
 }  // namespace
 
 TEST_P(IResearchQuerWildcardTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
@@ -57,16 +56,16 @@ TEST_P(IResearchQuerWildcardTest, test) {
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
 
-    auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+        resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -95,8 +94,7 @@ TEST_P(IResearchQuerWildcardTest, test) {
     }})";
 
     auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()));
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
 
@@ -112,7 +110,8 @@ TEST_P(IResearchQuerWildcardTest, test) {
         "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d";
 
     // commit data
-    EXPECT_TRUE(arangodb::tests::executeQuery(vocbase, queryString).result.ok());
+    EXPECT_TRUE(
+        arangodb::tests::executeQuery(vocbase, queryString).result.ok());
   }
 
   // test missing field
@@ -280,7 +279,8 @@ TEST_P(IResearchQuerWildcardTest, test) {
         vocbase,
         "FOR d IN testView SEARCH LIKE(d.value) SORT BM25(d) ASC, TFIDF(d) "
         "DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(
+        result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test missing value via []
@@ -289,7 +289,8 @@ TEST_P(IResearchQuerWildcardTest, test) {
         vocbase,
         "FOR d IN testView SEARCH LIKE(d['value']) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(
+        result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test invalid analyzer type (array)
@@ -313,11 +314,11 @@ TEST_P(IResearchQuerWildcardTest, test) {
   // match any
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[30].slice(), insertedDocs[31].slice(),
-      insertedDocs[0].slice(), insertedDocs[3].slice(),
-      insertedDocs[8].slice(), insertedDocs[15].slice(),
-      insertedDocs[20].slice(), insertedDocs[23].slice(),
-      insertedDocs[25].slice(), insertedDocs[28].slice(),
+        insertedDocs[30].slice(), insertedDocs[31].slice(),
+        insertedDocs[0].slice(),  insertedDocs[3].slice(),
+        insertedDocs[8].slice(),  insertedDocs[15].slice(),
+        insertedDocs[20].slice(), insertedDocs[23].slice(),
+        insertedDocs[25].slice(), insertedDocs[28].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -340,8 +341,7 @@ TEST_P(IResearchQuerWildcardTest, test) {
   // exact match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[0].slice()
-    };
+        insertedDocs[0].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH LIKE(d.prefix, 'abcd') "
@@ -363,9 +363,9 @@ TEST_P(IResearchQuerWildcardTest, test) {
   // prefix match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[30].slice(), insertedDocs[31].slice(),
-      insertedDocs[0].slice(), insertedDocs[3].slice(),
-      insertedDocs[20].slice(), insertedDocs[25].slice(),
+        insertedDocs[30].slice(), insertedDocs[31].slice(),
+        insertedDocs[0].slice(),  insertedDocs[3].slice(),
+        insertedDocs[20].slice(), insertedDocs[25].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -388,9 +388,9 @@ TEST_P(IResearchQuerWildcardTest, test) {
   // prefix match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[30].slice(), insertedDocs[31].slice(),
-      insertedDocs[0].slice(), insertedDocs[3].slice(),
-      insertedDocs[20].slice(), insertedDocs[25].slice(),
+        insertedDocs[30].slice(), insertedDocs[31].slice(),
+        insertedDocs[0].slice(),  insertedDocs[3].slice(),
+        insertedDocs[20].slice(), insertedDocs[25].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -413,7 +413,8 @@ TEST_P(IResearchQuerWildcardTest, test) {
   // suffix match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[0].slice(), insertedDocs[8].slice(),
+        insertedDocs[0].slice(),
+        insertedDocs[8].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -436,10 +437,10 @@ TEST_P(IResearchQuerWildcardTest, test) {
   // pattern match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[30].slice(), insertedDocs[31].slice(),
-      insertedDocs[0].slice(), insertedDocs[3].slice(),
-      insertedDocs[8].slice(), insertedDocs[20].slice(),
-      insertedDocs[25].slice(),
+        insertedDocs[30].slice(), insertedDocs[31].slice(),
+        insertedDocs[0].slice(),  insertedDocs[3].slice(),
+        insertedDocs[8].slice(),  insertedDocs[20].slice(),
+        insertedDocs[25].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -462,9 +463,9 @@ TEST_P(IResearchQuerWildcardTest, test) {
   // pattern match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[30].slice(), insertedDocs[31].slice(),
-      insertedDocs[0].slice(), insertedDocs[3].slice(),
-      insertedDocs[20].slice(), insertedDocs[25].slice(),
+        insertedDocs[30].slice(), insertedDocs[31].slice(),
+        insertedDocs[0].slice(),  insertedDocs[3].slice(),
+        insertedDocs[20].slice(), insertedDocs[25].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -487,8 +488,9 @@ TEST_P(IResearchQuerWildcardTest, test) {
   // pattern match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[30].slice(), insertedDocs[31].slice(),
-      insertedDocs[0].slice(),
+        insertedDocs[30].slice(),
+        insertedDocs[31].slice(),
+        insertedDocs[0].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -511,7 +513,7 @@ TEST_P(IResearchQuerWildcardTest, test) {
   // pattern match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[3].slice(),
+        insertedDocs[3].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -534,8 +536,8 @@ TEST_P(IResearchQuerWildcardTest, test) {
   // pattern match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[3].slice(),
-      insertedDocs[25].slice(),
+        insertedDocs[3].slice(),
+        insertedDocs[25].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -558,7 +560,7 @@ TEST_P(IResearchQuerWildcardTest, test) {
   // pattern match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[25].slice(),
+        insertedDocs[25].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -581,7 +583,7 @@ TEST_P(IResearchQuerWildcardTest, test) {
   // pattern match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[25].slice(),
+        insertedDocs[25].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -602,7 +604,5 @@ TEST_P(IResearchQuerWildcardTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQuerWildcardTest,
-  IResearchQuerWildcardTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQuerWildcardTest, IResearchQuerWildcardTest,
+                        GetLinkVersions());

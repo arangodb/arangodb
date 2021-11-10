@@ -22,7 +22,7 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
+#include "Cache/TransactionalCache.h"
 
 #include <cstdint>
 #include <string>
@@ -33,11 +33,10 @@
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
-#include "Cache/TransactionalCache.h"
-#include "Random/RandomGenerator.h"
-
-#include "Mocks/Servers.h"
 #include "MockScheduler.h"
+#include "Mocks/Servers.h"
+#include "Random/RandomGenerator.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
@@ -50,8 +49,10 @@ TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024 * 1024);
-  auto cache1 = manager.createCache(CacheType::Transactional, false, 256 * 1024);
-  auto cache2 = manager.createCache(CacheType::Transactional, false, 512 * 1024);
+  auto cache1 =
+      manager.createCache(CacheType::Transactional, false, 256 * 1024);
+  auto cache2 =
+      manager.createCache(CacheType::Transactional, false, 512 * 1024);
 
   ASSERT_EQ(0, cache1->usage());
   ASSERT_TRUE(256 * 1024 >= cache1->size());
@@ -71,8 +72,8 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
   auto cache = manager.createCache(CacheType::Transactional, false, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
-    CachedValue* value =
-        CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
+    CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
+                                                sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.ok()) {
@@ -85,8 +86,8 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
 
   for (std::uint64_t i = 0; i < 1024; i++) {
     std::uint64_t j = 2 * i;
-    CachedValue* value =
-        CachedValue::construct(&i, sizeof(std::uint64_t), &j, sizeof(std::uint64_t));
+    CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &j,
+                                                sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.ok()) {
@@ -99,8 +100,8 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
   }
 
   for (std::uint64_t i = 1024; i < 128 * 1024; i++) {
-    CachedValue* value =
-        CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
+    CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
+                                                sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.ok()) {
@@ -124,8 +125,8 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   auto cache = manager.createCache(CacheType::Transactional, false, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
-    CachedValue* value =
-        CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
+    CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
+                                                sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.ok()) {
@@ -186,8 +187,8 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   Transaction* tx = manager.beginTransaction(false);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
-    CachedValue* value =
-        CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
+    CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
+                                                sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.ok()) {
@@ -208,8 +209,8 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   }
 
   for (std::uint64_t i = 512; i < 1024; i++) {
-    CachedValue* value =
-        CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
+    CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
+                                                sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     ASSERT_TRUE(status.fail());
@@ -223,8 +224,8 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
 
   std::uint64_t reinserted = 0;
   for (std::uint64_t i = 512; i < 1024; i++) {
-    CachedValue* value =
-        CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
+    CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
+                                                sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.ok()) {
@@ -241,7 +242,8 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   manager.destroyCache(cache);
 }
 
-TEST(CacheTransactionalCacheTest, verify_cache_can_grow_correctly_when_it_runs_out_of_space_LongRunning) {
+TEST(CacheTransactionalCacheTest,
+     verify_cache_can_grow_correctly_when_it_runs_out_of_space_LongRunning) {
   MockScheduler scheduler(4);
   auto postFn = [&scheduler](std::function<void()> fn) -> bool {
     scheduler.post(fn);
@@ -254,8 +256,8 @@ TEST(CacheTransactionalCacheTest, verify_cache_can_grow_correctly_when_it_runs_o
   std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
   for (std::uint64_t i = 0; i < 4 * 1024 * 1024; i++) {
-    CachedValue* value =
-        CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
+    CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
+                                                sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.fail()) {
@@ -309,7 +311,8 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
 
     // commence mixed workload
     for (std::uint64_t i = 0; i < operationCount; i++) {
-      std::uint32_t r = RandomGenerator::interval(static_cast<std::uint32_t>(99UL));
+      std::uint32_t r =
+          RandomGenerator::interval(static_cast<std::uint32_t>(99UL));
 
       if (r >= 99) {  // remove something
         if (validLower == validUpper) {
@@ -328,8 +331,8 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
         if (validUpper > banishUpper) {
           banishUpper = validUpper;
         }
-        CachedValue* value = CachedValue::construct(&item, sizeof(std::uint64_t),
-                                                    &item, sizeof(std::uint64_t));
+        CachedValue* value = CachedValue::construct(
+            &item, sizeof(std::uint64_t), &item, sizeof(std::uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = cache->insert(value);
         if (status.fail()) {
@@ -343,9 +346,8 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
         std::uint64_t item = ++banishUpper;
         cache->banish(&item, sizeof(std::uint64_t));
       } else {  // lookup something
-        std::uint64_t item =
-            RandomGenerator::interval(static_cast<int64_t>(validLower),
-                                      static_cast<int64_t>(validUpper));
+        std::uint64_t item = RandomGenerator::interval(
+            static_cast<int64_t>(validLower), static_cast<int64_t>(validUpper));
 
         Finding f = cache->find(&item, sizeof(std::uint64_t));
         if (f.found()) {

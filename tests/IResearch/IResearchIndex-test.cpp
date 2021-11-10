@@ -22,21 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "common.h"
-#include "gtest/gtest.h"
-
 #include "3rdParty/iresearch/tests/tests_config.hpp"
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "utils/utf8_path.hpp"
-
-#include "velocypack/Iterator.h"
-#include "velocypack/Parser.h"
-
-#include "Mocks/LogLevels.h"
-#include "Mocks/Servers.h"
-#include "Mocks/StorageEngineMock.h"
-
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/VelocyPackHelper.h"
@@ -44,15 +30,18 @@
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/VelocyPackHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "Logger/Logger.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
@@ -64,6 +53,13 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+#include "common.h"
+#include "gtest/gtest.h"
+#include "utils/utf8_path.hpp"
+#include "velocypack/Iterator.h"
+#include "velocypack/Parser.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -71,7 +67,7 @@
 
 namespace {
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 struct TestAttributeX : public irs::attribute {
   static constexpr irs::string_ref type_name() noexcept {
@@ -79,7 +75,8 @@ struct TestAttributeX : public irs::attribute {
   }
 };
 
-REGISTER_ATTRIBUTE(TestAttributeX);  // required to open reader on segments with analized fields
+REGISTER_ATTRIBUTE(TestAttributeX);  // required to open reader on segments with
+                                     // analized fields
 
 struct TestAttributeY : public irs::attribute {
   static constexpr irs::string_ref type_name() noexcept {
@@ -87,7 +84,8 @@ struct TestAttributeY : public irs::attribute {
   }
 };
 
-REGISTER_ATTRIBUTE(TestAttributeY);  // required to open reader on segments with analized fields
+REGISTER_ATTRIBUTE(TestAttributeY);  // required to open reader on segments with
+                                     // analized fields
 
 class TestAnalyzer : public irs::analysis::analyzer {
  public:
@@ -107,12 +105,14 @@ class TestAnalyzer : public irs::analysis::analyzer {
     arangodb::velocypack::Builder builder;
     if (slice.isString()) {
       VPackObjectBuilder scope(&builder);
-      arangodb::iresearch::addStringRef(builder, "args",
-                                        arangodb::iresearch::getStringRef(slice));
-    } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
+      arangodb::iresearch::addStringRef(
+          builder, "args", arangodb::iresearch::getStringRef(slice));
+    } else if (slice.isObject() && slice.hasKey("args") &&
+               slice.get("args").isString()) {
       VPackObjectBuilder scope(&builder);
-      arangodb::iresearch::addStringRef(builder, "args",
-                                        arangodb::iresearch::getStringRef(slice.get("args")));
+      arangodb::iresearch::addStringRef(
+          builder, "args",
+          arangodb::iresearch::getStringRef(slice.get("args")));
     } else {
       return false;
     }
@@ -122,7 +122,6 @@ class TestAnalyzer : public irs::analysis::analyzer {
 
   TestAnalyzer(irs::string_ref const& value)
       : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {
-
     auto slice = arangodb::iresearch::slice(value);
     auto arg = slice.get("args").copyString();
 
@@ -133,7 +132,8 @@ class TestAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  virtual irs::attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override {
     if (type == irs::type<TestAttributeX>::id()) {
       return _px;
     }
@@ -173,7 +173,8 @@ class TestAnalyzer : public irs::analysis::analyzer {
   irs::attribute* _py{};
 };
 
-REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make,
+                        TestAnalyzer::normalize);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -181,8 +182,10 @@ REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normaliz
 
 class IResearchIndexTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AQL, arangodb::LogLevel::ERR> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AQL,
+                                            arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
@@ -196,16 +199,19 @@ class IResearchIndexTest
     server.addFeature<arangodb::FlushFeature>(false);
     server.startFeatures();
 
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-    dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    dbFeature.createDatabase(
+        testDBInfo(server.server()),
+        _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::OperationOptions options(arangodb::ExecContext::current());
-    arangodb::methods::Collections::createSystem(*_vocbase, options,
-                                                 arangodb::tests::AnalyzerCollectionName,
-                                                 false, unused);
+    arangodb::methods::Collections::createSystem(
+        *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
+        unused);
     analyzers.emplace(
         result, "testVocbase::test_A", "TestInsertAnalyzer",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"X\" }")->slice());
@@ -214,7 +220,8 @@ class IResearchIndexTest
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"Y\" }")->slice());
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+    arangodb::tests::setDatabasePath(
+        dbPathFeature);  // ensure test data is stored in a unique directory
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }
@@ -226,7 +233,8 @@ class IResearchIndexTest
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-// test indexing with multiple analyzers (on different collections) will return results only for matching analyzer
+// test indexing with multiple analyzers (on different collections) will return
+// results only for matching analyzer
 TEST_F(IResearchIndexTest, test_analyzer) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection0\" }");
@@ -248,14 +256,17 @@ TEST_F(IResearchIndexTest, test_analyzer) {
     auto doc1 = arangodb::velocypack::Parser::fromJson(
         "{ \"seq\": 1, \"X\": \"abc\", \"Y\": \"def\" }");
     static std::vector<std::string> const EMPTY;
-    std::vector<std::string> collections{collection0->name(), collection1->name()};
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
-                                       EMPTY, collections, EMPTY,
-                                       arangodb::transaction::Options());
+    std::vector<std::string> collections{collection0->name(),
+                                         collection1->name()};
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
+        collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(), arangodb::OperationOptions())
+    EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
+                           arangodb::OperationOptions())
                     .ok());
-    EXPECT_TRUE(trx.insert(collection1->name(), doc1->slice(), arangodb::OperationOptions())
+    EXPECT_TRUE(trx.insert(collection1->name(), doc1->slice(),
+                           arangodb::OperationOptions())
                     .ok());
     EXPECT_TRUE(trx.commit().ok());
   }
@@ -277,7 +288,8 @@ TEST_F(IResearchIndexTest, test_analyzer) {
     EXPECT_TRUE(viewImpl->properties(updateJson->slice(), true, false).ok());
   }
 
-  // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
+  // docs match from both collections (2 analyzers used for collection0, 1
+  // analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
         vocbase(),
@@ -300,7 +312,8 @@ TEST_F(IResearchIndexTest, test_analyzer) {
     EXPECT_EQ(i, expected.size());
   }
 
-  // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
+  // docs match from both collections (2 analyzers used for collection0, 1
+  // analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
         vocbase(),
@@ -323,7 +336,8 @@ TEST_F(IResearchIndexTest, test_analyzer) {
     EXPECT_EQ(i, expected.size());
   }
 
-  // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
+  // docs match from both collections (2 analyzers used for collection0, 1
+  // analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
         vocbase(),
@@ -487,7 +501,8 @@ TEST_F(IResearchIndexTest, test_async_index) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -526,8 +541,8 @@ TEST_F(IResearchIndexTest, test_async_index) {
 
         resource /= std::string_view(arangodb::tests::testResourceDir);
         resource /= std::string_view("simple_sequential.json");
-        builder =
-            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+        builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+            resource.u8string());
       } catch (...) {
         return;  // velocyPackFromFile(...) may throw exception
       }
@@ -539,12 +554,14 @@ TEST_F(IResearchIndexTest, test_async_index) {
       if (!resThread0) return;
 
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(collection0->vocbase()),
+          arangodb::transaction::StandaloneContext::Create(
+              collection0->vocbase()),
           *collection0, arangodb::AccessMode::Type::WRITE);
       resThread0 = trx.begin().ok();
       if (!resThread0) return;
 
-      resThread0 = trx.insert(collection0->name(), doc->slice(), arangodb::OperationOptions())
+      resThread0 = trx.insert(collection0->name(), doc->slice(),
+                              arangodb::OperationOptions())
                        .ok();
       if (!resThread0) return;
 
@@ -566,8 +583,8 @@ TEST_F(IResearchIndexTest, test_async_index) {
 
         resource /= std::string_view(arangodb::tests::testResourceDir);
         resource /= std::string_view("simple_sequential.json");
-        builder =
-            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+        builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+            resource.u8string());
       } catch (...) {
         return;  // velocyPackFromFile(...) may throw exception
       }
@@ -579,12 +596,14 @@ TEST_F(IResearchIndexTest, test_async_index) {
       if (!resThread1) return;
 
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(collection1->vocbase()),
+          arangodb::transaction::StandaloneContext::Create(
+              collection1->vocbase()),
           *collection1, arangodb::AccessMode::Type::WRITE);
       resThread1 = trx.begin().ok();
       if (!resThread1) return;
 
-      resThread1 = trx.insert(collection1->name(), doc->slice(), arangodb::OperationOptions())
+      resThread1 = trx.insert(collection1->name(), doc->slice(),
+                              arangodb::OperationOptions())
                        .ok();
       if (!resThread1) return;
 
@@ -605,7 +624,8 @@ TEST_F(IResearchIndexTest, test_async_index) {
   EXPECT_TRUE(resThread0);
   EXPECT_TRUE(resThread1);
 
-  // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
+  // docs match from both collections (2 analyzers used for collectio0, 1
+  // analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -615,12 +635,11 @@ TEST_F(IResearchIndexTest, test_async_index) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    std::vector<size_t> expected{0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,
-                                 5,  6,  6,  7,  7,  8,  8,  9,  9,  10, 10,
-                                 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16,
-                                 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21,
-                                 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27,
-                                 27, 28, 28, 29, 29, 30, 30, 31, 31, 40, 50};
+    std::vector<size_t> expected{
+        0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,  5,  6,  6,  7,  7,  8,
+        8,  9,  9,  10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16,
+        17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25,
+        25, 26, 26, 27, 27, 28, 28, 29, 29, 30, 30, 31, 31, 40, 50};
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -633,7 +652,8 @@ TEST_F(IResearchIndexTest, test_async_index) {
     EXPECT_EQ(i, expected.size());
   }
 
-  // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
+  // docs match from both collections (2 analyzers used for collectio0, 1
+  // analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -643,12 +663,11 @@ TEST_F(IResearchIndexTest, test_async_index) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    std::vector<size_t> expected{0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,
-                                 5,  6,  6,  7,  7,  8,  8,  9,  9,  10, 10,
-                                 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16,
-                                 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21,
-                                 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27,
-                                 27, 28, 28, 29, 29, 30, 30, 31, 31, 40, 50};
+    std::vector<size_t> expected{
+        0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,  5,  6,  6,  7,  7,  8,
+        8,  9,  9,  10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16,
+        17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25,
+        25, 26, 26, 27, 27, 28, 28, 29, 29, 30, 30, 31, 31, 40, 50};
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -661,7 +680,8 @@ TEST_F(IResearchIndexTest, test_async_index) {
     EXPECT_EQ(i, expected.size());
   }
 
-  // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
+  // docs match from both collections (2 analyzers used for collectio0, 1
+  // analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -671,12 +691,11 @@ TEST_F(IResearchIndexTest, test_async_index) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    std::vector<size_t> expected{0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,
-                                 5,  6,  6,  7,  7,  8,  8,  9,  9,  10, 10,
-                                 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16,
-                                 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21,
-                                 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27,
-                                 27, 28, 28, 29, 29, 30, 30, 31, 31, 40, 50};
+    std::vector<size_t> expected{
+        0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,  5,  6,  6,  7,  7,  8,
+        8,  9,  9,  10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16,
+        17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25,
+        25, 26, 26, 27, 27, 28, 28, 29, 29, 30, 30, 31, 31, 40, 50};
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -836,7 +855,8 @@ TEST_F(IResearchIndexTest, test_fields) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -851,14 +871,17 @@ TEST_F(IResearchIndexTest, test_fields) {
     auto doc1 = arangodb::velocypack::Parser::fromJson(
         "{ \"seq\": 1, \"X\": \"abc\", \"Y\": \"def\" }");
     static std::vector<std::string> const EMPTY;
-    std::vector<std::string> collections{collection0->name(), collection1->name()};
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, collections, EMPTY,
-                                       arangodb::transaction::Options());
+    std::vector<std::string> collections{collection0->name(),
+                                         collection1->name()};
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+        collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(), arangodb::OperationOptions())
+    EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
+                           arangodb::OperationOptions())
                     .ok());
-    EXPECT_TRUE(trx.insert(collection1->name(), doc1->slice(), arangodb::OperationOptions())
+    EXPECT_TRUE(trx.insert(collection1->name(), doc1->slice(),
+                           arangodb::OperationOptions())
                     .ok());
     EXPECT_TRUE(trx.commit().ok());
   }

@@ -21,20 +21,16 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-
-#include "velocypack/Parser.h"
-
-#include "IResearch/common.h"
-#include "Mocks/LogLevels.h"
-#include "Mocks/StorageEngineMock.h"
+#include "RestServer/FlushFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/StorageEngineMock.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FlushFeature.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -44,6 +40,8 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/FlushThread.h"
 #include "V8Server/V8DealerFeature.h"
+#include "gtest/gtest.h"
+#include "velocypack/Parser.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -55,28 +53,41 @@
 
 class FlushFeatureTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::WARN>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES, arangodb::LogLevel::FATAL> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::WARN>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES,
+                                            arangodb::LogLevel::FATAL> {
  protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
+  std::vector<
+      std::pair<arangodb::application_features::ApplicationFeature&, bool>>
+      features;
 
   FlushFeatureTest() : engine(server), server(nullptr, nullptr) {
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false); 
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
-    features.emplace_back(server.addFeature<arangodb::ClusterFeature>(), false);  // required for V8DealerFeature::prepare()
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);  // required for MMFilesWalRecoverState constructor
+    features.emplace_back(server.addFeature<arangodb::ClusterFeature>(),
+                          false);  // required for V8DealerFeature::prepare()
+    features.emplace_back(
+        server.addFeature<arangodb::DatabaseFeature>(),
+        false);  // required for MMFilesWalRecoverState constructor
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
-    features.emplace_back(server.addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
+                          false);  // required for TRI_vocbase_t
+    features.emplace_back(
+        server.addFeature<arangodb::V8DealerFeature>(),
+        false);  // required for DatabaseFeature::createDatabase(...)
 
 #if USE_ENTERPRISE
-    features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
+    features.emplace_back(
+        server.addFeature<arangodb::LdapFeature>(),
+        false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {
@@ -91,7 +102,8 @@ class FlushFeatureTest
   }
 
   ~FlushFeatureTest() {
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
+        nullptr);
 
     // destroy application features
     for (auto& f : features) {

@@ -22,17 +22,19 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearch/Containers.h"
+
 #include <set>
 #include <tuple>
+
 #include "gtest/gtest.h"
 #include "utils/thread_utils.hpp"
-
-#include "IResearch/Containers.h"
 
 TEST(ContainersTest, test_Hasher) {
   // ensure hashing of irs::bytes_ref is possible
   {
-    typedef arangodb::iresearch::UnorderedRefKeyMapBase<irs::byte_type, int>::KeyHasher Hasher;
+    typedef arangodb::iresearch::UnorderedRefKeyMapBase<irs::byte_type,
+                                                        int>::KeyHasher Hasher;
     Hasher hasher;
     irs::string_ref strRef("abcdefg");
     irs::bytes_ref ref = irs::ref_cast<irs::byte_type>(strRef);
@@ -41,7 +43,8 @@ TEST(ContainersTest, test_Hasher) {
 
   // ensure hashing of irs::string_ref is possible
   {
-    typedef arangodb::iresearch::UnorderedRefKeyMapBase<char, int>::KeyHasher Hasher;
+    typedef arangodb::iresearch::UnorderedRefKeyMapBase<char, int>::KeyHasher
+        Hasher;
     Hasher hasher;
     irs::string_ref ref("abcdefg");
     EXPECT_FALSE((0 == hasher(ref)));
@@ -109,7 +112,8 @@ TEST(ContainersTest, test_UniqueHeapInstance) {
       instance1 = std::move(instance);
       EXPECT_TRUE((ptr == instance1.get()));
 
-      arangodb::iresearch::UniqueHeapInstance<TestStruct> instance2(std::move(instance1));
+      arangodb::iresearch::UniqueHeapInstance<TestStruct> instance2(
+          std::move(instance1));
       EXPECT_TRUE((ptr == instance2.get()));
     }
 
@@ -125,7 +129,8 @@ TEST(ContainersTest, test_UniqueHeapInstance) {
       instance1 = std::move(*instance);
       EXPECT_TRUE((id == instance1->id));
 
-      arangodb::iresearch::UniqueHeapInstance<TestStruct> instance2(std::move(*instance1));
+      arangodb::iresearch::UniqueHeapInstance<TestStruct> instance2(
+          std::move(*instance1));
       EXPECT_TRUE((id == instance2->id));
     }
   }
@@ -241,7 +246,9 @@ TEST(ContainersTest, test_UnorderedRefKeyMap) {
     std::set<std::string> expected({"abc", "def", "ghi"});
 
     for (auto& entry : map) {
-      EXPECT_TRUE((1 == expected.erase(static_cast<std::string>(entry.key())))); // FIXME: after C++20 remove cast and use heterogeneous lookup
+      EXPECT_TRUE((1 == expected.erase(static_cast<std::string>(
+                            entry.key()))));  // FIXME: after C++20 remove cast
+                                              // and use heterogeneous lookup
     }
 
     EXPECT_TRUE((expected.empty()));

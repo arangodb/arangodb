@@ -22,39 +22,42 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
-#include <Replication2/Streams/LogMultiplexer.h>
-#include <Replication2/Streams/StreamSpecification.h>
-
+#include <Mocks/LogLevels.h>
 #include <Replication2/Mocks/FakeReplicatedLog.h>
 #include <Replication2/Mocks/PersistedLog.h>
 #include <Replication2/Mocks/ReplicatedLogMetricsMock.h>
-#include <Mocks/LogLevels.h>
+#include <Replication2/Streams/LogMultiplexer.h>
+#include <Replication2/Streams/StreamSpecification.h>
+#include <gtest/gtest.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb::replication2::test {
 
-struct LogMultiplexerTestBase : ::testing::Test, public ::arangodb::tests::LogSuppressor<Logger::REPLICATION2, LogLevel::ERR> {
+struct LogMultiplexerTestBase
+    : ::testing::Test,
+      public ::arangodb::tests::LogSuppressor<Logger::REPLICATION2,
+                                              LogLevel::ERR> {
   static auto createReplicatedLog(LogId id = LogId{0})
       -> std::shared_ptr<replication2::replicated_log::ReplicatedLog> {
-    return createReplicatedLogImpl<replicated_log::ReplicatedLog, test::MockLog>(id);
+    return createReplicatedLogImpl<replicated_log::ReplicatedLog,
+                                   test::MockLog>(id);
   }
 
   static auto createAsyncReplicatedLog(LogId id = LogId{0})
       -> std::shared_ptr<replication2::replicated_log::ReplicatedLog> {
-    return createReplicatedLogImpl<replicated_log::ReplicatedLog, test::AsyncMockLog>(id);
+    return createReplicatedLogImpl<replicated_log::ReplicatedLog,
+                                   test::AsyncMockLog>(id);
   }
 
   static auto createFakeReplicatedLog(LogId id = LogId{0})
       -> std::shared_ptr<replication2::test::TestReplicatedLog> {
-    return createReplicatedLogImpl<replication2::test::TestReplicatedLog, test::MockLog>(id);
+    return createReplicatedLogImpl<replication2::test::TestReplicatedLog,
+                                   test::MockLog>(id);
   }
 
  private:
-  template <typename Impl, typename MockLog>
+  template<typename Impl, typename MockLog>
   static auto createReplicatedLogImpl(LogId id) -> std::shared_ptr<Impl> {
     auto persisted = std::make_shared<MockLog>(id);
     auto core = std::make_unique<replicated_log::LogCore>(persisted);
@@ -67,15 +70,16 @@ struct LogMultiplexerTestBase : ::testing::Test, public ::arangodb::tests::LogSu
 };
 
 struct default_deserializer {
-  template <typename T>
+  template<typename T>
   auto operator()(streams::serializer_tag_t<T>, velocypack::Slice s) -> T {
     return s.extract<T>();
   }
 };
 
 struct default_serializer {
-  template <typename T>
-  void operator()(streams::serializer_tag_t<T>, T const& t, velocypack::Builder& b) {
+  template<typename T>
+  void operator()(streams::serializer_tag_t<T>, T const& t,
+                  velocypack::Builder& b) {
     b.add(velocypack::Value(t));
   }
 };
@@ -108,5 +112,7 @@ using MyTestSpecification = streams::stream_descriptor_set<
 
 }  // namespace arangodb::replication2::test
 
-extern template struct arangodb::replication2::streams::LogMultiplexer<arangodb::replication2::test::MyTestSpecification>;
-extern template struct arangodb::replication2::streams::LogDemultiplexer<arangodb::replication2::test::MyTestSpecification>;
+extern template struct arangodb::replication2::streams::LogMultiplexer<
+    arangodb::replication2::test::MyTestSpecification>;
+extern template struct arangodb::replication2::streams::LogDemultiplexer<
+    arangodb::replication2::test::MyTestSpecification>;

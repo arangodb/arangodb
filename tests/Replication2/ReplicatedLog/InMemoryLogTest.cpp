@@ -25,7 +25,6 @@
 #include <immer/flex_vector_transient.hpp>
 
 #include "Containers/Enumerate.h"
-
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 
 using namespace arangodb;
@@ -40,7 +39,8 @@ struct TestInMemoryLog : InMemoryLog {
 };
 
 struct InMemoryLogTestBase {
-  static auto createLogForRangeSingleTerm(LogRange range, LogTerm term = LogTerm{1})
+  static auto createLogForRangeSingleTerm(LogRange range,
+                                          LogTerm term = LogTerm{1})
       -> TestInMemoryLog {
     auto transient = InMemoryLog::log_type::transient_type{};
     for (auto i : range) {
@@ -51,7 +51,8 @@ struct InMemoryLogTestBase {
   }
 };
 
-struct InMemoryLogTest : ::testing::TestWithParam<LogRange>, InMemoryLogTestBase {};
+struct InMemoryLogTest : ::testing::TestWithParam<LogRange>,
+                         InMemoryLogTestBase {};
 
 TEST_P(InMemoryLogTest, first_last_next) {
   auto const term = LogTerm{1};
@@ -108,8 +109,8 @@ TEST_P(InMemoryLogTest, append_in_place) {
   auto const range = GetParam();
   auto log = createLogForRangeSingleTerm(range);
 
-  auto memtry =
-      InMemoryLogEntry({LogTerm{1}, range.to, LogPayload::createFromString("foo")});
+  auto memtry = InMemoryLogEntry(
+      {LogTerm{1}, range.to, LogPayload::createFromString("foo")});
   log.appendInPlace(LoggerContext(Logger::FIXME), std::move(memtry));
   {
     auto result = log.getEntryByIndex(range.to);
@@ -123,11 +124,10 @@ TEST_P(InMemoryLogTest, append_in_place) {
   }
 }
 
-auto const LogRanges = ::testing::Values(LogRange(LogIndex{1}, LogIndex{15}),
-                                         LogRange(LogIndex{1}, LogIndex{1234}),
-                                         LogRange(LogIndex{1}, LogIndex{1}),
-                                         LogRange(LogIndex{5}, LogIndex{18}),
-                                         LogRange(LogIndex{76}, LogIndex{76}));
+auto const LogRanges = ::testing::Values(
+    LogRange(LogIndex{1}, LogIndex{15}), LogRange(LogIndex{1}, LogIndex{1234}),
+    LogRange(LogIndex{1}, LogIndex{1}), LogRange(LogIndex{5}, LogIndex{18}),
+    LogRange(LogIndex{76}, LogIndex{76}));
 
 INSTANTIATE_TEST_CASE_P(InMemoryLogTestInstance, InMemoryLogTest, LogRanges);
 
@@ -138,7 +138,8 @@ struct InMemoryLogAppendTest
                                         LogTerm term = LogTerm{1}) {
     auto result = InMemoryLog::log_type_persisted::transient_type{};
     for (auto idx : LogRange(first, first + length)) {
-      result.push_back(PersistingLogEntry{term, idx, LogPayload::createFromString("foo")});
+      result.push_back(
+          PersistingLogEntry{term, idx, LogPayload::createFromString("foo")});
     }
     return result.persistent();
   }
@@ -160,10 +161,12 @@ TEST_P(InMemoryLogAppendTest, append_peristed_entries) {
 }
 
 INSTANTIATE_TEST_CASE_P(InMemoryLogAppendTest, InMemoryLogAppendTest,
-                        ::testing::Combine(::testing::Range<std::size_t>(0, 10), LogRanges));
+                        ::testing::Combine(::testing::Range<std::size_t>(0, 10),
+                                           LogRanges));
 
-struct InMemoryLogSliceTest : ::testing::TestWithParam<std::tuple<LogRange, LogRange>>,
-                              InMemoryLogTestBase {};
+struct InMemoryLogSliceTest
+    : ::testing::TestWithParam<std::tuple<LogRange, LogRange>>,
+      InMemoryLogTestBase {};
 
 TEST_P(InMemoryLogSliceTest, slice) {
   auto const [range, testRange] = GetParam();
@@ -194,7 +197,8 @@ TEST_P(InMemoryLogSliceTest, get_iterator_range) {
 
     for (auto idx : expectedRange) {
       auto value = iter->next();
-      ASSERT_TRUE(value.has_value()) << "idx = " << idx << " range = " << expectedRange;
+      ASSERT_TRUE(value.has_value())
+          << "idx = " << idx << " range = " << expectedRange;
       EXPECT_EQ(value->logIndex(), idx);
     }
   }
@@ -212,7 +216,8 @@ TEST_P(InMemoryLogSliceTest, get_iterator_from) {
 
   for (auto idx : expectedRange) {
     auto value = iter->next();
-    ASSERT_TRUE(value.has_value()) << "idx = " << idx << " range = " << expectedRange;
+    ASSERT_TRUE(value.has_value())
+        << "idx = " << idx << " range = " << expectedRange;
     EXPECT_EQ(value->logIndex(), idx);
   }
 
@@ -230,10 +235,10 @@ TEST_P(InMemoryLogSliceTest, release) {
   }
 }
 
-auto const SliceRanges = ::testing::Values(LogRange(LogIndex{4}, LogIndex{6}),
-                                           LogRange(LogIndex{1}, LogIndex{8}),
-                                           LogRange(LogIndex{100}, LogIndex{120}),
-                                           LogRange(LogIndex{18}, LogIndex{18}));
+auto const SliceRanges = ::testing::Values(
+    LogRange(LogIndex{4}, LogIndex{6}), LogRange(LogIndex{1}, LogIndex{8}),
+    LogRange(LogIndex{100}, LogIndex{120}),
+    LogRange(LogIndex{18}, LogIndex{18}));
 
 INSTANTIATE_TEST_CASE_P(InMemoryLogSliceTest, InMemoryLogSliceTest,
                         ::testing::Combine(LogRanges, SliceRanges));
@@ -242,8 +247,10 @@ using TermDistribution = std::map<LogTerm, std::size_t>;
 
 using TermTestData = std::tuple<LogTerm, LogIndex, TermDistribution>;
 
-struct IndexOfTermTest : ::testing::TestWithParam<TermTestData>, InMemoryLogTestBase {
-  static auto createLogForDistribution(LogIndex first, TermDistribution const& dist)
+struct IndexOfTermTest : ::testing::TestWithParam<TermTestData>,
+                         InMemoryLogTestBase {
+  static auto createLogForDistribution(LogIndex first,
+                                       TermDistribution const& dist)
       -> TestInMemoryLog {
     auto transient = InMemoryLog::log_type::transient_type{};
     auto next = first;
@@ -257,8 +264,8 @@ struct IndexOfTermTest : ::testing::TestWithParam<TermTestData>, InMemoryLogTest
     return TestInMemoryLog(transient.persistent());
   }
 
-  static auto getTermBounds(LogIndex first, TermDistribution const& dist, LogTerm wanted)
-      -> std::optional<LogRange> {
+  static auto getTermBounds(LogIndex first, TermDistribution const& dist,
+                            LogTerm wanted) -> std::optional<LogRange> {
     auto next = first;
     for (auto [term, length] : dist) {
       if (term == wanted) {
@@ -283,7 +290,8 @@ TEST_P(IndexOfTermTest, first_index_of_term) {
   ASSERT_EQ(range.has_value(), lastInTerm.has_value());
 
   if (range.has_value()) {
-    EXPECT_EQ(range->from, *firstInTerm) << "term = " << term << " log = " << log.dump();
+    EXPECT_EQ(range->from, *firstInTerm)
+        << "term = " << term << " log = " << log.dump();
     EXPECT_EQ(range->to, *lastInTerm + 1);
   }
 }
@@ -314,4 +322,5 @@ auto Distributions = ::testing::Values(
 INSTANTIATE_TEST_CASE_P(
     IndexOfTermTest, IndexOfTermTest,
     ::testing::Combine(::testing::Values(LogTerm{1}, LogTerm{2}, LogTerm{3}),
-                       ::testing::Values(LogIndex{1}, LogIndex{10}), Distributions));
+                       ::testing::Values(LogIndex{1}, LogIndex{10}),
+                       Distributions));

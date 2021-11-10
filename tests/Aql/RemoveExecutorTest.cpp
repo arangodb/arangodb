@@ -21,13 +21,6 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Mocks/Servers.h"
-#include "QueryHelper.h"
-#include "gtest/gtest.h"
-
-#include "Aql/Query.h"
-#include "RestServer/QueryRegistryFeature.h"
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -35,8 +28,12 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "../IResearch/IResearchQueryCommon.h"
-
+#include "Aql/Query.h"
 #include "Logger/LogMacros.h"
+#include "Mocks/Servers.h"
+#include "QueryHelper.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -102,31 +99,35 @@ class RemoveExecutorTestPatterns
 };
 
 TEST_F(RemoveExecutorTest, remove_non_existent_assert_error) {
-  std::string query = std::string("REMOVE { _key: \"invalidFoo\"} IN " + collectionName);
+  std::string query =
+      std::string("REMOVE { _key: \"invalidFoo\"} IN " + collectionName);
 
   AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
 TEST_F(RemoveExecutorTest, remove_non_existent_ignore_error) {
   auto const expected = VPackParser::fromJson("[ ]");
-  std::string query = std::string("REMOVE { _key: \"invalidFoo\"} IN " + collectionName +
-                                  " OPTIONS { ignoreErrors: true }");
+  std::string query =
+      std::string("REMOVE { _key: \"invalidFoo\"} IN " + collectionName +
+                  " OPTIONS { ignoreErrors: true }");
 
   AssertQueryHasResult(vocbase, query, expected->slice());
 }
 
 TEST_P(RemoveExecutorTestPatterns, remove_all_without_return) {
-  std::string query =
-      std::string("FOR d IN " + collectionName + " REMOVE d IN " + collectionName);
+  std::string query = std::string("FOR d IN " + collectionName +
+                                  " REMOVE d IN " + collectionName);
 
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
-  AssertQueryHasResult(vocbase, allDocumentsQuery, VPackSlice::emptyArraySlice());
+  AssertQueryHasResult(vocbase, allDocumentsQuery,
+                       VPackSlice::emptyArraySlice());
 }
 
 TEST_P(RemoveExecutorTestPatterns, remove_all_with_return) {
   auto const bindParameters = VPackParser::fromJson("{ }");
-  std::string allQuery = std::string("FOR d IN " + collectionName + " RETURN d");
+  std::string allQuery =
+      std::string("FOR d IN " + collectionName + " RETURN d");
 
   auto allDocs = executeQuery(vocbase, allQuery, bindParameters);
   ASSERT_TRUE(allDocs.ok());
@@ -136,7 +137,8 @@ TEST_P(RemoveExecutorTestPatterns, remove_all_with_return) {
                   collectionName + " RETURN OLD");
   AssertQueryHasResult(vocbase, query, allDocs.data->slice());
 
-  AssertQueryHasResult(vocbase, allDocumentsQuery, VPackSlice::emptyArraySlice());
+  AssertQueryHasResult(vocbase, allDocumentsQuery,
+                       VPackSlice::emptyArraySlice());
 }
 
 TEST_P(RemoveExecutorTestPatterns, remove_every_third_without_return) {
@@ -176,9 +178,9 @@ TEST_P(RemoveExecutorTestPatterns, remove_every_third_with_return) {
   auto allDocs = executeQuery(vocbase, allQuery, bindParameters);
   ASSERT_TRUE(allDocs.ok());
 
-  std::string query = std::string("FOR d IN " + collectionName +
-                                  " FILTER (d.value % 3) == 0 REMOVE d IN " +
-                                  collectionName + " SORT OLD.value RETURN OLD");
+  std::string query = std::string(
+      "FOR d IN " + collectionName + " FILTER (d.value % 3) == 0 REMOVE d IN " +
+      collectionName + " SORT OLD.value RETURN OLD");
   AssertQueryHasResult(vocbase, query, allDocs.data->slice());
 
   // The things we did not remove still have to be there.
@@ -200,9 +202,9 @@ TEST_P(RemoveExecutorTestPatterns, remove_every_third_with_return) {
 
 TEST_P(RemoveExecutorTestPatterns, remove_with_key) {
   auto const bindParameters = VPackParser::fromJson("{ }");
-  std::string docQuery =
-      std::string("FOR d IN " + collectionName + " FILTER d.value <= " + rDocsString +
-                  " SORT d.sortvalue RETURN d");
+  std::string docQuery = std::string("FOR d IN " + collectionName +
+                                     " FILTER d.value <= " + rDocsString +
+                                     " SORT d.sortvalue RETURN d");
 
   auto docs = executeQuery(vocbase, docQuery, bindParameters);
   ASSERT_TRUE(docs.ok());
@@ -215,7 +217,8 @@ TEST_P(RemoveExecutorTestPatterns, remove_with_key) {
 
 TEST_P(RemoveExecutorTestPatterns, remove_with_id) {
   auto const bindParameters = VPackParser::fromJson("{ }");
-  std::string allQuery = std::string("FOR d IN " + collectionName + " RETURN d");
+  std::string allQuery =
+      std::string("FOR d IN " + collectionName + " RETURN d");
 
   auto allDocs = executeQuery(vocbase, allQuery, bindParameters);
   ASSERT_TRUE(allDocs.ok());
@@ -239,12 +242,13 @@ TEST_P(RemoveExecutorTestPatterns, remove_all_without_return_subquery) {
   AssertQueryHasResult(vocbase, checkQuery, VPackSlice::emptyArraySlice());
 }
 
-INSTANTIATE_TEST_CASE_P(RemoveExecutorTestInstance, RemoveExecutorTestPatterns,
-                        testing::Values(std::pair{100, 10}, std::pair{1000, 10},
-                                        std::pair{1000, 100}, std::pair{999, 10},
-                                        std::pair{1001, 1000}, std::pair{1001, 1001},
-                                        std::pair{2001, 1000}, std::pair{2001, 1500},
-                                        std::pair{3000, 1000}, std::pair{3000, 2001}));
+INSTANTIATE_TEST_CASE_P(
+    RemoveExecutorTestInstance, RemoveExecutorTestPatterns,
+    testing::Values(std::pair{100, 10}, std::pair{1000, 10},
+                    std::pair{1000, 100}, std::pair{999, 10},
+                    std::pair{1001, 1000}, std::pair{1001, 1001},
+                    std::pair{2001, 1000}, std::pair{2001, 1500},
+                    std::pair{3000, 1000}, std::pair{3000, 2001}));
 
 }  // namespace aql
 }  // namespace tests

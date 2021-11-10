@@ -22,34 +22,34 @@
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-
-#include "Basics/Exceptions.h"
-#include "Basics/GlobalResourceMonitor.h"
-#include "Basics/ResourceUsage.h"
-#include "Basics/voc-errors.h"
-
 #include <algorithm>
 #include <atomic>
 #include <functional>
 #include <thread>
 #include <vector>
 
+#include "Basics/Exceptions.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
+#include "Basics/voc-errors.h"
+#include "gtest/gtest.h"
+
 namespace {
 constexpr size_t numThreads = 4;
 constexpr uint64_t numOpsPerThread = 15 * 1000 * 1000;
 
 constexpr size_t bucketize(size_t value) {
-  return value / arangodb::ResourceMonitor::chunkSize * arangodb::ResourceMonitor::chunkSize;
+  return value / arangodb::ResourceMonitor::chunkSize *
+         arangodb::ResourceMonitor::chunkSize;
 }
-} // namespace
+}  // namespace
 
 using namespace arangodb;
 
 TEST(ResourceUsageTest, testEmpty) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
-  
+
   ASSERT_EQ(0, monitor.memoryLimit());
   ASSERT_EQ(0, monitor.current());
   ASSERT_EQ(0, monitor.peak());
@@ -63,7 +63,7 @@ TEST(ResourceUsageTest, testEmpty) {
 TEST(ResourceUsageTest, testBasicRestrictions) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
-  
+
   ASSERT_EQ(0, monitor.memoryLimit());
   ASSERT_EQ(0, monitor.current());
   ASSERT_EQ(0, monitor.peak());
@@ -73,43 +73,45 @@ TEST(ResourceUsageTest, testBasicRestrictions) {
   ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.memoryLimit());
   ASSERT_EQ(0, monitor.current());
   ASSERT_EQ(0, monitor.peak());
-  
+
   monitor.increaseMemoryUsage(ResourceMonitor::chunkSize);
   ASSERT_EQ(ResourceMonitor::chunkSize, monitor.current());
   ASSERT_EQ(ResourceMonitor::chunkSize, monitor.peak());
-  
+
   monitor.decreaseMemoryUsage(ResourceMonitor::chunkSize);
   ASSERT_EQ(0, monitor.current());
   ASSERT_EQ(ResourceMonitor::chunkSize, monitor.peak());
-  
+
   monitor.increaseMemoryUsage(ResourceMonitor::chunkSize);
   ASSERT_EQ(ResourceMonitor::chunkSize, monitor.current());
   ASSERT_EQ(ResourceMonitor::chunkSize, monitor.peak());
-  
+
   monitor.increaseMemoryUsage(ResourceMonitor::chunkSize);
   ASSERT_EQ(2 * ResourceMonitor::chunkSize, monitor.current());
   ASSERT_EQ(2 * ResourceMonitor::chunkSize, monitor.peak());
-  
+
   monitor.decreaseMemoryUsage(ResourceMonitor::chunkSize);
   ASSERT_EQ(ResourceMonitor::chunkSize, monitor.current());
   ASSERT_EQ(2 * ResourceMonitor::chunkSize, monitor.peak());
-  
+
   monitor.increaseMemoryUsage(5 * ResourceMonitor::chunkSize);
   ASSERT_EQ(6 * ResourceMonitor::chunkSize, monitor.current());
   ASSERT_EQ(6 * ResourceMonitor::chunkSize, monitor.peak());
-  
+
   monitor.increaseMemoryUsage(4 * ResourceMonitor::chunkSize);
   ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.current());
   ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.peak());
-  
-  ASSERT_THROW({
-    try {
-      monitor.increaseMemoryUsage(ResourceMonitor::chunkSize);
-    } catch (basics::Exception const& ex) {
-      ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
-      throw;
-    }
-  }, basics::Exception);
+
+  ASSERT_THROW(
+      {
+        try {
+          monitor.increaseMemoryUsage(ResourceMonitor::chunkSize);
+        } catch (basics::Exception const& ex) {
+          ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
+          throw;
+        }
+      },
+      basics::Exception);
   ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.current());
   ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.peak());
 
@@ -117,21 +119,23 @@ TEST(ResourceUsageTest, testBasicRestrictions) {
   ASSERT_EQ(9 * ResourceMonitor::chunkSize, monitor.current());
   ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.peak());
 
-  ASSERT_THROW({
-    try {
-      monitor.increaseMemoryUsage(2 * ResourceMonitor::chunkSize);
-    } catch (basics::Exception const& ex) {
-      ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
-      throw;
-    }
-  }, basics::Exception);
+  ASSERT_THROW(
+      {
+        try {
+          monitor.increaseMemoryUsage(2 * ResourceMonitor::chunkSize);
+        } catch (basics::Exception const& ex) {
+          ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
+          throw;
+        }
+      },
+      basics::Exception);
   ASSERT_EQ(9 * ResourceMonitor::chunkSize, monitor.current());
   ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.peak());
 
   monitor.decreaseMemoryUsage(ResourceMonitor::chunkSize);
   ASSERT_EQ(8 * ResourceMonitor::chunkSize, monitor.current());
   ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.peak());
-  
+
   monitor.decreaseMemoryUsage(8 * ResourceMonitor::chunkSize);
   ASSERT_EQ(0, monitor.current());
   ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.peak());
@@ -140,7 +144,7 @@ TEST(ResourceUsageTest, testBasicRestrictions) {
 TEST(ResourceUsageTest, testIncreaseInStepsRestricted) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
-  
+
   monitor.memoryLimit(100000);
 
   for (size_t i = 0; i < 1000; ++i) {
@@ -149,31 +153,33 @@ TEST(ResourceUsageTest, testIncreaseInStepsRestricted) {
       ASSERT_EQ((i + 1) * 1000, monitor.current());
       ASSERT_EQ(::bucketize((i + 1) * 1000), monitor.peak());
     } else {
-      ASSERT_THROW({
-        try {
-          monitor.increaseMemoryUsage(1000);
-        } catch (basics::Exception const& ex) {
-          ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
-          throw;
-        }
-      }, basics::Exception);
+      ASSERT_THROW(
+          {
+            try {
+              monitor.increaseMemoryUsage(1000);
+            } catch (basics::Exception const& ex) {
+              ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
+              throw;
+            }
+          },
+          basics::Exception);
     }
   }
-      
-//  ASSERT_EQ(::bucketize(100000), monitor.current());
+
+  //  ASSERT_EQ(::bucketize(100000), monitor.current());
   ASSERT_EQ(::bucketize(100000), monitor.peak());
-  
+
   monitor.decreaseMemoryUsage(monitor.current());
 }
 
 TEST(ResourceUsageTest, testIncreaseInStepsUnrestricted) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
-  
+
   for (size_t i = 0; i < 1000; ++i) {
     monitor.increaseMemoryUsage(1000);
   }
-      
+
   ASSERT_EQ(1000000, monitor.current());
   ASSERT_EQ(::bucketize(1000000), monitor.peak());
 
@@ -183,7 +189,7 @@ TEST(ResourceUsageTest, testIncreaseInStepsUnrestricted) {
 TEST(ResourceUsageTest, testConcurrencyRestricted) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
-  
+
   monitor.memoryLimit(123456);
 
   constexpr size_t amount = 123;
@@ -233,7 +239,7 @@ TEST(ResourceUsageTest, testConcurrencyRestricted) {
 TEST(ResourceUsageTest, testConcurrencyUnrestricted) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
-  
+
   std::atomic<bool> go = false;
   constexpr size_t amount = 123;
 
@@ -268,9 +274,9 @@ TEST(ResourceUsageTest, testConcurrencyUnrestricted) {
 TEST(ResourceUsageTest, testMemoryLocalLimitViolationCounter) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
-  
+
   monitor.memoryLimit(65535);
-  
+
   auto stats = global.stats();
   ASSERT_EQ(0, stats.globalLimitReached);
   ASSERT_EQ(0, stats.localLimitReached);
@@ -282,7 +288,7 @@ TEST(ResourceUsageTest, testMemoryLocalLimitViolationCounter) {
   stats = global.stats();
   ASSERT_EQ(0, stats.globalLimitReached);
   ASSERT_EQ(0, stats.localLimitReached);
-        
+
   try {
     scope.increase(1);
     throw "fail!";
@@ -293,7 +299,7 @@ TEST(ResourceUsageTest, testMemoryLocalLimitViolationCounter) {
   stats = global.stats();
   ASSERT_EQ(0, stats.globalLimitReached);
   ASSERT_EQ(1, stats.localLimitReached);
-  
+
   try {
     scope.increase(1);
     throw "fail!";
@@ -311,7 +317,7 @@ TEST(ResourceUsageTest, testGlobalMemoryLimitViolationCounter) {
   global.memoryLimit(65535);
 
   ResourceMonitor monitor(global);
-  
+
   auto stats = global.stats();
   ASSERT_EQ(0, stats.globalLimitReached);
   ASSERT_EQ(0, stats.localLimitReached);
@@ -323,7 +329,7 @@ TEST(ResourceUsageTest, testGlobalMemoryLimitViolationCounter) {
   stats = global.stats();
   ASSERT_EQ(0, stats.globalLimitReached);
   ASSERT_EQ(0, stats.localLimitReached);
-        
+
   try {
     scope.increase(1);
     throw "fail!";
@@ -334,7 +340,7 @@ TEST(ResourceUsageTest, testGlobalMemoryLimitViolationCounter) {
   stats = global.stats();
   ASSERT_EQ(1, stats.globalLimitReached);
   ASSERT_EQ(0, stats.localLimitReached);
-  
+
   try {
     scope.increase(1);
     throw "fail!";
@@ -353,7 +359,7 @@ TEST(ResourceUsageTest, testGlobalMemoryLimitViolationCounterHitByMultiple) {
 
   ResourceMonitor monitor1(global);
   ResourceMonitor monitor2(global);
-  
+
   auto stats = global.stats();
   ASSERT_EQ(0, stats.globalLimitReached);
   ASSERT_EQ(0, stats.localLimitReached);
@@ -367,7 +373,7 @@ TEST(ResourceUsageTest, testGlobalMemoryLimitViolationCounterHitByMultiple) {
   stats = global.stats();
   ASSERT_EQ(0, stats.globalLimitReached);
   ASSERT_EQ(0, stats.localLimitReached);
-        
+
   try {
     scope2.increase(16384);
     throw "fail!";
@@ -378,7 +384,7 @@ TEST(ResourceUsageTest, testGlobalMemoryLimitViolationCounterHitByMultiple) {
   stats = global.stats();
   ASSERT_EQ(1, stats.globalLimitReached);
   ASSERT_EQ(0, stats.localLimitReached);
-  
+
   try {
     scope1.increase(163841);
     throw "fail!";
@@ -393,7 +399,7 @@ TEST(ResourceUsageTest, testGlobalMemoryLimitViolationCounterHitByMultiple) {
 
 TEST(GlobalResourceMonitorTest, testEmpty) {
   GlobalResourceMonitor monitor;
-  
+
   ASSERT_EQ(0, monitor.memoryLimit());
   ASSERT_EQ(0, monitor.current());
 
@@ -402,17 +408,16 @@ TEST(GlobalResourceMonitorTest, testEmpty) {
   ASSERT_EQ(0, monitor.current());
 }
 
-
 TEST(GlobalResourceMonitorTest, testBasicRestrictions) {
   GlobalResourceMonitor monitor;
-  
+
   ASSERT_EQ(0, monitor.memoryLimit());
   ASSERT_EQ(0, monitor.current());
 
   monitor.memoryLimit(10000);
   ASSERT_EQ(10000, monitor.memoryLimit());
   ASSERT_EQ(0, monitor.current());
-  
+
   ASSERT_FALSE(monitor.increaseMemoryUsage(10001));
   ASSERT_EQ(0, monitor.current());
 
@@ -424,17 +429,17 @@ TEST(GlobalResourceMonitorTest, testBasicRestrictions) {
 
   monitor.decreaseMemoryUsage(1000);
   ASSERT_EQ(9000, monitor.current());
-  
+
   ASSERT_TRUE(monitor.increaseMemoryUsage(1000));
   ASSERT_EQ(10000, monitor.current());
-  
+
   ASSERT_FALSE(monitor.increaseMemoryUsage(1));
   ASSERT_EQ(10000, monitor.current());
 }
 
 TEST(GlobalResourceMonitorTest, testIncreaseInStepsRestricted) {
   GlobalResourceMonitor monitor;
-  
+
   monitor.memoryLimit(100000);
 
   for (size_t i = 0; i < 1000; ++i) {
@@ -445,23 +450,23 @@ TEST(GlobalResourceMonitorTest, testIncreaseInStepsRestricted) {
       ASSERT_EQ(100000, monitor.current());
     }
   }
-      
+
   ASSERT_EQ(100000, monitor.current());
 }
 
 TEST(GlobalResourceMonitorTest, testIncreaseInStepsUnrestricted) {
   GlobalResourceMonitor monitor;
-  
+
   for (size_t i = 0; i < 1000; ++i) {
     ASSERT_TRUE(monitor.increaseMemoryUsage(1000));
   }
-      
+
   ASSERT_EQ(1000000, monitor.current());
 }
 
 TEST(GlobalResourceMonitorTest, testConcurrencyRestricted) {
   GlobalResourceMonitor monitor;
-  
+
   monitor.memoryLimit(123456);
 
   std::atomic<bool> go = false;
@@ -507,7 +512,7 @@ TEST(GlobalResourceMonitorTest, testConcurrencyRestricted) {
 
 TEST(GlobalResourceMonitorTest, testConcurrencyUnrestricted) {
   GlobalResourceMonitor monitor;
-  
+
   std::atomic<bool> go = false;
 
   std::vector<std::thread> threads;

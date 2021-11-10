@@ -20,9 +20,8 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <gtest/gtest.h>
-
 #include <Basics/UnshackledMutex.h>
+#include <gtest/gtest.h>
 
 #include <array>
 #include <atomic>
@@ -213,7 +212,8 @@ TEST(UnshackledMutexTest, interleavedThreadsTest) {
     checkpointReached[EPSILON] = true;
   };
 
-  waitUntilAtMost([&]() -> bool { return checkpointReached[EPSILON]; }, 1us, 1s);
+  waitUntilAtMost([&]() -> bool { return checkpointReached[EPSILON]; }, 1us,
+                  1s);
 
   ASSERT_TRUE(testee.try_lock());
   testee.unlock();

@@ -21,9 +21,11 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
+#include "Graph/ConstantWeightShortestPathFinder.h"
 
-#include "fakeit.hpp"
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -31,7 +33,6 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "Graph/ConstantWeightShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Random/RandomGenerator.h"
@@ -45,17 +46,14 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include "fakeit.hpp"
+#include "gtest/gtest.h"
 
 // test setup
 #include "../Mocks/Servers.h"
 #include "../Mocks/StorageEngineMock.h"
-#include "IResearch/common.h"
-
 #include "GraphTestTools.h"
+#include "IResearch/common.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -78,14 +76,14 @@ class ConstantWeightShortestPathFinderTest : public ::testing::Test {
 
   ConstantWeightShortestPathFinderTest() : gdb(s.server, "testVocbase") {
     gdb.addVertexCollection("v", 100);
-    gdb.addEdgeCollection("e", "v",
-                          {{1, 2},   {2, 3},   {3, 4},   {5, 4},   {6, 5},
-                           {7, 6},   {8, 7},   {1, 10},  {10, 11}, {11, 12},
-                           {12, 4},  {12, 5},  {21, 22}, {22, 23}, {23, 24},
-                           {24, 25}, {21, 26}, {26, 27}, {27, 28}, {28, 25}});
+    gdb.addEdgeCollection(
+        "e", "v",
+        {{1, 2},   {2, 3},   {3, 4},   {5, 4},   {6, 5},   {7, 6},   {8, 7},
+         {1, 10},  {10, 11}, {11, 12}, {12, 4},  {12, 5},  {21, 22}, {22, 23},
+         {23, 24}, {24, 25}, {21, 26}, {26, 27}, {27, 28}, {28, 25}});
 
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
-    
+
     spo = gdb.getShortestPathOptions(query.get());
 
     finder = new ConstantWeightShortestPathFinder(*spo);
@@ -119,7 +117,8 @@ TEST_F(ConstantWeightShortestPathFinderTest, path_of_length_1) {
 
   auto rr = finder->shortestPath(start->slice(), end->slice(), result);
   ASSERT_TRUE(rr);
-  auto cpr = checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
+  auto cpr =
+      checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 
@@ -131,8 +130,9 @@ TEST_F(ConstantWeightShortestPathFinderTest, path_of_length_4) {
 
   auto rr = finder->shortestPath(start->slice(), end->slice(), result);
   ASSERT_TRUE(rr);
-  auto cpr = checkPath(spo.get(), result, {"1", "2", "3", "4"},
-                       {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
+  auto cpr =
+      checkPath(spo.get(), result, {"1", "2", "3", "4"},
+                {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 

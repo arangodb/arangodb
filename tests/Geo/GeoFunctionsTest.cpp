@@ -22,12 +22,14 @@
 /// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
-#include "fakeit.hpp"
-
-#include "Aql/AstNode.h"
 #include "Aql/AqlValue.h"
+#include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
@@ -35,12 +37,8 @@
 #include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include "fakeit.hpp"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -49,7 +47,7 @@ using namespace arangodb::containers;
 namespace arangodb {
 namespace tests {
 namespace geo_functions_aql {
-    
+
 auto clearVector = [](SmallVector<AqlValue>& v) {
   for (auto& it : v) {
     it.destroy();
@@ -71,7 +69,7 @@ class GeoEqualsTest : public ::testing::Test {
   SmallVector<AqlValue> paramsA;
   SmallVector<AqlValue> paramsB;
   SmallVector<AqlValue> paramsC;
-  
+
   arangodb::aql::Function equalsFun;
   arangodb::aql::AstNode equalsFunNode;
 
@@ -90,9 +88,13 @@ class GeoEqualsTest : public ::testing::Test {
     fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&context);
     fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&options);
     fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
-    fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() { return new arangodb::velocypack::Builder(); });
-    fakeit::When(Method(contextMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
-    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& { return this->trx; });
+    fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() {
+      return new arangodb::velocypack::Builder();
+    });
+    fakeit::When(Method(contextMock, returnBuilder))
+        .AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
+    fakeit::When(Method(expressionContextMock, trx))
+        .AlwaysDo([&]() -> transaction::Methods& { return this->trx; });
   }
 
   ~GeoEqualsTest() {
@@ -102,10 +104,9 @@ class GeoEqualsTest : public ::testing::Test {
   }
 };
 
-
 namespace geo_equals_point {
 struct GeoEqualsPointTest : public GeoEqualsTest {
-  GeoEqualsPointTest() 
+  GeoEqualsPointTest()
       : GeoEqualsTest(),
         fun("GEO_POiNT", &Functions::GeoPoint),
         funNode(NODE_TYPE_FCALL) {
@@ -130,7 +131,8 @@ TEST_F(GeoEqualsPointTest, checking_two_equal_points) {
   paramsC.emplace_back(pointA.clone());
   pointA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -146,7 +148,7 @@ TEST_F(GeoEqualsPointTest, checking_two_unequal_points) {
   AqlValue pointA = Functions::GeoPoint(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(pointA.clone());
   pointA.destroy();
-  
+
   VPackBuilder bar;
   bar.openArray();
   bar.add(VPackValue(-2.2));
@@ -158,16 +160,17 @@ TEST_F(GeoEqualsPointTest, checking_two_unequal_points) {
   paramsC.emplace_back(pointB.clone());
   pointB.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
 
-} // geo_equals_point
+}  // namespace geo_equals_point
 
 namespace geo_equals_multipoint {
 struct GeoEqualsMultipointTest : public GeoEqualsTest {
-  GeoEqualsMultipointTest() 
+  GeoEqualsMultipointTest()
       : GeoEqualsTest(),
         fun("GEO_MULTIPOiNT", &Functions::GeoMultiPoint),
         funNode(NODE_TYPE_FCALL) {
@@ -187,12 +190,14 @@ TEST_F(GeoEqualsMultipointTest, checking_two_equal_multipoints) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoMultiPoint(&expressionContext, funNode, paramsA);
+  AqlValue resA =
+      Functions::GeoMultiPoint(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -211,22 +216,24 @@ TEST_F(GeoEqualsMultipointTest, checking_two_unequal_multipoints) {
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoMultiPoint(&expressionContext, funNode, paramsA);
+  AqlValue resA =
+      Functions::GeoMultiPoint(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA);
-  AqlValue resB = Functions::GeoMultiPoint(&expressionContext, funNode, paramsB);
+  AqlValue resB =
+      Functions::GeoMultiPoint(&expressionContext, funNode, paramsB);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
 
-
-} // geo_equals_multipoint
+}  // namespace geo_equals_multipoint
 
 namespace geo_equals_polygon {
 struct GeoEqualsPolygonTest : public GeoEqualsTest {
-  GeoEqualsPolygonTest() 
+  GeoEqualsPolygonTest()
       : GeoEqualsTest(),
         fun("GEO_POLYGON", &Functions::GeoPolygon),
         funNode(NODE_TYPE_FCALL) {
@@ -251,14 +258,21 @@ TEST_F(GeoEqualsPolygonTest, checking_two_equal_polygons) {
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   resC.destroy();
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
 
 TEST_F(GeoEqualsPolygonTest, checking_two_equal_more_detailed_polygons) {
-  char const* polyA = "[[6.888427734375,50.91602169392645],[6.9632720947265625,50.87921050161489],[7.013397216796875,50.89480467658874],[7.0731353759765625,50.92424609910128],[7.093048095703125,50.94804539355076],[7.03948974609375,50.9709677364145],[6.985244750976562,51.000360974529464],[6.8891143798828125,50.996471761616284],[6.867828369140624,50.95669666276118],[6.888427734375,50.91602169392645]]";
+  char const* polyA =
+      "[[6.888427734375,50.91602169392645],[6.9632720947265625,50."
+      "87921050161489],[7.013397216796875,50.89480467658874],[7."
+      "0731353759765625,50.92424609910128],[7.093048095703125,50."
+      "94804539355076],[7.03948974609375,50.9709677364145],[6.985244750976562,"
+      "51.000360974529464],[6.8891143798828125,50.996471761616284],[6."
+      "867828369140624,50.95669666276118],[6.888427734375,50.91602169392645]]";
   size_t lA = strlen(polyA);
 
   std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
@@ -271,7 +285,8 @@ TEST_F(GeoEqualsPolygonTest, checking_two_equal_more_detailed_polygons) {
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -295,13 +310,16 @@ TEST_F(GeoEqualsPolygonTest, checking_two_unequal_polygons) {
   AqlValue resB = Functions::GeoPolygon(&expressionContext, funNode, paramsB);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
 
 TEST_F(GeoEqualsPolygonTest, checking_two_nested_equal_polygons) {
-  char const* polyA = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
+  char const* polyA =
+      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, "
+      "35], [30, 20], [20, 30]]]";
   size_t lA = strlen(polyA);
 
   std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
@@ -314,15 +332,21 @@ TEST_F(GeoEqualsPolygonTest, checking_two_nested_equal_polygons) {
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
 
-TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_outer_loop_difference) {
-  char const* polyA = "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
+TEST_F(GeoEqualsPolygonTest,
+       checking_two_unequal_nested_polygons_outer_loop_difference) {
+  char const* polyA =
+      "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [35, "
+      "35], [30, 20], [20, 30]]]";
   size_t lA = strlen(polyA);
-  char const* polyB = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
+  char const* polyB =
+      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, "
+      "35], [30, 20], [20, 30]]]";
   size_t lB = strlen(polyB);
 
   std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
@@ -338,15 +362,21 @@ TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_outer_loop_dif
   AqlValue resB = Functions::GeoPolygon(&expressionContext, funNode, paramsB);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
 
-TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_loop_difference) {
-  char const* polyA = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [35, 35], [30, 20], [15, 30]]]";
+TEST_F(GeoEqualsPolygonTest,
+       checking_two_unequal_nested_polygons_inner_loop_difference) {
+  char const* polyA =
+      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [35, "
+      "35], [30, 20], [15, 30]]]";
   size_t lA = strlen(polyA);
-  char const* polyB = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
+  char const* polyB =
+      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, "
+      "35], [30, 20], [20, 30]]]";
   size_t lB = strlen(polyB);
 
   std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
@@ -362,15 +392,21 @@ TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_loop_dif
   AqlValue resB = Functions::GeoPolygon(&expressionContext, funNode, paramsB);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
 
-TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_and_outer_polygons) {
-  char const* polyA = "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
+TEST_F(GeoEqualsPolygonTest,
+       checking_two_unequal_nested_polygons_inner_and_outer_polygons) {
+  char const* polyA =
+      "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [35, "
+      "35], [30, 20], [20, 30]]]";
   size_t lA = strlen(polyA);
-  char const* polyB = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [35, 35], [30, 20], [15, 30]]]";
+  char const* polyB =
+      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [35, "
+      "35], [30, 20], [15, 30]]]";
   size_t lB = strlen(polyB);
 
   std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
@@ -386,15 +422,17 @@ TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_and_oute
   AqlValue resB = Functions::GeoPolygon(&expressionContext, funNode, paramsB);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
 
 TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_first_parameter) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
   size_t lA = strlen(polyA);
@@ -403,7 +441,7 @@ TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_first_parameter) {
 
   std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
   VPackSlice jsonA = builderA->slice();
-  
+
   std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(nullValue, lB);
   VPackSlice jsonB = builderB->slice();
 
@@ -413,14 +451,16 @@ TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_first_parameter) {
   paramsC.emplace_back(resA);
   paramsC.emplace_back(jsonB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isNull());
 }
 
 TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_second_parameter) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
   size_t lA = strlen(polyA);
@@ -429,7 +469,7 @@ TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_second_parameter) {
 
   std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
   VPackSlice jsonA = builderA->slice();
-  
+
   std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(nullValue, lB);
   VPackSlice jsonB = builderB->slice();
 
@@ -439,14 +479,15 @@ TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_second_parameter) {
   paramsC.emplace_back(jsonB);
   paramsC.emplace_back(resA);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isNull());
 }
-} // geo_equals_polygon
+}  // namespace geo_equals_polygon
 
 namespace geo_equals_linestring {
 struct GeoEqualsLinestringTest : public GeoEqualsTest {
-  GeoEqualsLinestringTest() 
+  GeoEqualsLinestringTest()
       : GeoEqualsTest(),
         fun("GEO_LINESTRING", &Functions::GeoLinestring),
         funNode(NODE_TYPE_FCALL) {
@@ -466,13 +507,15 @@ TEST_F(GeoEqualsLinestringTest, checking_two_equal_linestrings) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoLinestring(&expressionContext, funNode, paramsA);
+  AqlValue resA =
+      Functions::GeoLinestring(&expressionContext, funNode, paramsA);
 
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -491,22 +534,25 @@ TEST_F(GeoEqualsLinestringTest, checking_two_unequal_linestrings) {
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoLinestring(&expressionContext, funNode, paramsA);
-  AqlValue resB = Functions::GeoLinestring(&expressionContext, funNode, paramsB);
+  AqlValue resA =
+      Functions::GeoLinestring(&expressionContext, funNode, paramsA);
+  AqlValue resB =
+      Functions::GeoLinestring(&expressionContext, funNode, paramsB);
 
   paramsC.emplace_back(resA);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
 
-} // geo_equals_linestring
+}  // namespace geo_equals_linestring
 
 namespace geo_equals_multilinestring {
 struct GeoEqualsMultilinestringTest : public GeoEqualsTest {
-  GeoEqualsMultilinestringTest() 
+  GeoEqualsMultilinestringTest()
       : GeoEqualsTest(),
         fun("GEO_MULTILINESTRING", &Functions::GeoMultiLinestring),
         funNode(NODE_TYPE_FCALL) {
@@ -526,12 +572,14 @@ TEST_F(GeoEqualsMultilinestringTest, checking_two_equal_multilinestrings) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoMultiLinestring(&expressionContext, funNode, paramsA);
+  AqlValue resA =
+      Functions::GeoMultiLinestring(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -550,18 +598,21 @@ TEST_F(GeoEqualsMultilinestringTest, checking_two_unequal_multilinestrings) {
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoMultiLinestring(&expressionContext, funNode, paramsA);
-  AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, funNode, paramsB);
+  AqlValue resA =
+      Functions::GeoMultiLinestring(&expressionContext, funNode, paramsA);
+  AqlValue resB =
+      Functions::GeoMultiLinestring(&expressionContext, funNode, paramsB);
 
   paramsC.emplace_back(resA);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
 
-}  // geo_equals_multilinestring
+}  // namespace geo_equals_multilinestring
 
 namespace geo_equals_mixings {
 struct GeoEqualsMixedTypeTest : public GeoEqualsTest {
@@ -569,9 +620,10 @@ struct GeoEqualsMixedTypeTest : public GeoEqualsTest {
 };
 
 TEST_F(GeoEqualsMixedTypeTest, checking_polygon_with_multilinestring) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* polyA = "[ [[1.0, 2.0], [3.0, 4.0], [3.3, 4.4], [1.0, 2.0]] ]";
   size_t lA = strlen(polyA);
@@ -585,30 +637,34 @@ TEST_F(GeoEqualsMixedTypeTest, checking_polygon_with_multilinestring) {
 
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
-    
+
   arangodb::aql::Function f1("GEO_POLYGON", &Functions::GeoPolygon);
   arangodb::aql::AstNode node1(NODE_TYPE_FCALL);
   node1.setData(static_cast<void const*>(&f1));
-  
-  arangodb::aql::Function f2("GEO_MULTILINESTRING", &Functions::GeoMultiLinestring);
+
+  arangodb::aql::Function f2("GEO_MULTILINESTRING",
+                             &Functions::GeoMultiLinestring);
   arangodb::aql::AstNode node2(NODE_TYPE_FCALL);
   node2.setData(static_cast<void const*>(&f2));
 
   AqlValue resA = Functions::GeoPolygon(&expressionContext, node1, paramsA);
-  AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, node2, paramsB);
+  AqlValue resB =
+      Functions::GeoMultiLinestring(&expressionContext, node2, paramsB);
 
   paramsC.emplace_back(resA);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
 
 TEST_F(GeoEqualsMixedTypeTest, checking_multipoint_with_multilinestring) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* polyA = "[ [1.0, 2.0], [3.0, 4.0], [1.0, 2.0], [5.0, 6.0] ]";
   size_t lA = strlen(polyA);
@@ -622,37 +678,47 @@ TEST_F(GeoEqualsMixedTypeTest, checking_multipoint_with_multilinestring) {
 
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
-  
+
   arangodb::aql::Function f1("GEO_MULTIPOINT", &Functions::GeoMultiPoint);
   arangodb::aql::AstNode node1(NODE_TYPE_FCALL);
   node1.setData(static_cast<void const*>(&f1));
-  
-  arangodb::aql::Function f2("GEO_MULTILINESTRING", &Functions::GeoMultiLinestring);
+
+  arangodb::aql::Function f2("GEO_MULTILINESTRING",
+                             &Functions::GeoMultiLinestring);
   arangodb::aql::AstNode node2(NODE_TYPE_FCALL);
   node2.setData(static_cast<void const*>(&f2));
 
   AqlValue resA = Functions::GeoMultiPoint(&expressionContext, node1, paramsA);
   paramsC.emplace_back(resA);
-  AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, node2, paramsB);
+  AqlValue resB =
+      Functions::GeoMultiLinestring(&expressionContext, node2, paramsB);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+  AqlValue resC =
+      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
 
-}  // geo_equals_mixings
+}  // namespace geo_equals_mixings
 
 TEST(GeoInRangeTest, test) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   fakeit::Mock<transaction::Methods> trxMock;
   fakeit::Mock<transaction::Context> contextMock;
-  fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&contextMock.get());
-  fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&velocypack::Options::Defaults);
-  fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(velocypack::Options::Defaults);
-  fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() { return new arangodb::velocypack::Builder(); });
-  fakeit::When(Method(contextMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
-  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& { return trxMock.get(); });
+  fakeit::When(Method(trxMock, transactionContextPtr))
+      .AlwaysReturn(&contextMock.get());
+  fakeit::When(Method(contextMock, getVPackOptions))
+      .AlwaysReturn(&velocypack::Options::Defaults);
+  fakeit::When(Method(trxMock, vpackOptions))
+      .AlwaysReturn(velocypack::Options::Defaults);
+  fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() {
+    return new arangodb::velocypack::Builder();
+  });
+  fakeit::When(Method(contextMock, returnBuilder))
+      .AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
+  fakeit::When(Method(expressionContextMock, trx))
+      .AlwaysDo([&]() -> transaction::Methods& { return trxMock.get(); });
 
   arangodb::aql::Function f("GEO_IN_RANGE", &Functions::GeoInRange);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
@@ -668,12 +734,12 @@ TEST(GeoInRangeTest, test) {
   SmallVector<AqlValue>::allocator_type::arena_type arena;
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* ) -> void {
-      ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+        });
 
-    SmallVector<AqlValue> params {{
-    }, arena};
+    SmallVector<AqlValue> params{{}, arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -681,18 +747,21 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isNull(false));
   }
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* ) -> void {
-      ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+        });
 
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-    }, arena};
+    SmallVector<AqlValue> params{{
+                                     AqlValue{lhs->slice()},
+                                 },
+                                 arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -700,19 +769,22 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isNull(false));
   }
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* ) -> void {
-      ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+        });
 
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{lhs->slice()},
-    }, arena};
+    SmallVector<AqlValue> params{{
+                                     AqlValue{lhs->slice()},
+                                     AqlValue{lhs->slice()},
+                                 },
+                                 arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -720,20 +792,23 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isNull(false));
   }
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* ) -> void {
-      ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+        });
 
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{lhs->slice()},
-      AqlValue{AqlValueHintDouble{0}},
-    }, arena};
+    SmallVector<AqlValue> params{{
+                                     AqlValue{lhs->slice()},
+                                     AqlValue{lhs->slice()},
+                                     AqlValue{AqlValueHintDouble{0}},
+                                 },
+                                 arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -741,17 +816,19 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isNull(false));
   }
 
   {
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{lhs->slice()},
-      AqlValue{AqlValueHintDouble{0}},
-      AqlValue{AqlValueHintDouble{0}},
-    }, arena};
+    SmallVector<AqlValue> params{{
+                                     AqlValue{lhs->slice()},
+                                     AqlValue{lhs->slice()},
+                                     AqlValue{AqlValueHintDouble{0}},
+                                     AqlValue{AqlValueHintDouble{0}},
+                                 },
+                                 arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -759,20 +836,18 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isBoolean());
     ASSERT_TRUE(res.slice().getBool());
   }
 
   {
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{lhs->slice()},
-      AqlValue{AqlValueHintDouble{0}},
-      AqlValue{AqlValueHintDouble{0}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{lhs->slice()}, AqlValue{lhs->slice()},
+         AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{0}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -780,20 +855,18 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isBoolean());
     ASSERT_FALSE(res.slice().getBool());
   }
 
   {
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{lhs->slice()},
-      AqlValue{AqlValueHintDouble{0}},
-      AqlValue{AqlValueHintDouble{0}},
-      AqlValue{AqlValueHintBool{true}},
-      AqlValue{AqlValueHintBool{false}}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{lhs->slice()}, AqlValue{lhs->slice()},
+         AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{0}},
+         AqlValue{AqlValueHintBool{true}}, AqlValue{AqlValueHintBool{false}}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -801,20 +874,18 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isBoolean());
     ASSERT_FALSE(res.slice().getBool());
   }
 
   {
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{lhs->slice()},
-      AqlValue{AqlValueHintDouble{0}},
-      AqlValue{AqlValueHintDouble{0}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{true}}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{lhs->slice()}, AqlValue{lhs->slice()},
+         AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{0}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{true}}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -822,20 +893,18 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isBoolean());
     ASSERT_FALSE(res.slice().getBool());
   }
 
   {
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{0}},
-      AqlValue{AqlValueHintDouble{100}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
+         AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{100}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -843,18 +912,20 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isBoolean());
     ASSERT_FALSE(res.slice().getBool());
   }
 
   {
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{0}},
-      AqlValue{AqlValueHintDouble{100}},
-    }, arena};
+    SmallVector<AqlValue> params{{
+                                     AqlValue{lhs->slice()},
+                                     AqlValue{rhs->slice()},
+                                     AqlValue{AqlValueHintDouble{0}},
+                                     AqlValue{AqlValueHintDouble{100}},
+                                 },
+                                 arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -862,21 +933,19 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isBoolean());
     ASSERT_FALSE(res.slice().getBool());
   }
 
   {
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{0}},
-      AqlValue{AqlValueHintDouble{100}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{"wg84"}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
+         AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{100}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
+         AqlValue{"wg84"}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -884,44 +953,19 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
-    ASSERT_TRUE(res.isBoolean());
-    ASSERT_FALSE(res.slice().getBool());
-  }
-
-
-  {
-    SmallVector<AqlValue> params {{
-      AqlValue{rhs->slice()},
-      AqlValue{lhs->slice()},
-      AqlValue{AqlValueHintDouble{0}},
-      AqlValue{AqlValueHintDouble{100}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{"wg84"}
-    }, arena};
-
-    auto guard = arangodb::scopeGuard([&params]() noexcept {
-      for (auto& p : params) {
-        p.destroy();
-      }
-    });
-
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isBoolean());
     ASSERT_FALSE(res.slice().getBool());
   }
 
   {
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{0}},
-      AqlValue{AqlValueHintDouble{100}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{"foo"} // fallback to 'sphere'
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{rhs->slice()}, AqlValue{lhs->slice()},
+         AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{100}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
+         AqlValue{"wg84"}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -929,21 +973,22 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isBoolean());
     ASSERT_FALSE(res.slice().getBool());
   }
 
   {
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{0}},
-      AqlValue{AqlValueHintDouble{100}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}} // fallback to 'sphere'
-    }, arena};
+    SmallVector<AqlValue> params{
+        {
+            AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
+            AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{100}},
+            AqlValue{AqlValueHintBool{false}},
+            AqlValue{AqlValueHintBool{false}},
+            AqlValue{"foo"}  // fallback to 'sphere'
+        },
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -951,20 +996,22 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isBoolean());
     ASSERT_FALSE(res.slice().getBool());
   }
 
   {
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{1}},
-      AqlValue{AqlValueHintDouble{400}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {
+            AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
+            AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{100}},
+            AqlValue{AqlValueHintBool{false}},
+            AqlValue{AqlValueHintBool{false}},
+            AqlValue{AqlValueHintBool{false}}  // fallback to 'sphere'
+        },
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -972,18 +1019,39 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_FALSE(res.slice().getBool());
+  }
+
+  {
+    SmallVector<AqlValue> params{
+        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
+         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}}},
+        arena};
+
+    auto guard = arangodb::scopeGuard([&params]() noexcept {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isBoolean());
     ASSERT_TRUE(res.slice().getBool());
   }
 
   {
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{1}},
-      AqlValue{AqlValueHintDouble{400}},
-    }, arena};
+    SmallVector<AqlValue> params{{
+                                     AqlValue{lhs->slice()},
+                                     AqlValue{rhs->slice()},
+                                     AqlValue{AqlValueHintDouble{1}},
+                                     AqlValue{AqlValueHintDouble{400}},
+                                 },
+                                 arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -991,21 +1059,19 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isBoolean());
     ASSERT_TRUE(res.slice().getBool());
   }
 
   {
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{1}},
-      AqlValue{AqlValueHintDouble{400}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{"wg84"}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
+         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
+         AqlValue{"wg84"}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1013,7 +1079,8 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isBoolean());
     ASSERT_TRUE(res.slice().getBool());
   }
@@ -1032,14 +1099,15 @@ TEST(GeoInRangeTest, test) {
       ]
     })");
 
-    SmallVector<AqlValue> params {{
-      AqlValue{shapeJson->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{240}},
-      AqlValue{AqlValueHintDouble{242}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-    }, arena};
+    SmallVector<AqlValue> params{{
+                                     AqlValue{shapeJson->slice()},
+                                     AqlValue{rhs->slice()},
+                                     AqlValue{AqlValueHintDouble{240}},
+                                     AqlValue{AqlValueHintDouble{242}},
+                                     AqlValue{AqlValueHintBool{false}},
+                                     AqlValue{AqlValueHintBool{false}},
+                                 },
+                                 arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1047,26 +1115,24 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isBoolean());
     ASSERT_TRUE(res.slice().getBool());
   }
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* ) -> void {
-      ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+        });
 
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{1}},
-      AqlValue{AqlValueHintDouble{400}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{"wg84"},
-      AqlValue{"wg84"}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
+         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
+         AqlValue{"wg84"}, AqlValue{"wg84"}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1074,28 +1140,27 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isNull(false));
   }
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* ) -> void {
-      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
 
     auto invalidJson = VPackParser::fromJson(R"({
       "type": "PPint",
       "coordinates": [37.610235, 55.709754] })");
 
-    SmallVector<AqlValue> params {{
-      AqlValue{invalidJson->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{1}},
-      AqlValue{AqlValueHintDouble{400}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{"wg84"}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{invalidJson->slice()}, AqlValue{rhs->slice()},
+         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
+         AqlValue{"wg84"}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1103,24 +1168,23 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isNull(false));
   }
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* ) -> void {
-      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
 
-    SmallVector<AqlValue> params {{
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{1}},
-      AqlValue{AqlValueHintDouble{400}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{"wg84"}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{AqlValueHintBool{false}}, AqlValue{rhs->slice()},
+         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
+         AqlValue{"wg84"}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1128,28 +1192,27 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isNull(false));
   }
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* ) -> void {
-      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
 
     auto invalidJson = VPackParser::fromJson(R"({
       "type": "PPint",
       "coordinates": [37.610235, 55.709754] })");
 
-    SmallVector<AqlValue> params {{
-      AqlValue{rhs->slice()},
-      AqlValue{invalidJson->slice()},
-      AqlValue{AqlValueHintDouble{1}},
-      AqlValue{AqlValueHintDouble{400}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{"wg84"}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{rhs->slice()}, AqlValue{invalidJson->slice()},
+         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
+         AqlValue{"wg84"}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1157,24 +1220,23 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isNull(false));
   }
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* ) -> void {
-      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
 
-    SmallVector<AqlValue> params {{
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintDouble{1}},
-      AqlValue{AqlValueHintDouble{400}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{"wg84"}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{rhs->slice()}, AqlValue{AqlValueHintBool{false}},
+         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
+         AqlValue{"wg84"}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1182,24 +1244,23 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isNull(false));
   }
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* ) -> void {
-      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
 
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintDouble{400}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{"wg84"}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintDouble{400}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
+         AqlValue{"wg84"}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1207,24 +1268,23 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isNull(false));
   }
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* ) -> void {
-      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
 
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{400}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{"wg84"}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
+         AqlValue{AqlValueHintDouble{400}}, AqlValue{AqlValueHintBool{false}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
+         AqlValue{"wg84"}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1232,24 +1292,23 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isNull(false));
   }
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* ) -> void {
-      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
 
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{100}},
-      AqlValue{AqlValueHintDouble{400}},
-      AqlValue{AqlValueHintDouble{400}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{"wg84"}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
+         AqlValue{AqlValueHintDouble{100}}, AqlValue{AqlValueHintDouble{400}},
+         AqlValue{AqlValueHintDouble{400}}, AqlValue{AqlValueHintBool{false}},
+         AqlValue{"wg84"}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1257,24 +1316,23 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isNull(false));
   }
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* ) -> void {
-      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
 
-    SmallVector<AqlValue> params {{
-      AqlValue{lhs->slice()},
-      AqlValue{rhs->slice()},
-      AqlValue{AqlValueHintDouble{100}},
-      AqlValue{AqlValueHintDouble{400}},
-      AqlValue{AqlValueHintBool{false}},
-      AqlValue{AqlValueHintDouble{400}},
-      AqlValue{"wg84"}
-    }, arena};
+    SmallVector<AqlValue> params{
+        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
+         AqlValue{AqlValueHintDouble{100}}, AqlValue{AqlValueHintDouble{400}},
+         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintDouble{400}},
+         AqlValue{"wg84"}},
+        arena};
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1282,11 +1340,12 @@ TEST(GeoInRangeTest, test) {
       }
     });
 
-    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
     ASSERT_TRUE(res.isNull(false));
   }
 }
 
-}  // geo_functions_aql
-}  // tests
-}  // arangodb
+}  // namespace geo_functions_aql
+}  // namespace tests
+}  // namespace arangodb

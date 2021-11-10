@@ -26,6 +26,8 @@
 
 #include "TestEmptyExecutorHelper.h"
 
+#include <utility>
+
 #include "Aql/AqlValue.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
@@ -33,14 +35,13 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 
-#include <utility>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 
 TestEmptyExecutorHelper::TestEmptyExecutorHelper(Fetcher&, Infos&) {}
 
-std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRows(OutputAqlItemRow& output) {
+std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRows(
+    OutputAqlItemRow& output) {
   TRI_IF_FAILURE("TestEmptyExecutorHelper::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

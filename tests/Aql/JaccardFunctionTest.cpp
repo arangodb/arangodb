@@ -21,9 +21,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-
-#include "fakeit.hpp"
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
@@ -32,12 +34,8 @@
 #include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include "fakeit.hpp"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -48,8 +46,9 @@ namespace {
 AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
-  fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](ErrorCode, char const*){ });
-  
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .AlwaysDo([](ErrorCode, char const*) {});
+
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
   fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysReturn(&options);
@@ -59,16 +58,15 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs) {
   fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&trxCtx);
   fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
   transaction::Methods& trx = trxMock.get();
-  
-  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&trx]() -> transaction::Methods& {
-    return trx;
-  });
+
+  fakeit::When(Method(expressionContextMock, trx))
+      .AlwaysDo([&trx]() -> transaction::Methods& { return trx; });
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   SmallVector<AqlValue> params{arena};
   params.emplace_back(lhs);
   params.emplace_back(rhs);
-  params.emplace_back(VPackSlice::nullSlice()); // redundant argument
+  params.emplace_back(VPackSlice::nullSlice());  // redundant argument
 
   arangodb::aql::Function f("JACCARD", &Functions::Jaccard);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
@@ -83,7 +81,7 @@ AqlValue evaluate(char const* lhs, char const* rhs) {
 
   AqlValue lhsValue(lhsJson->slice());
   AqlValueGuard lhsGuard(lhsValue, true);
-  
+
   AqlValue rhsValue(rhsJson->slice());
   AqlValueGuard rhsGuard(rhsValue, true);
 
@@ -103,10 +101,8 @@ void assertJaccardFail(char const* lhs, AqlValue const& rhs) {
 }
 
 void assertJaccard(double_t expectedValue, char const* lhs, char const* rhs) {
-  auto assertJaccardCoef = [](
-      double_t expectedValue,
-      char const* lhs,
-      char const* rhs) {
+  auto assertJaccardCoef = [](double_t expectedValue, char const* lhs,
+                              char const* rhs) {
     auto const value = evaluate(lhs, rhs);
     ASSERT_TRUE(value.isNumber());
     bool failed = true;
@@ -119,19 +115,23 @@ void assertJaccard(double_t expectedValue, char const* lhs, char const* rhs) {
   assertJaccardCoef(expectedValue, rhs, lhs);
 }
 
-}
+}  // namespace
 
 TEST(JaccardFunctionTest, test) {
   assertJaccard(1.0, "[]", "[]");
   assertJaccard(1.0, "[null]", "[null]");
   assertJaccard(0.0, "[null]", "[]");
   assertJaccard(0.0, "[null]", "[1]");
-  assertJaccard(1.0, "[\"1\", 2, true, null, false]", "[\"1\", 2, true, null, false]");
-  assertJaccard(1.0, "[\"1\", 2, true, true, null, null, false, false]", "[\"1\", 2, true, null, false]");
+  assertJaccard(1.0, "[\"1\", 2, true, null, false]",
+                "[\"1\", 2, true, null, false]");
+  assertJaccard(1.0, "[\"1\", 2, true, true, null, null, false, false]",
+                "[\"1\", 2, true, null, false]");
   assertJaccard(0.5, "[\"1\", 3, null, true]", "[\"1\", 2, \"null\", true, 3]");
-  assertJaccard(0.5, "[\"1\", 2, \"null\", true, false]", "[\"1\", 2, null, false]");
+  assertJaccard(0.5, "[\"1\", 2, \"null\", true, false]",
+                "[\"1\", 2, null, false]");
   assertJaccard(0.25, "[\"1\"]", "[\"1\", 3, null, 4]");
-  assertJaccard(0.125, "[1, {}, 2, \"null\", [\"2\"]]", "[\"22\", {}, null, false]");
+  assertJaccard(0.125, "[1, {}, 2, \"null\", [\"2\"]]",
+                "[\"22\", {}, null, false]");
   assertJaccardFail("{}", "[]");
   assertJaccardFail("\"[]\"", "[]");
   assertJaccardFail("1", "[]");

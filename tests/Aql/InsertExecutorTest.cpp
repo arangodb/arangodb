@@ -21,14 +21,6 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "../Mocks/Servers.h"
-#include "QueryHelper.h"
-#include "gtest/gtest.h"
-
-#include "Aql/Query.h"
-#include "Aql/VelocyPackHelper.h"
-#include "RestServer/QueryRegistryFeature.h"
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -36,8 +28,13 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "../IResearch/IResearchQueryCommon.h"
-
+#include "../Mocks/Servers.h"
+#include "Aql/Query.h"
+#include "Aql/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
+#include "QueryHelper.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -97,43 +94,47 @@ TEST_F(InsertExecutorTest, insert_but_not_rev) {
 
   auto const bindParameters = VPackParser::fromJson("{ }");
 
-  auto queryResult =
-      arangodb::tests::executeQuery(vocbase,
-                                    "FOR d IN " + collectionName + " RETURN d",
-                                    bindParameters);
+  auto queryResult = arangodb::tests::executeQuery(
+      vocbase, "FOR d IN " + collectionName + " RETURN d", bindParameters);
   ASSERT_TRUE(queryResult.ok());
   auto slice = queryResult.data->slice();
   ASSERT_TRUE(slice.isArray());
   ASSERT_EQ(slice.length(), 1);
 
   auto doc = slice.at(0);
-  ASSERT_NE(arangodb::basics::VelocyPackHelper::getStringValue(doc, "_rev", ""), invalidRev);
+  ASSERT_NE(arangodb::basics::VelocyPackHelper::getStringValue(doc, "_rev", ""),
+            invalidRev);
 }
 
 TEST_F(InsertExecutorTest, insert_ignore_error_default) {
   {
     std::string query =
-        R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" + collectionName;
+        R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" +
+        collectionName;
     AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   }
 
   {
-    std::string query = R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" +
-                        collectionName + R"( OPTIONS { ignoreErrors: false } )";
-    AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+    std::string query =
+        R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" +
+        collectionName + R"( OPTIONS { ignoreErrors: false } )";
+    AssertQueryFailsWith(vocbase, query,
+                         TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
   }
 }
 
 TEST_F(InsertExecutorTest, insert_ignore_error_true) {
   {
     std::string query =
-        R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" + collectionName;
+        R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" +
+        collectionName;
     AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   }
 
   {
-    std::string query = R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" +
-                        collectionName + R"( OPTIONS { ignoreErrors: true } )";
+    std::string query =
+        R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" +
+        collectionName + R"( OPTIONS { ignoreErrors: true } )";
     AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
     auto expected = VPackParser::fromJson(R"([1])");
@@ -144,14 +145,17 @@ TEST_F(InsertExecutorTest, insert_ignore_error_true) {
 TEST_F(InsertExecutorTest, insert_ignore_error_false) {
   {
     std::string query =
-        R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" + collectionName;
+        R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" +
+        collectionName;
     AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   }
 
   {
-    std::string query = R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" +
-                        collectionName + R"( OPTIONS { ignoreErrors: false } )";
-    AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+    std::string query =
+        R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" +
+        collectionName + R"( OPTIONS { ignoreErrors: false } )";
+    AssertQueryFailsWith(vocbase, query,
+                         TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
   }
 }
 
@@ -160,7 +164,8 @@ TEST_F(InsertExecutorTest, multi_insert_same_collection) {
                       ")" + "LET y = (INSERT {value: 16} IN " + collectionName +
                       ")" + " RETURN [x,y]";
 
-  AssertQueryFailsWith(vocbase, query, TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
+  AssertQueryFailsWith(vocbase, query,
+                       TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
 }
 
 TEST_P(InsertExecutorTestCount, insert_without_return) {
@@ -193,7 +198,8 @@ TEST_P(InsertExecutorTestCount, insert_with_key_with_return) {
 
 TEST_P(InsertExecutorTestCount, insert_with_key_without_return) {
   std::string query = std::string("FOR i IN 1..") + std::to_string(GetParam()) +
-                      " INSERT { _key: TO_STRING(i), value: i } INTO " + collectionName;
+                      " INSERT { _key: TO_STRING(i), value: i } INTO " +
+                      collectionName;
 
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
@@ -277,7 +283,8 @@ INSTANTIATE_TEST_CASE_P(
     InsertExecutorTestInstance, InsertExecutorTestCounts,
     testing::Values(std::vector<size_t>{1}, std::vector<size_t>{100},
                     std::vector<size_t>{999}, std::vector<size_t>{1000},
-                    std::vector<size_t>{1001}, std::vector<size_t>{1, 100, 1000, 1000, 900},
+                    std::vector<size_t>{1001},
+                    std::vector<size_t>{1, 100, 1000, 1000, 900},
                     std::vector<size_t>{10, 10, 10, 10, 10, 100, 100, 10, 100,
                                         1000, 1000, 900, 10, 100}));
 
@@ -313,7 +320,8 @@ TEST_P(InsertExecutorTestCount, insert_with_key_and_overwrite) {
         std::string("FOR i IN 1.." + nDocsString +
                     " INSERT { _key: TO_STRING(i), value: i } INTO ") +
         collectionName +
-        " OPTIONS { overwrite: true } SORT NEW.value RETURN [OLD.value, NEW.value]";
+        " OPTIONS { overwrite: true } SORT NEW.value RETURN [OLD.value, "
+        "NEW.value]";
 
     VPackBuilder builder;
     builder.openArray();
@@ -361,10 +369,12 @@ TEST_P(InsertExecutorTestCount, insert_with_key_and_no_overwrite) {
   // This is intentional: We write the entries once, then overwrite them again
   // The second query should fail with a uniqueness violation on _key
   AssertQueryHasResult(vocbase, query, builder.slice());
-  AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+  AssertQueryFailsWith(vocbase, query,
+                       TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
 }
 
-TEST_P(InsertExecutorTestCount, insert_with_key_and_no_overwrite_ignore_errors) {
+TEST_P(InsertExecutorTestCount,
+       insert_with_key_and_no_overwrite_ignore_errors) {
   std::string query =
       std::string("FOR i IN 1.." + nDocsString +
                   " INSERT { _key: TO_STRING(i), value: i } INTO ") +

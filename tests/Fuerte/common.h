@@ -20,13 +20,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once 
+#pragma once
 
+#include <fuerte/fuerte.h>
 #include <stdlib.h>
 
 #include <boost/algorithm/string.hpp>
-
-#include <fuerte/fuerte.h>
 
 namespace f = ::arangodb::fuerte;
 
@@ -37,16 +36,16 @@ extern std::string myEndpoint;
 inline void setupEndpointFromEnv(f::ConnectionBuilder& cbuilder) {
   char const* tmp = getenv("TEST_ENDPOINT");
   std::string str;
-  if (!tmp) { // No settings in environment, set a default
+  if (!tmp) {  // No settings in environment, set a default
     str = myEndpoint;
   } else {
     str.assign(tmp);
   }
-//  std::cout << "Test running against endpoint '" << str << "'" << std::endl;
+  //  std::cout << "Test running against endpoint '" << str << "'" << std::endl;
   cbuilder.endpoint(str);
 }
 
-// setupAuthenticationFromEnv configures the given connection builder 
+// setupAuthenticationFromEnv configures the given connection builder
 // with authentication settings specified in the environment.
 extern std::string myAuthentication;
 
@@ -59,20 +58,22 @@ inline void setupAuthenticationFromEnv(f::ConnectionBuilder& cbuilder) {
   } else {
     auth.assign(tmp);
   }
-  
+
   std::vector<std::string> parts;
   boost::split(parts, auth, boost::is_any_of(":"));
   if (parts[0] == "basic") {
-		if (parts.size() != 3) {
-      throw std::invalid_argument("Expected username & password for basic authentication");
-		}
+    if (parts.size() != 3) {
+      throw std::invalid_argument(
+          "Expected username & password for basic authentication");
+    }
     cbuilder.authenticationType(f::AuthenticationType::Basic);
     cbuilder.user(parts[1]);
     cbuilder.password(parts[2]);
   } else if (parts[0] == "jwt") {
-		if (parts.size() != 3) {
-			throw std::invalid_argument("Expected username & password for jwt authentication");
-		}
+    if (parts.size() != 3) {
+      throw std::invalid_argument(
+          "Expected username & password for jwt authentication");
+    }
     cbuilder.authenticationType(f::AuthenticationType::Jwt);
     cbuilder.user(parts[1]);
     cbuilder.password(parts[2]);

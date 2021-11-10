@@ -21,7 +21,7 @@
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
+#include <memory>
 
 #include "Aql/Ast.h"
 #include "Aql/KShortestPathsNode.h"
@@ -29,8 +29,7 @@
 #include "Graph/BaseOptions.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Mocks/Servers.h"
-
-#include <memory>
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -53,8 +52,10 @@ class KShortestPathsNodeTest : public ::testing::Test {
  public:
   KShortestPathsNodeTest() {
     auto ast = _query->ast();
-    _source = ast->createNodeValueString(_startNode.c_str(), _startNode.length());
-    _target = ast->createNodeValueString(_startNode.c_str(), _startNode.length());
+    _source =
+        ast->createNodeValueString(_startNode.c_str(), _startNode.length());
+    _target =
+        ast->createNodeValueString(_startNode.c_str(), _startNode.length());
     _direction = ast->createNodeDirection(0, 1);
     AstNode* edges = ast->createNodeArray(0);
     _graph = ast->createNodeCollectionList(edges, _query->resolver());
@@ -69,8 +70,8 @@ class KShortestPathsNodeTest : public ::testing::Test {
     return _otherQuery->plan();
   }
 
-  KShortestPathsNode createNode(ExecutionNodeId id,
-                                std::unique_ptr<ShortestPathOptions> opts) const {
+  KShortestPathsNode createNode(
+      ExecutionNodeId id, std::unique_ptr<ShortestPathOptions> opts) const {
     return KShortestPathsNode{plan(),
                               id,
                               &_query->vocbase(),
@@ -96,8 +97,8 @@ TEST_F(KShortestPathsNodeTest, clone_should_preserve_isSmart) {
     for (bool value : std::vector<bool>{false, true}) {
       auto p = keepPlan ? plan() : otherPlan(true);
       original.setIsSmart(value);
-      auto clone =
-          ExecutionNode::castTo<KShortestPathsNode*>(original.clone(p, false, !keepPlan));
+      auto clone = ExecutionNode::castTo<KShortestPathsNode*>(
+          original.clone(p, false, !keepPlan));
       if (keepPlan) {
         EXPECT_NE(clone->id(), original.id()) << "Clone did keep the id";
       } else {
@@ -118,8 +119,8 @@ TEST_F(KShortestPathsNodeTest, clone_should_preserve_isDisjoint) {
     for (bool value : std::vector<bool>{false, true}) {
       auto p = keepPlan ? plan() : otherPlan(true);
       original.setIsDisjoint(value);
-      auto clone =
-          ExecutionNode::castTo<KShortestPathsNode*>(original.clone(p, false, !keepPlan));
+      auto clone = ExecutionNode::castTo<KShortestPathsNode*>(
+          original.clone(p, false, !keepPlan));
       if (keepPlan) {
         EXPECT_NE(clone->id(), original.id()) << "Clone did keep the id";
       } else {

@@ -20,26 +20,25 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TestHelper.h"
-
 #include "Replication2/ReplicatedLog/Algorithms.h"
+#include "TestHelper.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::algorithms;
 using namespace arangodb::replication2::test;
 
-struct DetectConflictTest : ::testing::Test {
-
-};
+struct DetectConflictTest : ::testing::Test {};
 
 struct TestInMemoryLog : InMemoryLog {
-  explicit TestInMemoryLog(InMemoryLog::log_type log) : InMemoryLog(std::move(log)) {}
+  explicit TestInMemoryLog(InMemoryLog::log_type log)
+      : InMemoryLog(std::move(log)) {}
 };
 
 TEST_F(DetectConflictTest, log_empty) {
   auto log = TestInMemoryLog{{}};
-  auto res = algorithms::detectConflict(log, TermIndexPair{LogTerm{1}, LogIndex{3}});
+  auto res =
+      algorithms::detectConflict(log, TermIndexPair{LogTerm{1}, LogIndex{3}});
   ASSERT_TRUE(res.has_value());
   auto [reason, next] = *res;
   EXPECT_EQ(reason, ConflictReason::LOG_EMPTY);
@@ -48,14 +47,21 @@ TEST_F(DetectConflictTest, log_empty) {
 
 TEST_F(DetectConflictTest, log_skip_term) {
   auto log = TestInMemoryLog{{
-      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("A"))),
-      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{2}, LogPayload::createFromString("A"))),
-      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{3}, LogPayload::createFromString("A"))),
-      InMemoryLogEntry(PersistingLogEntry(LogTerm{3}, LogIndex{4}, LogPayload::createFromString("AB"))),
-      InMemoryLogEntry(PersistingLogEntry(LogTerm{3}, LogIndex{5}, LogPayload::createFromString("AB"))),
-      InMemoryLogEntry(PersistingLogEntry(LogTerm{3}, LogIndex{6}, LogPayload::createFromString("AB"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{1},
+                                          LogPayload::createFromString("A"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{2},
+                                          LogPayload::createFromString("A"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{3},
+                                          LogPayload::createFromString("A"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{3}, LogIndex{4},
+                                          LogPayload::createFromString("AB"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{3}, LogIndex{5},
+                                          LogPayload::createFromString("AB"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{3}, LogIndex{6},
+                                          LogPayload::createFromString("AB"))),
   }};
-  auto res = algorithms::detectConflict(log, TermIndexPair{LogTerm{4}, LogIndex{6}});
+  auto res =
+      algorithms::detectConflict(log, TermIndexPair{LogTerm{4}, LogIndex{6}});
   ASSERT_TRUE(res.has_value());
   auto [reason, next] = *res;
   EXPECT_EQ(reason, ConflictReason::LOG_ENTRY_NO_MATCH);
@@ -64,11 +70,15 @@ TEST_F(DetectConflictTest, log_skip_term) {
 
 TEST_F(DetectConflictTest, log_missing_after) {
   auto log = TestInMemoryLog{{
-    InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("A"))),
-    InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{2}, LogPayload::createFromString("A"))),
-    InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{3}, LogPayload::createFromString("A"))),
-    }};
-  auto res = algorithms::detectConflict(log, TermIndexPair{LogTerm{4}, LogIndex{6}});
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{1},
+                                          LogPayload::createFromString("A"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{2},
+                                          LogPayload::createFromString("A"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{3},
+                                          LogPayload::createFromString("A"))),
+  }};
+  auto res =
+      algorithms::detectConflict(log, TermIndexPair{LogTerm{4}, LogIndex{6}});
   ASSERT_TRUE(res.has_value());
   auto [reason, next] = *res;
   EXPECT_EQ(reason, ConflictReason::LOG_ENTRY_AFTER_END);
@@ -84,7 +94,8 @@ TEST_F(DetectConflictTest, log_missing_before) {
       InMemoryLogEntry(PersistingLogEntry(LogTerm{4}, LogIndex{13},
                                           LogPayload::createFromString("A"))),
   }};
-  auto res = algorithms::detectConflict(log, TermIndexPair{LogTerm{4}, LogIndex{6}});
+  auto res =
+      algorithms::detectConflict(log, TermIndexPair{LogTerm{4}, LogIndex{6}});
   ASSERT_TRUE(res.has_value());
   auto [reason, next] = *res;
   EXPECT_EQ(reason, ConflictReason::LOG_ENTRY_BEFORE_BEGIN);
@@ -100,7 +111,8 @@ TEST_F(DetectConflictTest, log_missing_before_wrong_term) {
       InMemoryLogEntry(PersistingLogEntry(LogTerm{4}, LogIndex{13},
                                           LogPayload::createFromString("A"))),
   }};
-  auto res = algorithms::detectConflict(log, TermIndexPair{LogTerm{5}, LogIndex{12}});
+  auto res =
+      algorithms::detectConflict(log, TermIndexPair{LogTerm{5}, LogIndex{12}});
   ASSERT_TRUE(res.has_value());
   auto [reason, next] = *res;
   EXPECT_EQ(reason, ConflictReason::LOG_ENTRY_NO_MATCH);

@@ -22,15 +22,16 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
+#include "Cache/Metadata.h"
 
 #include <stdint.h>
+
 #include <memory>
 
 #include "Basics/SpinLocker.h"
-#include "Cache/Metadata.h"
 #include "Cache/PlainCache.h"
 #include "Cache/Table.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb::cache;
 using SpinLocker = ::arangodb::basics::SpinLocker;
@@ -53,7 +54,8 @@ TEST(CacheMetadataTest, test_basic_constructor) {
   ASSERT_EQ(metadata.hardUsageLimit, usageLimit);
 }
 
-TEST(CacheMetadataTest, verify_usage_limits_are_adjusted_and_enforced_correctly) {
+TEST(CacheMetadataTest,
+     verify_usage_limits_are_adjusted_and_enforced_correctly) {
   std::uint64_t overhead = 80;
   Metadata metadata(1024, 0, 0, 2048 + overhead);
 

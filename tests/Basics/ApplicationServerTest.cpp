@@ -22,14 +22,12 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
-#include "gtest/gtest.h"
-
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 
@@ -44,7 +42,8 @@ using namespace arangodb;
 class TestFeatureA : public application_features::ApplicationFeature {
  public:
   TestFeatureA(application_features::ApplicationServer& server,
-               std::string const& name, std::vector<std::type_index> const& startsAfter,
+               std::string const& name,
+               std::vector<std::type_index> const& startsAfter,
                std::vector<std::type_index> const& startsBefore)
       : ApplicationFeature(server, name) {
     for (auto const& it : startsAfter) {
@@ -59,7 +58,8 @@ class TestFeatureA : public application_features::ApplicationFeature {
 class TestFeatureB : public application_features::ApplicationFeature {
  public:
   TestFeatureB(application_features::ApplicationServer& server,
-               std::string const& name, std::vector<std::type_index> const& startsAfter,
+               std::string const& name,
+               std::vector<std::type_index> const& startsAfter,
                std::vector<std::type_index> const& startsBefore)
       : ApplicationFeature(server, name) {
     for (auto const& it : startsAfter) {
@@ -73,25 +73,22 @@ class TestFeatureB : public application_features::ApplicationFeature {
 
 TEST(ApplicationServerTest, test_startsAfterValid) {
   bool failed = false;
-  std::function<void(std::string const&)> callback = [&failed](std::string const&) {
-    failed = true;
-  };
+  std::function<void(std::string const&)> callback =
+      [&failed](std::string const&) { failed = true; };
 
-  auto options =
-      std::make_shared<options::ProgramOptions>("arangod", "something", "",
-                                                "path");
+  auto options = std::make_shared<options::ProgramOptions>(
+      "arangod", "something", "", "path");
   application_features::ApplicationServer server(options, "path");
   server.registerFailCallback(callback);
 
-  auto& feature1 =
-      server.addFeature<TestFeatureA>("feature1", std::vector<std::type_index>{},
-                                      std::vector<std::type_index>{});
+  auto& feature1 = server.addFeature<TestFeatureA>(
+      "feature1", std::vector<std::type_index>{},
+      std::vector<std::type_index>{});
 
-  auto& feature2 =
-      server.addFeature<TestFeatureB>("feature2",
-                                      std::vector<std::type_index>{
-                                          std::type_index(typeid(TestFeatureA))},
-                                      std::vector<std::type_index>{});
+  auto& feature2 = server.addFeature<TestFeatureB>(
+      "feature2",
+      std::vector<std::type_index>{std::type_index(typeid(TestFeatureA))},
+      std::vector<std::type_index>{});
 
   server.setupDependencies(true);
 
@@ -108,24 +105,22 @@ TEST(ApplicationServerTest, test_startsAfterValid) {
 
 TEST(ApplicationServerTest, test_startsAfterCyclic) {
   bool failed = false;
-  std::function<void(std::string const&)> callback = [&failed](std::string const&) {
-    failed = true;
-  };
+  std::function<void(std::string const&)> callback =
+      [&failed](std::string const&) { failed = true; };
 
-  auto options =
-      std::make_shared<options::ProgramOptions>("arangod", "something", "",
-                                                "path");
+  auto options = std::make_shared<options::ProgramOptions>(
+      "arangod", "something", "", "path");
   application_features::ApplicationServer server(options, "path");
   server.registerFailCallback(callback);
 
-  server.addFeature<TestFeatureA>("feature1",
-                                  std::vector<std::type_index>{
-                                      std::type_index(typeid(TestFeatureB))},
-                                  std::vector<std::type_index>{});
-  server.addFeature<TestFeatureB>("feature2",
-                                  std::vector<std::type_index>{
-                                      std::type_index(typeid(TestFeatureA))},
-                                  std::vector<std::type_index>{});
+  server.addFeature<TestFeatureA>(
+      "feature1",
+      std::vector<std::type_index>{std::type_index(typeid(TestFeatureB))},
+      std::vector<std::type_index>{});
+  server.addFeature<TestFeatureB>(
+      "feature2",
+      std::vector<std::type_index>{std::type_index(typeid(TestFeatureA))},
+      std::vector<std::type_index>{});
 
   try {
     server.setupDependencies(true);
@@ -138,22 +133,20 @@ TEST(ApplicationServerTest, test_startsAfterCyclic) {
 
 TEST(ApplicationServerTest, test_startsBeforeCyclic) {
   bool failed = false;
-  std::function<void(std::string const&)> callback = [&failed](std::string const&) {
-    failed = true;
-  };
+  std::function<void(std::string const&)> callback =
+      [&failed](std::string const&) { failed = true; };
 
-  auto options =
-      std::make_shared<options::ProgramOptions>("arangod", "something", "",
-                                                "path");
+  auto options = std::make_shared<options::ProgramOptions>(
+      "arangod", "something", "", "path");
   application_features::ApplicationServer server(options, "path");
   server.registerFailCallback(callback);
 
-  server.addFeature<TestFeatureA>("feature1", std::vector<std::type_index>{},
-                                  std::vector<std::type_index>{
-                                      std::type_index(typeid(TestFeatureB))});
-  server.addFeature<TestFeatureB>("feature2", std::vector<std::type_index>{},
-                                  std::vector<std::type_index>{
-                                      std::type_index(typeid(TestFeatureA))});
+  server.addFeature<TestFeatureA>(
+      "feature1", std::vector<std::type_index>{},
+      std::vector<std::type_index>{std::type_index(typeid(TestFeatureB))});
+  server.addFeature<TestFeatureB>(
+      "feature2", std::vector<std::type_index>{},
+      std::vector<std::type_index>{std::type_index(typeid(TestFeatureA))});
 
   try {
     server.setupDependencies(true);

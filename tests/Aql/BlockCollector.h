@@ -24,11 +24,11 @@
 #ifndef ARANGOD_AQL_BLOCK_COLLECTOR_H
 #define ARANGOD_AQL_BLOCK_COLLECTOR_H 1
 
-#include "Aql/SharedAqlItemBlockPtr.h"
-#include "Aql/types.h"
-
 #include <cstdint>
 #include <vector>
+
+#include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/types.h"
 
 namespace arangodb {
 namespace aql {

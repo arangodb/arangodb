@@ -20,12 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-#include "Basics/files.h"
-#include "Basics/system-functions.h"
-#include "Random/RandomGenerator.h"
-
-#include "gtest/gtest.h"
+#include <velocypack/velocypack-aliases.h>
 
 #include <array>
 #include <chrono>
@@ -33,7 +28,11 @@
 #include <memory>
 #include <string>
 
-#include <velocypack/velocypack-aliases.h>
+#include "Basics/Common.h"
+#include "Basics/files.h"
+#include "Basics/system-functions.h"
+#include "Random/RandomGenerator.h"
+#include "gtest/gtest.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/EncryptionProvider.h"
@@ -48,49 +47,58 @@ static const char* SAMPLE_KEY = "01234567890123456789012345678901";
 }
 
 TEST(EncryptionProviderTest, simple) {
-  
   // hand rolled AES-256-CTR mode
-  arangodb::enterprise::EncryptionProvider hwprovider(rocksdb::Slice(SAMPLE_KEY, 32),
-                                                      /*allowAcceleration*/true);
-  
+  arangodb::enterprise::EncryptionProvider hwprovider(
+      rocksdb::Slice(SAMPLE_KEY, 32),
+      /*allowAcceleration*/ true);
+
   // openssl EVP variant
-  arangodb::enterprise::EncryptionProvider evpprovider(rocksdb::Slice(SAMPLE_KEY, 32), /*allow*/false);
+  arangodb::enterprise::EncryptionProvider evpprovider(
+      rocksdb::Slice(SAMPLE_KEY, 32), /*allow*/ false);
 
   // hand-rolled CTR mode with the openssl software-only AES_encrypt
-  auto cipher = std::make_shared<arangodb::enterprise::AES256BlockCipher>(rocksdb::Slice(SAMPLE_KEY, 32));
+  auto cipher = std::make_shared<arangodb::enterprise::AES256BlockCipher>(
+      rocksdb::Slice(SAMPLE_KEY, 32));
   rocksdb::CTREncryptionProvider softprovider(cipher);
-  
+
   ASSERT_EQ(hwprovider.GetPrefixLength(), softprovider.GetPrefixLength());
-  
+
   std::string prefix;
   prefix.resize(softprovider.GetPrefixLength());
-  
+
   rocksdb::EnvOptions opts;
-  
-  constexpr size_t kBuffSize = 1<<14;
-    
+
+  constexpr size_t kBuffSize = 1 << 14;
+
   std::array<char, kBuffSize> buffer1, buffer2, buffer3, buffer4;
-  
+
   for (int x = 0; x < 64; x++) {
     for (size_t i = 0; i < kBuffSize; i++) {
-      buffer1[i] = buffer2[i] = buffer3[i] = buffer4[i] = RandomGenerator::interval(0, 255);
+      buffer1[i] = buffer2[i] = buffer3[i] = buffer4[i] =
+          RandomGenerator::interval(0, 255);
     }
-    
+
     size_t offset = RandomGenerator::interval(0, kBuffSize / 2);
-    size_t len = RandomGenerator::interval(0, static_cast<std::int32_t>(kBuffSize - offset));
-    
+    size_t len = RandomGenerator::interval(
+        0, static_cast<std::int32_t>(kBuffSize - offset));
+
     softprovider.CreateNewPrefix("", prefix.data(), prefix.size());
     rocksdb::Slice prefixSlice(prefix);
-    
-    std::unique_ptr<rocksdb::BlockAccessCipherStream> streamIntel, streamEVP, streamSW;
-    ASSERT_TRUE(hwprovider.CreateCipherStream("", opts, prefixSlice, &streamIntel).ok());
-    ASSERT_TRUE(evpprovider.CreateCipherStream("", opts, prefixSlice, &streamEVP).ok());
-    ASSERT_TRUE(softprovider.CreateCipherStream("", opts, prefixSlice, &streamSW).ok());
+
+    std::unique_ptr<rocksdb::BlockAccessCipherStream> streamIntel, streamEVP,
+        streamSW;
+    ASSERT_TRUE(
+        hwprovider.CreateCipherStream("", opts, prefixSlice, &streamIntel)
+            .ok());
+    ASSERT_TRUE(
+        evpprovider.CreateCipherStream("", opts, prefixSlice, &streamEVP).ok());
+    ASSERT_TRUE(
+        softprovider.CreateCipherStream("", opts, prefixSlice, &streamSW).ok());
 
     ASSERT_NE(streamIntel, nullptr);
     ASSERT_NE(streamEVP, nullptr);
     ASSERT_NE(streamSW, nullptr);
-    
+
     // encryption sanity check
     ASSERT_TRUE(streamIntel->Encrypt(0, buffer1.data(), 16).ok());
     ASSERT_TRUE(streamEVP->Encrypt(0, buffer2.data(), 16).ok());
@@ -105,7 +113,8 @@ TEST(EncryptionProviderTest, simple) {
     ASSERT_EQ(memcmp(buffer2.data(), buffer3.data(), 16), 0);
 
     // encrypt data at offset
-    ASSERT_TRUE(streamIntel->Encrypt(offset, buffer1.data() + offset, len).ok());
+    ASSERT_TRUE(
+        streamIntel->Encrypt(offset, buffer1.data() + offset, len).ok());
     ASSERT_TRUE(streamEVP->Encrypt(offset, buffer2.data() + offset, len).ok());
     ASSERT_TRUE(streamSW->Encrypt(offset, buffer3.data() + offset, len).ok());
 
@@ -114,7 +123,8 @@ TEST(EncryptionProviderTest, simple) {
     ASSERT_EQ(memcmp(buffer2.data() + offset, buffer3.data() + offset, len), 0);
 
     // decrypt data at offset
-    ASSERT_TRUE(streamIntel->Decrypt(offset, buffer1.data() + offset, len).ok());
+    ASSERT_TRUE(
+        streamIntel->Decrypt(offset, buffer1.data() + offset, len).ok());
     ASSERT_TRUE(streamEVP->Decrypt(offset, buffer2.data() + offset, len).ok());
     ASSERT_TRUE(streamSW->Decrypt(offset, buffer3.data() + offset, len).ok());
 
@@ -126,27 +136,29 @@ TEST(EncryptionProviderTest, simple) {
 }
 
 TEST(EncryptionProviderTest, microbenchmark) {
-  
   // hand rolled AES-256-CTR mode
-  arangodb::enterprise::EncryptionProvider hwprovider(rocksdb::Slice(SAMPLE_KEY, 32),
-                                                      /*allowAcceleration*/true);
-  
+  arangodb::enterprise::EncryptionProvider hwprovider(
+      rocksdb::Slice(SAMPLE_KEY, 32),
+      /*allowAcceleration*/ true);
+
   // openssl EVP AES-256-CTR mode
-  arangodb::enterprise::EncryptionProvider evpprovider(rocksdb::Slice(SAMPLE_KEY, 32), /*allow*/false);
+  arangodb::enterprise::EncryptionProvider evpprovider(
+      rocksdb::Slice(SAMPLE_KEY, 32), /*allow*/ false);
 
   // this is the hand-rolled CTR mode with the openssl software-only AES_encrypt
-  auto cipher = std::make_shared<arangodb::enterprise::AES256BlockCipher>(rocksdb::Slice(SAMPLE_KEY, 32));
+  auto cipher = std::make_shared<arangodb::enterprise::AES256BlockCipher>(
+      rocksdb::Slice(SAMPLE_KEY, 32));
   rocksdb::CTREncryptionProvider softprovider(cipher);
-  
+
   ASSERT_EQ(hwprovider.GetPrefixLength(), softprovider.GetPrefixLength());
   ASSERT_EQ(evpprovider.GetPrefixLength(), softprovider.GetPrefixLength());
 
   std::string prefix;
   prefix.resize(softprovider.GetPrefixLength());
-  
+
   rocksdb::EnvOptions opts;
-  
-  constexpr size_t kBuffSize = (1<<20) * 16;
+
+  constexpr size_t kBuffSize = (1 << 20) * 16;
   std::vector<char> buffer;
   buffer.resize(kBuffSize);
   for (size_t i = 0; i < kBuffSize; i++) {
@@ -155,11 +167,15 @@ TEST(EncryptionProviderTest, microbenchmark) {
 
   softprovider.CreateNewPrefix("", prefix.data(), prefix.size());
   rocksdb::Slice prefixSlice(prefix);
-  
-  std::unique_ptr<rocksdb::BlockAccessCipherStream> streamIntel, streamEVP, streamSf;
-  ASSERT_TRUE(hwprovider.CreateCipherStream("", opts, prefixSlice, &streamIntel).ok());
-  ASSERT_TRUE(evpprovider.CreateCipherStream("", opts, prefixSlice, &streamEVP).ok());
-  ASSERT_TRUE(softprovider.CreateCipherStream("", opts, prefixSlice, &streamSf).ok());
+
+  std::unique_ptr<rocksdb::BlockAccessCipherStream> streamIntel, streamEVP,
+      streamSf;
+  ASSERT_TRUE(
+      hwprovider.CreateCipherStream("", opts, prefixSlice, &streamIntel).ok());
+  ASSERT_TRUE(
+      evpprovider.CreateCipherStream("", opts, prefixSlice, &streamEVP).ok());
+  ASSERT_TRUE(
+      softprovider.CreateCipherStream("", opts, prefixSlice, &streamSf).ok());
   ASSERT_NE(streamIntel, nullptr);
   ASSERT_NE(streamEVP, nullptr);
   ASSERT_NE(streamSf, nullptr);
@@ -175,13 +191,15 @@ TEST(EncryptionProviderTest, microbenchmark) {
   }
   auto duration = std::chrono::steady_clock::now() - start;
   auto durationHw = std::chrono::duration_cast<std::chrono::seconds>(duration);
-  auto avgDurationHw = std::chrono::duration_cast<std::chrono::milliseconds>(duration / reps);
-  
+  auto avgDurationHw =
+      std::chrono::duration_cast<std::chrono::milliseconds>(duration / reps);
+
   std::cout << "------------------------------" << std::endl;
   std::cout << "Algorithm\tTotal\tAvg" << std::endl;
   std::cout << "Intel NI\t" << durationHw.count() << "s\t"
             << avgDurationHw.count() << "ms" << std::endl;
-  std::cout << "------------------------------" << std::endl;;
+  std::cout << "------------------------------" << std::endl;
+  ;
   std::cout << "\nBenchmarking AES_encrypt only variant..." << std::endl;
 
   start = std::chrono::steady_clock::now();
@@ -191,8 +209,9 @@ TEST(EncryptionProviderTest, microbenchmark) {
   }
   duration = std::chrono::steady_clock::now() - start;
   auto durationSf = std::chrono::duration_cast<std::chrono::seconds>(duration);
-  auto avgDurationSf = std::chrono::duration_cast<std::chrono::milliseconds>(duration / reps);
-  
+  auto avgDurationSf =
+      std::chrono::duration_cast<std::chrono::milliseconds>(duration / reps);
+
   std::cout << "------------------------------" << std::endl;
   std::cout << "Algorithm\tTotal\tAvg" << std::endl;
   std::cout << "AES_encrypt\t" << durationSf.count() << "s\t"
@@ -201,7 +220,7 @@ TEST(EncryptionProviderTest, microbenchmark) {
             << avgDurationHw.count() << "ms" << std::endl;
   std::cout << "------------------------------" << std::endl;
   std::cout << "\nBenchmarking OpenSSL EVP variant..." << std::endl;
-  
+
   start = std::chrono::steady_clock::now();
   for (int x = 0; x < reps; x++) {
     // encrypt data at offset
@@ -209,8 +228,9 @@ TEST(EncryptionProviderTest, microbenchmark) {
   }
   duration = std::chrono::steady_clock::now() - start;
   auto durationEVP = std::chrono::duration_cast<std::chrono::seconds>(duration);
-  auto avgDurationEVP = std::chrono::duration_cast<std::chrono::milliseconds>(duration / reps);
-  
+  auto avgDurationEVP =
+      std::chrono::duration_cast<std::chrono::milliseconds>(duration / reps);
+
   std::cout << "------------------------------" << std::endl;
   std::cout << "Algorithm\tTotal\tAvg" << std::endl;
   std::cout << "AES_encrypt\t" << durationSf.count() << "s\t"
@@ -218,7 +238,7 @@ TEST(EncryptionProviderTest, microbenchmark) {
   std::cout << "Intel NI\t" << durationHw.count() << "s\t"
             << avgDurationHw.count() << "ms" << std::endl;
   std::cout << "OpenSSL EVP\t" << durationEVP.count() << "s\t"
-  << avgDurationEVP.count() << "ms" << std::endl;
+            << avgDurationEVP.count() << "ms" << std::endl;
   std::cout << "------------------------------" << std::endl;
 }
 

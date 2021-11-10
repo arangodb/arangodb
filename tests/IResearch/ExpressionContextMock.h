@@ -25,47 +25,45 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT
 #define ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT 1
 
-#include "Aql/QueryContext.h"
+#include <unordered_map>
+
 #include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/QueryContext.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "Transaction/Methods.h"
-
-#include <unordered_map>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace aql {
 
-struct Variable; // forward decl
+struct Variable;  // forward decl
 
-} // aql
-} // arangodb
+}  // namespace aql
+}  // namespace arangodb
 
-struct ExpressionContextMock final : public arangodb::iresearch::ViewExpressionContextBase {
-
+struct ExpressionContextMock final
+    : public arangodb::iresearch::ViewExpressionContextBase {
   static ExpressionContextMock EMPTY;
 
-  ExpressionContextMock() : ViewExpressionContextBase(nullptr, nullptr, nullptr) {}
+  ExpressionContextMock()
+      : ViewExpressionContextBase(nullptr, nullptr, nullptr) {}
 
   virtual ~ExpressionContextMock();
 
-  virtual bool isDataFromCollection(arangodb::aql::Variable const* variable) const override {
+  virtual bool isDataFromCollection(
+      arangodb::aql::Variable const* variable) const override {
     return variable->isDataFromCollection;
   }
 
   virtual arangodb::aql::AqlValue getVariableValue(
-    arangodb::aql::Variable const* variable,
-    bool doCopy,
-    bool& mustDestroy
-  ) const override;
+      arangodb::aql::Variable const* variable, bool doCopy,
+      bool& mustDestroy) const override;
 
-  void setTrx(arangodb::transaction::Methods* trx) {
-    this->_trx = trx;
-  }
+  void setTrx(arangodb::transaction::Methods* trx) { this->_trx = trx; }
 
   arangodb::aql::AqlFunctionsInternalCache _regexCache;
   std::unordered_map<std::string, arangodb::aql::AqlValue> vars;
-}; // ExpressionContextMock
+};  // ExpressionContextMock
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT
+#endif  // ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT

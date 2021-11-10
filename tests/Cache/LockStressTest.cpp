@@ -22,8 +22,6 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-
 #include <chrono>
 #include <cstdint>
 #include <iostream>
@@ -32,10 +30,10 @@
 
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
-#include "Random/RandomGenerator.h"
-
 #include "MockScheduler.h"
+#include "Random/RandomGenerator.h"
 #include "TransactionalStore.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
@@ -57,7 +55,8 @@ TEST(CacheLockStressTest, test_transactionality_for_mixed_load) {
     store.insert(nullptr, TransactionalStore::Document(i));
   }
 
-  auto readWorker = [&store, totalDocuments, readBatchSize, numBatches]() -> void {
+  auto readWorker = [&store, totalDocuments, readBatchSize,
+                     numBatches]() -> void {
     for (std::uint64_t batch = 0; batch < numBatches; batch++) {
       auto tx = store.beginTransaction(true);
       for (std::uint64_t i = 0; i < readBatchSize; i++) {
@@ -89,7 +88,8 @@ TEST(CacheLockStressTest, test_transactionality_for_mixed_load) {
   }
 
   auto end = std::chrono::high_resolution_clock::now();
-  std::cout << "time: " << static_cast<double>((end - start).count()) / 1000000000
+  std::cout << "time: "
+            << static_cast<double>((end - start).count()) / 1000000000
             << std::endl;
 
   RandomGenerator::shutdown();

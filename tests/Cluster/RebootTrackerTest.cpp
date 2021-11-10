@@ -24,15 +24,13 @@
 #include <memory>
 #include <type_traits>
 
-#include "gtest/gtest.h"
-
-#include "Mocks/LogLevels.h"
-#include "Mocks/Servers.h"
-
 #include "Cluster/RebootTracker.h"
 #include "Logger/Logger.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -49,8 +47,8 @@ class CallbackGuardTest : public ::testing::Test {
   void SetUp() override {
     counterA = 0;
     counterB = 0;
-    incrCounterA = [& counterA = this->counterA]() { ++counterA; };
-    incrCounterB = [& counterB = this->counterB]() { ++counterB; };
+    incrCounterA = [&counterA = this->counterA]() { ++counterA; };
+    incrCounterB = [&counterB = this->counterB]() { ++counterB; };
   }
 };
 
@@ -131,19 +129,22 @@ TEST_F(CallbackGuardTest, test_move_operator_eq_explicit) {
                             "its old callback again";
 }
 
-class RebootTrackerTest : public ::testing::Test,
-                          public LogSuppressor<Logger::CLUSTER, LogLevel::WARN> {
+class RebootTrackerTest
+    : public ::testing::Test,
+      public LogSuppressor<Logger::CLUSTER, LogLevel::WARN> {
  protected:
 // MSVC new/malloc only guarantees 8 byte alignment, but SupervisedScheduler
 // needs 64. Disable warning:
 #if (_MSC_VER >= 1)
 #pragma warning(push)
-#pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
+#pragma warning(disable : 4316)  // Object allocated on the heap may not be
+                                 // aligned for this type
 #endif
   RebootTrackerTest()
       : mockApplicationServer(),
-        scheduler(std::make_unique<SupervisedScheduler>(mockApplicationServer.server(),
-                                                        2, 64, 128, 1024 * 1024, 4096, 4096, 128, 0.0)) {}
+        scheduler(std::make_unique<SupervisedScheduler>(
+            mockApplicationServer.server(), 2, 64, 128, 1024 * 1024, 4096, 4096,
+            128, 0.0)) {}
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
@@ -151,7 +152,8 @@ class RebootTrackerTest : public ::testing::Test,
 
   MockRestServer mockApplicationServer;
   std::unique_ptr<SupervisedScheduler> scheduler;
-  static_assert(std::is_same<decltype(*SchedulerFeature::SCHEDULER), decltype(*scheduler)>::value,
+  static_assert(std::is_same<decltype(*SchedulerFeature::SCHEDULER),
+                             decltype(*scheduler)>::value,
                 "Use the correct scheduler in the tests");
   // ApplicationServer needs to be prepared in order for the scheduler to start
   // threads.
@@ -445,8 +447,8 @@ TEST_F(RebootTrackerTest, one_server_guard_doesnt_interfere) {
 
     {
       // Register callback with a local guard
-      auto localGuard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-                                                     incrCounterB, "");
+      auto localGuard = rebootTracker.callMeOnChange(
+          PeerState{serverA, RebootId{1}}, incrCounterB, "");
       waitForSchedulerEmpty();
       EXPECT_EQ(0, counterA) << "Callback must not be called before a change";
       EXPECT_EQ(0, counterB) << "Callback must not be called before a change";
@@ -507,8 +509,8 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_same_id) {
     // State is empty { }
 
     // Register callback
-    EXPECT_THROW(guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-                                                      callback, ""),
+    EXPECT_THROW(guard = rebootTracker.callMeOnChange(
+                     PeerState{serverA, RebootId{1}}, callback, ""),
                  arangodb::basics::Exception)
         << "Trying to add a callback for an unknown server should be refused";
     waitForSchedulerEmpty();
@@ -548,8 +550,8 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_older_id) {
     // State is empty { }
 
     // Register callback
-    EXPECT_THROW(guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{2}},
-                                                      callback, ""),
+    EXPECT_THROW(guard = rebootTracker.callMeOnChange(
+                     PeerState{serverA, RebootId{2}}, callback, ""),
                  arangodb::basics::Exception)
         << "Trying to add a callback for an unknown server should be refused";
     waitForSchedulerEmpty();

@@ -22,19 +22,17 @@
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/AgencyCache.h"
 #include "Mocks/Servers.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 
 struct ClusterInfoTest : public ::testing::Test {
-  ClusterInfoTest() 
-      : server() {}
-  
+  ClusterInfoTest() : server() {}
+
   arangodb::tests::mocks::MockCoordinator server;
 };
 
@@ -53,7 +51,7 @@ TEST_F(ClusterInfoTest, testServerExists) {
     servers.emplace("PRMR-012345-678", "testi");
     servers.emplace("PRMR-012345-123", "testmann");
     ci.setServers(std::move(servers));
-    
+
     ASSERT_TRUE(ci.serverExists("PRMR-012345-678"));
     ASSERT_TRUE(ci.serverExists("PRMR-012345-123"));
     ASSERT_FALSE(ci.serverExists("PRMR-012345-1234"));
@@ -70,7 +68,7 @@ TEST_F(ClusterInfoTest, testServerExists) {
   {
     // flush servers map once more
     ci.setServers({});
-    
+
     ASSERT_FALSE(ci.serverExists("PRMR-012345-678"));
     ASSERT_FALSE(ci.serverExists("PRMR-012345-123"));
     ASSERT_FALSE(ci.serverExists("testi"));
@@ -97,7 +95,7 @@ TEST_F(ClusterInfoTest, testServerAliasExists) {
     aliases.emplace("DBServer0001", "PRMR-012345-678");
     aliases.emplace("DBServer0002", "PRMR-9999-666");
     ci.setServerAliases(std::move(aliases));
-    
+
     ASSERT_TRUE(ci.serverAliasExists("DBServer0001"));
     ASSERT_TRUE(ci.serverAliasExists("DBServer0002"));
     ASSERT_FALSE(ci.serverAliasExists("DBServer0003"));
@@ -110,7 +108,7 @@ TEST_F(ClusterInfoTest, testServerAliasExists) {
   {
     // flush aliases map once more
     ci.setServerAliases({});
-    
+
     ASSERT_FALSE(ci.serverAliasExists("DBServer0001"));
     ASSERT_FALSE(ci.serverAliasExists("DBServer0002"));
     ASSERT_FALSE(ci.serverAliasExists("DBServer0003"));
@@ -122,13 +120,15 @@ TEST_F(ClusterInfoTest, testServerAliasExists) {
 }
 
 TEST_F(ClusterInfoTest, plan_will_provide_latest_id) {
-  auto &cache {server.getFeature<ClusterFeature>().agencyCache()};
-  auto [acb, index] {cache.read({AgencyCommHelper::path("Sync/LatestID")})};
-  auto expectedLatestId {acb->slice().at(0).get("arango").get("Sync").get("LatestID").getInt()};
-  auto& ci {server.getFeature<arangodb::ClusterFeature>().clusterInfo()};
-  auto builder {std::make_shared<VPackBuilder>()};
-  auto result {ci.agencyPlan(builder)};
+  auto& cache{server.getFeature<ClusterFeature>().agencyCache()};
+  auto [acb, index]{cache.read({AgencyCommHelper::path("Sync/LatestID")})};
+  auto expectedLatestId{
+      acb->slice().at(0).get("arango").get("Sync").get("LatestID").getInt()};
+  auto& ci{server.getFeature<arangodb::ClusterFeature>().clusterInfo()};
+  auto builder{std::make_shared<VPackBuilder>()};
+  auto result{ci.agencyPlan(builder)};
   ASSERT_TRUE(result.ok());
-  ASSERT_EQ(builder->slice().at(0).get("arango").get("Sync").get("LatestID").getInt(), expectedLatestId);
+  ASSERT_EQ(
+      builder->slice().at(0).get("arango").get("Sync").get("LatestID").getInt(),
+      expectedLatestId);
 }
-

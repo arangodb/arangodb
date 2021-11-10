@@ -20,22 +20,21 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchQueryCommon.h"
+#include "IResearch/IResearchAqlAnalyzer.h"
 
+#include <velocypack/Iterator.h>
+
+#include <analysis/token_streams.hpp>
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValue.h"
 #include "IResearch/IResearchView.h"
+#include "IResearchQueryCommon.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
-
-#include <velocypack/Iterator.h>
-#include "IResearch/IResearchAqlAnalyzer.h"
-#include <analysis/token_streams.hpp>
-
 
 class IResearchAqlAnalyzerTest : public IResearchQueryTest {};
 
@@ -54,28 +53,35 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
                      bool shouldBeOptimized) {
   SCOPED_TRACE(data);
   auto* term = irs::get<irs::term_attribute>(*analyzer);
-  auto* vpack_term = irs::get<arangodb::iresearch::VPackTermAttribute>(*analyzer);
-  auto* value_type = irs::get<arangodb::iresearch::AnalyzerValueTypeAttribute>(*analyzer);
+  auto* vpack_term =
+      irs::get<arangodb::iresearch::VPackTermAttribute>(*analyzer);
+  auto* value_type =
+      irs::get<arangodb::iresearch::AnalyzerValueTypeAttribute>(*analyzer);
   ASSERT_TRUE(term);
   ASSERT_TRUE(vpack_term);
   ASSERT_TRUE(value_type);
   auto* inc = irs::get<irs::increment>(*analyzer);
   ASSERT_TRUE(inc);
   ASSERT_TRUE(analyzer->reset(data));
-  ASSERT_EQ(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(analyzer)->isOptimized(), shouldBeOptimized);
+  ASSERT_EQ(
+      dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(analyzer)->isOptimized(),
+      shouldBeOptimized);
   uint32_t pos{std::numeric_limits<uint32_t>::max()};
   auto expected_token = expected_tokens.begin();
   while (analyzer->next()) {
     ASSERT_NE(expected_token, expected_tokens.end());
     SCOPED_TRACE(testing::Message("Expected Term:") << expected_token->value);
     if (value_type->value == arangodb::iresearch::AnalyzerValueType::String) {
-      auto term_value =
-          std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
-      ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), term->value);
+      auto term_value = std::string(irs::ref_cast<char>(term->value).c_str(),
+                                    term->value.size());
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value),
+                term->value);
     } else {
       ASSERT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
-        vpack_term->value, VPackSlice(reinterpret_cast<uint8_t const*>(expected_token->value.c_str())),
-                                      false));
+                       vpack_term->value,
+                       VPackSlice(reinterpret_cast<uint8_t const*>(
+                           expected_token->value.c_str())),
+                       false));
     }
     pos += inc->value;
     ASSERT_EQ(expected_token->pos, pos);
@@ -85,18 +91,20 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
   ASSERT_FALSE(analyzer->next());
 }
 
-} // namespace
+}  // namespace
 
 TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
   // const value
   {
-    auto ptr = irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                             irs::type<irs::text_format::vpack>::get(),
-                                             arangodb::iresearch::ref<char>(
-                                               VPackParser::fromJson("{\"queryString\": \"RETURN '1'\"}")->slice()),
-                                             false);
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\"}")
+                ->slice()),
+        false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     assert_analyzer(ptr.get(), "2", {{"1", 0}}, true);
   }
   // just parameter
@@ -104,9 +112,11 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     auto ptr = irs::analysis::analyzers::get(
         AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"RETURN @param\"}")->slice()),
+            VPackParser::fromJson("{\"queryString\": \"RETURN @param\"}")
+                ->slice()),
         false);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     ASSERT_NE(nullptr, ptr);
     assert_analyzer(ptr.get(), "2", {{"2", 0}}, true);
   }
@@ -116,10 +126,13 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     auto ptr = irs::analysis::analyzers::get(
         AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"RETURN TO_STRING(TO_NUMBER(@param)+1)\"}")->slice()),
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN TO_STRING(TO_NUMBER(@param)+1)\"}")
+                ->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     assert_analyzer(ptr.get(), "2", {{"3", 0}}, true);
     assert_analyzer(ptr.get(), "3", {{"4", 0}}, true);
     assert_analyzer(ptr.get(), "4", {{"5", 0}}, true);
@@ -127,15 +140,17 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
   }
   // object
   {
-    auto ptr =
-        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                      irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(
-                                        VPackParser::fromJson("{\"queryString\": \"LET a = [{f:@param, c:NOOPT('test')}] FOR d IN a RETURN CONCAT(d.f, d.c)\"}")
-                                          ->slice()),
-                                      false);
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson(
+                "{\"queryString\": \"LET a = [{f:@param, c:NOOPT('test')}] FOR "
+                "d IN a RETURN CONCAT(d.f, d.c)\"}")
+                ->slice()),
+        false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     assert_analyzer(ptr.get(), "2", {{"2test", 0}}, false);
     assert_analyzer(ptr.get(), "3", {{"3test", 0}}, false);
   }
@@ -144,105 +159,124 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     auto ptr = irs::analysis::analyzers::get(
         AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"FOR d IN 1..5 RETURN CONCAT(UPPER(@param), d)\"}")->slice()),
+            VPackParser::fromJson("{\"queryString\": \"FOR d IN 1..5 RETURN "
+                                  "CONCAT(UPPER(@param), d)\"}")
+                ->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     assert_analyzer(ptr.get(), "a",
-                    {{"A1", 0}, {"A2", 1}, {"A3", 2}, {"A4", 3}, {"A5", 4}}, false);
+                    {{"A1", 0}, {"A2", 1}, {"A3", 2}, {"A4", 3}, {"A5", 4}},
+                    false);
     assert_analyzer(ptr.get(), "b",
-                    {{"B1", 0}, {"B2", 1}, {"B3", 2}, {"B4", 3}, {"B5", 4}}, false);
+                    {{"B1", 0}, {"B2", 1}, {"B3", 2}, {"B4", 3}, {"B5", 4}},
+                    false);
   }
   // cycle with collapse
   {
-    auto ptr =
-        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                      irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"collapsePositions\": true, \"batchSize\":3,"
-                                                                                           "\"queryString\": \"FOR d IN 1..5 RETURN CONCAT(UPPER(@param), d)\"}")
-                                                                         ->slice()),
-                                      false);
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson(
+                "{\"collapsePositions\": true, \"batchSize\":3,"
+                "\"queryString\": \"FOR d IN 1..5 RETURN CONCAT(UPPER(@param), "
+                "d)\"}")
+                ->slice()),
+        false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     assert_analyzer(ptr.get(), "a",
-                    {{"A1", 0}, {"A2", 0}, {"A3", 0}, {"A4", 0}, {"A5", 0}}, false);
+                    {{"A1", 0}, {"A2", 0}, {"A3", 0}, {"A4", 0}, {"A5", 0}},
+                    false);
   }
   // cycle with array
   {
-    auto ptr =
-        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                      irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"collapsePositions\": false,"
-                                                                                           "\"queryString\": \"FOR d IN [UPPER(@param), @param, LOWER(@param)] RETURN d\"}")
-                                                                         ->slice()),
-                                      false);
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"collapsePositions\": false,"
+                                  "\"queryString\": \"FOR d IN [UPPER(@param), "
+                                  "@param, LOWER(@param)] RETURN d\"}")
+                ->slice()),
+        false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     assert_analyzer(ptr.get(), "ArangoDB",
                     {{"ARANGODB", 0}, {"ArangoDB", 1}, {"arangodb", 2}}, false);
-    assert_analyzer(ptr.get(), "TeST",
-                    {{"TEST", 0}, {"TeST", 1}, {"test", 2}}, false);
+    assert_analyzer(ptr.get(), "TeST", {{"TEST", 0}, {"TeST", 1}, {"test", 2}},
+                    false);
   }
   // nested cycles
   {
-    auto ptr =
-        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                      irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("\
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackParser::fromJson("\
                                         {\"collapsePositions\": false,\
                                          \"queryString\": \"FOR d IN 1..TO_NUMBER(@param)\
                                                              FILTER d%2 != 0\
                                                                FOR c IN 1..TO_NUMBER(@param)\
                                                                  FILTER c%2 == 0\
-                                                                   RETURN CONCAT(d,c)\"}")->slice()), false);
+                                                                   RETURN CONCAT(d,c)\"}")
+                                           ->slice()),
+        false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
-    assert_analyzer(ptr.get(), "4", {{"12", 0}, {"14", 1}, {"32", 2}, {"34", 3}}, false);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
+    assert_analyzer(ptr.get(), "4",
+                    {{"12", 0}, {"14", 1}, {"32", 2}, {"34", 3}}, false);
   }
   // subquery
   {
-    auto ptr =
-        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                      irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("\
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackParser::fromJson("\
                                         {\"collapsePositions\": false,\
                                          \"queryString\": \"FOR d IN [@param]\
                                                                LET Avg = (FOR c IN 1..TO_NUMBER(@param) FILTER c%2==0 RETURN c )\
                                                                    RETURN CONCAT(d,AVERAGE(Avg))\"}")
-                                                                         ->slice()),
-                                      false);
+                                           ->slice()),
+        false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     assert_analyzer(ptr.get(), "4", {{"43", 0}}, false);
     assert_analyzer(ptr.get(), "5", {{"53", 0}}, false);
   }
 
   // filter nulls
   {
-    auto ptr =
-        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                      irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(
-                                        VPackParser::fromJson("{\"keepNull\":false, \"queryString\": \"FOR d IN 1..5 LET t = d%2==0?  CONCAT(UPPER(@param), d) : NULL RETURN t \"}")
-                                                                ->slice()),
-                                      false);
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson(
+                "{\"keepNull\":false, \"queryString\": \"FOR d IN 1..5 LET t = "
+                "d%2==0?  CONCAT(UPPER(@param), d) : NULL RETURN t \"}")
+                ->slice()),
+        false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     assert_analyzer(ptr.get(), "a", {{"A2", 0}, {"A4", 1}}, false);
   }
 
   // keep nulls
   {
-    auto ptr =
-        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                      irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(
-                                        VPackParser::fromJson("{\"keepNull\":true, \"queryString\": \"FOR d IN 1..5 LET t = d%2==0?  CONCAT(UPPER(@param), d) : NULL RETURN t \"}")
-                                                               ->slice()),
-                                      false);
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson(
+                "{\"keepNull\":true, \"queryString\": \"FOR d IN 1..5 LET t = "
+                "d%2==0?  CONCAT(UPPER(@param), d) : NULL RETURN t \"}")
+                ->slice()),
+        false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
-    assert_analyzer(ptr.get(), "a", {{"", 0}, {"A2", 1}, {"", 2}, {"A4", 3}, {"", 4}}, false);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
+    assert_analyzer(ptr.get(), "a",
+                    {{"", 0}, {"A2", 1}, {"", 2}, {"A4", 3}, {"", 4}}, false);
   }
 
   // only null
@@ -250,12 +284,16 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     auto ptr = irs::analysis::analyzers::get(
         AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"RETURN null\", \"keepNull\":false}")->slice()),
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN null\", \"keepNull\":false}")
+                ->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     ASSERT_TRUE(ptr->reset("2"));
-    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                    ->isOptimized());
     ASSERT_FALSE(ptr->next());
   }
 
@@ -264,10 +302,13 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     auto ptr = irs::analysis::analyzers::get(
         AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"RETURN null\", \"keepNull\":true}")->slice()),
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN null\", \"keepNull\":true}")
+                ->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     assert_analyzer(ptr.get(), "a", {{"", 0}}, true);
     ASSERT_FALSE(ptr->next());
   }
@@ -277,244 +318,282 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     auto ptr = irs::analysis::analyzers::get(
         AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"FOR d IN ['e', 1, ['v', 'w'], null, true, @param, 'b'] RETURN d\"}")->slice()),
+            VPackParser::fromJson("{\"queryString\": \"FOR d IN ['e', 1, ['v', "
+                                  "'w'], null, true, @param, 'b'] RETURN d\"}")
+                ->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
-    assert_analyzer(ptr.get(), "a", {{"e", 0}, {"1", 1}, {"[\"v\",\"w\"]", 2}, {"", 3}, {"true", 4}, {"a", 5}, {"b", 6}}, false);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
+    assert_analyzer(ptr.get(), "a",
+                    {{"e", 0},
+                     {"1", 1},
+                     {"[\"v\",\"w\"]", 2},
+                     {"", 3},
+                     {"true", 4},
+                     {"a", 5},
+                     {"b", 6}},
+                    false);
   }
 
   // nulls with collapsed positions
   {
-    auto ptr =
-        irs::analysis::analyzers::get(
-          AQL_ANALYZER_NAME,
-          irs::type<irs::text_format::vpack>::get(),
-          arangodb::iresearch::ref<char>(VPackParser::fromJson(
-            "{\"collapsePositions\": true, \"keepNull\":true,"
-            "\"queryString\": \"FOR d IN [null, null, @param, 'b'] RETURN d\"}")
-            ->slice()),
-          false);
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson(
+                "{\"collapsePositions\": true, \"keepNull\":true,"
+                "\"queryString\": \"FOR d IN [null, null, @param, 'b'] RETURN "
+                "d\"}")
+                ->slice()),
+        false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
-    assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}}, false);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
+    assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}},
+                    false);
   }
 
   // multiple resets with optimization
   {
-    auto ptr =
-        irs::analysis::analyzers::get(
-          AQL_ANALYZER_NAME,
-          irs::type<irs::text_format::vpack>::get(),
-          arangodb::iresearch::ref<char>(VPackParser::fromJson(
-            "{\"collapsePositions\": true, \"keepNull\":true,"
-            "\"queryString\": \" RETURN TO_STRING(@param)\"}")
-            ->slice()),
-          false);
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson(
+                "{\"collapsePositions\": true, \"keepNull\":true,"
+                "\"queryString\": \" RETURN TO_STRING(@param)\"}")
+                ->slice()),
+        false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     assert_analyzer(ptr.get(), "ab", {{"ab", 0}}, true);
-    assert_analyzer(ptr.get(), "abababababababab", {{"abababababababab", 0}}, true);
-    assert_analyzer(ptr.get(), "abababababababab", {{"abababababababab", 0}}, true);
+    assert_analyzer(ptr.get(), "abababababababab", {{"abababababababab", 0}},
+                    true);
+    assert_analyzer(ptr.get(), "abababababababab", {{"abababababababab", 0}},
+                    true);
     assert_analyzer(ptr.get(), "ab", {{"ab", 0}}, true);
     assert_analyzer(ptr.get(), "123", {{"123", 0}}, true);
   }
 
   // check memoryLimit does not kill query
   {
-    auto ptr =
-        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                      irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN CONCAT(FOR i IN 1..100 RETURN @param)\", \"memoryLimit\":1048576}")
-                                                                         ->slice()),
-                                      false);
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN CONCAT(FOR i IN 1..100 RETURN "
+                "@param)\", \"memoryLimit\":1048576}")
+                ->slice()),
+        false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     ASSERT_TRUE(ptr->reset("AAAAAAAAA"));
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
-    ASSERT_TRUE(ptr->next());                                                                                               
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
+    ASSERT_TRUE(ptr->next());
   }
 
   // check memoryLimit kills query
   {
-    // note: setting a memoryLimit value of 1 is effectively a memoryLimit of 64kb,
-    // because the memory usage tracking granularity is 64kb
-    auto ptr =
-        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                      irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN CONCAT(FOR i IN 1..10000 RETURN NOOPT(@param))\", \"memoryLimit\":1}")
-                                                                         ->slice()),
-                                      false);
+    // note: setting a memoryLimit value of 1 is effectively a memoryLimit of
+    // 64kb, because the memory usage tracking granularity is 64kb
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN CONCAT(FOR i IN 1..10000 RETURN "
+                "NOOPT(@param))\", \"memoryLimit\":1}")
+                ->slice()),
+        false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     ASSERT_TRUE(ptr->reset("AAAAAAAAA"));
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     ASSERT_FALSE(ptr->next());
   }
 
   // check memoryLimit does not kill query
   {
-    auto ptr =
-        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                      irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN @param\", \"memoryLimit\":1048576}")
-                                                                         ->slice()),
-                                      false);
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN @param\", \"memoryLimit\":1048576}")
+                ->slice()),
+        false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                     ->isOptimized());
     ASSERT_TRUE(ptr->reset("A"));
-    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                    ->isOptimized());
     ASSERT_TRUE(ptr->reset("A"));
-    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                    ->isOptimized());
     ASSERT_TRUE(ptr->reset("A"));
-    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())
+                    ->isOptimized());
   }
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_create_invalid) {
   // Forbidden function TOKENS
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                    irs::type<irs::text_format::vpack>::get(),
-                                    arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN TOKENS(@param, 'identity')\"}")
-                                                                       ->slice()),
-                                    false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson(
+              "{\"queryString\": \"RETURN TOKENS(@param, 'identity')\"}")
+              ->slice()),
+      false));
   // Forbidden function NGRAM_MATCH
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                    irs::type<irs::text_format::vpack>::get(),
-                                    arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN NGRAM_MATCH(@param, 'test', 0.5, 'identity')\"}")
-                                                                       ->slice()),
-                                    false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson(
+              "{\"queryString\": \"RETURN NGRAM_MATCH(@param, 'test', 0.5, "
+              "'identity')\"}")
+              ->slice()),
+      false));
   // Forbidden function PHRASE
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                    irs::type<irs::text_format::vpack>::get(),
-                                    arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN PHRASE(@param, 'test', 'text_en')\"}")
-                                                                       ->slice()),
-                                    false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson(
+              "{\"queryString\": \"RETURN PHRASE(@param, 'test', 'text_en')\"}")
+              ->slice()),
+      false));
   // Forbidden function ANALYZER
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                    irs::type<irs::text_format::vpack>::get(),
-                                    arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN ANALYZER(@param, 'text_en')\"}")
-                                                                       ->slice()),
-                                    false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson(
+              "{\"queryString\": \"RETURN ANALYZER(@param, 'text_en')\"}")
+              ->slice()),
+      false));
   // UDF function
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                    irs::type<irs::text_format::vpack>::get(),
-                                    arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN MY::SOME_UDF_FUNCTION(@param, 'text_en')\"}")
-                                                                       ->slice()),
-                                    false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"RETURN "
+                                "MY::SOME_UDF_FUNCTION(@param, 'text_en')\"}")
+              ->slice()),
+      false));
   // V8 function
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
-                                    irs::type<irs::text_format::vpack>::get(),
-                                    arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN V8(@param)\"}")
-                                                                       ->slice()),
-                                    false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"RETURN V8(@param)\"}")
+              ->slice()),
+      false));
 
   // TRAVERSAL
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(
-        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
-        arangodb::iresearch::ref<char>(
-        VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..3 ANY '1' GRAPH my_graph RETURN v\"}")->slice()),
-        false));
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(
-        AQL_ANALYZER_NAME,
-        irs::type<irs::text_format::vpack>::get(),
-        arangodb::iresearch::ref<char>(
-        VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..3 ANY '1' GRAPH my_graph RETURN v\"}")->slice()),
-        false));
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(
-        AQL_ANALYZER_NAME,
-        irs::type<irs::text_format::vpack>::get(),
-        arangodb::iresearch::ref<char>(
-        VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..3 ANY SHORTEST_PATH '1'  TO '2' GRAPH my_graph RETURN v\"}")->slice()),
-        false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..3 ANY '1' "
+                                "GRAPH my_graph RETURN v\"}")
+              ->slice()),
+      false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..3 ANY '1' "
+                                "GRAPH my_graph RETURN v\"}")
+              ->slice()),
+      false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson(
+              "{\"queryString\": \"FOR v IN 2..3 ANY SHORTEST_PATH '1'  TO '2' "
+              "GRAPH my_graph RETURN v\"}")
+              ->slice()),
+      false));
   // COLLECT WITH COUNT
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(
-        AQL_ANALYZER_NAME,
-        irs::type<irs::text_format::vpack>::get(),
-        arangodb::iresearch::ref<char>(
-        VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..@param  COLLECT WITH COUNT INTO c RETURN c\"}")->slice()),
-        false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..@param  "
+                                "COLLECT WITH COUNT INTO c RETURN c\"}")
+              ->slice()),
+      false));
   // COLLECT
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(
-        AQL_ANALYZER_NAME,
-        irs::type<irs::text_format::vpack>::get(),
-        arangodb::iresearch::ref<char>(
-        VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..@param  COLLECT c = v * 10 RETURN c\"}")->slice()),
-        false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..@param  "
+                                "COLLECT c = v * 10 RETURN c\"}")
+              ->slice()),
+      false));
   // Wrong AQL syntax
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(
-        AQL_ANALYZER_NAME,
-        irs::type<irs::text_format::vpack>::get(),
-        arangodb::iresearch::ref<char>(
-        VPackParser::fromJson("{\"queryString\": \"RETAURN 1\"}")->slice()),
-        false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"RETAURN 1\"}")->slice()),
+      false));
   // Collection access
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(
-        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
-        arangodb::iresearch::ref<char>(
-        VPackParser::fromJson("{\"queryString\": \"FOR d IN some RETURN d\"}")->slice()),
-        false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR d IN some RETURN d\"}")
+              ->slice()),
+      false));
   // unknown parameter
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(
-        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
-        arangodb::iresearch::ref<char>(
-        VPackParser::fromJson("{\"queryString\": \"RETURN CONCAT(@param, @param2)\"}")->slice()),
-        false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson(
+              "{\"queryString\": \"RETURN CONCAT(@param, @param2)\"}")
+              ->slice()),
+      false));
 
   // parameter data source
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(
-        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
-        arangodb::iresearch::ref<char>(
-        VPackParser::fromJson("{\"queryString\": \"FOR d IN @@param RETURN d\"}")->slice()),
-        false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson(
+              "{\"queryString\": \"FOR d IN @@param RETURN d\"}")
+              ->slice()),
+      false));
   // INSERT
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(
-        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
-        arangodb::iresearch::ref<char>(
-        VPackParser::fromJson("{\"queryString\": \"FOR d IN 1..@param INSERT {f:d} INTO some_collection\"}")->slice()),
-        false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR d IN 1..@param INSERT "
+                                "{f:d} INTO some_collection\"}")
+              ->slice()),
+      false));
   // UPDATE
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(
-        AQL_ANALYZER_NAME,
-        irs::type<irs::text_format::vpack>::get(),
-        arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"FOR d IN some UPDATE d._key WITH {f:@param} IN some\"}")->slice()),
-        false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR d IN some UPDATE "
+                                "d._key WITH {f:@param} IN some\"}")
+              ->slice()),
+      false));
   // REMOVE
-  ASSERT_FALSE(
-      irs::analysis::analyzers::get(
-        AQL_ANALYZER_NAME,
-        irs::type<irs::text_format::vpack>::get(),
-        arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"FOR d IN 1..@param REMOVE {_key:d} IN some\"}")->slice()),
-        false));
+  ASSERT_FALSE(irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR d IN 1..@param REMOVE "
+                                "{_key:d} IN some\"}")
+              ->slice()),
+      false));
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_create_json) {
-  auto ptr =
-      irs::analysis::analyzers::get(
-        AQL_ANALYZER_NAME,
-        irs::type<irs::text_format::json>::get(),
-        "{\"collapsePositions\": true, \"keepNull\":true,"
-        "\"queryString\": \"FOR d IN [null, null, @param, 'b'] RETURN d\"}",
-        false);
+  auto ptr = irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::json>::get(),
+      "{\"collapsePositions\": true, \"keepNull\":true,"
+      "\"queryString\": \"FOR d IN [null, null, @param, 'b'] RETURN d\"}",
+      false);
   ASSERT_NE(nullptr, ptr);
-  assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}}, false);
+  assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}},
+                  false);
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_normalize_json) {
@@ -537,7 +616,8 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
         actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\"}")->slice())));
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\"}")
+                ->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
@@ -550,7 +630,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
         actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"keepNull\":false}")->slice())));
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN '1'\", \"keepNull\":false}")
+                ->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), false);
@@ -563,7 +645,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
         actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"collapsePositions\":true}")->slice())));
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN '1'\", \"collapsePositions\":true}")
+                ->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
@@ -576,7 +660,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
         actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"batchSize\":1000}")->slice())));
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN '1'\", \"batchSize\":1000}")
+                ->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
@@ -586,13 +672,13 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
   }
   {
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, AQL_ANALYZER_NAME,
-                                                    irs::type<irs::text_format::vpack>::get(),
-                                                    arangodb::iresearch::ref<char>(
-                                                        VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
-                                                                              "\"batchSize\":10, \"keepNull\":false,"
-                                                                              "\"collapsePositions\":true}")
-                                                            ->slice())));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
+                                  "\"batchSize\":10, \"keepNull\":false,"
+                                  "\"collapsePositions\":true}")
+                ->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), false);
@@ -600,14 +686,15 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
     ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 1048576U);
   }
-  //memory limit
+  // memory limit
   {
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, AQL_ANALYZER_NAME,
-                                                    irs::type<irs::text_format::vpack>::get(),
-                                                    arangodb::iresearch::ref<char>(
-                                                        VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"batchSize\":1000, \"memoryLimit\":1}")
-                                                            ->slice())));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", "
+                                  "\"batchSize\":1000, \"memoryLimit\":1}")
+                ->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
@@ -618,11 +705,13 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
   // memory limit max
   {
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, AQL_ANALYZER_NAME,
-                                                    irs::type<irs::text_format::vpack>::get(),
-                                                    arangodb::iresearch::ref<char>(
-                                                        VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"batchSize\":1000, \"memoryLimit\":33554432}")
-                                                            ->slice())));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN '1'\", \"batchSize\":1000, "
+                "\"memoryLimit\":33554432}")
+                ->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
@@ -633,11 +722,12 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
   // string return type
   {
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, AQL_ANALYZER_NAME,
-                                                    irs::type<irs::text_format::vpack>::get(),
-                                                    arangodb::iresearch::ref<char>(
-                                                        VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"returnType\":\"string\"}")
-                                                            ->slice())));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN '1'\", \"returnType\":\"string\"}")
+                ->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
@@ -650,11 +740,12 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
   // bool return type
   {
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, AQL_ANALYZER_NAME,
-                                                    irs::type<irs::text_format::vpack>::get(),
-                                                    arangodb::iresearch::ref<char>(
-                                                        VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"returnType\":\"bool\"}")
-                                                            ->slice())));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN '1'\", \"returnType\":\"bool\"}")
+                ->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
@@ -667,11 +758,12 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
   // number return type
   {
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, AQL_ANALYZER_NAME,
-                                                    irs::type<irs::text_format::vpack>::get(),
-                                                    arangodb::iresearch::ref<char>(
-                                                        VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"returnType\":\"number\"}")
-                                                            ->slice())));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN '1'\", \"returnType\":\"number\"}")
+                ->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
@@ -775,9 +867,10 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
         actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
-                                  "\"memoryLimit\":33554433, \"keepNull\":false,"
-                                  "\"collapsePositions\":true}")
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN '1'\","
+                "\"memoryLimit\":33554433, \"keepNull\":false,"
+                "\"collapsePositions\":true}")
                 ->slice())));
   }
   // Unknown parameter
@@ -786,9 +879,10 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
         actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"unknown_argument\":1,"
-                                  "\"batchSize\":10, \"keepNull\":false,"
-                                  "\"collapsePositions\":true}")
+            VPackParser::fromJson(
+                "{\"queryString\": \"RETURN '1'\", \"unknown_argument\":1,"
+                "\"batchSize\":10, \"keepNull\":false,"
+                "\"collapsePositions\":true}")
                 ->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
@@ -825,7 +919,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_numeric_return) {
   auto ptr = irs::analysis::analyzers::get(
       AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
       arangodb::iresearch::ref<char>(
-          VPackParser::fromJson("{\"queryString\": \"RETURN @param\", \"returnType\":\"number\"}")->slice()),
+          VPackParser::fromJson(
+              "{\"queryString\": \"RETURN @param\", \"returnType\":\"number\"}")
+              ->slice()),
       false);
   ASSERT_NE(nullptr, ptr);
 
@@ -842,7 +938,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_numeric_return_array) {
   auto ptr = irs::analysis::analyzers::get(
       AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
       arangodb::iresearch::ref<char>(
-          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..@param RETURN a\", \"returnType\":\"number\"}")->slice()),
+          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..@param RETURN "
+                                "a\", \"returnType\":\"number\"}")
+              ->slice()),
       false);
   ASSERT_NE(nullptr, ptr);
 
@@ -862,7 +960,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_bool_return) {
   auto ptr = irs::analysis::analyzers::get(
       AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
       arangodb::iresearch::ref<char>(
-          VPackParser::fromJson("{\"queryString\": \"RETURN @param\", \"returnType\":\"bool\"}")->slice()),
+          VPackParser::fromJson(
+              "{\"queryString\": \"RETURN @param\", \"returnType\":\"bool\"}")
+              ->slice()),
       false);
   ASSERT_NE(nullptr, ptr);
 
@@ -879,7 +979,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_bool_return_array) {
   auto ptr = irs::analysis::analyzers::get(
       AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
       arangodb::iresearch::ref<char>(
-          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..@param RETURN a == 2\", \"returnType\":\"bool\"}")->slice()),
+          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..@param RETURN "
+                                "a == 2\", \"returnType\":\"bool\"}")
+              ->slice()),
       false);
   ASSERT_NE(nullptr, ptr);
 
@@ -899,7 +1001,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_string_return) {
   auto ptr = irs::analysis::analyzers::get(
       AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
       arangodb::iresearch::ref<char>(
-          VPackParser::fromJson("{\"queryString\": \"RETURN TO_NUMBER(@param) + 10\", \"returnType\":\"string\"}")->slice()),
+          VPackParser::fromJson("{\"queryString\": \"RETURN TO_NUMBER(@param) "
+                                "+ 10\", \"returnType\":\"string\"}")
+              ->slice()),
       false);
   ASSERT_NE(nullptr, ptr);
 
@@ -915,7 +1019,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_string_return_array) {
   auto ptr = irs::analysis::analyzers::get(
       AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
       arangodb::iresearch::ref<char>(
-          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..@param RETURN a\", \"returnType\":\"string\"}")->slice()),
+          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..@param RETURN "
+                                "a\", \"returnType\":\"string\"}")
+              ->slice()),
       false);
   ASSERT_NE(nullptr, ptr);
 
@@ -936,7 +1042,8 @@ TEST_F(IResearchAqlAnalyzerTest, test_string_return_array_keep_null) {
       arangodb::iresearch::ref<char>(
           VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..(@param * 10) "
                                 " RETURN a > 5 ? null : a \", "
-                                "\"returnType\":\"string\", \"keepNull\":true}")->slice()),
+                                "\"returnType\":\"string\", \"keepNull\":true}")
+              ->slice()),
       false);
   ASSERT_NE(nullptr, ptr);
 
@@ -945,7 +1052,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_string_return_array_keep_null) {
   for (uint32_t i = 1; i <= 30; ++i) {
     analyzer_token token;
     token.pos = i - 1;
-    token.value = i <= 5  ? std::to_string(i) : "";
+    token.value = i <= 5 ? std::to_string(i) : "";
     expected_tokens.push_back(std::move(token));
   }
   assert_analyzer(ptr.get(), "3", expected_tokens, false);
@@ -957,14 +1064,16 @@ TEST_F(IResearchAqlAnalyzerTest, test_number_return_array_keep_null) {
       arangodb::iresearch::ref<char>(
           VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..(@param * 10) "
                                 " RETURN a > 5 ? null : a \", "
-                                "\"returnType\":\"number\", \"keepNull\":true}")->slice()),
+                                "\"returnType\":\"number\", \"keepNull\":true}")
+              ->slice()),
       false);
   ASSERT_NE(nullptr, ptr);
 
   analyzer_tokens expected_tokens;
 
   for (uint32_t i = 1; i <= 30; ++i) {
-    arangodb::aql::AqlValue val{arangodb::aql::AqlValueHintDouble(i <= 5  ? i : 0)};
+    arangodb::aql::AqlValue val{
+        arangodb::aql::AqlValueHintDouble(i <= 5 ? i : 0)};
     analyzer_token token;
     token.pos = i - 1;
     token.value.assign(val.slice().startAs<char>(), val.slice().byteSize());
@@ -973,14 +1082,14 @@ TEST_F(IResearchAqlAnalyzerTest, test_number_return_array_keep_null) {
   assert_analyzer(ptr.get(), "3", expected_tokens, false);
 }
 
-
 TEST_F(IResearchAqlAnalyzerTest, test_bool_return_array_keep_null) {
   auto ptr = irs::analysis::analyzers::get(
       AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
       arangodb::iresearch::ref<char>(
           VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..(@param * 10) "
                                 " RETURN a > 5 ? null : true \", "
-                                "\"returnType\":\"bool\", \"keepNull\":true}")->slice()),
+                                "\"returnType\":\"bool\", \"keepNull\":true}")
+              ->slice()),
       false);
   ASSERT_NE(nullptr, ptr);
 

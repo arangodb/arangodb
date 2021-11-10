@@ -22,10 +22,9 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <memory>
-
 #include <boost/asio/io_service.hpp>
 #include <boost/bind.hpp>
+#include <memory>
 
 #undef sleep
 #include <boost/thread/thread.hpp>

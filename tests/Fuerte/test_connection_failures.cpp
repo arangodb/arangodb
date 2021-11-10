@@ -21,15 +21,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <fuerte/fuerte.h>
-#include <fuerte/loop.h>
 #include <fuerte/helper.h>
+#include <fuerte/loop.h>
 
 #include "gtest/gtest.h"
 
 namespace f = ::arangodb::fuerte;
 
-// tryToConnectExpectFailure tries to make a connection to a host with given url.
-// This is expected to fail.
+// tryToConnectExpectFailure tries to make a connection to a host with given
+// url. This is expected to fail.
 static void tryToConnectExpectFailure(f::EventLoopService& eventLoopService,
                                       const std::string& url) {
   f::WaitGroup wg;
@@ -39,15 +39,17 @@ static void tryToConnectExpectFailure(f::EventLoopService& eventLoopService,
   cbuilder.connectTimeout(std::chrono::milliseconds(250));
   cbuilder.connectRetryPause(std::chrono::milliseconds(100));
   cbuilder.endpoint(url);
-  
-  cbuilder.onFailure([&](f::Error errorCode, const std::string& errorMessage){
+
+  cbuilder.onFailure([&](f::Error errorCode, const std::string& errorMessage) {
     ASSERT_EQ(errorCode, f::Error::CouldNotConnect);
     wg.done();
   });
   auto connection = cbuilder.connect(eventLoopService);
   // Send a first request. (HTTP connection is only started upon first request)
   auto request = f::createRequest(f::RestVerb::Get, "/_api/version");
-  connection->sendRequest(std::move(request), [&](f::Error, std::unique_ptr<f::Request>, std::unique_ptr<f::Response>){});
+  connection->sendRequest(std::move(request),
+                          [&](f::Error, std::unique_ptr<f::Request>,
+                              std::unique_ptr<f::Response>) {});
 
   auto success = wg.wait_for(std::chrono::seconds(5));
   ASSERT_TRUE(success);
@@ -57,15 +59,17 @@ static void tryToConnectExpectFailure(f::EventLoopService& eventLoopService,
 // that cannot be resolved.
 TEST(ConnectionFailureTest, CannotResolveHttp) {
   f::EventLoopService loop;
-  tryToConnectExpectFailure(loop, "http://thishostmustnotexist.arangodb.com:8529");
+  tryToConnectExpectFailure(loop,
+                            "http://thishostmustnotexist.arangodb.com:8529");
 }
 
 TEST(ConnectionFailureTest, CannotResolveVst) {
   f::EventLoopService loop;
-  tryToConnectExpectFailure(loop, "vst://thishostmustnotexist.arangodb.com:8529");
+  tryToConnectExpectFailure(loop,
+                            "vst://thishostmustnotexist.arangodb.com:8529");
 }
 
-// CannotConnect tests try to make a connection to a host with a valid name 
+// CannotConnect tests try to make a connection to a host with a valid name
 // but a wrong port.
 TEST(ConnectionFailureTest, CannotConnectHttp) {
   f::EventLoopService loop;
@@ -81,4 +85,3 @@ TEST(ConnectionFailureTest, CannotConnectVst) {
   f::EventLoopService loop;
   tryToConnectExpectFailure(loop, "vst://localhost:8629");
 }
-

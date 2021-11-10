@@ -21,8 +21,9 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AqlItemBlockHelper.h"
-#include "gtest/gtest.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlItemRowPrinter.h"
@@ -30,13 +31,11 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "AqlItemBlockHelper.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -49,11 +48,13 @@ class AqlItemRowsTest : public ::testing::Test {
  protected:
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor,
+                                       SerializationFormat::SHADOWROWS};
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 
   void AssertResultMatrix(AqlItemBlock* in, VPackSlice result,
-                          RegIdFlatSet const& regsToKeep, bool assertNotInline = false) {
+                          RegIdFlatSet const& regsToKeep,
+                          bool assertNotInline = false) {
     ASSERT_TRUE(result.isArray());
     ASSERT_EQ(in->numRows(), result.length());
     for (size_t rowIdx = 0; rowIdx < in->numRows(); ++rowIdx) {
@@ -66,7 +67,8 @@ class AqlItemRowsTest : public ::testing::Test {
           // If this should not be kept it has to be set to NONE!
           ASSERT_TRUE(v.slice().isNone());
         } else {
-          ASSERT_TRUE(basics::VelocyPackHelper::equal(row.at(regId), v.slice(), true));
+          ASSERT_TRUE(
+              basics::VelocyPackHelper::equal(row.at(regId), v.slice(), true));
           // Work around test as we are unable to check the type via API.
           if (assertNotInline) {
             // If this object is not inlined it requires some memory
@@ -115,7 +117,8 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_narrow) {
   auto expected =
       VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
   outputBlock = testee.stealBlock();
-  AssertResultMatrix(outputBlock.get(), expected->slice(), registersToKeep.back());
+  AssertResultMatrix(outputBlock.get(), expected->slice(),
+                     registersToKeep.back());
 }
 
 TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_wide) {
@@ -130,11 +133,16 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_wide) {
   {
     // Make sure this data is cleared before the assertions
     // Every of these entries has a size > 16 uint_8
-    auto inputBlock = buildBlock<3>(
-        itemBlockManager,
-        {{{{"\"aaaaaaaaaaaaaaaaaaaa\""}, {"\"bbbbbbbbbbbbbbbbbbbb\""}, {"\"cccccccccccccccccccc\""}}},
-         {{{"\"dddddddddddddddddddd\""}, {"\"eeeeeeeeeeeeeeeeeeee\""}, {"\"ffffffffffffffffffff\""}}},
-         {{{"\"gggggggggggggggggggg\""}, {"\"hhhhhhhhhhhhhhhhhhhh\""}, {"\"iiiiiiiiiiiiiiiiiiii\""}}}});
+    auto inputBlock =
+        buildBlock<3>(itemBlockManager, {{{{"\"aaaaaaaaaaaaaaaaaaaa\""},
+                                           {"\"bbbbbbbbbbbbbbbbbbbb\""},
+                                           {"\"cccccccccccccccccccc\""}}},
+                                         {{{"\"dddddddddddddddddddd\""},
+                                           {"\"eeeeeeeeeeeeeeeeeeee\""},
+                                           {"\"ffffffffffffffffffff\""}}},
+                                         {{{"\"gggggggggggggggggggg\""},
+                                           {"\"hhhhhhhhhhhhhhhhhhhh\""},
+                                           {"\"iiiiiiiiiiiiiiiiiiii\""}}}});
 
     InputAqlItemRow source{inputBlock, 0};
 
@@ -161,10 +169,12 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_wide) {
       "\"iiiiiiiiiiiiiiiiiiii\"]"
       "]");
   outputBlock = testee.stealBlock();
-  AssertResultMatrix(outputBlock.get(), expected->slice(), registersToKeep.back(), true);
+  AssertResultMatrix(outputBlock.get(), expected->slice(),
+                     registersToKeep.back(), true);
 }
 
-TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_but_multiplying_rows) {
+TEST_F(AqlItemRowsTest,
+       only_copying_from_source_to_target_but_multiplying_rows) {
   SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 9, 3)};
   RegisterInfos executorInfos{{}, {}, 3, 3, {}, {RegIdSet{0, 1, 2}}};
   auto outputRegisters = executorInfos.getOutputRegisters();
@@ -206,10 +216,12 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_but_multiplying_rows)
       "[\"a\",\"b\",\"c\"]"
       "]");
   outputBlock = testee.stealBlock();
-  AssertResultMatrix(outputBlock.get(), expected->slice(), registersToKeep.back());
+  AssertResultMatrix(outputBlock.get(), expected->slice(),
+                     registersToKeep.back());
 }
 
-TEST_F(AqlItemRowsTest, dropping_a_register_from_source_while_writing_to_target) {
+TEST_F(AqlItemRowsTest,
+       dropping_a_register_from_source_while_writing_to_target) {
   SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
   RegisterInfos executorInfos{{}, {}, 3, 3, RegIdSet{1}, {RegIdSet{0, 2}}};
   auto outputRegisters = executorInfos.getOutputRegisters();
@@ -243,7 +255,8 @@ TEST_F(AqlItemRowsTest, dropping_a_register_from_source_while_writing_to_target)
       "[\"a\",\"b\",\"c\"]"
       "]");
   outputBlock = testee.stealBlock();
-  AssertResultMatrix(outputBlock.get(), expected->slice(), registersToKeep.back());
+  AssertResultMatrix(outputBlock.get(), expected->slice(),
+                     registersToKeep.back());
 }
 
 TEST_F(AqlItemRowsTest, writing_rows_to_target) {
@@ -299,7 +312,8 @@ TEST_F(AqlItemRowsTest, writing_rows_to_target) {
       "[4,5,6,8,9],"
       "[\"a\",\"b\",\"c\",8,9]"
       "]");
-  // add these two here as they are needed for output validation but not for copy in ItemRows
+  // add these two here as they are needed for output validation but not for
+  // copy in ItemRows
   regsToKeep.emplace(3);
   regsToKeep.emplace(4);
   outputBlock = testee.stealBlock();
@@ -308,12 +322,13 @@ TEST_F(AqlItemRowsTest, writing_rows_to_target) {
 
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
-template <class RowType>
+template<class RowType>
 class AqlItemRowsCommonEqTest : public ::testing::Test {
  protected:
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor,
+                                       SerializationFormat::SHADOWROWS};
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 };
 
@@ -321,9 +336,16 @@ using RowTypes = ::testing::Types<InputAqlItemRow, ShadowAqlItemRow>;
 
 TYPED_TEST_CASE(AqlItemRowsCommonEqTest, RowTypes);
 
-template <class T> T createInvalidRow();
-template <> InputAqlItemRow createInvalidRow<InputAqlItemRow>() { return InputAqlItemRow{CreateInvalidInputRowHint{}}; }
-template <> ShadowAqlItemRow createInvalidRow<ShadowAqlItemRow>() { return ShadowAqlItemRow{CreateInvalidShadowRowHint{}}; }
+template<class T>
+T createInvalidRow();
+template<>
+InputAqlItemRow createInvalidRow<InputAqlItemRow>() {
+  return InputAqlItemRow{CreateInvalidInputRowHint{}};
+}
+template<>
+ShadowAqlItemRow createInvalidRow<ShadowAqlItemRow>() {
+  return ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+}
 
 TYPED_TEST(AqlItemRowsCommonEqTest, row_eq_operators) {
   using RowType = TypeParam;
@@ -388,11 +410,13 @@ TYPED_TEST(AqlItemRowsCommonEqTest, row_equivalence) {
   EXPECT_FALSE((RowType{block, 0}.equates(RowType{block, 1}, options)));
   EXPECT_FALSE((RowType{block, 1}.equates(RowType{block, 0}, options)));
 
-  // different row in different block must be non-equivalent, even with the same index
+  // different row in different block must be non-equivalent, even with the same
+  // index
   EXPECT_FALSE((RowType{block, 0}.equates(RowType{otherBlock, 0}, options)));
   EXPECT_FALSE((RowType{otherBlock, 0}.equates(RowType{block, 0}, options)));
 
-  // an equivalent row in a different block must be considered equivalent, even with a different index
+  // an equivalent row in a different block must be considered equivalent, even
+  // with a different index
   EXPECT_TRUE((RowType{block, 1}.equates(RowType{otherBlock, 0}, options)));
   EXPECT_TRUE((RowType{otherBlock, 0}.equates(RowType{block, 1}, options)));
 
@@ -408,14 +432,16 @@ class AqlShadowRowsEqTest : public ::testing::Test {
  protected:
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor,
+                                       SerializationFormat::SHADOWROWS};
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 };
 
 TEST_F(AqlShadowRowsEqTest, shadow_row_depth_equivalence) {
   // In this test, we check for (non-)equivalence of shadow row depth.
-  // This is essentially the same test as (AqlItemRowsCommonEqTest, row_equivalence),
-  // but instead of the values differing, the shadow row depth does.
+  // This is essentially the same test as (AqlItemRowsCommonEqTest,
+  // row_equivalence), but instead of the values differing, the shadow row depth
+  // does.
   SharedAqlItemBlockPtr block =
       buildBlock<1>(this->itemBlockManager, {{{0}}, {{0}}});
   SharedAqlItemBlockPtr otherBlock =
@@ -425,20 +451,30 @@ TEST_F(AqlShadowRowsEqTest, shadow_row_depth_equivalence) {
   otherBlock->makeShadowRow(0, 1);
 
   // same rows must be considered equivalent
-  EXPECT_TRUE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{block, 0}, options)));
-  EXPECT_TRUE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{block, 1}, options)));
+  EXPECT_TRUE((
+      ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{block, 0}, options)));
+  EXPECT_TRUE((
+      ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{block, 1}, options)));
 
   // different rows must be non-equivalent
-  EXPECT_FALSE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{block, 1}, options)));
-  EXPECT_FALSE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{block, 0}, options)));
+  EXPECT_FALSE((
+      ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{block, 1}, options)));
+  EXPECT_FALSE((
+      ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{block, 0}, options)));
 
-  // different row in different block must be non-equivalent, even with the same index
-  EXPECT_FALSE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{otherBlock, 0}, options)));
-  EXPECT_FALSE((ShadowAqlItemRow{otherBlock, 0}.equates(ShadowAqlItemRow{block, 0}, options)));
+  // different row in different block must be non-equivalent, even with the same
+  // index
+  EXPECT_FALSE((ShadowAqlItemRow{block, 0}.equates(
+      ShadowAqlItemRow{otherBlock, 0}, options)));
+  EXPECT_FALSE((ShadowAqlItemRow{otherBlock, 0}.equates(
+      ShadowAqlItemRow{block, 0}, options)));
 
-  // an equivalent row in a different block must be considered equivalent, even with a different index
-  EXPECT_TRUE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{otherBlock, 0}, options)));
-  EXPECT_TRUE((ShadowAqlItemRow{otherBlock, 0}.equates(ShadowAqlItemRow{block, 1}, options)));
+  // an equivalent row in a different block must be considered equivalent, even
+  // with a different index
+  EXPECT_TRUE((ShadowAqlItemRow{block, 1}.equates(
+      ShadowAqlItemRow{otherBlock, 0}, options)));
+  EXPECT_TRUE((ShadowAqlItemRow{otherBlock, 0}.equates(
+      ShadowAqlItemRow{block, 1}, options)));
 }
 
 }  // namespace aql

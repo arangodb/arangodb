@@ -22,25 +22,25 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
-#include "gtest/gtest.h"
-
-#include <sstream>
-#include <cstring>
-
 #include "Basics/csv.h"
+
+#include <cstring>
+#include <sstream>
+
+#include "Basics/Common.h"
 #include "Basics/tri-strings.h"
+#include "gtest/gtest.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a parser instance
 ////////////////////////////////////////////////////////////////////////////////
 
-#define INIT_PARSER                                                                  \
-  TRI_csv_parser_t parser;                                                           \
-                                                                                     \
-  TRI_InitCsvParser(&parser, &CCsvTest::ProcessCsvBegin, &CCsvTest::ProcessCsvAdd, \
-                    &CCsvTest::ProcessCsvEnd, nullptr);                             \
+#define INIT_PARSER                                                     \
+  TRI_csv_parser_t parser;                                              \
+                                                                        \
+  TRI_InitCsvParser(&parser, &CCsvTest::ProcessCsvBegin,                \
+                    &CCsvTest::ProcessCsvAdd, &CCsvTest::ProcessCsvEnd, \
+                    nullptr);                                           \
   parser._dataAdd = this;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +97,8 @@ class CCsvTest : public ::testing::Test {
       me->out << ",";
     }
 
-    me->out << (escaped ? "ESC" : "") << field << (escaped ? "ESC" : "") << "\n";
+    me->out << (escaped ? "ESC" : "") << field << (escaped ? "ESC" : "")
+            << "\n";
   }
 
   std::ostringstream out;
@@ -185,7 +186,8 @@ TEST_F(CCsvTest, tst_csv_quotes2) {
       "\"x\"\"y\",\"a\"\"\"" LF "\"\",\"\"\"ab\",\"\"\"\"\"ab\"" LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  EXPECT_EQ("0:ESCx\"yESC,ESCa\"ESC\n1:ESCESC,ESC\"abESC,ESC\"\"abESC\n", out.str());
+  EXPECT_EQ("0:ESCx\"yESC,ESCa\"ESC\n1:ESCESC,ESC\"abESC,ESC\"\"abESC\n",
+            out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -204,7 +206,8 @@ TEST_F(CCsvTest, tst_csv_quotes_whitespace) {
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
   EXPECT_TRUE(
-      "0:ESCa ESC,ESC \" b ESC,ESC\"ESC,ESC ESC\n1: \"\" ix\n2: \"\" \n" == out.str());
+      "0:ESCa ESC,ESC \" b ESC,ESC\"ESC,ESC ESC\n1: \"\" ix\n2: \"\" \n" ==
+      out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -222,7 +225,8 @@ TEST_F(CCsvTest, tst_tsv_simple) {
                     "brown fox jumped" TAB "over the" TAB "lazy" TAB "dog" LF;
 
   TRI_ParseCsvString(&parser, tsv, strlen(tsv));
-  EXPECT_EQ("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n", out.str());
+  EXPECT_EQ("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n",
+            out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -289,11 +293,13 @@ TEST_F(CCsvTest, tst_tsv_crlf) {
   TRI_SetSeparatorCsvParser(&parser, '\t');
   TRI_SetQuoteCsvParser(&parser, '\0', false);
 
-  const char* tsv = "a" TAB "b" TAB "c" CR LF "the quick" TAB
-                    "brown fox jumped" TAB "over the" TAB "lazy" TAB "dog" CR LF;
+  const char* tsv =
+      "a" TAB "b" TAB "c" CR LF "the quick" TAB "brown fox jumped" TAB
+      "over the" TAB "lazy" TAB "dog" CR LF;
 
   TRI_ParseCsvString(&parser, tsv, strlen(tsv));
-  EXPECT_EQ("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n", out.str());
+  EXPECT_EQ("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n",
+            out.str());
 
   TRI_DestroyCsvParser(&parser);
 }

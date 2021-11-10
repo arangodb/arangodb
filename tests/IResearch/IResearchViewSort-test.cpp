@@ -22,9 +22,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-
 #include "IResearch/IResearchViewSort.h"
+
+#include "gtest/gtest.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 
@@ -47,7 +47,8 @@ TEST(IResearchViewSortTest, test_defaults) {
 
 TEST(IResearchViewSortTest, equality) {
   arangodb::iresearch::IResearchViewSort lhs;
-  lhs.emplace_back({{"some", false}, {"Nested", false}, {"field", false}}, true);
+  lhs.emplace_back({{"some", false}, {"Nested", false}, {"field", false}},
+                   true);
   lhs.emplace_back({{"another", false}, {"field", false}}, false);
   lhs.emplace_back({{"simpleField", false}}, true);
   EXPECT_EQ(lhs, lhs);
@@ -55,14 +56,16 @@ TEST(IResearchViewSortTest, equality) {
 
   {
     arangodb::iresearch::IResearchViewSort rhs;
-    rhs.emplace_back({{"some", false}, {"Nested", false}, {"field", false}}, true);
+    rhs.emplace_back({{"some", false}, {"Nested", false}, {"field", false}},
+                     true);
     rhs.emplace_back({{"another", false}, {"field", false}}, false);
     EXPECT_NE(lhs, rhs);
   }
 
   {
     arangodb::iresearch::IResearchViewSort rhs;
-    rhs.emplace_back({{"some", false}, {"Nested", false}, {"field", false}}, true);
+    rhs.emplace_back({{"some", false}, {"Nested", false}, {"field", false}},
+                     true);
     rhs.emplace_back({{"another", false}, {"field", false}}, false);
     rhs.emplace_back({{"simpleField", false}}, false);
     EXPECT_NE(lhs, rhs);
@@ -70,7 +73,8 @@ TEST(IResearchViewSortTest, equality) {
 
   {
     arangodb::iresearch::IResearchViewSort rhs;
-    rhs.emplace_back({{"some", false}, {"Nested", false}, {"field", false}}, true);
+    rhs.emplace_back({{"some", false}, {"Nested", false}, {"field", false}},
+                     true);
     rhs.emplace_back({{"another", false}, {"fielD", false}}, false);
     rhs.emplace_back({{"simpleField", false}}, true);
     EXPECT_NE(lhs, rhs);
@@ -137,8 +141,9 @@ TEST(IResearchViewSortTest, deserialize) {
     EXPECT_FALSE(sort.empty());
     EXPECT_EQ(1, sort.size());
     EXPECT_TRUE(sort.memory() > 0);
-    EXPECT_TRUE((sort.field(0) == std::vector<arangodb::basics::AttributeName>{
-                                      {"my", false}, {"nested", false}, {"field", false}}));
+    EXPECT_TRUE((sort.field(0) ==
+                 std::vector<arangodb::basics::AttributeName>{
+                     {"my", false}, {"nested", false}, {"field", false}}));
     EXPECT_TRUE(sort.direction(0));
   }
 
@@ -158,19 +163,22 @@ TEST(IResearchViewSortTest, deserialize) {
     EXPECT_EQ(4, sort.size());
     EXPECT_TRUE(sort.memory() > 0);
     EXPECT_TRUE((std::vector<arangodb::basics::AttributeName>{
-                     {"my", false}, {"nested", false}, {"field", false}} == sort.field(0)));
+                     {"my", false}, {"nested", false}, {"field", false}} ==
+                 sort.field(0)));
     EXPECT_TRUE(sort.direction(0));
     EXPECT_TRUE((std::vector<arangodb::basics::AttributeName>{
-                     {"my", false}, {"nested", false}, {"field", false}} == sort.field(1)));
+                     {"my", false}, {"nested", false}, {"field", false}} ==
+                 sort.field(1)));
     EXPECT_FALSE(sort.direction(1));
-    EXPECT_TRUE((std::vector<arangodb::basics::AttributeName>{{"another", false},
-                                                              {"nested", false},
-                                                              {"field", false}} ==
+    EXPECT_TRUE((std::vector<arangodb::basics::AttributeName>{
+                     {"another", false}, {"nested", false}, {"field", false}} ==
                  sort.field(2)));
     EXPECT_FALSE(sort.direction(2));
     EXPECT_TRUE((std::vector<arangodb::basics::AttributeName>{
-                     {"yet", false}, {"another", false}, {"nested", false}, {"field", false}} ==
-                 sort.field(3)));
+                     {"yet", false},
+                     {"another", false},
+                     {"nested", false},
+                     {"field", false}} == sort.field(3)));
     EXPECT_TRUE(sort.direction(3));
   }
 
@@ -235,7 +243,8 @@ TEST(IResearchViewSortTest, deserialize) {
 
 TEST(IResearchViewSortTest, serialize) {
   arangodb::iresearch::IResearchViewSort sort;
-  sort.emplace_back({{"some", false}, {"Nested", false}, {"field", false}}, true);
+  sort.emplace_back({{"some", false}, {"Nested", false}, {"field", false}},
+                    true);
   sort.emplace_back({{"another", false}, {"field", false}}, false);
   sort.emplace_back({{"simpleField", false}}, true);
 

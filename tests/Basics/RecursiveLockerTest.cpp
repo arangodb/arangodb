@@ -22,16 +22,15 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <atomic>
+#include <thread>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/RecursiveLocker.h"
-
 #include "gtest/gtest.h"
-
-#include <atomic>
-#include <thread>
-#include <vector>
 
 using namespace arangodb::basics;
 
@@ -57,7 +56,7 @@ TEST(RecursiveLockerTest, testRecursiveMutexAcquire) {
 
   RECURSIVE_MUTEX_LOCKER_NAMED(locker, mutex, owner, true);
   ASSERT_TRUE(locker.isLocked());
-  
+
   locker.unlock();
   ASSERT_FALSE(locker.isLocked());
 }
@@ -68,14 +67,14 @@ TEST(RecursiveLockerTest, testRecursiveMutexLockUnlock) {
 
   RECURSIVE_MUTEX_LOCKER_NAMED(locker, mutex, owner, true);
   ASSERT_TRUE(locker.isLocked());
-  
+
   for (int i = 0; i < 100; ++i) {
     locker.unlock();
     ASSERT_FALSE(locker.isLocked());
     locker.lock();
     ASSERT_TRUE(locker.isLocked());
   }
-  
+
   ASSERT_TRUE(locker.isLocked());
   locker.unlock();
   ASSERT_FALSE(locker.isLocked());
@@ -91,7 +90,7 @@ TEST(RecursiveLockerTest, testRecursiveMutexNested) {
   {
     RECURSIVE_MUTEX_LOCKER_NAMED(locker2, mutex, owner, true);
     ASSERT_TRUE(locker2.isLocked());
-  
+
     {
       RECURSIVE_MUTEX_LOCKER_NAMED(locker3, mutex, owner, true);
       ASSERT_TRUE(locker3.isLocked());
@@ -125,7 +124,8 @@ TEST(RecursiveLockerTest, testRecursiveMutexMultiThreaded) {
   for (int i = 0; i < n; ++i) {
     threads.emplace_back([&]() {
       ++started;
-      while (started < n) { /*spin*/ }
+      while (started < n) { /*spin*/
+      }
 
       for (int i = 0; i < iterations; ++i) {
         RECURSIVE_MUTEX_LOCKER_NAMED(locker1, mutex, owner, true);
@@ -133,11 +133,11 @@ TEST(RecursiveLockerTest, testRecursiveMutexMultiThreaded) {
 
         total++;
         x++;
-        
+
         {
           RECURSIVE_MUTEX_LOCKER_NAMED(locker2, mutex, owner, true);
           ASSERT_TRUE(locker2.isLocked());
-        
+
           x++;
         }
       }
@@ -147,7 +147,7 @@ TEST(RecursiveLockerTest, testRecursiveMutexMultiThreaded) {
   for (int i = 0; i < n; ++i) {
     threads[i].join();
   }
-  
+
   ASSERT_EQ(n * iterations, total);
   ASSERT_EQ(n * iterations * 2, x);
 }
@@ -174,7 +174,7 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockAcquire) {
 
   RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, true);
   ASSERT_TRUE(locker.isLocked());
-  
+
   locker.unlock();
   ASSERT_FALSE(locker.isLocked());
 }
@@ -185,14 +185,14 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockUnlock) {
 
   RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, true);
   ASSERT_TRUE(locker.isLocked());
-  
+
   for (int i = 0; i < 100; ++i) {
     locker.unlock();
     ASSERT_FALSE(locker.isLocked());
     locker.lock();
     ASSERT_TRUE(locker.isLocked());
   }
-  
+
   ASSERT_TRUE(locker.isLocked());
   locker.unlock();
   ASSERT_FALSE(locker.isLocked());
@@ -208,7 +208,7 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockNested) {
   {
     RECURSIVE_WRITE_LOCKER_NAMED(locker2, rwlock, owner, true);
     ASSERT_TRUE(locker2.isLocked());
-  
+
     {
       RECURSIVE_WRITE_LOCKER_NAMED(locker3, rwlock, owner, true);
       ASSERT_TRUE(locker3.isLocked());
@@ -242,7 +242,8 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreaded) {
   for (int i = 0; i < n; ++i) {
     threads.emplace_back([&]() {
       ++started;
-      while (started < n) { /*spin*/ }
+      while (started < n) { /*spin*/
+      }
 
       for (int i = 0; i < iterations; ++i) {
         RECURSIVE_WRITE_LOCKER_NAMED(locker1, rwlock, owner, true);
@@ -250,11 +251,11 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreaded) {
 
         total++;
         x++;
-        
+
         {
           RECURSIVE_WRITE_LOCKER_NAMED(locker2, rwlock, owner, true);
           ASSERT_TRUE(locker2.isLocked());
-        
+
           x++;
         }
       }
@@ -264,7 +265,7 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreaded) {
   for (int i = 0; i < n; ++i) {
     threads[i].join();
   }
-  
+
   ASSERT_EQ(n * iterations, total);
   ASSERT_EQ(n * iterations * 2, x);
 }
@@ -275,7 +276,7 @@ TEST(RecursiveLockerTest, testRecursiveWriteWithNestedRead) {
 
   RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, true);
   ASSERT_TRUE(locker.isLocked());
-  
+
   {
     // should not block
     RECURSIVE_READ_LOCKER(rwlock, owner);
@@ -304,7 +305,8 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteRead) {
   for (int i = 0; i < n; ++i) {
     threads.emplace_back([&]() {
       ++started;
-      while (started < n) { /*spin*/ }
+      while (started < n) { /*spin*/
+      }
 
       for (int i = 0; i < iterations; ++i) {
         RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, true);
@@ -312,12 +314,12 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteRead) {
 
         total++;
         x++;
-        
+
         {
           RECURSIVE_READ_LOCKER(rwlock, owner);
           ASSERT_EQ(x, total);
         }
-          
+
         ASSERT_EQ(x, total);
       }
     });
@@ -326,7 +328,7 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteRead) {
   for (int i = 0; i < n; ++i) {
     threads[i].join();
   }
-  
+
   ASSERT_EQ(n * iterations, total);
   ASSERT_EQ(n * iterations, x);
 }
@@ -348,34 +350,37 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteAndReadMix) {
   std::vector<std::thread> threads;
 
   for (int i = 0; i < n; ++i) {
-    threads.emplace_back([&](int id) {
-      ++started;
-      while (started < n) { /*spin*/ }
+    threads.emplace_back(
+        [&](int id) {
+          ++started;
+          while (started < n) { /*spin*/
+          }
 
-      if (id % 2 == 0) {
-        // read threads
-        for (int i = 0; i < iterations; ++i) {
-          RECURSIVE_READ_LOCKER(rwlock, owner);
-          ASSERT_EQ(x, total);
-        }
-      } else {
-        // write threads
-        for (int i = 0; i < iterations; ++i) {
-          RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, true);
-          ASSERT_TRUE(locker.isLocked());
+          if (id % 2 == 0) {
+            // read threads
+            for (int i = 0; i < iterations; ++i) {
+              RECURSIVE_READ_LOCKER(rwlock, owner);
+              ASSERT_EQ(x, total);
+            }
+          } else {
+            // write threads
+            for (int i = 0; i < iterations; ++i) {
+              RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, true);
+              ASSERT_TRUE(locker.isLocked());
 
-          total++;
-          x++;
-          ASSERT_EQ(x, total);
-        }
-      }
-    }, i);
+              total++;
+              x++;
+              ASSERT_EQ(x, total);
+            }
+          }
+        },
+        i);
   }
 
   for (int i = 0; i < n; ++i) {
     threads[i].join();
   }
-  
+
   ASSERT_EQ((n / 2) * iterations, total);
   ASSERT_EQ((n / 2) * iterations, x);
 }
@@ -397,56 +402,61 @@ TEST(RecursiveLockerTest, testRecursiveReadLockMultiThreadedWriteAndReadMix) {
   std::vector<std::thread> threads;
 
   for (int i = 0; i < n; ++i) {
-    threads.emplace_back([&](int id) {
-      ++started;
-      while (started < n) { /*spin*/ }
-
-      if (id != 0) {
-        // non-modifying threads
-        for (int i = 0; i < iterations; ++i) {
-          RECURSIVE_WRITE_LOCKER(rwlock, owner);
-          ASSERT_EQ(x, total);
-
-          // add a few nested lockers here, just to see if we get into issues
-          {
-            RECURSIVE_READ_LOCKER(rwlock, owner);
-            ASSERT_EQ(x, total);
-
-            {
-              RECURSIVE_READ_LOCKER(rwlock, owner);
-              ASSERT_EQ(x, total);
-            }
+    threads.emplace_back(
+        [&](int id) {
+          ++started;
+          while (started < n) { /*spin*/
           }
-        }
-      } else {
-        // write thread
-        for (int i = 0; i < iterations; ++i) {
-          RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, true);
-          ASSERT_TRUE(locker.isLocked());
 
-          total++;
-          x++;
-          ASSERT_EQ(x, total);
-
-          // add a few nested lockers here, just to see if we get into issues
-          {
-            RECURSIVE_WRITE_LOCKER(rwlock, owner);
-            ASSERT_EQ(x, total);
-
-            {
+          if (id != 0) {
+            // non-modifying threads
+            for (int i = 0; i < iterations; ++i) {
               RECURSIVE_WRITE_LOCKER(rwlock, owner);
               ASSERT_EQ(x, total);
+
+              // add a few nested lockers here, just to see if we get into
+              // issues
+              {
+                RECURSIVE_READ_LOCKER(rwlock, owner);
+                ASSERT_EQ(x, total);
+
+                {
+                  RECURSIVE_READ_LOCKER(rwlock, owner);
+                  ASSERT_EQ(x, total);
+                }
+              }
+            }
+          } else {
+            // write thread
+            for (int i = 0; i < iterations; ++i) {
+              RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, true);
+              ASSERT_TRUE(locker.isLocked());
+
+              total++;
+              x++;
+              ASSERT_EQ(x, total);
+
+              // add a few nested lockers here, just to see if we get into
+              // issues
+              {
+                RECURSIVE_WRITE_LOCKER(rwlock, owner);
+                ASSERT_EQ(x, total);
+
+                {
+                  RECURSIVE_WRITE_LOCKER(rwlock, owner);
+                  ASSERT_EQ(x, total);
+                }
+              }
             }
           }
-        }
-      }
-    }, i);
+        },
+        i);
   }
 
   for (int i = 0; i < n; ++i) {
     threads[i].join();
   }
-  
+
   ASSERT_EQ(iterations, total);
   ASSERT_EQ(iterations, x);
 }

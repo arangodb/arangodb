@@ -22,14 +22,13 @@
 /// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/fpconv.h"
+
 #include <cmath>
 
 #include "Basics/Common.h"
-
-#include "gtest/gtest.h"
-
-#include "Basics/fpconv.h"
 #include "Basics/StringBuffer.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb::basics;
 
@@ -51,7 +50,7 @@ TEST(CFpconvTest, tst_nan) {
 #else
   EXPECT_EQ(std::string("NaN"), std::string(out, length));
 #endif
-  
+
   StringBuffer buf(true);
   buf.appendDecimal(value);
   EXPECT_EQ(std::string("NaN"), std::string(buf.c_str(), buf.length()));
@@ -71,7 +70,7 @@ TEST(CFpconvTest, tst_inf) {
   length = fpconv_dtoa(value, out);
 
   EXPECT_EQ(std::string("inf"), std::string(out, length));
-  
+
   StringBuffer buf(true);
   buf.appendDecimal(value);
   EXPECT_EQ(std::string("inf"), std::string(buf.c_str(), buf.length()));
@@ -91,7 +90,7 @@ TEST(CFpconvTest, tst_huge_val) {
   length = fpconv_dtoa(value, out);
 
   EXPECT_EQ(std::string("inf"), std::string(out, length));
-  
+
   StringBuffer buf(true);
   buf.appendDecimal(value);
   EXPECT_EQ(std::string("inf"), std::string(buf.c_str(), buf.length()));
@@ -111,7 +110,7 @@ TEST(CFpconvTest, tst_huge_val_neg) {
   length = fpconv_dtoa(value, out);
 
   EXPECT_EQ(std::string("-inf"), std::string(out, length));
-  
+
   StringBuffer buf(true);
   buf.appendDecimal(value);
   EXPECT_EQ(std::string("-inf"), std::string(buf.c_str(), buf.length()));
@@ -130,7 +129,7 @@ TEST(CFpconvTest, tst_zero) {
   length = fpconv_dtoa(value, out);
 
   EXPECT_EQ(std::string("0"), std::string(out, length));
-  
+
   StringBuffer buf(true);
   buf.appendDecimal(value);
   EXPECT_EQ(std::string("0"), std::string(buf.c_str(), buf.length()));
@@ -149,7 +148,7 @@ TEST(CFpconvTest, tst_zero_neg) {
   length = fpconv_dtoa(value, out);
 
   EXPECT_EQ(std::string("0"), std::string(out, length));
-  
+
   StringBuffer buf(true);
   buf.appendDecimal(value);
   EXPECT_EQ(std::string("0"), std::string(buf.c_str(), buf.length()));
@@ -168,7 +167,7 @@ TEST(CFpconvTest, tst_value_high) {
   length = fpconv_dtoa(value, out);
 
   EXPECT_EQ(std::string("4.32e+261"), std::string(out, length));
-  
+
   StringBuffer buf(true);
   buf.appendDecimal(value);
   EXPECT_EQ(std::string("4.32e+261"), std::string(buf.c_str(), buf.length()));
@@ -187,7 +186,7 @@ TEST(CFpconvTest, tst_value_low) {
   length = fpconv_dtoa(value, out);
 
   EXPECT_EQ(std::string("-4.32e+261"), std::string(out, length));
-  
+
   StringBuffer buf(true);
   buf.appendDecimal(value);
   EXPECT_EQ(std::string("-4.32e+261"), std::string(buf.c_str(), buf.length()));
@@ -206,7 +205,7 @@ TEST(CFpconvTest, tst_value_small) {
   length = fpconv_dtoa(value, out);
 
   EXPECT_EQ(std::string("4.32e-261"), std::string(out, length));
-  
+
   StringBuffer buf(true);
   buf.appendDecimal(value);
   EXPECT_EQ(std::string("4.32e-261"), std::string(buf.c_str(), buf.length()));
@@ -225,7 +224,7 @@ TEST(CFpconvTest, tst_value_mchacki1) {
   length = fpconv_dtoa(value, out);
 
   EXPECT_EQ(std::string("1.374"), std::string(out, length));
-  
+
   StringBuffer buf(true);
   buf.appendDecimal(value);
   EXPECT_EQ(std::string("1.374"), std::string(buf.c_str(), buf.length()));
@@ -244,10 +243,11 @@ TEST(CFpconvTest, tst_value_mchacki2) {
   length = fpconv_dtoa(value, out);
 
   EXPECT_EQ(std::string("56.94837631946843"), std::string(out, length));
-  
+
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  EXPECT_EQ(std::string("56.94837631946843"), std::string(buf.c_str(), buf.length()));
+  EXPECT_EQ(std::string("56.94837631946843"),
+            std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,10 +263,11 @@ TEST(CFpconvTest, tst_one_third) {
   length = fpconv_dtoa(value, out);
 
   EXPECT_EQ(std::string("0.3333333333333333"), std::string(out, length));
-  
+
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  EXPECT_EQ(std::string("0.3333333333333333"), std::string(buf.c_str(), buf.length()));
+  EXPECT_EQ(std::string("0.3333333333333333"),
+            std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,7 +283,7 @@ TEST(CFpconvTest, tst_04) {
   length = fpconv_dtoa(value, out);
 
   EXPECT_EQ(std::string("0.4"), std::string(out, length));
-  
+
   StringBuffer buf(true);
   buf.appendDecimal(value);
   EXPECT_EQ(std::string("0.4"), std::string(buf.c_str(), buf.length()));

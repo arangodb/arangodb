@@ -20,10 +20,9 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-
 #include "../Mocks/Servers.h"
-
+#include "./MockGraph.h"
+#include "./MockGraphProvider.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -34,9 +33,7 @@
 #include "Graph/PathManagement/PathValidator.cpp"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Types/UniquenessLevel.h"
-
-#include "./MockGraph.h"
-#include "./MockGraphProvider.h"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -60,12 +57,18 @@ static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
 using Step = typename graph::MockGraphProvider::Step;
 
-using TypesToTest = ::testing::Types<
-    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::NONE>,
-    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH>,
-    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::GLOBAL>>;
+using TypesToTest =
+    ::testing::Types<PathValidator<graph::MockGraphProvider,
+                                   PathStore<graph::MockGraphProvider::Step>,
+                                   VertexUniquenessLevel::NONE>,
+                     PathValidator<graph::MockGraphProvider,
+                                   PathStore<graph::MockGraphProvider::Step>,
+                                   VertexUniquenessLevel::PATH>,
+                     PathValidator<graph::MockGraphProvider,
+                                   PathStore<graph::MockGraphProvider::Step>,
+                                   VertexUniquenessLevel::GLOBAL>>;
 
-template <class ValidatorType>
+template<class ValidatorType>
 class PathValidatorTest : public ::testing::Test {
  protected:
   graph::MockGraph mockGraph;
@@ -89,14 +92,22 @@ class PathValidatorTest : public ::testing::Test {
   aql::AstNode* _varNode{::InitializeReference(*_ast, _tmpVar)};
 
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
-  arangodb::aql::FixedVarExpressionContext _expressionContext{_trx, *_query, _functionsCache};
+  arangodb::aql::FixedVarExpressionContext _expressionContext{_trx, *_query,
+                                                              _functionsCache};
   PathValidatorOptions _opts{&_tmpVar, _expressionContext};
 
  protected:
   VertexUniquenessLevel getVertexUniquness() {
-    if constexpr (std::is_same_v<ValidatorType, PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::NONE>>) {
+    if constexpr (std::is_same_v<
+                      ValidatorType,
+                      PathValidator<graph::MockGraphProvider, PathStore<Step>,
+                                    VertexUniquenessLevel::NONE>>) {
       return VertexUniquenessLevel::NONE;
-    } else if constexpr (std::is_same_v<ValidatorType, PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::PATH>>) {
+    } else if constexpr (std::is_same_v<
+                             ValidatorType,
+                             PathValidator<graph::MockGraphProvider,
+                                           PathStore<Step>,
+                                           VertexUniquenessLevel::PATH>>) {
       return VertexUniquenessLevel::PATH;
     } else {
       return VertexUniquenessLevel::GLOBAL;
@@ -136,7 +147,8 @@ class PathValidatorTest : public ::testing::Test {
     return result;
   }
 
-  // Add a path defined by the given vector. We start a first() and end in last()
+  // Add a path defined by the given vector. We start a first() and end in
+  // last()
   void addPath(std::vector<size_t> path) {
     // This function can only add paths of length 1 or more
     TRI_ASSERT(path.size() >= 2);
@@ -148,14 +160,16 @@ class PathValidatorTest : public ::testing::Test {
   /*
    * generates a condition #TMP._key == '<toMatch>'
    */
-  std::unique_ptr<aql::Expression> conditionKeyMatches(std::string const& toMatch) {
-    auto expectedKey = _ast->createNodeValueString(toMatch.c_str(), toMatch.length());
-    auto keyAccess =
-        _ast->createNodeAttributeAccess(_varNode, StaticStrings::KeyString.c_str(),
-                                        StaticStrings::KeyString.length());
+  std::unique_ptr<aql::Expression> conditionKeyMatches(
+      std::string const& toMatch) {
+    auto expectedKey =
+        _ast->createNodeValueString(toMatch.c_str(), toMatch.length());
+    auto keyAccess = _ast->createNodeAttributeAccess(
+        _varNode, StaticStrings::KeyString.c_str(),
+        StaticStrings::KeyString.length());
     // This condition cannot be fulfilled
-    auto condition = _ast->createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
-                                                    keyAccess, expectedKey);
+    auto condition = _ast->createNodeBinaryOperator(
+        aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ, keyAccess, expectedKey);
     return std::make_unique<aql::Expression>(_ast, condition);
   }
 
@@ -164,8 +178,9 @@ class PathValidatorTest : public ::testing::Test {
     if (_provider == nullptr) {
       _provider = std::make_unique<graph::MockGraphProvider>(
           *_query.get(),
-          graph::MockGraphProviderOptions{mockGraph, graph::MockGraphProviderOptions::LooseEndBehaviour::NEVER,
-                                          false},
+          graph::MockGraphProviderOptions{
+              mockGraph,
+              graph::MockGraphProviderOptions::LooseEndBehaviour::NEVER, false},
           _resourceMonitor);
     }
   }
@@ -173,7 +188,8 @@ class PathValidatorTest : public ::testing::Test {
 
 TYPED_TEST_CASE(PathValidatorTest, TypesToTest);
 
-TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_first_duplicate) {
+TYPED_TEST(PathValidatorTest,
+           it_should_honor_uniqueness_on_single_path_first_duplicate) {
   // We add a loop that ends in the start vertex (0) again.
   this->addPath({0, 1, 2, 3, 0});
   auto validator = this->testee();
@@ -215,7 +231,8 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_first_du
   }
 }
 
-TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_last_duplicate) {
+TYPED_TEST(PathValidatorTest,
+           it_should_honor_uniqueness_on_single_path_last_duplicate) {
   // We add a loop that loops on the last vertex(3).
   this->addPath({0, 1, 2, 3, 3});
   auto validator = this->testee();
@@ -257,7 +274,8 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_last_dup
   }
 }
 
-TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_interior_duplicate) {
+TYPED_TEST(PathValidatorTest,
+           it_should_honor_uniqueness_on_single_path_interior_duplicate) {
   // We add a loop that loops on the last vertex(2).
   this->addPath({0, 1, 2, 3, 2});
   auto validator = this->testee();
@@ -299,7 +317,8 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_interior
   }
 }
 
-TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_last_duplicate) {
+TYPED_TEST(PathValidatorTest,
+           it_should_honor_uniqueness_on_global_paths_last_duplicate) {
   // We add a two paths, that share the same start and end vertex (3)
   this->addPath({0, 1, 2, 3});
   this->addPath({0, 4, 5, 3});
@@ -377,7 +396,8 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_last_du
   }
 }
 
-TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_interior_duplicate) {
+TYPED_TEST(PathValidatorTest,
+           it_should_honor_uniqueness_on_global_paths_interior_duplicate) {
   // We add a two paths, that share the same start and end vertex (3)
   this->addPath({0, 1, 2, 3});
   this->addPath({0, 4, 5, 1});

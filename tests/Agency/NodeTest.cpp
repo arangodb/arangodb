@@ -22,21 +22,18 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-
-#include "fakeit.hpp"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-#include <iostream>
 
-#include "Mocks/LogLevels.h"
+#include <iostream>
+#include <vector>
 
 #include "Agency/Node.h"
-
-#include <vector>
+#include "Mocks/LogLevels.h"
+#include "fakeit.hpp"
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -65,11 +62,11 @@ TEST(SmallBufferTest, sizeConstructor) {
 TEST(SmallBufferTest, memcpyConstructor) {
   char const* x = "The quick brown fox jumps over the lazy dog.";
   size_t s = strlen(x);
-  SmallBuffer sb((uint8_t const*) x, s);
+  SmallBuffer sb((uint8_t const*)x, s);
   ASSERT_NE(sb.data(), nullptr);
   ASSERT_EQ(s, sb.size());
   ASSERT_FALSE(sb.empty());
-  ASSERT_EQ(0, strncmp(x, (char const*) sb.data(), s));
+  ASSERT_EQ(0, strncmp(x, (char const*)sb.data(), s));
 }
 
 TEST(SmallBufferTest, copyConstructor) {
@@ -83,7 +80,7 @@ TEST(SmallBufferTest, copyConstructor) {
   ASSERT_FALSE(sb2.empty());
   ASSERT_EQ(123, sb2.size());
   for (size_t i = 0; i < 123; ++i) {
-    ASSERT_EQ((uint8_t) i, sb2.data()[i]);
+    ASSERT_EQ((uint8_t)i, sb2.data()[i]);
   }
 }
 
@@ -103,7 +100,7 @@ TEST(SmallBufferTest, moveConstructor) {
   ASSERT_EQ(123, sb2.size());
   ASSERT_FALSE(sb2.empty());
   for (size_t i = 0; i < 123; ++i) {
-    ASSERT_EQ((uint8_t) i, sb2.data()[i]);
+    ASSERT_EQ((uint8_t)i, sb2.data()[i]);
   }
 }
 
@@ -119,7 +116,7 @@ TEST(SmallBufferTest, copyAssignment) {
   ASSERT_FALSE(sb2.empty());
   ASSERT_EQ(123, sb2.size());
   for (size_t i = 0; i < 123; ++i) {
-    ASSERT_EQ((uint8_t) i, sb2.data()[i]);
+    ASSERT_EQ((uint8_t)i, sb2.data()[i]);
   }
   SmallBuffer sb3(147);
   sb3 = sb1;
@@ -128,7 +125,7 @@ TEST(SmallBufferTest, copyAssignment) {
   ASSERT_FALSE(sb3.empty());
   ASSERT_EQ(123, sb3.size());
   for (size_t i = 0; i < 123; ++i) {
-    ASSERT_EQ((uint8_t) i, sb3.data()[i]);
+    ASSERT_EQ((uint8_t)i, sb3.data()[i]);
   }
 }
 
@@ -139,16 +136,16 @@ TEST(SmallBufferTest, copySelfAssignment) {
   }
 
   // we want a self-assignment here, but we have
-  // to make it look complicated so compilers don't 
+  // to make it look complicated so compilers don't
   // detect it too easily
   SmallBuffer* target = &sb1;
   *target = sb1;
-  
+
   ASSERT_NE(sb1.data(), nullptr);
   ASSERT_FALSE(sb1.empty());
   ASSERT_EQ(123, sb1.size());
   for (size_t i = 0; i < 123; ++i) {
-    ASSERT_EQ((uint8_t) i, sb1.data()[i]);
+    ASSERT_EQ((uint8_t)i, sb1.data()[i]);
   }
 }
 
@@ -169,7 +166,7 @@ TEST(SmallBufferTest, moveAssignment) {
   ASSERT_EQ(123, sb2.size());
   ASSERT_FALSE(sb2.empty());
   for (size_t i = 0; i < 123; ++i) {
-    ASSERT_EQ((uint8_t) i, sb2.data()[i]);
+    ASSERT_EQ((uint8_t)i, sb2.data()[i]);
   }
 
   SmallBuffer sb3(147);
@@ -183,7 +180,7 @@ TEST(SmallBufferTest, moveAssignment) {
   ASSERT_EQ(123, sb3.size());
   ASSERT_FALSE(sb3.empty());
   for (size_t i = 0; i < 123; ++i) {
-    ASSERT_EQ((uint8_t) i, sb3.data()[i]);
+    ASSERT_EQ((uint8_t)i, sb3.data()[i]);
   }
 }
 
@@ -194,7 +191,7 @@ TEST(SmallBufferTest, moveSelfAssignment) {
   }
 
   // we want a self-move assignment here, but we have
-  // to make it look complicated so compilers don't 
+  // to make it look complicated so compilers don't
   // detect it too easily
   SmallBuffer* target = &sb1;
   *target = std::move(sb1);
@@ -203,93 +200,86 @@ TEST(SmallBufferTest, moveSelfAssignment) {
   ASSERT_EQ(123, sb1.size());
   ASSERT_FALSE(sb1.empty());
   for (size_t i = 0; i < 123; ++i) {
-    ASSERT_EQ((uint8_t) i, sb1.data()[i]);
+    ASSERT_EQ((uint8_t)i, sb1.data()[i]);
   }
 }
 
 class NodeTest
-  : public ::testing::Test,
-    public arangodb::tests::LogSuppressor<arangodb::Logger::SUPERVISION, arangodb::LogLevel::ERR> {
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::SUPERVISION,
+                                            arangodb::LogLevel::ERR> {
  protected:
-
   NodeTest() {}
 };
 
-
 TEST_F(NodeTest, node_name) {
-
   std::string name("node");
   Node n(name);
 
   EXPECT_EQ(n.name(), name);
 }
 
-
 TEST_F(NodeTest, node_assign_string_slice) {
-
   std::string path("/a/b/c"), name("node"), val("test");
   Node n(name);
   auto b = std::make_shared<VPackBuilder>();
-  
+
   b->add(VPackValue(val));
   n.getOrCreate(path) = b->slice();
   EXPECT_EQ(n.getOrCreate(path).getString(), val);
-   
 }
 
-
 TEST_F(NodeTest, node_assign_double_slice) {
-
   std::string path("/a/b/c"), name("node");
   double val(8.1);
   Node n(name);
   auto b = std::make_shared<VPackBuilder>();
-  
+
   b->add(VPackValue(val));
   n.getOrCreate(path) = b->slice();
   EXPECT_DOUBLE_EQ(n.getOrCreate(path).getDouble().value(), val);
-   
 }
 
 TEST_F(NodeTest, node_assign_int_slice) {
-
   std::string path("/a/b/c"), name("node");
   int64_t val(8);
   Node n(name);
   auto b = std::make_shared<VPackBuilder>();
-  
+
   b->add(VPackValue(val));
   n.getOrCreate(path) = b->slice();
   EXPECT_EQ(n.getOrCreate(path).getInt(), val);
-   
 }
 
 TEST_F(NodeTest, node_assign_array_slice) {
-
-  std::string path("/a/b/c"), name("node");;
+  std::string path("/a/b/c"), name("node");
+  ;
   Node n(name);
   auto b = std::make_shared<VPackBuilder>();
-  { VPackArrayBuilder a(b.get());
+  {
+    VPackArrayBuilder a(b.get());
     b->add(VPackValue("Hello world"));
     b->add(VPackValue(3.14159265359));
-    b->add(VPackValue(64)); }
+    b->add(VPackValue(64));
+  }
 
   n.getOrCreate(path) = b->slice();
   EXPECT_EQ(n.getOrCreate(path).getArray()->binaryEquals(b->slice()), true);
-   
 }
 
 TEST_F(NodeTest, node_applyOp_set) {
-
-  std::string path("/a/pi"), name("node");;
+  std::string path("/a/pi"), name("node");
+  ;
   Node n(name);
   double pi = 3.14159265359;
   int eleven = 11;
 
   auto b = std::make_shared<VPackBuilder>();
-  { VPackObjectBuilder a(b.get());
+  {
+    VPackObjectBuilder a(b.get());
     b->add("op", VPackValue("set"));
-    b->add("new", VPackValue(pi)); }
+    b->add("new", VPackValue(pi));
+  }
 
   auto ret = n.getOrCreate(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), true);
@@ -297,26 +287,32 @@ TEST_F(NodeTest, node_applyOp_set) {
   EXPECT_DOUBLE_EQ(n.getOrCreate(path).getDouble().value(), pi);
 
   b = std::make_shared<VPackBuilder>();
-  { VPackObjectBuilder a(b.get());
+  {
+    VPackObjectBuilder a(b.get());
     b->add("op", VPackValue("set"));
-    b->add("new", VPackValue(eleven)); }
+    b->add("new", VPackValue(eleven));
+  }
 
   ret = n.getOrCreate(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), true);
   EXPECT_EQ(n.getOrCreate(path).getInt(), eleven);
 
   b = std::make_shared<VPackBuilder>();
-  { VPackObjectBuilder a(b.get());
+  {
+    VPackObjectBuilder a(b.get());
     b->add("op", VPackValue("set"));
-    b->add("val", VPackValue(eleven)); }
+    b->add("val", VPackValue(eleven));
+  }
 
   ret = n.getOrCreate(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), false);
   // std::cout << ret.errorMessage() << std::endl;
 
   b = std::make_shared<VPackBuilder>();
-  { VPackObjectBuilder a(b.get());
-    b->add("op", VPackValue("set")); }
+  {
+    VPackObjectBuilder a(b.get());
+    b->add("op", VPackValue("set"));
+  }
 
   ret = n.getOrCreate(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), false);
@@ -324,92 +320,113 @@ TEST_F(NodeTest, node_applyOp_set) {
 }
 
 TEST_F(NodeTest, node_applyOp_delete) {
-
-  std::string path("/a/pi"), name("node");;
+  std::string path("/a/pi"), name("node");
+  ;
   Node n(name);
   double pi = 3.14159265359;
 
   Builder b;
-  { VPackObjectBuilder a(&b);
+  {
+    VPackObjectBuilder a(&b);
     b.add("op", VPackValue("set"));
-    b.add("new", VPackValue(pi)); }
+    b.add("new", VPackValue(pi));
+  }
 
   auto ret = n.getOrCreate(path).applyOp(b.slice());
   EXPECT_EQ(ret.ok(), true);
 
   b.clear();
-  { VPackObjectBuilder a(&b);
-    b.add("op", VPackValue("delete")); }
+  {
+    VPackObjectBuilder a(&b);
+    b.add("op", VPackValue("delete"));
+  }
 
   ret = n.getOrCreate(path).applyOp(b.slice());
   EXPECT_EQ(ret.ok(), true);
   EXPECT_NE(ret.get(), nullptr);
   EXPECT_EQ(ret.get()->getDouble(), pi);
   EXPECT_NE(ret.get()->has(path), true);
-  
 }
 
 TEST_F(NodeTest, node_applyOp_bs) {
-
-  std::string path("/a/pi"), name("node");;
+  std::string path("/a/pi"), name("node");
+  ;
   Node n(name);
-  std::string oper = "bs", error = std::string("Unknown operation '") + oper + "'";
+  std::string oper = "bs",
+              error = std::string("Unknown operation '") + oper + "'";
 
   Builder b;
-  { VPackObjectBuilder a(&b);
-    b.add("op", VPackValue(oper)); }
+  {
+    VPackObjectBuilder a(&b);
+    b.add("op", VPackValue(oper));
+  }
 
   auto ret = n.getOrCreate(path).applyOp(b.slice());
   EXPECT_EQ(ret.ok(), false);
   EXPECT_EQ(ret.errorMessage(), error);
-
 }
 
 TEST_F(NodeTest, node_applyOp_lock) {
-
   std::string pathpi("/a/pi"), path("/a"), name("node");
   Node n(name);
   std::string lock = "read-lock", unlock = "read-unlock", wlock = "write-lock",
-    wulock = "write-unlock", caller1 = "this",  caller2 = "that", caller3 = "them";
+              wulock = "write-unlock", caller1 = "this", caller2 = "that",
+              caller3 = "them";
   auto ret = arangodb::ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
-  
+
   Builder lck1;
-  { VPackObjectBuilder a(&lck1);
+  {
+    VPackObjectBuilder a(&lck1);
     lck1.add("op", VPackValue(lock));
-    lck1.add("by", VPackValue(caller1)); }
+    lck1.add("by", VPackValue(caller1));
+  }
   Builder ulck1;
-  { VPackObjectBuilder a(&ulck1);
+  {
+    VPackObjectBuilder a(&ulck1);
     ulck1.add("op", VPackValue(unlock));
-    ulck1.add("by", VPackValue(caller1)); }
+    ulck1.add("by", VPackValue(caller1));
+  }
   Builder wlck1;
-  { VPackObjectBuilder a(&wlck1);
+  {
+    VPackObjectBuilder a(&wlck1);
     wlck1.add("op", VPackValue(wlock));
-    wlck1.add("by", VPackValue(caller1)); }
+    wlck1.add("by", VPackValue(caller1));
+  }
   Builder wulck1;
-  { VPackObjectBuilder a(&wulck1);
+  {
+    VPackObjectBuilder a(&wulck1);
     wulck1.add("op", VPackValue(wulock));
-    wulck1.add("by", VPackValue(caller1)); }
+    wulck1.add("by", VPackValue(caller1));
+  }
   Builder lck2;
-  { VPackObjectBuilder a(&lck2);
+  {
+    VPackObjectBuilder a(&lck2);
     lck2.add("op", VPackValue(lock));
-    lck2.add("by", VPackValue(caller2)); }
+    lck2.add("by", VPackValue(caller2));
+  }
   Builder ulck2;
-  { VPackObjectBuilder a(&ulck2);
+  {
+    VPackObjectBuilder a(&ulck2);
     ulck2.add("op", VPackValue(unlock));
-    ulck2.add("by", VPackValue(caller2)); }
+    ulck2.add("by", VPackValue(caller2));
+  }
   Builder wlck2;
-  { VPackObjectBuilder a(&wlck2);
+  {
+    VPackObjectBuilder a(&wlck2);
     wlck2.add("op", VPackValue(wlock));
-    wlck2.add("by", VPackValue(caller2)); }
+    wlck2.add("by", VPackValue(caller2));
+  }
   Builder ulck3;
-  { VPackObjectBuilder a(&ulck3);
+  {
+    VPackObjectBuilder a(&ulck3);
     ulck3.add("op", VPackValue(unlock));
-    ulck3.add("by", VPackValue(caller3)); }
+    ulck3.add("by", VPackValue(caller3));
+  }
 
   // caller1 unlock -> reject (no locks yet)
   ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
-  
+
   // caller1 lock -> accept
   ret = n.getOrCreate(path).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), true);
@@ -417,32 +434,33 @@ TEST_F(NodeTest, node_applyOp_lock) {
   // caller1 lock -> reject (same locker)
   ret = n.getOrCreate(path).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), false);
-  
+
   // caller2 lock -> accept
   ret = n.getOrCreate(path).applyOp(lck2.slice());
   EXPECT_EQ(ret.ok(), true);
-  
+
   // caller2 lock -> reject (same locker)
   ret = n.getOrCreate(path).applyOp(lck2.slice());
   EXPECT_EQ(ret.ok(), false);
-  
+
   // caller1 unlock -> accept
   ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), true);
-  
+
   // caller1 lock -> accept
   ret = n.getOrCreate(path).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), true);
-  
+
   // caller1 unlock -> accept
   ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), true);
-  
+
   // caller1 unlock -> reject (not a locker)
   ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
-  
-  // caller1 write lock -> reject (cannot write lock while still locked by caller2) 
+
+  // caller1 write lock -> reject (cannot write lock while still locked by
+  // caller2)
   ret = n.getOrCreate(path).applyOp(wlck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
@@ -453,7 +471,7 @@ TEST_F(NodeTest, node_applyOp_lock) {
   // Node should be gone
   EXPECT_NE(ret.get(), nullptr);
   EXPECT_EQ(n.has(path), false);
-  
+
   // caller1 write lock -> accept
   ret = n.getOrCreate(path).applyOp(wlck1.slice());
   EXPECT_EQ(ret.ok(), true);
@@ -476,17 +494,19 @@ TEST_F(NodeTest, node_applyOp_lock) {
 
   double pi = 3.14159265359;
   Builder b;
-  { VPackObjectBuilder a(&b);
+  {
+    VPackObjectBuilder a(&b);
     b.add("op", VPackValue("set"));
-    b.add("new", VPackValue(pi)); }
+    b.add("new", VPackValue(pi));
+  }
   ret = n.getOrCreate(pathpi).applyOp(b.slice());
 
   //////////////// Only lockable I
-  
+
   // caller1 unlock -> reject (no locks yet)
   ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
-  
+
   // caller1 lock -> accept
   ret = n.getOrCreate(path).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), false);
@@ -499,11 +519,11 @@ TEST_F(NodeTest, node_applyOp_lock) {
   EXPECT_EQ(n.has(path), true);
 
   //////////////// Only lockable caller1
-    
+
   // II unlock -> reject (no locks yet)
   ret = n.getOrCreate(pathpi).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
-  
+
   // caller1 lock -> accept
   ret = n.getOrCreate(pathpi).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), false);
@@ -514,9 +534,8 @@ TEST_F(NodeTest, node_applyOp_lock) {
 
   // Node should not be gone (pathpipi holds pi)
   EXPECT_EQ(n.has(pathpi), true);
-
 }
 
-}}} //namespace
-
-
+}  // namespace node_test
+}  // namespace tests
+}  // namespace arangodb

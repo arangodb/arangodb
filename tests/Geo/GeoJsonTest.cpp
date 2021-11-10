@@ -21,8 +21,6 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-
 #include <s2/s2latlng.h>
 #include <s2/s2loop.h>
 #include <s2/s2point.h>
@@ -34,6 +32,7 @@
 #include "Basics/voc-errors.h"
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
+#include "gtest/gtest.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -57,16 +56,23 @@ TEST_F(InvalidGeoJSONInputTest, empty_object) {
 
   ASSERT_EQ(geo::geojson::Type::UNKNOWN, geo::geojson::type(vpack));
 
-  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
-  ASSERT_TRUE(geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 
-  ASSERT_TRUE(geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
-  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 
-  ASSERT_TRUE(geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
-  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 
-  ASSERT_TRUE(geo::geojson::parseRegion(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseRegion(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_point) {
@@ -77,7 +83,8 @@ TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_point) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::LINESTRING, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_multipoint) {
@@ -88,7 +95,8 @@ TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_multipoint) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POINT, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_linestring) {
@@ -99,7 +107,8 @@ TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_linestring) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POINT, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_multilinestring) {
@@ -110,7 +119,8 @@ TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_multilinestring) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POINT, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_polygon) {
@@ -121,7 +131,8 @@ TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_polygon) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POINT, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_point_no_coordinates) {
@@ -132,7 +143,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_point_no_coordinates) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POINT, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_point_no_coordinates_empty) {
@@ -144,7 +156,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_point_no_coordinates_empty) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POINT, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_point_too_few_coordinates) {
@@ -157,7 +170,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_point_too_few_coordinates) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POINT, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_point_too_many_coordinates) {
@@ -172,7 +186,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_point_too_many_coordinates) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POINT, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_point_multiple_points) {
@@ -194,7 +209,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_point_multiple_points) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POINT, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multipoint_no_coordinates) {
@@ -205,7 +221,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipoint_no_coordinates) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POINT, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multipoint_no_coordinates_empty) {
@@ -217,7 +234,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipoint_no_coordinates_empty) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POINT, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multipoint_numbers_instead_of_points) {
@@ -231,7 +249,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipoint_numbers_instead_of_points) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POINT, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multipoint_extra_numbers_in_bad_points) {
@@ -255,7 +274,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipoint_extra_numbers_in_bad_points) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POINT, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_linestring_no_coordinates) {
@@ -266,7 +286,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_linestring_no_coordinates) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::LINESTRING, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_linestring_no_coordinates_empty) {
@@ -278,7 +299,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_linestring_no_coordinates_empty) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::LINESTRING, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_linestring_numbers_instead_of_points) {
@@ -292,7 +314,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_linestring_numbers_instead_of_points) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::LINESTRING, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_linestring_extra_numbers_in_bad_points) {
@@ -316,7 +339,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_linestring_extra_numbers_in_bad_points) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::LINESTRING, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_no_coordinates) {
@@ -327,7 +351,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_no_coordinates) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_LINESTRING, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_no_coordinates_empty) {
@@ -339,7 +364,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_no_coordinates_empty) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_LINESTRING, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_numbers_instead_of_lines) {
@@ -353,7 +379,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_numbers_instead_of_lines) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_LINESTRING, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_numbers_instead_of_points) {
@@ -370,10 +397,12 @@ TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_numbers_instead_of_points) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_LINESTRING, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
-TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_extra_numbers_in_bad_points) {
+TEST_F(InvalidGeoJSONInputTest,
+       bad_multilinestring_extra_numbers_in_bad_points) {
   {
     velocypack::ObjectBuilder object(&builder);
     object->add("type", VPackValue("MultiLinestring"));
@@ -395,7 +424,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_extra_numbers_in_bad_points)
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_LINESTRING, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_points_outside_of_line) {
@@ -418,21 +448,24 @@ TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_points_outside_of_line) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_LINESTRING, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_loop_object_not_array) {
   { velocypack::ObjectBuilder object(&builder); }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_loop_empty_array) {
   { velocypack::ArrayBuilder object(&builder); }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_loop_numbers_instead_of_points) {
@@ -443,7 +476,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_loop_numbers_instead_of_points) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_loop_extra_numbers_in_bad_points) {
@@ -464,7 +498,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_loop_extra_numbers_in_bad_points) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_loop_full_geojson_input) {
@@ -500,7 +535,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_loop_full_geojson_input) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_polygon_no_coordinates) {
@@ -511,7 +547,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_polygon_no_coordinates) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_polygon_no_coordinates_empty) {
@@ -523,7 +560,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_polygon_no_coordinates_empty) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_polygon_numbers_instead_of_rings) {
@@ -541,7 +579,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_polygon_numbers_instead_of_rings) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_polygon_points_instead_of_rings) {
@@ -573,7 +612,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_polygon_points_instead_of_rings) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_polygon_extra_numbers_in_bad_points) {
@@ -612,7 +652,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_polygon_extra_numbers_in_bad_points) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_polygon_too_few_points) {
@@ -642,7 +683,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_polygon_too_few_points) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_polygon_not_closed) {
@@ -677,7 +719,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_polygon_not_closed) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_polygon_nonnested_rings) {
@@ -745,7 +788,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_polygon_nonnested_rings) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_polygon_outer_ring_not_first) {
@@ -813,7 +857,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_polygon_outer_ring_not_first) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(
+      geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 // ===========================
@@ -826,7 +871,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_no_coordinates) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_no_coordinates_empty) {
@@ -838,7 +884,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_no_coordinates_empty) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_numbers_instead_of_polygons) {
@@ -856,7 +903,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_numbers_instead_of_polygons) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_numbers_instead_of_rings) {
@@ -875,7 +923,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_numbers_instead_of_rings) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_points_instead_of_rings) {
@@ -908,7 +957,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_points_instead_of_rings) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_extra_numbers_in_bad_points) {
@@ -950,7 +1000,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_extra_numbers_in_bad_points) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_too_few_points) {
@@ -981,7 +1032,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_too_few_points) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_not_closed) {
@@ -1017,7 +1069,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_not_closed) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_nonnested_rings) {
@@ -1086,7 +1139,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_nonnested_rings) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_outer_ring_not_first) {
@@ -1155,7 +1209,8 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_outer_ring_not_first) {
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::geojson::Type::MULTI_POLYGON, geo::geojson::type(vpack));
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape)
+                  .is(TRI_ERROR_BAD_PARAMETER));
 }
 
 class ValidGeoJSONInputTest : public ::testing::Test {
@@ -1349,8 +1404,7 @@ TEST_F(ValidGeoJSONInputTest, valid_linestring_as_region) {
 
   ASSERT_EQ(geo::geojson::Type::LINESTRING, geo::geojson::type(vpack));
   ASSERT_TRUE(geo::geojson::parseRegion(vpack, shape).ok());
-  ASSERT_TRUE(geo::ShapeContainer::Type::S2_POLYLINE ==
-              shape.type());
+  ASSERT_TRUE(geo::ShapeContainer::Type::S2_POLYLINE == shape.type());
 }
 
 TEST_F(ValidGeoJSONInputTest, valid_multilinestring) {
@@ -1413,7 +1467,8 @@ TEST_F(ValidGeoJSONInputTest, valid_multilinestring) {
   ASSERT_EQ(2, multiline.size());
 
   ASSERT_EQ(4, multiline[0].num_vertices());
-  ASSERT_EQ(S2LatLng::FromDegrees(-1.0, -1.0).ToPoint(), multiline[0].vertex(0));
+  ASSERT_EQ(S2LatLng::FromDegrees(-1.0, -1.0).ToPoint(),
+            multiline[0].vertex(0));
   ASSERT_EQ(S2LatLng::FromDegrees(-1.0, 2.0).ToPoint(), multiline[0].vertex(1));
   ASSERT_EQ(S2LatLng::FromDegrees(2.0, 2.0).ToPoint(), multiline[0].vertex(2));
   ASSERT_EQ(S2LatLng::FromDegrees(2.0, -1.0).ToPoint(), multiline[0].vertex(3));
@@ -1481,8 +1536,7 @@ TEST_F(ValidGeoJSONInputTest, valid_multilinestring_as_region) {
 
   ASSERT_EQ(geo::geojson::Type::MULTI_LINESTRING, geo::geojson::type(vpack));
   ASSERT_TRUE(geo::geojson::parseRegion(vpack, shape).ok());
-  ASSERT_TRUE(geo::ShapeContainer::Type::S2_MULTIPOLYLINE ==
-              shape.type());
+  ASSERT_TRUE(geo::ShapeContainer::Type::S2_MULTIPOLYLINE == shape.type());
 }
 
 TEST_F(ValidGeoJSONInputTest, valid_polygon_triangle) {
@@ -1566,8 +1620,7 @@ TEST_F(ValidGeoJSONInputTest, valid_polygon_empty_rectangle) {
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
   ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).ok());
 
-  ASSERT_TRUE(shape.type() ==
-              geo::ShapeContainer::Type::S2_LATLNGRECT);
+  ASSERT_TRUE(shape.type() == geo::ShapeContainer::Type::S2_LATLNGRECT);
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(41.0, 41.0).ToPoint()));
 }
 
@@ -1610,8 +1663,7 @@ TEST_F(ValidGeoJSONInputTest, valid_polygon_rectangle) {
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
   ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).ok());
 
-  ASSERT_TRUE(shape.type() ==
-              geo::ShapeContainer::Type::S2_LATLNGRECT);
+  ASSERT_TRUE(shape.type() == geo::ShapeContainer::Type::S2_LATLNGRECT);
   ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0, 0).ToPoint()));
   ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1, 0).ToPoint()));
   ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-1, 0).ToPoint()));
@@ -1621,7 +1673,8 @@ TEST_F(ValidGeoJSONInputTest, valid_polygon_rectangle) {
   ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1, 1).ToPoint()));
   ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-1, 1).ToPoint()));
   ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-1, -1).ToPoint()));
-  ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(-1.00001, -1.00001).ToPoint()));
+  ASSERT_FALSE(
+      shape.contains(S2LatLng::FromDegrees(-1.00001, -1.00001).ToPoint()));
 }
 
 TEST_F(ValidGeoJSONInputTest, valid_polygon_nested_rings) {
