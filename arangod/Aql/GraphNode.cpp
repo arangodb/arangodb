@@ -584,7 +584,6 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   {
     VPackObjectBuilder guard(&nodes);
     for (auto const& item : _collectionToShard) {
-      TRI_ASSERT(item.second.size() == 1);
       nodes.add(item.first, VPackValue(item.second.front()));
     }
   }
