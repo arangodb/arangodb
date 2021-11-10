@@ -822,13 +822,18 @@ bool SynchronizeShard::first() {
   
       // build DatabaseTailingSyncer object for WAL tailing
       TRI_ASSERT(tailingSyncer == nullptr);
-      tailingSyncer = DatabaseTailingSyncer::create(guard.database(), configuration, /*lastTick*/ 0, /*useTick*/true);
 
-      if (!leader.empty()) {
-        // In the initial phase we still use the normal leaderId without a following
-        // term id:
-        tailingSyncer->setLeaderId(leader);
-      }
+      tailingSyncer = DatabaseTailingSyncer::create(guard.database(), configuration, /*lastTick*/ 0, /*useTick*/true);
+    }
+
+    // tailingSyncer cannot be a nullptr here, because DatabaseTailingSyncer::create()
+    // returns the result of a make_shared operation.
+    TRI_ASSERT(tailingSyncer != nullptr);
+
+    if (!leader.empty()) {
+      // In the initial phase we still use the normal leaderId without a following
+      // term id:
+      tailingSyncer->setLeaderId(leader);
     }
 
     try {
@@ -935,9 +940,7 @@ bool SynchronizeShard::first() {
         return false;
       }
     } catch (basics::Exception const& e) {
-      if (tailingSyncer != nullptr) {
-        tailingSyncer->unregisterFromLeader();
-      }
+      tailingSyncer->unregisterFromLeader();
       // don't log errors for already dropped databases/collections
       if (e.code() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
           e.code() != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
@@ -950,9 +953,7 @@ bool SynchronizeShard::first() {
       result(e.code(), e.what());
       return false;
     } catch (std::exception const& e) {
-      if (tailingSyncer != nullptr) {
-        tailingSyncer->unregisterFromLeader();
-      }
+      tailingSyncer->unregisterFromLeader();
 
       std::stringstream error;
       error << "synchronization of ";
