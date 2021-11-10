@@ -3289,6 +3289,9 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   Result res = methods::Collections::create(_vocbase, options, infos, true,
                       enforceReplicationFactor, isNewDatabase, nullptr, collections,
                       allowSystem, isSingleServerEnterpriseCollection);
+  if (res.fail()) {
+    return res.errorNumber();
+  }
 
   // TODO: This can be improved as soon as we restore all collections here in one go.
   if (collections.size() == 0 || collections.front() == nullptr) {
