@@ -385,12 +385,17 @@ struct CommitFailReason {
   static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;
   void toVelocyPack(velocypack::Builder& builder) const;
 
+  friend auto operator==(CommitFailReason const& left, CommitFailReason const& right) noexcept -> bool;
+  friend auto operator!=(CommitFailReason const& left, CommitFailReason const& right) noexcept -> bool;
+
  private:
   template <typename... Args>
   explicit CommitFailReason(std::in_place_t, Args&&... args) noexcept;
 };
 
 auto to_string(CommitFailReason const&) -> std::string;
+[[nodiscard]] auto operator==(CommitFailReason const& left, CommitFailReason const& right) noexcept -> bool;
+[[nodiscard]] auto operator!=(CommitFailReason const& left, CommitFailReason const& right) noexcept -> bool;
 }  // namespace replicated_log
 
 

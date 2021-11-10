@@ -533,3 +533,13 @@ auto replication2::ParticipantsConfig::fromVelocyPack(velocypack::Slice s) -> Pa
   }
   return config;
 }
+
+auto replicated_log::operator==(CommitFailReason const& left,
+                                CommitFailReason const& right) noexcept -> bool {
+  return left.value.index() == right.value.index();
+}
+
+auto replicated_log::operator!=(CommitFailReason const& left,
+                                CommitFailReason const& right) noexcept -> bool {
+  return !(left == right);
+}
