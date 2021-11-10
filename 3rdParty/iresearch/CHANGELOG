@@ -1,8 +1,16 @@
 master
 -------------------------
 
-v1.1 (2021-10-13)
+* Add `classification_stream` capable of classifying input data based on FastText NN model.
+
+* Add `nearest_neighbors_stream` capable of generating synonyms based on FastText NN model.
+
+v1.1 (2021-11-04)
 -------------------------
+
+* Fix possible race between file creation and directory cleaner.
+
+* Fix invalid sorting order of stored features in presence of primary sort.
 
 * Enhance troubleshooting experience for the analyzers required locale.
 

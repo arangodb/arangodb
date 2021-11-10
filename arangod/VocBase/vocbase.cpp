@@ -567,7 +567,6 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
 
 /// @brief creates a new collection, worker function
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWorker(VPackSlice parameters) {
-  // todo: validate collection name properly (!)
   std::string const name =
       arangodb::basics::VelocyPackHelper::getStringValue(parameters, StaticStrings::DataSourceName, "");
   TRI_ASSERT(!name.empty());

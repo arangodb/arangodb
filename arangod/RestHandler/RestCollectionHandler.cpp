@@ -372,11 +372,7 @@ void RestCollectionHandler::handleCommandPost() {
   VPackBuilder filtered = methods::Collections::filterInput(body);
   VPackSlice const parameters = filtered.slice();
 
-  bool allowSystem = false;
-  if (parameters.hasKey(StaticStrings::DataSourceSystem) &&
-      parameters.get(StaticStrings::DataSourceSystem).isBoolean()) {
-    allowSystem = parameters.get(StaticStrings::DataSourceSystem).getBoolean();
-  }
+  bool allowSystem = VelocyPackHelper::getBooleanValue(parameters, StaticStrings::DataSourceSystem, false);
 
   // now we can create the collection
   std::string const& name = nameSlice.copyString();

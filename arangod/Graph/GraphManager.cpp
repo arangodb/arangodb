@@ -633,15 +633,18 @@ Result GraphManager::ensureCollections(
   OperationOptions opOptions(ExecContext::current());
 
 #ifdef USE_ENTERPRISE
-  const bool sssg = ServerState::instance()->isSingleServer() && (graph.isSmart() || graph.isSatellite());
+  const bool isSingleServerEnterpriseCollection =
+      ServerState::instance()->isSingleServer() &&
+      (graph.isSmart() || graph.isSatellite());
 #else
-  const bool sssg = false;
+  const bool isSingleServerEnterpriseCollection = false;
 #endif
 
   Result finalResult =
       methods::Collections::create(ctx()->vocbase(), opOptions,
                                    collectionsToCreate.get(), waitForSync, true,
-                                   false, nullptr, created, false, sssg);
+                                   false, nullptr, created, false,
+                                   isSingleServerEnterpriseCollection);
 #ifdef USE_ENTERPRISE
   if (finalResult.ok()) {
     guard.cancel();
@@ -859,7 +862,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
   std::unordered_set<std::string> followersToBeRemoved;
   OperationOptions options(ExecContext::current());
 
-  if (dropCollections) {  // todo: make another function out of this
+  if (dropCollections) {
     // Puts the collection with name \p colName to \p leadersToBeRemoved (if \p
     // distributeShardsLike is not defined) or to \p followersToBeRemoved (if it
     // is defined) or does nothing if there is no collection with this name.

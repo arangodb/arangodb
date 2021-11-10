@@ -85,7 +85,11 @@ auto replicated_log::LogCore::logId() const noexcept -> LogId {
   return _persistedLog->id();
 }
 
-auto LogCore::removeFront(LogIndex stop) -> Result {
+auto LogCore::removeFront(LogIndex stop) -> futures::Future<Result> {
   std::unique_lock guard(_operationMutex);
-  return _persistedLog->removeFront(stop);
+  return _persistedLog->removeFront(stop).thenValue(
+      [guard = std::move(guard)](Result&& res) mutable {
+        guard.unlock();
+        return std::move(res);
+      });
 }

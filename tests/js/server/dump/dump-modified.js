@@ -113,8 +113,14 @@ jsunity.run(function dump_single_testsuite() {
 
       // enterprise sharded graphs on single server tests
       "testEmptySmartGraph",
+      "testEmptySatelliteGraph",
+      "testEmptyDisjointGraph",
       "testSmartGraphWithoutData",
-      "testSmartGraphSingleServer"
+      "testSmartGraphSingleServer",
+      "testSatelliteSmartGraphSingleServer",
+      "testDisjointGraphSingleServer",
+      "testHybridSmartGraphSingleServer",
+      "testHybridDisjointSmartGraphSingleServer",
     ].concat(clusterBlacklist)
   );
 
