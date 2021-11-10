@@ -240,7 +240,7 @@ accessed in the query.
 @RESTRETURNCODE{405}
 The server will respond with *HTTP 405* if an unsupported HTTP method is used.
 
-@RESTRETURNCODE{405}
+@RESTRETURNCODE{410}
 The server will respond with *HTTP 410* if a server which will process the query
 or is the leader for a shard which is used in the query goes through a restart 
 or failure or network connectivity problems, because then the query is lost.
