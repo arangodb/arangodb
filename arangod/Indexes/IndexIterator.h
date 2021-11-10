@@ -77,6 +77,9 @@ class IndexIterator {
       TRI_ASSERT(false);
       return VPackSlice::noneSlice();
     }
+
+    virtual velocypack::ValueLength length() const = 0;
+
   };
 
   class SliceArrayCoveringData final : public CoveringData {
@@ -96,13 +99,17 @@ class IndexIterator {
       return _slice.isArray();
     }
 
+    velocypack::ValueLength length() const override {
+      return _slice.length();
+    }
+
    private:
     VPackSlice _slice;
   };
 
   typedef std::function<bool(LocalDocumentId const& token)> LocalDocumentIdCallback;
   typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice doc)> DocumentCallback;
-  typedef std::function<bool(LocalDocumentId const& token, CoveringData const* covering)> CoveringCallback;
+  typedef std::function<bool(LocalDocumentId const& token, CoveringData* covering)> CoveringCallback;
   typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice extra)> ExtraCallback;
 
  public:

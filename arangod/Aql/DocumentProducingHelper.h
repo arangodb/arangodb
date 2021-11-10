@@ -151,7 +151,7 @@ struct DocumentCopy {};
 }  // namespace DocumentProducingCallbackVariant
 
 template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
+IndexIterator::CoveringCallback getCallback(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
                                             DocumentProducingFunctionContext& context);
 
 template <bool checkUniqueness, bool skip>

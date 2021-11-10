@@ -77,12 +77,12 @@ static void resolveFCallConstAttributes(Ast* ast, AstNode* fcall) {
 }
 
 template <bool checkUniqueness>
-IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& context,
+IndexIterator::CoveringCallback getCallback(DocumentProducingFunctionContext& context,
                                             transaction::Methods::IndexHandle const& index,
                                             IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
                                             IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
   return [&context, &index, &outNonMaterializedIndVars, &outNonMaterializedIndRegs](LocalDocumentId const& token,
-                                                                                    VPackSlice slice) {
+                                                                                    IndexIterator::CoveringData* covering) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -103,9 +103,9 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
     if (context.hasFilter()) {
       struct filterContext {
         IndexNode::IndexValuesVars const& outNonMaterializedIndVars;
-        velocypack::Slice slice;
+        IndexIterator::CoveringData* covering;
       };
-      filterContext fc{outNonMaterializedIndVars, slice};
+      filterContext fc{outNonMaterializedIndVars, covering};
 
       auto getValue = [](void const* ctx, Variable const* var, bool doCopy) {
         TRI_ASSERT(ctx && var);
@@ -117,14 +117,14 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
         }
         velocypack::Slice s;
         // hash/skiplist/persistent
-        if (fc.slice.isArray()) {
-          TRI_ASSERT(it->second < fc.slice.length());
-          if (ADB_UNLIKELY(it->second >= fc.slice.length())) {
+        if (fc.covering->isArray()) {
+          TRI_ASSERT(it->second < fc.covering->length());
+          if (ADB_UNLIKELY(it->second >= fc.covering->length())) {
             return AqlValue();
           }
-          s = fc.slice.at(it->second);
+          s = fc.covering->at(it->second);
         } else {  // primary/edge
-          s = fc.slice;
+          s = fc.covering->value();
         }
         if (doCopy) {
           return AqlValue(AqlValueHintCopy(s.start()));
@@ -149,13 +149,13 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
     output.moveValueInto(registerId, input, guard);
 
     // hash/skiplist/persistent
-    if (slice.isArray()) {
+    if (covering->isArray()) {
       for (auto const& indReg : outNonMaterializedIndRegs.second) {
-        TRI_ASSERT(indReg.first < slice.length());
-        if (ADB_UNLIKELY(indReg.first >= slice.length())) {
+        TRI_ASSERT(indReg.first < covering->length());
+        if (ADB_UNLIKELY(indReg.first >= covering->length())) {
           return false;
         }
-        auto s = slice.at(indReg.first);
+        auto s = covering->at(indReg.first);
         AqlValue v(s);
         AqlValueGuard guard{v, true};
         TRI_ASSERT(!output.isFull());
@@ -167,7 +167,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
       if (ADB_UNLIKELY(indReg == outNonMaterializedIndRegs.second.cend())) {
         return false;
       }
-      AqlValue v(slice);
+      AqlValue v(covering->value());
       AqlValueGuard guard{v, true};
       TRI_ASSERT(!output.isFull());
       output.moveValueInto(indReg->second, input, guard);
@@ -357,6 +357,13 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
     case Type::NoResult: {
       _documentNonProducer = checkUniqueness ? getNullCallback<true>(context)
                                              : getNullCallback<false>(context);
+      break;
+    }
+    case Type::Covering: {
+      _coveringProducer =
+          checkUniqueness
+        ? ::getCallback<true, false>(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex{}, context)
+        : ::getCallback<false, false>(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex{}, context);
       break;
     }
     case Type::LateMaterialized:

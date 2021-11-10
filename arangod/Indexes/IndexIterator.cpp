@@ -255,7 +255,7 @@ bool MultiIndexIterator::nextExtraImpl(ExtraCallback const& callback, size_t lim
 bool MultiIndexIterator::nextCoveringImpl(CoveringCallback const& callback, size_t limit) {
   TRI_ASSERT(hasCovering());
   auto cb = [&limit, &callback](LocalDocumentId const& token,
-                                CoveringData const* data) {
+                                CoveringData* data) {
     if (callback(token, data)) {
       --limit;
       return true;

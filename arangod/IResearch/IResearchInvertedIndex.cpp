@@ -368,7 +368,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
     explicit CoveringValue(irs::string_ref col)
       : _column(col) {}
 
-    CoveringValue(CoveringValue&& other) : _column(other._column) {
+    CoveringValue(CoveringValue&& other) noexcept : _column(other._column) {
 
     }
 
@@ -430,6 +430,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
         fields += column.fields.size();
         _coverage.emplace_back(fields, CoveringValue(column.name));
       }
+      _length = fields;
     }
 
     void reset(irs::sub_reader const& rdr) {
@@ -455,6 +456,10 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
       return _coverage.empty();
     }
 
+    velocypack::ValueLength length() const override {
+      return _length;
+    }
+
    private:
     VPackSlice get(size_t i) {
       TRI_ASSERT(irs::doc_limits::valid(_doc));
@@ -474,8 +479,10 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
 
     std::vector<std::pair<size_t, CoveringValue>> _coverage;
     irs::doc_id_t _doc{irs::doc_limits::invalid()};
+    velocypack::ValueLength _length{0};
   };
 
+  // FIXME:!! check order
   VPackBuffer<uint8_t> _coveringBuffer;
   irs::doc_iterator::ptr _itr;
   irs::doc_iterator::ptr _pkDocItr;
