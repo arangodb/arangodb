@@ -93,16 +93,6 @@ class EdgeDefinition {
 
   bool renameCollection(std::string const& oldName, std::string const& newName);
 
-  /* @brief
-   * Set type of the EdgeDefinition. Only allowed to be called once and only if
-   * type is DEFAULT. If type has been set, it is not changeable anymore.
-   *
-   * @param type Type to be set
-   *
-   * @return True if type has been set, returns false in case type has not been set.
-   */
-  auto setType(EdgeDefinitionType type) -> bool;
-
  private:
   std::string _edgeCollection;
   std::set<std::string> _from;
