@@ -2565,7 +2565,7 @@ Result compactOnAllDBServers(ClusterFeature& feature,
 }
 
 #ifndef USE_ENTERPRISE
-std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollectionOnCoordinator(
+std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollectionsOnCoordinator(
     TRI_vocbase_t& vocbase, velocypack::Slice parameters, bool ignoreDistributeShardsLikeErrors,
     bool waitForSyncReplication, bool enforceReplicationFactor,
     bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
