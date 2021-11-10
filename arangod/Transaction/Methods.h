@@ -239,7 +239,6 @@ class Methods {
 
   /// @brief return the type of a collection
   bool isEdgeCollection(std::string const& collectionName) const;
-  bool isDocumentCollection(std::string const& collectionName) const;
   TRI_col_type_e getCollectionType(std::string const& collectionName) const;
 
   /// @brief return one  document from a collection, fast path
@@ -353,9 +352,6 @@ class Methods {
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*, AccessMode::Type) const;
   
-  /// @brief fetch the LogicalCollection by CID
-  arangodb::LogicalCollection* documentCollection(DataSourceId cid) const;
-
   /// @brief fetch the LogicalCollection by name
   arangodb::LogicalCollection* documentCollection(std::string const& name) const;
   
