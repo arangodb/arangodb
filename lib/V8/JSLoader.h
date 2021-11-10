@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include <v8.h>
-
 #include <string>
+
+#include <v8.h>
 
 #include "Basics/Common.h"
 #include "Utilities/ScriptLoader.h"
@@ -56,7 +56,7 @@ class JSLoader : public ScriptLoader {
   //////////////////////////////////////////////////////////////////////////////
 
   JSLoader::eState loadScript(v8::Isolate* isolate, v8::Handle<v8::Context>&,
-                              std::string const& name,
-                              velocypack::Builder* builder);
+                              std::string const& name, velocypack::Builder* builder);
 };
 }  // namespace arangodb
+

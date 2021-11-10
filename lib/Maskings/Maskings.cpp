@@ -21,9 +21,9 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Maskings.h"
-
 #include <stdint.h>
+#include <iostream>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Exception.h>
@@ -35,7 +35,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
-#include <iostream>
+#include "Maskings.h"
 
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
@@ -62,15 +62,13 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
   try {
     definition = basics::FileUtils::slurp(filename);
   } catch (std::exception const& e) {
-    std::string msg =
-        "cannot read maskings file '" + filename + "': " + e.what();
+    std::string msg = "cannot read maskings file '" + filename + "': " + e.what();
     LOG_TOPIC("379fe", DEBUG, Logger::CONFIG) << msg;
 
     return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, msg);
   }
 
-  LOG_TOPIC("fe73b", DEBUG, Logger::CONFIG)
-      << "found maskings file '" << filename;
+  LOG_TOPIC("fe73b", DEBUG, Logger::CONFIG) << "found maskings file '" << filename;
 
   if (definition.empty()) {
     std::string msg = "maskings file '" + filename + "' is empty";
@@ -83,8 +81,7 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
   maskings.get()->_randomSeed = RandomGenerator::interval(UINT64_MAX);
 
   try {
-    std::shared_ptr<VPackBuilder> parsed =
-        velocypack::Parser::fromJson(definition);
+    std::shared_ptr<VPackBuilder> parsed = velocypack::Parser::fromJson(definition);
 
     ParseResult<Maskings> res = maskings->parse(parsed->slice());
 
@@ -94,10 +91,8 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
 
     return MaskingsResult(std::move(maskings));
   } catch (velocypack::Exception const& e) {
-    std::string msg =
-        "cannot parse maskings file '" + filename + "': " + e.what();
-    LOG_TOPIC("5cb4c", DEBUG, Logger::CONFIG)
-        << msg << ". file content: " << definition;
+    std::string msg = "cannot parse maskings file '" + filename + "': " + e.what();
+    LOG_TOPIC("5cb4c", DEBUG, Logger::CONFIG) << msg << ". file content: " << definition;
 
     return MaskingsResult(MaskingsResult::CANNOT_PARSE_FILE, msg);
   }
@@ -116,26 +111,23 @@ ParseResult<Maskings> Maskings::parse(VPackSlice const& def) {
       LOG_TOPIC("b0d99", TRACE, Logger::CONFIG) << "default masking";
 
       if (_hasDefaultCollection) {
-        return ParseResult<Maskings>(
-            ParseResult<Maskings>::DUPLICATE_COLLECTION,
-            "duplicate default entry");
+        return ParseResult<Maskings>(ParseResult<Maskings>::DUPLICATE_COLLECTION,
+                                     "duplicate default entry");
       }
     } else {
-      LOG_TOPIC("f5aac", TRACE, Logger::CONFIG)
-          << "masking collection '" << key << "'";
+      LOG_TOPIC("f5aac", TRACE, Logger::CONFIG) << "masking collection '" << key << "'";
 
       if (_collections.find(key) != _collections.end()) {
-        return ParseResult<Maskings>(
-            ParseResult<Maskings>::DUPLICATE_COLLECTION,
-            "duplicate collection entry '" + key + "'");
+        return ParseResult<Maskings>(ParseResult<Maskings>::DUPLICATE_COLLECTION,
+                                     "duplicate collection entry '" + key + "'");
       }
     }
 
     ParseResult<Collection> c = Collection::parse(this, entry.value);
 
     if (c.status != ParseResult<Collection>::VALID) {
-      return ParseResult<Maskings>(
-          (ParseResult<Maskings>::StatusCode)(int)c.status, c.message);
+      return ParseResult<Maskings>((ParseResult<Maskings>::StatusCode)(int)c.status,
+                                   c.message);
     }
 
     if (key == "*") {
@@ -205,8 +197,7 @@ bool Maskings::shouldDumpData(std::string const& name) {
   return false;
 }
 
-VPackValue Maskings::maskedItem(Collection& collection,
-                                std::vector<std::string>& path,
+VPackValue Maskings::maskedItem(Collection& collection, std::vector<std::string>& path,
                                 std::string& buffer, VPackSlice const& data) {
   if (path.size() == 1 && path[0].size() >= 1 && path[0][0] == '_') {
     if (data.isString()) {
@@ -256,8 +247,7 @@ VPackValue Maskings::maskedItem(Collection& collection,
 }
 
 void Maskings::addMaskedArray(Collection& collection, VPackBuilder& builder,
-                              std::vector<std::string>& path,
-                              VPackSlice const& data) {
+                              std::vector<std::string>& path, VPackSlice const& data) {
   std::string buffer;
 
   for (VPackSlice entry : VPackArrayIterator(data)) {
@@ -274,8 +264,7 @@ void Maskings::addMaskedArray(Collection& collection, VPackBuilder& builder,
 }
 
 void Maskings::addMaskedObject(Collection& collection, VPackBuilder& builder,
-                               std::vector<std::string>& path,
-                               VPackSlice const& data) {
+                               std::vector<std::string>& path, VPackSlice const& data) {
   std::string buffer;
 
   for (auto const& entry : VPackObjectIterator(data, false)) {
@@ -316,7 +305,7 @@ void Maskings::addMasked(Collection& collection, basics::StringBuffer& data,
   if (!slice.isObject()) {
     return;
   }
-
+  
   VPackBuilder builder;
 
   if (slice.hasKey(StaticStrings::KeyString)) {
@@ -325,7 +314,7 @@ void Maskings::addMasked(Collection& collection, basics::StringBuffer& data,
       VPackObjectBuilder ob(&builder);
       addMasked(collection, builder, slice);
     }
-
+  
     // the maskings will generate a result object that contains a "data"
     // attribute at the top
     slice = builder.slice().get("data");
@@ -349,12 +338,12 @@ void Maskings::addMasked(Collection& collection, basics::StringBuffer& data,
 
     slice = builder.slice();
   }
-
+  
   // directly emit JSON into result StringBuffer
   basics::VPackStringBufferAdapter adapter(data.stringBuffer());
   VPackDumper dumper(&adapter, &VPackOptions::Defaults);
   dumper.dump(slice);
-
+    
   data.appendChar('\n');
 }
 

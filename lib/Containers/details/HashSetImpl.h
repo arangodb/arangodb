@@ -16,17 +16,15 @@
 namespace emilib {
 
 /// like std::equal_to but no need to `#include <functional>`
-template<typename T>
+template <typename T>
 struct HashSetEqualTo {
   constexpr bool operator()(const T& lhs, const T& rhs) const {
     return lhs == rhs;
   }
 };
 
-/// A cache-friendly hash set with open addressing, linear probing and
-/// power-of-two capacity
-template<typename KeyT, typename HashT = std::hash<KeyT>,
-         typename EqT = HashSetEqualTo<KeyT>>
+/// A cache-friendly hash set with open addressing, linear probing and power-of-two capacity
+template <typename KeyT, typename HashT = std::hash<KeyT>, typename EqT = HashSetEqualTo<KeyT>>
 class HashSet {
  private:
   using MyType = HashSet<KeyT, HashT, EqT>;
@@ -78,8 +76,7 @@ class HashSet {
     void goto_next_element() {
       do {
         _bucket++;
-      } while (_bucket < _set->_num_buckets &&
-               _set->_states[_bucket] != State::FILLED);
+      } while (_bucket < _set->_num_buckets && _set->_states[_bucket] != State::FILLED);
     }
 
    public:
@@ -132,8 +129,7 @@ class HashSet {
     void goto_next_element() {
       do {
         _bucket++;
-      } while (_bucket < _set->_num_buckets &&
-               _set->_states[_bucket] != State::FILLED);
+      } while (_bucket < _set->_num_buckets && _set->_states[_bucket] != State::FILLED);
     }
 
    public:
@@ -307,7 +303,7 @@ class HashSet {
     }
   }
 
-  template<class... Args>
+  template <class... Args>
   std::pair<iterator, bool> emplace(Args&&... args) {
     return insert(KeyT(std::forward<Args>(args)...));
   }
@@ -371,8 +367,7 @@ class HashSet {
     size_t keys_size = num_buckets * sizeof(KeyT);
     // intentionally uninitialized here, initialization will be done below
     char* new_buffer;
-    if (_buffer == nullptr &&
-        states_size + keys_size <= sizeof(_local_buffer)) {
+    if (_buffer == nullptr && states_size + keys_size <= sizeof(_local_buffer)) {
       new_buffer = &_local_buffer[0];
     } else {
       new_buffer = new char[states_size + keys_size];
@@ -430,13 +425,11 @@ class HashSet {
       // we can copy the other's local buffer
       _buffer = &_local_buffer[0];
       _states = reinterpret_cast<State*>(_buffer);
-      size_t states_size =
-          ((other._num_buckets * sizeof(State) + 8 - 1) / 8) * 8;
+      size_t states_size = ((other._num_buckets * sizeof(State) + 8 - 1) / 8) * 8;
       memcpy(&_local_buffer[0], &other._local_buffer[0], states_size);
       _keys = (KeyT*)(_buffer + states_size);
 
-      for (size_t src_bucket = 0; src_bucket < other._num_buckets;
-           src_bucket++) {
+      for (size_t src_bucket = 0; src_bucket < other._num_buckets; src_bucket++) {
         if (other._states[src_bucket] == State::FILLED) {
           auto& src = other._keys[src_bucket];
           new (_keys + src_bucket) KeyT(std::move(src));
@@ -548,11 +541,9 @@ class HashSet {
   KeyT* _keys = nullptr;
   size_t _num_buckets = 0;
   size_t _num_filled = 0;
-  int _max_probe_length =
-      -1;  // Our longest bucket-brigade is this long. ONLY when we have zero
-           // elements is this ever negative (-1).
-  size_t _mask = 0;        // _num_buckets minus one
-  char _local_buffer[80];  // first few bytes are always allocated here
+  int _max_probe_length = -1;  // Our longest bucket-brigade is this long. ONLY when we have zero elements is this ever negative (-1).
+  size_t _mask = 0;            // _num_buckets minus one
+  char _local_buffer[80];      // first few bytes are always allocated here
 };
 
 }  // namespace emilib

@@ -65,7 +65,7 @@
 namespace arangodb {
 namespace basics {
 
-template<typename key_t, typename value_t>
+template <typename key_t, typename value_t>
 class LruCache {
  public:
   typedef typename std::pair<key_t, value_t> key_value_pair_t;
@@ -95,8 +95,7 @@ class LruCache {
     if (it == _cache_items_map.end()) {
       return nullptr;
     } else {
-      _cache_items_list.splice(_cache_items_list.begin(), _cache_items_list,
-                               it->second);
+      _cache_items_list.splice(_cache_items_list.begin(), _cache_items_list, it->second);
       return &it->second->second;
     }
   }

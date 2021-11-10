@@ -23,8 +23,9 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
+
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 
@@ -38,3 +39,4 @@ class NonceFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
+

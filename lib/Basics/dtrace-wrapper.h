@@ -29,11 +29,8 @@
 
 #else
 
-#define DTRACE_PROBE1(a, b, c) \
-  do {                         \
-  } while (0);
-#define DTRACE_PROBE2(a, b, c, d) \
-  do {                            \
-  } while (0);
+#define DTRACE_PROBE1(a, b, c) do { } while (0);
+#define DTRACE_PROBE2(a, b, c, d) do { } while (0);
 
 #endif
+

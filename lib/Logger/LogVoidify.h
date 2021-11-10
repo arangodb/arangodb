@@ -37,3 +37,4 @@ class LogVoidify {
 };
 
 }  // namespace arangodb
+

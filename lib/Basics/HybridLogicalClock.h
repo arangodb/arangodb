@@ -23,13 +23,13 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
-#include <velocypack/Value.h>
-
 #include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <string>
+
+#include <velocypack/Slice.h>
+#include <velocypack/Value.h>
 
 #include "Basics/Common.h"
 
@@ -59,12 +59,10 @@ class HybridLogicalClock {
       uint64_t physical = getPhysicalTime();
       oldTimeStamp = _lastTimeStamp.load(std::memory_order_relaxed);
       uint64_t oldTime = extractTime(oldTimeStamp);
-      newTimeStamp =
-          (physical <= oldTime)
-              ? assembleTimeStamp(oldTime, extractCount(oldTimeStamp) + 1)
-              : assembleTimeStamp(physical, 0);
-    } while (!_lastTimeStamp.compare_exchange_weak(oldTimeStamp, newTimeStamp,
-                                                   std::memory_order_release,
+      newTimeStamp = (physical <= oldTime)
+                         ? assembleTimeStamp(oldTime, extractCount(oldTimeStamp) + 1)
+                         : assembleTimeStamp(physical, 0);
+    } while (!_lastTimeStamp.compare_exchange_weak(oldTimeStamp, newTimeStamp, std::memory_order_release,
                                                    std::memory_order_relaxed));
     return newTimeStamp;
   }
@@ -84,9 +82,8 @@ class HybridLogicalClock {
       if (newTime == oldTime) {
         if (newTime == recTime) {
           // all three identical
-          newCount = (std::max)(extractCount(oldTimeStamp),
-                                extractCount(receivedTimeStamp)) +
-                     1;
+          newCount =
+              (std::max)(extractCount(oldTimeStamp), extractCount(receivedTimeStamp)) + 1;
         } else {
           // this means recTime < newTime
           newCount = extractCount(oldTimeStamp) + 1;
@@ -100,8 +97,7 @@ class HybridLogicalClock {
         }
       }
       newTimeStamp = assembleTimeStamp(newTime, newCount);
-    } while (!_lastTimeStamp.compare_exchange_weak(oldTimeStamp, newTimeStamp,
-                                                   std::memory_order_release,
+    } while (!_lastTimeStamp.compare_exchange_weak(oldTimeStamp, newTimeStamp, std::memory_order_release,
                                                    std::memory_order_relaxed));
     return newTimeStamp;
   }
@@ -132,8 +128,7 @@ class HybridLogicalClock {
 
   static velocypack::ValuePair encodeTimeStampToValuePair(uint64_t t, char* r) {
     auto p = encodeTimeStamp(t, r);
-    return velocypack::ValuePair(&r[0] + p.first, p.second,
-                                 velocypack::ValueType::String);
+    return velocypack::ValuePair(&r[0] + p.first, p.second, velocypack::ValueType::String);
   }
 
   static uint64_t decodeTimeStamp(std::string const& s) {
@@ -168,10 +163,10 @@ class HybridLogicalClock {
   // helper to get the physical time in milliseconds since the epoch:
   uint64_t getPhysicalTime() {
     auto now = _clock.now();
-    uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                      now.time_since_epoch())
-                      .count() -
-                  _offset1970;
+    uint64_t ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch())
+            .count() -
+        _offset1970;
     return ms;
   }
 
@@ -193,3 +188,4 @@ class HybridLogicalClock {
 };
 }  // namespace basics
 }  // namespace arangodb
+

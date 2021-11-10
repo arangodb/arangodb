@@ -27,7 +27,7 @@
 #include "Basics/system-compiler.h"
 
 // Compatible wth the Windows definition.
-#define INFINITE 0xFFFFFFFF  // Infinite timeout
+#define INFINITE 0xFFFFFFFF // Infinite timeout
 
 #ifdef TRI_HAVE_POSIX_THREADS
 
@@ -52,3 +52,4 @@
 #define TRI_thread_t pthread_t
 
 #endif
+

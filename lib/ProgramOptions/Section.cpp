@@ -22,11 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Section.h"
-
-#include <iostream>
-
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ProgramOptions/Option.h"
+
+#include <iostream>
 
 using namespace arangodb::options;
 
@@ -44,24 +43,25 @@ bool Section::hasOptions() const {
 
 // print help for a section
 // the special search string "." will show help for all sections, even if hidden
-void Section::printHelp(std::string const& search, size_t tw, size_t ow,
-                        bool colors) const {
+void Section::printHelp(std::string const& search, size_t tw, size_t ow, bool colors) const {
   if (search != "." && (hidden || !hasOptions())) {
     return;
   }
 
-  std::cout << "Section '"
-            << (colors ? ShellColorsFeature::SHELL_COLOR_BRIGHT : "")
-            << displayName()
-            << (colors ? ShellColorsFeature::SHELL_COLOR_RESET : "")
-            << "' (configure " << description << ")";
+  std::cout 
+    << "Section '" 
+    << (colors ? ShellColorsFeature::SHELL_COLOR_BRIGHT : "")
+    << displayName() 
+    << (colors ? ShellColorsFeature::SHELL_COLOR_RESET : "")
+    << "' (configure " << description << ")";
 
   if (!link.empty()) {
     std::cout << " [";
     if (colors) {
-      std::cout << ShellColorsFeature::SHELL_COLOR_LINK_START << link
-                << ShellColorsFeature::SHELL_COLOR_LINK_MIDDLE << link
-                << ShellColorsFeature::SHELL_COLOR_LINK_END;
+      std::cout 
+        << ShellColorsFeature::SHELL_COLOR_LINK_START << link 
+        << ShellColorsFeature::SHELL_COLOR_LINK_MIDDLE << link 
+        << ShellColorsFeature::SHELL_COLOR_LINK_END;
     } else {
       std::cout << link;
     }
@@ -78,19 +78,19 @@ void Section::printHelp(std::string const& search, size_t tw, size_t ow,
       std::cout << " # " << (*hl).second << std::endl;
       ++hl;
     }
-
+    
     if (it.second.hasFlag(arangodb::options::Flags::Obsolete)) {
       // skip obsolete options
       continue;
     }
-
+    
     // print help for option
     it.second.printHelp(search, tw, ow, colors);
   }
 
   std::cout << std::endl;
 }
-
+  
 // determine display width for a section
 size_t Section::optionsWidth() const {
   size_t width = 0;

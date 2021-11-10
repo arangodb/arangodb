@@ -28,9 +28,10 @@
 #include <string>
 #include <vector>
 
+#include "Basics/operating-system.h"
+
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
-#include "Basics/operating-system.h"
 #include "Utilities/Completer.h"
 #include "Utilities/LinenoiseShell.h"
 
@@ -41,8 +42,7 @@ using namespace arangodb::basics;
 /// @brief creates a shell
 ////////////////////////////////////////////////////////////////////////////////
 
-ShellBase* ShellBase::buildShell(std::string const& history,
-                                 Completer* completer) {
+ShellBase* ShellBase::buildShell(std::string const& history, Completer* completer) {
   return new LinenoiseShell(history, completer);
 }
 
@@ -59,13 +59,10 @@ void ShellBase::sortAlternatives(std::vector<std::string>& completions) {
 }
 
 ShellBase::ShellBase(std::string const& history, Completer* completer)
-    : _current(),
-      _historyFilename(),
-      _state(STATE_NONE),
-      _completer(completer) {
+    : _current(), _historyFilename(), _state(STATE_NONE), _completer(completer) {
   // construct the complete history path
   if (!history.empty()) {
-    // note: if history is empty, we will not write any history and not
+    // note: if history is empty, we will not write any history and not 
     // construct the full filename
     std::string path(TRI_HomeDirectory());
 

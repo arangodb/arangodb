@@ -32,12 +32,10 @@ struct SourceLocation {
 
  public:
   SourceLocation() = delete;
-  constexpr SourceLocation(decltype(_file_name) file,
-                           decltype(_line) line) noexcept
+  constexpr SourceLocation(decltype(_file_name) file, decltype(_line) line) noexcept
       : _file_name(file), _line(line) {}
 
-  [[nodiscard]] constexpr auto file_name() const noexcept
-      -> decltype(_file_name) {
+  [[nodiscard]] constexpr auto file_name() const noexcept -> decltype(_file_name) {
     return _file_name;
   }
   [[nodiscard]] constexpr auto line() const noexcept -> decltype(_line) {

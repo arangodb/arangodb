@@ -23,6 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpRequest.h"
+#include "Basics/NumberUtils.h"
+#include "Basics/Utf8Helper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
@@ -30,10 +32,8 @@
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
@@ -54,14 +54,12 @@ std::string url_decode(const char* begin, const char* end) {
         int h = StringUtils::hex2int(i[1], 256) << 4;
         h += StringUtils::hex2int(i[2], 256);
         if (h >= 256) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_BAD_PARAMETER, "invalid encoding value in request URL");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid encoding value in request URL");
         }
         out.push_back(static_cast<char>(h & 0xFF));
         i += 2;
       } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "invalid encoding value in request URL");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid encoding value in request URL");
       }
     } else if (c == '+') {
       out.push_back(' ');
@@ -69,13 +67,13 @@ std::string url_decode(const char* begin, const char* end) {
       out.push_back(c);
     }
   }
-
+  
   return out;
 }
-}  // namespace
+} // namespace
 
-HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, uint64_t mid,
-                         bool allowMethodOverride)
+HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
+                         uint64_t mid, bool allowMethodOverride)
     : GeneralRequest(connectionInfo, mid),
       _allowMethodOverride(allowMethodOverride),
       _validatedPayload(false) {
@@ -220,16 +218,14 @@ void HttpRequest::parseHeader(char* start, size_t length) {
             char* q = pathBegin;
 
             // check if the prefix is "_db"
-            if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' &&
-                q[4] == '/') {
+            if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' && q[4] == '/') {
               // request contains database name
               q += 5;
               pathBegin = q;
 
               // read until end of database name
               while (*q != '\0') {
-                if (*q == '/' || *q == '?' || *q == ' ' || *q == '\n' ||
-                    *q == '\r') {
+                if (*q == '/' || *q == '?' || *q == ' ' || *q == '\n' || *q == '\r') {
                   break;
                 }
                 ++q;
@@ -237,9 +233,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
 
               _databaseName = ::url_decode(pathBegin, q);
               if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
-                THROW_ARANGO_EXCEPTION_MESSAGE(
-                    TRI_ERROR_ARANGO_ILLEGAL_NAME,
-                    "database name is not properly UTF-8 NFC-normalized");
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
               }
 
               pathBegin = q;
@@ -272,8 +266,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
 
             *g++ = '?';
 
-            while (paramEnd < valueEnd && *paramEnd != ' ' &&
-                   *paramEnd != '\n') {
+            while (paramEnd < valueEnd && *paramEnd != ' ' && *paramEnd != '\n') {
               *g++ = *paramEnd++;
             }
 
@@ -384,8 +377,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
         }
 
         if (keyBegin < keyEnd) {
-          setHeader(keyBegin, keyEnd - keyBegin, valueBegin,
-                    valueEnd - valueBegin);
+          setHeader(keyBegin, keyEnd - keyBegin, valueBegin, valueEnd - valueBegin);
         }
       }
 
@@ -414,6 +406,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
   }
 }
 
+
 void HttpRequest::parseUrl(const char* path, size_t length) {
   std::string tmp;
   tmp.reserve(length);
@@ -434,8 +427,7 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
     char const* q = start;
 
     // check if the prefix is "_db"
-    if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' &&
-        q[4] == '/') {
+    if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' && q[4] == '/') {
       // request contains database name
       q += 5;
       start = q;
@@ -451,9 +443,7 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       TRI_ASSERT(q >= start);
       _databaseName = ::url_decode(start, q);
       if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_ARANGO_ILLEGAL_NAME,
-            "database name is not properly UTF-8 NFC-normalized");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
       }
       _fullUrl.assign(q, end - q);
 
@@ -499,14 +489,13 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
     }
 
     if (q + 1 == end || *(q + 1) == '&') {
-      ++q;  // skip ahead
+      ++q; // skip ahead
 
       std::string val = ::url_decode(valueBegin, q);
-      if (keyEnd - keyBegin > 2 && *(keyEnd - 2) == '[' &&
-          *(keyEnd - 1) == ']') {
+      if (keyEnd - keyBegin > 2 && *(keyEnd - 2) == '[' && *(keyEnd - 1) == ']') {
         // found parameter xxx[]
-        _arrayValues[::url_decode(keyBegin, keyEnd - 2)].emplace_back(
-            std::move(val));
+        _arrayValues[::url_decode(keyBegin, keyEnd - 2)]
+        .emplace_back(std::move(val));
       } else {
         _values[::url_decode(keyBegin, keyEnd)] = std::move(val);
       }
@@ -519,11 +508,10 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
 }
 
 void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
-  StringUtils::tolowerInPlace(key);  // always lowercase key
+  StringUtils::tolowerInPlace(key); // always lowercase key
 
   if (key == StaticStrings::ContentLength) {
-    size_t len = NumberUtils::atoi_zero<uint64_t>(value.c_str(),
-                                                  value.c_str() + value.size());
+    size_t len = NumberUtils::atoi_zero<uint64_t>(value.c_str(), value.c_str() + value.size());
     if (_payload.capacity() < len) {
       // lets not reserve more than 64MB at once
       uint64_t maxReserve = std::min<uint64_t>(2 << 26, len);
@@ -534,8 +522,7 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
   }
 
   if (key == StaticStrings::Accept) {
-    _contentTypeResponse =
-        rest::stringToContentType(value, /*default*/ ContentType::JSON);
+    _contentTypeResponse = rest::stringToContentType(value, /*default*/ContentType::JSON);
     if (value.find(',') != std::string::npos) {
       _contentTypeResponsePlain = value;
     } else {
@@ -544,12 +531,10 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
     return;
   } else if ((_contentType == ContentType::UNSET) &&
              (key == StaticStrings::ContentTypeHeader)) {
-    auto res = rest::stringToContentType(value, /*default*/ ContentType::UNSET);
-    // simon: the "@arangodb/requests" module by default the "text/plain"
-    // content-types for JSON in most tests. As soon as someone fixes all the
-    // tests we can enable these again.
-    if (res == ContentType::JSON || res == ContentType::VPACK ||
-        res == ContentType::DUMP) {
+    auto res = rest::stringToContentType(value, /*default*/ContentType::UNSET);
+    // simon: the "@arangodb/requests" module by default the "text/plain" content-types for JSON
+    // in most tests. As soon as someone fixes all the tests we can enable these again.
+    if (res == ContentType::JSON || res == ContentType::VPACK || res == ContentType::DUMP) {
       _contentType = res;
       return;
     }
@@ -557,9 +542,8 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested
     if (StaticStrings::EncodingDeflate == value) {
-      // FXIME: cannot use substring search, Java driver chokes on deflated
-      // response
-      // if (value.find(StaticStrings::EncodingDeflate) != std::string::npos) {
+      // FXIME: cannot use substring search, Java driver chokes on deflated response
+      //if (value.find(StaticStrings::EncodingDeflate) != std::string::npos) {
       _acceptEncoding = EncodingType::DEFLATE;
     }
   }
@@ -569,12 +553,12 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
     return;
   }
 
-  if (_allowMethodOverride && key.size() >= 13 && key[0] == 'x' &&
-      key[1] == '-') {
+  if (_allowMethodOverride && key.size() >= 13 && key[0] == 'x' && key[1] == '-') {
     // handle x-... headers
 
     // override HTTP method?
-    if (key == "x-http-method" || key == "x-method-override" ||
+    if (key == "x-http-method" ||
+        key == "x-method-override" ||
         key == "x-http-method-override") {
       StringUtils::tolowerInPlace(value);
       _type = findRequestType(value.c_str(), value.size());
@@ -586,8 +570,7 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
   _headers[std::move(key)] = std::move(value);
 }
 
-void HttpRequest::setArrayValue(char const* key, size_t length,
-                                char const* value) {
+void HttpRequest::setArrayValue(char const* key, size_t length, char const* value) {
   TRI_ASSERT(key != nullptr);
   TRI_ASSERT(value != nullptr);
   _arrayValues[std::string(key, length)].emplace_back(value);
@@ -709,8 +692,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
   TRI_ASSERT(value != nullptr);
 
   if (keyLength == StaticStrings::ContentLength.size() &&
-      memcmp(key, StaticStrings::ContentLength.c_str(), keyLength) ==
-          0) {  // 14 = strlen("content-length")
+      memcmp(key, StaticStrings::ContentLength.c_str(), keyLength) == 0) {  // 14 = strlen("content-length")
     // do not store this header
     return;
   }
@@ -721,18 +703,15 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
       memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
     _contentTypeResponse = ContentType::VPACK;
   } else if (keyLength == StaticStrings::AcceptEncoding.size() &&
-             valueLength == StaticStrings::EncodingDeflate.size() &&
-             memcmp(key, StaticStrings::AcceptEncoding.c_str(), keyLength) ==
-                 0 &&
-             memcmp(value, StaticStrings::EncodingDeflate.c_str(),
-                    valueLength) == 0) {
+      valueLength == StaticStrings::EncodingDeflate.size() &&
+      memcmp(key, StaticStrings::AcceptEncoding.c_str(), keyLength) == 0 &&
+      memcmp(value, StaticStrings::EncodingDeflate.c_str(), valueLength) == 0) {
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested
     _acceptEncoding = EncodingType::DEFLATE;
   } else if ((_contentType == ContentType::UNSET) &&
              (keyLength == StaticStrings::ContentTypeHeader.size()) &&
-             (memcmp(key, StaticStrings::ContentTypeHeader.c_str(),
-                     keyLength) == 0)) {
+             (memcmp(key, StaticStrings::ContentTypeHeader.c_str(), keyLength) == 0)) {
     if (valueLength == StaticStrings::MimeTypeVPack.size() &&
         memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
       _contentType = ContentType::VPACK;
@@ -748,21 +727,18 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
     }
   }
 
-  if (keyLength == 6 &&
-      memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
+  if (keyLength == 6 && memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
     parseCookies(value, valueLength);
     return;
   }
 
-  if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
-      *(key + 1) == '-') {
+  if (_allowMethodOverride && keyLength >= 13 && *key == 'x' && *(key + 1) == '-') {
     // handle x-... headers
 
     // override HTTP method?
     if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
         (keyLength == 17 && memcmp(key, "x-method-override", keyLength) == 0) ||
-        (keyLength == 22 &&
-         memcmp(key, "x-http-method-override", keyLength) == 0)) {
+        (keyLength == 22 && memcmp(key, "x-http-method-override", keyLength) == 0)) {
       std::string overriddenType(value, valueLength);
       StringUtils::tolowerInPlace(overriddenType);
 
@@ -894,8 +870,7 @@ std::string const& HttpRequest::cookieValue(std::string const& key) const {
   return it->second;
 }
 
-std::string const& HttpRequest::cookieValue(std::string const& key,
-                                            bool& found) const {
+std::string const& HttpRequest::cookieValue(std::string const& key, bool& found) const {
   auto it = _cookies.find(key);
 
   if (it == _cookies.end()) {
@@ -908,13 +883,11 @@ std::string const& HttpRequest::cookieValue(std::string const& key,
 }
 
 VPackStringRef HttpRequest::rawPayload() const {
-  return VPackStringRef(reinterpret_cast<const char*>(_payload.data()),
-                        _payload.size());
+  return VPackStringRef(reinterpret_cast<const char*>(_payload.data()), _payload.size());
 };
 
 VPackSlice HttpRequest::payload(bool strictValidation) {
-  if ((_contentType == ContentType::UNSET) ||
-      (_contentType == ContentType::JSON)) {
+  if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::JSON)) {
     if (!_payload.empty()) {
       if (!_vpackBuilder) {
         TRI_ASSERT(!_validatedPayload);
@@ -932,8 +905,7 @@ VPackSlice HttpRequest::payload(bool strictValidation) {
     if (!_validatedPayload) {
       VPackOptions const* options = validationOptions(strictValidation);
       VPackValidator validator(options);
-      _validatedPayload = validator.validate(
-          _payload.data(), _payload.length());  // throws on error
+      _validatedPayload = validator.validate(_payload.data(), _payload.length()); // throws on error
     }
     TRI_ASSERT(_validatedPayload);
     return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));

@@ -27,3 +27,5 @@
 namespace arangodb::greenspun {
 void RegisterAllDictFunctions(Machine& ctx);
 }  // namespace arangodb::greenspun
+
+

@@ -37,31 +37,28 @@
 #include <thread>
 
 /// @brief construct locker with file and line information
-#define WRITE_LOCKER(obj, lock)                                            \
-  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> \
-      obj(&lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__,   \
-          __LINE__)
+#define WRITE_LOCKER(obj, lock)                                                 \
+  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
+      &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
-#define WRITE_LOCKER_EVENTUAL(obj, lock)                                   \
-  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> \
-      obj(&lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__,   \
-          __LINE__)
+#define WRITE_LOCKER_EVENTUAL(obj, lock)                                        \
+  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
+      &lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__, __LINE__)
 
-#define TRY_WRITE_LOCKER(obj, lock)                                        \
-  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> \
-      obj(&lock, arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
+#define TRY_WRITE_LOCKER(obj, lock)                                             \
+  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
+      &lock, arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
 
-#define CONDITIONAL_WRITE_LOCKER(obj, lock, condition)                     \
-  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> \
-      obj(&lock, arangodb::basics::LockerType::BLOCKING, (condition),      \
-          __FILE__, __LINE__)
+#define CONDITIONAL_WRITE_LOCKER(obj, lock, condition)                          \
+  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
+      &lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
 
 namespace arangodb::basics {
 
 /// @brief write locker
 /// A WriteLocker write-locks a read-write lock during its lifetime and unlocks
 /// the lock when it is destroyed.
-template<class LockType>
+template <class LockType>
 class WriteLocker {
  public:
   WriteLocker(WriteLocker const&) = delete;
@@ -186,3 +183,4 @@ class WriteLocker {
 };
 
 }  // namespace arangodb::basics
+

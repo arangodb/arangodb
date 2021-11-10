@@ -28,15 +28,14 @@
 
 namespace emilib {
 
-template<typename T>
+template <typename T>
 struct HashSetEqualTo;
 
-template<typename KeyT, typename HashT, typename EqT>
+template <typename KeyT, typename HashT, typename EqT>
 class HashSet;
 
-template<typename KeyT, typename HashT, typename EqT>
-bool operator==(HashSet<KeyT, HashT, EqT> const&,
-                HashSet<KeyT, HashT, EqT> const&);
+template <typename KeyT, typename HashT, typename EqT>
+bool operator==(HashSet<KeyT, HashT, EqT> const&, HashSet<KeyT, HashT, EqT> const&);
 
 }  // namespace emilib
 
@@ -44,12 +43,12 @@ bool operator==(HashSet<KeyT, HashT, EqT> const&,
 namespace arangodb {
 namespace containers {
 
-template<typename T>
+template <typename T>
 using HashSetEqualTo = emilib::HashSetEqualTo<T>;
 
-template<typename KeyT, typename HashT = std::hash<KeyT>,
-         typename EqT = HashSetEqualTo<KeyT>>
+template <typename KeyT, typename HashT = std::hash<KeyT>, typename EqT = HashSetEqualTo<KeyT>>
 using HashSet = emilib::HashSet<KeyT, HashT, EqT>;
 
 }  // namespace containers
 }  // namespace arangodb
+

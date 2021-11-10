@@ -60,3 +60,4 @@ std::string timeString(char sep = 'T', char fin = 'Z');
 std::string hostname();
 }  // namespace utilities
 }  // namespace arangodb
+

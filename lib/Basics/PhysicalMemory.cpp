@@ -21,11 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/PhysicalMemory.h"
+#include "Basics/operating-system.h"
 
+#include "Basics/PhysicalMemory.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
-#include "Basics/operating-system.h"
 #include "ProgramOptions/Parameters.h"
 
 #ifdef TRI_HAVE_UNISTD_H
@@ -114,10 +114,14 @@ struct PhysicalMemoryCache {
 
 PhysicalMemoryCache const cache;
 
-}  // namespace
+} // namespace
 
 /// @brief return physical memory size from cache
-uint64_t arangodb::PhysicalMemory::getValue() { return ::cache.cachedValue; }
+uint64_t arangodb::PhysicalMemory::getValue() {
+  return ::cache.cachedValue;
+}
 
 /// @brief return if physical memory size was overridden
-bool arangodb::PhysicalMemory::overridden() { return ::cache.overridden; }
+bool arangodb::PhysicalMemory::overridden() {
+  return ::cache.overridden;
+}

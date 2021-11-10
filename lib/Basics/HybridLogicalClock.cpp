@@ -24,25 +24,22 @@
 #include "Basics/HybridLogicalClock.h"
 
 namespace {
-template<typename DurationT, typename ReprT = typename DurationT::rep>
+template <typename DurationT, typename ReprT = typename DurationT::rep>
 constexpr DurationT maxDuration() noexcept {
   return DurationT{(std::numeric_limits<ReprT>::max)()};
 }
 
-template<typename DurationT>
+template <typename DurationT>
 constexpr DurationT absDuration(const DurationT d) noexcept {
   return DurationT{(d.count() < 0) ? -d.count() : d.count()};
 }
 
-template<typename SrcTimePointT, typename DstTimePointT,
-         typename SrcDurationT = typename SrcTimePointT::duration,
-         typename DstDurationT = typename DstTimePointT::duration,
-         typename SrcClockT = typename SrcTimePointT::clock,
-         typename DstClockT = typename DstTimePointT::clock>
-DstDurationT clockOffset(
-    const SrcDurationT tolerance =
-        std::chrono::duration_cast<SrcDurationT>(std::chrono::nanoseconds{300}),
-    const int limit = 10000) {
+template <typename SrcTimePointT, typename DstTimePointT, typename SrcDurationT = typename SrcTimePointT::duration,
+          typename DstDurationT = typename DstTimePointT::duration,
+          typename SrcClockT = typename SrcTimePointT::clock, typename DstClockT = typename DstTimePointT::clock>
+DstDurationT clockOffset(const SrcDurationT tolerance = std::chrono::duration_cast<SrcDurationT>(
+                             std::chrono::nanoseconds{300}),
+                         const int limit = 10000) {
   if (std::is_same<SrcClockT, DstClockT>::value) {
     return SrcClockT::from_time_t(0).time_since_epoch();
   }
@@ -111,8 +108,8 @@ signed char arangodb::basics::HybridLogicalClock::decodeTable[256] = {
     -1, -1, -1, -1, -1, -1, -1, -1};  // 240 - 255
 
 uint64_t arangodb::basics::HybridLogicalClock::computeOffset1970() {
-  auto diff = clockOffset<std::chrono::system_clock::time_point,
-                          HybridLogicalClock::ClockT::time_point>();
+  auto diff =
+      clockOffset<std::chrono::system_clock::time_point, HybridLogicalClock::ClockT::time_point>();
 
   return std::chrono::duration_cast<std::chrono::milliseconds>(diff).count();
 }

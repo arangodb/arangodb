@@ -21,14 +21,15 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "JSLoader.h"
+#include <map>
+#include <utility>
 
 #include <v8.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <map>
-#include <utility>
+#include "JSLoader.h"
 
 #include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
@@ -51,8 +52,7 @@ JSLoader::JSLoader() {}
 /// @brief loads a named script
 ////////////////////////////////////////////////////////////////////////////////
 
-JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
-                                      v8::Handle<v8::Context>& context,
+JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate, v8::Handle<v8::Context>& context,
                                       std::string const& name,
                                       velocypack::Builder* builder) {
   v8::HandleScope scope(isolate);
@@ -72,9 +72,9 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
   // Enter the newly created execution environment.
   v8::Context::Scope context_scope(context);
 
-  v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(
-      isolate, context, TRI_V8_STD_STRING(isolate, i->second),
-      TRI_V8_STD_STRING(isolate, name), false);
+  v8::Handle<v8::Value> result =
+      TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STD_STRING(isolate, i->second),
+                                  TRI_V8_STD_STRING(isolate, name), false);
 
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {

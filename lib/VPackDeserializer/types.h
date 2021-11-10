@@ -37,12 +37,12 @@ struct value_tag_t {};
 inline constexpr auto error_tag = error_tag_t{};
 inline constexpr auto value_tag = value_tag_t{};
 
-template<typename T, typename E>
+template <typename T, typename E>
 class result {
   static_assert(!std::is_same_v<std::decay_t<T>, std::decay_t<E>>);
 
  private:
-  template<typename S, typename F>
+  template <typename S, typename F>
   struct cast_visitor {
     auto operator()(S const& t) const {
       return std::variant<T, E>(std::in_place_index<0>, t);
@@ -60,10 +60,8 @@ class result {
   result(T t) : value(std::move(t)) {}
   result(E e) : value(std::move(e)) {}
 
-  template<
-      typename S, typename F,
-      std::enable_if_t<
-          std::is_convertible_v<S, T> && std::is_convertible_v<F, E>, int> = 0>
+  template <typename S, typename F,
+            std::enable_if_t<std::is_convertible_v<S, T> && std::is_convertible_v<F, E>, int> = 0>
   result(result<S, F> r) : value(r.visit(cast_visitor<S, F>{})) {}
 
   result(value_tag_t, T t) : value(std::in_place_index<0>, std::move(t)) {}
@@ -89,7 +87,7 @@ class result {
   variant_type const& content() const& { return value; }
   variant_type&& content() && { return std::move(value); }
 
-  template<typename F, typename R = std::invoke_result_t<F, T&>>
+  template <typename F, typename R = std::invoke_result_t<F, T&>>
   result<R, E> map(F&& f) & noexcept(std::is_nothrow_invocable_v<F, T&>) {
     if (ok()) {
       return f(get());
@@ -97,16 +95,15 @@ class result {
     return error();
   }
 
-  template<typename F, typename R = std::invoke_result_t<F, T const&>>
-  result<R, E> map(F&& f) const& noexcept(
-      std::is_nothrow_invocable_v<F, T const&>) {
+  template <typename F, typename R = std::invoke_result_t<F, T const&>>
+  result<R, E> map(F&& f) const& noexcept(std::is_nothrow_invocable_v<F, T const&>) {
     if (ok()) {
       return f(get());
     }
     return error();
   }
 
-  template<typename F, typename R = std::invoke_result_t<F, T&&>>
+  template <typename F, typename R = std::invoke_result_t<F, T&&>>
   result<R, E> map(F&& f) && noexcept(std::is_nothrow_invocable_v<F, T&&>) {
     if (ok()) {
       return f(std::move(*this).get());
@@ -114,7 +111,7 @@ class result {
     return std::move(*this).error();
   }
 
-  template<typename F, typename R = std::invoke_result_t<F, E&>>
+  template <typename F, typename R = std::invoke_result_t<F, E&>>
   result<T, R> wrap(F&& f) & noexcept(std::is_nothrow_invocable_v<F, E&>) {
     if (!ok()) {
       return f(error());
@@ -122,16 +119,15 @@ class result {
     return std::move(*this).get();
   }
 
-  template<typename F, typename R = std::invoke_result_t<F, E const&>>
-  result<T, R> wrap(F&& f) const& noexcept(
-      std::is_nothrow_invocable_v<F, E const&>) {
+  template <typename F, typename R = std::invoke_result_t<F, E const&>>
+  result<T, R> wrap(F&& f) const& noexcept(std::is_nothrow_invocable_v<F, E const&>) {
     if (!ok()) {
       return f(error());
     }
     return get();
   }
 
-  template<typename F, typename R = std::invoke_result_t<F, E&&>>
+  template <typename F, typename R = std::invoke_result_t<F, E&&>>
   result<T, R> wrap(F&& f) && noexcept(std::is_nothrow_invocable_v<F, E&&>) {
     if (!ok()) {
       return result<T, R>(error_tag, f(std::move(*this).error()));
@@ -139,17 +135,17 @@ class result {
     return std::move(*this).get();
   }
 
-  template<typename F>
+  template <typename F>
   auto visit(F&& f) & {
     return std::visit(f, value);
   }
 
-  template<typename F>
+  template <typename F>
   auto visit(F&& f) const& {
     return std::visit(f, value);
   }
 
-  template<typename F>
+  template <typename F>
   auto visit(F&& f) && {
     return std::visit(f, std::move(value));
   }
@@ -162,6 +158,6 @@ class result {
 }  // namespace velocypack
 }  // namespace arangodb
 
-template<typename T>
-using deserializer_result = arangodb::velocypack::deserializer::result<
-    T, arangodb::velocypack::deserializer::error>;
+template <typename T>
+using deserializer_result =
+    arangodb::velocypack::deserializer::result<T, arangodb::velocypack::deserializer::error>;

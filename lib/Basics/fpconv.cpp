@@ -1,8 +1,7 @@
-#include "fpconv.h"
-
 #include <stdbool.h>
 #include <string.h>
 
+#include "fpconv.h"
 #include "powers.h"
 
 #define fracmask 0x000FFFFFFFFFFFFFU
@@ -108,8 +107,7 @@ static Fp multiply(Fp* a, Fp* b) {
   /* round up */
   tmp += 1U << 31;
 
-  Fp fp = {ah_bh + (ah_bl >> 32) + (al_bh >> 32) + (tmp >> 32),
-           a->exp + b->exp + 64};
+  Fp fp = {ah_bh + (ah_bl >> 32) + (al_bh >> 32) + (tmp >> 32), a->exp + b->exp + 64};
 
   return fp;
 }

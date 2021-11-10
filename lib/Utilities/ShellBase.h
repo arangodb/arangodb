@@ -67,8 +67,7 @@ class ShellBase {
   /// @brief line editor prompt
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string prompt(std::string const& prompt, std::string const& begin,
-                     EofType& eof);
+  std::string prompt(std::string const& prompt, std::string const& begin, EofType& eof);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -139,3 +138,4 @@ class ShellBase {
   Completer* _completer;
 };
 }  // namespace arangodb
+

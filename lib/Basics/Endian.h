@@ -64,10 +64,10 @@ static constexpr bool isLittleEndian() { return false; }
 #pragma messsage("unsupported os or compiler")
 #endif
 
-template<typename T, size_t size>
+template <typename T, size_t size>
 struct EndianTraits;
 
-template<typename T>
+template <typename T>
 struct EndianTraits<T, 2> {
   typedef typename std::make_unsigned<T>::type type;
 
@@ -131,7 +131,7 @@ struct EndianTraits<T, 2> {
   }
 };
 
-template<typename T>
+template <typename T>
 struct EndianTraits<T, 4> {
   typedef typename std::make_unsigned<T>::type type;
 
@@ -196,7 +196,7 @@ struct EndianTraits<T, 4> {
   }
 };
 
-template<typename T>
+template <typename T>
 struct EndianTraits<T, 8> {
   typedef typename std::make_unsigned<T>::type type;
 
@@ -261,29 +261,29 @@ struct EndianTraits<T, 8> {
   }
 };
 
-template<bool>
+template <bool>
 struct cp {
-  template<typename T>
+  template <typename T>
   inline static T mu(T t) {
     return t;
   }
-  template<typename T>
+  template <typename T>
   inline static T ms(T t) {
     return t;
   }
 };
 
-template<>
+template <>
 struct cp<true> {
   // make unsigned
-  template<typename T>
+  template <typename T>
   inline static T mu(T t) {
     typename std::make_unsigned<T>::type tmp;
     std::memcpy(&tmp, &t, sizeof(T));
     return tmp;
   }
   // revert back to signed
-  template<typename T>
+  template <typename T>
   inline static T ms(T t) {
     typename std::make_signed<T>::type tmp;
     std::memcpy(&tmp, &t, sizeof(T));
@@ -292,28 +292,28 @@ struct cp<true> {
 };
 
 // hostToLittle
-template<typename T>
+template <typename T>
 inline T hostToLittle(T in) {
   return cp<std::is_signed<T>::value>::ms(
       EndianTraits<T, sizeof(T)>::htole(cp<std::is_signed<T>::value>::mu(in)));
 }
 
 // littleToHost
-template<typename T>
+template <typename T>
 inline T littleToHost(T in) {
   return cp<std::is_signed<T>::value>::ms(
       EndianTraits<T, sizeof(T)>::letoh(cp<std::is_signed<T>::value>::mu(in)));
 }
 
 // hostToBig
-template<typename T>
+template <typename T>
 inline T hostToBig(T in) {
   return cp<std::is_signed<T>::value>::ms(
       EndianTraits<T, sizeof(T)>::htobe(cp<std::is_signed<T>::value>::mu(in)));
 }
 
 // bigToHost
-template<typename T>
+template <typename T>
 inline T bigToHost(T in) {
   return cp<std::is_signed<T>::value>::ms(
       EndianTraits<T, sizeof(T)>::betoh(cp<std::is_signed<T>::value>::mu(in)));
@@ -321,3 +321,4 @@ inline T bigToHost(T in) {
 
 }  // namespace basics
 }  // namespace arangodb
+

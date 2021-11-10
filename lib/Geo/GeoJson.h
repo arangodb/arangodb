@@ -24,11 +24,12 @@
 
 #pragma once
 
-#include <s2/s2point.h>
-#include <velocypack/Slice.h>
-
 #include <cstdint>
 #include <vector>
+
+#include <s2/s2point.h>
+
+#include <velocypack/Slice.h>
 
 #include "Basics/Result.h"
 
@@ -56,9 +57,8 @@ enum class Type : uint8_t {
 };
 
 struct Fields {
-  static constexpr auto kCoordinates =
-      "coordinates";                     // mandatory, value depends on type
-  static constexpr auto kType = "type";  // mandatory
+  static constexpr auto kCoordinates = "coordinates";  // mandatory, value depends on type
+  static constexpr auto kType = "type";                // mandatory
 };
 
 Type type(velocypack::Slice const& vpack);
@@ -74,8 +74,7 @@ Result parseMultiPoint(velocypack::Slice const& vpack, ShapeContainer& region);
 
 Result parseLinestring(velocypack::Slice const& vpack, S2Polyline& ll);
 /// @brief parse GeoJson multi linestring
-Result parseMultiLinestring(velocypack::Slice const& vpack,
-                            std::vector<S2Polyline>& ll);
+Result parseMultiLinestring(velocypack::Slice const& vpack, std::vector<S2Polyline>& ll);
 
 /// @brief parse GeoJson polygon or array of loops. Each loop consists of
 /// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...]
@@ -84,8 +83,7 @@ Result parsePolygon(velocypack::Slice const& vpack, ShapeContainer& region);
 /// @brief parse GeoJson polygon or array of loops. Each loop consists of
 /// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...].
 /// The multipolygon contains an array of looops
-Result parseMultiPolygon(velocypack::Slice const& vpack,
-                         ShapeContainer& region);
+Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region);
 
 /// @brief Parse a loop (LinearRing)
 ///
@@ -104,3 +102,4 @@ Result parseLoop(velocypack::Slice const& coords, bool geoJson, S2Loop& loop);
 }  // namespace geojson
 }  // namespace geo
 }  // namespace arangodb
+

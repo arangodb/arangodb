@@ -36,11 +36,10 @@
 
 #pragma once
 
-#include <float.h>
-
-#include <limits>
-
 #include "Basics/Common.h"
+
+#include <float.h>
+#include <limits>
 
 namespace {
 
@@ -62,7 +61,7 @@ namespace {
 // For now it only handles UInt (unsigned int) as that's all Google Test
 // needs.  Other types can be easily added in the future if need
 // arises.
-template<size_t size>
+template <size_t size>
 class TypeWithSize {
  public:
   // This prevents the user from using TypeWithSize<N> with incorrect
@@ -71,7 +70,7 @@ class TypeWithSize {
 };
 
 // The specialization for size 4.
-template<>
+template <>
 class TypeWithSize<4> {
  public:
   // unsigned int has size 4 in both gcc and MSVC.
@@ -83,7 +82,7 @@ class TypeWithSize<4> {
 };
 
 // The specialization for size 8.
-template<>
+template <>
 class TypeWithSize<8> {
  public:
 #ifdef _WIN32
@@ -124,7 +123,7 @@ class TypeWithSize<8> {
 // Template parameter:
 //
 //   RawType: the raw floating-point type (either float or double)
-template<typename RawType>
+template <typename RawType>
 class FloatingPoint {
  public:
   // Defines the unsigned integer type that has the same size as the
@@ -137,8 +136,7 @@ class FloatingPoint {
   static const size_t kBitCount = 8 * sizeof(RawType);
 
   // # of fraction bits in a number.
-  static const size_t kFractionBitCount =
-      std::numeric_limits<RawType>::digits - 1;
+  static const size_t kFractionBitCount = std::numeric_limits<RawType>::digits - 1;
 
   // # of exponent bits in a number.
   static const size_t kExponentBitCount = kBitCount - 1 - kFractionBitCount;
@@ -147,8 +145,7 @@ class FloatingPoint {
   static const Bits kSignBitMask = static_cast<Bits>(1) << (kBitCount - 1);
 
   // The mask for the fraction bits.
-  static const Bits kFractionBitMask = ~static_cast<Bits>(0) >>
-                                       (kExponentBitCount + 1);
+  static const Bits kFractionBitMask = ~static_cast<Bits>(0) >> (kExponentBitCount + 1);
 
   // The mask for the exponent bits.
   static const Bits kExponentBitMask = ~(kSignBitMask | kFractionBitMask);
@@ -224,8 +221,7 @@ class FloatingPoint {
     // a NAN must return false.
     if (is_nan() || rhs.is_nan()) return false;
 
-    return DistanceBetweenSignAndMagnitudeNumbers(u_.bits_, rhs.u_.bits_) <=
-           kMaxUlps;
+    return DistanceBetweenSignAndMagnitudeNumbers(u_.bits_, rhs.u_.bits_) <= kMaxUlps;
   }
 
  private:
@@ -262,8 +258,7 @@ class FloatingPoint {
 
   // Given two numbers in the sign-and-magnitude representation,
   // returns the distance between them as an unsigned number.
-  static Bits DistanceBetweenSignAndMagnitudeNumbers(const Bits& sam1,
-                                                     const Bits& sam2) {
+  static Bits DistanceBetweenSignAndMagnitudeNumbers(const Bits& sam1, const Bits& sam2) {
     const Bits biased1 = SignAndMagnitudeToBiased(sam1);
     const Bits biased2 = SignAndMagnitudeToBiased(sam2);
     return (biased1 >= biased2) ? (biased1 - biased2) : (biased2 - biased1);
@@ -274,11 +269,11 @@ class FloatingPoint {
 
 // We cannot use std::numeric_limits<T>::max() as it clashes with the max()
 // macro defined by <windows.h>.
-template<>
+template <>
 inline float FloatingPoint<float>::Max() {
   return FLT_MAX;
 }
-template<>
+template <>
 inline double FloatingPoint<double>::Max() {
   return DBL_MAX;
 }

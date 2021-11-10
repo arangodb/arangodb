@@ -78,14 +78,14 @@ class Identifier {
 static_assert(sizeof(Identifier) == sizeof(Identifier::BaseType),
               "invalid size of Identifier");
 
-std::ostream& operator<<(std::ostream& s,
-                         arangodb::basics::Identifier const& i);
+std::ostream& operator<<(std::ostream& s, arangodb::basics::Identifier const& i);
 
 }  // namespace arangodb::basics
 
+
 #define DECLARE_HASH_FOR_IDENTIFIER(T)                        \
   namespace std {                                             \
-  template<>                                                  \
+  template <>                                                 \
   struct hash<T> {                                            \
     inline size_t operator()(T const& value) const noexcept { \
       return value.id();                                      \
@@ -96,9 +96,10 @@ DECLARE_HASH_FOR_IDENTIFIER(arangodb::basics::Identifier)
 
 #define DECLARE_EQUAL_FOR_IDENTIFIER(T)                                      \
   namespace std {                                                            \
-  template<>                                                                 \
+  template <>                                                                \
   struct equal_to<T> {                                                       \
     bool operator()(T const& lhs, T const& rhs) const { return lhs == rhs; } \
   };                                                                         \
   }  // namespace std
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::basics::Identifier)
+

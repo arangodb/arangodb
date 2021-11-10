@@ -41,10 +41,9 @@ constexpr uint64_t fasthash_mix(uint64_t h) {
 }
 
 constexpr uint64_t fasthash64_uint64(uint64_t value, uint64_t seed) {
-  uint64_t h =
-      seed ^ 4619197404915747624ULL;  // this is h = seed ^ (sizeof(uint64_t) *
-                                      // m), but prevents VS warning C4307:
-                                      // integral constant overflow
+  uint64_t h = seed ^ 4619197404915747624ULL;  // this is h = seed ^ (sizeof(uint64_t) *
+                                               // m), but prevents VS warning C4307:
+                                               // integral constant overflow
   h ^= fasthash_mix(value);
   h *= fasthash_m;
 

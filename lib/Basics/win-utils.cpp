@@ -21,31 +21,34 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "win-utils.h"
-
-#include <VersionHelpers.h>
 #include <WinSock2.h>  // must be before windows.h
-#include <atlstr.h>
-#include <crtdbg.h>
+#include <shellapi.h>
+#include <windows.h>
+
 #include <errno.h>
 #include <fcntl.h>
 #include <io.h>
-#include <malloc.h>
-#include <shellapi.h>
-#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unicode/locid.h>
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
 #include <wchar.h>
-#include <windows.h>
-
 #include <codecvt>
 #include <iomanip>
 #include <locale>
 
 #include "Basics/Common.h"
+#include "Basics/operating-system.h"
+
+#include "win-utils.h"
+
+#include <VersionHelpers.h>
+#include <atlstr.h>
+#include <crtdbg.h>
+#include <malloc.h>
+#include <string.h>
+
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -54,7 +57,6 @@
 #include "Basics/directories.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
-#include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
@@ -85,12 +87,11 @@ using namespace arangodb::basics;
 // but simply hope that it is safe to ignore the error.
 // However, we do log a message and that message should be taken VERY seriously!
 ////////////////////////////////////////////////////////////////////////////////
-static void invalidParameterHandler(
-    const wchar_t* expression,  // expression sent to function - NULL
-    const wchar_t* function,    // name of function - NULL
-    const wchar_t* file,        // file where code resides - NULL
-    unsigned int line,          // line within file - NULL
-    uintptr_t pReserved) {      // in case microsoft forget something
+static void invalidParameterHandler(const wchar_t* expression,  // expression sent to function - NULL
+                                    const wchar_t* function,  // name of function - NULL
+                                    const wchar_t* file,  // file where code resides - NULL
+                                    unsigned int line,  // line within file - NULL
+                                    uintptr_t pReserved) {  // in case microsoft forget something
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   char buf[1024] = "";
@@ -108,8 +109,7 @@ static void invalidParameterHandler(
 #endif
 }
 
-int initializeWindows(const TRI_win_initialize_e initializeWhat,
-                      char const* data) {
+int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* data) {
   // ............................................................................
   // The data is used to transport information from the calling function to here
   // it may be NULL (and will be in most cases)
@@ -117,8 +117,7 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
 
   switch (initializeWhat) {
     case TRI_WIN_INITIAL_SET_DEBUG_FLAG: {
-      _CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF) |
-                     _CRTDBG_CHECK_ALWAYS_DF);
+      _CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF) | _CRTDBG_CHECK_ALWAYS_DF);
       return 0;
     }
 
@@ -217,19 +216,19 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
   }
 
   icu::UnicodeString fn(filename);
-  fileHandle =
-      CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()),
-                  mode, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                  NULL, OPEN_EXISTING, 0, NULL);
+  fileHandle = CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()),
+                           mode, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           NULL, OPEN_EXISTING, 0, NULL);
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
     return -1;
   }
 
-  fileDescriptor = _open_osfhandle((intptr_t)(fileHandle),
-                                   (openFlags & O_ACCMODE) | _O_BINARY);
+  fileDescriptor =
+      _open_osfhandle((intptr_t)(fileHandle), (openFlags & O_ACCMODE) | _O_BINARY);
   return fileDescriptor;
 }
+
 
 TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
   char* ptr = static_cast<char*>(Buffer);
@@ -246,12 +245,11 @@ TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
       } else if (err == ERROR_BROKEN_PIPE) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("87f53", ERR, arangodb::Logger::FIXME)
-            << "cannot read, end-of-file";
+          << "cannot read, end-of-file";
         return static_cast<TRI_read_return_t>(length - remainLength);
       } else {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
-        LOG_TOPIC("c9c0d", ERR, arangodb::Logger::FIXME)
-            << "cannot read: " << TRI_LAST_ERROR_STR;
+        LOG_TOPIC("c9c0d", ERR, arangodb::Logger::FIXME) << "cannot read: " << TRI_LAST_ERROR_STR;
         return static_cast<TRI_read_return_t>(length - remainLength);
       }
     }
@@ -267,8 +265,7 @@ bool TRI_WRITE_POINTER(HANDLE fd, void const* buffer, size_t length) {
     DWORD written = 0;
     if (!WriteFile(fd, ptr, len, &written, nullptr)) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC("420b2", ERR, arangodb::Logger::FIXME)
-          << "cannot write: " << TRI_LAST_ERROR_STR;
+      LOG_TOPIC("420b2", ERR, arangodb::Logger::FIXME) << "cannot write: " << TRI_LAST_ERROR_STR;
       return false;
     }
     ptr += written;
@@ -292,8 +289,7 @@ int TRI_CHDIR(char const* dirname) {
 
 int TRI_STAT(char const* path, TRI_stat_t* buffer) {
   icu::UnicodeString p(path);
-  auto rc = ::_wstat64(
-      reinterpret_cast<const wchar_t*>(p.getTerminatedBuffer()), buffer);
+  auto rc = ::_wstat64(reinterpret_cast<const wchar_t*>(p.getTerminatedBuffer()), buffer);
   return rc;
 }
 
@@ -315,8 +311,7 @@ char* TRI_GETCWD(char* buffer, int maxlen) {
         rc = buffer;
       }
     }
-  } catch (...) {
-  }
+  } catch (...) { }
   return rc;
 }
 
@@ -347,11 +342,11 @@ arangodb::Result translateWindowsError(DWORD error) {
 std::string windowsErrorToUTF8(DWORD errorNum) {
   LPWSTR buffer = nullptr;
   auto sg = arangodb::scopeGuard([&]() noexcept { ::LocalFree(buffer); });
-  size_t size = FormatMessageW(
-      FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-          FORMAT_MESSAGE_IGNORE_INSERTS,
-      nullptr, errorNum, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-      (LPWSTR)&buffer, 0, nullptr);
+  size_t size =
+      FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                         FORMAT_MESSAGE_IGNORE_INSERTS,
+                     nullptr, errorNum, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                     (LPWSTR)&buffer, 0, nullptr);
   if (size) {
     std::wstring out(buffer, size);
     return fromWString(out);
@@ -553,15 +548,13 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _snprintf(buf, sizeof(buf) - 1, "%s", message.c_str());
   buf[sizeof(buf) - 1] = '\0';
 
-  icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len),
-                             icu::UnicodeString(file), icu::UnicodeString(func),
-                             icu::UnicodeString(linebuf)};
+  icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len), icu::UnicodeString(file),
+                             icu::UnicodeString(func), icu::UnicodeString(linebuf)};
   LPCWSTR buffers[] = {
       reinterpret_cast<const wchar_t*>(ubufs[0].getTerminatedBuffer()),
       reinterpret_cast<const wchar_t*>(ubufs[1].getTerminatedBuffer()),
       reinterpret_cast<const wchar_t*>(ubufs[2].getTerminatedBuffer()),
-      reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()),
-      nullptr};
+      reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()), nullptr};
   // Try to get messages through to windows syslog...
   if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
                     MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {
@@ -581,15 +574,13 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
   buf[sizeof(buf) - 1] = '\0';
 
-  icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len),
-                             icu::UnicodeString(file), icu::UnicodeString(func),
-                             icu::UnicodeString(linebuf)};
+  icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len), icu::UnicodeString(file),
+                             icu::UnicodeString(func), icu::UnicodeString(linebuf)};
   LPCWSTR buffers[] = {
       reinterpret_cast<const wchar_t*>(ubufs[0].getTerminatedBuffer()),
       reinterpret_cast<const wchar_t*>(ubufs[1].getTerminatedBuffer()),
       reinterpret_cast<const wchar_t*>(ubufs[2].getTerminatedBuffer()),
-      reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()),
-      nullptr};
+      reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()), nullptr};
   // Try to get messages through to windows syslog...
   if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
                     MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {
@@ -619,8 +610,7 @@ void ADB_WindowsEntryFunction() {
 
   _set_invalid_parameter_handler(invalidParameterHandler);
 
-  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,
-                          (char const*)(&maxOpenFiles));
+  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO, (char const*)(&maxOpenFiles));
 
   if (res != 0) {
     _exit(EXIT_FAILURE);
@@ -681,8 +671,7 @@ int _cyg_isatty(int fd) {
     return 0;
   }
 
-  if (!GetFileInformationByHandleEx(fh, FileNameInfo, FileInformation,
-                                    sizeof(buff))) {
+  if (!GetFileInformationByHandleEx(fh, FileNameInfo, FileInformation, sizeof(buff))) {
     return 0;
   }
 
@@ -727,8 +716,7 @@ int _is_cyg_tty(int fd) {
     return 0;
   }
 
-  if (!GetFileInformationByHandleEx(fh, FileNameInfo, FileInformation,
-                                    sizeof(buff))) {
+  if (!GetFileInformationByHandleEx(fh, FileNameInfo, FileInformation, sizeof(buff))) {
     return 0;
   }
 
@@ -764,8 +752,7 @@ std::string getFileNameFromHandle(HANDLE fileHandle) {
   char buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR) * MAX_PATH];
   FILE_NAME_INFO* FileInformation = (FILE_NAME_INFO*)buff;
 
-  if (!GetFileInformationByHandleEx(fileHandle, FileNameInfo, FileInformation,
-                                    sizeof(buff))) {
+  if (!GetFileInformationByHandleEx(fileHandle, FileNameInfo, FileInformation, sizeof(buff))) {
     return std::string();
   }
   return std::string((LPCTSTR)CString(FileInformation->FileName));

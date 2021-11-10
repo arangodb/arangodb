@@ -96,3 +96,4 @@ class ConditionVariable {
 };
 }  // namespace basics
 }  // namespace arangodb
+

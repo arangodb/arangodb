@@ -39,7 +39,7 @@ uint64_t TRI_FnvHashPointer(void const*, size_t);
 uint64_t TRI_FnvHashString(char const*);
 
 /// @brief computes a FNV hash for POD types
-template<typename T>
+template <typename T>
 std::enable_if_t<std::is_pod_v<T>, uint64_t> TRI_FnvHashPod(T input) {
   return TRI_FnvHashBlock(0xcbf29ce484222325ULL, &input, sizeof(T));
 }
@@ -65,8 +65,7 @@ uint32_t TRI_BlockCrc32_SSE42(uint32_t, char const* data, size_t length);
 #endif
 
 uint32_t TRI_BlockCrc32_C(uint32_t hash, char const* data, size_t length);
-extern uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data,
-                                  size_t length);
+extern uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data, size_t length);
 }
 
 /// @brief computes a CRC32 for memory blobs
@@ -76,3 +75,4 @@ uint32_t TRI_Crc32HashPointer(void const*, size_t);
 /// @brief computes a CRC32 for strings
 /// the polynomial used is 0x1EDC6F41.
 uint32_t TRI_Crc32HashString(char const*);
+

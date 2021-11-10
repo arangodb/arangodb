@@ -46,3 +46,4 @@ class FileResult {
   int const _sysErrorNumber;
 };
 }  // namespace arangodb
+

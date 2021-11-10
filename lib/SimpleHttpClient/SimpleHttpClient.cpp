@@ -23,19 +23,19 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SimpleHttpClient.h"
-
 #include <stddef.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include <chrono>
 #include <cstdint>
 #include <exception>
 #include <thread>
 #include <utility>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "SimpleHttpClient.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -59,7 +59,7 @@ using namespace arangodb::basics;
 namespace {
 /// @brief empty map, used for headers
 std::unordered_map<std::string, std::string> const noHeaders{};
-}  // namespace
+} // namespace
 
 namespace arangodb {
 namespace httpclient {
@@ -81,9 +81,7 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
       _nextChunkedSize(0),
       _method(rest::RequestType::GET),
       _aborted(false),
-      _comm(
-          _connection->server()
-              .getFeature<application_features::CommunicationFeaturePhase>()) {
+      _comm(_connection->server().getFeature<application_features::CommunicationFeaturePhase>()) {
   TRI_ASSERT(connection != nullptr);
 
   if (_connection->isConnected()) {
@@ -95,9 +93,8 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
   _hostname = _connection->getEndpoint()->host();
 }
 
-SimpleHttpClient::SimpleHttpClient(
-    std::unique_ptr<GeneralClientConnection>& connection,
-    SimpleHttpClientParams const& params)
+SimpleHttpClient::SimpleHttpClient(std::unique_ptr<GeneralClientConnection>& connection,
+                                   SimpleHttpClientParams const& params)
     : SimpleHttpClient(connection.get(), params) {
   _deleteConnectionOnDestruction = true;
   connection.release();
@@ -119,7 +116,7 @@ SimpleHttpClient::~SimpleHttpClient() {
 // -----------------------------------------------------------------------------
 // public methods
 // -----------------------------------------------------------------------------
-
+  
 void SimpleHttpClient::recycleResult(std::unique_ptr<SimpleHttpResult> result) {
   _result = std::move(result);
 }
@@ -140,8 +137,7 @@ bool SimpleHttpClient::isConnected() { return _connection->isConnected(); }
 void SimpleHttpClient::disconnect() { _connection->disconnect(); }
 
 std::string SimpleHttpClient::getEndpointSpecification() const {
-  return _connection == nullptr ? "unknown"
-                                : _connection->getEndpointSpecification();
+  return _connection == nullptr ? "unknown" : _connection->getEndpointSpecification();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,8 +164,7 @@ void SimpleHttpClient::close() {
 
 SimpleHttpResult* SimpleHttpClient::retryRequest(rest::RequestType method,
                                                  std::string const& location,
-                                                 char const* body,
-                                                 size_t bodyLength) {
+                                                 char const* body, size_t bodyLength) {
   return retryRequest(method, location, body, bodyLength, ::noHeaders);
 }
 
@@ -183,8 +178,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(rest::RequestType method,
 
 SimpleHttpResult* SimpleHttpClient::retryRequest(
     rest::RequestType method, std::string const& location, char const* body,
-    size_t bodyLength,
-    std::unordered_map<std::string, std::string> const& headers) {
+    size_t bodyLength, std::unordered_map<std::string, std::string> const& headers) {
   std::unique_ptr<SimpleHttpResult> result;
   size_t tries = 0;
 
@@ -202,8 +196,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     if (tries++ >= _params._maxRetries) {
       LOG_TOPIC("de0be", WARN, arangodb::Logger::HTTPCLIENT)
           << "" << _params._retryMessage << " - no retries left"
-          << (_errorMessage.empty() ? std::string("")
-                                    : std::string(" - ") + _errorMessage);
+          << (_errorMessage.empty() ? std::string("") : std::string(" - ") + _errorMessage);
       break;
     }
 
@@ -221,13 +214,11 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
       LOG_TOPIC("2b48f", WARN, arangodb::Logger::HTTPCLIENT)
           << "" << _params._retryMessage
           << " - retries left: " << (_params._maxRetries - tries)
-          << (_errorMessage.empty() ? std::string("")
-                                    : std::string(" - ") + _errorMessage);
+          << (_errorMessage.empty() ? std::string("") : std::string(" - ") + _errorMessage);
     }
 
     // 1 microsecond == 10^-6 seconds
-    std::this_thread::sleep_for(
-        std::chrono::microseconds(_params._retryWaitTime));
+    std::this_thread::sleep_for(std::chrono::microseconds(_params._retryWaitTime));
   }
 
   return result.release();
@@ -240,8 +231,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
 
 SimpleHttpResult* SimpleHttpClient::request(rest::RequestType method,
                                             std::string const& location,
-                                            char const* body,
-                                            size_t bodyLength) {
+                                            char const* body, size_t bodyLength) {
   return doRequest(method, location, body, bodyLength, ::noHeaders);
 }
 
@@ -252,8 +242,7 @@ SimpleHttpResult* SimpleHttpClient::request(rest::RequestType method,
 
 SimpleHttpResult* SimpleHttpClient::request(
     rest::RequestType method, std::string const& location, char const* body,
-    size_t bodyLength,
-    std::unordered_map<std::string, std::string> const& headers) {
+    size_t bodyLength, std::unordered_map<std::string, std::string> const& headers) {
   return doRequest(method, location, body, bodyLength, headers);
 }
 
@@ -263,8 +252,7 @@ SimpleHttpResult* SimpleHttpClient::request(
 
 SimpleHttpResult* SimpleHttpClient::doRequest(
     rest::RequestType method, std::string const& location, char const* body,
-    size_t bodyLength,
-    std::unordered_map<std::string, std::string> const& headers) {
+    size_t bodyLength, std::unordered_map<std::string, std::string> const& headers) {
   // ensure connection has not yet been invalidated
   TRI_ASSERT(_connection != nullptr);
   if (isAborted()) {
@@ -281,7 +269,9 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
   TRI_ASSERT(_result != nullptr);
 
-  auto resultGuard = scopeGuard([this]() noexcept { _result.reset(); });
+  auto resultGuard = scopeGuard([this]() noexcept {
+    _result.reset();
+  });
 
   // reset error message
   _errorMessage.clear();
@@ -321,15 +311,14 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
         TRI_ASSERT(_writeBuffer.length() >= _written);
         TRI_set_errno(TRI_ERROR_NO_ERROR);
 
-        bool res = _connection->handleWrite(
-            remainingTime,
-            static_cast<void const*>(_writeBuffer.c_str() + _written),
-            _writeBuffer.length() - _written, &bytesWritten);
+        bool res =
+            _connection->handleWrite(remainingTime,
+                                     static_cast<void const*>(_writeBuffer.c_str() + _written),
+                                     _writeBuffer.length() - _written, &bytesWritten);
 
         if (!res) {
-          setErrorMessage("Error writing to '" +
-                          _connection->getEndpoint()->specification() + "' '" +
-                          _connection->getErrorDetails() + "'");
+          setErrorMessage("Error writing to '" + _connection->getEndpoint()->specification() +
+                          "' '" + _connection->getErrorDetails() + "'");
           this->close();  // this sets _state to IN_CONNECT for a retry
         } else {
           _written += bytesWritten;
@@ -352,8 +341,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
         // we need to notice if the other side has closed the connection:
         bool connectionClosed;
 
-        bool res = _connection->handleRead(remainingTime, _readBuffer,
-                                           connectionClosed);
+        bool res = _connection->handleRead(remainingTime, _readBuffer, connectionClosed);
 
         // If there was an error, then we are doomed:
         if (!res) {
@@ -367,8 +355,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
             return nullptr;
           }
           this->close();  // this sets the state to IN_CONNECT for a retry
-          LOG_TOPIC("e5154", DEBUG, arangodb::Logger::HTTPCLIENT)
-              << _errorMessage;
+          LOG_TOPIC("e5154", DEBUG, arangodb::Logger::HTTPCLIENT) << _errorMessage;
 
           std::this_thread::sleep_for(std::chrono::milliseconds(5));
           break;
@@ -398,8 +385,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
               // progress is made (but without an error), this then means
               // that the server has closed the connection and we must
               // process the body one more time:
-              _result->setContentLength(_readBuffer.length() -
-                                        _readBufferOffset);
+              _result->setContentLength(_readBuffer.length() - _readBufferOffset);
             }
             processBody();
           }
@@ -463,7 +449,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
   // set result type in getResult()
   setResultType(haveSentRequest);
 
-  // this method always returns a raw pointer to the result.
+  // this method always returns a raw pointer to the result. 
   // the caller must take ownership.
   return _result.release();
 }
@@ -481,9 +467,8 @@ void SimpleHttpClient::handleConnect() {
   TRI_ASSERT(_connection != nullptr);
 
   if (!_connection->connect()) {
-    setErrorMessage("Could not connect to '" +
-                    _connection->getEndpoint()->specification() + "' '" +
-                    _connection->getErrorDetails() + "'");
+    setErrorMessage("Could not connect to '" + _connection->getEndpoint()->specification() +
+                    "' '" + _connection->getErrorDetails() + "'");
     _state = DEAD;
   } else {
     // can write now
@@ -546,10 +531,9 @@ void SimpleHttpClient::setResultType(bool haveSentRequest) {
 /// @brief prepare a request
 ////////////////////////////////////////////////////////////////////////////////
 
-void SimpleHttpClient::setRequest(
-    rest::RequestType method, std::string const& location, char const* body,
-    size_t bodyLength,
-    std::unordered_map<std::string, std::string> const& headers) {
+void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& location,
+                                  char const* body, size_t bodyLength,
+                                  std::unordered_map<std::string, std::string> const& headers) {
   // clear read-buffer (no pipelining!)
   _readBufferOffset = 0;
   _readBuffer.reset();
@@ -582,7 +566,7 @@ void SimpleHttpClient::setRequest(
   LOG_TOPIC("908b8", DEBUG, Logger::HTTPCLIENT)
       << "request to " << _hostname << ": "
       << GeneralRequest::translateMethod(method) << ' ' << *l;
-
+  
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Host: "));
   _writeBuffer.appendText(_hostname);
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
@@ -605,8 +589,7 @@ void SimpleHttpClient::setRequest(
 
   // basic authorization
   using ExclusionType = std::pair<size_t, size_t>;
-  ::arangodb::containers::SmallVector<ExclusionType>::allocator_type::arena_type
-      arena;
+  ::arangodb::containers::SmallVector<ExclusionType>::allocator_type::arena_type arena;
   ::arangodb::containers::SmallVector<ExclusionType> exclusions{arena};
   size_t pos = 0;
   if (!_params._jwt.empty()) {
@@ -625,16 +608,14 @@ void SimpleHttpClient::setRequest(
 
   bool foundContentLength = false;
   for (auto const& header : headers) {
-    if (!foundContentLength &&
-        basics::StringUtils::equalStringsCaseInsensitive(
-            StaticStrings::ContentLength, header.first)) {
+    if (!foundContentLength && 
+        basics::StringUtils::equalStringsCaseInsensitive(StaticStrings::ContentLength, header.first)) {
       foundContentLength = true;
-      continue;  // skip content-length header
+      continue; // skip content-length header
     }
     _writeBuffer.appendText(header.first);
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(": "));
-    if (basics::StringUtils::equalStringsCaseInsensitive(
-            StaticStrings::Authorization, header.first)) {
+    if (basics::StringUtils::equalStringsCaseInsensitive(StaticStrings::Authorization, header.first)) {
       pos = _writeBuffer.size();
       _writeBuffer.appendText(header.second);
       exclusions.emplace_back(pos, _writeBuffer.size());
@@ -665,17 +646,14 @@ void SimpleHttpClient::setRequest(
     for (size_t i = 0; i < exclusions.size(); ++i) {
       LOG_TOPIC("12c4b", TRACE, arangodb::Logger::HTTPCLIENT)
           << "request: "
-          << std::string_view(_writeBuffer.data() + pos,
-                              exclusions[i].first - pos)
+          << std::string_view(_writeBuffer.data() + pos, exclusions[i].first - pos)
           << "SENSITIVE_DETAILS_HIDDEN";
       pos = exclusions[i].second;
     }
     LOG_TOPIC("12c4e", TRACE, arangodb::Logger::HTTPCLIENT)
-        << "request: "
-        << std::string_view(_writeBuffer.data() + pos,
-                            _writeBuffer.size() - pos);
+        << "request: " << std::string_view(_writeBuffer.data() + pos, _writeBuffer.size() - pos);
   }
-
+  
   if (_state == DEAD) {
     _connection->resetNumConnectRetries();
   }
@@ -754,8 +732,7 @@ void SimpleHttpClient::processHeader() {
       }
 
       // no body
-      else if (_result->hasContentLength() &&
-               _result->getContentLength() == 0) {
+      else if (_result->hasContentLength() && _result->getContentLength() == 0) {
         _result->setResultType(SimpleHttpResult::COMPLETE);
         _state = FINISHED;
 
@@ -984,8 +961,8 @@ void SimpleHttpClient::processChunkedBody() {
 /// @brief extract an error message from a response
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string SimpleHttpClient::getHttpErrorMessage(
-    SimpleHttpResult const* result, ErrorCode* errorCode) {
+std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result,
+                                                  ErrorCode* errorCode) {
   if (errorCode != nullptr) {
     *errorCode = TRI_ERROR_NO_ERROR;
   }
@@ -1006,17 +983,15 @@ std::string SimpleHttpClient::getHttpErrorMessage(
         if (errorCode != nullptr) {
           *errorCode = ErrorCode{errorNum};
         }
-        details = ": ArangoError " + std::to_string(errorNum) + ": " +
-                  msg.copyString();
+        details = ": ArangoError " + std::to_string(errorNum) + ": " + msg.copyString();
       }
     }
   } catch (...) {
     // don't rethrow here. we'll respond with an error message anyway
   }
 
-  return "got error from server: HTTP " +
-         std::to_string(result->getHttpReturnCode()) + " (" +
-         result->getHttpReturnMessage() + ")" + details;
+  return "got error from server: HTTP " + std::to_string(result->getHttpReturnCode()) +
+         " (" + result->getHttpReturnMessage() + ")" + details;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1035,8 +1010,7 @@ std::string SimpleHttpClient::getServerVersion(ErrorCode* errorCode) {
     return "";
   }
 
-  if (response->getHttpReturnCode() ==
-      static_cast<int>(rest::ResponseCode::OK)) {
+  if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::OK)) {
     // default value
     std::string version = "arango";
 

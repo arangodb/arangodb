@@ -53,9 +53,7 @@ bool ConditionVariable::wait(std::chrono::microseconds delay_us) noexcept {
 }
 
 /// @brief signals all waiting threads
-void ConditionVariable::broadcast() noexcept {
-  TRI_BroadcastCondition(&_condition);
-}
+void ConditionVariable::broadcast() noexcept { TRI_BroadcastCondition(&_condition); }
 
 /// @brief signals a waiting thread
 void ConditionVariable::signal() noexcept { TRI_SignalCondition(&_condition); }

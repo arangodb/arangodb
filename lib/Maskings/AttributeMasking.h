@@ -23,13 +23,14 @@
 
 #pragma once
 
+#include "Basics/Common.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/Common.h"
 #include "Maskings/MaskingFunction.h"
 #include "Maskings/ParseResult.h"
 #include "Maskings/Path.h"
@@ -37,13 +38,11 @@
 namespace arangodb {
 namespace maskings {
 void InstallMaskings();
-
+  
 class AttributeMasking {
  public:
   static ParseResult<AttributeMasking> parse(Maskings*, VPackSlice const&);
-  static void installMasking(std::string const& name,
-                             ParseResult<AttributeMasking> (*func)(
-                                 Path, Maskings*, VPackSlice const&)) {
+  static void installMasking(std::string const& name, ParseResult<AttributeMasking> (* func)(Path, Maskings*, VPackSlice const&)) {
     _maskings[name] = func;
   }
 
@@ -59,10 +58,7 @@ class AttributeMasking {
   MaskingFunction* func() const { return _func.get(); }
 
  private:
-  static std::unordered_map<std::string,
-                            ParseResult<AttributeMasking> (*)(
-                                Path, Maskings*, VPackSlice const&)>
-      _maskings;
+  static std::unordered_map<std::string, ParseResult<AttributeMasking> (*)(Path, Maskings*, VPackSlice const&)> _maskings;
 
  private:
   Path _path;
@@ -70,3 +66,4 @@ class AttributeMasking {
 };
 }  // namespace maskings
 }  // namespace arangodb
+

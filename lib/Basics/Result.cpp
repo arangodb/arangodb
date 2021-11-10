@@ -21,25 +21,24 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Result.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include <ostream>
+
+#include "Result.h"
 
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
 #include "debugging.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::result;
 
 Result::Result(ErrorCode errorNumber)
-    : _error(errorNumber == TRI_ERROR_NO_ERROR
-                 ? nullptr
-                 : std::make_unique<Error>(errorNumber)) {}
+    : _error(errorNumber == TRI_ERROR_NO_ERROR ? nullptr : std::make_unique<Error>(errorNumber)) {
+}
 
 Result::Result(ErrorCode errorNumber, std::string const& errorMessage)
     : _error(errorNumber == TRI_ERROR_NO_ERROR
@@ -49,10 +48,9 @@ Result::Result(ErrorCode errorNumber, std::string const& errorMessage)
 }
 
 Result::Result(ErrorCode errorNumber, std::string&& errorMessage)
-    : _error(
-          errorNumber == TRI_ERROR_NO_ERROR
-              ? nullptr
-              : std::make_unique<Error>(errorNumber, std::move(errorMessage))) {
+    : _error(errorNumber == TRI_ERROR_NO_ERROR
+                 ? nullptr
+                 : std::make_unique<Error>(errorNumber, std::move(errorMessage))) {
   TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR || errorMessage.empty());
 }
 
@@ -67,18 +65,14 @@ Result::Result(ErrorCode errorNumber, const char* errorMessage)
     : _error(errorNumber == TRI_ERROR_NO_ERROR
                  ? nullptr
                  : std::make_unique<Error>(errorNumber, errorMessage)) {
-  TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR ||
-             0 == strcmp("", errorMessage));
+  TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR || 0 == strcmp("", errorMessage));
 }
 
 Result::Result(Result const& other)
-    : _error(other._error == nullptr ? nullptr
-                                     : std::make_unique<Error>(*other._error)) {
-}
+    : _error(other._error == nullptr ? nullptr : std::make_unique<Error>(*other._error)) {}
 
 auto Result::operator=(Result const& other) -> Result& {
-  _error = other._error == nullptr ? nullptr
-                                   : std::make_unique<Error>(*other._error);
+  _error = other._error == nullptr ? nullptr : std::make_unique<Error>(*other._error);
   return *this;
 }
 
@@ -113,8 +107,7 @@ auto Result::reset(ErrorCode errorNumber) -> Result& {
   return reset(errorNumber, std::string{});
 }
 
-auto Result::reset(ErrorCode errorNumber, std::string_view errorMessage)
-    -> Result& {
+auto Result::reset(ErrorCode errorNumber, std::string_view errorMessage) -> Result& {
   return reset(errorNumber, std::string{errorMessage});
 }
 
@@ -122,8 +115,7 @@ auto Result::reset(ErrorCode errorNumber, const char* errorMessage) -> Result& {
   return reset(errorNumber, std::string{errorMessage});
 }
 
-auto Result::reset(ErrorCode errorNumber, std::string&& errorMessage)
-    -> Result& {
+auto Result::reset(ErrorCode errorNumber, std::string&& errorMessage) -> Result& {
   if (errorNumber == TRI_ERROR_NO_ERROR) {
     // The error message will be ignored
     TRI_ASSERT(errorMessage.empty());
@@ -158,8 +150,7 @@ auto Result::errorMessage() && noexcept -> std::string {
   }
 }
 
-auto arangodb::operator<<(std::ostream& out, arangodb::Result const& result)
-    -> std::ostream& {
+auto arangodb::operator<<(std::ostream& out, arangodb::Result const& result) -> std::ostream& {
   VPackBuilder dump;
   {
     VPackObjectBuilder b(&dump);

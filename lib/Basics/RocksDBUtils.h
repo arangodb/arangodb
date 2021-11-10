@@ -25,6 +25,10 @@
 
 #pragma once
 
+#include "Basics/Common.h"
+#include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
+
 #include <rocksdb/status.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
@@ -33,20 +37,16 @@
 
 #include <string>
 
-#include "Basics/Common.h"
-#include "Basics/Result.h"
-#include "Basics/StaticStrings.h"
-
 namespace arangodb {
 namespace rocksutils {
 
 enum StatusHint { none, document, collection, view, index, database, wal };
 
-arangodb::Result convertStatus(rocksdb::Status const&,
-                               StatusHint hint = StatusHint::none);
+arangodb::Result convertStatus(rocksdb::Status const&, StatusHint hint = StatusHint::none);
 
 std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
     VPackSlice const& inputSlice, bool checkBeforeCopy = true);
 
 }  // namespace rocksutils
 }  // namespace arangodb
+

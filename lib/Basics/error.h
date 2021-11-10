@@ -38,3 +38,4 @@ ErrorCode TRI_set_errno(ErrorCode);
 
 /// @brief return an error message for an error code
 std::string_view TRI_errno_string(ErrorCode code) noexcept;
+

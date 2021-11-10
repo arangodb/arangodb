@@ -22,20 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CpuUsageSnapshot.h"
+#include "Basics/NumberUtils.h"
 
 #include <algorithm>
 
-#include "Basics/NumberUtils.h"
-
 namespace arangodb {
 
-CpuUsageSnapshot CpuUsageSnapshot::fromString(char const* buffer,
-                                              std::size_t bufferSize) noexcept {
+CpuUsageSnapshot CpuUsageSnapshot::fromString(char const* buffer, std::size_t bufferSize) noexcept {
   auto readNumber = [](char const*& p, char const* e, bool& valid) {
     if (p >= e) {
       valid = false;
     }
-
+    
     if (!valid) {
       // nothing to do
       return uint64_t(0);
@@ -49,19 +47,19 @@ CpuUsageSnapshot CpuUsageSnapshot::fromString(char const* buffer,
     // remember start position of number
     char const* s = p;
     // skip over number to find its end
-    while (p < e && *p >= '0' && *p <= '9') {
+    while (p < e && *p >= '0' && *p <= '9') { 
       ++p;
     }
     return arangodb::NumberUtils::atoi_positive<uint64_t>(s, p, valid);
   };
-
+  
   char const* s = buffer;
   char const* e = s + bufferSize;
 
   bool valid = true;
-
+  
   CpuUsageSnapshot snap;
-
+  
   snap.user = readNumber(s, e, valid);
   snap.nice = readNumber(s, e, valid);
   snap.system = readNumber(s, e, valid);
@@ -94,7 +92,9 @@ void CpuUsageSnapshot::subtract(CpuUsageSnapshot const& other) noexcept {
   guestnice -= std::min(guestnice, other.guestnice);
 }
 
-bool CpuUsageSnapshot::valid() const noexcept { return total() > 0; }
+bool CpuUsageSnapshot::valid() const noexcept {
+  return total() > 0;
+}
 
 void CpuUsageSnapshot::clear() noexcept {
   user = 0;
@@ -110,8 +110,7 @@ void CpuUsageSnapshot::clear() noexcept {
 }
 
 uint64_t CpuUsageSnapshot::total() const noexcept {
-  return user + nice + system + idle + iowait + irq + softirq + steal + guest +
-         guestnice;
+  return user + nice + system + idle + iowait + irq + softirq + steal + guest + guestnice;
 }
 
 }  // namespace arangodb

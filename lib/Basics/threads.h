@@ -52,8 +52,7 @@ void TRI_InitThread(TRI_thread_t*);
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread(TRI_thread_t*, char const*, void (*starter)(void*),
-                     void* data);
+bool TRI_StartThread(TRI_thread_t*, char const*, void (*starter)(void*), void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if we are the thread
@@ -68,6 +67,6 @@ bool TRI_IsSelfThread(TRI_thread_t* thread);
 // SHOULD BE REMOVED
 void TRI_InitThread(TRI_thread_t* thread);
 ErrorCode TRI_JoinThread(TRI_thread_t* thread);
-ErrorCode TRI_JoinThreadWithTimeout(TRI_thread_t* thread,
-                                    std::uint32_t timeout);
+ErrorCode TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout);
 bool TRI_DetachThread(TRI_thread_t* thread);
+

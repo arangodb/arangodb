@@ -399,3 +399,4 @@ class StaticStrings {
   static std::string const GraphRefactorFlag;
 };
 }  // namespace arangodb
+

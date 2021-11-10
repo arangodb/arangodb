@@ -37,6 +37,8 @@
 #include <WinSock2.h>
 #endif
 
+#include "GeneralClientConnection.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/StringBuffer.h"
@@ -45,7 +47,6 @@
 #include "Basics/socket-utils.h"
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
-#include "GeneralClientConnection.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -70,13 +71,12 @@ using namespace arangodb::httpclient;
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection::GeneralClientConnection(
-    application_features::ApplicationServer& server, Endpoint* endpoint,
-    double requestTimeout, double connectTimeout, size_t connectRetries)
+GeneralClientConnection::GeneralClientConnection(application_features::ApplicationServer& server,
+                                                 Endpoint* endpoint, double requestTimeout,
+                                                 double connectTimeout, size_t connectRetries)
     : _server(server),
       _endpoint(endpoint),
-      _comm(_server
-                .getFeature<application_features::CommunicationFeaturePhase>()),
+      _comm(_server.getFeature<application_features::CommunicationFeaturePhase>()),
       _requestTimeout(requestTimeout),
       _connectTimeout(connectTimeout),
       _connectRetries(connectRetries),
@@ -91,14 +91,13 @@ GeneralClientConnection::GeneralClientConnection(
   TRI_invalidatesocket(&_socket);
 }
 
-GeneralClientConnection::GeneralClientConnection(
-    application_features::ApplicationServer& server,
-    std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
-    double connectTimeout, size_t connectRetries)
+GeneralClientConnection::GeneralClientConnection(application_features::ApplicationServer& server,
+                                                 std::unique_ptr<Endpoint>& endpoint,
+                                                 double requestTimeout,
+                                                 double connectTimeout, size_t connectRetries)
     : _server(server),
       _endpoint(endpoint.release()),
-      _comm(_server
-                .getFeature<application_features::CommunicationFeaturePhase>()),
+      _comm(_server.getFeature<application_features::CommunicationFeaturePhase>()),
       _requestTimeout(requestTimeout),
       _connectTimeout(connectTimeout),
       _connectRetries(connectRetries),
@@ -128,12 +127,10 @@ GeneralClientConnection::~GeneralClientConnection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralClientConnection* GeneralClientConnection::factory(
-    application_features::ApplicationServer& server, Endpoint* endpoint,
-    double requestTimeout, double connectTimeout, size_t numRetries,
-    uint64_t sslProtocol) {
+    application_features::ApplicationServer& server, Endpoint* endpoint, double requestTimeout,
+    double connectTimeout, size_t numRetries, uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(server, endpoint, requestTimeout,
-                                connectTimeout, numRetries);
+    return new ClientConnection(server, endpoint, requestTimeout, connectTimeout, numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
     return new SslClientConnection(server, endpoint, requestTimeout,
                                    connectTimeout, numRetries, sslProtocol);
@@ -147,8 +144,7 @@ GeneralClientConnection* GeneralClientConnection::factory(
     std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
     double connectTimeout, size_t numRetries, uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(server, endpoint, requestTimeout,
-                                connectTimeout, numRetries);
+    return new ClientConnection(server, endpoint, requestTimeout, connectTimeout, numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
     return new SslClientConnection(server, endpoint, requestTimeout,
                                    connectTimeout, numRetries, sslProtocol);
@@ -156,9 +152,8 @@ GeneralClientConnection* GeneralClientConnection::factory(
 
   return nullptr;
 }
-
-void GeneralClientConnection::repurpose(double connectTimeout,
-                                        double requestTimeout,
+  
+void GeneralClientConnection::repurpose(double connectTimeout, double requestTimeout,
                                         size_t connectRetries) {
   _requestTimeout = requestTimeout;
   _connectTimeout = connectTimeout;
@@ -207,8 +202,7 @@ void GeneralClientConnection::disconnect() {
 /// @brief prepare connection for read/write I/O
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout,
-                                      bool isWrite) {
+bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool isWrite) {
   // wait for at most 0.5 seconds for poll/select to complete
   // if it takes longer, break each poll/select into smaller chunks so we can
   // interrupt the whole process if it takes too long in total
@@ -394,8 +388,7 @@ bool GeneralClientConnection::checkSocket() {
 
   TRI_ASSERT(TRI_isvalidsocket(_socket));
 
-  int res =
-      TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
+  int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
 
   if (res != 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -467,7 +460,6 @@ bool GeneralClientConnection::handleRead(double timeout, StringBuffer& buffer,
   return false;
 }
 
-application_features::ApplicationServer& GeneralClientConnection::server()
-    const {
+application_features::ApplicationServer& GeneralClientConnection::server() const {
   return _server;
 }

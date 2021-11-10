@@ -66,3 +66,4 @@ void TRI_LockCondition(TRI_condition_t* cond) noexcept;
 
 /// @brief unlocks the mutex of a condition variable
 void TRI_UnlockCondition(TRI_condition_t* cond) noexcept;
+

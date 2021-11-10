@@ -29,5 +29,6 @@ namespace PageSize {
 /// @brief return system's page size
 int getValue();
 
-}  // namespace PageSize
+}
 }  // namespace arangodb
+

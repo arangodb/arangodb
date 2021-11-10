@@ -28,9 +28,10 @@
 using namespace arangodb;
 
 EndpointIpV6::EndpointIpV6(EndpointType type, TransportType transport,
-                           EncryptionType encryption, int listenBacklog,
-                           bool reuseAddress, std::string const& host,
-                           uint16_t const port)
+                           EncryptionType encryption, int listenBacklog, bool reuseAddress,
+                           std::string const& host, uint16_t const port)
     : EndpointIp(DomainType::IPV6, type, transport, encryption, listenBacklog,
                  reuseAddress, host, port) {}
-bool EndpointIpV6::isBroadcastBind() const { return host() == "::"; }
+bool EndpointIpV6::isBroadcastBind() const {
+  return host() == "::";
+}

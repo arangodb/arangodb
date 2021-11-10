@@ -23,16 +23,16 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
 #include "Maskings/Collection.h"
@@ -83,10 +83,8 @@ class Maskings {
                       std::vector<std::string>& path, VPackSlice const& data);
   void addMaskedObject(Collection& collection, VPackBuilder& builder,
                        std::vector<std::string>& path, VPackSlice const& data);
-  void addMasked(Collection& collection, VPackBuilder& builder,
-                 VPackSlice data);
-  void addMasked(Collection& collection, basics::StringBuffer& data,
-                 VPackSlice slice);
+  void addMasked(Collection& collection, VPackBuilder& builder, VPackSlice  data);
+  void addMasked(Collection& collection, basics::StringBuffer& data, VPackSlice slice);
 
  private:
   std::map<std::string, Collection> _collections;
@@ -97,3 +95,4 @@ class Maskings {
 
 }  // namespace maskings
 }  // namespace arangodb
+

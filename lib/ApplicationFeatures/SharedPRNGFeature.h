@@ -31,15 +31,15 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class SharedPRNGFeature final
-    : public application_features::ApplicationFeature {
+class SharedPRNGFeature final : public application_features::ApplicationFeature {
  public:
   explicit SharedPRNGFeature(application_features::ApplicationServer& server);
   ~SharedPRNGFeature();
 
   void prepare() override final;
-
+  
   uint64_t rand() noexcept;
 };
 
 }  // namespace arangodb
+

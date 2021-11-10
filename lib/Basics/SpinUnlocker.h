@@ -74,3 +74,4 @@ class SpinUnlocker {
 };
 
 }  // namespace arangodb::basics
+

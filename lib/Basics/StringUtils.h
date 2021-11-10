@@ -25,7 +25,6 @@
 #pragma once
 
 #include <stddef.h>
-
 #include <charconv>
 #include <cstdint>
 #include <cstring>
@@ -67,11 +66,10 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash = true);
 std::vector<std::string> split(std::string const& source, char delim = ',');
 
 /// @brief splits a string
-std::vector<std::string> split(std::string const& source,
-                               std::string const& delim);
+std::vector<std::string> split(std::string const& source, std::string const& delim);
 
 /// @brief joins a string
-template<typename C>
+template <typename C>
 std::string join(C const& source, std::string const& delim) {
   std::string result;
   bool first = true;
@@ -89,7 +87,7 @@ std::string join(C const& source, std::string const& delim) {
   return result;
 }
 
-template<typename C>
+template <typename C>
 std::string join(C const& source, char delim = ',') {
   std::string result;
   bool first = true;
@@ -108,7 +106,7 @@ std::string join(C const& source, char delim = ',') {
 }
 
 /// @brief joins a string
-template<typename C, typename T>
+template <typename C, typename T>
 std::string join(C const& source, std::string const& delim,
                  std::function<std::string(T)> const& cb) {
   std::string result;
@@ -174,28 +172,22 @@ static inline unsigned char toupper(unsigned char c) noexcept {
   return c - ((c - 97U < 26U) << 5);
 }
 
-/// @brief converts string to lower case in place - locale-independent, ASCII
-/// inputs only!
+/// @brief converts string to lower case in place - locale-independent, ASCII inputs only!
 void tolowerInPlace(std::string& str);
 
-/// @brief converts string to lower case - locale-independent, ASCII inputs
-/// only!
+/// @brief converts string to lower case - locale-independent, ASCII inputs only!
 std::string tolower(std::string&& str);
 std::string tolower(std::string const& str);
 
-/// @brief converts string to upper case in place - locale-independent, ASCII
-/// inputs only!
+/// @brief converts string to upper case in place - locale-independent, ASCII inputs only!
 void toupperInPlace(std::string& str);
 
-/// @brief converts string to upper case - locale-independent, ASCII inputs
-/// only!
+/// @brief converts string to upper case - locale-independent, ASCII inputs only!
 std::string toupper(std::string const& str);
 
-/// @brief case insensitive string comparison. locale-independent, ASCII inputs
-/// only!
+/// @brief case insensitive string comparison. locale-independent, ASCII inputs only!
 template<typename T1, typename T2>
-[[nodiscard]] bool equalStringsCaseInsensitive(T1 const& lhs,
-                                               T2 const& rhs) noexcept {
+[[nodiscard]] bool equalStringsCaseInsensitive(T1 const& lhs, T2 const& rhs) noexcept {
   if (lhs.size() != rhs.size()) {
     return false;
   }
@@ -265,12 +257,10 @@ std::string soundex(char const* src, size_t len);
 std::vector<uint32_t> characterCodes(char const* s, size_t length);
 
 /// @brief calculates the levenshtein distance between the input strings
-unsigned int levenshteinDistance(char const* s1, size_t l1, char const* s2,
-                                 size_t l2);
+unsigned int levenshteinDistance(char const* s1, size_t l1, char const* s2, size_t l2);
 
 /// @brief calculates the levenshtein distance between the input strings
-size_t levenshteinDistance(std::vector<uint32_t> vect1,
-                           std::vector<uint32_t> vect2);
+size_t levenshteinDistance(std::vector<uint32_t> vect1, std::vector<uint32_t> vect2);
 
 /// @brief url encodes the string
 std::string urlEncode(std::string const& str);
@@ -406,7 +396,7 @@ float floatDecimal(std::string const& str);
 float floatDecimal(char const* value, size_t size);
 
 /// @brief convert char const* or std::string to number with error handling
-template<typename T>
+template <typename T>
 static bool toNumber(std::string const& key, T& val) noexcept {
   size_t n = key.size();
   if (n == 0) {
@@ -416,14 +406,11 @@ static bool toNumber(std::string const& key, T& val) noexcept {
     if constexpr (std::is_integral<T>::value) {
       char const* s = key.data();
       std::from_chars(s, s + n, val);
-    } else if constexpr (std::is_same<long double, typename std::remove_cv<
-                                                       T>::type>::value) {
+    } else if constexpr (std::is_same<long double, typename std::remove_cv<T>::type>::value) {
       val = stold(key);
-    } else if constexpr (std::is_same<
-                             double, typename std::remove_cv<T>::type>::value) {
+    } else if constexpr (std::is_same<double, typename std::remove_cv<T>::type>::value) {
       val = stod(key);
-    } else if constexpr (std::is_same<
-                             float, typename std::remove_cv<T>::type>::value) {
+    } else if constexpr (std::is_same<float, typename std::remove_cv<T>::type>::value) {
       val = stof(key);
     }
   } catch (...) {
@@ -484,16 +471,14 @@ std::string escapeRegexParams(std::string const& in);
 std::string formatSize(uint64_t value);
 
 namespace detail {
-template<typename T>
-auto constexpr isStringOrView =
-    std::is_same_v<std::string, std::decay_t<T>> ||
-    std::is_same_v<std::string_view, std::decay_t<T>>;
+template <typename T>
+auto constexpr isStringOrView = std::is_same_v<std::string, std::decay_t<T>> ||
+                                std::is_same_v<std::string_view, std::decay_t<T>>;
 
-template<typename T>
+template <typename T>
 auto toStringOrView(T&& arg) {
   using Arg = std::decay_t<T>;
-  if constexpr (std::is_same_v<std::string, Arg> ||
-                std::is_same_v<std::string_view, Arg>) {
+  if constexpr (std::is_same_v<std::string, Arg> || std::is_same_v<std::string_view, Arg>) {
     return arg;
   } else if constexpr (std::is_convertible_v<Arg, std::string_view>) {
     return std::string_view(arg);
@@ -506,12 +491,12 @@ auto toStringOrView(T&& arg) {
   }
 }
 
-template<typename... Iters>
+template <typename... Iters>
 auto concatImplIter(std::pair<Iters, Iters>&&... iters) -> std::string {
   auto result = std::string{};
 
-  auto const newcap = static_cast<std::size_t>(
-      (std::distance(iters.first, iters.second) + ... + 0));
+  auto const newcap =
+      static_cast<std::size_t>((std::distance(iters.first, iters.second) + ... + 0));
   result.reserve(newcap);
 
   ([&] { result.append(iters.first, iters.second); }(), ...);
@@ -524,13 +509,13 @@ auto concatImplIter(std::pair<Iters, Iters>&&... iters) -> std::string {
 /// @brief Converts all arguments to a pair of iterators (begin, end), passing
 /// them to concatImplIter.
 /// All arguments must either be `std::string` or `std::string_view`.
-template<typename... Args>
+template <typename... Args>
 auto concatImplStr(Args&&... args) -> std::string {
   static_assert(((isStringOrView<Args>)&&...));
   return concatImplIter(std::make_pair(args.begin(), args.end())...);
 }
 
-template<typename Iter, typename... Iters>
+template <typename Iter, typename... Iters>
 auto joinImplIter(std::string_view delim, std::pair<Iter, Iter>&& head,
                   std::pair<Iters, Iters>&&... tail) -> std::string {
   auto result = std::string{};
@@ -558,7 +543,7 @@ auto joinImplIter(std::string_view delim, std::pair<Iter, Iter>&& head,
 /// @brief Converts all arguments to a pair of iterators (begin, end), passing
 /// them to joinImplIter.
 /// All arguments must either be `std::string` or `std::string_view`.
-template<typename... Args>
+template <typename... Args>
 auto joinImplStr(std::string_view delim, Args&&... args) -> std::string {
   static_assert(((isStringOrView<Args>)&&...));
   if constexpr (sizeof...(Args) == 0) {
@@ -573,7 +558,7 @@ auto joinImplStr(std::string_view delim, Args&&... args) -> std::string {
 /// Arguments that aren't either a std::string, std::string_view,
 /// are converted to a string first, either directly if they're convertible,
 /// or via `to_string`.
-template<typename... Args>
+template <typename... Args>
 auto concatT(Args&&... args) -> std::string {
   return detail::concatImplStr(detail::toStringOrView(args)...);
 }
@@ -582,7 +567,7 @@ auto concatT(Args&&... args) -> std::string {
 /// Arguments that aren't either a std::string, std::string_view,
 /// are converted to a string first, either directly if they're convertible,
 /// or via `to_string`.
-template<typename... Args>
+template <typename... Args>
 auto joinT(std::string_view delim, Args&&... args) -> std::string {
   return detail::joinImplStr(delim, detail::toStringOrView(args)...);
 }
@@ -590,3 +575,4 @@ auto joinT(std::string_view delim, Args&&... args) -> std::string {
 }  // namespace StringUtils
 }  // namespace basics
 }  // namespace arangodb
+

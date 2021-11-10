@@ -21,12 +21,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeature.h"
+#include <boost/core/demangle.hpp>
 
 #include <algorithm>
-#include <boost/core/demangle.hpp>
 #include <chrono>
 #include <thread>
+
+#include "ApplicationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
@@ -39,8 +40,7 @@ using namespace arangodb::options;
 namespace arangodb {
 namespace application_features {
 
-ApplicationFeature::ApplicationFeature(ApplicationServer& server,
-                                       std::string const& name)
+ApplicationFeature::ApplicationFeature(ApplicationServer& server, std::string const& name)
     : _server(server),
       _registration(std::type_index(typeid(ApplicationFeature))),
       _name(name),
@@ -113,8 +113,7 @@ bool ApplicationFeature::doesStartBefore(std::type_index type) const {
     return false;
   }
 
-  auto otherAncestors =
-      _server.getFeature<ApplicationFeature>(type).ancestors();
+  auto otherAncestors = _server.getFeature<ApplicationFeature>(type).ancestors();
   if (otherAncestors.find(_registration) != otherAncestors.end()) {
     // we are an ancestor of the other feature
     return true;
@@ -131,15 +130,10 @@ bool ApplicationFeature::doesStartBefore(std::type_index type) const {
 }
 
 void ApplicationFeature::addAncestorToAllInPath(
-    std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>&
-        path,
+    std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>& path,
     std::type_index ancestorType) {
-  std::function<bool(
-      std::pair<size_t, std::reference_wrapper<ApplicationFeature>>&)>
-      typeMatch =
-          [ancestorType](
-              std::pair<size_t, std::reference_wrapper<ApplicationFeature>>&
-                  pair) -> bool {
+  std::function<bool(std::pair<size_t, std::reference_wrapper<ApplicationFeature>>&)> typeMatch =
+      [ancestorType](std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair) -> bool {
     auto& feature = pair.second.get();
     return feature.registration() == ancestorType;
   };
@@ -149,30 +143,25 @@ void ApplicationFeature::addAncestorToAllInPath(
 
     // build type list to print out error
     std::vector<std::type_index> pathTypes;
-    for (std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair :
-         path) {
+    for (std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair : path) {
       auto& feature = pair.second.get();
       pathTypes.emplace_back(feature.registration());
     }
     pathTypes.emplace_back(ancestorType);  // make sure we show the duplicate
 
     // helper for string join
-    std::function<std::string(std::type_index)> cb =
-        [](std::type_index type) -> std::string {
+    std::function<std::string(std::type_index)> cb = [](std::type_index type) -> std::string {
       return boost::core::demangle(type.name());
     };
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        "dependencies for feature '" +
-            boost::core::demangle(pathTypes.begin()->name()) +
-            "' are cyclic: " +
-            basics::StringUtils::join(pathTypes, " <= ", cb));
+        "dependencies for feature '" + boost::core::demangle(pathTypes.begin()->name()) +
+            "' are cyclic: " + basics::StringUtils::join(pathTypes, " <= ", cb));
   }
 
   // not cyclic, go ahead and add
-  for (std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair :
-       path) {
+  for (std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair : path) {
     ApplicationFeature& descendant = pair.second;
     descendant._ancestors.emplace(ancestorType);
   }
@@ -184,8 +173,7 @@ void ApplicationFeature::determineAncestors(std::type_index rootAsType) {
     return;
   }
 
-  std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>
-      path;
+  std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>> path;
   std::vector<std::pair<size_t, std::type_index>> toProcess{{0, rootAsType}};
   while (!toProcess.empty()) {
     size_t depth = toProcess.back().first;
@@ -193,8 +181,7 @@ void ApplicationFeature::determineAncestors(std::type_index rootAsType) {
     toProcess.pop_back();
 
     if (server().hasFeature(type)) {
-      ApplicationFeature& feature =
-          server().getFeature<ApplicationFeature>(type);
+      ApplicationFeature& feature = server().getFeature<ApplicationFeature>(type);
       path.emplace_back(depth, feature);
       if (feature._ancestorsDetermined) {
         // short cut, just get the ancestors list and append add it everything

@@ -43,3 +43,4 @@ class EndpointIpV4 final : public EndpointIp {
   }
 };
 }  // namespace arangodb
+

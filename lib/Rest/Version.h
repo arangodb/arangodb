@@ -26,8 +26,9 @@
 #include <map>
 #include <string>
 
-#include "Basics/build.h"
 #include "Basics/operating-system.h"
+
+#include "Basics/build.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Basics/Version.h"
@@ -154,3 +155,4 @@ class Version {
 };
 }  // namespace rest
 }  // namespace arangodb
+

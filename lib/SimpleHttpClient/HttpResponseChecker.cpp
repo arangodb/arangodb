@@ -29,26 +29,20 @@
 using namespace arangodb;
 
 /// @brief Check for error in http response
-Result HttpResponseChecker::check(
-    std::string const& clientErrorMsg,
-    httpclient::SimpleHttpResult const* const response,
-    std::string const& actionMsg, std::string const& requestPayload) {
+Result HttpResponseChecker::check(std::string const& clientErrorMsg, httpclient::SimpleHttpResult const* const response,
+                                  std::string const& actionMsg, std::string const& requestPayload) {
   using basics::StringUtils::itoa;
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
-            "got invalid response from server " +
-                (clientErrorMsg.empty() ? "" : ": '" + clientErrorMsg + "'") +
+            "got invalid response from server " + (clientErrorMsg.empty() ? "" : ": '" + clientErrorMsg + "'") +
                 (actionMsg.empty() ? "" : " while executing " + actionMsg) +
-                (requestPayload.empty()
-                     ? ""
-                     : " with this requestPayload: '" + requestPayload + "'")};
+                (requestPayload.empty() ? "" : " with this requestPayload: '" + requestPayload + "'")};
   }
   if (response->wasHttpError()) {
     auto errorNum = static_cast<int>(TRI_ERROR_INTERNAL);
     std::string errorMsg = response->getHttpReturnMessage();
     try {
-      std::shared_ptr<velocypack::Builder> bodyBuilder(
-          response->getBodyVelocyPack());
+      std::shared_ptr<velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
       velocypack::Slice error = bodyBuilder->slice();
       if (!error.isNone() && error.hasKey(StaticStrings::ErrorMessage)) {
         errorNum = error.get(StaticStrings::ErrorNum).getNumericValue<int>();
@@ -60,13 +54,10 @@ Result HttpResponseChecker::check(
     }
 
     auto err = ErrorCode{errorNum};
-    return {err,
-            "got invalid response from server: HTTP " +
-                itoa(response->getHttpReturnCode()) + ": '" + errorMsg + "'" +
-                (actionMsg.empty() ? "" : " while executing " + actionMsg) +
-                (requestPayload.empty()
-                     ? ""
-                     : " with this requestPayload: '" + requestPayload + "'")};
+    return {err, "got invalid response from server: HTTP " +
+                     itoa(response->getHttpReturnCode()) + ": '" + errorMsg + "'" +
+                     (actionMsg.empty() ? "" : " while executing " + actionMsg) +
+                     (requestPayload.empty() ? "" : " with this requestPayload: '" + requestPayload + "'")};
   }
   return {TRI_ERROR_NO_ERROR};
 }

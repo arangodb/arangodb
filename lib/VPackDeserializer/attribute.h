@@ -37,7 +37,7 @@ namespace deserializer {
 /*
  * Deserializes the value of the attribute `N` using the deserializer D.
  */
-template<const char N[], typename D>
+template <const char N[], typename D>
 struct attribute_deserializer {
   constexpr static auto name = N;
   using plan = attribute_deserializer<N, D>;
@@ -45,10 +45,9 @@ struct attribute_deserializer {
   using factory = utilities::identity_factory<constructed_type>;
 };
 
-template<const char N[], typename V>
+template <const char N[], typename V>
 struct attribute_value_condition {
-  static bool test(
-      ::arangodb::velocypack::deserializer::slice_type s) noexcept {
+  static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
     // TODO add hints for this
     if (s.isObject()) {
       return V::compare(s.get(N));
@@ -59,13 +58,13 @@ struct attribute_value_condition {
 
 namespace executor {
 
-template<const char N[], typename D, typename H>
+template <const char N[], typename D, typename H>
 struct deserialize_plan_executor<attribute_deserializer<N, D>, H> {
   using value_type = typename attribute_deserializer<N, D>::constructed_type;
   using tuple_type = std::tuple<value_type>;
   using result_type = result<tuple_type, deserialize_error>;
 
-  template<typename ctx>
+  template <typename ctx>
   auto static unpack(slice_type const& s, typename H::state_type hints, ctx&& c)
       -> result_type {
     // if there is no hint that s is actually an object, we have to check that

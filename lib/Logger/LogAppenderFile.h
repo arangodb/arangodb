@@ -24,20 +24,19 @@
 #pragma once
 
 #include <stddef.h>
-
 #include <memory>
 #include <mutex>
 #include <string>
 #include <tuple>
 #include <vector>
 
-#include "Logger/Escaper.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogLevel.h"
+#include "Logger/Escaper.h"
 
 namespace arangodb {
 struct LogMessage;
-
+  
 class LogAppenderStream : public LogAppender {
  public:
   LogAppenderStream(std::string const& filename, int fd);
@@ -58,8 +57,7 @@ class LogAppenderStream : public LogAppender {
   // write the log message into the already allocated output buffer
   size_t writeIntoOutputBuffer(std::string const& message);
 
-  virtual void writeLogMessage(LogLevel level, size_t topicId,
-                               char const* buffer, size_t len) = 0;
+  virtual void writeLogMessage(LogLevel level, size_t topicId, char const* buffer, size_t len) = 0;
 
   /// @brief maximum size for reusable log buffer
   /// if the buffer exceeds this size, it will be freed after the log
@@ -91,8 +89,7 @@ class LogAppenderFile : public LogAppenderStream {
   explicit LogAppenderFile(std::string const& filename);
   ~LogAppenderFile();
 
-  void writeLogMessage(LogLevel level, size_t topicId, char const* buffer,
-                       size_t len) override final;
+  void writeLogMessage(LogLevel level, size_t topicId, char const* buffer, size_t len) override final;
 
   std::string details() const override final;
 
@@ -103,11 +100,9 @@ class LogAppenderFile : public LogAppenderStream {
   static void closeAll();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  static std::vector<std::tuple<int, std::string, LogAppenderFile*>>
-  getAppenders();
+  static std::vector<std::tuple<int, std::string, LogAppenderFile*>> getAppenders();
 
-  static void setAppenders(
-      std::vector<std::tuple<int, std::string, LogAppenderFile*>> const& fds);
+  static void setAppenders(std::vector<std::tuple<int, std::string, LogAppenderFile*>> const& fds);
 #endif
 
   static void setFileMode(int mode) { _fileMode = mode; }
@@ -130,13 +125,11 @@ class LogAppenderStdStream : public LogAppenderStream {
 
   std::string details() const override final { return std::string(); }
 
-  static void writeLogMessage(int fd, bool useColors, LogLevel level,
-                              size_t topicId, char const* p, size_t length,
-                              bool appendNewline);
+  static void writeLogMessage(int fd, bool useColors, LogLevel level, size_t topicId, 
+                              char const* p, size_t length, bool appendNewline);
 
  private:
-  void writeLogMessage(LogLevel level, size_t topicId, char const* buffer,
-                       size_t len) override final;
+  void writeLogMessage(LogLevel level, size_t topicId, char const* buffer, size_t len) override final;
 };
 
 class LogAppenderStderr final : public LogAppenderStdStream {
@@ -150,3 +143,4 @@ class LogAppenderStdout final : public LogAppenderStdStream {
 };
 
 }  // namespace arangodb
+

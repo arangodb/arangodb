@@ -23,16 +23,15 @@
 
 #pragma once
 
-#include <v8.h>
-
 #include <chrono>
+#include <v8.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort external connection
 ////////////////////////////////////////////////////////////////////////////////
 bool isExecutionDeadlineReached(v8::Isolate* isolate);
 double correctTimeoutToExecutionDeadlineS(double timeoutSeconds);
-std::chrono::milliseconds correctTimeoutToExecutionDeadline(
-    std::chrono::milliseconds timeout);
+std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout);
 
 void TRI_InitV8Deadline(v8::Isolate* isolate);
+

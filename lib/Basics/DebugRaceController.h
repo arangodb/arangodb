@@ -58,9 +58,8 @@ class DebugRaceController {
   // Caller is required to COPY the data to store here.
   // Otherwise a concurrent thread might try to read it,
   // after the caller has freed the memory.
-  void waitForOthers(
-      size_t numberOfThreadsToWaitFor, std::any myData,
-      arangodb::application_features::ApplicationServer const& server);
+  void waitForOthers(size_t numberOfThreadsToWaitFor, std::any myData,
+                     arangodb::application_features::ApplicationServer const& server);
 
  private:
   bool _didTrigger{false};
@@ -74,3 +73,4 @@ class DebugRaceController {
 // in our tests. Do NOT include in production.
 
 #endif
+

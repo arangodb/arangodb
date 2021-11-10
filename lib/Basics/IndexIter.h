@@ -30,9 +30,8 @@ namespace arangodb {
 // @brief  Build an iterator based on an index and an accessor function (which
 // must know its container).
 // This is rudimentary and maybe not complete.
-template<typename F, typename R = std::invoke_result_t<F, std::size_t>>
-class IndexIter : public std::iterator<std::random_access_iterator_tag,
-                                       std::remove_reference_t<R>> {
+template <typename F, typename R = std::invoke_result_t<F, std::size_t>>
+class IndexIter : public std::iterator<std::random_access_iterator_tag, std::remove_reference_t<R>> {
  public:
   explicit IndexIter(F accessor, std::size_t i)
       : _get(std::move(accessor)), _idx(i) {}
@@ -57,7 +56,7 @@ class IndexIter : public std::iterator<std::random_access_iterator_tag,
   std::size_t _idx{};
 };
 
-template<typename F>
+template <typename F>
 IndexIter(F, std::size_t) -> IndexIter<F>;
 
 // @brief Create an accessor for a container that accesses via operator[].
@@ -68,7 +67,7 @@ constexpr auto accessByBrackets = [](auto& container) {
 
 // @brief We often need a (begin, end) pair of iterators: This is a convenience
 // function constructing both.
-template<typename F>
+template <typename F>
 auto makeIndexIterPair(F const& accessor, std::size_t i, std::size_t k)
     -> std::pair<IndexIter<F>, IndexIter<F>> {
   return std::make_pair(IndexIter(accessor, i), IndexIter(accessor, k));

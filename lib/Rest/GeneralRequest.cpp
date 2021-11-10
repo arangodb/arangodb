@@ -22,9 +22,9 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeneralRequest.h"
-
 #include <velocypack/velocypack-aliases.h>
+
+#include "GeneralRequest.h"
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -65,14 +65,14 @@ std::string_view GeneralRequest::translateMethod(RequestType method) {
     case RequestType::ILLEGAL:
       break;
   }
-
+      
   LOG_TOPIC("62a53", WARN, arangodb::Logger::FIXME)
-      << "illegal http request method encountered in switch";
+        << "illegal http request method encountered in switch";
 
   return {"UNKNOWN"};  // in order to please MSVC
 }
 
-namespace {
+namespace  {
 rest::RequestType translateMethod(VPackStringRef const& methodString) {
   if (methodString == "DELETE") {
     return RequestType::DELETE_REQ;
@@ -91,10 +91,9 @@ rest::RequestType translateMethod(VPackStringRef const& methodString) {
   }
   return RequestType::ILLEGAL;
 }
-}  // namespace
+}
 
-rest::RequestType GeneralRequest::translateMethod(
-    VPackStringRef const& method) {
+rest::RequestType GeneralRequest::translateMethod(VPackStringRef const& method) {
   auto ret = ::translateMethod(method);
   if (RequestType::ILLEGAL == ret) {
     std::string const methodString = StringUtils::toupper(method.toString());
@@ -110,8 +109,7 @@ void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
   buffer->appendChar(' ');
 }
 
-rest::RequestType GeneralRequest::findRequestType(char const* ptr,
-                                                  size_t const length) {
+rest::RequestType GeneralRequest::findRequestType(char const* ptr, size_t const length) {
   switch (length) {
     case 3:
       if (ptr[0] == 'g' && ptr[1] == 'e' && ptr[2] == 't') {
@@ -132,8 +130,7 @@ rest::RequestType GeneralRequest::findRequestType(char const* ptr,
       break;
 
     case 5:
-      if (ptr[0] == 'p' && ptr[1] == 'a' && ptr[2] == 't' && ptr[3] == 'c' &&
-          ptr[4] == 'h') {
+      if (ptr[0] == 'p' && ptr[1] == 'a' && ptr[2] == 't' && ptr[3] == 'c' && ptr[4] == 'h') {
         return RequestType::PATCH;
       }
       break;
@@ -163,8 +160,7 @@ GeneralRequest::~GeneralRequest() {
   }
 }
 
-void GeneralRequest::setRequestContext(RequestContext* requestContext,
-                                       bool isRequestContextOwner) {
+void GeneralRequest::setRequestContext(RequestContext* requestContext, bool isRequestContextOwner) {
   TRI_ASSERT(requestContext != nullptr);
 
   if (_requestContext) {
@@ -195,8 +191,7 @@ std::vector<std::string> GeneralRequest::decodedSuffixes() const {
   return result;
 }
 
-std::string const& GeneralRequest::header(std::string const& key,
-                                          bool& found) const {
+std::string const& GeneralRequest::header(std::string const& key, bool& found) const {
   auto it = _headers.find(key);
   if (it == _headers.end()) {
     found = false;
@@ -212,8 +207,7 @@ std::string const& GeneralRequest::header(std::string const& key) const {
   return header(key, unused);
 }
 
-std::string const& GeneralRequest::value(std::string const& key,
-                                         bool& found) const {
+std::string const& GeneralRequest::value(std::string const& key, bool& found) const {
   if (!_values.empty()) {
     auto it = _values.find(key);
 
@@ -233,7 +227,7 @@ std::string const& GeneralRequest::value(std::string const& key) const {
 }
 
 std::map<std::string, std::string> GeneralRequest::parameters() const {
-  std::map<std::string, std::string> parameters{};
+  std::map<std::string, std::string> parameters {};
   for (auto const& paramPair : values()) {
     parameters.try_emplace(paramPair.first, paramPair.second);
   }
@@ -243,7 +237,7 @@ std::map<std::string, std::string> GeneralRequest::parameters() const {
 // needs to be here because of a gcc bug with templates and namespaces
 // https://stackoverflow.com/a/25594741/1473569
 namespace arangodb {
-template<>
+template <>
 bool GeneralRequest::parsedValue(std::string const& key, bool valueNotFound) {
   bool found = false;
   std::string const& val = this->value(key, found);
@@ -253,9 +247,8 @@ bool GeneralRequest::parsedValue(std::string const& key, bool valueNotFound) {
   return valueNotFound;
 }
 
-template<>
-uint64_t GeneralRequest::parsedValue(std::string const& key,
-                                     uint64_t valueNotFound) {
+template <>
+uint64_t GeneralRequest::parsedValue(std::string const& key, uint64_t valueNotFound) {
   bool found = false;
   std::string const& val = this->value(key, found);
   if (found) {
@@ -264,9 +257,8 @@ uint64_t GeneralRequest::parsedValue(std::string const& key,
   return valueNotFound;
 }
 
-template<>
-double GeneralRequest::parsedValue(std::string const& key,
-                                   double valueNotFound) {
+template <>
+double GeneralRequest::parsedValue(std::string const& key, double valueNotFound) {
   bool found = false;
   std::string const& val = this->value(key, found);
   if (found) {
@@ -275,16 +267,14 @@ double GeneralRequest::parsedValue(std::string const& key,
   return valueNotFound;
 }
 
-std::shared_ptr<VPackBuilder> GeneralRequest::toVelocyPackBuilderPtr(
-    bool strictValidation) {
+std::shared_ptr<VPackBuilder> GeneralRequest::toVelocyPackBuilderPtr(bool strictValidation) {
   return std::make_shared<VPackBuilder>(payload(strictValidation));
 }
 
 /// @brief get VelocyPack options for validation. effectively turns off
 /// validation if strictValidation is false. This optimization can be used for
 /// internal requests
-arangodb::velocypack::Options const* GeneralRequest::validationOptions(
-    bool strictValidation) {
+arangodb::velocypack::Options const* GeneralRequest::validationOptions(bool strictValidation) {
   if (strictValidation) {
     return &basics::VelocyPackHelper::strictRequestValidationOptions;
   }

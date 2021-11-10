@@ -65,3 +65,4 @@ class EndpointIp : public Endpoint {
   bool const _reuseAddress;
 };
 }  // namespace arangodb
+

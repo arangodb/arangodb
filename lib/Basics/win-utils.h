@@ -23,9 +23,8 @@
 
 #pragma once
 
-#include <IntSafe.h>
-
 #include <string>
+#include <IntSafe.h>
 
 #include "Basics/Result.h"
 
@@ -58,6 +57,7 @@ int TRI_createFile(char const* filename, int openFlags, int modeFlags);
 
 int TRI_OPEN_WIN32(char const* filename, int openFlags);
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a Windows error to a *nix system error
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,8 +84,7 @@ void TRI_SetWindowsServiceAbortFunction(TRI_serviceAbort_t);
 /// the arango internal logging will handle that usually.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
-                            std::string const&);
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line, std::string const&);
 
 void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                             char const* fmt, va_list ap);
@@ -134,3 +133,4 @@ bool TRI_WRITE_POINTER(HANDLE fd, void const* buffer, size_t length);
 
 std::string getFileNameFromHandle(HANDLE fileHandle);
 #endif
+

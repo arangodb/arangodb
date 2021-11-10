@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "NumberUtils.h"
-
 #include "Basics/debugging.h"
 
 #ifdef _MSC_VER
@@ -40,10 +39,7 @@ uint32_t log2(uint32_t value) noexcept {
   TRI_ASSERT(value > 0);
 
 #if (defined(__GNUC__) || defined(__clang__))
-  return (8 * sizeof(unsigned long)) -
-         static_cast<uint32_t>(
-             __builtin_clzl(static_cast<unsigned long>(value))) -
-         1;
+  return (8 * sizeof(unsigned long)) - static_cast<uint32_t>(__builtin_clzl(static_cast<unsigned long>(value))) - 1;
 #elif defined(_MSC_VER)
   unsigned long index;
   _BitScanReverse(&index, static_cast<unsigned long>(value));
@@ -53,5 +49,5 @@ uint32_t log2(uint32_t value) noexcept {
 #endif
 }
 
-}  // namespace NumberUtils
-}  // namespace arangodb
+}
+}

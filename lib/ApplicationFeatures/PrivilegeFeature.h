@@ -24,12 +24,12 @@
 #pragma once
 
 #include <sys/types.h>
-
 #include <memory>
 #include <string>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/operating-system.h"
+
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 namespace application_features {
@@ -59,3 +59,4 @@ class PrivilegeFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
+

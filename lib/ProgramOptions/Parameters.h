@@ -23,20 +23,20 @@
 
 #pragma once
 
+#include "Basics/Common.h"
+#include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
+#include "Basics/fpconv.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <atomic>
 #include <limits>
 #include <numeric>
-#include <stdexcept>
 #include <type_traits>
 #include <unordered_set>
-
-#include "Basics/Common.h"
-#include "Basics/Exceptions.h"
-#include "Basics/NumberUtils.h"
-#include "Basics/fpconv.h"
+#include <stdexcept>
 
 namespace arangodb {
 namespace options {
@@ -44,9 +44,8 @@ namespace options {
 // helper function to strip-non-numeric data from a string
 std::string removeCommentsFromNumber(std::string const& value);
 
-// convert a string into a number, base version for signed or unsigned integer
-// types
-template<typename T>
+// convert a string into a number, base version for signed or unsigned integer types
+template <typename T>
 inline T toNumber(std::string value, T base = 1) {
   // replace leading spaces, replace trailing spaces & comments
   value = removeCommentsFromNumber(value);
@@ -124,34 +123,32 @@ inline T toNumber(std::string value, T base = 1) {
 }
 
 // convert a string into a number, version for double values
-template<>
+template <>
 inline double toNumber<double>(std::string value, double /*base*/) {
   // replace leading spaces, replace trailing spaces & comments
   return std::stod(removeCommentsFromNumber(value));
 }
 
 // convert a string into another type, specialized version for numbers
-template<typename T>
-typename std::enable_if<std::is_arithmetic<T>::value, T>::type fromString(
-    std::string const& value) {
+template <typename T>
+typename std::enable_if<std::is_arithmetic<T>::value, T>::type fromString(std::string const& value) {
   return toNumber<T>(value, static_cast<T>(1));
 }
 
 // convert a string into another type, specialized version for string -> string
-template<typename T>
-typename std::enable_if<std::is_same<T, std::string>::value, T>::type
-fromString(std::string const& value) {
+template <typename T>
+typename std::enable_if<std::is_same<T, std::string>::value, T>::type fromString(std::string const& value) {
   return value;
 }
 
 // stringify a value, base version for any type
-template<typename T>
+template <typename T>
 inline std::string stringifyValue(T const& value) {
   return std::to_string(value);
 }
 
 // stringify a double value, specialized version
-template<>
+template <>
 inline std::string stringifyValue<double>(double const& value) {
   char buf[32];
   int length = fpconv_dtoa(value, &buf[0]);
@@ -159,13 +156,13 @@ inline std::string stringifyValue<double>(double const& value) {
 }
 
 // stringify a boolean value, specialized version
-template<>
+template <>
 inline std::string stringifyValue<bool>(bool const& value) {
   return value ? "true" : "false";
 }
 
 // stringify a string value, specialized version
-template<>
+template <>
 inline std::string stringifyValue<std::string>(std::string const& value) {
   return "\"" + value + "\"";
 }
@@ -208,15 +205,13 @@ struct BooleanParameter : public Parameter {
       *ptr = true;
       return "";
     }
-    if (value == "true" || value == "false" || value == "on" ||
-        value == "off" || value == "1" || value == "0" || value == "yes" ||
-        value == "no") {
+    if (value == "true" || value == "false" || value == "on" || value == "off" ||
+        value == "1" || value == "0" || value == "yes" || value == "no") {
       *ptr =
           (value == "true" || value == "on" || value == "1" || value == "yes");
       return "";
     }
-    return "invalid value for type " + this->name() +
-           ". expecting 'true' or 'false'";
+    return "invalid value for type " + this->name() + ". expecting 'true' or 'false'";
   }
 
   std::string typeDescription() const override {
@@ -256,8 +251,7 @@ struct AtomicBooleanParameter : public Parameter {
       ptr->store(value == "true" || value == "on" || value == "1");
       return "";
     }
-    return "invalid value for type " + this->name() +
-           ". expecting 'true' or 'false'";
+    return "invalid value for type " + this->name() + ". expecting 'true' or 'false'";
   }
 
   std::string typeDescription() const override {
@@ -274,7 +268,7 @@ struct AtomicBooleanParameter : public Parameter {
 
 // specialized type for numeric values
 // this templated type needs a concrete number type
-template<typename T>
+template <typename T>
 struct NumericParameter : public Parameter {
   typedef T ValueType;
 
@@ -378,7 +372,7 @@ struct SizeTParameter : public NumericParameter<std::size_t> {
   std::string name() const override { return "size"; }
 };
 
-template<typename T>
+template <typename T>
 struct BoundedParameter : public T {
   BoundedParameter(typename T::ValueType* ptr, typename T::ValueType minValue,
                    typename T::ValueType maxValue)
@@ -386,8 +380,8 @@ struct BoundedParameter : public T {
 
   std::string set(std::string const& value) override {
     try {
-      typename T::ValueType v = toNumber<typename T::ValueType>(
-          value, static_cast<typename T::ValueType>(1));
+      typename T::ValueType v =
+          toNumber<typename T::ValueType>(value, static_cast<typename T::ValueType>(1));
       if (v >= minValue && v <= maxValue) {
         *this->ptr = v;
         return "";
@@ -435,11 +429,10 @@ struct StringParameter : public Parameter {
 
 // specialized type for discrete values (defined in the unordered_set)
 // this templated type needs a concrete value type
-template<typename T>
+template <typename T>
 struct DiscreteValuesParameter : public T {
-  DiscreteValuesParameter(
-      typename T::ValueType* ptr,
-      std::unordered_set<typename T::ValueType> const& allowed)
+  DiscreteValuesParameter(typename T::ValueType* ptr,
+                          std::unordered_set<typename T::ValueType> const& allowed)
       : T(ptr), allowed(allowed) {
     if (allowed.find(*ptr) == allowed.end()) {
       // default value is not in list of allowed values
@@ -465,6 +458,7 @@ struct DiscreteValuesParameter : public T {
     return T::set(value);
   }
 
+  
   // cppcheck-suppress virtualCallInConstructor ; bogus warning
   std::string description() const override {
     std::string msg("Possible values: ");
@@ -490,7 +484,7 @@ struct DiscreteValuesParameter : public T {
 
 // specialized type for vectors of values
 // this templated type needs a concrete value type
-template<typename T>
+template <typename T>
 struct VectorParameter : public Parameter {
   explicit VectorParameter(std::vector<typename T::ValueType>* ptr)
       : ptr(ptr) {}
@@ -521,7 +515,9 @@ struct VectorParameter : public Parameter {
     return result;
   }
 
-  void flushValue() override { ptr->clear(); }
+  void flushValue() override {
+    ptr->clear();
+  }
 
   void toVPack(VPackBuilder& builder) const override {
     builder.openArray();
@@ -534,19 +530,18 @@ struct VectorParameter : public Parameter {
   std::vector<typename T::ValueType>* ptr;
 };
 
-// specialized type for a vector of discrete values (defined in the
-// unordered_set) this templated type needs a concrete value type
-template<typename T>
+// specialized type for a vector of discrete values (defined in the unordered_set)
+// this templated type needs a concrete value type
+template <typename T>
 struct DiscreteValuesVectorParameter : public Parameter {
-  explicit DiscreteValuesVectorParameter(
-      std::vector<typename T::ValueType>* ptr,
-      std::unordered_set<typename T::ValueType> const& allowed)
-      : ptr(ptr), allowed(allowed) {
+  explicit DiscreteValuesVectorParameter(std::vector<typename T::ValueType>* ptr,
+                                         std::unordered_set<typename T::ValueType> const& allowed)
+      : ptr(ptr),
+        allowed(allowed) {
     for (size_t i = 0; i < ptr->size(); ++i) {
       if (allowed.find(ptr->at(i)) == allowed.end()) {
         // default value is not in list of allowed values
-        std::string msg(
-            "invalid default value for DiscreteValues parameter: '");
+        std::string msg("invalid default value for DiscreteValues parameter: '");
         msg.append(stringifyValue(ptr->at(i)));
         msg.append("'. ");
         msg.append(description());
@@ -561,7 +556,9 @@ struct DiscreteValuesVectorParameter : public Parameter {
     return std::string(param.name()) + "...";
   }
 
-  void flushValue() override { ptr->clear(); }
+  void flushValue() override {
+    ptr->clear();
+  }
 
   std::string valueString() const override {
     std::string value;
@@ -626,6 +623,7 @@ struct DiscreteValuesVectorParameter : public Parameter {
   std::unordered_set<typename T::ValueType> allowed;
 };
 
+
 // a type that's useful for obsolete parameters that do nothing
 struct ObsoleteParameter : public Parameter {
   explicit ObsoleteParameter(bool requiresValue) : required(requiresValue) {}
@@ -641,3 +639,4 @@ struct ObsoleteParameter : public Parameter {
 };
 }  // namespace options
 }  // namespace arangodb
+

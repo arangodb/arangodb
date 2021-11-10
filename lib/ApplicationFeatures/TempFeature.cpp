@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/TempFeature.h"
-
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/CrashHandler.h"

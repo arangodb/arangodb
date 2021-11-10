@@ -194,3 +194,4 @@ size_t TRI_StringUInt64OctalInPlace(uint64_t, char*);
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TRI_StringTimeStamp(double, bool useLocalTime);
+

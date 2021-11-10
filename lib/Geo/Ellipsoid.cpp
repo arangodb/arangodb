@@ -23,12 +23,13 @@
 
 #include "Ellipsoid.h"
 
+
 #include <cstring>
 
 namespace arangodb {
 namespace geo {
 namespace utils {
-
+    
 Ellipsoid const& ellipsoidFromString(const char* ptr, size_t len) {
   if (len == 5 && memcmp(ptr, "wgs84", 5) == 0) {
     return WGS84_ELLIPSOID;
@@ -38,7 +39,8 @@ Ellipsoid const& ellipsoidFromString(const char* ptr, size_t len) {
   }
   return SPHERE;
 }
-
+    
 }  // namespace utils
 }  // namespace geo
 }  // namespace arangodb
+

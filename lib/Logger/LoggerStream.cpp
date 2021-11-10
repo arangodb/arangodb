@@ -21,12 +21,12 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LoggerStream.h"
-
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
 #include <string>
+
+#include "LoggerStream.h"
 
 #include "Logger/Logger.h"
 
@@ -41,10 +41,10 @@ LoggerStreamBase::LoggerStreamBase(bool enabled)
 #endif
       _logid(nullptr),
       _file(nullptr),
-      _function(nullptr) {
-}
+      _function(nullptr) {}
 
-LoggerStreamBase::LoggerStreamBase() : LoggerStreamBase(true) {}
+LoggerStreamBase::LoggerStreamBase()
+    : LoggerStreamBase(true) {}
 
 LoggerStreamBase& LoggerStreamBase::operator<<(LogLevel const& level) noexcept {
   _level = level;
@@ -57,8 +57,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(LogTopic const& topic) noexcept {
 }
 
 // print a hex representation of the binary data
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::BINARY const& binary) noexcept {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) noexcept {
   try {
     uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
     uint8_t const* end = ptr + binary.size;
@@ -69,8 +68,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(
       uint8_t n1 = n >> 4;
       uint8_t n2 = n & 0x0F;
 
-      _out << "\\x"
-           << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
+      _out << "\\x" << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
            << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
       ++ptr;
     }
@@ -82,8 +80,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(
 }
 
 // print a character array
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::CHARS const& data) noexcept {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::CHARS const& data) noexcept {
   try {
     _out.write(data.data, data.size);
   } catch (...) {
@@ -93,12 +90,11 @@ LoggerStreamBase& LoggerStreamBase::operator<<(
   return *this;
 }
 
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::RANGE const& range) noexcept {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::RANGE const& range) noexcept {
   try {
     _out << range.baseAddress << " - "
-         << static_cast<void const*>(
-                static_cast<char const*>(range.baseAddress) + range.size)
+         << static_cast<void const*>(static_cast<char const*>(range.baseAddress) +
+                                     range.size)
          << " (" << range.size << " bytes)";
   } catch (...) {
     // ignore any errors here. logging should not have side effects
@@ -107,8 +103,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(
   return *this;
 }
 
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::FIXED const& value) noexcept {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::FIXED const& value) noexcept {
   try {
     std::ostringstream tmp;
     tmp << std::setprecision(value._precision) << std::fixed << value._value;
@@ -120,35 +115,33 @@ LoggerStreamBase& LoggerStreamBase::operator<<(
   return *this;
 }
 
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::LINE const& line) noexcept {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LINE const& line) noexcept {
   _line = line._line;
   return *this;
 }
 
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::FILE const& file) noexcept {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::FILE const& file) noexcept {
   _file = file._file;
   return *this;
 }
 
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::FUNCTION const& function) noexcept {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::FUNCTION const& function) noexcept {
   _function = function._function;
   return *this;
 }
 
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::LOGID const& logid) noexcept {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LOGID const& logid) noexcept {
   _logid = logid._logid;
   return *this;
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-LoggerStream::LoggerStream(bool enabled) : LoggerStreamBase(enabled) {}
+LoggerStream::LoggerStream(bool enabled)
+    : LoggerStreamBase(enabled) {}
 #endif
 
-LoggerStream::LoggerStream() : LoggerStreamBase(true) {}
+LoggerStream::LoggerStream() 
+    : LoggerStreamBase(true) {}
 
 LoggerStream::~LoggerStream() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -158,7 +151,7 @@ LoggerStream::~LoggerStream() {
     return;
   }
 #endif
-
+    
   try {
     // TODO: with c++20, we can get a view on the stream's underlying buffer,
     // without copying it

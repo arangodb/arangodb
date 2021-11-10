@@ -23,12 +23,13 @@
 
 #pragma once
 
-#include <openssl/opensslv.h>
-
-#include <boost/asio/ssl/context.hpp>
 #include <cstdint>
 #include <string>
 #include <unordered_set>
+
+#include <boost/asio/ssl/context.hpp>
+
+#include <openssl/opensslv.h>
 
 #include "Basics/asio_ns.h"
 
@@ -75,3 +76,4 @@ std::string protocolName(SslProtocol protocol);
 std::string lastSSLError();
 
 }  // namespace arangodb
+

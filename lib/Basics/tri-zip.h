@@ -41,13 +41,12 @@ ErrorCode TRI_Adler32(char const* filename, uint32_t& checksum);
 ////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode TRI_ZipFile(char const* filename, char const* dir,
-                      std::vector<std::string> const& files,
-                      char const* password);
+                      std::vector<std::string> const& files, char const* password);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_UnzipFile(char const* filename, char const* outPath,
-                        bool skipPaths, bool overwrite, char const* password,
-                        std::string& errorMessage);
+ErrorCode TRI_UnzipFile(char const* filename, char const* outPath, bool skipPaths,
+                        bool overwrite, char const* password, std::string& errorMessage);
+

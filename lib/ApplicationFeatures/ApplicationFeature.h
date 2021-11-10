@@ -50,7 +50,7 @@ class ApplicationFeature {
   ApplicationFeature(ApplicationServer& server, std::string const& name);
 
   virtual ~ApplicationFeature();
-
+  
   enum class State {
     UNINITIALIZED,
     INITIALIZED,
@@ -89,9 +89,9 @@ class ApplicationFeature {
   // enable or disable a feature
   void setEnabled(bool value) {
     if (!value && !isOptional()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "cannot disable non-optional feature '" + name() + "'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "cannot disable non-optional feature '" +
+                                         name() + "'");
     }
     _enabled = value;
   }
@@ -110,13 +110,13 @@ class ApplicationFeature {
   }
 
   // whether the feature starts before another
-  template<typename T>
+  template <typename T>
   bool doesStartBefore() const {
     return doesStartBefore(std::type_index(typeid(T)));
   }
 
   // whether the feature starts after another
-  template<typename T>
+  template <typename T>
   bool doesStartAfter() const {
     return !doesStartBefore(std::type_index(typeid(T)));
   }
@@ -127,8 +127,7 @@ class ApplicationFeature {
 
   // load options from somewhere. this method will only be called for enabled
   // features
-  virtual void loadOptions(std::shared_ptr<options::ProgramOptions>,
-                           char const* binaryPath);
+  virtual void loadOptions(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
 
   // validate the feature's options. this method will only be called for active
   // features, after the ApplicationServer has determined which features should
@@ -184,7 +183,7 @@ class ApplicationFeature {
   void requires(std::type_index other) { _requires.emplace_back(other); }
 
   // register a start dependency upon another feature
-  template<typename T>
+  template <typename T>
   void startsAfter() {
     startsAfter(std::type_index(typeid(T)));
   }
@@ -193,7 +192,7 @@ class ApplicationFeature {
   void startsAfter(std::type_index type);
 
   // register a start dependency upon another feature
-  template<typename T>
+  template <typename T>
   void startsBefore() {
     startsBefore(std::type_index(typeid(T)));
   }
@@ -203,7 +202,7 @@ class ApplicationFeature {
   // determine all direct and indirect ancestors of a feature
   std::unordered_set<std::type_index> ancestors() const;
 
-  template<typename T>
+  template <typename T>
   void onlyEnabledWith() {
     _onlyEnabledWith.emplace(std::type_index(typeid(T)));
   }
@@ -218,8 +217,7 @@ class ApplicationFeature {
   bool doesStartBefore(std::type_index type) const;
 
   void addAncestorToAllInPath(
-      std::vector<
-          std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>& path,
+      std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>& path,
       std::type_index ancestorType);
 
   // set a feature's state. this method should be called by the
@@ -271,3 +269,4 @@ class ApplicationFeature {
 
 }  // namespace application_features
 }  // namespace arangodb
+

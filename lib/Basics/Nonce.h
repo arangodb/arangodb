@@ -25,7 +25,6 @@
 #pragma once
 
 #include <stddef.h>
-
 #include <cstdint>
 #include <string>
 #include <vector>

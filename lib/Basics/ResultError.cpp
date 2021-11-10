@@ -23,21 +23,20 @@
 
 #include "ResultError.h"
 
+#include "Basics/StaticStrings.h"
+#include "Basics/error.h"
+#include "Basics/voc-errors.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <ostream>
 
-#include "Basics/StaticStrings.h"
-#include "Basics/error.h"
-#include "Basics/voc-errors.h"
-
 using namespace arangodb;
 using namespace arangodb::result;
 
-Error::Error(ErrorCode errorNumber) noexcept(
-    noexcept(decltype(Error::_errorMessage)::allocator_type()))
+Error::Error(ErrorCode errorNumber) noexcept(noexcept(decltype(Error::_errorMessage)::allocator_type()))
     : _errorNumber(errorNumber) {}
 
 Error::Error(ErrorCode errorNumber, std::string_view errorMessage)
@@ -60,8 +59,7 @@ auto Error::errorMessage() && noexcept -> std::string {
   return std::string{TRI_errno_string(_errorNumber)};
 }
 
-auto operator<<(std::ostream& out, arangodb::result::Error const& error)
-    -> std::ostream& {
+auto operator<<(std::ostream& out, arangodb::result::Error const& error) -> std::ostream& {
   VPackBuilder dump;
   {
     VPackObjectBuilder b(&dump);

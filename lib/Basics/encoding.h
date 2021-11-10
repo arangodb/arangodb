@@ -29,14 +29,13 @@ namespace arangodb {
 namespace encoding {
 
 /// @brief returns the 8-byte aligned size for the value
-template<typename T, size_t alignment = 8>
+template <typename T, size_t alignment = 8>
 static constexpr inline T alignedSize(T value) {
-  return (value + (alignment - 1)) -
-         ((value + (alignment - 1)) & (alignment - 1));
+  return (value + (alignment - 1)) - ((value + (alignment - 1)) & (alignment - 1));
 }
 
 /// @brief portably and safely reads a number from little endian storage
-template<typename T>
+template <typename T>
 static inline T readNumber(uint8_t const* source, uint32_t length) {
   T value = 0;
   uint64_t x = 0;
@@ -49,7 +48,7 @@ static inline T readNumber(uint8_t const* source, uint32_t length) {
 }
 
 /// @brief portably and safely stores a number in little endian format
-template<typename T>
+template <typename T>
 static inline void storeNumber(uint8_t* dest, T value, uint32_t length) {
   uint8_t* end = dest + length;
   do {
@@ -60,3 +59,4 @@ static inline void storeNumber(uint8_t* dest, T value, uint32_t length) {
 
 }  // namespace encoding
 }  // namespace arangodb
+

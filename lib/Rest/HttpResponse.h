@@ -24,9 +24,10 @@
 
 #pragma once
 
+#include "Rest/GeneralResponse.h"
+
 #include "Basics/StringBuffer.h"
 #include "Basics/debugging.h"
-#include "Rest/GeneralResponse.h"
 
 namespace arangodb {
 class RestBatchHandler;
@@ -63,7 +64,9 @@ class HttpResponse : public GeneralResponse {
   }
   size_t bodySize() const;
 
-  void sealBody() { _bodySize = _body->length(); }
+  void sealBody() {
+    _bodySize = _body->length();
+  }
 
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);  // override;
@@ -79,11 +82,11 @@ class HttpResponse : public GeneralResponse {
                   bool resolve_externals = true) override final;
   void addRawPayload(velocypack::StringRef payload) override final;
 
-  bool isResponseEmpty() const override final { return _body->empty(); }
-
-  ErrorCode reservePayload(std::size_t size) override final {
-    return _body->reserve(size);
+  bool isResponseEmpty() const override final {
+    return _body->empty();
   }
+
+  ErrorCode reservePayload(std::size_t size) override final { return _body->reserve(size); }
 
   arangodb::Endpoint::TransportType transportType() override final {
     return arangodb::Endpoint::TransportType::HTTP;
@@ -93,20 +96,20 @@ class HttpResponse : public GeneralResponse {
     std::unique_ptr<basics::StringBuffer> body(std::move(_body));
     return body;
   }
-
+  
  private:
   // the body must already be set. deflate is then run on the existing body
   ErrorCode deflate(size_t size = 16384) override {
     return _body->deflate(size);
   }
 
-  void addPayloadInternal(uint8_t const* data, size_t length,
-                          velocypack::Options const* options,
-                          bool resolveExternals);
-
+  void addPayloadInternal(uint8_t const* data, size_t length, 
+                          velocypack::Options const* options, bool resolveExternals);
+  
  private:
   std::vector<std::string> _cookies;
   std::unique_ptr<basics::StringBuffer> _body;
   size_t _bodySize;
 };
 }  // namespace arangodb
+

@@ -45,3 +45,4 @@ class FileResultString : public FileResult {
   std::string const _message;
 };
 }  // namespace arangodb
+

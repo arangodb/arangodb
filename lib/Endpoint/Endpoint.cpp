@@ -21,13 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Endpoint.h"
-
 #include <errno.h>
-
 #include <cstdint>
 #include <cstring>
 #include <limits>
+
+#include "Endpoint.h"
 
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -165,11 +164,9 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
     if (found != std::string::npos && found > 2 && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
       if (protocol == TransportType::VST) {
-        return prefix + copy + ":" +
-               StringUtils::itoa(EndpointIp::_defaultPortVst);
+        return prefix + copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortVst);
       } else {
-        return prefix + copy + ":" +
-               StringUtils::itoa(EndpointIp::_defaultPortHttp);
+        return prefix + copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortHttp);
       }
     }
 
@@ -192,8 +189,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 
   // hostname only
   if (protocol == TransportType::HTTP) {
-    return prefix + copy + ":" +
-           StringUtils::itoa(EndpointIp::_defaultPortHttp);
+    return prefix + copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortHttp);
   } else {
     return prefix + copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortVst);
   }
@@ -205,8 +201,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 
 Endpoint* Endpoint::serverFactory(std::string const& specification,
                                   int listenBacklog, bool reuseAddress) {
-  return Endpoint::factory(EndpointType::SERVER, specification, listenBacklog,
-                           reuseAddress);
+  return Endpoint::factory(EndpointType::SERVER, specification, listenBacklog, reuseAddress);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,9 +216,8 @@ Endpoint* Endpoint::clientFactory(std::string const& specification) {
 /// @brief create an endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::factory(Endpoint::EndpointType type,
-                            std::string const& specification, int listenBacklog,
-                            bool reuseAddress) {
+Endpoint* Endpoint::factory(Endpoint::EndpointType type, std::string const& specification,
+                            int listenBacklog, bool reuseAddress) {
   if (specification.size() < 7) {
     return nullptr;
   }
@@ -291,8 +285,7 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
       if (value < (std::numeric_limits<uint16_t>::min)() ||
           value > (std::numeric_limits<uint16_t>::max)()) {
         LOG_TOPIC("7ccf9", ERR, arangodb::Logger::FIXME)
-            << "specified port number '" << value
-            << "' is outside the allowed range";
+            << "specified port number '" << value << "' is outside the allowed range";
         return nullptr;
       }
       uint16_t port = static_cast<uint16_t>(value);
@@ -326,8 +319,7 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
     if (value < (std::numeric_limits<uint16_t>::min)() ||
         value > (std::numeric_limits<uint16_t>::max)()) {
       LOG_TOPIC("127ce", ERR, arangodb::Logger::FIXME)
-          << "specified port number '" << value
-          << "' is outside the allowed range";
+          << "specified port number '" << value << "' is outside the allowed range";
       return nullptr;
     }
     uint16_t port = static_cast<uint16_t>(value);
@@ -393,9 +385,8 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   bool ok = TRI_SetNonBlockingSocket(s);
 
   if (!ok) {
-    LOG_TOPIC("572b6", ERR, arangodb::Logger::FIXME)
-        << "cannot switch to non-blocking: " << errno << " (" << strerror(errno)
-        << ")";
+    LOG_TOPIC("572b6", ERR, arangodb::Logger::FIXME) << "cannot switch to non-blocking: " << errno
+                                            << " (" << strerror(errno) << ")";
 
     return false;
   }
@@ -405,8 +396,7 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
 
   if (!ok) {
     LOG_TOPIC("1ef8e", ERR, arangodb::Logger::FIXME)
-        << "cannot set close-on-exit: " << errno << " (" << strerror(errno)
-        << ")";
+        << "cannot set close-on-exit: " << errno << " (" << strerror(errno) << ")";
 
     return false;
   }
@@ -414,8 +404,7 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   return true;
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Endpoint::TransportType type) {
+std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::TransportType type) {
   switch (type) {
     case arangodb::Endpoint::TransportType::HTTP:
       stream << "http";
@@ -427,8 +416,7 @@ std::ostream& operator<<(std::ostream& stream,
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Endpoint::EndpointType type) {
+std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::EndpointType type) {
   switch (type) {
     case arangodb::Endpoint::EndpointType::SERVER:
       stream << "server";
@@ -440,8 +428,7 @@ std::ostream& operator<<(std::ostream& stream,
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Endpoint::EncryptionType type) {
+std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::EncryptionType type) {
   switch (type) {
     case arangodb::Endpoint::EncryptionType::NONE:
       stream << "none";
@@ -453,8 +440,7 @@ std::ostream& operator<<(std::ostream& stream,
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Endpoint::DomainType type) {
+std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::DomainType type) {
   switch (type) {
     case arangodb::Endpoint::DomainType::UNIX:
       stream << "unix";

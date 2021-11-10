@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include <cstdint>
-
 #include "Basics/Common.h"
 #include "Basics/ErrorCode.h"
 #include "Basics/PageSize.h"
 #include "Basics/operating-system.h"
+
+#include <cstdint>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapper macro for anonymous memory mapping
@@ -69,10 +69,11 @@ ErrorCode TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
 ////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
-                       int fileDescriptor, void** mmHandle);
+                 int fileDescriptor, void** mmHandle);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gives hints about upcoming memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice);
+

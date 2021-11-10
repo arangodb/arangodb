@@ -21,11 +21,11 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tri-strings.h"
+#include <cstring>
 
 #include <openssl/sha.h>
 
-#include <cstring>
+#include "tri-strings.h"
 
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
@@ -68,8 +68,7 @@ static void DecodeUnicodeEscape(char** dst, char const* src) {
 /// @brief decodes a unicode surrogate pair
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DecodeSurrogatePair(char** dst, char const* src1,
-                                char const* src2) {
+static void DecodeSurrogatePair(char** dst, char const* src1, char const* src2) {
   int i1;
   int i2;
   int i3;
@@ -249,9 +248,8 @@ char* TRI_IsContainedMemory(char const* full, size_t fullLength,
   char const* end = full + fullLength - partLength;
 
   for (char const* p = full; p <= end; ++p) {
-    if (*p == *part &&
-        memcmp(static_cast<void const*>(p), static_cast<void const*>(part),
-               partLength) == 0) {
+    if (*p == *part && memcmp(static_cast<void const*>(p),
+                              static_cast<void const*>(part), partLength) == 0) {
       return const_cast<char*>(p);
     }
   }
@@ -294,8 +292,7 @@ void TRI_FreeString(char* value) noexcept { TRI_Free(value); }
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
-  unsigned char* dst =
-      static_cast<unsigned char*>(TRI_Allocate(SHA256_DIGEST_LENGTH));
+  unsigned char* dst = static_cast<unsigned char*>(TRI_Allocate(SHA256_DIGEST_LENGTH));
   if (dst == nullptr) {
     return nullptr;
   }
@@ -306,12 +303,12 @@ char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
   return (char*)dst;
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unescapes unicode escape sequences
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength,
-                             bool normalize) {
+char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength, bool normalize) {
   char* buffer = static_cast<char*>(TRI_Allocate(inLength + 1));
 
   if (buffer == nullptr) {
@@ -342,8 +339,7 @@ char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength,
 /// returns the length of the unescaped string
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_UnescapeUtf8StringInPlace(char* buffer, char const* in,
-                                     size_t inLength) {
+size_t TRI_UnescapeUtf8StringInPlace(char* buffer, char const* in, size_t inLength) {
   char* qtr = buffer;
   char const* ptr;
   char const* end;

@@ -51,3 +51,4 @@ class Completer {
   virtual std::vector<std::string> alternatives(char const*) = 0;
 };
 }  // namespace arangodb
+

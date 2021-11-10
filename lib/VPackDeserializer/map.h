@@ -36,10 +36,9 @@ namespace deserializer {
  * keys (std::string_view) to constructed types from a second deserializer.
  */
 
-// TODO introduce key_reader to support different types for keys (currently only
-// std::string_view)
+// TODO introduce key_reader to support different types for keys (currently only std::string_view)
 
-template<template<typename, typename> typename C, typename D, typename K>
+template <template <typename, typename> typename C, typename D, typename K>
 using map_deserializer_constructed_type =
     C<typename K::value_type, typename D::constructed_type>;
 
@@ -51,10 +50,8 @@ using default_key_read = value_reader<std::string>;
  * K - key reader (default = value_reader<std::string>)
  * F - factory (default = identity_factor, i.e. returns container type)
  */
-template<typename D, template<typename, typename> typename C,
-         typename K = default_key_read,
-         typename F = utilities::identity_factory<
-             map_deserializer_constructed_type<C, D, K>>>
+template <typename D, template <typename, typename> typename C, typename K = default_key_read,
+          typename F = utilities::identity_factory<map_deserializer_constructed_type<C, D, K>>>
 struct map_deserializer {
   using plan = map_deserializer<D, C, K, F>;
   using factory = F;
@@ -63,14 +60,13 @@ struct map_deserializer {
 
 namespace executor {
 
-template<typename D, template<typename, typename> typename C, typename F,
-         typename K, typename H>
+template <typename D, template <typename, typename> typename C, typename F, typename K, typename H>
 struct deserialize_plan_executor<map_deserializer<D, C, K, F>, H> {
   using proxy_type = typename map_deserializer<D, C, K, F>::constructed_type;
   using tuple_type = std::tuple<proxy_type>;
   using result_type = result<tuple_type, deserialize_error>;
 
-  template<typename ctx>
+  template <typename ctx>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
                      typename H::state_type hints, ctx&& c) -> result_type {
     proxy_type result;
@@ -83,16 +79,14 @@ struct deserialize_plan_executor<map_deserializer<D, C, K, F>, H> {
     }
 
     for (auto const& member :
-         ::arangodb::velocypack::deserializer::object_iterator(
-             s, true)) {  // use sequential deserialization
+         ::arangodb::velocypack::deserializer::object_iterator(s, true)) {  // use sequential deserialization
       auto member_result =
           deserialize<D, H, ctx>(member.value, {}, std::forward<ctx>(c));
       if (!member_result) {
-        return result_type{
-            std::move(member_result)
-                .error()
-                .wrap("when handling member `"s + member.key.copyString() + "`")
-                .trace(member.key.copyString())};
+        return result_type{std::move(member_result)
+                               .error()
+                               .wrap("when handling member `"s + member.key.copyString() + "`")
+                               .trace(member.key.copyString())};
       }
 
       auto key_result = K::read(member.key);
@@ -101,9 +95,8 @@ struct deserialize_plan_executor<map_deserializer<D, C, K, F>, H> {
             std::move(member_result).error().wrap("when reading key")};
       }
 
-      result.insert(result.cend(),
-                    std::make_pair(std::move(key_result).get(),
-                                   std::move(member_result).get()));
+      result.insert(result.cend(), std::make_pair(std::move(key_result).get(),
+                                                  std::move(member_result).get()));
     }
 
     return result_type{std::move(result)};

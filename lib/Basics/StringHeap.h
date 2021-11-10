@@ -34,7 +34,7 @@ struct ResourceMonitor;
 namespace velocypack {
 class HashedStringRef;
 class StringRef;
-}  // namespace velocypack
+}
 
 class StringHeap {
  public:
@@ -47,14 +47,14 @@ class StringHeap {
   ~StringHeap();
 
   /// @brief register a string - implemented for StringRef and HashedStringRef
-  template<typename T>
+  template <typename T>
   T registerString(T const& str);
-
-  /// @brief clear all data from the StringHeap, not releasing any occupied
-  /// memory the caller must make sure that nothing points into the data of the
-  /// StringHeap when calling this method
+ 
+  /// @brief clear all data from the StringHeap, not releasing any occupied memory 
+  /// the caller must make sure that nothing points into the data of the StringHeap
+  /// when calling this method
   void clear() noexcept;
-
+  
  private:
   /// @brief allocate a new block of memory
   void allocateBlock();
@@ -79,3 +79,4 @@ class StringHeap {
   char* _end;
 };
 }  // namespace arangodb
+

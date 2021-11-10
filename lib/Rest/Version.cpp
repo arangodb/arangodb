@@ -27,16 +27,17 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include <sstream>
+
 #include <openssl/ssl.h>
+
 #include <rocksdb/convenience.h>
 #include <rocksdb/version.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Version.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <sstream>
-
-#include "3rdParty/iresearch/core/utils/version_defines.hpp"
 #include "Basics/FeatureFlags.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -45,6 +46,8 @@
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
+
+#include "3rdParty/iresearch/core/utils/version_defines.hpp"
 
 using namespace arangodb::rest;
 
@@ -104,7 +107,7 @@ void Version::initialize() {
 #else
   Values["debug"] = "false";
 #endif
-#ifdef ARANGODB_USE_IPO
+#ifdef ARANGODB_USE_IPO 
   Values["ipo"] = "true";
 #else
   Values["ipo"] = "false";
@@ -430,8 +433,10 @@ std::string Version::getEndianness() {
   }
   return "unknown";
 }
-
-std::string Version::getPlatform() { return TRI_PLATFORM; }
+  
+std::string Version::getPlatform() {
+  return TRI_PLATFORM;
+}
 
 // get build date
 std::string Version::getBuildDate() {

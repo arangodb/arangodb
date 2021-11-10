@@ -35,12 +35,11 @@
 namespace arangodb {
 namespace basics {
 
-template<uint64_t stripes = 64, bool everywhereNonNegative = false>
+template <uint64_t stripes = 64, bool everywhereNonNegative = false>
 struct SharedCounter {
   typedef std::function<uint64_t()> IdFunc;
   static uint64_t DefaultIdFunc() {
-    return fasthash64_uint64(Thread::currentThreadNumber(),
-                             0xdeadbeefdeadbeefULL);
+    return fasthash64_uint64(Thread::currentThreadNumber(), 0xdeadbeefdeadbeefULL);
   }
 
   SharedCounter() : SharedCounter(DefaultIdFunc) {}
@@ -109,8 +108,7 @@ struct SharedCounter {
       _id = other._id;
       _mask = other._mask;
       for (size_t i = 0; i < stripes; i++) {
-        _data[i].store(other._data[i].load(std::memory_order_acquire),
-                       std::memory_order_release);
+        _data[i].store(other._data[i].load(std::memory_order_acquire), std::memory_order_release);
       }
     }
   }
@@ -118,3 +116,4 @@ struct SharedCounter {
 
 }  // namespace basics
 }  // namespace arangodb
+

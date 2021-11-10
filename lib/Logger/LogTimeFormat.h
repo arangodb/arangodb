@@ -60,10 +60,11 @@ TimeFormat formatFromName(std::string const& name);
 
 /// @brief writes the given time into the given buffer,
 /// in the specified format
-void writeTime(std::string& out, TimeFormat format,
+void writeTime(std::string& out, 
+               TimeFormat format, 
                std::chrono::system_clock::time_point tp,
-               std::chrono::system_clock::time_point startTp =
-                   std::chrono::system_clock::time_point());
+               std::chrono::system_clock::time_point startTp = std::chrono::system_clock::time_point());
 
 }  // namespace LogTimeFormats
 }  // namespace arangodb
+

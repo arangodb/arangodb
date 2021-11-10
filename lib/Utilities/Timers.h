@@ -24,7 +24,6 @@
 #pragma once
 
 #include <Logger/Logger.h>
-
 #include <chrono>
 #include <string>
 

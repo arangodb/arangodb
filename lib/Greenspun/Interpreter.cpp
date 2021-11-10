@@ -24,20 +24,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Interpreter.h"
-
-#include <Basics/VelocyPackHelper.h>
-#include <velocypack/Iterator.h>
-
-#include <iostream>
-#include <numeric>
-#include <sstream>
-
 #include "Greenspun/lib/DateTime.h"
 #include "Greenspun/lib/Dicts.h"
 #include "Greenspun/lib/Lists.h"
 #include "Greenspun/lib/Math.h"
 #include "Greenspun/lib/Strings.h"
 #include "Primitives.h"
+
+#include <iostream>
+#include <numeric>
+#include <sstream>
+
+#include <Basics/VelocyPackHelper.h>
+#include <velocypack/Iterator.h>
 
 namespace {
 int calc_levenshtein(std::string const& lhs, std::string const& rhs) {
@@ -90,8 +89,7 @@ EvalResult Apply(Machine& ctx, std::string const& function,
   return ctx.applyFunction(function, params, result);
 }
 
-EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator,
-                     VPackBuilder& result) {
+EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   for (auto iter = paramIterator; iter.valid(); ++iter) {
     auto pair = *iter;
     if (!pair.isArray() || pair.length() != 2) {
@@ -99,9 +97,7 @@ EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator,
                        ", expected pair, found: " + pair.toJson());
     }
 
-    auto&& [cond, body] =
-        arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(
-            pair);
+    auto&& [cond, body] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(pair);
     VPackBuilder condResult;
     {
       StackFrameGuard<StackFrameGuardMode::KEEP_SCOPE> guard(ctx);
@@ -124,8 +120,7 @@ EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator,
   return {};
 }
 
-EvalResult SpecialQuote(Machine& ctx, ArrayIterator paramIterator,
-                        VPackBuilder& result) {
+EvalResult SpecialQuote(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   if (!paramIterator.valid()) {
     return EvalError("quote expects one parameter");
   }
@@ -139,8 +134,7 @@ EvalResult SpecialQuote(Machine& ctx, ArrayIterator paramIterator,
   return {};
 }
 
-EvalResult SpecialQuoteSplice(Machine& ctx, ArrayIterator paramIterator,
-                              VPackBuilder& result) {
+EvalResult SpecialQuoteSplice(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   if (!result.isOpenArray()) {
     return EvalError("quote-splice nothing to splice into");
   }
@@ -159,11 +153,8 @@ EvalResult SpecialQuoteSplice(Machine& ctx, ArrayIterator paramIterator,
   return {};
 }
 
-EvalResult SpecialCons(Machine& ctx, ArrayIterator paramIterator,
-                       VPackBuilder& result) {
-  auto&& [head, list] =
-      arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(
-          paramIterator);
+EvalResult SpecialCons(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+  auto&& [head, list] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(paramIterator);
   if (paramIterator.valid()) {
     return EvalError("Excess elements in cons call");
   }
@@ -178,8 +169,7 @@ EvalResult SpecialCons(Machine& ctx, ArrayIterator paramIterator,
   return {};
 }
 
-EvalResult SpecialAnd(Machine& ctx, ArrayIterator paramIterator,
-                      VPackBuilder& result) {
+EvalResult SpecialAnd(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   for (; paramIterator.valid(); ++paramIterator) {
     VPackBuilder value;
     if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
@@ -198,8 +188,7 @@ EvalResult SpecialAnd(Machine& ctx, ArrayIterator paramIterator,
   return {};
 }
 
-EvalResult SpecialOr(Machine& ctx, ArrayIterator paramIterator,
-                     VPackBuilder& result) {
+EvalResult SpecialOr(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   for (; paramIterator.valid(); ++paramIterator) {
     VPackBuilder value;
     if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
@@ -218,8 +207,7 @@ EvalResult SpecialOr(Machine& ctx, ArrayIterator paramIterator,
   return {};
 }
 
-EvalResult SpecialSeq(Machine& ctx, ArrayIterator paramIterator,
-                      VPackBuilder& result) {
+EvalResult SpecialSeq(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   VPackBuilder store;
   if (!paramIterator.valid()) {
     result.add(VPackSlice::nullSlice());
@@ -245,8 +233,7 @@ EvalResult SpecialSeq(Machine& ctx, ArrayIterator paramIterator,
   return {};
 }
 
-EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator,
-                        VPackBuilder& result) {
+EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   if (!paramIterator.valid()) {
     return EvalError("expected at least one argument");
   }
@@ -266,20 +253,16 @@ EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator,
       return EvalError("in case " + std::to_string(paramIterator.index()) +
                        ", expected pair, found: " + pair.toJson());
     }
-    auto&& [cmp, body] =
-        arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(
-            pair);
+    auto&& [cmp, body] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(pair);
     VPackBuilder cmpValue;
     if (auto res = Evaluate(ctx, cmp, cmpValue); !res) {
       return res.mapError([&](EvalError& err) {
-        err.wrapMessage("in condition " +
-                        std::to_string(paramIterator.index() - 1));
+        err.wrapMessage("in condition " + std::to_string(paramIterator.index() - 1));
       });
     }
 
     if (!cmpValue.slice().isNumber()) {
-      return EvalError("in condition " +
-                       std::to_string(paramIterator.index() - 1) +
+      return EvalError("in condition " + std::to_string(paramIterator.index() - 1) +
                        " expected numeric value, found: " + cmpValue.toJson());
     }
 
@@ -294,8 +277,7 @@ EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator,
   return {};
 }
 
-EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator,
-                          VPackBuilder& result) {
+EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   if (!paramIterator.valid()) {
     return EvalError("Expected at least one argument");
   }
@@ -317,16 +299,12 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator,
     if (!pair.isArray() || pair.length() != 2) {
       return EvalError("Expected pair, found: " + pair.toJson());
     }
-    auto&& [var, array] =
-        arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(
-            pair);
+    auto&& [var, array] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(pair);
     if (!var.isString()) {
-      return EvalError("Expected string as first entry, found: " +
-                       var.toJson());
+      return EvalError("Expected string as first entry, found: " + var.toJson());
     }
     if (!array.isArray()) {
-      return EvalError("Expected array as second entry, found: " +
-                       array.toJson());
+      return EvalError("Expected array as second entry, found: " + array.toJson());
     }
     VPackBuilder listResult;
     if (auto res = Evaluate(ctx, array, listResult); res.fail()) {
@@ -338,21 +316,18 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator,
   };
 
   if (!lists.isArray()) {
-    return EvalError("first parameter expected to be list, found: " +
-                     lists.toJson());
+    return EvalError("first parameter expected to be list, found: " + lists.toJson());
   }
 
   for (auto&& pair : VPackArrayIterator(lists)) {
     if (auto res = readIteratorPair(pair); res.fail()) {
       return res.mapError([&](EvalError& err) {
-        err.wrapMessage("at position " +
-                        std::to_string(paramIterator.index() - 1));
+        err.wrapMessage("at position " + std::to_string(paramIterator.index() - 1));
       });
     }
   }
 
-  auto const runIterators = [&](Machine& ctx, std::size_t index,
-                                auto next) -> EvalResult {
+  auto const runIterators = [&](Machine& ctx, std::size_t index, auto next) -> EvalResult {
     if (index == iterators.size()) {
       VPackBuilder sink;
       return SpecialSeq(ctx, paramIterator, sink).mapError([](EvalError& err) {
@@ -380,9 +355,8 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator,
   return runIterators(ctx, 0, runIterators);
 }
 
-EvalResult Call(Machine& ctx, VPackSlice const functionSlice,
-                ArrayIterator paramIterator, VPackBuilder& result,
-                bool isEvaluateParameter) {
+EvalResult Call(Machine& ctx, VPackSlice const functionSlice, ArrayIterator paramIterator,
+                VPackBuilder& result, bool isEvaluateParameter) {
   VPackBuilder paramBuilder;
   if (isEvaluateParameter) {
     VPackArrayBuilder builder(&paramBuilder);
@@ -406,8 +380,7 @@ EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
                       VPackBuilder& result, bool isEvaluateParams) {
   if (!paramNames.isArray()) {
     return EvalError(
-        "bad lambda format: expected parameter name array, found: " +
-        paramNames.toJson());
+        "bad lambda format: expected parameter name array, found: " + paramNames.toJson());
   }
 
   VPackBuilder paramBuilder;
@@ -417,24 +390,21 @@ EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
       StackFrameGuard<StackFrameGuardMode::KEEP_SCOPE> guard(ctx);
       if (auto res = Evaluate(ctx, *paramIterator, paramBuilder); !res) {
         return res.mapError([&](EvalError& err) {
-          err.wrapParameter(
-              "<lambda>" + captures.toJson() + paramNames.toJson(),
-              paramIterator.index());
+          err.wrapParameter("<lambda>" + captures.toJson() + paramNames.toJson(),
+                            paramIterator.index());
         });
       }
     }
   }
 
-  StackFrameGuard<StackFrameGuardMode::NEW_SCOPE_HIDE_PARENT> captureFrameGuard(
-      ctx);
+  StackFrameGuard<StackFrameGuardMode::NEW_SCOPE_HIDE_PARENT> captureFrameGuard(ctx);
   for (auto&& pair : ObjectIterator(captures)) {
     ctx.setVariable(pair.key.copyString(), pair.value);
   }
 
   StackFrameGuard<StackFrameGuardMode::NEW_SCOPE> parameterFrameGuard(ctx);
   VPackArrayIterator builderIter =
-      (isEvaluateParams ? VPackArrayIterator(paramBuilder.slice())
-                        : paramIterator);
+      (isEvaluateParams ? VPackArrayIterator(paramBuilder.slice()) : paramIterator);
   for (auto&& paramName : ArrayIterator(paramNames)) {
     if (!paramName.isString()) {
       return EvalError(
@@ -455,16 +425,13 @@ EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
     VPackBuilder foo;
     {
       VPackArrayBuilder ab(&foo);
-      foo.add(isEvaluateParams ? VPackArrayIterator(paramBuilder.slice())
-                               : paramIterator);
+      foo.add(isEvaluateParams ? VPackArrayIterator(paramBuilder.slice()) : paramIterator);
     }
-    err.wrapCall("<lambda>" + captures.toJson() + paramNames.toJson(),
-                 foo.slice());
+    err.wrapCall("<lambda>" + captures.toJson() + paramNames.toJson(), foo.slice());
   });
 }
 
-EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator,
-                      VPackBuilder& result) {
+EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   std::vector<VPackBuilder> store;
 
   if (!paramIterator.valid()) {
@@ -476,8 +443,7 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator,
     return EvalError("Expected list of bindings, found: " + bindings.toJson());
   }
 
-  StackFrame frame(
-      ctx.getAllVariables());  // immer_map does not support transient
+  StackFrame frame(ctx.getAllVariables());  // immer_map does not support transient
 
   for (VPackArrayIterator iter(bindings); iter.valid(); ++iter) {
     auto&& pair = *iter;
@@ -486,16 +452,14 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator,
       auto valueSlice = pair.at(1);
       if (!nameSlice.isString()) {
         return EvalError("expected string as bind name at position " +
-                         std::to_string(iter.index()) +
-                         ", found: " + nameSlice.toJson());
+                         std::to_string(iter.index()) + ", found: " + nameSlice.toJson());
       }
 
       auto& builder = store.emplace_back();
       if (auto res = Evaluate(ctx, valueSlice, builder); res.fail()) {
         return res.mapError([&](EvalError& err) {
-          err.wrapMessage("when evaluating value for binding `" +
-                          nameSlice.copyString() + "` at position " +
-                          std::to_string(iter.index()));
+          err.wrapMessage("when evaluating value for binding `" + nameSlice.copyString() +
+                          "` at position " + std::to_string(iter.index()));
         });
       }
 
@@ -504,8 +468,7 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator,
         return res;
       }
     } else {
-      return EvalError("expected pair at position " +
-                       std::to_string(iter.index()) +
+      return EvalError("expected pair at position " + std::to_string(iter.index()) +
                        " at list of bindings, found: " + pair.toJson());
     }
   }
@@ -518,11 +481,9 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator,
   });
 }
 
-EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator,
-                    VPackBuilder& result);
+EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result);
 
-EvalResult SpecialQuasiQuoteInternal(Machine& ctx, ArrayIterator other,
-                                     VPackBuilder& result) {
+EvalResult SpecialQuasiQuoteInternal(Machine& ctx, ArrayIterator other, VPackBuilder& result) {
   if (other.valid()) {
     Slice first = *other;
     if (first.isString() && first.isEqualString("unquote")) {
@@ -556,8 +517,7 @@ EvalResult SpecialQuasiQuoteInternal(Machine& ctx, ArrayIterator other,
     for (; other.valid(); ++other) {
       auto&& part = *other;
       if (part.isArray()) {
-        if (auto res = SpecialQuasiQuoteInternal(ctx, VPackArrayIterator(part),
-                                                 result);
+        if (auto res = SpecialQuasiQuoteInternal(ctx, VPackArrayIterator(part), result);
             res.fail()) {
           return res;
         }
@@ -570,8 +530,7 @@ EvalResult SpecialQuasiQuoteInternal(Machine& ctx, ArrayIterator other,
   return {};
 }
 
-EvalResult SpecialQuasiQuote(Machine& ctx, ArrayIterator paramIterator,
-                             VPackBuilder& result) {
+EvalResult SpecialQuasiQuote(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   if (!paramIterator.valid()) {
     return EvalError("quasi-quote expects one parameter");
   }
@@ -593,10 +552,9 @@ EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice,
                          bool isEvaluateParameter) {
   if (functionSlice.isString()) {
     auto callSpecialForm = [&](auto specialForm) {
-      return specialForm(ctx, paramIterator, result)
-          .mapError([&](EvalError& err) {
-            return err.wrapSpecialForm(functionSlice.copyString());
-          });
+      return specialForm(ctx, paramIterator, result).mapError([&](EvalError& err) {
+        return err.wrapSpecialForm(functionSlice.copyString());
+      });
     };
     // check for special forms
     if (functionSlice.isEqualString("if")) {
@@ -622,30 +580,27 @@ EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice,
     } else if (functionSlice.isEqualString("let")) {
       return callSpecialForm(SpecialLet);
     } else {
-      return Call(ctx, functionSlice, paramIterator, result,
-                  isEvaluateParameter);
+      return Call(ctx, functionSlice, paramIterator, result, isEvaluateParameter);
     }
   } else if (functionSlice.isObject()) {
     auto body = functionSlice.get("_call");
     if (!body.isNone()) {
       auto params = functionSlice.get("_params");
       if (!params.isArray()) {
-        return EvalError("lambda params have to be an array, found: " +
-                         params.toJson());
+        return EvalError("lambda params have to be an array, found: " + params.toJson());
       }
       auto captures = functionSlice.get("_captures");
       if (!captures.isObject()) {
         return EvalError("lambda captures have to be an object, found: " +
                          params.toJson());
       }
-      return LambdaCall(ctx, params, captures, paramIterator, body, result,
-                        isEvaluateParameter);
+      return LambdaCall(ctx, params, captures, paramIterator, body, result, isEvaluateParameter);
     }
   }
   return EvalError("function is not a string, found " + functionSlice.toJson());
 }
 
-template<typename F>
+template <typename F>
 auto exceptionIntoResult(F&& f) -> std::invoke_result_t<F> try {
   return std::forward<F>(f)();
 } catch (std::exception const& e) {
@@ -654,8 +609,7 @@ auto exceptionIntoResult(F&& f) -> std::invoke_result_t<F> try {
   return EvalError("uncaught exception");
 }
 
-EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator,
-                    VPackBuilder& result) {
+EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   return exceptionIntoResult([&]() -> EvalResult {
     if (!paramIterator.valid()) {
       return EvalError("empty application");
@@ -676,8 +630,7 @@ EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator,
   });
 }
 
-EvalResult Evaluate(Machine& ctx, VPackSlice const slice,
-                    VPackBuilder& result) {
+EvalResult Evaluate(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
   if (slice.isArray()) {
     return Evaluate(ctx, ArrayIterator(slice), result);
   }
@@ -702,8 +655,7 @@ EvalResult Machine::getVariable(const std::string& name, VPackBuilder& result) {
   return EvalError("variable `" + name + "` not found");
 }
 
-EvalResult StackFrame::getVariable(std::string const& name,
-                                   VPackBuilder& result) const {
+EvalResult StackFrame::getVariable(std::string const& name, VPackBuilder& result) const {
   if (auto* iter = bindings.find(name); iter) {
     result.add(*iter);
     return {};
@@ -773,10 +725,9 @@ EvalResult Machine::applyFunction(std::string function, VPackSlice const params,
     }
   }
 
-  return EvalError("function not found `" + function + "`" +
-                   (!minFunctionName.empty()
-                        ? ", did you mean `" + minFunctionName + "`?"
-                        : ""));
+  return EvalError(
+      "function not found `" + function + "`" +
+      (!minFunctionName.empty() ? ", did you mean `" + minFunctionName + "`?" : ""));
 }
 
 VariableBindings Machine::getAllVariables() {
@@ -808,16 +759,14 @@ std::string EvalError::toString() const {
     }
 
     void operator()(EvalError::SpecialFormFrame const& f) {
-      ss << "when evaluating special form `" << f.specialForm << "`"
-         << std::endl;
+      ss << "when evaluating special form `" << f.specialForm << "`" << std::endl;
     }
 
     void operator()(EvalError::WrapFrame const& f) {
       ss << f.message << std::endl;
     }
     void operator()(EvalError::ParamFrame const& f) {
-      ss << "in function `" << f.function << "` at parameter " << f.offset
-         << std::endl;
+      ss << "in function `" << f.function << "` at parameter " << f.offset << std::endl;
     }
   };
 

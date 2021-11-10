@@ -28,7 +28,6 @@
 #include <errno.h>
 #include <stdio.h>
 #include <sys/un.h>
-
 #include <cstring>
 
 #include "Basics/FileUtils.h"
@@ -55,8 +54,7 @@ EndpointUnixDomain::~EndpointUnixDomain() {
   }
 }
 
-TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
-                                         double requestTimeout) {
+TRI_socket_t EndpointUnixDomain::connect(double connectTimeout, double requestTimeout) {
   TRI_socket_t listenSocket;
   TRI_invalidatesocket(&listenSocket);
 
@@ -80,8 +78,8 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
   snprintf(address.sun_path, 100, "%s", _path.c_str());
 
   if (_type == EndpointType::SERVER) {
-    int result = TRI_bind(listenSocket, (struct sockaddr*)&address,
-                          (int)SUN_LEN(&address));
+    int result =
+        TRI_bind(listenSocket, (struct sockaddr*)&address, (int)SUN_LEN(&address));
     if (result != 0) {
       // bind error
       LOG_TOPIC("56d98", ERR, arangodb::Logger::FIXME)
@@ -111,8 +109,7 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
     // set timeout
     setTimeout(listenSocket, connectTimeout);
 
-    if (TRI_connect(listenSocket, (const struct sockaddr*)&address,
-                    SUN_LEN(&address)) != 0) {
+    if (TRI_connect(listenSocket, (const struct sockaddr*)&address, SUN_LEN(&address)) != 0) {
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;
@@ -147,8 +144,7 @@ void EndpointUnixDomain::disconnect() {
     if (_type == EndpointType::SERVER) {
       if (FileUtils::remove(_path) != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("9a8d6", TRACE, arangodb::Logger::FIXME)
-            << "unable to remove socket file '" << _path
-            << "': " << TRI_last_error();
+            << "unable to remove socket file '" << _path << "': " << TRI_last_error();
       }
     }
   }

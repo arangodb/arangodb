@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "Basics/Common.h"
+
 #include "Basics/Mutex.h"
 
 namespace arangodb {
@@ -85,3 +86,4 @@ class CleanupFunctions {
 };
 }  // namespace basics
 }  // namespace arangodb
+

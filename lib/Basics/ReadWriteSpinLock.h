@@ -61,3 +61,4 @@ class ReadWriteSpinLock {
 };
 
 }  // namespace arangodb::basics
+

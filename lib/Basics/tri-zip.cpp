@@ -21,13 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tri-zip.h"
-
 #include <fcntl.h>
 #include <sys/stat.h>
-
 #include <algorithm>
 #include <cstring>
+
+#include "tri-zip.h"
+
+#include "Basics/operating-system.h"
 
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
@@ -35,7 +36,6 @@
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/memory.h"
-#include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
 #include "Zip/unzip.h"
@@ -76,8 +76,7 @@ static char const* translateError(int err) {
 /// @brief extracts the current file
 ////////////////////////////////////////////////////////////////////////////////
 
-static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
-                                    size_t const bufferSize,
+static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
                                     char const* outPath, bool const skipPaths,
                                     bool const overwrite, char const* password,
                                     std::string& errorMessage) {
@@ -132,8 +131,7 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
   if (*filenameWithoutPath == '\0') {
     if (!skipPaths) {
       fullPath = basics::FileUtils::buildFilename(outPath, filenameInZip);
-      auto res = TRI_CreateRecursiveDirectory(fullPath.c_str(), systemError,
-                                              errorMessage);
+      auto res = TRI_CreateRecursiveDirectory(fullPath.c_str(), systemError, errorMessage);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -153,8 +151,8 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
 
     err = unzOpenCurrentFilePassword(uf, password);
     if (err != UNZ_OK) {
-      errorMessage = "failed to authenticate the password in the zip: " +
-                     std::to_string(err);
+      errorMessage =
+          "failed to authenticate the password in the zip: " + std::to_string(err);
       return TRI_ERROR_INTERNAL;
     }
 
@@ -170,17 +168,14 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
     fout = TRI_FOPEN(fullPath.c_str(), "wb");
 
     // cannot write to outfile. this may be due to the target directory missing
-    if (fout == nullptr && !skipPaths &&
-        filenameWithoutPath != (char*)filenameInZip) {
+    if (fout == nullptr && !skipPaths && filenameWithoutPath != (char*)filenameInZip) {
       char c = *(filenameWithoutPath - 1);
       *(filenameWithoutPath - 1) = '\0';
 
       // create target directory recursively
-      std::string tmp =
-          basics::FileUtils::buildFilename(outPath, filenameInZip);
-      auto res =
-          TRI_CreateRecursiveDirectory(tmp.c_str(), systemError, errorMessage);
-
+      std::string tmp = basics::FileUtils::buildFilename(outPath, filenameInZip);
+      auto res = TRI_CreateRecursiveDirectory(tmp.c_str(), systemError, errorMessage);
+      
       // write back the original value
       // cppcheck-suppress *
       *(filenameWithoutPath - 1) = c;
@@ -196,8 +191,7 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
       // strip filename so we only have the directory name
       std::string dir =
           TRI_Dirname(basics::FileUtils::buildFilename(outPath, filenameInZip));
-      auto res =
-          TRI_CreateRecursiveDirectory(dir.c_str(), systemError, errorMessage);
+      auto res = TRI_CreateRecursiveDirectory(dir.c_str(), systemError, errorMessage);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -217,8 +211,7 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
       int result = unzReadCurrentFile(uf, buffer, (unsigned int)bufferSize);
 
       if (result < 0) {
-        errorMessage =
-            std::string("failed to read from zip file: ") + strerror(errno);
+        errorMessage = std::string("failed to read from zip file: ") + strerror(errno);
         fclose(fout);
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -244,8 +237,7 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
     // this error is returned if some of the internal zip file structs are not
     // properly set up. but this is not a real error here
     // we want to catch CRC errors here though
-    errorMessage =
-        std::string("cannot read from zip file: ") + translateError(ret);
+    errorMessage = std::string("cannot read from zip file: ") + translateError(ret);
     return TRI_ERROR_CANNOT_WRITE_FILE;
   }
 
@@ -257,9 +249,8 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
 ////////////////////////////////////////////////////////////////////////////////
 
 static ErrorCode UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
-                           char const* outPath, bool const skipPaths,
-                           bool const overwrite, char const* password,
-                           std::string& errorMessage) {
+                           char const* outPath, bool const skipPaths, bool const overwrite,
+                           char const* password, std::string& errorMessage) {
   unz_global_info64 gi;
   uLong i;
   auto res = TRI_ERROR_NO_ERROR;
@@ -299,8 +290,7 @@ static ErrorCode UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
 ////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode TRI_ZipFile(char const* filename, char const* dir,
-                      std::vector<std::string> const& files,
-                      char const* password) {
+                      std::vector<std::string> const& files, char const* password) {
   void* buffer;
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
@@ -360,11 +350,10 @@ ErrorCode TRI_ZipFile(char const* filename, char const* dir,
       ++saveName;
     }
 
-    if (zipOpenNewFileInZip3_64(
-            zf, saveName, &zi, NULL, 0, NULL, 0, NULL, /* comment*/
-            Z_DEFLATED, Z_DEFAULT_COMPRESSION, 0, -MAX_WBITS, DEF_MEM_LEVEL,
-            Z_DEFAULT_STRATEGY, password, (unsigned long)crc,
-            isLarge) != ZIP_OK) {
+    if (zipOpenNewFileInZip3_64(zf, saveName, &zi, NULL, 0, NULL, 0, NULL, /* comment*/
+                                Z_DEFLATED, Z_DEFAULT_COMPRESSION, 0, -MAX_WBITS,
+                                DEF_MEM_LEVEL, Z_DEFAULT_STRATEGY, password,
+                                (unsigned long)crc, isLarge) != ZIP_OK) {
       res = TRI_ERROR_INTERNAL;
       break;
     }
@@ -468,9 +457,8 @@ ErrorCode TRI_Adler32(char const* filename, uint32_t& checksum) {
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_UnzipFile(char const* filename, char const* outPath,
-                        bool skipPaths, bool overwrite, char const* password,
-                        std::string& errorMessage) {
+ErrorCode TRI_UnzipFile(char const* filename, char const* outPath, bool skipPaths,
+                        bool overwrite, char const* password, std::string& errorMessage) {
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
 #endif
@@ -494,7 +482,7 @@ ErrorCode TRI_UnzipFile(char const* filename, char const* outPath,
   }
 
   auto res = UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite,
-                       password, errorMessage);
+                      password, errorMessage);
 
   unzClose(uf);
 

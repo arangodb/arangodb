@@ -23,12 +23,13 @@
 
 #pragma once
 
-#include <map>
 #include <string>
 #include <vector>
 
 #include "Basics/Common.h"
+
 #include "Endpoint/Endpoint.h"
+#include <map>
 
 namespace arangodb {
 class EndpointList {
@@ -53,3 +54,4 @@ class EndpointList {
   std::map<std::string, Endpoint*> _endpoints;
 };
 }  // namespace arangodb
+

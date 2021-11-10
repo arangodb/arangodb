@@ -25,12 +25,12 @@
 #pragma once
 
 #include <stddef.h>
+#include <cstdint>
+#include <memory>
+
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
-
-#include <cstdint>
-#include <memory>
 
 #include "Endpoint/Endpoint.h"
 #include "Rest/GeneralRequest.h"
@@ -43,14 +43,17 @@ struct Options;
 }  // namespace velocypack
 
 class VstRequest final : public GeneralRequest {
+  
  public:
   VstRequest(ConnectionInfo const& connectionInfo,
-             velocypack::Buffer<uint8_t> buffer, size_t payloadOffset,
+             velocypack::Buffer<uint8_t> buffer,
+             size_t payloadOffset,
              uint64_t messageId);
 
   ~VstRequest() = default;
 
  public:
+  
   size_t contentLength() const override;
   arangodb::velocypack::StringRef rawPayload() const override;
   velocypack::Slice payload(bool strictValidation = true) override;

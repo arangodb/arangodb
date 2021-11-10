@@ -30,3 +30,4 @@ namespace maskings {
 enum class CollectionSelection { FULL, MASKED, EXCLUDE, STRUCTURE };
 }  // namespace maskings
 }  // namespace arangodb
+

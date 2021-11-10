@@ -30,19 +30,16 @@
 using namespace arangodb;
 using namespace arangodb::maskings;
 
-ParseResult<AttributeMasking> RandomStringMask::create(Path path,
-                                                       Maskings* maskings,
+ParseResult<AttributeMasking> RandomStringMask::create(Path path, Maskings* maskings,
                                                        VPackSlice const&) {
-  return ParseResult<AttributeMasking>(
-      AttributeMasking(path, new RandomStringMask(maskings)));
+  return ParseResult<AttributeMasking>(AttributeMasking(path, new RandomStringMask(maskings)));
 }
 
 VPackValue RandomStringMask::mask(bool value, std::string&) const {
   return VPackValue(value);
 }
 
-VPackValue RandomStringMask::mask(std::string const& data,
-                                  std::string& buffer) const {
+VPackValue RandomStringMask::mask(std::string const& data, std::string& buffer) const {
   uint64_t len = data.size();
   uint64_t hash;
 

@@ -49,3 +49,4 @@ class UniformCharacter {
   std::string const _characters;
 };
 }  // namespace arangodb
+

@@ -21,9 +21,9 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Translator.h"
-
 #include <unordered_map>
+
+#include "Translator.h"
 
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"

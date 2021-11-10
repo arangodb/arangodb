@@ -25,18 +25,18 @@
 
 #pragma once
 
+#include "Interpreter.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Interpreter.h"
-
 namespace arangodb {
 namespace greenspun {
 
-void RegisterFunction(Machine& ctx, std::string_view name,
-                      Machine::function_type&& f);
+void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f);
 void RegisterAllPrimitives(Machine& ctx);
 
 }  // namespace greenspun
 }  // namespace arangodb
+

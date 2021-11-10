@@ -25,13 +25,13 @@
 
 #pragma once
 
+#include <vector>
+#include <string>
+#include <variant>
+
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include <string>
-#include <variant>
-#include <vector>
 
 namespace arangodb {
 namespace greenspun {
@@ -55,8 +55,7 @@ struct EvalError {
     std::string message;
   };
 
-  using Frame =
-      std::variant<ParamFrame, CallFrame, WrapFrame, SpecialFormFrame>;
+  using Frame = std::variant<ParamFrame, CallFrame, WrapFrame, SpecialFormFrame>;
 
   explicit EvalError(std::string message) : message(std::move(message)) {}
   EvalError(EvalError const&) = default;
@@ -80,8 +79,7 @@ struct EvalError {
     for (auto&& p : VPackArrayIterator(parameter)) {
       parameterVec.push_back(p.toJson());
     }
-    frames.emplace_back(
-        CallFrame{std::move(function), std::move(parameterVec)});
+    frames.emplace_back(CallFrame{std::move(function), std::move(parameterVec)});
     return *this;
   }
 
@@ -107,8 +105,7 @@ struct EvalResultT {
   operator bool() const { return ok(); }
 
   EvalResultT() = default;
-  EvalResultT(EvalError error)
-      : _value(std::in_place_index<1>, std::move(error)) {}
+  EvalResultT(EvalError error) : _value(std::in_place_index<1>, std::move(error)) {}
   EvalResultT(EvalResultT const&) = default;
   EvalResultT(EvalResultT&&) noexcept = default;
   EvalResultT& operator=(EvalResultT const&) = default;
@@ -116,7 +113,8 @@ struct EvalResultT {
 
   EvalResultT(T s) : _value(std::in_place_index<0>, std::move(s)) {}
 
-  template<typename F>
+
+  template <typename F>
   EvalResultT mapError(F&& f) {
     if (hasError()) {
       std::forward<F>(f)(error());
@@ -132,7 +130,7 @@ struct EvalResultT {
   auto map(F&& f) && -> EvalResultT<std::invoke_result_t<F, T&&>> {
     if (hasValue()) {
       return {f(value())};
-    } else if (hasError()) {
+    } else if(hasError()) {
       return error();
     } else {
       return EvalError("valueless by exception");
@@ -153,3 +151,4 @@ using EvalResult = EvalResultT<std::monostate>;
 
 }  // namespace greenspun
 }  // namespace arangodb
+

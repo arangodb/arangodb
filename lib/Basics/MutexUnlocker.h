@@ -34,16 +34,15 @@
 
 #include <thread>
 
-#define MUTEX_UNLOCKER(obj, lock)                                            \
-  arangodb::basics::MutexUnlocker<typename std::decay<decltype(lock)>::type> \
-      obj(&(lock), __FILE__, __LINE__)
+#define MUTEX_UNLOCKER(obj, lock) \
+  arangodb::basics::MutexUnlocker<typename std::decay<decltype(lock)>::type> obj(&(lock), __FILE__, __LINE__)
 
 namespace arangodb::basics {
 
 /// @brief mutex locker
 /// A MutexUnlocker unlocks a mutex during its lifetime und locks the mutex
 /// when it is destroyed.
-template<class LockType>
+template <class LockType>
 class MutexUnlocker {
   MutexUnlocker(MutexUnlocker const&) = delete;
   MutexUnlocker& operator=(MutexUnlocker const&) = delete;

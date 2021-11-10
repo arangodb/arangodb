@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+
 #include "Maskings/ParseResult.h"
 
 namespace arangodb {
@@ -47,3 +48,4 @@ class Path {
 };
 }  // namespace maskings
 }  // namespace arangodb
+

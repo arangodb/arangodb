@@ -23,17 +23,17 @@
 
 #pragma once
 
+#include "Basics/Common.h"
+#include "Basics/system-compiler.h"
+
 #include <cstdint>
 #include <limits>
 #include <type_traits>
 
-#include "Basics/Common.h"
-#include "Basics/system-compiler.h"
-
 namespace arangodb {
 namespace NumberUtils {
 
-template<typename T>
+template <typename T>
 constexpr bool isPowerOfTwo(T value) {
   static_assert(std::is_integral_v<T>);
   return (value & (value - 1)) == 0;
@@ -48,7 +48,7 @@ constexpr bool isPowerOfTwo(T value) {
 // there is no validation of the input string, and overflow or underflow
 // of the result value will not be detected.
 // this function will not modify errno.
-template<typename T>
+template <typename T>
 inline T atoi_negative_unchecked(char const* p, char const* e) noexcept {
   T result = 0;
   while (p != e) {
@@ -66,7 +66,7 @@ inline T atoi_negative_unchecked(char const* p, char const* e) noexcept {
 // there is no validation of the input string, and overflow or underflow
 // of the result value will not be detected.
 // this function will not modify errno.
-template<typename T>
+template <typename T>
 inline T atoi_positive_unchecked(char const* p, char const* e) noexcept {
   T result = 0;
   while (p != e) {
@@ -85,7 +85,7 @@ inline T atoi_positive_unchecked(char const* p, char const* e) noexcept {
 // there is no validation of the input string, and overflow or underflow
 // of the result value will not be detected.
 // this function will not modify errno.
-template<typename T>
+template <typename T>
 inline T atoi_unchecked(char const* p, char const* e) noexcept {
   if (ADB_UNLIKELY(p == e)) {
     return T();
@@ -113,7 +113,7 @@ inline T atoi_unchecked(char const* p, char const* e) noexcept {
 // be set to false. if the parsed value is less than what type T can
 // store without truncation, "valid" will also be set to false.
 // this function will not modify errno.
-template<typename T>
+template <typename T>
 inline T atoi_negative(char const* p, char const* e, bool& valid) noexcept {
   if (ADB_UNLIKELY(p == e)) {
     valid = false;
@@ -155,7 +155,7 @@ inline T atoi_negative(char const* p, char const* e, bool& valid) noexcept {
 // be set to false. if the parsed value is greater than what type T can
 // store without truncation, "valid" will also be set to false.
 // this function will not modify errno.
-template<typename T>
+template <typename T>
 inline T atoi_positive(char const* p, char const* e, bool& valid) noexcept {
   if (ADB_UNLIKELY(p == e)) {
     valid = false;
@@ -200,9 +200,10 @@ inline T atoi_positive(char const* p, char const* e, bool& valid) noexcept {
 // type T can store without truncation, "valid" will also be set to
 // false.
 // this function will not modify errno.
-template<typename T>
-inline typename std::enable_if<std::is_signed<T>::value, T>::type atoi(
-    char const* p, char const* e, bool& valid) noexcept {
+template <typename T>
+inline typename std::enable_if<std::is_signed<T>::value, T>::type atoi(char const* p,
+                                                                       char const* e,
+                                                                       bool& valid) noexcept {
   if (ADB_UNLIKELY(p == e)) {
     valid = false;
     return T();
@@ -218,7 +219,7 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type atoi(
   return atoi_positive<T>(p, e, valid);
 }
 
-template<typename T>
+template <typename T>
 inline typename std::enable_if<std::is_unsigned<T>::value, T>::type atoi(
     char const* p, char const* e, bool& valid) noexcept {
   if (ADB_UNLIKELY(p == e)) {
@@ -247,14 +248,14 @@ inline typename std::enable_if<std::is_unsigned<T>::value, T>::type atoi(
 // if the parsed value is less or greater than what type T can store
 // without truncation, return result will also be set to 0.
 // this function will not modify errno.
-template<typename T>
+template <typename T>
 inline T atoi_zero(char const* p, char const* e) noexcept {
   bool valid;
   T result = atoi<T>(p, e, valid);
   return valid ? result : 0;
 }
 
-template<typename T>
+template <typename T>
 constexpr std::enable_if_t<std::is_integral<T>::value, bool> isPowerOf2(T n) {
   return n > 0 && (n & (n - 1)) == 0;
 }
@@ -265,3 +266,4 @@ uint32_t log2(uint32_t value) noexcept;
 
 }  // namespace NumberUtils
 }  // namespace arangodb
+

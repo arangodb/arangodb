@@ -48,8 +48,7 @@ void ReadWriteLock::lockWrite() {
     // try to acquire write lock as long as no readers or writers are active,
     while ((state & ~QUEUED_WRITER_MASK) == 0) {
       // try to acquire lock and perform queued writer decrement in one step
-      if (_state.compare_exchange_weak(state,
-                                       (state - QUEUED_WRITER_INC) | WRITE_LOCK,
+      if (_state.compare_exchange_weak(state, (state - QUEUED_WRITER_INC) | WRITE_LOCK,
                                        std::memory_order_acquire)) {
         return;
       }
@@ -79,9 +78,8 @@ bool ReadWriteLock::lockWrite(std::chrono::microseconds timeout) {
       // try to acquire write lock as long as no readers or writers are active,
       while ((state & ~QUEUED_WRITER_MASK) == 0) {
         // try to acquire lock and perform queued writer decrement in one step
-        if (_state.compare_exchange_weak(
-                state, (state - QUEUED_WRITER_INC) | WRITE_LOCK,
-                std::memory_order_acquire)) {
+        if (_state.compare_exchange_weak(state, (state - QUEUED_WRITER_INC) | WRITE_LOCK,
+                                         std::memory_order_acquire)) {
           return true;
         }
       }
@@ -93,7 +91,9 @@ bool ReadWriteLock::lockWrite(std::chrono::microseconds timeout) {
 
   // Undo the counting of us as queued writer:
   _state.fetch_sub(QUEUED_WRITER_INC, std::memory_order_relaxed);
-  { std::lock_guard<std::mutex> guard(_reader_mutex); }
+  {
+    std::lock_guard<std::mutex> guard(_reader_mutex);
+  }
   _readers_bell.notify_all();
 
   return false;
@@ -106,8 +106,7 @@ bool ReadWriteLock::tryLockWrite() noexcept {
   // try to acquire write lock as long as no readers or writers are active,
   // we might "overtake" other queued writers though.
   while ((state & ~QUEUED_WRITER_MASK) == 0) {
-    if (_state.compare_exchange_weak(state, state | WRITE_LOCK,
-                                     std::memory_order_acquire)) {
+    if (_state.compare_exchange_weak(state, state | WRITE_LOCK, std::memory_order_acquire)) {
       return true;  // we successfully acquired the write lock!
     }
   }
@@ -136,8 +135,7 @@ bool ReadWriteLock::tryLockRead() noexcept {
   auto state = _state.load(std::memory_order_relaxed);
   // try to acquire read lock as long as no writers are active or queued
   while ((state & ~READER_MASK) == 0) {
-    if (_state.compare_exchange_weak(state, state + READER_INC,
-                                     std::memory_order_acquire)) {
+    if (_state.compare_exchange_weak(state, state + READER_INC, std::memory_order_acquire)) {
       return true;
     }
   }
@@ -164,11 +162,15 @@ void ReadWriteLock::unlockWrite() noexcept {
   auto state = _state.fetch_sub(WRITE_LOCK, std::memory_order_release);
   if ((state & QUEUED_WRITER_MASK) != 0) {
     // there are other writers waiting -> wake up one of them
-    { std::lock_guard<std::mutex> guard(_writer_mutex); }
+    {
+      std::lock_guard<std::mutex> guard(_writer_mutex);
+    }
     _writers_bell.notify_one();
   } else {
     // no more writers -> wake up any waiting readings
-    { std::lock_guard<std::mutex> guard(_reader_mutex); }
+    {
+      std::lock_guard<std::mutex> guard(_reader_mutex);
+    }
     _readers_bell.notify_all();
   }
 }
@@ -178,12 +180,13 @@ void ReadWriteLock::unlockWrite() noexcept {
 /// be running into undefined behaviour, so we still want noexcept!
 void ReadWriteLock::unlockRead() noexcept {
   TRI_ASSERT((_state.load() & READER_MASK) != 0);
-  auto state =
-      _state.fetch_sub(READER_INC, std::memory_order_release) - READER_INC;
+  auto state = _state.fetch_sub(READER_INC, std::memory_order_release) - READER_INC;
   if (state != 0 && (state & ~QUEUED_WRITER_MASK) == 0) {
     // we were the last reader and there are other writers waiting
     // -> wake up one of them
-    { std::lock_guard<std::mutex> guard(_writer_mutex); }
+    {
+      std::lock_guard<std::mutex> guard(_writer_mutex);
+    }
     _writers_bell.notify_one();
   }
 }

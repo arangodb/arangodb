@@ -39,8 +39,7 @@ class ApplicationFeaturePhase : public ApplicationFeature {
   friend class ApplicationServer;
 
  public:
-  explicit ApplicationFeaturePhase(ApplicationServer& server,
-                                   std::string const& name);
+  explicit ApplicationFeaturePhase(ApplicationServer& server, std::string const& name);
 
   // validate options of this phase
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -63,3 +62,4 @@ class ApplicationFeaturePhase : public ApplicationFeature {
 
 }  // namespace application_features
 }  // namespace arangodb
+

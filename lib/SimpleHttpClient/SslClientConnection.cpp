@@ -23,7 +23,6 @@
 
 #include <errno.h>
 #include <string.h>
-
 #include <string>
 
 #include "Basics/Common.h"
@@ -45,6 +44,8 @@
 #include <openssl/ssl3.h>
 #include <openssl/x509.h>
 
+#include "SslClientConnection.h"
+
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/debugging.h"
@@ -55,7 +56,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Ssl/ssl-helper.h"
-#include "SslClientConnection.h"
 
 #undef TRACE_SSL_CONNECTIONS
 
@@ -167,9 +167,8 @@ static void sslTlsTrace(int direction, int sslVersion, int contentType,
       tlsRtName = "";
 
     LOG_TOPIC("5e087", TRACE, arangodb::Logger::FIXME)
-        << "SSL connection trace: " << (direction ? "out" : "in") << ", "
-        << tlsRtName << ", "
-        << sslMessageType(sslVersion, *static_cast<char const*>(buf));
+        << "SSL connection trace: " << (direction ? "out" : "in") << ", " << tlsRtName
+        << ", " << sslMessageType(sslVersion, *static_cast<char const*>(buf));
   }
 }
 #endif
@@ -180,24 +179,22 @@ static void sslTlsTrace(int direction, int sslVersion, int contentType,
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-SslClientConnection::SslClientConnection(
-    application_features::ApplicationServer& server, Endpoint* endpoint,
-    double requestTimeout, double connectTimeout, size_t connectRetries,
-    uint64_t sslProtocol)
-    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
-                              connectRetries),
+SslClientConnection::SslClientConnection(application_features::ApplicationServer& server,
+                                         Endpoint* endpoint, double requestTimeout,
+                                         double connectTimeout,
+                                         size_t connectRetries, uint64_t sslProtocol)
+    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout, connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol) {
   init(sslProtocol);
 }
 
-SslClientConnection::SslClientConnection(
-    application_features::ApplicationServer& server,
-    std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
-    double connectTimeout, size_t connectRetries, uint64_t sslProtocol)
-    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
-                              connectRetries),
+SslClientConnection::SslClientConnection(application_features::ApplicationServer& server,
+                                         std::unique_ptr<Endpoint>& endpoint,
+                                         double requestTimeout, double connectTimeout,
+                                         size_t connectRetries, uint64_t sslProtocol)
+    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout, connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol) {
@@ -277,11 +274,7 @@ void SslClientConnection::init(uint64_t sslProtocol) {
     case SSL_UNKNOWN:
     default:
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-      // The actual protocol version used will be negotiated to the highest
-      // version mutually supported by the client and the server. The supported
-      // protocols are SSLv3, TLSv1, TLSv1.1 and TLSv1.2. Applications should
-      // use these methods, and avoid the version-specific methods described
-      // below.
+      // The actual protocol version used will be negotiated to the highest version mutually supported by the client and the server. The supported protocols are SSLv3, TLSv1, TLSv1.1 and TLSv1.2. Applications should use these methods, and avoid the version-specific methods described below.
       meth = TLS_method();
 #else
       // default to TLS 1.2
@@ -302,8 +295,7 @@ void SslClientConnection::init(uint64_t sslProtocol) {
     // "ALL:!EXPORT:!EXPORT40:!EXPORT56:!aNULL:!LOW:!RC4:@STRENGTH");
 
     bool sslCache = true;
-    SSL_CTX_set_session_cache_mode(
-        _ctx, sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
+    SSL_CTX_set_session_cache_mode(_ctx, sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
   }
 }
 
@@ -373,8 +365,7 @@ bool SslClientConnection::connectSocket() {
     long certError;
 
     errorDetail = SSL_get_error(_ssl, ret);
-    if ((errorDetail == SSL_ERROR_WANT_READ) ||
-        (errorDetail == SSL_ERROR_WANT_WRITE)) {
+    if ((errorDetail == SSL_ERROR_WANT_READ) || (errorDetail == SSL_ERROR_WANT_WRITE)) {
       return true;
     }
 
@@ -454,8 +445,7 @@ void SslClientConnection::disconnectSocket() {
 /// @brief write data to the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SslClientConnection::writeClientConnection(void const* buffer,
-                                                size_t length,
+bool SslClientConnection::writeClientConnection(void const* buffer, size_t length,
                                                 size_t* bytesWritten) {
   TRI_ASSERT(bytesWritten != nullptr);
 
@@ -507,8 +497,7 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
 
     default:
       /* a true error */
-      _errorDetails =
-          std::string("SSL: while writing: error ") + std::to_string(err);
+      _errorDetails = std::string("SSL: while writing: error ") + std::to_string(err);
   }
 
   return false;
@@ -518,8 +507,7 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
-                                               bool& connectionClosed) {
+bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer, bool& connectionClosed) {
 #ifdef _WIN32
   char windowsErrorBuf[256];
 #endif

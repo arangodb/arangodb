@@ -21,21 +21,19 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Dicts.h"
+#include <list>
 
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include <list>
+#include "Dicts.h"
 
 #include "Greenspun/Extractor.h"
 #include "Greenspun/Interpreter.h"
 
 using namespace arangodb::greenspun;
 
-template<bool ignoreMissing>
-EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList,
-                            VPackBuilder& result) {
+template <bool ignoreMissing>
+EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   if (paramsList.length() < 1) {
     return EvalError("expected at least on parameter");
   }
@@ -43,8 +41,7 @@ EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList,
 
   VPackSlice obj = *iter;
   if (!obj.isObject()) {
-    return EvalError("expected first parameter to be a dict, found: " +
-                     obj.toJson());
+    return EvalError("expected first parameter to be a dict, found: " + obj.toJson());
   }
   ++iter;
 
@@ -84,8 +81,7 @@ void createPaths(std::vector<std::vector<std::string>>& finalPaths,
   }
 }
 
-void pathToBuilder(std::vector<std::vector<std::string>>& finalPaths,
-                   VPackBuilder& result) {
+void pathToBuilder(std::vector<std::vector<std::string>>& finalPaths, VPackBuilder& result) {
   result.openArray();
   for (auto const& path : finalPaths) {
     if (path.size() > 1) {
@@ -101,8 +97,7 @@ void pathToBuilder(std::vector<std::vector<std::string>>& finalPaths,
   result.close();
 }
 
-EvalResult Prim_Dict(Machine& ctx, VPackSlice const params,
-                     VPackBuilder& result) {
+EvalResult Prim_Dict(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   VPackObjectBuilder ob(&result);
   for (auto&& pair : VPackArrayIterator(params)) {
     if (pair.isArray() && pair.length() == 2 && pair.at(0).isString()) {
@@ -114,8 +109,7 @@ EvalResult Prim_Dict(Machine& ctx, VPackSlice const params,
   return {};
 }
 
-EvalResult Prim_DictKeys(Machine& ctx, VPackSlice const params,
-                         VPackBuilder& result) {
+EvalResult Prim_DictKeys(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected exactly one parameter");
   }
@@ -134,8 +128,7 @@ EvalResult Prim_DictKeys(Machine& ctx, VPackSlice const params,
   return {};
 }
 
-EvalResult Prim_DictDirectory(Machine& ctx, VPackSlice const params,
-                              VPackBuilder& result) {
+EvalResult Prim_DictDirectory(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected exactly one parameter");
   }
@@ -155,13 +148,12 @@ EvalResult Prim_DictDirectory(Machine& ctx, VPackSlice const params,
 
 namespace {
 void MergeObjectSlice(VPackBuilder& result, VPackSlice const& sliceA,
-                      VPackSlice const& sliceB) {
+                            VPackSlice const& sliceB) {
   VPackCollection::merge(result, sliceA, sliceB, true, false);
 }
-}  // namespace
+}
 
-EvalResult Prim_MergeDict(Machine& ctx, VPackSlice const params,
-                          VPackBuilder& result) {
+EvalResult Prim_MergeDict(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() && params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
@@ -208,15 +200,12 @@ EvalResultT<VPackSlice> ReadAttribute(VPackSlice slice, VPackSlice key) {
 }
 }  // namespace
 
-EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params,
-                          VPackBuilder& result) {
+EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() || params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
 
-  auto const& [slice, key] =
-      arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(
-          params);
+  auto const& [slice, key] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(params);
   auto res = ReadAttribute(slice, key);
   if (res.fail()) {
     return res.error();
@@ -226,15 +215,13 @@ EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params,
   return {};
 }
 
-EvalResult Prim_AttribRefOr(Machine& ctx, VPackSlice const params,
-                            VPackBuilder& result) {
+EvalResult Prim_AttribRefOr(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() || params.length() != 3) {
     return EvalError("expected exactly three parameters");
   }
 
   auto const& [slice, key, defaultValue] =
-      arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice,
-                                                      VPackSlice>(params);
+      arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice, VPackSlice>(params);
   if (!slice.isObject()) {
     return EvalError("expect second parameter to be an object");
   }
@@ -253,15 +240,12 @@ EvalResult Prim_AttribRefOr(Machine& ctx, VPackSlice const params,
   return {};
 }
 
-EvalResult Prim_AttribRefOrFail(Machine& ctx, VPackSlice const params,
-                                VPackBuilder& result) {
+EvalResult Prim_AttribRefOrFail(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() || params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
 
-  auto const& [slice, key] =
-      arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(
-          params);
+  auto const& [slice, key] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(params);
   if (!slice.isObject()) {
     return EvalError("expected first parameter to be an object");
   }
@@ -280,8 +264,7 @@ EvalResult Prim_AttribRefOrFail(Machine& ctx, VPackSlice const params,
   return {};
 }
 
-EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params,
-                          VPackBuilder& result) {
+EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() && params.length() != 3) {
     return EvalError("expected exactly three parameters");
   }
@@ -335,8 +318,7 @@ EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params,
   return {};
 }
 
-EvalResult Prim_DictHuh(Machine& ctx, VPackSlice const paramsList,
-                        VPackBuilder& result) {
+EvalResult Prim_DictHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   auto res = extract<VPackSlice>(paramsList);
   if (!res) {
     return std::move(res).asResult();

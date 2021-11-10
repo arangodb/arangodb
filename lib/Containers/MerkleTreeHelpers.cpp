@@ -21,64 +21,60 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MerkleTreeHelpers.h"
-
 #include <cstddef>
 #include <cstring>
 #include <string>
 
+#include "MerkleTreeHelpers.h"
 #include "Basics/debugging.h"
 
 namespace {
 /// @brief an empty shard that is reused when serializing empty shards
 struct EmptyShard {
   EmptyShard()
-      : buffer(arangodb::containers::MerkleTreeBase::Data::buildShard(
-            arangodb::containers::MerkleTreeBase::ShardSize)) {}
+    : buffer(arangodb::containers::MerkleTreeBase::Data::buildShard(arangodb::containers::MerkleTreeBase::ShardSize)) {}
 
   char* data() const { return reinterpret_cast<char*>(buffer.get()); }
 
   arangodb::containers::MerkleTreeBase::Data::ShardType buffer;
 };
 
-}  // namespace
+} // namespace
 
 /// @brief an empty shard that is reused when serializing empty shards
 EmptyShard const emptyShard;
 
 namespace arangodb::containers::helpers {
 
-SnappyStringAppendSink::SnappyStringAppendSink(std::string& output)
+SnappyStringAppendSink::SnappyStringAppendSink(std::string& output) 
     : output(output) {}
 
 void SnappyStringAppendSink::Append(const char* bytes, size_t n) {
   output.append(bytes, n);
 }
 
-MerkleTreeSnappySource::MerkleTreeSnappySource(
-    std::uint64_t numberOfShards, std::uint64_t allocationSize,
-    arangodb::containers::MerkleTreeBase::Data const& data)
+MerkleTreeSnappySource::MerkleTreeSnappySource(std::uint64_t numberOfShards, 
+                                               std::uint64_t allocationSize,
+                                               arangodb::containers::MerkleTreeBase::Data const& data)
     : numberOfShards(numberOfShards),
-      data(data),
+      data(data), 
       bytesRead(0),
       bytesLeftToRead(allocationSize) {}
-
-size_t MerkleTreeSnappySource::Available() const { return bytesLeftToRead; }
-
+  
+size_t MerkleTreeSnappySource::Available() const {
+  return bytesLeftToRead;
+}
+  
 char const* MerkleTreeSnappySource::Peek(size_t* len) {
   if (bytesRead < arangodb::containers::MerkleTreeBase::MetaSize) {
     TRI_ASSERT(bytesRead == 0);
     *len = arangodb::containers::MerkleTreeBase::MetaSize;
     return reinterpret_cast<char const*>(&data.meta);
   }
-
+    
   TRI_ASSERT(bytesRead >= arangodb::containers::MerkleTreeBase::MetaSize);
-  std::uint64_t shard =
-      (bytesRead - arangodb::containers::MerkleTreeBase::MetaSize) /
-      arangodb::containers::MerkleTreeBase::ShardSize;
-  std::uint64_t offsetInShard =
-      (bytesRead - arangodb::containers::MerkleTreeBase::MetaSize) %
-      arangodb::containers::MerkleTreeBase::ShardSize;
+  std::uint64_t shard = (bytesRead - arangodb::containers::MerkleTreeBase::MetaSize) / arangodb::containers::MerkleTreeBase::ShardSize;
+  std::uint64_t offsetInShard = (bytesRead - arangodb::containers::MerkleTreeBase::MetaSize) % arangodb::containers::MerkleTreeBase::ShardSize;
 
   if (shard < numberOfShards) {
     *len = arangodb::containers::MerkleTreeBase::ShardSize - offsetInShard;
@@ -87,8 +83,7 @@ char const* MerkleTreeSnappySource::Peek(size_t* len) {
       // which consists of one shard that is completely empty
       return ::emptyShard.data() + offsetInShard;
     }
-    return reinterpret_cast<char const*>(data.shards[shard].get()) +
-           offsetInShard;
+    return reinterpret_cast<char const*>(data.shards[shard].get()) + offsetInShard;
   }
   // no more data
   *len = 0;
@@ -101,4 +96,4 @@ void MerkleTreeSnappySource::Skip(size_t n) {
   bytesLeftToRead -= n;
 }
 
-}  // namespace arangodb::containers::helpers
+}  // namespace

@@ -61,7 +61,6 @@ extern "C" {
 
 #include <stdio.h>
 #include <stdlib.h>
-
 #include "zlib.h"
 
 #if defined(USE_FILE32API)
@@ -213,12 +212,12 @@ typedef struct zlib_filefunc64_32_def_s {
   ((*((filefunc).zfile_func64.zerror_file))((filefunc).zfile_func64.opaque, \
                                             filestream))
 
-voidpf call_zopen64 OF((const zlib_filefunc64_32_def* pfilefunc,
-                        const void* filename, int mode));
+voidpf call_zopen64
+OF((const zlib_filefunc64_32_def* pfilefunc, const void* filename, int mode));
 long call_zseek64 OF((const zlib_filefunc64_32_def* pfilefunc,
                       voidpf filestream, ZPOS64_T offset, int origin));
-ZPOS64_T call_ztell64 OF((const zlib_filefunc64_32_def* pfilefunc,
-                          voidpf filestream));
+ZPOS64_T call_ztell64
+OF((const zlib_filefunc64_32_def* pfilefunc, voidpf filestream));
 
 void fill_zlib_filefunc64_32_def_from_filefunc32(
     zlib_filefunc64_32_def* p_filefunc64_32,

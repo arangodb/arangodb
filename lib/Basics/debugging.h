@@ -25,7 +25,6 @@
 #pragma once
 
 #include <stdlib.h>
-
 #include <ostream>
 #include <sstream>
 #include <string>
@@ -115,23 +114,23 @@ namespace container_traits {
 
 using tc = char[2];
 
-template<typename T>
+template <typename T>
 struct is_container {
   static tc& test(...);
 
-  template<typename U>
+  template <typename U>
   static char test(U&&, decltype(std::begin(std::declval<U>()))* = 0);
   static constexpr bool value = sizeof(test(std::declval<T>())) == 1;
 };
 
-template<class T>
+template <class T>
 inline constexpr bool is_container_v = is_container<T>::value;
 
-template<typename T>
+template <typename T>
 struct is_associative {
   static tc& test(...);
 
-  template<typename U>
+  template <typename U>
   static char test(U&&, typename U::key_type* = 0);
 
   static constexpr bool value = sizeof(test(std::declval<T>())) == 1;
@@ -141,47 +140,42 @@ struct is_associative {
 
 namespace arangodb {
 
-template<class T>
+template <class T>
 struct remove_cvref {
   typedef std::remove_cv_t<std::remove_reference_t<T>> type;
 };
-template<class T>
+template <class T>
 using remove_cvref_t = typename remove_cvref<T>::type;
 
-template<typename T>
+template <typename T>
 struct is_container
-    : std::conditional<
-          (container_traits::is_container<T>::value ||
-           std::is_array<T>::value) &&
-              !std::is_same_v<char*, typename std::decay<T>::type> &&
-              !std::is_same_v<char const*, typename std::decay<T>::type> &&
-              !std::is_same_v<unsigned char*, typename std::decay<T>::type> &&
-              !std::is_same_v<unsigned char const*,
-                              typename std::decay<T>::type> &&
-              !std::is_same_v<T, std::string> &&
-              !std::is_same_v<T, std::string_view> &&
-              !std::is_same_v<T, const std::string>,
-          std::true_type, std::false_type>::type {};
+    : std::conditional<(container_traits::is_container<T>::value || std::is_array<T>::value) &&
+                           !std::is_same_v<char*, typename std::decay<T>::type> &&
+                           !std::is_same_v<char const*, typename std::decay<T>::type> &&
+                           !std::is_same_v<unsigned char*, typename std::decay<T>::type> &&
+                           !std::is_same_v<unsigned char const*, typename std::decay<T>::type> &&
+                           !std::is_same_v<T, std::string> && !std::is_same_v<T, std::string_view> &&
+                           !std::is_same_v<T, const std::string>,
+                       std::true_type, std::false_type>::type {};
 
-template<typename T>
+template <typename T>
 struct is_associative
-    : std::conditional<container_traits::is_container<T>::value &&
-                           container_traits::is_associative<T>::value,
+    : std::conditional<container_traits::is_container<T>::value && container_traits::is_associative<T>::value,
                        std::true_type, std::false_type>::type {};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief forward declaration for pair output below
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename T>
-std::enable_if_t<is_container<T>::value, std::ostream&> operator<<(
-    std::ostream& o, T const& t);
+template <typename T>
+std::enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o,
+                                                                   T const& t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump pair contents to an ostream
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename T1, typename T2>
+template <typename T1, typename T2>
 std::ostream& operator<<(std::ostream& stream, std::pair<T1, T2> const& obj) {
   stream << '(' << obj.first << ", " << obj.second << ')';
   return stream;
@@ -191,18 +185,17 @@ std::ostream& operator<<(std::ostream& stream, std::pair<T1, T2> const& obj) {
 /// @brief dump vector contents to an ostream
 ////////////////////////////////////////////////////////////////////////////////
 
-template<bool b>
+template <bool b>
 struct conpar {
   static char const open;
   static char const close;
 };
 
-template<bool B, class T = void>
+template <bool B, class T = void>
 using enable_if_t = typename std::enable_if<B, T>::type;
 
-template<typename T>
-enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o,
-                                                              T const& t) {
+template <typename T>
+enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T const& t) {
   o << conpar<is_associative<T>::value>::open;
   bool first = true;
   for (auto const& i : t) {
@@ -220,7 +213,7 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o,
 
 namespace debug {
 struct NoOpStream {
-  template<typename T>
+  template <typename T>
   auto operator<<(T const&) noexcept -> NoOpStream& {
     return *this;
   }
@@ -230,9 +223,8 @@ struct AssertionLogger {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void operator&(std::ostringstream const& stream) const {
     std::string message = stream.str();
-    arangodb::CrashHandler::assertionFailure(
-        file, line, function, expr,
-        message.empty() ? nullptr : message.c_str());
+    arangodb::CrashHandler::assertionFailure(file, line, function, expr,
+                                             message.empty() ? nullptr : message.c_str());
   }
   // can be removed in C++20 because of LWG 1203
   void operator&(std::ostream const& stream) const {
@@ -269,11 +261,9 @@ struct AssertionLogger {
 
 #else
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                   \
-  (true)                                                                       \
-      ? ((false) ? (void)(expr) : (void)nullptr)                               \
-      : ::arangodb::debug::AssertionLogger{} & ::arangodb::debug::NoOpStream { \
-  }
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/        \
+  (true) ? ((false) ? (void)(expr) : (void)nullptr) \
+         : ::arangodb::debug::AssertionLogger{} & ::arangodb::debug::NoOpStream {}
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 

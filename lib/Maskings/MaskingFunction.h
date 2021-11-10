@@ -23,14 +23,15 @@
 
 #pragma once
 
+#include "Basics/Common.h"
+
+#include "Basics/Utf8Helper.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "Basics/Common.h"
-#include "Basics/Utf8Helper.h"
 
 namespace arangodb {
 namespace maskings {
@@ -57,3 +58,4 @@ class MaskingFunction {
 };
 }  // namespace maskings
 }  // namespace arangodb
+

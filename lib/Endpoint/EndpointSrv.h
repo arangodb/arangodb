@@ -50,3 +50,4 @@ class EndpointSrv final : public Endpoint {
   std::unique_ptr<Endpoint> _endpoint;
 };
 }  // namespace arangodb
+

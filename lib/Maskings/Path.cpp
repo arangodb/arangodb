@@ -21,9 +21,10 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Collection.h"
+
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
-#include "Collection.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -66,9 +67,9 @@ ParseResult<Path> Path::parse(std::string const& def) {
                                "path '" + def + "' contains illegal UTF-8");
     } else if (ch == 46) {
       if (buffer.size() == 0) {
-        return ParseResult<Path>(
-            ParseResult<Path>::ILLEGAL_PARAMETER,
-            "path '" + def + "' contains an empty component");
+        return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
+                                 "path '" + def +
+                                     "' contains an empty component");
       }
 
       components.push_back(buffer);
@@ -93,9 +94,9 @@ ParseResult<Path> Path::parse(std::string const& def) {
       }
 
       if (ch != quote) {
-        return ParseResult<Path>(
-            ParseResult<Path>::ILLEGAL_PARAMETER,
-            "path '" + def + "' contains an unbalanced quote");
+        return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
+                                 "path '" + def +
+                                     "' contains an unbalanced quote");
       }
 
       U8_NEXT(p, off, len, ch);

@@ -47,7 +47,9 @@ char const* JavaScriptSecurityContext::typeName() const {
   return "unknown";
 }
 
-void JavaScriptSecurityContext::reset() { _canUseDatabase = false; }
+void JavaScriptSecurityContext::reset() {
+  _canUseDatabase = false;
+}
 
 bool JavaScriptSecurityContext::canDefineHttpAction() const {
   return _type == Type::Internal;
@@ -62,55 +64,46 @@ bool JavaScriptSecurityContext::canWriteFs() const {
 }
 
 bool JavaScriptSecurityContext::canControlProcesses() const {
-  return _type == Type::Internal || _type == Type::AdminScript ||
-         _type == Type::RestAdminScriptAction;
+  return _type == Type::Internal || _type == Type::AdminScript || _type == Type::RestAdminScriptAction;
 }
 
-/*static*/ JavaScriptSecurityContext
-JavaScriptSecurityContext::createRestrictedContext() {
+/*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestrictedContext() {
   JavaScriptSecurityContext context(Type::Restricted);
   context._canUseDatabase = false;
   return context;
 }
 
-/*static*/ JavaScriptSecurityContext
-JavaScriptSecurityContext::createInternalContext() {
+/*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createInternalContext() {
   JavaScriptSecurityContext context(Type::Internal);
   context._canUseDatabase = true;
   return context;
 }
 
-/*static*/ JavaScriptSecurityContext
-JavaScriptSecurityContext::createAdminScriptContext() {
+/*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createAdminScriptContext() {
   JavaScriptSecurityContext context(Type::AdminScript);
   context._canUseDatabase = true;
   return context;
 }
 
-/*static*/ JavaScriptSecurityContext
-JavaScriptSecurityContext::createQueryContext() {
+/*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createQueryContext() {
   JavaScriptSecurityContext context(Type::Query);
   context._canUseDatabase = false;
   return context;
 }
 
-/*static*/ JavaScriptSecurityContext
-JavaScriptSecurityContext::createTaskContext(bool allowUseDatabase) {
+/*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createTaskContext(bool allowUseDatabase) {
   JavaScriptSecurityContext context(Type::Task);
   context._canUseDatabase = allowUseDatabase;
   return context;
 }
 
-/*static*/ JavaScriptSecurityContext
-JavaScriptSecurityContext::createRestActionContext(bool allowUseDatabase) {
+/*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestActionContext(bool allowUseDatabase) {
   JavaScriptSecurityContext context(Type::RestAction);
   context._canUseDatabase = allowUseDatabase;
   return context;
 }
 
-/*static*/ JavaScriptSecurityContext
-JavaScriptSecurityContext::createRestAdminScriptActionContext(
-    bool allowUseDatabase) {
+/*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestAdminScriptActionContext(bool allowUseDatabase) {
   JavaScriptSecurityContext context(Type::RestAdminScriptAction);
   context._canUseDatabase = allowUseDatabase;
   return context;

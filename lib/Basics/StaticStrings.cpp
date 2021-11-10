@@ -220,8 +220,7 @@ std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
-std::string const StaticStrings::XArangoQueueTimeSeconds(
-    "x-arango-queue-time-seconds");
+std::string const StaticStrings::XArangoQueueTimeSeconds("x-arango-queue-time-seconds");
 
 // mime types
 std::string const StaticStrings::MimeTypeDump(

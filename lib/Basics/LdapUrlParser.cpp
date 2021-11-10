@@ -95,22 +95,18 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       result.host.populate(std::string(host.data(), host.size()));
     } else {
       result.host.populate(std::string(host.data(), colon));
-      result.port.populate(
-          std::string(host.data() + colon + 1, host.size() - colon - 1));
+      result.port.populate(std::string(host.data() + colon + 1, host.size() - colon - 1));
 
-      if (!std::regex_match(
-              result.port.value,
-              std::regex("^[0-9]+$",
-                         std::regex::nosubs | std::regex::ECMAScript))) {
+      if (!std::regex_match(result.port.value,
+                            std::regex("^[0-9]+$", std::regex::nosubs | std::regex::ECMAScript))) {
         // port number must be numeric
         result.valid = false;
       }
     }
 
-    if (!std::regex_match(
-            result.host.value,
-            std::regex("^[a-zA-Z0-9\\-.]+$",
-                       std::regex::nosubs | std::regex::ECMAScript))) {
+    if (!std::regex_match(result.host.value,
+                          std::regex("^[a-zA-Z0-9\\-.]+$",
+                                     std::regex::nosubs | std::regex::ECMAScript))) {
       // host pattern is invalid
       result.valid = false;
     }
@@ -166,16 +162,14 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
     result.searchAttribute.populate(
         std::string(searchAttribute.data(), searchAttribute.size()));
     if (result.searchAttribute.value.empty() ||
-        !std::regex_match(
-            result.searchAttribute.value,
-            std::regex("^[a-zA-Z0-9\\-_]+$",
-                       std::regex::nosubs | std::regex::ECMAScript))) {
+        !std::regex_match(result.searchAttribute.value,
+                          std::regex("^[a-zA-Z0-9\\-_]+$",
+                                     std::regex::nosubs | std::regex::ECMAScript))) {
       // search attribute pattern is invalid
       result.valid = false;
     }
 
-    view = arangodb::velocypack::StringRef(searchAttribute.data() +
-                                           searchAttribute.size());
+    view = arangodb::velocypack::StringRef(searchAttribute.data() + searchAttribute.size());
   } else {
     // if there is no searchAttribute, there must not be anything else
     if (!view.empty()) {
@@ -199,10 +193,9 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
     arangodb::velocypack::StringRef deep(view.data(), l);
     result.deep.populate(std::string(deep.data(), deep.size()));
     if (result.deep.value.empty() ||
-        !std::regex_match(
-            result.deep.value,
-            std::regex("^[a-zA-Z0-9\\-_]+$",
-                       std::regex::nosubs | std::regex::ECMAScript))) {
+        !std::regex_match(result.deep.value,
+                          std::regex("^[a-zA-Z0-9\\-_]+$",
+                                     std::regex::nosubs | std::regex::ECMAScript))) {
       // invalid deep pattern
       result.valid = false;
     }

@@ -70,3 +70,4 @@ class LdapUrlParser {
 };
 
 }  // namespace arangodb
+

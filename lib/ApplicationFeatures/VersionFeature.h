@@ -42,3 +42,4 @@ class VersionFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
+
