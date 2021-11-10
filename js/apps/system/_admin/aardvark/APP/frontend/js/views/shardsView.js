@@ -16,7 +16,6 @@
       'click #toggleAllShards': 'toggleAllShards',
       'click #shardsContent .shardLeader span': 'moveShard',
       'click #shardsContent .shardFollowers span': 'moveShardFollowers',
-      'click #rebalanceShards': 'rebalanceShards',
       'click .sectionHeader': 'toggleSection'
     },
 
@@ -222,10 +221,7 @@
             }
           }
         });
-
-        if (navi !== false) {
-          arangoHelper.buildNodesSubNav('Shards');
-        }
+        arangoHelper.buildNodesSubNav('Shards');
       }
     },
 
@@ -344,33 +340,6 @@
         },
         error: function () {
           arangoHelper.arangoError('Shard ' + shardName + ' could not be moved to ' + arangoHelper.getDatabaseShortName(toServer) + '.');
-        }
-      });
-
-      window.modalView.hide();
-    },
-
-    rebalanceShards: function () {
-      var self = this;
-
-      $.ajax({
-        type: 'POST',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_admin/cluster/rebalanceShards'),
-        contentType: 'application/json',
-        processData: false,
-        data: JSON.stringify({}),
-        async: true,
-        success: function (data) {
-          if (data === true) {
-            window.setTimeout(function () {
-              self.render(false);
-            }, 3000);
-          }
-          arangoHelper.arangoNotification('Started rebalance process.');
-        },
-        error: function () {
-          arangoHelper.arangoError('Could not start rebalance process.');
         }
       });
 

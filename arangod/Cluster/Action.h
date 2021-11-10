@@ -194,6 +194,27 @@ class Action {
     return _action->priority();
   }
 
+  bool requeueRequested() const {
+    return _action->requeueRequested();
+  }
+
+  int requeuePriority() const {
+    return _action->requeuePriority();
+  }
+
+  void requeueMe(int requeuePriority) {
+    _action->requeueMe(requeuePriority);
+  }
+
+  void setPriority(int newPriority) {
+    _action->setPriority(newPriority);
+  }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  static void addNewFactoryForTest(std::string const& name,
+      std::function<std::unique_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>&& factory);
+#endif
+
  private:
   /// @brief actually create the concrete action
   void create(MaintenanceFeature&, ActionDescription const&);

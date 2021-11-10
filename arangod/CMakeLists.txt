@@ -926,7 +926,7 @@ add_dependencies(arango_rocksdb snappy)
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
 
-if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
+if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG) AND NOT BUILDING_FOR_ARM64)
   target_compile_options(arango_rocksdb PUBLIC "-maes")
 endif ()
 

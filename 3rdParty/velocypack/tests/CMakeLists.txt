@@ -1,14 +1,16 @@
 # -*- mode: CMAKE; -*-
 
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
+
 # options
 option(BuildTests "Build test suite" OFF)
-message(STATUS "Building test suite: ${BuildTests}")
+message(STATUS "VelocyPack building test suite: ${BuildTests}")
 
 option(BuildLargeTests "Build large tests" OFF)
-message(STATUS "Building large tests: ${BuildLargeTests}")
+message(STATUS "VelocyPack building large tests: ${BuildLargeTests}")
 
 option(BuildAsmTest "Build assembler test code" OFF)
-message(STATUS "Building assembler test suite: ${BuildAsmTest}")
+message(STATUS "VelocyPack building assembler test suite: ${BuildAsmTest}")
 
 set(Tests
     testsAliases

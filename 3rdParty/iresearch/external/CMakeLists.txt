@@ -7,6 +7,29 @@ if (SUPPRESS_EXTERNAL_WARNINGS)
   endif ()
 endif()
 
+################################################################################
+### Highway library
+################################################################################
+
+set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
+add_subdirectory(highway)
+
+################################################################################
+### sse2neon
+### need this after highway and before simdcomp
+################################################################################
+
+add_library(sse2neon INTERFACE)
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
+  set(SSE2NEON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/sse2neon)
+
+  target_include_directories(
+    sse2neon
+    SYSTEM
+    INTERFACE ${SSE2NEON_ROOT}
+  )
+endif()
 
 ################################################################################
 ### CmdLine library
@@ -151,14 +174,13 @@ if (NOT TARGET velocypack)
 endif()
 
 ################################################################################
-### Highway library
-################################################################################
-
-set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
-add_subdirectory(highway)
-
-################################################################################
 ### Boost::Text library
 ################################################################################
 
 add_subdirectory(text)
+
+################################################################################
+### fastText library
+################################################################################
+
+add_subdirectory(fastText)

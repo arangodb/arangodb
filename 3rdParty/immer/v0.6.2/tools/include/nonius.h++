@@ -658,13 +658,13 @@ namespace nonius {
                 return {};
             }
         };
-        template <typename Sig>
-        using ResultOf = typename std::result_of<Sig>::type;
+        template <typename Fun, typename... Args>
+        using ResultOf = typename std::invoke_result<Fun, Args...>::type;
 
         // invoke and not return void :(
         template <typename Fun, typename... Args>
-        CompleteType<ResultOf<Fun(Args...)>> complete_invoke(Fun&& fun, Args&&... args) {
-            return complete_invoker<ResultOf<Fun(Args...)>>::invoke(std::forward<Fun>(fun), std::forward<Args>(args)...);
+        CompleteType<ResultOf<Fun, Args...>> complete_invoke(Fun&& fun, Args&&... args) {
+            return complete_invoker<ResultOf<Fun, Args...>>::invoke(std::forward<Fun>(fun), std::forward<Args>(args)...);
         }
     } // namespace detail
 } // namespace nonius
@@ -922,8 +922,8 @@ namespace nonius {
         Result result;
         int iterations;
     };
-    template <typename Clock, typename Sig>
-    using TimingOf = timing<Duration<Clock>, detail::CompleteType<detail::ResultOf<Sig>>>;
+    template <typename Clock, typename Fun, typename... Args>
+    using TimingOf = timing<Duration<Clock>, detail::CompleteType<detail::ResultOf<Fun, Args...>>>;
 } // namespace nonius
 
 #include <utility>
@@ -931,7 +931,7 @@ namespace nonius {
 namespace nonius {
     namespace detail {
         template <typename Clock, typename Fun, typename... Args>
-        TimingOf<Clock, Fun(Args...)> measure(Fun&& fun, Args&&... args) {
+        TimingOf<Clock, Fun, Args...> measure(Fun&& fun, Args&&... args) {
             auto start = Clock::now();
             auto&& r = detail::complete_invoke(fun, std::forward<Args>(args)...);
             auto end = Clock::now();
@@ -947,11 +947,11 @@ namespace nonius {
 namespace nonius {
     namespace detail {
         template <typename Clock, typename Fun>
-        TimingOf<Clock, Fun(int)> measure_one(Fun&& fun, int iters, const parameters&, std::false_type) {
+        TimingOf<Clock, Fun, int> measure_one(Fun&& fun, int iters, const parameters&, std::false_type) {
             return detail::measure<Clock>(fun, iters);
         }
         template <typename Clock, typename Fun>
-        TimingOf<Clock, Fun(chronometer)> measure_one(Fun&& fun, int iters, const parameters& params, std::true_type) {
+        TimingOf<Clock, Fun, chronometer> measure_one(Fun&& fun, int iters, const parameters& params, std::true_type) {
             detail::chronometer_model<Clock> meter;
             auto&& result = detail::complete_invoke(fun, chronometer(meter, iters, params));
 
@@ -968,7 +968,7 @@ namespace nonius {
         };
 
         template <typename Clock, typename Fun>
-        TimingOf<Clock, Fun(run_for_at_least_argument_t<Clock, Fun>)> run_for_at_least(const parameters& params, Duration<Clock> how_long, int seed, Fun&& fun) {
+        TimingOf<Clock, Fun, run_for_at_least_argument_t<Clock, Fun>> run_for_at_least(const parameters& params, Duration<Clock> how_long, int seed, Fun&& fun) {
             auto iters = seed;
             while(iters < (1 << 30)) {
                 auto&& timing = measure_one<Clock>(fun, iters, params, detail::is_callable<Fun(chronometer)>());
