@@ -21,6 +21,9 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+#include "Basics/directories.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
@@ -30,8 +33,6 @@
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Backup/BackupFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/Common.h"
-#include "Basics/directories.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -51,12 +52,9 @@ int main(int argc, char* argv[]) {
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     context.installHup();
 
-    std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(
-            argv[0],
-            "Usage: arangobackup " + BackupFeature::operationList("|") +
-                " [<options>]",
-            "For more information use:", BIN_DIRECTORY));
+    std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
+        argv[0], "Usage: arangobackup " + BackupFeature::operationList("|") + " [<options>]",
+        "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
@@ -83,8 +81,7 @@ int main(int argc, char* argv[]) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("78140", ERR, arangodb::Logger::FIXME)
-          << "arangodump terminated because of an unhandled exception: "
-          << ex.what();
+          << "arangodump terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC("cc40d", ERR, arangodb::Logger::FIXME)

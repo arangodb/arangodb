@@ -47,9 +47,8 @@ class ClientFeature final : public HttpEndpointProvider {
   constexpr static size_t const DEFAULT_RETRIES = 2;
   constexpr static double const LONG_TIMEOUT = 86400.0;
 
-  ClientFeature(application_features::ApplicationServer& server,
-                bool allowJwtSecret, size_t maxNumEndpoints = 1,
-                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
+  ClientFeature(application_features::ApplicationServer& server, bool allowJwtSecret,
+                size_t maxNumEndpoints = 1, double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
                 double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -77,15 +76,11 @@ class ClientFeature final : public HttpEndpointProvider {
   bool forceJson() const { return _forceJson; }
   void setForceJson(bool value) { _forceJson = value; }
 
-  std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
-      std::string const& definition);
+  std::unique_ptr<httpclient::GeneralClientConnection> createConnection(std::string const& definition);
+  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(size_t threadNumber = 0) const;
+  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(std::string const& definition) const;
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      size_t threadNumber = 0) const;
-  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      std::string const& definition) const;
-  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      std::string const& definition,
-      httpclient::SimpleHttpClientParams const&) const;
+      std::string const& definition, httpclient::SimpleHttpClientParams const&) const;
   std::vector<std::string> httpEndpoints() override;
 
   void setDatabaseName(std::string const& databaseName);
@@ -100,14 +95,14 @@ class ClientFeature final : public HttpEndpointProvider {
 
   bool getWarnConnect() { return _warnConnect; }
 
-  static std::string buildConnectedMessage(
-      std::string const& endpointSpecification, std::string const& version,
-      std::string const& role, std::string const& mode,
-      std::string const& databaseName, std::string const& user);
+  static std::string buildConnectedMessage(std::string const& endpointSpecification,
+                                           std::string const& version,
+                                           std::string const& role, std::string const& mode,
+                                           std::string const& databaseName,
+                                           std::string const& user);
 
-  static int runMain(
-      int argc, char* argv[],
-      std::function<int(int argc, char* argv[])> const& mainFunc);
+  static int runMain(int argc, char* argv[],
+                     std::function<int(int argc, char* argv[])> const& mainFunc);
 
  private:
   void readPassword();

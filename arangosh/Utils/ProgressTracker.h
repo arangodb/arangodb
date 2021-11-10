@@ -23,18 +23,18 @@
 
 #pragma once
 
+#include "ManagedDirectory.h"
+#include "Basics/FileUtils.h"
+#include "Basics/VelocyPackHelper.h"
+
 #include <atomic>
 #include <mutex>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
-#include "Basics/FileUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "ManagedDirectory.h"
-
 namespace arangodb {
-template<typename T>
+template <typename T>
 struct ProgressTracker {
   ProgressTracker(ManagedDirectory& directory, bool ignoreExisting);
 
@@ -55,7 +55,7 @@ struct ProgressTracker {
   std::atomic<bool> _writeQueued{false};
 };
 
-template<typename T>
+template <typename T>
 bool ProgressTracker<T>::updateStatus(std::string const& collectionName,
                                       T const& status) {
   {
@@ -85,21 +85,20 @@ bool ProgressTracker<T>::updateStatus(std::string const& collectionName,
       }
     }
 
-    arangodb::basics::VelocyPackHelper::velocyPackToFile(
-        directory.pathToFile("continue.json"), VPackSlice(buffer.data()), true);
+    arangodb::basics::VelocyPackHelper::velocyPackToFile(directory.pathToFile("continue.json"),
+                                                         VPackSlice(buffer.data()), true);
   }
   return true;
 }
 
-template<typename T>
+template <typename T>
 T ProgressTracker<T>::getStatus(const std::string& collectionName) {
   std::shared_lock guard(_collectionStatesMutex);
   return _collectionStates[collectionName];  // intentionally default construct
 }
 
-template<typename T>
-ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory,
-                                    bool ignoreExisting)
+template <typename T>
+ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory, bool ignoreExisting)
     : directory(directory) {
   if (ignoreExisting) {
     return;
@@ -118,9 +117,10 @@ ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory,
   }
 }
 
-template<typename T>
+template <typename T>
 std::string ProgressTracker<T>::filename() const {
   return directory.pathToFile("continue.json");
 }
 
-}  // namespace arangodb
+}
+

@@ -38,8 +38,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ShellFeature::ShellFeature(application_features::ApplicationServer& server,
-                           int* result)
+ShellFeature::ShellFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "Shell"),
       _jslint(),
       _result(result),
@@ -49,15 +48,13 @@ ShellFeature::ShellFeature(application_features::ApplicationServer& server,
   startsAfter<application_features::V8ShellFeaturePhase>();
 }
 
-void ShellFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void ShellFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addOption("--jslint", "do not start as shell, run jslint instead",
                      new VectorParameter<StringParameter>(&_jslint));
 
   options->addSection("javascript", "JavaScript engine");
 
-  options->addOption("--javascript.execute",
-                     "execute JavaScript code from file",
+  options->addOption("--javascript.execute", "execute JavaScript code from file",
                      new VectorParameter<StringParameter>(&_executeScripts));
 
   options->addOption("--javascript.execute-string",
@@ -73,8 +70,7 @@ void ShellFeature::collectOptions(
                      new VectorParameter<StringParameter>(&_unitTests));
 
   options->addOption("--javascript.unit-test-filter",
-                     "filter testcases in suite",
-                     new StringParameter(&_unitTestFilter));
+                     "filter testcases in suite", new StringParameter(&_unitTestFilter));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   options->addOption("--javascript.script-parameter", "script parameter",
                      new VectorParameter<StringParameter>(&_scriptParameters));
@@ -84,12 +80,10 @@ void ShellFeature::collectOptions(
 #endif
 }
 
-void ShellFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   _positionals = options->processingResult()._positionals;
 
-  ClientFeature& client =
-      server().getFeature<HttpEndpointProvider, ClientFeature>();
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
   ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
 
   if (client.endpoint() == "none") {
@@ -155,8 +149,7 @@ void ShellFeature::start() {
         break;
 
       case RunMode::EXECUTE_SCRIPT:
-        ok = shell.runScript(_executeScripts, _positionals, true,
-                             _scriptParameters, _runMain);
+        ok = shell.runScript(_executeScripts, _positionals, true, _scriptParameters, _runMain);
         break;
 
       case RunMode::EXECUTE_STRING:
@@ -164,8 +157,7 @@ void ShellFeature::start() {
         break;
 
       case RunMode::CHECK_SYNTAX:
-        ok = shell.runScript(_checkSyntaxFiles, _positionals, false,
-                             _scriptParameters, _runMain);
+        ok = shell.runScript(_checkSyntaxFiles, _positionals, false, _scriptParameters, _runMain);
         break;
 
       case RunMode::UNIT_TESTS:
@@ -177,12 +169,10 @@ void ShellFeature::start() {
         break;
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC("98f7d", ERR, arangodb::Logger::FIXME)
-        << "caught exception: " << ex.what();
+    LOG_TOPIC("98f7d", ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
     ok = false;
   } catch (...) {
-    LOG_TOPIC("4a477", ERR, arangodb::Logger::FIXME)
-        << "caught unknown exception";
+    LOG_TOPIC("4a477", ERR, arangodb::Logger::FIXME) << "caught unknown exception";
     ok = false;
   }
 

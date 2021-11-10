@@ -21,6 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+#include "Basics/directories.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
@@ -29,8 +32,6 @@
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/Common.h"
-#include "Basics/directories.h"
 #include "Dump/DumpFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/Logger.h"
@@ -62,9 +63,8 @@ int main(int argc, char* argv[]) {
 #endif
 
     std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(
-            argv[0], "Usage: arangodump [<options>]",
-            "For more information use:", BIN_DIRECTORY));
+        new options::ProgramOptions(argv[0], "Usage: arangodump [<options>]",
+                                    "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
@@ -72,8 +72,7 @@ int main(int argc, char* argv[]) {
     server.addFeature<BasicFeaturePhaseClient>();
     server.addFeature<GreetingsFeaturePhase>(true);
 
-    server.addFeature<ClientFeature, HttpEndpointProvider>(
-        true, std::numeric_limits<size_t>::max());
+    server.addFeature<ClientFeature, HttpEndpointProvider>(true, std::numeric_limits<size_t>::max());
     server.addFeature<ConfigFeature>("arangodump");
     server.addFeature<DumpFeature>(ret);
     server.addFeature<LoggerFeature>(false);
@@ -96,8 +95,7 @@ int main(int argc, char* argv[]) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("8363a", ERR, arangodb::Logger::FIXME)
-          << "arangodump terminated because of an unhandled exception: "
-          << ex.what();
+          << "arangodump terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC("5ddce", ERR, arangodb::Logger::FIXME)

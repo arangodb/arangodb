@@ -46,8 +46,7 @@ class ClientManager {
    * @brief Initialize a client manager using a specific log topic for output
    * @param topic Topic to log output to
    */
-  explicit ClientManager(application_features::ApplicationServer& server,
-                         LogTopic& topic);
+  explicit ClientManager(application_features::ApplicationServer& server, LogTopic& topic);
   virtual ~ClientManager();
 
  public:
@@ -65,10 +64,9 @@ class ClientManager {
    * found
    * @return            Status code and possible error message
    */
-  Result getConnectedClient(
-      std::unique_ptr<httpclient::SimpleHttpClient>& httpClient, bool force,
-      bool logServerVersion, bool logDatabaseNotFound, bool quiet,
-      size_t threadNumber);
+  Result getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
+                            bool force, bool logServerVersion,
+                            bool logDatabaseNotFound, bool quiet, size_t threadNumber);
 
   /**
    * @brief Initializes a client, connects to server, and verifies version
@@ -84,9 +82,8 @@ class ClientManager {
    * found
    * @return         A connected `SimpleHttpClient`
    */
-  std::unique_ptr<httpclient::SimpleHttpClient> getConnectedClient(
-      bool force, bool logServerVersion, bool logDatabaseNotFound,
-      size_t threadNumber);
+  std::unique_ptr<httpclient::SimpleHttpClient> getConnectedClient(bool force, bool logServerVersion,
+                                                                   bool logDatabaseNotFound, size_t threadNumber);
 
   /**
    * @brief Conditionally prefixes a relative URI with database-specific path
@@ -101,8 +98,7 @@ class ClientManager {
    * @param  client Client to use for request
    * @return        status result; role name
    */
-  std::pair<Result, std::string> getArangoIsCluster(
-      httpclient::SimpleHttpClient& client);
+  std::pair<Result, std::string> getArangoIsCluster(httpclient::SimpleHttpClient& client);
 
   /**
    * Determines whether the ArangoDB instance is using the specified engine
@@ -112,11 +108,12 @@ class ClientManager {
    * @return        status result; `true` if successful and specified engine is
    *                in use
    */
-  std::pair<Result, bool> getArangoIsUsingEngine(
-      httpclient::SimpleHttpClient& httpClient, std::string const& name);
+  std::pair<Result, bool> getArangoIsUsingEngine(httpclient::SimpleHttpClient& httpClient,
+                                                 std::string const& name);
 
  private:
   application_features::ApplicationServer& _server;
   LogTopic& _topic;
 };
 }  // namespace arangodb
+

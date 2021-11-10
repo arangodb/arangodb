@@ -24,6 +24,7 @@
 #include "helpers.h"
 
 #include "../BenchFeature.h"
+
 #include "Basics/StringUtils.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
@@ -43,8 +44,7 @@ bool DeleteCollection(arangodb::httpclient::SimpleHttpClient* client,
   bool failed = true;
   if (result != nullptr) {
     int statusCode = result->getHttpReturnCode();
-    if (statusCode == 200 || statusCode == 201 || statusCode == 202 ||
-        statusCode == 404) {
+    if (statusCode == 200 || statusCode == 201 || statusCode == 202 || statusCode == 404) {
       failed = false;
     }
   }
@@ -57,16 +57,13 @@ bool DeleteCollection(arangodb::httpclient::SimpleHttpClient* client,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CreateCollection(arangodb::httpclient::SimpleHttpClient* client,
-                      std::string const& name, int const type,
-                      BenchFeature const& arangobench) {
+                      std::string const& name, int const type, BenchFeature const& arangobench) {
   std::unordered_map<std::string, std::string> headerFields;
 
   std::string payload =
       "{\"name\":\"" + name + "\",\"type\":" + basics::StringUtils::itoa(type) +
-      ",\"replicationFactor\":" +
-      basics::StringUtils::itoa(arangobench.replicationFactor()) +
-      ",\"numberOfShards\":" +
-      basics::StringUtils::itoa(arangobench.numberOfShards()) +
+      ",\"replicationFactor\":" + basics::StringUtils::itoa(arangobench.replicationFactor()) +
+      ",\"numberOfShards\":" + basics::StringUtils::itoa(arangobench.numberOfShards()) +
       ",\"waitForSync\":" + (arangobench.waitForSync() ? "true" : "false") +
       "}";
 
@@ -82,9 +79,8 @@ bool CreateCollection(arangodb::httpclient::SimpleHttpClient* client,
       failed = false;
     } else {
       LOG_TOPIC("567b3", WARN, Logger::BENCH)
-          << "error when creating collection: "
-          << result->getHttpReturnMessage() << " for payload '" << payload
-          << "': " << result->getBody();
+          << "error when creating collection: " << result->getHttpReturnMessage()
+          << " for payload '" << payload << "': " << result->getBody();
     }
   }
 
@@ -95,9 +91,8 @@ bool CreateCollection(arangodb::httpclient::SimpleHttpClient* client,
 /// @brief create an index
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CreateIndex(arangodb::httpclient::SimpleHttpClient* client,
-                 std::string const& name, std::string const& type,
-                 std::string const& fields) {
+bool CreateIndex(arangodb::httpclient::SimpleHttpClient* client, std::string const& name,
+                 std::string const& type, std::string const& fields) {
   std::unordered_map<std::string, std::string> headerFields;
 
   std::string payload =
@@ -110,8 +105,7 @@ bool CreateIndex(arangodb::httpclient::SimpleHttpClient* client,
   bool failed = true;
 
   if (result != nullptr) {
-    if (result->getHttpReturnCode() == 200 ||
-        result->getHttpReturnCode() == 201) {
+    if (result->getHttpReturnCode() == 200 || result->getHttpReturnCode() == 201) {
       failed = false;
     } else {
       LOG_TOPIC("1dcba", WARN, Logger::BENCH)
@@ -132,15 +126,13 @@ bool CreateDocument(arangodb::httpclient::SimpleHttpClient* client,
   std::unordered_map<std::string, std::string> headerFields;
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> result(
-      client->request(rest::RequestType::POST,
-                      "/_api/document?collection=" + collection,
+      client->request(rest::RequestType::POST, "/_api/document?collection=" + collection,
                       payload.c_str(), payload.size(), headerFields));
 
   bool failed = true;
 
   if (result != nullptr) {
-    if (result->getHttpReturnCode() == 200 ||
-        result->getHttpReturnCode() == 201 ||
+    if (result->getHttpReturnCode() == 200 || result->getHttpReturnCode() == 201 ||
         result->getHttpReturnCode() == 202) {
       failed = false;
     }

@@ -23,16 +23,13 @@
 
 #include "ImportFeature.h"
 
-#include <iostream>
-#include <regex>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
-#include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Import/ImportHelper.h"
@@ -43,14 +40,16 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <iostream>
+#include <regex>
+
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
 namespace arangodb {
 
-ImportFeature::ImportFeature(application_features::ApplicationServer& server,
-                             int* result)
+ImportFeature::ImportFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "Import"),
       _filename(""),
       _useBackslash(false),
@@ -78,21 +77,17 @@ ImportFeature::ImportFeature(application_features::ApplicationServer& server,
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
-  _threadCount = std::max(uint32_t(_threadCount),
-                          static_cast<uint32_t>(NumberOfCores::getValue()));
+  _threadCount = std::max(uint32_t(_threadCount), static_cast<uint32_t>(NumberOfCores::getValue()));
 }
 
-void ImportFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addOption("--file", "file name (\"-\" for STDIN)",
                      new StringParameter(&_filename));
-
-  options
-      ->addOption("--auto-rate-limit",
-                  "adjust the data loading rate automatically, starting at "
-                  "--batch-size bytes per thread per second",
-                  new BooleanParameter(&_autoChunkSize))
-      .setIntroducedIn(30711);
+  
+  options->addOption("--auto-rate-limit",
+                     "adjust the data loading rate automatically, starting at --batch-size bytes per thread per second",
+                     new BooleanParameter(&_autoChunkSize))
+                     .setIntroducedIn(30711);
 
   options->addOption(
       "--backslash-escape",
@@ -104,12 +99,12 @@ void ImportFeature::collectOptions(
                      new UInt64Parameter(&_chunkSize));
 
   options->addOption(
-      "--threads", "Number of parallel import threads",
+      "--threads",
+      "Number of parallel import threads",
       new UInt32Parameter(&_threadCount),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--collection", "collection name",
-                     new StringParameter(&_collectionName));
+  options->addOption("--collection", "collection name", new StringParameter(&_collectionName));
 
   options->addOption("--from-collection-prefix",
                      "_from collection name prefix (will be prepended to all "
@@ -128,13 +123,11 @@ void ImportFeature::collectOptions(
   options->addOption("--create-database",
                      "create the target database if it does not exist",
                      new BooleanParameter(&_createDatabase));
-
-  options
-      ->addOption("--headers-file",
-                  "filename to read CSV or TSV headers from. if specified will "
-                  "not try to read headers from regular input file",
-                  new StringParameter(&_headersFile))
-      .setIntroducedIn(30800);
+  
+  options->addOption("--headers-file",
+                     "filename to read CSV or TSV headers from. if specified will not try to read headers from regular input file",
+                     new StringParameter(&_headersFile))
+                     .setIntroducedIn(30800);
 
   options->addOption("--skip-lines",
                      "number of lines to skip for formats (csv and tsv only)",
@@ -150,14 +143,13 @@ void ImportFeature::collectOptions(
                      "translate an attribute name (use as --translate "
                      "\"from=to\", for csv and tsv only)",
                      new VectorParameter<StringParameter>(&_translations));
-
-  options
-      ->addOption("--datatype",
-                  "force a specific datatype for an attribute "
-                  "(null/boolean/number/string). Use as \"attribute=type\". "
-                  "For CSV and TSV only. Takes precendence over --convert",
-                  new VectorParameter<StringParameter>(&_datatypes))
-      .setIntroducedIn(30900);
+  
+  options->addOption("--datatype",
+                     "force a specific datatype for an attribute "
+                     "(null/boolean/number/string). Use as \"attribute=type\". "
+                     "For CSV and TSV only. Takes precendence over --convert",
+                     new VectorParameter<StringParameter>(&_datatypes))
+                     .setIntroducedIn(30900);
 
   options->addOption("--remove-attribute",
                      "remove an attribute before inserting documents"
@@ -168,18 +160,16 @@ void ImportFeature::collectOptions(
   std::vector<std::string> typesVector(types.begin(), types.end());
   std::string typesJoined = StringUtils::join(typesVector, " or ");
 
-  options->addOption(
-      "--create-collection-type",
-      "type of collection if collection is created (" + typesJoined + ")",
-      new DiscreteValuesParameter<StringParameter>(&_createCollectionType,
-                                                   types));
+  options->addOption("--create-collection-type",
+                     "type of collection if collection is created (" +
+                         typesJoined + ")",
+                     new DiscreteValuesParameter<StringParameter>(&_createCollectionType, types));
 
   std::unordered_set<std::string> imports = {"csv", "tsv", "json", "jsonl",
                                              "auto"};
 
-  options->addOption(
-      "--type", "type of import file",
-      new DiscreteValuesParameter<StringParameter>(&_typeImport, imports));
+  options->addOption("--type", "type of import file",
+                     new DiscreteValuesParameter<StringParameter>(&_typeImport, imports));
 
   options->addOption(
       "--overwrite",
@@ -190,15 +180,12 @@ void ImportFeature::collectOptions(
   options->addOption("--quote", "quote character(s), used for csv",
                      new StringParameter(&_quote));
 
-  options->addOption(
-      "--separator",
-      "field separator, used for csv and tsv. "
-      "Defaults to a comma (csv) or a tabulation character (tsv)",
-      new StringParameter(&_separator),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  options->addOption("--separator", "field separator, used for csv and tsv. "
+                     "Defaults to a comma (csv) or a tabulation character (tsv)",
+                     new StringParameter(&_separator),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--progress", "show progress",
-                     new BooleanParameter(&_progress));
+  options->addOption("--progress", "show progress", new BooleanParameter(&_progress));
 
   options->addOption("--ignore-missing", "ignore missing columns in csv input",
                      new BooleanParameter(&_ignoreMissing));
@@ -212,30 +199,22 @@ void ImportFeature::collectOptions(
                      "action to perform when a unique key constraint "
                      "violation occurs. Possible values: " +
                          actionsJoined,
-                     new DiscreteValuesParameter<StringParameter>(
-                         &_onDuplicateAction, actions));
+                     new DiscreteValuesParameter<StringParameter>(&_onDuplicateAction, actions));
 
-  options
-      ->addOption("--merge-attributes",
-                  "merge attributes into new document attribute (e.g. "
-                  "mergedAttribute=[someAttribute]-[otherAttribute]) (CSV and "
-                  "TSV only)",
-                  new VectorParameter<StringParameter>(&_mergeAttributes))
-      .setIntroducedIn(30901);
+  options->addOption("--merge-attributes",
+                     "merge attributes into new document attribute (e.g. mergedAttribute=[someAttribute]-[otherAttribute]) (CSV and TSV only)",
+                     new VectorParameter<StringParameter>(&_mergeAttributes)).setIntroducedIn(30901);
 
   options->addOption(
       "--latency", "show 10 second latency statistics (values in microseconds)",
       new BooleanParameter(&_latencyStats));
 
-  options
-      ->addOption("--skip-validation",
-                  "skips document validation during import",
-                  new BooleanParameter(&_skipValidation))
-      .setIntroducedIn(30700);
+  options->addOption(
+      "--skip-validation", "skips document validation during import",
+      new BooleanParameter(&_skipValidation)).setIntroducedIn(30700);
 }
 
-void ImportFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto const& positionals = options->processingResult()._positionals;
   size_t n = positionals.size();
 
@@ -250,7 +229,7 @@ void ImportFeature::validateOptions(
     FATAL_ERROR_EXIT();
   } else if (n > 0) {
     LOG_TOPIC("0dc13", FATAL, arangodb::Logger::FIXME)
-        << "Unused commandline arguments: " << positionals;
+      << "Unused commandline arguments: " << positionals;
     FATAL_ERROR_EXIT();
   }
 
@@ -266,8 +245,7 @@ void ImportFeature::validateOptions(
 
   if (_threadCount < 1) {
     // it's not sensible to use just one thread
-    LOG_TOPIC("9e3f9", WARN, arangodb::Logger::FIXME)
-        << "capping --threads value to " << 1;
+    LOG_TOPIC("9e3f9", WARN, arangodb::Logger::FIXME) << "capping --threads value to " << 1;
     _threadCount = 1;
   }
   if (_threadCount > NumberOfCores::getValue() * 2) {
@@ -287,8 +265,7 @@ void ImportFeature::validateOptions(
     StringUtils::trimInPlace(parts[1]);
 
     if (parts.size() != 2 || parts[0].empty() || parts[1].empty()) {
-      LOG_TOPIC("83ae7", FATAL, arangodb::Logger::FIXME)
-          << "invalid translation '" << it << "'";
+      LOG_TOPIC("83ae7", FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
       FATAL_ERROR_EXIT();
     }
   }
@@ -301,9 +278,8 @@ void ImportFeature::validateOptions(
     StringUtils::trimInPlace(parts[1]);
 
     if (parts.size() != 2 || parts[0].empty() ||
-        (parts[1] != "boolean" && parts[1] != "number" && parts[1] != "null" &&
-         parts[1] != "string")) {
-      LOG_TOPIC("13e75", FATAL, arangodb::Logger::FIXME)
+        (parts[1] != "boolean" && parts[1] != "number" && parts[1] != "null" && parts[1] != "string")) {
+      LOG_TOPIC("13e75", FATAL, arangodb::Logger::FIXME) 
           << "invalid datatype '" << it << "'. valid types are: "
           << "boolean, number, null, string";
       FATAL_ERROR_EXIT();
@@ -320,16 +296,14 @@ void ImportFeature::validateOptions(
 }
 
 void ImportFeature::start() {
-  ClientFeature& client =
-      server().getFeature<HttpEndpointProvider, ClientFeature>();
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
 
   // filename
   if (_filename == "") {
-    LOG_TOPIC("10531", FATAL, arangodb::Logger::FIXME)
-        << "File name is missing.";
+    LOG_TOPIC("10531", FATAL, arangodb::Logger::FIXME) << "File name is missing.";
     FATAL_ERROR_EXIT();
   }
 
@@ -350,8 +324,7 @@ void ImportFeature::start() {
   }
 
   if (_typeImport == "auto") {
-    std::regex re =
-        std::regex(".*?\\.([a-zA-Z]+)(.gz|)", std::regex::ECMAScript);
+    std::regex re = std::regex(".*?\\.([a-zA-Z]+)(.gz|)", std::regex::ECMAScript);
     std::smatch match;
     if (std::regex_match(_filename, match, re)) {
       std::string extension = StringUtils::tolower(match[1].str());
@@ -379,10 +352,8 @@ void ImportFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  _httpClient->params().setLocationRewriter(static_cast<void*>(&client),
-                                            &rewriteLocation);
-  _httpClient->params().setUserNamePassword("/", client.username(),
-                                            client.password());
+  _httpClient->params().setLocationRewriter(static_cast<void*>(&client), &rewriteLocation);
+  _httpClient->params().setUserNamePassword("/", client.username(), client.password());
 
   // must stay here in order to establish the connection
 
@@ -391,26 +362,23 @@ void ImportFeature::start() {
   auto const dbName = client.databaseName();
 
   auto successfulConnection = [&]() {
-    std::cout << ClientFeature::buildConnectedMessage(
-                     _httpClient->getEndpointSpecification(), versionString,
-                     /*role*/ "",
-                     /*mode*/ "", client.databaseName(), client.username())
+    std::cout << ClientFeature::buildConnectedMessage(_httpClient->getEndpointSpecification(),
+                                                      versionString, /*role*/ "",
+                                                      /*mode*/ "", client.databaseName(),
+                                                      client.username())
               << std::endl;
 
     std::cout << "----------------------------------------" << std::endl;
-    std::cout << "database:               " << client.databaseName()
-              << std::endl;
+    std::cout << "database:               " << client.databaseName() << std::endl;
     std::cout << "collection:             " << _collectionName << std::endl;
     if (!_fromCollectionPrefix.empty()) {
-      std::cout << "from collection prefix: " << _fromCollectionPrefix
-                << std::endl;
+      std::cout << "from collection prefix: " << _fromCollectionPrefix << std::endl;
     }
     if (!_toCollectionPrefix.empty()) {
-      std::cout << "to collection prefix:   " << _toCollectionPrefix
-                << std::endl;
+      std::cout << "to collection prefix:   " << _toCollectionPrefix << std::endl;
     }
-    std::cout << "create:                 "
-              << (_createCollection ? "yes" : "no") << std::endl;
+    std::cout << "create:                 " << (_createCollection ? "yes" : "no")
+              << std::endl;
     std::cout << "create database:        " << (_createDatabase ? "yes" : "no")
               << std::endl;
     std::cout << "source filename:        " << _filename << std::endl;
@@ -426,10 +394,8 @@ void ImportFeature::start() {
     std::cout << "threads:                " << _threadCount << std::endl;
     std::cout << "on duplicate:           " << _onDuplicateAction << std::endl;
 
-    std::cout << "connect timeout:        " << client.connectionTimeout()
-              << std::endl;
-    std::cout << "request timeout:        " << client.requestTimeout()
-              << std::endl;
+    std::cout << "connect timeout:        " << client.connectionTimeout() << std::endl;
+    std::cout << "request timeout:        " << client.requestTimeout() << std::endl;
     std::cout << "----------------------------------------" << std::endl;
   };
 
@@ -444,8 +410,7 @@ void ImportFeature::start() {
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("90431", ERR, arangodb::Logger::FIXME)
           << "Could not create database '" << dbName << "'";
-      LOG_TOPIC("891eb", FATAL, arangodb::Logger::FIXME)
-          << _httpClient->getErrorMessage() << "'";
+      LOG_TOPIC("891eb", FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
       FATAL_ERROR_EXIT();
     }
 
@@ -462,11 +427,9 @@ void ImportFeature::start() {
 
   if (!_httpClient->isConnected()) {
     LOG_TOPIC("541c6", ERR, arangodb::Logger::FIXME)
-        << "Could not connect to endpoint '" << client.endpoint()
-        << "', database: '" << client.databaseName() << "', username: '"
-        << client.username() << "'";
-    LOG_TOPIC("034c9", FATAL, arangodb::Logger::FIXME)
-        << _httpClient->getErrorMessage() << "'";
+        << "Could not connect to endpoint '" << client.endpoint() << "', database: '"
+        << client.databaseName() << "', username: '" << client.username() << "'";
+    LOG_TOPIC("034c9", FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -508,7 +471,7 @@ void ImportFeature::start() {
     translations.emplace(parts[0], parts[1]);
   }
   ih.setTranslations(translations);
-
+  
   // datatypes (a.k.a. forcing an attribute to a specific type)
   std::unordered_map<std::string, std::string> datatypes;
   for (auto const& it : _datatypes) {
@@ -551,8 +514,7 @@ void ImportFeature::start() {
 
   // collection name
   if (_collectionName == "") {
-    LOG_TOPIC("a64ef", FATAL, arangodb::Logger::FIXME)
-        << "Collection name is missing.";
+    LOG_TOPIC("a64ef", FATAL, arangodb::Logger::FIXME) << "Collection name is missing.";
     FATAL_ERROR_EXIT();
   }
 
@@ -601,8 +563,7 @@ void ImportFeature::start() {
       std::cout << "Starting JSON import..." << std::endl;
       ok = ih.importJson(_collectionName, _filename, (_typeImport == "jsonl"));
     } else {
-      LOG_TOPIC("8941e", FATAL, arangodb::Logger::FIXME)
-          << "Wrong type '" << _typeImport << "'.";
+      LOG_TOPIC("8941e", FATAL, arangodb::Logger::FIXME) << "Wrong type '" << _typeImport << "'.";
       FATAL_ERROR_EXIT();
     }
 
@@ -628,18 +589,15 @@ void ImportFeature::start() {
       }
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC("a7dca", ERR, arangodb::Logger::FIXME)
-        << "caught exception: " << ex.what();
+    LOG_TOPIC("a7dca", ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
   } catch (...) {
-    LOG_TOPIC("fc131", ERR, arangodb::Logger::FIXME)
-        << "caught unknown exception";
+    LOG_TOPIC("fc131", ERR, arangodb::Logger::FIXME) << "caught unknown exception";
   }
 
   *_result = ret;
 }
 
-ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client,
-                                           std::string const& name) {
+ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client, std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
   builder.add("name", VPackValue(normalizeUtf8ToNFC(name)));
@@ -653,8 +611,9 @@ ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client,
 
   std::string const body = builder.slice().toJson();
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      rest::RequestType::POST, "/_api/database", body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(
+      _httpClient->request(rest::RequestType::POST, "/_api/database",
+                           body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     return TRI_ERROR_INTERNAL;
@@ -670,14 +629,12 @@ ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client,
   if (returnCode == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
       returnCode == static_cast<int>(rest::ResponseCode::FORBIDDEN)) {
     // invalid authorization
-    _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
-                                 false);
+    _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr), false);
     return TRI_ERROR_FORBIDDEN;
   }
 
   // any other error
-  _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
-                               false);
+  _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr), false);
   return TRI_ERROR_INTERNAL;
 }
 

@@ -25,8 +25,8 @@
 
 #include "testcases/AqlInsertTest.h"
 #include "testcases/AqlV8Test.h"
-#include "testcases/CollectionCreationTest.h"
 #include "testcases/CustomQuery.h"
+#include "testcases/CollectionCreationTest.h"
 #include "testcases/DocumentCreationTest.h"
 #include "testcases/DocumentCrudAppendTest.h"
 #include "testcases/DocumentCrudTest.h"

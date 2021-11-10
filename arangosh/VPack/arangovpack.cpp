@@ -21,6 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+#include "Basics/directories.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -28,8 +31,6 @@
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/Common.h"
-#include "Basics/directories.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -50,9 +51,8 @@ int main(int argc, char* argv[]) {
     context.installHup();
 
     std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(
-            argv[0], "Usage: arangovpack [<options>]",
-            "For more information use:", BIN_DIRECTORY));
+        new options::ProgramOptions(argv[0], "Usage: arangovpack [<options>]",
+                                    "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
@@ -77,8 +77,7 @@ int main(int argc, char* argv[]) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("f8d39", ERR, arangodb::Logger::FIXME)
-          << "arangovpack terminated because of an unhandled exception: "
-          << ex.what();
+          << "arangovpack terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC("785f7", ERR, arangodb::Logger::FIXME)

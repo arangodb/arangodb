@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+
 #include "Basics/VelocyPackHelper.h"
 
 namespace arangodb {
@@ -45,3 +46,4 @@ class VPackFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
+

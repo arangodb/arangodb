@@ -35,3 +35,4 @@ class V8ShellFeaturePhase final : public ApplicationFeaturePhase {
 
 }  // namespace application_features
 }  // namespace arangodb
+
