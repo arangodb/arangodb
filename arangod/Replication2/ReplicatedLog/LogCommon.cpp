@@ -497,3 +497,13 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
 
   return std::visit(ToStringVisitor{}, r.value);
 }
+
+auto replicated_log::operator==(CommitFailReason const& left,
+                                CommitFailReason const& right) noexcept -> bool {
+  return left.value.index() == right.value.index();
+}
+
+auto replicated_log::operator!=(CommitFailReason const& left,
+                                CommitFailReason const& right) noexcept -> bool {
+  return !(left == right);
+}
