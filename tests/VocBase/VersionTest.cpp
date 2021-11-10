@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocBase/Methods/Version.h"
+
 #include "gtest/gtest.h"
 
 using arangodb::methods::Version;

@@ -21,11 +21,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/datetime.h"
-
 #include <date/date.h>
 #include <velocypack/StringRef.h>
 
+#include "Basics/datetime.h"
 #include "gtest/gtest.h"
 
 using namespace arangodb;

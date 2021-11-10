@@ -22,10 +22,12 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
-#include "Basics/Exceptions.h"
+
 #include "gtest/gtest.h"
+
+#include "Basics/AttributeNameParser.h"
+#include "Basics/Exceptions.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

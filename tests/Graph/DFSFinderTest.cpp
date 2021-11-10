@@ -20,30 +20,33 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "./MockGraph.h"
-#include "./MockGraphProvider.h"
 #include "gtest/gtest.h"
 
+#include "./MockGraph.h"
+#include "./MockGraphProvider.h"
+
 // Used for StringUtils size_t variant
+#include "Basics/operating-system.h"
+
 #include "../Mocks/Servers.h"
+
 #include "Aql/Query.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/operating-system.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Queues/LifoQueue.h"
 
 // Needed in case of enabled tracing
-#include <velocypack/HashedStringRef.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Queues/QueueTracer.h"
 #include "Graph/algorithm-aliases.h"
+
+#include <velocypack/HashedStringRef.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -53,12 +56,9 @@ namespace arangodb {
 namespace tests {
 namespace graph {
 
-class DFSFinderTest
-    : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
-  // using DFSFinder = DFSEnumerator<MockGraphProvider,
-  // VertexUniquenessLevel::PATH>;
-  using DFSFinder =
-      TracedDFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH>;
+class DFSFinderTest : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
+  // using DFSFinder = DFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH>;
+  using DFSFinder = TracedDFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH>;
 
  protected:
   bool activateLogging{false};
@@ -72,8 +72,8 @@ class DFSFinderTest
   arangodb::transaction::Methods _trx{_query->newTrxContext()};
   aql::Variable _tmpVar{"tmp", 0, false};
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
-  arangodb::aql::FixedVarExpressionContext _expressionContext{
-      _trx, *_query.get(), _functionsCache};
+  arangodb::aql::FixedVarExpressionContext _expressionContext{_trx, *_query.get(),
+                                                              _functionsCache};
 
   DFSFinderTest() {
     if (activateLogging) {
@@ -81,9 +81,9 @@ class DFSFinderTest
     }
 
     // Important Note:
-    // Tests are using a LifoQueue. In those tests we do guarantee fetching in
-    // order e.g. (1) expands to (2), (3), (4) we will first traverse (4), then
-    // (3), then (2)
+    // Tests are using a LifoQueue. In those tests we do guarantee fetching in order
+    // e.g. (1) expands to (2), (3), (4)
+    // we will first traverse (4), then (3), then (2)
 
     /* a chain 1->2->3->4 */
     mockGraph.addEdge(1, 2);
@@ -171,11 +171,10 @@ class DFSFinderTest
   auto pathFinder(size_t minDepth, size_t maxDepth) -> DFSFinder {
     arangodb::graph::OneSidedEnumeratorOptions options{minDepth, maxDepth};
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
-    return DFSFinder(
-        {*_query.get(),
-         MockGraphProviderOptions{mockGraph, looseEndBehaviour(), false},
-         resourceMonitor},
-        std::move(options), std::move(validatorOpts), resourceMonitor);
+    return DFSFinder({*_query.get(),
+                      MockGraphProviderOptions{mockGraph, looseEndBehaviour(), false},
+                      resourceMonitor},
+                     std::move(options), std::move(validatorOpts), resourceMonitor);
   }
 
   auto vId(size_t nr) -> std::string {
@@ -230,8 +229,7 @@ class DFSFinderTest
     return res;
   }
 
-  auto pathEquals(VPackSlice path, std::vector<size_t> const& vertexIds)
-      -> void {
+  auto pathEquals(VPackSlice path, std::vector<size_t> const& vertexIds) -> void {
     ASSERT_TRUE(path.isObject());
     ASSERT_TRUE(path.hasKey(StaticStrings::GraphQueryVertices));
     auto vertices = path.get(StaticStrings::GraphQueryVertices);
@@ -252,10 +250,9 @@ class DFSFinderTest
   }
 };
 
-INSTANTIATE_TEST_CASE_P(
-    DFSFinderTestRunner, DFSFinderTest,
-    ::testing::Values(MockGraphProvider::LooseEndBehaviour::NEVER,
-                      MockGraphProvider::LooseEndBehaviour::ALWAYS));
+INSTANTIATE_TEST_CASE_P(DFSFinderTestRunner, DFSFinderTest,
+                        ::testing::Values(MockGraphProvider::LooseEndBehaviour::NEVER,
+                                          MockGraphProvider::LooseEndBehaviour::ALWAYS));
 
 TEST_P(DFSFinderTest, no_path_exists) {
   VPackBuilder result;

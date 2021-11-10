@@ -22,8 +22,6 @@
 #ifndef TESTS_MOCK_GRAPH_PROVIDER_H
 #define TESTS_MOCK_GRAPH_PROVIDER_H
 
-#include <velocypack/HashedStringRef.h>
-
 #include <numeric>
 #include <ostream>
 #include <unordered_map>
@@ -34,13 +32,16 @@
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
-#include "Graph/Providers/BaseStep.h"
 #include "Transaction/Methods.h"
+
+#include "Graph/Providers/BaseStep.h"
+
+#include <velocypack/HashedStringRef.h>
 
 namespace arangodb {
 
 namespace futures {
-template<typename T>
+template <typename T>
 class Future;
 }
 
@@ -81,8 +82,7 @@ class MockGraphProvider {
 
  public:
   using Options = MockGraphProviderOptions;
-  using LooseEndBehaviour =
-      typename MockGraphProviderOptions::LooseEndBehaviour;
+  using LooseEndBehaviour = typename MockGraphProviderOptions::LooseEndBehaviour;
 
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
@@ -128,8 +128,7 @@ class MockGraphProvider {
     Step(VertexType v, bool isProcessable);
     Step(size_t prev, VertexType v, EdgeType e, bool isProcessable);
     Step(size_t prev, VertexType v, bool isProcessable, size_t depth);
-    Step(size_t prev, VertexType v, EdgeType e, bool isProcessable,
-         size_t depth);
+    Step(size_t prev, VertexType v, EdgeType e, bool isProcessable, size_t depth);
     ~Step() = default;
 
     bool operator<(Step const& other) const noexcept {
@@ -152,8 +151,7 @@ class MockGraphProvider {
     Vertex getVertex() const {
       /*if (!isProcessable()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "Accessing vertex (" +
-      _vertex.data().toString() +
+                                       "Accessing vertex (" + _vertex.data().toString() +
                                            "), before fetching it");
       }*/
       return _vertex;
@@ -199,8 +197,7 @@ class MockGraphProvider {
       _isProcessable = true;
     }
 
-    friend auto operator<<(std::ostream& out, Step const& step)
-        -> std::ostream&;
+    friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
 
    private:
     Vertex _vertex;
@@ -213,8 +210,7 @@ class MockGraphProvider {
   MockGraphProvider(arangodb::aql::QueryContext& queryContext, Options opts,
                     arangodb::ResourceMonitor& resourceMonitor);
 
-  MockGraphProvider(MockGraphProvider const&) =
-      delete;  // TODO: check "Rule of 5"
+  MockGraphProvider(MockGraphProvider const&) = delete;  // TODO: check "Rule of 5"
   MockGraphProvider(MockGraphProvider&&) = default;
   ~MockGraphProvider();
 
@@ -222,18 +218,13 @@ class MockGraphProvider {
   MockGraphProvider& operator=(MockGraphProvider&&) = default;
 
   void destroyEngines(){};
-  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
-      -> Step;
-  auto fetch(std::vector<Step*> const& looseEnds)
-      -> futures::Future<std::vector<Step*>>;
+  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0) -> Step;
+  auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
-  auto expand(Step const& from, size_t previous,
-              std::function<void(Step)> callback) -> void;
+  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void;
 
-  void addVertexToBuilder(Step::Vertex const& vertex,
-                          arangodb::velocypack::Builder& builder);
-  void addEdgeToBuilder(Step::Edge const& edge,
-                        arangodb::velocypack::Builder& builder);
+  void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
+  void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
 
   void prepareIndexExpressions(aql::Ast* ast);
 

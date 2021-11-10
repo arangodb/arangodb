@@ -21,24 +21,30 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Transaction/CountCache.h"
+#include "Basics/system-functions.h"
+
+#include "gtest/gtest.h"
+
 #include <chrono>
 #include <thread>
-
-#include "Basics/system-functions.h"
-#include "Transaction/CountCache.h"
-#include "gtest/gtest.h"
 
 using namespace arangodb;
 
 struct SpeedyCountCache : public transaction::CountCache {
   explicit SpeedyCountCache(double ttl)
-      : CountCache(ttl), _time(TRI_microtime()) {}
+      : CountCache(ttl),
+        _time(TRI_microtime()) {}
 
-  double getTime() const override { return _time; }
+  double getTime() const override {
+    return _time;
+  }
 
-  void advanceTime(double value) { _time += value; }
+  void advanceTime(double value) {
+    _time += value;
+  }
 
-  double _time;
+ double _time;
 };
 
 TEST(TransactionCountCacheTest, testExpireShort) {
@@ -50,7 +56,7 @@ TEST(TransactionCountCacheTest, testExpireShort) {
   cache.store(0);
   EXPECT_EQ(0, cache.get());
   EXPECT_EQ(0, cache.getWithTtl());
-
+  
   cache.store(555);
   EXPECT_EQ(555, cache.get());
   EXPECT_EQ(555, cache.getWithTtl());
@@ -59,15 +65,15 @@ TEST(TransactionCountCacheTest, testExpireShort) {
 
   EXPECT_EQ(555, cache.get());
   EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
-
+  
   cache.store(21111234);
   EXPECT_EQ(21111234, cache.get());
   EXPECT_EQ(21111234, cache.getWithTtl());
-
+  
   cache.store(0);
   EXPECT_EQ(0, cache.get());
   EXPECT_EQ(0, cache.getWithTtl());
-
+  
   cache.advanceTime(0.550);
 
   EXPECT_EQ(0, cache.get());
@@ -79,42 +85,42 @@ TEST(TransactionCountCacheTest, testExpireMedium) {
 
   EXPECT_EQ(transaction::CountCache::NotPopulated, cache.get());
   EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
-
+  
   cache.store(0);
   EXPECT_EQ(0, cache.get());
   EXPECT_EQ(0, cache.getWithTtl());
-
+  
   cache.store(555);
   EXPECT_EQ(555, cache.get());
   EXPECT_EQ(555, cache.getWithTtl());
 
   cache.advanceTime(0.250);
-
+  
   EXPECT_EQ(555, cache.get());
   EXPECT_EQ(555, cache.getWithTtl());
-
+  
   cache.advanceTime(0.250);
 
   EXPECT_EQ(555, cache.get());
   EXPECT_EQ(555, cache.getWithTtl());
-
+  
   cache.advanceTime(1.100);
 
   EXPECT_EQ(555, cache.get());
   EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
-
+  
   cache.store(21111234);
-
+  
   EXPECT_EQ(21111234, cache.get());
   EXPECT_EQ(21111234, cache.getWithTtl());
-
+  
   cache.advanceTime(0.250);
-
+  
   EXPECT_EQ(21111234, cache.get());
   EXPECT_EQ(21111234, cache.getWithTtl());
-
+  
   cache.advanceTime(1.350);
-
+  
   EXPECT_EQ(21111234, cache.get());
   EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
 }
@@ -124,39 +130,39 @@ TEST(TransactionCountCacheTest, testExpireLong) {
 
   EXPECT_EQ(transaction::CountCache::NotPopulated, cache.get());
   EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
-
+  
   cache.store(0);
   EXPECT_EQ(0, cache.get());
   EXPECT_EQ(0, cache.getWithTtl());
-
+  
   cache.store(666);
   EXPECT_EQ(666, cache.get());
   EXPECT_EQ(666, cache.getWithTtl());
 
   cache.advanceTime(0.250);
-
+  
   EXPECT_EQ(666, cache.get());
   EXPECT_EQ(666, cache.getWithTtl());
-
+  
   cache.advanceTime(1.100);
 
   EXPECT_EQ(666, cache.get());
   EXPECT_EQ(666, cache.getWithTtl());
-
+  
   cache.store(777);
-
+  
   EXPECT_EQ(777, cache.get());
   EXPECT_EQ(777, cache.getWithTtl());
-
+  
   cache.store(888);
-
+  
   EXPECT_EQ(888, cache.get());
   EXPECT_EQ(888, cache.getWithTtl());
-
+  
   cache.advanceTime(55.0);
   EXPECT_EQ(888, cache.get());
   EXPECT_EQ(888, cache.getWithTtl());
-
+  
   cache.advanceTime(5.01);
   EXPECT_EQ(888, cache.get());
   EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());

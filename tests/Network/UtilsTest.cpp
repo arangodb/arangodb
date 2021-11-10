@@ -21,22 +21,23 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <fuerte/connection.h>
-#include <fuerte/requests.h>
-#include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
+#include "gtest/gtest.h"
 
 #include "Basics/StaticStrings.h"
 #include "Network/Utils.h"
-#include "gtest/gtest.h"
+
+#include <fuerte/connection.h>
+#include <fuerte/requests.h>
+
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::network;
 
 TEST(NetworkUtilsTest, errorFromBody) {
   const char* str = "{\"errorNum\":1337, \"errorMessage\":\"abc\"}";
-  auto res =
-      network::resultFromBody(VPackParser::fromJson(str), TRI_ERROR_NO_ERROR);
+  auto res = network::resultFromBody(VPackParser::fromJson(str), TRI_ERROR_NO_ERROR);
   ASSERT_EQ(res.errorNumber(), ErrorCode{1337});
   ASSERT_EQ(res.errorMessage(), "abc");
 }
@@ -51,7 +52,7 @@ TEST(NetworkUtilsTest, errorCodeFromBody) {
 TEST(NetworkUtilsTest, errorCodesFromHeaders) {
   network::Headers headers;
   headers[StaticStrings::ErrorCodes] = "{\"5\":2}";
-
+  
   std::unordered_map<ErrorCode, size_t> errorCounter;
   network::errorCodesFromHeaders(headers, errorCounter, true);
   ASSERT_EQ(errorCounter.size(), 1);

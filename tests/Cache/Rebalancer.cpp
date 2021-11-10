@@ -22,7 +22,7 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/Rebalancer.h"
+#include "gtest/gtest.h"
 
 #include <cstdint>
 #include <memory>
@@ -35,12 +35,13 @@
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
+#include "Cache/Rebalancer.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
-#include "MockScheduler.h"
-#include "Mocks/Servers.h"
 #include "Random/RandomGenerator.h"
-#include "gtest/gtest.h"
+
+#include "Mocks/Servers.h"
+#include "MockScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
@@ -52,7 +53,9 @@ struct ThreadGuard {
 
   ThreadGuard(std::unique_ptr<std::thread> thread)
       : thread(std::move(thread)) {}
-  ~ThreadGuard() { join(); }
+  ~ThreadGuard() {
+    join();
+  }
 
   void join() {
     if (thread != nullptr) {
@@ -125,8 +128,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
 
     // commence mixed workload
     for (std::uint64_t i = 0; i < operationCount; i++) {
-      std::uint32_t r =
-          RandomGenerator::interval(static_cast<std::uint32_t>(99UL));
+      std::uint32_t r = RandomGenerator::interval(static_cast<std::uint32_t>(99UL));
 
       if (r >= 99) {  // remove something
         if (validLower == validUpper) {
@@ -144,16 +146,17 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
 
         std::uint64_t item = ++validUpper;
         std::size_t cacheIndex = item % cacheCount;
-        CachedValue* value = CachedValue::construct(
-            &item, sizeof(std::uint64_t), &item, sizeof(std::uint64_t));
+        CachedValue* value = CachedValue::construct(&item, sizeof(std::uint64_t),
+                                                    &item, sizeof(std::uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = caches[cacheIndex]->insert(value);
         if (status.fail()) {
           delete value;
         }
       } else {  // lookup something
-        std::uint64_t item = RandomGenerator::interval(
-            static_cast<int64_t>(validLower), static_cast<int64_t>(validUpper));
+        std::uint64_t item =
+            RandomGenerator::interval(static_cast<int64_t>(validLower),
+                                      static_cast<int64_t>(validUpper));
         std::size_t cacheIndex = item % cacheCount;
 
         Finding f = caches[cacheIndex]->find(&item, sizeof(std::uint64_t));
@@ -190,8 +193,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   RandomGenerator::shutdown();
 }
 
-TEST(CacheRebalancerTest,
-     test_rebalancing_with_transactionalcache_LongRunning) {
+TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
   auto postFn = [&scheduler](std::function<void()> fn) -> bool {
@@ -221,7 +223,7 @@ TEST(CacheRebalancerTest,
       }
     }
   };
-
+  
   ThreadGuard rebalancerThread(std::make_unique<std::thread>(rebalanceWorker));
 
   std::uint64_t chunkSize = 4 * 1024 * 1024;
@@ -229,8 +231,7 @@ TEST(CacheRebalancerTest,
   std::uint64_t operationCount = 4 * 1024 * 1024;
   std::atomic<std::uint64_t> hitCount(0);
   std::atomic<std::uint64_t> missCount(0);
-  auto worker = [&manager, &caches, cacheCount, initialInserts, operationCount,
-                 &hitCount,
+  auto worker = [&manager, &caches, cacheCount, initialInserts, operationCount, &hitCount,
                  &missCount](std::uint64_t lower, std::uint64_t upper) -> void {
     Transaction* tx = manager.beginTransaction(false);
     // fill with some initial data
@@ -253,8 +254,7 @@ TEST(CacheRebalancerTest,
 
     // commence mixed workload
     for (std::uint64_t i = 0; i < operationCount; i++) {
-      std::uint32_t r =
-          RandomGenerator::interval(static_cast<std::uint32_t>(99UL));
+      std::uint32_t r = RandomGenerator::interval(static_cast<std::uint32_t>(99UL));
 
       if (r >= 99) {  // remove something
         if (validLower == validUpper) {
@@ -275,8 +275,8 @@ TEST(CacheRebalancerTest,
           banishUpper = validUpper;
         }
         std::size_t cacheIndex = item % cacheCount;
-        CachedValue* value = CachedValue::construct(
-            &item, sizeof(std::uint64_t), &item, sizeof(std::uint64_t));
+        CachedValue* value = CachedValue::construct(&item, sizeof(std::uint64_t),
+                                                    &item, sizeof(std::uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = caches[cacheIndex]->insert(value);
         if (status.fail()) {
@@ -291,8 +291,9 @@ TEST(CacheRebalancerTest,
         std::size_t cacheIndex = item % cacheCount;
         caches[cacheIndex]->banish(&item, sizeof(std::uint64_t));
       } else {  // lookup something
-        std::uint64_t item = RandomGenerator::interval(
-            static_cast<int64_t>(validLower), static_cast<int64_t>(validUpper));
+        std::uint64_t item =
+            RandomGenerator::interval(static_cast<int64_t>(validLower),
+                                      static_cast<int64_t>(validUpper));
         std::size_t cacheIndex = item % cacheCount;
 
         Finding f = caches[cacheIndex]->find(&item, sizeof(std::uint64_t));

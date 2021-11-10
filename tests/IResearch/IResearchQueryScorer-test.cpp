@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
+#include "IResearchQueryCommon.h"
 
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionPlan.h"
@@ -32,13 +31,16 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchView.h"
-#include "IResearchQueryCommon.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "utils/string_utils.hpp"
 
 extern const char* ARGV0;  // defined in main.cpp
@@ -56,13 +58,12 @@ TEST_P(IResearchQueryScorerTest, test) {
   static std::vector<std::string> const EMPTY;
 
   auto createJson = arangodb::velocypack::Parser::fromJson(
-      "{ \
+  "{ \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\" \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
@@ -112,8 +113,9 @@ TEST_P(IResearchQueryScorerTest, test) {
     }})";
 
     auto viewDefinition = irs::string_utils::to_string(
-        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
-        static_cast<uint32_t>(linkVersion()));
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -122,8 +124,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder,
-                     arangodb::LogicalDataSource::Serialization::Properties);
+    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -142,9 +143,9 @@ TEST_P(IResearchQueryScorerTest, test) {
   {
     arangodb::OperationOptions opt;
 
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                       EMPTY, EMPTY, EMPTY,
+                                       arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -153,15 +154,15 @@ TEST_P(IResearchQueryScorerTest, test) {
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
-      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
-          resource.u8string());
+      auto builder =
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
       size_t i = 0;
 
-      std::shared_ptr<arangodb::LogicalCollection> collections[]{
-          logicalCollection1, logicalCollection2};
+      std::shared_ptr<arangodb::LogicalCollection> collections[]{logicalCollection1,
+                                                                 logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsView.emplace_back();
@@ -180,15 +181,15 @@ TEST_P(IResearchQueryScorerTest, test) {
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential_order.json");
 
-      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
-          resource.u8string());
+      auto builder =
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsCollection.emplace_back();
-        auto const res = logicalCollection3->insert(
-            &trx, doc, insertedDocsCollection.back(), opt);
+        auto const res =
+            logicalCollection3->insert(&trx, doc, insertedDocsCollection.back(), opt);
         EXPECT_TRUE(res.ok());
       }
     }
@@ -209,8 +210,7 @@ TEST_P(IResearchQueryScorerTest, test) {
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_FALSE(queryResult.result.ok());
-    ASSERT_TRUE(queryResult.result.is(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // invalid argument
@@ -306,11 +306,10 @@ TEST_P(IResearchQueryScorerTest, test) {
         "FOR d IN testView SEARCH BOOST(d.name == 'A', 42) "
         "RETURN { d, score: BOOSTSCORER(d) }";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
     std::map<float, arangodb::velocypack::Slice> expectedDocs{
         {42.f, arangodb::velocypack::Slice(insertedDocsView[0].vpack())}};
@@ -355,11 +354,10 @@ TEST_P(IResearchQueryScorerTest, test) {
         "RETURN { d, score: d.seq + 3*customscorer(d, arr[TO_NUMBER(rnd != "
         "0)]) }";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs{
         {0, arangodb::velocypack::Slice(insertedDocsView[0].vpack())},
@@ -409,11 +407,10 @@ TEST_P(IResearchQueryScorerTest, test) {
         "SORT customscorer(d, x[0].seq) "
         "RETURN { d, 'score' : customscorer(d, x[0].seq) }";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs{
         {0, arangodb::velocypack::Slice(insertedDocsView[1].vpack())},
@@ -450,8 +447,7 @@ TEST_P(IResearchQueryScorerTest, test) {
   }
 
   // FIXME
-  // inline subqueries aren't supported, e.g. the query below will be
-  // transformed into
+  // inline subqueries aren't supported, e.g. the query below will be transformed into
   //
   // FOR d in testView SEARCH d.name == 'B' LET #1 = customscorer(d, #2[0].seq)
   // LET #2 = (FOR j IN testView SEARCH j.name == 'A' SORT BM25(j) RETURN j)
@@ -510,30 +506,26 @@ TEST_P(IResearchQueryScorerTest, test) {
         "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'B', true, false) "
         "RETURN [ customscorer(d, i), customscorer(d, 1) ] ";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
-    auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
-    plan->findNodesOfType(
-        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     ASSERT_EQ(1, nodes.size());
-    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    auto* viewNode =
+        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+            nodes.front());
     ASSERT_TRUE(viewNode);
     auto& scorers = viewNode->scorers();
     ASSERT_EQ(1, scorers.size());
@@ -557,8 +549,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       ASSERT_EQ(arangodb::aql::NODE_TYPE_VALUE, arg1->type);
@@ -568,8 +559,7 @@ TEST_P(IResearchQueryScorerTest, test) {
 
     // and 2 references
     nodes.clear();
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION,
-                          true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
     ASSERT_EQ(1, nodes.size());
     auto* calcNode =
         arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode*>(
@@ -618,30 +608,26 @@ TEST_P(IResearchQueryScorerTest, test) {
         "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
         "RETURN [ customscorer(d, obj.value), customscorer(d, obj.value) ] ";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
-    auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
-    plan->findNodesOfType(
-        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     ASSERT_EQ(1, nodes.size());
-    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    auto* viewNode =
+        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+            nodes.front());
     ASSERT_TRUE(viewNode);
     auto& scorers = viewNode->scorers();
     ASSERT_EQ(1, scorers.size());
@@ -665,8 +651,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       ASSERT_EQ(arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS, arg1->type);
@@ -674,12 +659,11 @@ TEST_P(IResearchQueryScorerTest, test) {
 
     // and 2 references
     nodes.clear();
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION,
-                          true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
     ASSERT_EQ(2, nodes.size());
     for (auto const* node : nodes) {
-      auto* calcNode = arangodb::aql::ExecutionNode::castTo<
-          arangodb::aql::CalculationNode const*>(node);
+      auto* calcNode =
+          arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(node);
       ASSERT_TRUE(calcNode);
       ASSERT_TRUE(calcNode->expression());
 
@@ -731,30 +715,26 @@ TEST_P(IResearchQueryScorerTest, test) {
         "RETURN [ customscorer(d, obj.value+1), customscorer(d, obj.value+1) "
         "] ";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
-    auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
-    plan->findNodesOfType(
-        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     ASSERT_EQ(1, nodes.size());
-    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    auto* viewNode =
+        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+            nodes.front());
     ASSERT_TRUE(viewNode);
     auto& scorers = viewNode->scorers();
     ASSERT_EQ(1, scorers.size());
@@ -778,8 +758,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       ASSERT_EQ(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_PLUS, arg1->type);
@@ -787,12 +766,11 @@ TEST_P(IResearchQueryScorerTest, test) {
 
     // and 2 references
     nodes.clear();
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION,
-                          true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
     ASSERT_EQ(2, nodes.size());
     for (auto const* node : nodes) {
-      auto* calcNode = arangodb::aql::ExecutionNode::castTo<
-          arangodb::aql::CalculationNode const*>(node);
+      auto* calcNode =
+          arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(node);
       ASSERT_TRUE(calcNode);
       ASSERT_TRUE(calcNode->expression());
 
@@ -843,30 +821,26 @@ TEST_P(IResearchQueryScorerTest, test) {
         "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
         "RETURN [ customscorer(d, obj[1]), customscorer(d, obj[1]) ] ";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
-    auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
-    plan->findNodesOfType(
-        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     ASSERT_EQ(1, nodes.size());
-    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    auto* viewNode =
+        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+            nodes.front());
     ASSERT_TRUE(viewNode);
     auto& scorers = viewNode->scorers();
     ASSERT_EQ(1, scorers.size());
@@ -890,8 +864,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       ASSERT_EQ(arangodb::aql::NODE_TYPE_INDEXED_ACCESS, arg1->type);
@@ -899,12 +872,11 @@ TEST_P(IResearchQueryScorerTest, test) {
 
     // and 2 references
     nodes.clear();
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION,
-                          true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
     ASSERT_EQ(2, nodes.size());
     for (auto const* node : nodes) {
-      auto* calcNode = arangodb::aql::ExecutionNode::castTo<
-          arangodb::aql::CalculationNode const*>(node);
+      auto* calcNode =
+          arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(node);
       ASSERT_TRUE(calcNode);
       ASSERT_TRUE(calcNode->expression());
 
@@ -956,30 +928,26 @@ TEST_P(IResearchQueryScorerTest, test) {
         "RETURN [ customscorer(d, obj[0] > obj[1] ? 1 : 2), customscorer(d, "
         "obj[0] > obj[1] ? 1 : 2) ] ";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
-    auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
-    plan->findNodesOfType(
-        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     ASSERT_EQ(1, nodes.size());
-    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    auto* viewNode =
+        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+            nodes.front());
     ASSERT_TRUE(viewNode);
     auto& scorers = viewNode->scorers();
     ASSERT_EQ(1, scorers.size());
@@ -1003,8 +971,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       ASSERT_EQ(arangodb::aql::NODE_TYPE_OPERATOR_TERNARY, arg1->type);
@@ -1012,12 +979,11 @@ TEST_P(IResearchQueryScorerTest, test) {
 
     // and 2 references
     nodes.clear();
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION,
-                          true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
     ASSERT_EQ(2, nodes.size());
     for (auto const* node : nodes) {
-      auto* calcNode = arangodb::aql::ExecutionNode::castTo<
-          arangodb::aql::CalculationNode const*>(node);
+      auto* calcNode =
+          arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(node);
       ASSERT_TRUE(calcNode);
       ASSERT_TRUE(calcNode->expression());
 
@@ -1069,30 +1035,26 @@ TEST_P(IResearchQueryScorerTest, test) {
         "RETURN [ customscorer(d, obj[0] > obj[1] ? 1 : 2), customscorer(d, "
         "obj[1] > obj[2] ? 1 : 2) ] ";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
-    auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
-    plan->findNodesOfType(
-        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     ASSERT_EQ(1, nodes.size());
-    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    auto* viewNode =
+        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+            nodes.front());
     ASSERT_TRUE(viewNode);
     auto& scorers = viewNode->scorers();
     ASSERT_EQ(2, scorers.size());
@@ -1116,8 +1078,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       ASSERT_EQ(arangodb::aql::NODE_TYPE_OPERATOR_TERNARY, arg1->type);
@@ -1139,8 +1100,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       ASSERT_EQ(arangodb::aql::NODE_TYPE_OPERATOR_TERNARY, arg1->type);
@@ -1191,30 +1151,26 @@ TEST_P(IResearchQueryScorerTest, test) {
         "1), customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 1) "
         "] ";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
-    auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
-    plan->findNodesOfType(
-        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     ASSERT_EQ(1, nodes.size());
-    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    auto* viewNode =
+        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+            nodes.front());
     ASSERT_TRUE(viewNode);
     auto& scorers = viewNode->scorers();
     ASSERT_EQ(1, scorers.size());
@@ -1238,8 +1194,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       EXPECT_EQ(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_MINUS, arg1->type);
@@ -1247,12 +1202,11 @@ TEST_P(IResearchQueryScorerTest, test) {
 
     // and 2 references
     nodes.clear();
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION,
-                          true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
     ASSERT_EQ(2, nodes.size());
     for (auto const* node : nodes) {
-      auto* calcNode = arangodb::aql::ExecutionNode::castTo<
-          arangodb::aql::CalculationNode const*>(node);
+      auto* calcNode =
+          arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(node);
       ASSERT_TRUE(calcNode);
       ASSERT_TRUE(calcNode->expression());
 
@@ -1304,30 +1258,26 @@ TEST_P(IResearchQueryScorerTest, test) {
         "RETURN [ customscorer(d, { [ CONCAT(obj[0], obj[1]) ] : 1 }), "
         "customscorer(d, { [ CONCAT(obj[0], obj[1]) ] : 1 }) ]";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
-    auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
-    plan->findNodesOfType(
-        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     ASSERT_EQ(1, nodes.size());
-    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    auto* viewNode =
+        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+            nodes.front());
     ASSERT_TRUE(viewNode);
     auto& scorers = viewNode->scorers();
     ASSERT_EQ(1, scorers.size());
@@ -1351,8 +1301,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       EXPECT_EQ(arangodb::aql::NODE_TYPE_OBJECT, arg1->type);
@@ -1360,12 +1309,11 @@ TEST_P(IResearchQueryScorerTest, test) {
 
     // and 2 references
     nodes.clear();
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION,
-                          true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
     ASSERT_EQ(2, nodes.size());
     for (auto const* node : nodes) {
-      auto* calcNode = arangodb::aql::ExecutionNode::castTo<
-          arangodb::aql::CalculationNode const*>(node);
+      auto* calcNode =
+          arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(node);
       ASSERT_TRUE(calcNode);
       ASSERT_TRUE(calcNode->expression());
 
@@ -1393,30 +1341,26 @@ TEST_P(IResearchQueryScorerTest, test) {
         "RETURN [ customscorer(d, { foo : obj[1] }), customscorer(d, { foo : "
         "obj[1] }) ]";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
-    auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
-    plan->findNodesOfType(
-        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     ASSERT_EQ(1, nodes.size());
-    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    auto* viewNode =
+        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+            nodes.front());
     ASSERT_TRUE(viewNode);
     auto& scorers = viewNode->scorers();
     ASSERT_EQ(1, scorers.size());
@@ -1440,8 +1384,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       EXPECT_EQ(arangodb::aql::NODE_TYPE_OBJECT, arg1->type);
@@ -1449,12 +1392,11 @@ TEST_P(IResearchQueryScorerTest, test) {
 
     // and 2 references
     nodes.clear();
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION,
-                          true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
     ASSERT_EQ(2, nodes.size());
     for (auto const* node : nodes) {
-      auto* calcNode = arangodb::aql::ExecutionNode::castTo<
-          arangodb::aql::CalculationNode const*>(node);
+      auto* calcNode =
+          arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(node);
       ASSERT_TRUE(calcNode);
       ASSERT_TRUE(calcNode->expression());
 
@@ -1483,30 +1425,26 @@ TEST_P(IResearchQueryScorerTest, test) {
         "1), customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 2) "
         "] ";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
-    auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
-    plan->findNodesOfType(
-        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     ASSERT_EQ(1, nodes.size());
-    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    auto* viewNode =
+        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+            nodes.front());
     ASSERT_TRUE(viewNode);
     auto& scorers = viewNode->scorers();
     ASSERT_EQ(2, scorers.size());
@@ -1530,8 +1468,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       EXPECT_EQ(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_MINUS, arg1->type);
@@ -1553,8 +1490,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       EXPECT_EQ(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_MINUS, arg1->type);
@@ -1604,30 +1540,26 @@ TEST_P(IResearchQueryScorerTest, test) {
         "RETURN [ customscorer(d, obj any == 3), customscorer(d, obj any == 3) "
         "]";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
-    auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
-    plan->findNodesOfType(
-        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     ASSERT_EQ(1, nodes.size());
-    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    auto* viewNode =
+        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+            nodes.front());
     ASSERT_TRUE(viewNode);
     auto& scorers = viewNode->scorers();
     ASSERT_EQ(1, scorers.size());
@@ -1651,8 +1583,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       EXPECT_EQ(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, arg1->type);
@@ -1660,12 +1591,11 @@ TEST_P(IResearchQueryScorerTest, test) {
 
     // and 2 references
     nodes.clear();
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION,
-                          true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
     ASSERT_EQ(2, nodes.size());
     for (auto const* node : nodes) {
-      auto* calcNode = arangodb::aql::ExecutionNode::castTo<
-          arangodb::aql::CalculationNode const*>(node);
+      auto* calcNode =
+          arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(node);
       ASSERT_TRUE(calcNode);
       ASSERT_TRUE(calcNode->expression());
 
@@ -1693,30 +1623,26 @@ TEST_P(IResearchQueryScorerTest, test) {
         "RETURN [ customscorer(d, obj any == 3), customscorer(d, obj all == 3) "
         "]";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
-    auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
-    plan->findNodesOfType(
-        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     ASSERT_EQ(1, nodes.size());
-    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    auto* viewNode =
+        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+            nodes.front());
     ASSERT_TRUE(viewNode);
     auto& scorers = viewNode->scorers();
     ASSERT_EQ(2, scorers.size());
@@ -1740,8 +1666,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       EXPECT_EQ(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, arg1->type);
@@ -1763,8 +1688,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       EXPECT_EQ(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, arg1->type);
@@ -1777,36 +1701,32 @@ TEST_P(IResearchQueryScorerTest, test) {
         "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
         "RETURN [ tfidf(d), tfidf(d, false) ] ";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
-    auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // 2 scorers scorer
-    plan->findNodesOfType(
-        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     ASSERT_EQ(1, nodes.size());
-    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    auto* viewNode =
+        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+            nodes.front());
     ASSERT_TRUE(viewNode);
     auto scorers = viewNode->scorers();
-    std::sort(scorers.begin(), scorers.end(),
-              [](auto const& lhs, auto const& rhs) noexcept {
-                return lhs.var->name < rhs.var->name;
-              });
+    std::sort(
+        scorers.begin(), scorers.end(), [](auto const& lhs, auto const& rhs) noexcept {
+          return lhs.var->name < rhs.var->name;
+        });
 
     // check "tfidf(d)" scorer
     {
@@ -1825,8 +1745,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(1, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
     }
 
     // check "tfidf(d, false)" scorer
@@ -1846,8 +1765,7 @@ TEST_P(IResearchQueryScorerTest, test) {
       ASSERT_EQ(2, args->numMembers());
       auto* arg0 = args->getMember(0);  // reference to d
       ASSERT_TRUE(arg0);
-      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()),
-                arg0->getData());
+      ASSERT_EQ(static_cast<void const*>(&viewNode->outVariable()), arg0->getData());
       auto* arg1 = args->getMember(1);
       ASSERT_TRUE(arg1);
       ASSERT_EQ(arangodb::aql::NODE_TYPE_VALUE, arg1->type);
@@ -1857,8 +1775,7 @@ TEST_P(IResearchQueryScorerTest, test) {
 
     // and 2 references
     nodes.clear();
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION,
-                          true);
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
     ASSERT_EQ(1, nodes.size());
     auto* calcNode =
         arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode*>(
@@ -1878,5 +1795,7 @@ TEST_P(IResearchQueryScorerTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(IResearchQueryScorerTest, IResearchQueryScorerTest,
-                        GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryScorerTest,
+  IResearchQueryScorerTest,
+  GetLinkVersions());

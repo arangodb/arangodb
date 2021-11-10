@@ -26,7 +26,7 @@
 
 namespace arangodb::tests::quick {
 
-template<>
+template <>
 auto generate<AlphaNumeric>() -> AlphaNumeric {
   constexpr static char alphaNumerics[] =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -38,9 +38,9 @@ auto generate<AlphaNumeric>() -> AlphaNumeric {
   return {alphaNumerics[RandomGenerator::interval(0, n - 1)]};
 }
 
-template<>
+template <>
 auto generate<TRI_col_type_e>() -> TRI_col_type_e {
   return static_cast<TRI_col_type_e>(RandomGenerator::interval(2, 3));
 }
 
-}  // namespace arangodb::tests::quick
+}

@@ -24,7 +24,5 @@
 
 #include "Replication2/Streams/LogMultiplexer.tpp"
 
-template struct arangodb::replication2::streams::LogMultiplexer<
-    arangodb::replication2::test::MyTestSpecification>;
-template struct arangodb::replication2::streams::LogDemultiplexer<
-    arangodb::replication2::test::MyTestSpecification>;
+template struct arangodb::replication2::streams::LogMultiplexer<arangodb::replication2::test::MyTestSpecification>;
+template struct arangodb::replication2::streams::LogDemultiplexer<arangodb::replication2::test::MyTestSpecification>;

@@ -20,13 +20,15 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <rocksdb/db.h>
+
+#include <gtest/gtest.h>
+
 #include <Basics/Exceptions.h>
 #include <Basics/RocksDBUtils.h>
 #include <Basics/files.h>
 #include <RocksDBEngine/RocksDBFormat.h>
 #include <RocksDBEngine/RocksDBPersistedLog.h>
-#include <gtest/gtest.h>
-#include <rocksdb/db.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -46,15 +48,13 @@ struct RocksDBLogTest : testing::Test {
     }
 
     struct SyncExecutor : RocksDBLogPersistor::Executor {
-      void operator()(
-          fu2::unique_function<void() noexcept> f) noexcept override {
+      void operator()(fu2::unique_function<void() noexcept> f) noexcept override {
         std::move(f).operator()();
       }
     };
 
-    _persistor = std::make_shared<RocksDBLogPersistor>(
-        _db->DefaultColumnFamily(), _db, std::make_shared<SyncExecutor>(),
-        std::make_shared<ReplicatedLogGlobalSettings>());
+    _persistor = std::make_shared<RocksDBLogPersistor>(_db->DefaultColumnFamily(), _db, std::make_shared<SyncExecutor>(),
+                                                       std::make_shared<ReplicatedLogGlobalSettings>());
   }
 
   static void TearDownTestCase() {
@@ -86,7 +86,7 @@ std::string RocksDBLogTest::_path = {};
 rocksdb::DB* RocksDBLogTest::_db = nullptr;
 std::shared_ptr<RocksDBLogPersistor> RocksDBLogTest::_persistor = nullptr;
 
-template<typename I>
+template <typename I>
 struct SimpleIterator : PersistedLogIterator {
   SimpleIterator(I begin, I end) : current(begin), end(end) {}
   ~SimpleIterator() override = default;
@@ -102,16 +102,14 @@ struct SimpleIterator : PersistedLogIterator {
   I current, end;
 };
 
-template<typename C, typename Iter = typename C::const_iterator>
+template <typename C, typename Iter = typename C::const_iterator>
 auto make_iterator(C const& c) -> std::shared_ptr<SimpleIterator<Iter>> {
   return std::make_shared<SimpleIterator<Iter>>(c.begin(), c.end());
 }
 
 auto make_iterator(std::initializer_list<PersistingLogEntry> c)
-    -> std::shared_ptr<
-        SimpleIterator<std::initializer_list<PersistingLogEntry>::iterator>> {
-  return std::make_shared<
-      SimpleIterator<std::initializer_list<PersistingLogEntry>::iterator>>(
+    -> std::shared_ptr<SimpleIterator<std::initializer_list<PersistingLogEntry>::iterator>> {
+  return std::make_shared<SimpleIterator<std::initializer_list<PersistingLogEntry>::iterator>>(
       c.begin(), c.end());
 }
 
@@ -120,14 +118,10 @@ TEST_F(RocksDBLogTest, insert_iterate) {
 
   {
     auto entries = std::vector{
-        PersistingLogEntry{LogTerm{1}, LogIndex{1},
-                           LogPayload::createFromString("first")},
-        PersistingLogEntry{LogTerm{1}, LogIndex{2},
-                           LogPayload::createFromString("second")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{3},
-                           LogPayload::createFromString("third")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{1000},
-                           LogPayload::createFromString("thousand")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{1000}, LogPayload::createFromString("thousand")},
     };
     auto iter = make_iterator(entries);
 
@@ -173,16 +167,11 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
 
   {
     auto entries = std::vector{
-        PersistingLogEntry{LogTerm{1}, LogIndex{1},
-                           LogPayload::createFromString("first")},
-        PersistingLogEntry{LogTerm{1}, LogIndex{2},
-                           LogPayload::createFromString("second")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{3},
-                           LogPayload::createFromString("third")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{999},
-                           LogPayload::createFromString("nine-nine-nine")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{1000},
-                           LogPayload::createFromString("thousand")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{999}, LogPayload::createFromString("nine-nine-nine")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{1000}, LogPayload::createFromString("thousand")},
     };
     auto iter = make_iterator(entries);
 
@@ -210,21 +199,17 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
   }
 }
 
+
 TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
   auto log = createUniqueLog();
 
   {
     auto entries = std::vector{
-        PersistingLogEntry{LogTerm{1}, LogIndex{1},
-                           LogPayload::createFromString("first")},
-        PersistingLogEntry{LogTerm{1}, LogIndex{2},
-                           LogPayload::createFromString("second")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{3},
-                           LogPayload::createFromString("third")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{999},
-                           LogPayload::createFromString("nine-nine-nine")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{1000},
-                           LogPayload::createFromString("thousand")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{999}, LogPayload::createFromString("nine-nine-nine")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{1000}, LogPayload::createFromString("thousand")},
     };
     auto iter = make_iterator(entries);
 

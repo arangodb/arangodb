@@ -21,12 +21,13 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
+#include "gtest/gtest.h"
 
 #include "Aql/SkipResult.h"
 #include "Basics/ResultT.h"
-#include "gtest/gtest.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;

@@ -26,6 +26,7 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::test;
 
+
 TEST(LogIndexTest, compareOperators) {
   auto one = LogIndex{1};
   auto two = LogIndex{2};

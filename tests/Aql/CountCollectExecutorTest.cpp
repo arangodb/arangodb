@@ -21,14 +21,16 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
+#include "AqlExecutorTestCase.h"
+#include "TestLambdaExecutor.h"
+
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Aql/SubqueryEndExecutor.h"
 #include "Aql/SubqueryStartExecutor.h"
-#include "AqlExecutorTestCase.h"
-#include "TestLambdaExecutor.h"
-#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -47,13 +49,11 @@ class CountCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<CountCollectParamType, false> {
  protected:
   auto MakeCountCollectRegisterInfos(RegisterCount outReg) -> RegisterInfos {
-    return RegisterInfos({}, RegIdSet{static_cast<RegisterId::value_t>(outReg)},
-                         outReg, outReg + 1, RegIdFlatSet{},
-                         RegIdFlatSetStack{{}, {}});
+    return RegisterInfos({}, RegIdSet{static_cast<RegisterId::value_t>(outReg)}, outReg, outReg + 1,
+                         RegIdFlatSet{}, RegIdFlatSetStack{{}, {}});
   }
 
-  auto MakeCountCollectExecutorInfos(RegisterId outReg)
-      -> CountCollectExecutorInfos {
+  auto MakeCountCollectExecutorInfos(RegisterId outReg) -> CountCollectExecutorInfos {
     return CountCollectExecutorInfos{outReg};
   }
   auto GetSplit() -> CountCollectSplitType {
@@ -68,8 +68,8 @@ class CountCollectExecutorTest
     auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0}, RegIdSet{0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
-    auto nrOutputRegisters = static_cast<RegisterCount>(
-        inputRegisterSet.size() + outputRegisterSet.size());
+    auto nrOutputRegisters =
+        static_cast<RegisterCount>(inputRegisterSet.size() + outputRegisterSet.size());
     return RegisterInfos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
                          nrOutputRegisters, {}, toKeepRegisterSet);
   }
@@ -81,16 +81,14 @@ class CountCollectExecutorTest
     auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
-    auto nrOutputRegisters = static_cast<RegisterCount>(
-        inputRegisterSet.size() + outputRegisterSet.size());
-    return SubqueryStartExecutor::Infos(inputRegisterSet, outputRegisterSet,
-                                        nrInputRegisters, nrOutputRegisters, {},
-                                        toKeepRegisterSet);
+    auto nrOutputRegisters =
+        static_cast<RegisterCount>(inputRegisterSet.size() + outputRegisterSet.size());
+    return SubqueryStartExecutor::Infos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
+                                        nrOutputRegisters, {}, toKeepRegisterSet);
   }
 
   auto MakeSubqueryEndRegisterInfos(RegisterId inputRegister) -> RegisterInfos {
-    auto const outputRegister =
-        RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
+    auto const outputRegister = RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
     auto inputRegisterSet = RegIdSet{};
     for (RegisterId::value_t r = 0; r <= inputRegister.value(); ++r) {
       inputRegisterSet.emplace(r);
@@ -99,19 +97,16 @@ class CountCollectExecutorTest
     auto toKeepRegisterSet = RegIdSetStack{{}, {}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
-    auto nrOutputRegisters = static_cast<RegisterCount>(
-        inputRegisterSet.size() + outputRegisterSet.size());
+    auto nrOutputRegisters =
+        static_cast<RegisterCount>(inputRegisterSet.size() + outputRegisterSet.size());
     return RegisterInfos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
                          nrOutputRegisters, {}, toKeepRegisterSet);
   }
 
-  auto MakeSubqueryEndExecutorInfos(RegisterId inputRegister)
-      -> SubqueryEndExecutor::Infos {
-    auto const outputRegister =
-        RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
+  auto MakeSubqueryEndExecutorInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
+    auto const outputRegister = RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
 
-    return SubqueryEndExecutor::Infos(nullptr, monitor, inputRegister,
-                                      outputRegister);
+    return SubqueryEndExecutor::Infos(nullptr, monitor, inputRegister, outputRegister);
   }
 
   auto MakeRemoveAllLinesRegisterInfos() -> RegisterInfos {
@@ -126,12 +121,10 @@ class CountCollectExecutorTest
   }
 
   auto MakeRemoveAllLinesExecutorInfos() -> LambdaExe::Infos {
-    ProduceCall prod = [](AqlItemBlockInputRange& input,
-                          OutputAqlItemRow& output)
+    ProduceCall prod = [](AqlItemBlockInputRange& input, OutputAqlItemRow& output)
         -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
       EXPECT_TRUE(false) << "Should never be called";
-      return {ExecutorState::DONE, NoStats{},
-              AqlCall{0, true, 0, AqlCall::LimitType::HARD}};
+      return {ExecutorState::DONE, NoStats{}, AqlCall{0, true, 0, AqlCall::LimitType::HARD}};
     };
 
     SkipCall skip = [](AqlItemBlockInputRange& input, AqlCall& call)
@@ -145,16 +138,16 @@ class CountCollectExecutorTest
   }
 };
 
-template<size_t... vs>
+template <size_t... vs>
 const CountCollectSplitType splitIntoBlocks =
     CountCollectSplitType{std::vector<std::size_t>{vs...}};
-template<size_t step>
+template <size_t step>
 const CountCollectSplitType splitStep = CountCollectSplitType{step};
 
-INSTANTIATE_TEST_CASE_P(
-    CountCollectExecutor, CountCollectExecutorTest,
-    ::testing::Values(CountCollectSplitType{std::monostate()}, splitStep<1>,
-                      splitIntoBlocks<2, 3>, splitStep<2>));
+INSTANTIATE_TEST_CASE_P(CountCollectExecutor, CountCollectExecutorTest,
+                        ::testing::Values(CountCollectSplitType{std::monostate()},
+                                          splitStep<1>, splitIntoBlocks<2, 3>,
+                                          splitStep<2>));
 
 TEST_P(CountCollectExecutorTest, empty_input) {
   makeExecutorTestHelper<1, 1>()
@@ -269,8 +262,7 @@ TEST_P(CountCollectExecutorTest, count_in_empty_subquery) {
                                           MakeSubqueryStartExecutorInfos(),
                                           ExecutionNode::SUBQUERY_START)
       .addConsumer<LambdaExe>(MakeRemoveAllLinesRegisterInfos(),
-                              MakeRemoveAllLinesExecutorInfos(),
-                              ExecutionNode::FILTER)
+                              MakeRemoveAllLinesExecutorInfos(), ExecutionNode::FILTER)
       .addConsumer<CountCollectExecutor>(MakeCountCollectRegisterInfos(1),
                                          MakeCountCollectExecutorInfos(1),
                                          ExecutionNode::COLLECT)

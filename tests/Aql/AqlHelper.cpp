@@ -29,15 +29,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-std::ostream& arangodb::aql::operator<<(std::ostream& stream,
-                                        ExecutionStats const& stats) {
+std::ostream& arangodb::aql::operator<<(std::ostream& stream, ExecutionStats const& stats) {
   VPackBuilder builder{};
   stats.toVelocyPack(builder, true);
   return stream << builder.toJson();
 }
 
-std::ostream& arangodb::aql::operator<<(std::ostream& stream,
-                                        AqlItemBlock const& block) {
+std::ostream& arangodb::aql::operator<<(std::ostream& stream, AqlItemBlock const& block) {
   stream << "[";
   for (size_t row = 0; row < block.numRows(); row++) {
     if (row > 0) {
@@ -94,8 +92,7 @@ bool arangodb::aql::operator==(arangodb::aql::AqlItemBlock const& left,
       AqlValue const& l = left.getValueReference(row, reg);
       AqlValue const& r = right.getValueReference(row, reg);
       // Doesn't work for docvecs or ranges
-      if (arangodb::basics::VelocyPackHelper::compare(l.slice(), r.slice(),
-                                                      false) != 0) {
+      if (arangodb::basics::VelocyPackHelper::compare(l.slice(), r.slice(), false) != 0) {
         return false;
       }
     }

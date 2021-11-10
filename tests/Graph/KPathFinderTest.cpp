@@ -20,30 +20,33 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "./MockGraph.h"
-#include "./MockGraphProvider.h"
 #include "gtest/gtest.h"
 
+#include "./MockGraph.h"
+#include "./MockGraphProvider.h"
+
 // Used for StringUtils size_t variant
+#include "Basics/operating-system.h"
+
 #include "../Mocks/Servers.h"
+
 #include "Aql/Query.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/operating-system.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Queues/FifoQueue.h"
 
 // Needed in case of enabled tracing
-#include <velocypack/HashedStringRef.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Queues/QueueTracer.h"
 #include "Graph/algorithm-aliases.h"
+
+#include <velocypack/HashedStringRef.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -71,8 +74,8 @@ class KPathFinderTest
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
 
   arangodb::transaction::Methods _trx{_query->newTrxContext()};
-  arangodb::aql::FixedVarExpressionContext _expressionContext{
-      _trx, *_query.get(), _functionsCache};
+  arangodb::aql::FixedVarExpressionContext _expressionContext{_trx, *_query.get(),
+                                                              _functionsCache};
   KPathFinderTest() {
     if (activateLogging) {
       Logger::GRAPHS.setLogLevel(LogLevel::TRACE);
@@ -165,14 +168,12 @@ class KPathFinderTest
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return KPathFinder{
-        MockGraphProvider(
-            *_query.get(),
-            MockGraphProviderOptions{mockGraph, looseEndBehaviour(), false},
-            resourceMonitor),
-        MockGraphProvider(
-            *_query.get(),
-            MockGraphProviderOptions{mockGraph, looseEndBehaviour(), true},
-            resourceMonitor),
+        MockGraphProvider(*_query.get(),
+                          MockGraphProviderOptions{mockGraph, looseEndBehaviour(), false},
+                          resourceMonitor),
+        MockGraphProvider(*_query.get(),
+                          MockGraphProviderOptions{mockGraph, looseEndBehaviour(), true},
+                          resourceMonitor),
         std::move(options), std::move(validatorOpts), resourceMonitor};
   }
 
@@ -228,8 +229,7 @@ class KPathFinderTest
     return res;
   }
 
-  auto pathEquals(VPackSlice path, std::vector<size_t> const& vertexIds)
-      -> void {
+  auto pathEquals(VPackSlice path, std::vector<size_t> const& vertexIds) -> void {
     ASSERT_TRUE(path.isObject());
     ASSERT_TRUE(path.hasKey(StaticStrings::GraphQueryVertices));
     auto vertices = path.get(StaticStrings::GraphQueryVertices);
@@ -250,10 +250,9 @@ class KPathFinderTest
   }
 };
 
-INSTANTIATE_TEST_CASE_P(
-    KPathFinderTestRunner, KPathFinderTest,
-    ::testing::Values(MockGraphProvider::LooseEndBehaviour::NEVER,
-                      MockGraphProvider::LooseEndBehaviour::ALWAYS));
+INSTANTIATE_TEST_CASE_P(KPathFinderTestRunner, KPathFinderTest,
+                        ::testing::Values(MockGraphProvider::LooseEndBehaviour::NEVER,
+                                          MockGraphProvider::LooseEndBehaviour::ALWAYS));
 
 TEST_P(KPathFinderTest, no_path_exists) {
   VPackBuilder result;

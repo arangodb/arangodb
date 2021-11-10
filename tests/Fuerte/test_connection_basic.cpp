@@ -46,23 +46,22 @@ TEST_P(ConnectionTestF, ApiVersionSync) {
 
 TEST_P(ConnectionTestF, ApiVersionASync) {
   fu::WaitGroup wg;
-  auto cb = [&](fu::Error error, std::unique_ptr<fu::Request> req,
-                std::unique_ptr<fu::Response> res) {
-    fu::WaitGroupDone done(wg);
-    if (error != fu::Error::NoError) {
-      ASSERT_TRUE(false) << fu::to_string(error);
-    } else {
-      ASSERT_EQ(res->statusCode(), fu::StatusOK);
-      auto slice = res->slices().front();
-      auto version = slice.get("version").copyString();
-      auto server = slice.get("server").copyString();
-      ASSERT_EQ(server, "arango");
-      ASSERT_EQ(version[0], _major_arango_version);
-    }
-  };
+  auto cb = [&](fu::Error error, std::unique_ptr<fu::Request> req, std::unique_ptr<fu::Response> res) {
+     fu::WaitGroupDone done(wg);
+     if (error != fu::Error::NoError) {
+       ASSERT_TRUE(false) << fu::to_string(error);
+     } else {
+       ASSERT_EQ(res->statusCode(), fu::StatusOK);
+       auto slice = res->slices().front();
+       auto version = slice.get("version").copyString();
+       auto server = slice.get("server").copyString();
+       ASSERT_EQ(server, "arango");
+       ASSERT_EQ(version[0], _major_arango_version);
+     }
+   };
   for (size_t rep = 0; rep < repeat(); rep++) {
     auto request = fu::createRequest(fu::RestVerb::Get, "/_api/version");
-
+   
     wg.add();
     _connection->sendRequest(std::move(request), cb);
     if (wg.counter() >= 32) {
@@ -72,7 +71,7 @@ TEST_P(ConnectionTestF, ApiVersionASync) {
   wg.wait();
 }
 
-TEST_P(ConnectionTestF, SimpleCursorSync) {
+TEST_P(ConnectionTestF, SimpleCursorSync){
   auto request = fu::createRequest(fu::RestVerb::Post, "/_api/cursor");
   VPackBuilder builder;
   builder.openObject();
@@ -89,7 +88,7 @@ TEST_P(ConnectionTestF, SimpleCursorSync) {
   ASSERT_TRUE(result.length() == 5);
 }
 
-TEST_P(ConnectionTestF, CreateDocumentSync) {
+TEST_P(ConnectionTestF, CreateDocumentSync){
   dropCollection("test");
   createCollection("test");
 
@@ -102,15 +101,13 @@ TEST_P(ConnectionTestF, CreateDocumentSync) {
   ASSERT_TRUE(slice.get("_id").isString());
   ASSERT_TRUE(slice.get("_key").isString());
   ASSERT_TRUE(slice.get("_rev").isString());
-
+  
   dropCollection("test");
 }
 
-TEST_P(ConnectionTestF, ShortAndLongASync) {
+TEST_P(ConnectionTestF, ShortAndLongASync){
   fu::WaitGroup wg;
-  fu::RequestCallback cb = [&](fu::Error error,
-                               std::unique_ptr<fu::Request> req,
-                               std::unique_ptr<fu::Response> res) {
+  fu::RequestCallback cb = [&](fu::Error error, std::unique_ptr<fu::Request> req, std::unique_ptr<fu::Response> res) {
     fu::WaitGroupDone done(wg);
     if (error != fu::Error::NoError) {
       ASSERT_TRUE(false) << fu::to_string(error);
@@ -119,8 +116,7 @@ TEST_P(ConnectionTestF, ShortAndLongASync) {
       auto slice = res->slices().front();
       ASSERT_TRUE(slice.isObject());
       ASSERT_TRUE(slice.get("code").isInteger());
-      // std::cout << "messageID: " << req->messageID << " " << slice.toJson()
-      // << std::endl;
+      //std::cout << "messageID: " << req->messageID << " " << slice.toJson() << std::endl;
     }
   };
 
@@ -151,18 +147,14 @@ TEST_P(ConnectionTestF, ShortAndLongASync) {
 
 // threads parameter has no effect in this testsuite
 static const ConnectionTestParams connectionTestBasicParams[] = {
-    {/*._protocol = */ fu::ProtocolType::Http, /*._threads=*/1,
-     /*._repeat=*/100},
-    {/*._protocol = */ fu::ProtocolType::Http2, /*._threads=*/1,
-     /*._repeat=*/100},
-    {/*._protocol = */ fu::ProtocolType::Vst, /*._threads=*/1,
-     /*._repeat=*/100},
-    {/*._protocol = */ fu::ProtocolType::Http, /*._threads=*/1,
-     /*._repeat=*/2500},
-    {/*._protocol = */ fu::ProtocolType::Http2, /*._threads=*/1,
-     /*._repeat=*/2500},
-    {/*._protocol = */ fu::ProtocolType::Vst, /*._threads=*/1,
-     /*._repeat=*/2500}};
+  {/*._protocol = */fu::ProtocolType::Http,/*._threads=*/1, /*._repeat=*/100},
+  {/*._protocol = */fu::ProtocolType::Http2,/*._threads=*/1, /*._repeat=*/100},
+  {/*._protocol = */fu::ProtocolType::Vst,/*._threads=*/1, /*._repeat=*/100},
+  {/*._protocol = */fu::ProtocolType::Http,/*._threads=*/1, /*._repeat=*/2500},
+  {/*._protocol = */fu::ProtocolType::Http2,/*._threads=*/1, /*._repeat=*/2500},
+  {/*._protocol = */fu::ProtocolType::Vst,/*._threads=*/1, /*._repeat=*/2500}
+};
 
 INSTANTIATE_TEST_CASE_P(BasicConnectionTests, ConnectionTestF,
-                        ::testing::ValuesIn(connectionTestBasicParams));
+  ::testing::ValuesIn(connectionTestBasicParams));
+

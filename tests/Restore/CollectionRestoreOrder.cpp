@@ -21,12 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
-#include <velocypack/Builder.h>
 
 #include "Containers/Enumerate.h"
 #include "Random/RandomGenerator.h"
 #include "Restore/RestoreFeature.h"
 #include "Utils/QuickGen.h"
+
+#include <velocypack/Builder.h>
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -58,9 +59,10 @@ TEST(CollectionRestoreOrder, regression1) {
   };
   auto collections = std::vector<velocypack::Builder>();
   collections.reserve(colsJson.size());
-  std::transform(
-      colsJson.begin(), colsJson.end(), std::back_inserter(collections),
-      [&](auto const& json) { return *velocypack::Parser::fromJson(json); });
+  std::transform(colsJson.begin(), colsJson.end(),
+                 std::back_inserter(collections), [&](auto const& json) {
+                   return *velocypack::Parser::fromJson(json);
+                 });
   ASSERT_EQ(colsJson.size(), collections.size());
 
   // testee
@@ -127,14 +129,12 @@ struct Collection {
       builder.add("name", Value(name.value));
       builder.add("type", Value(type));
       if (distributeShardsLike != nullptr) {
-        builder.add("distributeShardsLike",
-                    Value(distributeShardsLike->name.value));
+        builder.add("distributeShardsLike", Value(distributeShardsLike->name.value));
       }
     }
   }
 };
-static auto operator<<(std::ostream& ostream, Collection const& col)
-    -> std::ostream& {
+static auto operator<<(std::ostream& ostream, Collection const& col) -> std::ostream& {
   ostream << "Collection{ name=" << col.name << ", type=" << col.type;
   if (col.distributeShardsLike != nullptr) {
     ostream << ", distributeShardsLike=" << col.distributeShardsLike->name;
@@ -147,8 +147,7 @@ struct CollectionSet {
   // between them intact
   std::vector<std::unique_ptr<Collection>> collections;
 };
-static auto operator<<(std::ostream& ostream, CollectionSet const& colSet)
-    -> std::ostream& {
+static auto operator<<(std::ostream& ostream, CollectionSet const& colSet) -> std::ostream& {
   ostream << "[";
   bool first = true;
   for (auto const& col : colSet.collections) {
@@ -165,7 +164,7 @@ static auto operator<<(std::ostream& ostream, CollectionSet const& colSet)
 }
 
 namespace arangodb::tests::quick {
-template<>
+template <>
 auto generate<CollectionName>() -> CollectionName {
   auto name = std::string();
   // make system collection with p=1/4
@@ -181,7 +180,7 @@ auto generate<CollectionName>() -> CollectionName {
   return {name};
 }
 
-template<>
+template <>
 auto generate<CollectionSet>(std::int32_t max) -> CollectionSet {
   std::size_t const n = RandomGenerator::interval(0, max);
 
@@ -229,8 +228,7 @@ auto generate<CollectionSet>(std::int32_t max) -> CollectionSet {
 }
 }  // namespace arangodb::tests::quick
 
-auto to_string(std::vector<velocypack::Builder> const& collections)
-    -> std::string {
+auto to_string(std::vector<velocypack::Builder> const& collections) -> std::string {
   auto res = std::string();
   res += "[";
   bool first = true;
@@ -252,13 +250,12 @@ void checkOrderValidity(std::vector<velocypack::Builder> const& collections) {
   auto colToIdx = std::unordered_map<std::string, std::size_t>();
   colToIdx.reserve(collections.size());
   auto enumCols = enumerate(collections);
-  std::transform(
-      enumCols.begin(), enumCols.end(), std::inserter(colToIdx, colToIdx.end()),
-      [](auto const& it) -> std::pair<std::string, std::size_t> {
-        auto const& [idx, builder] = it;
-        return {builder.slice().get("parameters").get("name").copyString(),
-                idx};
-      });
+  std::transform(enumCols.begin(), enumCols.end(),
+                 std::inserter(colToIdx, colToIdx.end()),
+                 [](auto const& it) -> std::pair<std::string, std::size_t> {
+                   auto const& [idx, builder] = it;
+                   return {builder.slice().get("parameters").get("name").copyString(), idx};
+                 });
   ASSERT_EQ(n, colToIdx.size()) << to_string(collections);
 
   for (auto const& [idx, builder] : enumerate(collections)) {
@@ -277,8 +274,7 @@ void testSortCollectionsForCreationOn(CollectionSet const& collectionSet) {
   auto const n = collectionSet.collections.size();
 
   auto collections = std::vector<velocypack::Builder>();
-  std::transform(collectionSet.collections.begin(),
-                 collectionSet.collections.end(),
+  std::transform(collectionSet.collections.begin(), collectionSet.collections.end(),
                  std::back_inserter(collections), [](auto const& col) {
                    auto builder = velocypack::Builder();
                    col->toVelocyPack(builder);

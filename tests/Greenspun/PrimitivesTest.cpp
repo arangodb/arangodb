@@ -1,12 +1,14 @@
 #include <iostream>
-#include <numeric>
 
 #include "Greenspun/Interpreter.h"
 #include "Greenspun/Primitives.h"
-#include "gtest/gtest.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
+
+#include "gtest/gtest.h"
+
+#include <numeric>
 
 /*
  * Calculation operators
@@ -1420,8 +1422,7 @@ TEST_F(GreenspunTest, reduce_dict_init_dicts) {
     FAIL() << res.error().toString();
   }
   ASSERT_TRUE(res.ok());
-  ASSERT_EQ(result.slice().toJson(),
-            R"json({"a":2,"b":4,"c":6,"d":4,"e":5})json");
+  ASSERT_EQ(result.slice().toJson(), R"json({"a":2,"b":4,"c":6,"d":4,"e":5})json");
 }
 
 TEST_F(GreenspunTest, sort) {

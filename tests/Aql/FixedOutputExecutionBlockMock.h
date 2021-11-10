@@ -22,11 +22,11 @@
 
 #pragma once
 
-#include <deque>
-
 #include "Aql/ExecutionBlock.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+
+#include <deque>
 
 namespace arangodb {
 
@@ -41,20 +41,17 @@ namespace aql {
  * This way we can generate specific situations and test how the requester does
  * react to it.
  */
-class FixedOutputExecutionBlockMock final
-    : public arangodb::aql::ExecutionBlock {
+class FixedOutputExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
  public:
-  FixedOutputExecutionBlockMock(
-      arangodb::aql::ExecutionEngine* engine,
-      arangodb::aql::ExecutionNode const* node,
-      std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data);
+  FixedOutputExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
+                                arangodb::aql::ExecutionNode const* node,
+                                std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data);
 
   std::pair<arangodb::aql::ExecutionState, arangodb::Result> initializeCursor(
       arangodb::aql::InputAqlItemRow const& input) override;
 
-  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult,
-             arangodb::aql::SharedAqlItemBlockPtr>
-  execute(arangodb::aql::AqlCallStack const& stack) override;
+  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr> execute(
+      arangodb::aql::AqlCallStack const& stack) override;
 
  private:
   arangodb::aql::RegisterInfos _infos;

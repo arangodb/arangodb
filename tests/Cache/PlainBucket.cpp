@@ -22,13 +22,13 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/PlainBucket.h"
+#include "gtest/gtest.h"
 
 #include <cstdint>
 #include <string>
 
 #include "Basics/debugging.h"
-#include "gtest/gtest.h"
+#include "Cache/PlainBucket.h"
 
 using namespace arangodb::cache;
 
@@ -36,10 +36,8 @@ TEST(CachePlainBucketTest, verify_that_insertion_works_correctly) {
   auto bucket = std::make_unique<PlainBucket>();
   bool success;
 
-  std::uint32_t hashes[11] = {
-      1, 2, 3, 4,  5, 6,
-      7, 8, 9, 10, 11};  // don't have to be real, but should be unique and
-                         // non-zero
+  std::uint32_t hashes[11] = {1, 2, 3, 4,  5, 6,
+                              7, 8, 9, 10, 11};  // don't have to be real, but should be unique and non-zero
   std::uint64_t keys[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   std::uint64_t values[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   CachedValue* ptrs[11];
@@ -63,15 +61,13 @@ TEST(CachePlainBucketTest, verify_that_insertion_works_correctly) {
     }
   }
   for (std::size_t i = 0; i < 10; i++) {
-    CachedValue* res =
-        bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+    CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
   // check that insert is ignored if full
   bucket->insert(hashes[10], ptrs[10]);
-  CachedValue* res =
-      bucket->find(hashes[10], ptrs[10]->key(), ptrs[10]->keySize());
+  CachedValue* res = bucket->find(hashes[10], ptrs[10]->key(), ptrs[10]->keySize());
   ASSERT_EQ(nullptr, res);
 
   bucket->unlock();
@@ -86,8 +82,7 @@ TEST(CachePlainBucketTest, verify_removal_works_correctly) {
   auto bucket = std::make_unique<PlainBucket>();
   bool success;
 
-  std::uint32_t hashes[3] = {
-      1, 2, 3};  // don't have to be real, but should be unique and non-zero
+  std::uint32_t hashes[3] = {1, 2, 3};  // don't have to be real, but should be unique and non-zero
   std::uint64_t keys[3] = {0, 1, 2};
   std::uint64_t values[3] = {0, 1, 2};
   CachedValue* ptrs[3];
@@ -104,8 +99,7 @@ TEST(CachePlainBucketTest, verify_removal_works_correctly) {
     bucket->insert(hashes[i], ptrs[i]);
   }
   for (std::size_t i = 0; i < 3; i++) {
-    CachedValue* res =
-        bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+    CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
@@ -135,10 +129,8 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
   auto bucket = std::make_unique<PlainBucket>();
   bool success;
 
-  std::uint32_t hashes[11] = {
-      1, 2, 3, 4,  5, 6,
-      7, 8, 9, 10, 11};  // don't have to be real, but should be unique and
-                         // non-zero
+  std::uint32_t hashes[11] = {1, 2, 3, 4,  5, 6,
+                              7, 8, 9, 10, 11};  // don't have to be real, but should be unique and non-zero
   std::uint64_t keys[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   std::uint64_t values[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   CachedValue* ptrs[11];
@@ -162,8 +154,7 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
     }
   }
   for (std::size_t i = 0; i < 10; i++) {
-    CachedValue* res =
-        bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+    CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
@@ -171,8 +162,7 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
   CachedValue* candidate = bucket->evictionCandidate();
   ASSERT_EQ(candidate, ptrs[0]);
   bucket->evict(candidate, false);
-  CachedValue* res =
-      bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
+  CachedValue* res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
   ASSERT_EQ(nullptr, res);
   ASSERT_FALSE(bucket->isFull());
 

@@ -22,17 +22,16 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/TransactionManager.h"
+#include "gtest/gtest.h"
 
 #include <cstdint>
 
 #include "Cache/Transaction.h"
-#include "gtest/gtest.h"
+#include "Cache/TransactionManager.h"
 
 using namespace arangodb::cache;
 
-TEST(CacheTransactionalManagerTest,
-     verify_that_transaction_term_is_maintained_correctly) {
+TEST(CacheTransactionalManagerTest, verify_that_transaction_term_is_maintained_correctly) {
   TransactionManager transactions;
   Transaction* tx1;
   Transaction* tx2;

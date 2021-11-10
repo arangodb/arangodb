@@ -21,17 +21,19 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
+#include "../Mocks/Servers.h"
+#include "Basics/StringUtils.h"
+#include "QueryHelper.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "../Mocks/Servers.h"
-#include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
-#include "QueryHelper.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/vocbase.h"
-#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -74,8 +76,7 @@ class ReplaceExecutorTest : public testing::Test {
 };
 
 TEST_F(ReplaceExecutorTest, basic) {
-  std::string query =
-      R"aql(REPLACE "testee" WITH {value: 2} INTO UnitTestCollection)aql";
+  std::string query = R"aql(REPLACE "testee" WITH {value: 2} INTO UnitTestCollection)aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
   auto expected = VPackParser::fromJson(R"([2])");
@@ -83,29 +84,25 @@ TEST_F(ReplaceExecutorTest, basic) {
 }
 
 TEST_F(ReplaceExecutorTest, option_ignoreErrors_default) {
-  std::string query =
-      R"aql(REPLACE "unkown" WITH {value: 2} INTO UnitTestCollection)aql";
+  std::string query = R"aql(REPLACE "unkown" WITH {value: 2} INTO UnitTestCollection)aql";
   AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   AssertNotChanged();
 }
 
 TEST_F(ReplaceExecutorTest, option_ignoreErrors_true) {
-  std::string query =
-      R"aql(REPLACE "unkown" WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreErrors: true})aql";
+  std::string query = R"aql(REPLACE "unkown" WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreErrors: true})aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   AssertNotChanged();
 }
 
 TEST_F(ReplaceExecutorTest, option_ignoreErrors_false) {
-  std::string query =
-      R"aql(REPLACE "unkown" WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreErrors: false})aql";
+  std::string query = R"aql(REPLACE "unkown" WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreErrors: false})aql";
   AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   AssertNotChanged();
 }
 
 TEST_F(ReplaceExecutorTest, option_ignoreRevs_default) {
-  std::string query =
-      R"aql(REPLACE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection)aql";
+  std::string query = R"aql(REPLACE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection)aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
   auto expected = VPackParser::fromJson(R"([2])");
@@ -113,8 +110,7 @@ TEST_F(ReplaceExecutorTest, option_ignoreRevs_default) {
 }
 
 TEST_F(ReplaceExecutorTest, option_ignoreRevs_true) {
-  std::string query =
-      R"aql(REPLACE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreRevs: true} )aql";
+  std::string query = R"aql(REPLACE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreRevs: true} )aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
   auto expected = VPackParser::fromJson(R"([2])");
@@ -122,8 +118,7 @@ TEST_F(ReplaceExecutorTest, option_ignoreRevs_true) {
 }
 
 TEST_F(ReplaceExecutorTest, option_ignoreRevs_false) {
-  std::string query =
-      R"aql(REPLACE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreRevs: false} )aql";
+  std::string query = R"aql(REPLACE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreRevs: false} )aql";
   AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_CONFLICT);
   AssertNotChanged();
 }
@@ -161,8 +156,7 @@ class ReplaceExecutorIntegrationTest : public testing::TestWithParam<size_t> {
 };
 
 TEST_P(ReplaceExecutorIntegrationTest, replace_all) {
-  std::string query =
-      R"aql(FOR doc IN UnitTestCollection REPLACE doc WITH {value: 'foo'} IN UnitTestCollection)aql";
+  std::string query = R"aql(FOR doc IN UnitTestCollection REPLACE doc WITH {value: 'foo'} IN UnitTestCollection)aql";
   VPackBuilder expected;
   {
     VPackArrayBuilder a{&expected};
@@ -320,8 +314,7 @@ TEST_P(ReplaceExecutorIntegrationTest, replace_all_return_old_and_new) {
 }
 
 TEST_P(ReplaceExecutorIntegrationTest, replace_remove_old_attributes) {
-  std::string query =
-      R"aql(FOR doc IN UnitTestCollection REPLACE doc WITH {foo: 'foo'} IN UnitTestCollection)aql";
+  std::string query = R"aql(FOR doc IN UnitTestCollection REPLACE doc WITH {foo: 'foo'} IN UnitTestCollection)aql";
   VPackBuilder expected;
   {
     VPackArrayBuilder a{&expected};
@@ -435,8 +428,7 @@ TEST_P(ReplaceExecutorIntegrationTest, replace_in_subquery_with_inner_skip) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-INSTANTIATE_TEST_CASE_P(ReplaceExecutorIntegration,
-                        ReplaceExecutorIntegrationTest,
+INSTANTIATE_TEST_CASE_P(ReplaceExecutorIntegration, ReplaceExecutorIntegrationTest,
                         ::testing::Values(1, 999, 1000, 1001, 2001));
 
 }  // namespace aql

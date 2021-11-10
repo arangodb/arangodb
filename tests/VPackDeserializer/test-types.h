@@ -25,7 +25,6 @@
 #include <iostream>
 #include <memory>
 #include <utility>
-
 #include "velocypack/Buffer.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Slice.h"
@@ -60,13 +59,13 @@ struct slice_access {
 
   slice_access(std::string key, type what) : key(std::move(key)), what(what) {}
   slice_access(std::string key, type what, std::string parameter)
-      : key(std::move(key)), parameter(std::move(parameter)), what(what) {}
+    : key(std::move(key)), parameter(std::move(parameter)), what(what) {}
 };
 
 struct slice_access_tape {
   std::vector<slice_access> tape;
 
-  template<typename... S>
+  template <typename... S>
   void record(S&&... s) {
     tape.emplace_back(slice_access{std::forward<S>(s)...});
   }
@@ -79,23 +78,19 @@ static std::ostream& operator<<(std::ostream& os, slice_access::type type) {
     break;
   switch (type) {
     enum_to_string(GET) enum_to_string(HAS_KEY) enum_to_string(COPY_STRING)
-        enum_to_string(IS_NUMBER) enum_to_string(IS_ARRAY)
-            enum_to_string(IS_OBJECT) enum_to_string(IS_NONE)
-                enum_to_string(LENGTH) enum_to_string(AT)
-                    enum_to_string(GET_NUMBER) enum_to_string(IS_STRING)
-                        enum_to_string(IS_BOOL) enum_to_string(GET_BOOL)
-                            enum_to_string(GET_NUMERIC_VALUE)
-                                enum_to_string(IS_EQUAL_STRING)
-                                    enum_to_string(STRING_VIEW)
-                                        enum_to_string(ARRAY_ITER_ACCESS)
-                                            enum_to_string(OBJECT_ITER_ACCESS)
+        enum_to_string(IS_NUMBER) enum_to_string(IS_ARRAY) enum_to_string(IS_OBJECT)
+            enum_to_string(IS_NONE) enum_to_string(LENGTH) enum_to_string(AT)
+                enum_to_string(GET_NUMBER) enum_to_string(IS_STRING)
+                    enum_to_string(IS_BOOL) enum_to_string(GET_BOOL)
+                        enum_to_string(GET_NUMERIC_VALUE) enum_to_string(IS_EQUAL_STRING)
+                            enum_to_string(STRING_VIEW) enum_to_string(ARRAY_ITER_ACCESS)
+                                enum_to_string(OBJECT_ITER_ACCESS)
   }
   return os;
 #undef enum_to_string
 }
 
-static inline std::ostream& operator<<(std::ostream& os,
-                                       slice_access_tape const& tape) {
+static inline std::ostream& operator<<(std::ostream& os, slice_access_tape const& tape) {
   for (auto const& e : tape.tape) {
     os << e.key << ' ' << e.what << ' ' << e.parameter << std::endl;
   }
@@ -106,11 +101,10 @@ struct recording_slice {
   explicit recording_slice() = default;
   explicit recording_slice(arangodb::velocypack::Slice slice,
                            std::shared_ptr<slice_access_tape> tape)
-      : tape(std::move(tape)), slice(slice) {}
+    : tape(std::move(tape)), slice(slice)  {}
   explicit recording_slice(arangodb::velocypack::Slice slice,
-                           std::shared_ptr<slice_access_tape> tape,
-                           std::string prefix)
-      : tape(std::move(tape)), slice(slice), prefix(std::move(prefix)) {}
+                           std::shared_ptr<slice_access_tape> tape, std::string prefix)
+    : tape(std::move(tape)), slice(slice), prefix(std::move(prefix)) {}
 
   std::shared_ptr<slice_access_tape> tape;
   arangodb::velocypack::Slice slice;
@@ -143,21 +137,19 @@ struct recording_slice {
     return slice.length();
   }
 
-  template<typename T>
+  template <typename T>
   auto at(T t) const {
-    tape->record(prefix + '[' + std::to_string(t) + ']',
-                 slice_access::type::AT);
-    return recording_slice(slice.at(t), tape,
-                           prefix + '[' + std::to_string(t) + ']');
+    tape->record(prefix + '[' + std::to_string(t) + ']', slice_access::type::AT);
+    return recording_slice(slice.at(t), tape, prefix + '[' + std::to_string(t) + ']');
   }
 
-  template<typename T>
+  template <typename T>
   auto hasKey(T&& t) const {
     tape->record(prefix, slice_access::type::HAS_KEY);
     return slice.hasKey(std::forward<T>(t));
   }
 
-  template<typename T>
+  template <typename T>
   auto getNumber() const {
     tape->record(prefix, slice_access::type::GET_NUMBER);
     return slice.getNumber<T>();
@@ -173,13 +165,13 @@ struct recording_slice {
     return slice.getBool();
   }
 
-  template<typename T>
+  template <typename T>
   auto isNumber() const {
     tape->record(prefix, slice_access::type::IS_NUMBER);
     return slice.isNumber<T>();
   }
 
-  template<typename... Ts>
+  template <typename... Ts>
   auto isEqualString(Ts&&... ts) const {
     tape->record(prefix, slice_access::type::IS_EQUAL_STRING);
     return slice.isEqualString(std::forward<Ts>(ts)...);
@@ -187,11 +179,10 @@ struct recording_slice {
 
   constexpr static auto nullSlice = arangodb::velocypack::Slice::nullSlice;
 
-  template<typename T>
+  template <typename T>
   auto get(T&& t) const {
     tape->record(prefix, slice_access::type::GET, t);
-    return recording_slice(slice.get(std::forward<T>(t)), tape,
-                           prefix + '.' + t);
+    return recording_slice(slice.get(std::forward<T>(t)), tape, prefix + '.' + t);
   }
 
   auto toJson() const { return slice.toJson(); }
@@ -206,8 +197,7 @@ struct recording_slice {
     return slice.stringView();
   }
 
-  static recording_slice from_buffer(
-      arangodb::velocypack::Buffer<uint8_t> const& b) {
+  static recording_slice from_buffer(arangodb::velocypack::Buffer<uint8_t> const& b) {
     return recording_slice(arangodb::velocypack::Slice(b.data()),
                            std::make_shared<slice_access_tape>());
   }
@@ -240,13 +230,11 @@ struct object_iterator {
   pair operator*() const {
     auto internal = iter.operator*();
 
-    tape->record(prefix, slice_access::type::OBJECT_ITER_ACCESS,
-                 internal.key.copyString());
-    return pair{
-        recording_slice(internal.key, tape,
-                        prefix + "@key[" + internal.key.copyString() + ']'),
-        recording_slice(internal.value, tape,
-                        prefix + '.' + internal.key.copyString())};
+    tape->record(prefix, slice_access::type::OBJECT_ITER_ACCESS, internal.key.copyString());
+    return pair{recording_slice(internal.key, tape,
+                                prefix + "@key[" + internal.key.copyString() + ']'),
+                recording_slice(internal.value, tape,
+                                prefix + '.' + internal.key.copyString())};
   }
 
   arangodb::velocypack::ObjectIterator iter;
@@ -265,11 +253,9 @@ struct array_iterator {
   array_iterator end() const { return {iter.end(), tape, prefix}; }
 
   recording_slice operator*() const {
-    tape->record(prefix, slice_access::type::ARRAY_ITER_ACCESS,
-                 std::to_string(index));
+    tape->record(prefix, slice_access::type::ARRAY_ITER_ACCESS, std::to_string(index));
     auto internal = iter.operator*();
-    return recording_slice(internal, tape,
-                           prefix + "[" + std::to_string(index) + ']');
+    return recording_slice(internal, tape, prefix + "[" + std::to_string(index) + ']');
   }
 
   bool operator!=(array_iterator const& other) const {
@@ -294,7 +280,7 @@ struct array_iterator {
   std::size_t index;
 };
 
-}  // namespace arangodb::tests::deserializer
+}  // namespace deserializer::test
 
 #ifdef DESERIALIZER_SET_TEST_TYPES
 namespace deserializer {

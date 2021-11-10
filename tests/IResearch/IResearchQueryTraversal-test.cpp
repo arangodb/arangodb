@@ -22,14 +22,16 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Iterator.h>
+#include "IResearchQueryCommon.h"
 
 #include "IResearch/IResearchView.h"
-#include "IResearchQueryCommon.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <velocypack/Iterator.h>
+
 #include "utils/string_utils.hpp"
 
 extern const char* ARGV0;  // defined in main.cpp
@@ -41,8 +43,7 @@ class IResearchQueryTraversalTest : public IResearchQueryTest {};
 }  // namespace
 
 TEST_P(IResearchQueryTraversalTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
@@ -79,9 +80,9 @@ TEST_P(IResearchQueryTraversalTest, test) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                              *collection,
+                                              arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -104,16 +105,16 @@ TEST_P(IResearchQueryTraversalTest, test) {
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
 
-    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
-        resource.u8string());
+    auto builder =
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                              *collection,
+                                              arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -139,9 +140,9 @@ TEST_P(IResearchQueryTraversalTest, test) {
     EXPECT_TRUE(index);
     EXPECT_TRUE(created);
 
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                              *collection,
+                                              arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -200,8 +201,9 @@ TEST_P(IResearchQueryTraversalTest, test) {
     }})";
 
     auto viewDefinition = irs::string_utils::to_string(
-        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
-        static_cast<uint32_t>(linkVersion()));
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
 
@@ -250,8 +252,7 @@ TEST_P(IResearchQueryTraversalTest, test) {
 
   // check system attribute _from
   {
-    std::vector<arangodb::velocypack::Slice> expectedDocs{
-        insertedDocs.back().slice()};
+    std::vector<arangodb::velocypack::Slice> expectedDocs{insertedDocs.back().slice()};
 
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -268,9 +269,8 @@ TEST_P(IResearchQueryTraversalTest, test) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((
-          0 == arangodb::basics::VelocyPackHelper::compare(
-                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
       ++expectedDoc;
     }
     EXPECT_FALSE(resultIt.valid());
@@ -279,8 +279,7 @@ TEST_P(IResearchQueryTraversalTest, test) {
 
   // check system attribute _to
   {
-    std::vector<arangodb::velocypack::Slice> expectedDocs{
-        insertedDocs.back().slice()};
+    std::vector<arangodb::velocypack::Slice> expectedDocs{insertedDocs.back().slice()};
 
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -297,9 +296,8 @@ TEST_P(IResearchQueryTraversalTest, test) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((
-          0 == arangodb::basics::VelocyPackHelper::compare(
-                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
       ++expectedDoc;
     }
     EXPECT_FALSE(resultIt.valid());
@@ -332,9 +330,8 @@ TEST_P(IResearchQueryTraversalTest, test) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((
-          0 == arangodb::basics::VelocyPackHelper::compare(
-                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
       ++expectedDoc;
     }
     EXPECT_FALSE(resultIt.valid());
@@ -366,9 +363,8 @@ TEST_P(IResearchQueryTraversalTest, test) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((
-          0 == arangodb::basics::VelocyPackHelper::compare(
-                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
       ++expectedDoc;
     }
     EXPECT_FALSE(resultIt.valid());
@@ -376,5 +372,7 @@ TEST_P(IResearchQueryTraversalTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(IResearchQueryTraversalTest,
-                        IResearchQueryTraversalTest, GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryTraversalTest,
+  IResearchQueryTraversalTest,
+  GetLinkVersions());

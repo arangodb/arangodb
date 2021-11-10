@@ -20,10 +20,12 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
+#include "Mocks/Servers.h"
+
 #include "Auth/UserManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Mocks/Servers.h"
-#include "gtest/gtest.h"
 
 namespace arangodb {
 namespace tests {
@@ -83,8 +85,7 @@ TEST_F(UserManagerClusterTest, regression_forgotten_update) {
    *
    * 1. and 2. moved internal versions forward two times
    * 3. heartbeat resets one of the movings
-   * 4. Does not perform the actual load, as the heartbeat reset indicates
-   * everything is okay.
+   * 4. Does not perform the actual load, as the heartbeat reset indicates everything is okay.
    */
 
   TRI_AddFailurePointDebugging(FailureOnLoadDB);
@@ -157,8 +158,7 @@ TEST_F(UserManagerClusterTest, cacheRevalidationShouldKeepVersionsInLine) {
   EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
 }
 
-TEST_F(UserManagerClusterTest,
-       triggerLocalReloadShouldNotUpdateClusterVersion) {
+TEST_F(UserManagerClusterTest, triggerLocalReloadShouldNotUpdateClusterVersion) {
   TRI_AddFailurePointDebugging(FailureOnLoadDB);
   auto guard = arangodb::scopeGuard(
       []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });

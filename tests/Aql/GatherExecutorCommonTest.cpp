@@ -21,17 +21,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
+#include "AqlExecutorTestCase.h"
+
 #include "Aql/EmptyExecutorInfos.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortRegister.h"
 #include "Aql/SortingGatherExecutor.h"
-#include "Aql/SubqueryStartExecutor.h"
 #include "Aql/UnsortedGatherExecutor.h"
-#include "AqlExecutorTestCase.h"
 #include "TestLambdaExecutor.h"
-#include "gtest/gtest.h"
+
+#include "Aql/SubqueryStartExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -41,8 +44,8 @@ using namespace arangodb::aql;
  *
  * This test class is supposed to test
  * the data flow in gather executors.
- * Those executors have the very special case that they have more then 1
- * dependency so those dependencies can be asekd in any order, and it is unclear
+ * Those executors have the very special case that they have more then 1 dependency
+ * so those dependencies can be asekd in any order, and it is unclear
  * at which state which dependency returns.
  * They all need to be syncronized in subquery situations.
  *
@@ -51,9 +54,8 @@ using namespace arangodb::aql;
  * of the specific executor, it will only validate if the returned
  * Rows are from the pool of allowed rows.
  * e.g.: if we have 3 dependencies, each offering 10 rows, this test will
- * assert that results are out of the above 30 rows, and none of them is
- * returned twice. It will not assert that those rows are returned in sorting
- * order.
+ * assert that results are out of the above 30 rows, and none of them is returned
+ * twice. It will not assert that those rows are returned in sorting order.
  *
  * In subquery situations this test class will check that
  * subquery synchronization works as desired. There is no overlapping
@@ -66,8 +68,7 @@ using namespace arangodb::aql;
  * Produce K values on each branch
  * GATHER (this executor will be asked with a stack defined in the test.)
  *
- * All produced values are unique, so we can back-track where it originates
- * from.
+ * All produced values are unique, so we can back-track where it originates from.
  */
 
 namespace arangodb::tests::aql {
@@ -102,13 +103,12 @@ std::ostream& operator<<(std::ostream& out, GatherNode::Parallelism type) {
   }
 }
 
-auto combinations = ::testing::Combine(
-    ::testing::Values(ExecutorType::UNSORTED, ExecutorType::SORTING_HEAP,
-                      ExecutorType::SORTING_MINELEMENT),
-    dependencyNumber, parallelism);
+auto combinations =
+    ::testing::Combine(::testing::Values(ExecutorType::UNSORTED, ExecutorType::SORTING_HEAP,
+                                         ExecutorType::SORTING_MINELEMENT),
+                       dependencyNumber, parallelism);
 
-using CommonParameter =
-    std::tuple<ExecutorType, size_t, GatherNode::Parallelism>;
+using CommonParameter = std::tuple<ExecutorType, size_t, GatherNode::Parallelism>;
 
 namespace {
 /*
@@ -192,8 +192,7 @@ class ResultMaps {
     auto const& [expVal, expDepth] = _subqueryData[_subqueryReadIndex];
     _subqueryReadIndex++;
     if (depth == 0) {
-      // We consumed the ShadowRow for the data, let us check for the next set
-      // of data rows.
+      // We consumed the ShadowRow for the data, let us check for the next set of data rows.
       _dataReadIndex++;
     }
     EXPECT_EQ(val, expVal);
@@ -266,11 +265,11 @@ class ResultMaps {
  private:
   auto logData(std::unordered_set<int64_t> const& data) -> void {
     if (!data.empty()) {
-      LOG_DEVEL << std::accumulate(
-          std::next(data.begin()), data.end(), std::to_string(*data.begin()),
-          [](std::string prefix, int64_t value) -> std::string {
-            return std::move(prefix) + ", " + std::to_string(value);
-          });
+      LOG_DEVEL << std::accumulate(std::next(data.begin()), data.end(),
+                                   std::to_string(*data.begin()),
+                                   [](std::string prefix, int64_t value) -> std::string {
+                                     return std::move(prefix) + ", " + std::to_string(value);
+                                   });
     } else {
       LOG_DEVEL << "No Data";
     }
@@ -322,20 +321,15 @@ class CommonGatherExecutorTest
    * This Gather is attached to a tree of Subqueries and a Scatter
    * originating from above.
    *
-   * @param subqueryRuns Defines how many rows should be produced on every
-   * subquery level, where 0 is the main query. (produces this amount of rows
-   * per execution)
-   * @param dataSize Defines how many rows should be produced on every branch
-   * (produces this amount of rows on each nesting level)
+   * @param subqueryRuns Defines how many rows should be produced on every subquery level, where 0 is the main query. (produces this amount of rows per execution)
+   * @param dataSize Defines how many rows should be produced on every branch (produces this amount of rows on each nesting level)
    *
-   * e.g. runs == [2, 4] dataSize == 8 will produce 2 Rows on the Main query, 4
-   * on the subquery, for each mainquery run. Then it will produce 8 datarows
-   * for each subquery run, for each dependency
+   * e.g. runs == [2, 4] dataSize == 8 will produce 2 Rows on the Main query, 4 on the subquery, for each mainquery run.
+   * Then it will produce 8 datarows for each subquery run, for each dependency
    *
    * => 64/128/192 data rows in total
    *
-   * Keep in mind to ask the Executor with a callstack of subqueryRuns.size() +
-   * 1 many calls.
+   * Keep in mind to ask the Executor with a callstack of subqueryRuns.size() + 1 many calls.
    *
    * @return std::pair<std::unique_ptr<ExecutionBlock>, ResultMaps>
    */
@@ -347,8 +341,7 @@ class CommonGatherExecutorTest
     return {std::move(exec), res};
   }
 
-  auto assertResultValid(SharedAqlItemBlockPtr block, ResultMaps& result)
-      -> void {
+  auto assertResultValid(SharedAqlItemBlockPtr block, ResultMaps& result) -> void {
     if (block != nullptr) {
       for (size_t row = 0; row < block->numRows(); ++row) {
         if (block->isShadowRow(row)) {
@@ -416,10 +409,9 @@ class CommonGatherExecutorTest
    * @param block The block where we inject dependencies
    * @param subqueryRuns Number of shadowRows on every level (0 => mainquery)
    *                     For every outer run we will have all of the inner runs
-   *                     e.g. {2, 5} will have 2 main query runs, each with 5
-   * subquery runs. Empty vector means no shadowRows
-   * @return std::pair<std::vector<std::unordered_map<size_t>>,
-   * std::vector<size_t>>
+   *                     e.g. {2, 5} will have 2 main query runs, each with 5 subquery runs.
+   *                     Empty vector means no shadowRows
+   * @return std::pair<std::vector<std::unordered_map<size_t>>, std::vector<size_t>>
    */
   auto generateData(ExecutionBlock& block, std::deque<size_t> subqueryRuns,
                     size_t dataSize) -> ResultMaps {
@@ -506,8 +498,7 @@ class CommonGatherExecutorTest
       for (size_t i = 0; i < runs; ++i) {
         currentSubqueryValues.back() = i;
         // Fill in data from inner subqueries
-        generateExpectedData(results, subqueryRuns, dataSize,
-                             currentSubqueryValues);
+        generateExpectedData(results, subqueryRuns, dataSize, currentSubqueryValues);
         // Fill in ShadowRow
         results.addShadowRow(::generateValue(currentSubqueryValues, 0),
                              subqueryRuns.size());
@@ -531,8 +522,7 @@ class CommonGatherExecutorTest
       toKeepStack.emplace_back(RegIdSet{0});
     }
     toKeepStack.emplace_back(RegIdSet{});
-    return RegisterInfos(RegIdSet{0}, RegIdSet{0}, 1, 1, {},
-                         std::move(toKeepStack));
+    return RegisterInfos(RegIdSet{0}, RegIdSet{0}, 1, 1, {}, std::move(toKeepStack));
   }
 
   auto buildExecutor(size_t nestingLevel) -> std::unique_ptr<ExecutionBlock> {
@@ -543,18 +533,15 @@ class CommonGatherExecutorTest
       case ExecutorType::SORTING_HEAP:
         return sortedExecutor(std::move(regInfos), GatherNode::SortMode::Heap);
       case ExecutorType::SORTING_MINELEMENT:
-        return sortedExecutor(std::move(regInfos),
-                              GatherNode::SortMode::MinElement);
+        return sortedExecutor(std::move(regInfos), GatherNode::SortMode::MinElement);
       default:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
   }
 
-  auto unsortedExecutor(RegisterInfos&& regInfos)
-      -> std::unique_ptr<ExecutionBlock> {
+  auto unsortedExecutor(RegisterInfos&& regInfos) -> std::unique_ptr<ExecutionBlock> {
     if (parallelism() == GatherNode::Parallelism::Parallel) {
-      return std::make_unique<
-          ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
+      return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
           fakedQuery->rootEngine(), generateNodeDummy(ExecutionNode::GATHER),
           std::move(regInfos), EmptyExecutorInfos());
     }
@@ -569,8 +556,9 @@ class CommonGatherExecutorTest
     std::vector<SortRegister> sortRegister;
     sortRegister.emplace_back(SortRegister{0, _sortElement});
 
-    auto executorInfos = SortingGatherExecutorInfos(
-        std::move(sortRegister), *fakedQuery.get(), sortMode, 0, parallelism());
+    auto executorInfos =
+        SortingGatherExecutorInfos(std::move(sortRegister), *fakedQuery.get(),
+                                   sortMode, 0, parallelism());
     return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(
         fakedQuery->rootEngine(), generateNodeDummy(ExecutionNode::GATHER),
         std::move(regInfos), std::move(executorInfos));
@@ -584,15 +572,14 @@ class CommonGatherExecutorTest
     // the same branch.
     // The access to val is unprotected.
     auto val = std::make_shared<int64_t>(0);
-    ProduceCall produce = [branch, numDataRows, val](
-                              AqlItemBlockInputRange& inputRange,
-                              OutputAqlItemRow& output)
-        -> std::tuple<ExecutorState, NoStats, AqlCall> {
+    ProduceCall produce =
+        [branch, numDataRows,
+         val](AqlItemBlockInputRange& inputRange,
+              OutputAqlItemRow& output) -> std::tuple<ExecutorState, NoStats, AqlCall> {
       ExecutorState state = ExecutorState::HASMORE;
       InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
-      while (inputRange.hasDataRow() && *val < numDataRows &&
-             !output.isFull()) {
+      while (inputRange.hasDataRow() && *val < numDataRows && !output.isFull()) {
         // This executor is passthrough. it has enough place to write.
         TRI_ASSERT(!output.isFull());
         std::tie(state, input) = inputRange.peekDataRow();
@@ -610,22 +597,19 @@ class CommonGatherExecutorTest
         output.advanceRow();
 
         if (*val == numDataRows) {
-          std::ignore =
-              inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+          std::ignore = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
         }
       }
 
       return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
     };
 
-    SkipCall skip = [numDataRows, val](AqlItemBlockInputRange& inputRange,
-                                       AqlCall& call)
+    SkipCall skip = [numDataRows, val](AqlItemBlockInputRange& inputRange, AqlCall& call)
         -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
       ExecutorState state = ExecutorState::HASMORE;
       InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
-      while (inputRange.hasDataRow() && *val < numDataRows &&
-             call.needSkipMore()) {
+      while (inputRange.hasDataRow() && *val < numDataRows && call.needSkipMore()) {
         // This executor is passthrough. it has enough place to write.
         std::tie(state, input) = inputRange.peekDataRow();
         TRI_ASSERT(input.isInitialized());
@@ -635,28 +619,23 @@ class CommonGatherExecutorTest
         call.didSkip(1);
 
         if (*val == numDataRows) {
-          std::ignore =
-              inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+          std::ignore = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
         }
       }
       // We need all data from upstream and cannot forward skip
-      return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(),
-              AqlCall{}};
+      return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), AqlCall{}};
     };
 
     ResetCall reset = [val]() -> void { *val = 0; };
     LambdaSkipExecutorInfos executorInfos{produce, skip, reset};
     return std::make_unique<ExecutionBlockImpl<TestLambdaSkipExecutor>>(
-        fakedQuery->rootEngine(),
-        generateNodeDummy(ExecutionNode::ENUMERATE_COLLECTION),
+        fakedQuery->rootEngine(), generateNodeDummy(ExecutionNode::ENUMERATE_COLLECTION),
         buildProducerRegisterInfos(nestingLevel), std::move(executorInfos));
   }
 
-  auto generateSubqueryStart(size_t nestingLevel)
-      -> std::unique_ptr<ExecutionBlock> {
+  auto generateSubqueryStart(size_t nestingLevel) -> std::unique_ptr<ExecutionBlock> {
     return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
-        fakedQuery->rootEngine(),
-        generateNodeDummy(ExecutionNode::SUBQUERY_START),
+        fakedQuery->rootEngine(), generateNodeDummy(ExecutionNode::SUBQUERY_START),
         buildRegisterInfos(nestingLevel), buildRegisterInfos(nestingLevel));
   }
 
@@ -675,10 +654,8 @@ class CommonGatherExecutorTest
   auto generateConsumer(size_t branch, size_t nestingLevel)
       -> std::unique_ptr<ExecutionBlock> {
     IdExecutorInfos execInfos(false, 0, std::to_string(branch), branch == 0);
-    return std::make_unique<ExecutionBlockImpl<
-        IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
-        fakedQuery->rootEngine(),
-        generateNodeDummy(ExecutionNode::DISTRIBUTE_CONSUMER),
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
+        fakedQuery->rootEngine(), generateNodeDummy(ExecutionNode::DISTRIBUTE_CONSUMER),
         buildRegisterInfos(nestingLevel), std::move(execInfos));
   }
 
@@ -687,14 +664,13 @@ class CommonGatherExecutorTest
   // Activate result logging
   bool _useLogging{false};
 
-  // We need to retain the memory of this SortElement. Otherwise we have invalid
-  // memory access, for sorting nodes.
+  // We need to retain the memory of this SortElement. Otherwise we have invalid memory access,
+  // for sorting nodes.
   SortElement _sortElement{nullptr, true};
 
 };  // namespace arangodb::tests::aql
 
-INSTANTIATE_TEST_CASE_P(CommonGatherTests, CommonGatherExecutorTest,
-                        combinations);
+INSTANTIATE_TEST_CASE_P(CommonGatherTests, CommonGatherExecutorTest, combinations);
 
 /**
  * @brief Simulates:
@@ -922,8 +898,7 @@ TEST_P(CommonGatherExecutorTest, skip_over_first_branch) {
   AqlCallStack stack{skipThenFetchCall(offset)};
   {
     // In this test we do not care for waiting.
-    auto const [state, skipped, block] =
-        executeUntilResponse(exec.get(), stack);
+    auto const [state, skipped, block] = executeUntilResponse(exec.get(), stack);
 
     ASSERT_FALSE(skipped.nothingSkipped());
     EXPECT_EQ(state, ExecutionState::DONE);
@@ -957,8 +932,7 @@ TEST_P(CommonGatherExecutorTest, skip_over_subquery) {
   result.skipOverSubquery(0, offset);
   {
     // In this test we do not care for waiting.
-    auto const [state, skipped, block] =
-        executeUntilResponse(exec.get(), stack);
+    auto const [state, skipped, block] = executeUntilResponse(exec.get(), stack);
 
     // We can only produce 1 subquery, not two in a row.
     EXPECT_FALSE(skipped.nothingSkipped());
@@ -976,8 +950,7 @@ TEST_P(CommonGatherExecutorTest, skip_over_subquery) {
 
   {
     // In this test we do not care for waiting.
-    auto const [state, skipped, block] =
-        executeUntilResponse(exec.get(), stack);
+    auto const [state, skipped, block] = executeUntilResponse(exec.get(), stack);
 
     // We can only produce 1 subquery, not two in a row.
     EXPECT_TRUE(skipped.nothingSkipped());

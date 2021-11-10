@@ -27,8 +27,6 @@
 #ifndef ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
 #define ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
 
-#include <memory>
-
 #include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -36,19 +34,20 @@
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 
+#include <memory>
+
 namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-template<BlockPassthrough>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class TestEmptyExecutorHelper {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const BlockPassthrough allowsBlockPassthrough =
-        BlockPassthrough::Disable;
+    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;

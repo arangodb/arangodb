@@ -22,20 +22,19 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #include "Zkd/ZkdHelper.h"
+
 #include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::zkd;
 
 TEST(Zkd_byte_string_conversion, uint64) {
-  auto tests = {
-      std::pair{uint64_t{12},
-                byte_string{0_b, 0_b, 0_b, 0_b, 0_b, 0_b, 0_b, 12_b}},
-      std::pair{uint64_t{0xAABBCCDD}, byte_string{0_b, 0_b, 0_b, 0_b, 0xAA_b,
-                                                  0xBB_b, 0xCC_b, 0xDD_b}},
-      std::pair{uint64_t{0x0123456789ABCDEF},
-                byte_string{0x01_b, 0x23_b, 0x45_b, 0x67_b, 0x89_b, 0xAB_b,
-                            0xCD_b, 0xEF_b}}};
+  auto tests = {std::pair{uint64_t{12}, byte_string{0_b, 0_b, 0_b, 0_b, 0_b, 0_b, 0_b, 12_b}},
+                std::pair{uint64_t{0xAABBCCDD},
+                          byte_string{0_b, 0_b, 0_b, 0_b, 0xAA_b, 0xBB_b, 0xCC_b, 0xDD_b}},
+                std::pair{uint64_t{0x0123456789ABCDEF},
+                          byte_string{0x01_b, 0x23_b, 0x45_b, 0x67_b, 0x89_b,
+                                      0xAB_b, 0xCD_b, 0xEF_b}}};
 
   for (auto&& [v, bs] : tests) {
     auto result = to_byte_string_fixed_length(v);
@@ -63,9 +62,8 @@ TEST(Zkd_byte_string_conversion, uint64_compare) {
 TEST(Zkd_byte_string_conversion, int64) {
   auto tests = {std::pair{int64_t{12}, byte_string{0xff_b, 0_b, 0_b, 0_b, 0_b,
                                                    0_b, 0_b, 0_b, 12_b}},
-                std::pair{int64_t{0xAABBCCDD},
-                          byte_string{0xFF_b, 0_b, 0_b, 0_b, 0_b, 0xAA_b,
-                                      0xBB_b, 0xCC_b, 0xDD_b}},
+                std::pair{int64_t{0xAABBCCDD}, byte_string{0xFF_b, 0_b, 0_b, 0_b, 0_b, 0xAA_b,
+                                                           0xBB_b, 0xCC_b, 0xDD_b}},
                 std::pair{int64_t{-0x0123456789ABCDEF},
                           byte_string{0x00_b, 0xFE_b, 0xDC_b, 0xBA_b, 0x98_b,
                                       0x76_b, 0x54_b, 0x32_b, 0x11_b}}};
@@ -110,7 +108,8 @@ auto const doubles_worth_testing = {0.0,
                                     -.00001,
                                     -100.0,
                                     4.e-12,
-                                    100000.0 - 5e+15,
+                                    100000.0
+                                    -5e+15,
                                     std::numeric_limits<double>::epsilon(),
                                     std::numeric_limits<double>::max(),
                                     std::numeric_limits<double>::min(),
@@ -120,6 +119,7 @@ auto const doubles_worth_testing = {0.0,
                                     std::numeric_limits<double>::lowest()};
 
 TEST(Zkd_byte_string_conversion, double_float_cmp) {
+
   for (auto&& a : doubles_worth_testing) {
     for (auto&& b : doubles_worth_testing) {
       auto a_bs = to_byte_string_fixed_length(a);
@@ -186,6 +186,7 @@ TEST(Zkd_byte_string_conversion, bit_reader_test_different_sizes) {
 }
 
 TEST(Zkd_byte_string_conversion, construct_destruct_double) {
+
   for (auto const a : doubles_worth_testing) {
     auto destructed = destruct_double(a);
     auto reconstructed = construct_double(destructed);
@@ -196,6 +197,7 @@ TEST(Zkd_byte_string_conversion, construct_destruct_double) {
 }
 
 TEST(Zkd_byte_string_conversion, double_from_byte_string) {
+
   for (auto a : doubles_worth_testing) {
     double a1;
     memcpy(&a1, &a, sizeof(double));

@@ -22,11 +22,11 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/BucketState.h"
+#include "gtest/gtest.h"
 
 #include <cstdint>
 
-#include "gtest/gtest.h"
+#include "Cache/BucketState.h"
 
 using namespace arangodb::cache;
 
@@ -36,13 +36,9 @@ TEST(CacheBucketStateTest, test_lock_methods) {
 
   std::uint32_t outsideBucketState = 0;
 
-  auto cb1 = [&outsideBucketState]() noexcept -> void {
-    outsideBucketState = 1;
-  };
+  auto cb1 = [&outsideBucketState]() noexcept -> void { outsideBucketState = 1; };
 
-  auto cb2 = [&outsideBucketState]() noexcept -> void {
-    outsideBucketState = 2;
-  };
+  auto cb2 = [&outsideBucketState]() noexcept -> void { outsideBucketState = 2; };
 
   // check lock without contention
   ASSERT_FALSE(state.isLocked());

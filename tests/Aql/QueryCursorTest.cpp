@@ -21,17 +21,19 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
+#include "RestHandler/RestCursorHandler.h"
+#include "RestServer/QueryRegistryFeature.h"
+
+#include "IResearch/RestHandlerMock.h"
+#include "Mocks/Servers.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/SharedSlice.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "IResearch/RestHandlerMock.h"
-#include "Mocks/Servers.h"
-#include "RestHandler/RestCursorHandler.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "gtest/gtest.h"
 
 using namespace arangodb::tests;
 
@@ -47,8 +49,7 @@ class QueryCursorTest : public ::testing::Test {
 };
 
 namespace {
-arangodb::velocypack::SharedSlice operator"" _vpack(const char* json,
-                                                    size_t len) {
+arangodb::velocypack::SharedSlice operator"" _vpack(const char* json, size_t len) {
   VPackOptions options;
   options.checkAttributeUniqueness = true;
   options.validateUtf8Strings = true;
@@ -71,14 +72,14 @@ TEST_F(QueryCursorTest, resultCursorResultArrayIndexSingleBatch) {
 
   auto* registry = arangodb::QueryRegistryFeature::registry();
 
-  auto testee = std::make_shared<arangodb::RestCursorHandler>(
-      server->server(), fakeRequest.release(), fakeResponse.release(),
-      registry);
+  auto testee =
+      std::make_shared<arangodb::RestCursorHandler>(server->server(),
+                                                    fakeRequest.release(),
+                                                    fakeResponse.release(), registry);
 
   testee->execute();
 
-  fakeResponse.reset(
-      dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
+  fakeResponse.reset(dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
 
   auto const responseBodySlice = fakeResponse->_payload.slice();
 
@@ -105,14 +106,14 @@ TEST_F(QueryCursorTest, resultCursorResultArrayIndexTwoBatches) {
 
   auto* registry = arangodb::QueryRegistryFeature::registry();
 
-  auto testee = std::make_shared<arangodb::RestCursorHandler>(
-      server->server(), fakeRequest.release(), fakeResponse.release(),
-      registry);
+  auto testee =
+      std::make_shared<arangodb::RestCursorHandler>(server->server(),
+                                                    fakeRequest.release(),
+                                                    fakeResponse.release(), registry);
 
   testee->execute();
 
-  fakeResponse.reset(
-      dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
+  fakeResponse.reset(dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
 
   auto const responseBodySlice = fakeResponse->_payload.slice();
 
@@ -140,14 +141,14 @@ TEST_F(QueryCursorTest, streamingCursorResultArrayIndexSingleBatch) {
 
   auto* registry = arangodb::QueryRegistryFeature::registry();
 
-  auto testee = std::make_shared<arangodb::RestCursorHandler>(
-      server->server(), fakeRequest.release(), fakeResponse.release(),
-      registry);
+  auto testee =
+      std::make_shared<arangodb::RestCursorHandler>(server->server(),
+                                                    fakeRequest.release(),
+                                                    fakeResponse.release(), registry);
 
   testee->execute();
 
-  fakeResponse.reset(
-      dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
+  fakeResponse.reset(dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
 
   auto const responseBodySlice = fakeResponse->_payload.slice();
 
@@ -175,14 +176,14 @@ TEST_F(QueryCursorTest, streamingCursorResultArrayIndexTwoBatches) {
 
   auto* registry = arangodb::QueryRegistryFeature::registry();
 
-  auto testee = std::make_shared<arangodb::RestCursorHandler>(
-      server->server(), fakeRequest.release(), fakeResponse.release(),
-      registry);
+  auto testee =
+      std::make_shared<arangodb::RestCursorHandler>(server->server(),
+                                                    fakeRequest.release(),
+                                                    fakeResponse.release(), registry);
 
   testee->execute();
 
-  fakeResponse.reset(
-      dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
+  fakeResponse.reset(dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
   // this is necessary to reset the wakeup handler, which otherwise holds a
   // shared_ptr to testee.
   testee->shutdownExecute(true);
@@ -197,9 +198,10 @@ TEST_F(QueryCursorTest, streamingCursorResultArrayIndexTwoBatches) {
     fakeRequest->setRequestType(arangodb::rest::RequestType::DELETE_REQ);
     fakeRequest->addSuffix(idSlice.copyString());
     auto fakeResponse = std::make_unique<GeneralResponseMock>();
-    auto restHandler = std::make_shared<arangodb::RestCursorHandler>(
-        server->server(), fakeRequest.release(), fakeResponse.release(),
-        registry);
+    auto restHandler =
+        std::make_shared<arangodb::RestCursorHandler>(server->server(),
+                                                      fakeRequest.release(),
+                                                      fakeResponse.release(), registry);
     restHandler->execute();
     fakeResponse.reset(
         dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));

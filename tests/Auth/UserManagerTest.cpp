@@ -22,6 +22,10 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
+#include "fakeit.hpp"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
 #include "Auth/Handler.h"
@@ -29,8 +33,6 @@
 #include "Auth/UserManager.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
-#include "fakeit.hpp"
-#include "gtest/gtest.h"
 
 using namespace fakeit;
 using namespace arangodb;
@@ -54,7 +56,9 @@ class UserManagerTest : public ::testing::Test {
   auth::UserManager um;
 
   UserManagerTest()
-      : server(nullptr, nullptr), state(ServerState::instance()), um(server) {
+      : server(nullptr, nullptr),
+        state(ServerState::instance()),
+        um(server) {
     state->setRole(ServerState::ROLE_SINGLE);
 
     server.addFeature<DatabaseFeature>();
@@ -73,8 +77,7 @@ TEST_F(UserManagerTest, unknown_user_will_have_no_access) {
   ASSERT_EQ(authLevel, auth::Level::NONE);
 }
 
-TEST_F(UserManagerTest,
-       granting_rw_access_on_database_star_will_grant_to_all_databases) {
+TEST_F(UserManagerTest, granting_rw_access_on_database_star_will_grant_to_all_databases) {
   auth::UserMap userEntryMap;
   auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
   testUser.grantDatabase("*", auth::Level::RW);
@@ -85,9 +88,7 @@ TEST_F(UserManagerTest,
   ASSERT_EQ(authLevel, auth::Level::RW);
 }
 
-TEST_F(
-    UserManagerTest,
-    setting_serverstate_to_readonly_will_make_all_users_effectively_ro_users) {
+TEST_F(UserManagerTest, setting_serverstate_to_readonly_will_make_all_users_effectively_ro_users) {
   auth::UserMap userEntryMap;
   auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
   testUser.grantDatabase("*", auth::Level::RW);
@@ -100,8 +101,7 @@ TEST_F(
   ASSERT_EQ(authLevel, auth::Level::RO);
 }
 
-TEST_F(UserManagerTest,
-       in_readonly_mode_the_configured_access_level_will_still_be_accessible) {
+TEST_F(UserManagerTest, in_readonly_mode_the_configured_access_level_will_still_be_accessible) {
   auth::UserMap userEntryMap;
   auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
   testUser.grantDatabase("*", auth::Level::RW);
@@ -110,14 +110,11 @@ TEST_F(UserManagerTest,
   state->setReadOnly(ServerState::API_TRUE);
 
   um.setAuthInfo(userEntryMap);
-  auth::Level authLevel =
-      um.databaseAuthLevel("test", "test", /*configured*/ true);
+  auth::Level authLevel = um.databaseAuthLevel("test", "test", /*configured*/ true);
   ASSERT_EQ(authLevel, auth::Level::RW);
 }
 
-TEST_F(
-    UserManagerTest,
-    setting_serverstate_to_readonly_will_make_all_users_effective_ro_users_collection_level) {
+TEST_F(UserManagerTest, setting_serverstate_to_readonly_will_make_all_users_effective_ro_users_collection_level) {
   auth::UserMap userEntryMap;
   auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
   testUser.grantDatabase("*", auth::Level::RW);
@@ -131,9 +128,7 @@ TEST_F(
   ASSERT_EQ(authLevel, auth::Level::RO);
 }
 
-TEST_F(
-    UserManagerTest,
-    in_readonly_mode_the_configured_access_level_will_still_be_accessible_collection_level) {
+TEST_F(UserManagerTest, in_readonly_mode_the_configured_access_level_will_still_be_accessible_collection_level) {
   auth::UserMap userEntryMap;
   auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
   testUser.grantDatabase("*", auth::Level::RW);

@@ -21,13 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Builder.h>
-#include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "../IResearch/common.h"
 #include "Aql/Query.h"
-#include "ManagerSetup.h"
 #include "Rest/GeneralResponse.h"
 #include "Transaction/Manager.h"
 #include "Transaction/SmartContext.h"
@@ -36,6 +30,14 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+
+#include "ManagerSetup.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "../IResearch/common.h"
 #include "gtest/gtest.h"
 
 using namespace arangodb;
@@ -98,8 +100,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
   transaction::Options trxOpts;
-  transaction::Methods trx{
-      ctx, {}, std::vector<std::string>{cname}, {}, trxOpts};
+  transaction::Methods trx{ctx, {}, std::vector<std::string>{cname}, {}, trxOpts};
 
   Result res = trx.begin();
   ASSERT_TRUE(res.ok());

@@ -21,8 +21,11 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
+#include "gtest/gtest.h"
+
+#include "AqlExecutorTestCase.h"
+
+#include "Mocks/Servers.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -31,10 +34,10 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/SingleRowFetcher.h"
-#include "AqlExecutorTestCase.h"
 #include "Basics/ResourceUsage.h"
-#include "Mocks/Servers.h"
-#include "gtest/gtest.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -43,14 +46,12 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-// This is only to get a split-type. The Type is independent of actual template
-// parameters
+// This is only to get a split-type. The Type is independent of actual template parameters
 using ReturnExecutorTestHelper = ExecutorTestHelper<1, 1>;
 using ReturnExecutorSplitType = ReturnExecutorTestHelper::SplitType;
 using ReturnExecutorParamType = std::tuple<ReturnExecutorSplitType, bool>;
 
-class ReturnExecutorTest
-    : public AqlExecutorTestCaseWithParam<ReturnExecutorParamType> {
+class ReturnExecutorTest : public AqlExecutorTestCaseWithParam<ReturnExecutorParamType> {
  protected:
   auto getSplit() -> ReturnExecutorSplitType {
     auto [split, unused] = GetParam();
@@ -71,18 +72,17 @@ class ReturnExecutorTest
   }
 };
 
-template<size_t... vs>
+template <size_t... vs>
 const ReturnExecutorSplitType splitIntoBlocks =
     ReturnExecutorSplitType{std::vector<std::size_t>{vs...}};
-template<size_t step>
+template <size_t step>
 const ReturnExecutorSplitType splitStep = ReturnExecutorSplitType{step};
 
-INSTANTIATE_TEST_CASE_P(
-    ReturnExecutor, ReturnExecutorTest,
-    ::testing::Combine(::testing::Values(splitIntoBlocks<2, 3>,
-                                         splitIntoBlocks<3, 4>, splitStep<1>,
-                                         splitStep<2>),
-                       ::testing::Bool()));
+INSTANTIATE_TEST_CASE_P(ReturnExecutor, ReturnExecutorTest,
+                        ::testing::Combine(::testing::Values(splitIntoBlocks<2, 3>,
+                                                             splitIntoBlocks<3, 4>,
+                                                             splitStep<1>, splitStep<2>),
+                                           ::testing::Bool()));
 
 /*******
  *  Start test suite
@@ -102,8 +102,7 @@ TEST_P(ReturnExecutorTest, returns_all_from_upstream) {
   AqlCall call{};  // unlimited produce
   makeExecutorTestHelper()
       .addConsumer<ReturnExecutor>(std::move(registerInfos),
-                                   std::move(executorInfos),
-                                   ExecutionNode::RETURN)
+                                   std::move(executorInfos), ExecutionNode::RETURN)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -122,8 +121,7 @@ TEST_P(ReturnExecutorTest, handle_soft_limit) {
   call.softLimit = 3u;
   makeExecutorTestHelper()
       .addConsumer<ReturnExecutor>(std::move(registerInfos),
-                                   std::move(executorInfos),
-                                   ExecutionNode::RETURN)
+                                   std::move(executorInfos), ExecutionNode::RETURN)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -142,8 +140,7 @@ TEST_P(ReturnExecutorTest, handle_hard_limit) {
   call.hardLimit = 5u;
   makeExecutorTestHelper()
       .addConsumer<ReturnExecutor>(std::move(registerInfos),
-                                   std::move(executorInfos),
-                                   ExecutionNode::RETURN)
+                                   std::move(executorInfos), ExecutionNode::RETURN)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -162,8 +159,7 @@ TEST_P(ReturnExecutorTest, handle_offset) {
   call.offset = 4;
   makeExecutorTestHelper()
       .addConsumer<ReturnExecutor>(std::move(registerInfos),
-                                   std::move(executorInfos),
-                                   ExecutionNode::RETURN)
+                                   std::move(executorInfos), ExecutionNode::RETURN)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -183,8 +179,7 @@ TEST_P(ReturnExecutorTest, handle_fullcount) {
   call.fullCount = true;
   makeExecutorTestHelper()
       .addConsumer<ReturnExecutor>(std::move(registerInfos),
-                                   std::move(executorInfos),
-                                   ExecutionNode::RETURN)
+                                   std::move(executorInfos), ExecutionNode::RETURN)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -203,8 +198,7 @@ TEST_P(ReturnExecutorTest, handle_other_inputRegister) {
   call.hardLimit = 5u;
   makeExecutorTestHelper<2, 1>()
       .addConsumer<ReturnExecutor>(std::move(registerInfos),
-                                   std::move(executorInfos),
-                                   ExecutionNode::RETURN)
+                                   std::move(executorInfos), ExecutionNode::RETURN)
       .setInputValue({{R"("invalid")", 1},
                       {R"("invalid")", 2},
                       {R"("invalid")", 5},

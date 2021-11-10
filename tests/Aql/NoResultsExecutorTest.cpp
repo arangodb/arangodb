@@ -21,11 +21,13 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
+#include "AqlExecutorTestCase.h"
+
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
-#include "AqlExecutorTestCase.h"
-#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -38,8 +40,7 @@ using NoResultsTestHelper = ExecutorTestHelper<1, 1>;
 using NoResultsSplitType = NoResultsTestHelper::SplitType;
 using NoResultsInputParam = std::tuple<NoResultsSplitType, AqlCall, size_t>;
 
-class NoResultsExecutorTest
-    : public AqlExecutorTestCaseWithParam<NoResultsInputParam> {
+class NoResultsExecutorTest : public AqlExecutorTestCaseWithParam<NoResultsInputParam> {
  protected:
   auto getSplit() -> NoResultsSplitType {
     auto const& [split, call, inputRows] = GetParam();
@@ -61,10 +62,10 @@ class NoResultsExecutorTest
   }
 };
 
-template<size_t... vs>
+template <size_t... vs>
 const NoResultsSplitType splitIntoBlocks =
     NoResultsSplitType{std::vector<std::size_t>{vs...}};
-template<size_t step>
+template <size_t step>
 const NoResultsSplitType splitStep = NoResultsSplitType{step};
 
 auto NoResultsInputSplits =
@@ -85,8 +86,7 @@ INSTANTIATE_TEST_CASE_P(NoResultsExecutorTest, NoResultsExecutorTest,
 TEST_P(NoResultsExecutorTest, do_never_ever_return_results) {
   ExecutionStats stats{};
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<NoResultsExecutor>(makeInfos(), EmptyExecutorInfos{},
-                                      ExecutionNode::NORESULTS)
+      .addConsumer<NoResultsExecutor>(makeInfos(), EmptyExecutorInfos{}, ExecutionNode::NORESULTS)
       .setInputFromRowNum(getInput())
       .setInputSplitType(getSplit())
       .setCall(getCall())

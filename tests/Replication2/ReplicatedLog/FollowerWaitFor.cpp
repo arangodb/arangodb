@@ -20,10 +20,12 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/voc-errors.h"
-#include "Replication2/ReplicatedLog/LogFollower.h"
-#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "TestHelper.h"
+
+#include "Basics/voc-errors.h"
+
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/ReplicatedLog/LogFollower.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -31,17 +33,15 @@ using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::test;
 
 struct FollowerWaitForTest : ReplicatedLogTest {
-  auto makeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId)
-      -> std::shared_ptr<ReplicatedLog> {
+  auto makeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId) -> std::shared_ptr<ReplicatedLog> {
     auto core = makeLogCore(LogId{3});
-    auto log = std::make_shared<ReplicatedLog>(std::move(core), _logMetricsMock,
-                                               _optionsMock, defaultLogger());
+    auto log = std::make_shared<ReplicatedLog>(std::move(core), _logMetricsMock, _optionsMock, defaultLogger());
     log->becomeFollower(std::move(id), term, std::move(leaderId));
     return log;
   }
 };
 
-TEST_F(FollowerWaitForTest, update_send_append_entries) {
+TEST_F(FollowerWaitForTest, update_send_append_entries){
   auto log = makeFollower("follower", LogTerm{5}, "leader");
   auto follower = log->getFollower();
 
@@ -57,8 +57,7 @@ TEST_F(FollowerWaitForTest, update_send_append_entries) {
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
     request.entries = {InMemoryLogEntry(
-        PersistingLogEntry(LogTerm{1}, LogIndex{1},
-                           LogPayload::createFromString("some payload")))};
+        PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());
     {

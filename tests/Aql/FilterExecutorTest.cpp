@@ -24,8 +24,11 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
+#include "gtest/gtest.h"
+
+#include "AqlExecutorTestCase.h"
+#include "AqlItemBlockHelper.h"
+#include "RowFetcherHelper.h"
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlock.h"
@@ -34,12 +37,11 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
-#include "AqlExecutorTestCase.h"
-#include "AqlItemBlockHelper.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
-#include "RowFetcherHelper.h"
-#include "gtest/gtest.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -52,8 +54,7 @@ using FilterExecutorTestHelper = ExecutorTestHelper<2, 2>;
 using FilterExecutorSplitType = FilterExecutorTestHelper::SplitType;
 using FilterExecutorInputParam = std::tuple<FilterExecutorSplitType>;
 
-class FilterExecutorTest
-    : public AqlExecutorTestCaseWithParam<FilterExecutorInputParam> {
+class FilterExecutorTest : public AqlExecutorTestCaseWithParam<FilterExecutorInputParam> {
  protected:
   ExecutionState state;
   arangodb::GlobalResourceMonitor global{};
@@ -82,16 +83,15 @@ class FilterExecutorTest
   }
 };
 
-template<size_t... vs>
+template <size_t... vs>
 const FilterExecutorSplitType splitIntoBlocks =
     FilterExecutorSplitType{std::vector<std::size_t>{vs...}};
-template<size_t step>
+template <size_t step>
 const FilterExecutorSplitType splitStep = FilterExecutorSplitType{step};
 
 INSTANTIATE_TEST_CASE_P(FilterExecutor, FilterExecutorTest,
-                        ::testing::Values(splitIntoBlocks<2, 3>,
-                                          splitIntoBlocks<3, 4>, splitStep<1>,
-                                          splitStep<2>));
+                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
+                                          splitStep<1>, splitStep<2>));
 
 TEST_P(FilterExecutorTest, empty_input) {
   auto registerInfos = buildRegisterInfos();
@@ -99,8 +99,7 @@ TEST_P(FilterExecutorTest, empty_input) {
   AqlCall call{};
   ExecutionStats{};
   makeExecutorTestHelper()
-      .addConsumer<FilterExecutor>(std::move(registerInfos),
-                                   std::move(executorInfos))
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValue({})
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -117,8 +116,7 @@ TEST_P(FilterExecutorTest, values) {
   AqlCall call{};
   ExecutionStats{};
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<FilterExecutor>(std::move(registerInfos),
-                                   std::move(executorInfos))
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
                                       RowBuilder<2>{0, 2}, RowBuilder<2>{0, 3},
                                       RowBuilder<2>{0, 4}, RowBuilder<2>{0, 5},
@@ -138,17 +136,15 @@ TEST_P(FilterExecutorTest, odd_values) {
   AqlCall call{};
   ExecutionStats{};
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<FilterExecutor>(std::move(registerInfos),
-                                   std::move(executorInfos))
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
                                       RowBuilder<2>{1, 2}, RowBuilder<2>{0, 3},
                                       RowBuilder<2>{1, 4}, RowBuilder<2>{0, 5},
                                       RowBuilder<2>{1, 6}, RowBuilder<2>{0, 7}})
       .setInputSplitType(getSplit())
       .setCall(call)
-      .expectOutput({0, 1},
-                    MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{1, 2},
-                                     RowBuilder<2>{1, 4}, RowBuilder<2>{1, 6}})
+      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{1, 2},
+                                             RowBuilder<2>{1, 4}, RowBuilder<2>{1, 6}})
       .allowAnyOutputOrder(false)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
@@ -161,8 +157,7 @@ TEST_P(FilterExecutorTest, skip_and_odd_values) {
   AqlCall call{3};
   ExecutionStats{};
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<FilterExecutor>(std::move(registerInfos),
-                                   std::move(executorInfos))
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
                                       RowBuilder<2>{1, 2}, RowBuilder<2>{0, 3},
                                       RowBuilder<2>{1, 4}, RowBuilder<2>{0, 5},
@@ -184,8 +179,7 @@ TEST_P(FilterExecutorTest, hard_limit) {
   call.fullCount = true;
   ExecutionStats{};
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<FilterExecutor>(std::move(registerInfos),
-                                   std::move(executorInfos))
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{})
       .setInputSplitType(getSplit())
       .setCall(call)

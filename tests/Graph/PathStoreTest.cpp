@@ -21,14 +21,15 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <ostream>
+#include "gtest/gtest.h"
 
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StringUtils.h"
 #include "Graph/PathManagement/PathStore.cpp"
 #include "Graph/Providers/BaseStep.h"
-#include "gtest/gtest.h"
+
+#include <ostream>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -46,8 +47,7 @@ class Step : public arangodb::graph::BaseStep<Step> {
   bool _isLooseEnd;
 
  public:
-  Step(size_t id, double weight, size_t previous, bool isLooseEnd)
-      : arangodb::graph::BaseStep<Step>{previous} {
+  Step(size_t id, double weight, size_t previous, bool isLooseEnd) : arangodb::graph::BaseStep<Step>{previous} {
     _id = id;
     _weight = weight;
     _isLooseEnd = isLooseEnd;  // TODO: needed here?

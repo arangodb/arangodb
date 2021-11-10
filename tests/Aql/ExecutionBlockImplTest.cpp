@@ -24,6 +24,14 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
+#include "AqlItemBlockHelper.h"
+#include "Mocks/Servers.h"
+#include "TestEmptyExecutorHelper.h"
+#include "TestLambdaExecutor.h"
+#include "WaitingExecutionBlockMock.h"
+
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
@@ -35,16 +43,10 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SubqueryStartExecutor.h"
-#include "AqlItemBlockHelper.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
-#include "Mocks/Servers.h"
-#include "TestEmptyExecutorHelper.h"
-#include "TestLambdaExecutor.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-#include "WaitingExecutionBlockMock.h"
-#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -56,8 +58,7 @@ namespace aql {
 using LambdaExePassThrough = TestLambdaExecutor;
 using LambdaExe = TestLambdaSkipExecutor;
 
-// The numbers here are random, but all of them are below 1000 which is the
-// default batch size
+// The numbers here are random, but all of them are below 1000 which is the default batch size
 static constexpr auto defaultCall = []() -> const AqlCall { return AqlCall{}; };
 
 static constexpr auto skipCall = []() -> const AqlCall {
@@ -127,8 +128,7 @@ static constexpr auto onlySkipAndCount = []() -> const AqlCall {
  *        of the ExecutionBlockImpl implementation.
  *        This base class creates a server with a faked AQL query
  *        where we set our test node into.
- *        Also provides helper methods to create the building blocks of the
- * query.
+ *        Also provides helper methods to create the building blocks of the query.
  */
 class SharedExecutionBlockImplTest {
  protected:
@@ -145,13 +145,11 @@ class SharedExecutionBlockImplTest {
    *        These nodes can be used to create the Executors
    *        Caller does not need to manage the memory.
    *
-   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed,
-   * do not delete.
+   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
    */
   ExecutionNode* generateNodeDummy() {
     auto dummy = std::make_unique<SingletonNode>(
-        const_cast<ExecutionPlan*>(fakedQuery->plan()),
-        ExecutionNodeId{_execNodes.size()});
+      const_cast<ExecutionPlan*>(fakedQuery->plan()), ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
@@ -167,17 +165,15 @@ class SharedExecutionBlockImplTest {
     return stack;
   }
 
-  RegisterInfos makeRegisterInfos(
-      RegisterCount inputRegisters = RegisterId::maxRegisterId,
-      RegisterCount outputRegisters = RegisterId::maxRegisterId) {
+  RegisterInfos makeRegisterInfos(RegisterCount inputRegisters = RegisterId::maxRegisterId,
+                                  RegisterCount outputRegisters = RegisterId::maxRegisterId) {
     if (inputRegisters != RegisterId::maxRegisterId) {
       EXPECT_LE(inputRegisters, outputRegisters);
       // We cannot have no output registers here.
       EXPECT_LT(outputRegisters, RegisterId::maxRegisterId);
     } else if (outputRegisters != RegisterId::maxRegisterId) {
-      // Special case: we do not have input registers, but need an output
-      // register. For now we only allow a single output register, but actually
-      // we could leverage this restriction if necessary.
+      // Special case: we do not have input registers, but need an output register.
+      // For now we only allow a single output register, but actually we could leverage this restriction if necessary.
       EXPECT_EQ(outputRegisters, 0);
     }
 
@@ -187,8 +183,7 @@ class SharedExecutionBlockImplTest {
       for (RegisterId::value_t i = 0; i <= inputRegisters; ++i) {
         readAble.emplace(i);
       }
-      for (RegisterId::value_t i = inputRegisters + 1; i <= outputRegisters;
-           ++i) {
+      for (RegisterId::value_t i = inputRegisters + 1; i <= outputRegisters; ++i) {
         writeAble.emplace(i);
       }
     } else if (outputRegisters != RegisterId::maxRegisterId) {
@@ -199,24 +194,17 @@ class SharedExecutionBlockImplTest {
     RegIdSetStack registersToKeep = {readAble, readAble, readAble};
     RegisterCount regsToRead =
         (inputRegisters == RegisterId::maxRegisterId) ? 0 : inputRegisters + 1;
-    RegisterCount regsToWrite = (outputRegisters == RegisterId::maxRegisterId)
-                                    ? 0
-                                    : outputRegisters + 1;
-    return RegisterInfos(readAble, writeAble, regsToRead, regsToWrite, {},
-                         registersToKeep);
+    RegisterCount regsToWrite =
+        (outputRegisters == RegisterId::maxRegisterId) ? 0 : outputRegisters + 1;
+    return RegisterInfos(readAble, writeAble, regsToRead, regsToWrite, {}, registersToKeep);
   }
 
   /**
    * @brief Prepare the executor infos for a LambdaExecutor with passthrough.
    *
    * @param call produceRows implementation that should be used
-   * @param inputRegisters highest input register index.
-   * RegisterPlan::MaxRegisterId (default) describes there is no input. call is
-   * allowed to read any register <= inputRegisters.
-   * @param outputRegisters highest output register index.
-   * RegisterPlan::MaxRegisterId (default) describes there is no output. call is
-   * allowed to write any inputRegisters < register <= outputRegisters.
-   * Invariant inputRegisters <= outputRegisters
+   * @param inputRegisters highest input register index. RegisterPlan::MaxRegisterId (default) describes there is no input. call is allowed to read any register <= inputRegisters.
+   * @param outputRegisters highest output register index. RegisterPlan::MaxRegisterId (default) describes there is no output. call is allowed to write any inputRegisters < register <= outputRegisters. Invariant inputRegisters <= outputRegisters
    * @return LambdaExecutorInfos Infos to build the Executor.
    */
   LambdaExecutorInfos makeExecutorInfos(ProduceCall call) {
@@ -224,8 +212,7 @@ class SharedExecutionBlockImplTest {
   }
 
   /**
-   * @brief Prepare the executor infos for a LambdaExecutor with implemented
-   * skip.
+   * @brief Prepare the executor infos for a LambdaExecutor with implemented skip.
    *
    * @param call produceRows implementation that should be used
    * @param skipCall skipRowsRange implementation that should be used
@@ -233,43 +220,33 @@ class SharedExecutionBlockImplTest {
    */
   LambdaSkipExecutorInfos makeSkipExecutorInfos(
       ProduceCall call, SkipCall skipCall, ResetCall reset = []() -> void {}) {
-    return LambdaSkipExecutorInfos(std::move(call), std::move(skipCall),
-                                   std::move(reset));
+    return LambdaSkipExecutorInfos(std::move(call), std::move(skipCall), std::move(reset));
   }
 
   /**
    * @brief Generate a generic produce call with the following behaviour:
-   *        1. It does not produce any output, it just validates that it gets
-   * expected input
+   *        1. It does not produce any output, it just validates that it gets expected input
    *        2. Return the input state, along with an unlimited produce call.
    *
    *        In addition we have the following assertions:
-   *        1. Whenever this produce is called, it asserts that is called with
-   * the expectedCall
-   *        2. This call has been called less then 10 times (emergency bailout
-   * against infinite loop)
+   *        1. Whenever this produce is called, it asserts that is called with the expectedCall
+   *        2. This call has been called less then 10 times (emergency bailout against infinite loop)
    *        3. If there is an input row, this row is valid.
-   *        4. If called with empty input, we still have exactly
-   * numRowsLeftNoInput many rows free in the output
-   *        5. If called with input, we still have exactly numRowsLeftWithInput
-   * many rows free in the output
+   *        4. If called with empty input, we still have exactly numRowsLeftNoInput many rows free in the output
+   *        5. If called with input, we still have exactly numRowsLeftWithInput many rows free in the output
    *
-   * @param nrCalls Reference! Will count how many times this function was
-   * invoked.
-   * @param expectedCall The call that is expected on every invocation of this
-   * function.
-   * @param numRowsLeftNoInput The number of available rows in the output, if we
-   * have empty input (cold start)
-   * @param numRowsLeftWithInput The number of available rows in the output, if
-   * we have given an input
+   * @param nrCalls Reference! Will count how many times this function was invoked.
+   * @param expectedCall The call that is expected on every invocation of this function.
+   * @param numRowsLeftNoInput The number of available rows in the output, if we have empty input (cold start)
+   * @param numRowsLeftWithInput The number of available rows in the output, if we have given an input
    * @return ProduceCall The call ready to hand over to the LambdaExecutorInfos
    */
-  static auto generateProduceCall(
-      size_t& nrCalls, AqlCall expectedCall, size_t numRowsLeftNoInput = 0,
-      size_t numRowsLeftWithInput = ExecutionBlock::DefaultBatchSize)
+  static auto generateProduceCall(size_t& nrCalls, AqlCall expectedCall,
+                                  size_t numRowsLeftNoInput = 0,
+                                  size_t numRowsLeftWithInput = ExecutionBlock::DefaultBatchSize)
       -> ProduceCall {
-    return [&nrCalls, numRowsLeftNoInput, numRowsLeftWithInput, expectedCall](
-               AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+    return [&nrCalls, numRowsLeftNoInput, numRowsLeftWithInput,
+            expectedCall](AqlItemBlockInputRange& input, OutputAqlItemRow& output)
                -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
       auto const& clientCall = output.getClientCall();
       if (nrCalls > 10) {
@@ -305,26 +282,19 @@ class SharedExecutionBlockImplTest {
    * @brief Generate a generic skip call with the following behaviour:
    *        1. For every given input: skip it, and count skip as one.
    *        2. Do never skip more then offset()
-   *        3. Return the input state, the locally skipped number, a call with
-   * softLimit = offset + softLimit, hardLimit = offset + hardLimit
+   *        3. Return the input state, the locally skipped number, a call with softLimit = offset + softLimit, hardLimit = offset + hardLimit
    *
    *        In addition we have the following assertions:
-   *        1. Whenever this produce is called, it asserts that is called with
-   * the expectedCall
-   *        2. This call has been called less then 10 times (emergency bailout
-   * against infinite loop)
+   *        1. Whenever this produce is called, it asserts that is called with the expectedCall
+   *        2. This call has been called less then 10 times (emergency bailout against infinite loop)
    *        3. If there is an input row, this row is valid.
    *
-   * @param nrCalls Reference! Will count how many times this function was
-   * invoked.
-   * @param expectedCall The call that is expected on every invocation of this
-   * function.
+   * @param nrCalls Reference! Will count how many times this function was invoked.
+   * @param expectedCall The call that is expected on every invocation of this function.
    * @return SkipCall The call ready to hand over to the LambdaExecutorInfos
    */
-  static auto generateSkipCall(size_t& nrCalls, AqlCall expectedCall)
-      -> SkipCall {
-    return [&nrCalls, expectedCall](AqlItemBlockInputRange& inputRange,
-                                    AqlCall& clientCall)
+  static auto generateSkipCall(size_t& nrCalls, AqlCall expectedCall) -> SkipCall {
+    return [&nrCalls, expectedCall](AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
                -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
       if (nrCalls > 10) {
         EXPECT_TRUE(false);
@@ -360,8 +330,8 @@ class SharedExecutionBlockImplTest {
    * @return SkipCall The always failing call to be used for the executor.
    */
   static auto generateNeverSkipCall() -> SkipCall {
-    return [](AqlItemBlockInputRange& input, AqlCall& call)
-               -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
+    return [](AqlItemBlockInputRange& input,
+              AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
       // Should not be called here. No Skip!
       EXPECT_TRUE(false);
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -375,8 +345,8 @@ class SharedExecutionBlockImplTest {
    * @return ProduceCall The always failing call to be used for the executor.
    */
   static auto generateNeverProduceCall() -> ProduceCall {
-    return [](AqlItemBlockInputRange& input, OutputAqlItemRow& output)
-               -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
+    return [](AqlItemBlockInputRange& input,
+              OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
       // Should not be called here. No limit, only skip!
       EXPECT_TRUE(false);
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -386,15 +356,12 @@ class SharedExecutionBlockImplTest {
 
 /**
  * @brief Test the internal statemachine of the ExecutionBlockImpl.
- *        These test-cases focus on a single executor and assert that this
- * Executor is called correctly given an input. None of the test is focussed on
- * the generated output. That is done in the IntegrationTest part This is a
- * parameterized test and tests passthrough (true) and non-passthrough variants
- * (false)
+ *        These test-cases focus on a single executor and assert that this Executor is called
+ *        correctly given an input. None of the test is focussed on the generated output. That is done in the IntegrationTest part
+ *        This is a parameterized test and tests passthrough (true) and non-passthrough variants (false)
  */
-class ExecutionBlockImplExecuteSpecificTest
-    : public SharedExecutionBlockImplTest,
-      public testing::TestWithParam<bool> {
+class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTest,
+                                              public testing::TestWithParam<bool> {
  protected:
   bool passthrough() const { return GetParam(); }
 
@@ -408,12 +375,7 @@ class ExecutionBlockImplExecuteSpecificTest
     auto writableOutputRegisters = RegIdSet{0};
     auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
         fakedQuery->rootEngine(), generateNodeDummy(),
-        RegisterInfos{{},
-                      std::move(writableOutputRegisters),
-                      0,
-                      1,
-                      RegIdFlatSet{},
-                      RegIdFlatSetStack{{}}},
+        RegisterInfos{{}, std::move(writableOutputRegisters), 0, 1, RegIdFlatSet{}, RegIdFlatSetStack{{}}},
         IdExecutorInfos{false});
     InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
     auto const [state, result] = res->initializeCursor(inputRow);
@@ -422,8 +384,8 @@ class ExecutionBlockImplExecuteSpecificTest
     return res;
   }
 
-  std::unique_ptr<ExecutionBlock> createSubqueryStart(
-      ExecutionBlock* dependency, RegisterCount nrRegs) {
+  std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
+                                                      RegisterCount nrRegs) {
     auto readableIn = RegIdSet{};
     auto writeableOut = RegIdSet{};
     auto registersToClear = RegIdFlatSet{};
@@ -438,39 +400,35 @@ class ExecutionBlockImplExecuteSpecificTest
 
     auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
         fakedQuery->rootEngine(), generateNodeDummy(),
-        RegisterInfos{readableIn, writeableOut, nrRegs, nrRegs,
-                      registersToClear, registersToKeep},
-        RegisterInfos{readableIn, writeableOut, nrRegs, nrRegs,
-                      registersToClear, registersToKeep});
+        RegisterInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep},
+        RegisterInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep});
     res->addDependency(dependency);
     return res;
   }
 
   /**
-   * @brief Generic test runner. Creates Lambda Executors, and returns
-   * ExecutionBlockImpl.execute(call),
+   * @brief Generic test runner. Creates Lambda Executors, and returns ExecutionBlockImpl.execute(call),
    *
    * @param prod The Produce call that should be used within the Lambda Executor
-   * @param skip The Skip call that should be used wiithin the Lambda Executor
-   * (only used for non-passthrough)
+   * @param skip The Skip call that should be used wiithin the Lambda Executor (only used for non-passthrough)
    * @param call The AqlCall that should be applied on the Executors.
-   * @return std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>  Response
-   * of execute(call);
+   * @return std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>  Response of execute(call);
    */
   auto runTest(ProduceCall& prod, SkipCall& skip, AqlCall call)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
     auto stack = buildStack(call);
     auto singleton = createSingleton();
     if (passthrough()) {
-      ExecutionBlockImpl<LambdaExePassThrough> testee{
-          fakedQuery->rootEngine(), generateNodeDummy(),
-          makeRegisterInfos(0, 0), makeExecutorInfos(prod)};
+      ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->rootEngine(),
+                                                      generateNodeDummy(),
+                                                      makeRegisterInfos(0, 0),
+                                                      makeExecutorInfos(prod)};
       testee.addDependency(singleton.get());
       return testee.execute(stack);
     } else {
-      ExecutionBlockImpl<LambdaExe> testee{
-          fakedQuery->rootEngine(), generateNodeDummy(),
-          makeRegisterInfos(0, 0), makeSkipExecutorInfos(prod, skip)};
+      ExecutionBlockImpl<LambdaExe> testee{fakedQuery->rootEngine(), generateNodeDummy(),
+                                           makeRegisterInfos(0, 0),
+                                           makeSkipExecutorInfos(prod, skip)};
       testee.addDependency(singleton.get());
       return testee.execute(stack);
     }
@@ -489,10 +447,10 @@ class ExecutionBlockImplExecuteSpecificTest
     }
     builder->close();
 
-    ProduceCall prodCall = [outReg, didProduce, builder](
-                               AqlItemBlockInputRange& inputRange,
-                               OutputAqlItemRow& output)
-        -> std::tuple<ExecutorState, NoStats, AqlCall> {
+    ProduceCall prodCall =
+        [outReg, didProduce,
+         builder](AqlItemBlockInputRange& inputRange,
+                  OutputAqlItemRow& output) -> std::tuple<ExecutorState, NoStats, AqlCall> {
       if (!inputRange.hasDataRow()) {
         // Initial call, we have not produced yet.
         // Ask for more
@@ -518,11 +476,9 @@ class ExecutionBlockImplExecuteSpecificTest
       return {inputRange.upstreamState(), NoStats{}, call};
     };
 
-    std::unique_ptr<ExecutionBlock> res =
-        std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-            fakedQuery->rootEngine(), generateNodeDummy(),
-            makeRegisterInfos(inReg, outReg),
-            makeSkipExecutorInfos(prodCall, skipCall));
+    std::unique_ptr<ExecutionBlock> res = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(inReg, outReg),
+        makeSkipExecutorInfos(prodCall, skipCall));
     res->addDependency(dependency);
     return res;
   }
@@ -534,12 +490,11 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_unlimited_call) {
   size_t nrCalls = 0;
 
   // Note here: passthrough only reserves the correct amount of rows.
-  // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and
-  // then exactly 1 row in the executor. Non passthrough does not make an
-  // estimate for this, so Batchsize is used.
-  ProduceCall execImpl = passthrough()
-                             ? generateProduceCall(nrCalls, fullCall, 0, 1)
-                             : generateProduceCall(nrCalls, fullCall);
+  // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and then exactly 1 row
+  // in the executor.
+  // Non passthrough does not make an estimate for this, so Batchsize is used.
+  ProduceCall execImpl = passthrough() ? generateProduceCall(nrCalls, fullCall, 0, 1)
+                                       : generateProduceCall(nrCalls, fullCall);
   SkipCall skipCall = generateNeverSkipCall();
   auto [state, skipped, block] = runTest(execImpl, skipCall, fullCall);
 
@@ -558,9 +513,9 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_softlimit_call) {
   size_t nrCalls = 0;
 
   // Note here: passthrough only reserves the correct amount of rows.
-  // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and
-  // then exactly 1 row in the executor. Non passthrough the available lines
-  // (visible to executor) are only the given soft limit.
+  // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and then exactly 1 row
+  // in the executor.
+  // Non passthrough the available lines (visible to executor) are only the given soft limit.
   ProduceCall execImpl = passthrough()
                              ? generateProduceCall(nrCalls, fullCall, 0, 1)
                              : generateProduceCall(nrCalls, fullCall, 0, 20);
@@ -583,9 +538,9 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_hardlimit_call) {
   size_t nrCalls = 0;
 
   // Note here: passthrough only reserves the correct amount of rows.
-  // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and
-  // then exactly 1 row in the executor. Non passthrough the available lines
-  // (visible to executor) are only the given soft limit.
+  // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and then exactly 1 row
+  // in the executor.
+  // Non passthrough the available lines (visible to executor) are only the given soft limit.
   ProduceCall execImpl = passthrough()
                              ? generateProduceCall(nrCalls, fullCall, 0, 1)
                              : generateProduceCall(nrCalls, fullCall, 0, 20);
@@ -654,8 +609,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_offset_only_call) {
   EXPECT_EQ(block, nullptr);
 }
 
-TEST_P(ExecutionBlockImplExecuteSpecificTest,
-       test_relevant_shadowrow_does_not_fit_in_output) {
+TEST_P(ExecutionBlockImplExecuteSpecificTest, test_relevant_shadowrow_does_not_fit_in_output) {
   if (GetParam()) {
     // This test is only for non-passthrough variants
     SUCCEED();
@@ -672,8 +626,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest,
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
   auto subqueryStart = createSubqueryStart(singleton.get(), 0);
   // Produce one full block. The shadowRow has no space left
-  auto testee =
-      onceLinesProducer(subqueryStart.get(), ExecutionBlock::DefaultBatchSize);
+  auto testee = onceLinesProducer(subqueryStart.get(), ExecutionBlock::DefaultBatchSize);
 
   AqlCall fullCall{};
   auto stack = buildStack(fullCall);
@@ -701,8 +654,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest,
   }
 }
 
-TEST_P(ExecutionBlockImplExecuteSpecificTest,
-       set_of_shadowrows_does_not_fit_in_output) {
+TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_in_output) {
   if (GetParam()) {
     // This test is only for non-passthrough variants
     SUCCEED();
@@ -721,8 +673,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest,
   auto subqueryOuterStart = createSubqueryStart(singleton.get(), 0);
   auto subqueryInnerStart = createSubqueryStart(subqueryOuterStart.get(), 0);
   // Produce one full block. The shadowRows have no space left
-  auto testee = onceLinesProducer(subqueryInnerStart.get(),
-                                  ExecutionBlock::DefaultBatchSize);
+  auto testee = onceLinesProducer(subqueryInnerStart.get(), ExecutionBlock::DefaultBatchSize);
 
   AqlCall fullCall{};
   auto stack = buildStack(fullCall);
@@ -759,8 +710,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest,
   }
 }
 
-TEST_P(ExecutionBlockImplExecuteSpecificTest,
-       set_of_shadowrows_does_not_fit_fully_in_output) {
+TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_fully_in_output) {
   if (GetParam()) {
     // This test is only for non-passthrough variants
     SUCCEED();
@@ -819,8 +769,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, retain_once_thrown_error) {
   // and assert that it is never called again.
   bool hasThrown = false;
 
-  ProduceCall execImpl = [&hasThrown](AqlItemBlockInputRange&,
-                                      OutputAqlItemRow&)
+  ProduceCall execImpl = [&hasThrown](AqlItemBlockInputRange&, OutputAqlItemRow&)
       -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
     // Crash if we get called twice
     TRI_ASSERT(!hasThrown);
@@ -839,8 +788,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, retain_once_thrown_error) {
                     makeRegisterInfos(0, 0), makeExecutorInfos(execImpl)))
           : std::make_unique<ExecutionBlockImpl<LambdaExe>>(
                 fakedQuery->rootEngine(), generateNodeDummy(),
-                makeRegisterInfos(0, 0),
-                makeSkipExecutorInfos(execImpl, skipCall));
+                makeRegisterInfos(0, 0), makeSkipExecutorInfos(execImpl, skipCall));
   try {
     testee->execute(stack);
     // This error is on purpose different, and cannot happen in AQL
@@ -868,8 +816,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, retain_once_thrown_std_error) {
   // and assert that it is never called again.
   bool hasThrown = false;
 
-  ProduceCall execImpl = [&hasThrown](AqlItemBlockInputRange&,
-                                      OutputAqlItemRow&)
+  ProduceCall execImpl = [&hasThrown](AqlItemBlockInputRange&, OutputAqlItemRow&)
       -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
     // Crash if we get called twice
     TRI_ASSERT(!hasThrown);
@@ -888,8 +835,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, retain_once_thrown_std_error) {
                     makeRegisterInfos(0, 0), makeExecutorInfos(execImpl)))
           : std::make_unique<ExecutionBlockImpl<LambdaExe>>(
                 fakedQuery->rootEngine(), generateNodeDummy(),
-                makeRegisterInfos(0, 0),
-                makeSkipExecutorInfos(execImpl, skipCall));
+                makeRegisterInfos(0, 0), makeSkipExecutorInfos(execImpl, skipCall));
   try {
     testee->execute(stack);
     // This error is on purpose different, and cannot happen in AQL
@@ -911,8 +857,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, retain_once_thrown_std_error) {
   }
 }
 
-auto printTestCase =
-    [](testing::TestParamInfo<bool> const& paramInfo) -> std::string {
+auto printTestCase = [](testing::TestParamInfo<bool> const& paramInfo) -> std::string {
   using namespace std::string_literals;
 
   auto const passthrough = paramInfo.param;
@@ -923,8 +868,7 @@ auto printTestCase =
   }
 };
 
-INSTANTIATE_TEST_CASE_P(ExecutionBlockImplExecuteTest,
-                        ExecutionBlockImplExecuteSpecificTest,
+INSTANTIATE_TEST_CASE_P(ExecutionBlockImplExecuteTest, ExecutionBlockImplExecuteSpecificTest,
                         ::testing::Bool(), printTestCase);
 
 enum class CallAsserterState { INITIAL, SKIP, GET, COUNT, DONE };
@@ -953,8 +897,7 @@ struct BaseCallAsserter {
   /**
    * @brief Construct a new Base Call Asserter object
    *
-   * @param expectedCall The given outer call. As we play several rounds (e.g.
-   * one call for skip one for get) the asserter needs to decompose this call
+   * @param expectedCall The given outer call. As we play several rounds (e.g. one call for skip one for get) the asserter needs to decompose this call
    */
   explicit BaseCallAsserter(AqlCall const& expectedCall)
       : expected{expectedCall} {}
@@ -994,12 +937,10 @@ struct BaseCallAsserter {
 
   auto gotCalled(AqlCall const& got) -> void {
     call++;
-    SCOPED_TRACE(
-        "In call " + std::to_string(call) + " of " + std::to_string(maxCall) +
-        " state " +
-        std::to_string(
-            static_cast<typename std::underlying_type<CallAsserterState>::type>(
-                state)));
+    SCOPED_TRACE("In call " + std::to_string(call) + " of " +
+                 std::to_string(maxCall) + " state " +
+                 std::to_string(
+                     static_cast<typename std::underlying_type<CallAsserterState>::type>(state)));
     gotCalledWithoutTrace(got);
     EXPECT_LE(call, maxCall);
     if (call > maxCall) {
@@ -1224,9 +1165,8 @@ struct NoneAsserter : public BaseCallAsserter {
  *        of the Execute state machine.
  *        Also asserts that "UPSTREAM" is called with the correct
  *        forwarded call.
- *        This is a parameterized testsuite that uses a set of pseudo-random
- * AqlCalls of different formats. The second parameter is a boolean to flag if
- * we use WAITING on singleton.
+ *        This is a parameterized testsuite that uses a set of pseudo-random AqlCalls of different formats.
+ *        The second parameter is a boolean to flag if we use WAITING on singleton.
  */
 class ExecutionBlockImplExecuteIntegrationTest
     : public SharedExecutionBlockImplTest,
@@ -1272,8 +1212,7 @@ class ExecutionBlockImplExecuteIntegrationTest
   }
 
   /**
-   * @brief Assert that the given row in the block, is a shadow row of the
-   * expected depth
+   * @brief Assert that the given row in the block, is a shadow row of the expected depth
    *
    * @param block The AqlItemBlock the row is stored in
    * @param row The shadow row number
@@ -1309,17 +1248,16 @@ class ExecutionBlockImplExecuteIntegrationTest
    * @brief Create a Producing ExecutionBlock
    *        For every input row this block will write the array given in data
    *        into the output once.
-   *        Each entry in the array goes into one line and is writen into
-   * outReg.
+   *        Each entry in the array goes into one line and is writen into outReg.
    *
    * @param dependency The dependecy of this block (produces input)
    * @param data The data to be written, needs to be an array.
    * @param outReg The register to be written to
    * @return std::unique_ptr<ExecutionBlock> ready to use ProducerBlock.
    */
-  std::unique_ptr<ExecutionBlock> produceBlock(
-      ExecutionBlock* dependency, std::shared_ptr<VPackBuilder> data,
-      RegisterId outReg) {
+  std::unique_ptr<ExecutionBlock> produceBlock(ExecutionBlock* dependency,
+                                               std::shared_ptr<VPackBuilder> data,
+                                               RegisterId outReg) {
     TRI_ASSERT(dependency != nullptr);
     TRI_ASSERT(data != nullptr);
     TRI_ASSERT(data->slice().isArray());
@@ -1327,9 +1265,8 @@ class ExecutionBlockImplExecuteIntegrationTest
     // We make this a shared ptr just to make sure someone retains the data.
     auto iterator = std::make_shared<VPackArrayIterator>(data->slice());
     auto resetCall = [iterator]() -> void { iterator->reset(); };
-    auto writeData = [data, outReg, iterator](
-                         AqlItemBlockInputRange& inputRange,
-                         OutputAqlItemRow& output)
+    auto writeData = [data, outReg, iterator](AqlItemBlockInputRange& inputRange,
+                                              OutputAqlItemRow& output)
         -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
       while (inputRange.hasDataRow() && !output.isFull()) {
         auto const& [state, input] = inputRange.peekDataRow();
@@ -1346,14 +1283,12 @@ class ExecutionBlockImplExecuteIntegrationTest
           iterator->reset();
         }
       }
-      // We always use a default unlimited call here, we only have Singleton
-      // above.
+      // We always use a default unlimited call here, we only have Singleton above.
       AqlCall call{};
       return {inputRange.upstreamState(), NoStats{}, call};
     };
 
-    auto skipData = [data, iterator](AqlItemBlockInputRange& inputRange,
-                                     AqlCall& clientCall)
+    auto skipData = [data, iterator](AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
         -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
       size_t skipped = 0;
       while (inputRange.hasDataRow() &&
@@ -1383,14 +1318,14 @@ class ExecutionBlockImplExecuteIntegrationTest
       call.fullCount = false;
       return {inputRange.upstreamState(), NoStats{}, skipped, call};
     };
-    auto const inReg =
-        outReg == 0 ? RegisterId::maxRegisterId : outReg.value() - 1;
+    auto const inReg = outReg == 0 ? RegisterId::maxRegisterId : outReg.value() - 1;
     auto registerInfos = makeRegisterInfos(inReg, outReg.value());
-    auto executorInfos =
-        makeSkipExecutorInfos(std::move(writeData), skipData, resetCall);
-    auto producer = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-        fakedQuery->rootEngine(), generateNodeDummy(), std::move(registerInfos),
-        std::move(executorInfos));
+    auto executorInfos = makeSkipExecutorInfos(std::move(writeData), skipData, resetCall);
+    auto producer =
+        std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->rootEngine(),
+                                                        generateNodeDummy(),
+                                                        std::move(registerInfos),
+                                                        std::move(executorInfos));
     producer->addDependency(dependency);
     return producer;
   }
@@ -1401,16 +1336,14 @@ class ExecutionBlockImplExecuteIntegrationTest
    *
    * @param asserter A call asserter, that will invoke getCalled on every call
    * @param dependency The dependecy of this block (produces input)
-   * @param maxReg The number of registers in input and output. (required for
-   * forwarding of data)
+   * @param maxReg The number of registers in input and output. (required for forwarding of data)
    * @return std::unique_ptr<ExecutionBlock> ready to use ForwardingBlock.
    */
   std::unique_ptr<ExecutionBlock> forwardBlock(BaseCallAsserter& asserter,
                                                ExecutionBlock* dependency,
                                                RegisterId maxReg) {
     TRI_ASSERT(dependency != nullptr);
-    auto forwardData = [&asserter](AqlItemBlockInputRange& inputRange,
-                                   OutputAqlItemRow& output)
+    auto forwardData = [&asserter](AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
         -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
       asserter.gotCalled(output.getClientCall());
       while (inputRange.hasDataRow() && !output.isFull()) {
@@ -1422,8 +1355,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
-        fakedQuery->rootEngine(), generateNodeDummy(),
-        makeRegisterInfos(maxReg.value(), maxReg.value()),
+        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg.value(), maxReg.value()),
         makeExecutorInfos(std::move(forwardData)));
     producer->addDependency(dependency);
     return producer;
@@ -1434,18 +1366,16 @@ class ExecutionBlockImplExecuteIntegrationTest
    *        It simply takes one input row and copies it into the output.
    *        Implements Skip
    *
-   * @param produceAsserter A call asserter, that will invoke getCalled on every
-   * produce call
-   * @param skipAsserter A call asserter, that will invoke getCalled on every
-   * skip call
+   * @param produceAsserter A call asserter, that will invoke getCalled on every produce call
+   * @param skipAsserter A call asserter, that will invoke getCalled on every skip call
    * @param dependency The dependecy of this block (produces input)
-   * @param maxReg The number of registers in input and output. (required for
-   * forwarding of data)
+   * @param maxReg The number of registers in input and output. (required for forwarding of data)
    * @return std::unique_ptr<ExecutionBlock> ready to use ForwardingBlock.
    */
-  std::unique_ptr<ExecutionBlock> forwardBlock(
-      BaseCallAsserter& produceAsserter, BaseCallAsserter& skipAsserter,
-      ExecutionBlock* dependency, RegisterId maxReg) {
+  std::unique_ptr<ExecutionBlock> forwardBlock(BaseCallAsserter& produceAsserter,
+                                               BaseCallAsserter& skipAsserter,
+                                               ExecutionBlock* dependency,
+                                               RegisterId maxReg) {
     TRI_ASSERT(dependency != nullptr);
     auto forwardData = [&produceAsserter](AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output)
@@ -1464,8 +1394,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, request};
     };
 
-    auto skipData = [&skipAsserter](AqlItemBlockInputRange& inputRange,
-                                    AqlCall& call)
+    auto skipData = [&skipAsserter](AqlItemBlockInputRange& inputRange, AqlCall& call)
         -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
       skipAsserter.gotCalled(call);
 
@@ -1486,15 +1415,14 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, skipped, request};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-        fakedQuery->rootEngine(), generateNodeDummy(),
-        makeRegisterInfos(maxReg.value(), maxReg.value()),
+        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg.value(), maxReg.value()),
         makeSkipExecutorInfos(std::move(forwardData), std::move(skipData)));
     producer->addDependency(dependency);
     return producer;
   }
 
-  std::unique_ptr<ExecutionBlock> createSubqueryStart(
-      ExecutionBlock* dependency, RegisterCount nrRegs) {
+  std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
+                                                      RegisterCount nrRegs) {
     auto readableIn = RegIdSet{};
     auto writeableOut = RegIdSet{};
     RegIdSet registersToClear{};
@@ -1506,16 +1434,13 @@ class ExecutionBlockImplExecuteIntegrationTest
 
     auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
         fakedQuery->rootEngine(), generateNodeDummy(),
-        RegisterInfos{readableIn, writeableOut, nrRegs, nrRegs,
-                      registersToClear, registersToKeep},
-        RegisterInfos{readableIn, writeableOut, nrRegs, nrRegs,
-                      registersToClear, registersToKeep});
+        RegisterInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep},
+        RegisterInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep});
     res->addDependency(dependency);
     return res;
   }
 
-  void ValidateSkipMatches(AqlCall const& call, size_t dataLength,
-                           size_t actual) const {
+  void ValidateSkipMatches(AqlCall const& call, size_t dataLength, size_t actual) const {
     size_t expected = 0;
     // Skip Offset, but not more then available
     expected += std::min(call.getOffset(), dataLength);
@@ -1523,10 +1448,8 @@ class ExecutionBlockImplExecuteIntegrationTest
       // We can only fullCount on hardlimit. If this fails check test code!
       EXPECT_TRUE(call.hasHardLimit());
       // We consume either hardLimit + offset, or all data.
-      size_t consumed =
-          std::min(call.getLimit() + call.getOffset(), dataLength);
-      // consumed >= dataLength, if it is smaller we have a remainder for
-      // fullCount.
+      size_t consumed = std::min(call.getLimit() + call.getOffset(), dataLength);
+      // consumed >= dataLength, if it is smaller we have a remainder for fullCount.
       expected += dataLength - consumed;
     }
     EXPECT_EQ(expected, actual);
@@ -1540,8 +1463,7 @@ class ExecutionBlockImplExecuteIntegrationTest
    * It asserts the following:
    *   1. skipped == offset() + (data.length - hardLimit [fullcount])
    *   2. result.length = (hardLimit||data.length) - offset.
-   *   3. result register entry matches the entry at the correct position in
-   * data.
+   *   3. result register entry matches the entry at the correct position in data.
    *
    * @param data The data to be expected, if we would just get it in full
    * @param skipped The number of rows the executor reported as skipped
@@ -1570,8 +1492,8 @@ class ExecutionBlockImplExecuteIntegrationTest
       // The first have been skipped
       expectedIt++;
     }
-    size_t limit = (std::min)(call.getLimit(),
-                              static_cast<size_t>(expected.length()) - offset);
+    size_t limit =
+        (std::min)(call.getLimit(), static_cast<size_t>(expected.length()) - offset);
     if (result != nullptr && result->numRows() > numShadowRows) {
       // GetSome part
       EXPECT_EQ(limit, result->numRows() - numShadowRows);
@@ -1579,9 +1501,8 @@ class ExecutionBlockImplExecuteIntegrationTest
         // The next have to match
         auto got = result->getValueReference(i, testReg).slice();
         EXPECT_TRUE(basics::VelocyPackHelper::equal(got, *expectedIt, false))
-            << "Expected: " << expectedIt.value().toJson()
-            << " got: " << got.toJson() << " in row " << i << " and register "
-            << testReg.value();
+            << "Expected: " << expectedIt.value().toJson() << " got: " << got.toJson()
+            << " in row " << i << " and register " << testReg.value();
         expectedIt++;
       }
     } else {
@@ -1596,8 +1517,7 @@ class ExecutionBlockImplExecuteIntegrationTest
    * @param rowIndex The row index to test
    * @param depth The expected shadowRow depth
    */
-  void ValidateShadowRow(SharedAqlItemBlockPtr block, size_t rowIndex,
-                         size_t depth) {
+  void ValidateShadowRow(SharedAqlItemBlockPtr block, size_t rowIndex, size_t depth) {
     ASSERT_TRUE(block != nullptr);
     EXPECT_TRUE(block->hasShadowRows());
     ASSERT_TRUE(block->isShadowRow(rowIndex));
@@ -1620,15 +1540,16 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_waiting_block_mock) {
       matrix.emplace_back(RowBuilder<1>{i});
     }
     builder->close();
-    SharedAqlItemBlockPtr block = buildBlock<1>(
-        fakedQuery->rootEngine()->itemBlockManager(), std::move(matrix));
+    SharedAqlItemBlockPtr block =
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), std::move(matrix));
     blockDeque.push_back(std::move(block));
   }
 
-  WaitingExecutionBlockMock testee{
-      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
-      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
-                    : WaitingExecutionBlockMock::WaitingBehaviour::NEVER};
+  WaitingExecutionBlockMock testee{fakedQuery->rootEngine(), generateNodeDummy(),
+                                   std::move(blockDeque),
+                                   doesWaiting()
+                                       ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
+                                       : WaitingExecutionBlockMock::WaitingBehaviour::NEVER};
 
   auto const& call = getCall();
   auto stack = buildStack(call);
@@ -1770,11 +1691,10 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_using_two) {
 }
 
 // Explicitly test call forwarding, on exectors.
-// We use two pass-through producers, that simply copy over input and assert an
-// calls. On top of them we have a 1000 line producer. We expect the result to
-// be identical to the 1000 line producer only.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest,
-       test_call_forwarding_passthrough) {
+// We use two pass-through producers, that simply copy over input and assert an calls.
+// On top of them we have a 1000 line producer.
+// We expect the result to be identical to the 1000 line producer only.
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_passthrough) {
   auto singleton = createSingleton();
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -1812,13 +1732,12 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
 }
 
 // Explicitly test call forwarding, on exectors.
-// We use one pass-through producer, that simply copy over input and assert an
-// calls. And we have one non-passthrough below it, that requests all data from
-// upstream, and internally does skipping. On top of them we have a 1000 line
-// producer. We expect the result to be identical to the 1000 line producer
-// only.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest,
-       test_call_forwarding_implement_skip) {
+// We use one pass-through producer, that simply copy over input and assert an calls.
+// And we have one non-passthrough below it, that requests all data from upstream, and internally
+// does skipping.
+// On top of them we have a 1000 line producer.
+// We expect the result to be identical to the 1000 line producer only.
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_skip) {
   auto singleton = createSingleton();
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -1836,8 +1755,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
   CallAsserter lowerState{getCall()};
   SkipCallAsserter skipState{getCall()};
 
-  auto forwardCall = [&](AqlItemBlockInputRange& inputRange,
-                         OutputAqlItemRow& output)
+  auto forwardCall = [&](AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
     lowerState.gotCalled(output.getClientCall());
     while (inputRange.hasDataRow() && !output.isFull()) {
@@ -1851,8 +1769,9 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
     request.softLimit = (std::min)(getClient.softLimit, getClient.hardLimit);
     return {inputRange.upstreamState(), NoStats{}, request};
   };
-  auto forwardSkipCall = [&](AqlItemBlockInputRange& inputRange, AqlCall& call)
-      -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
+  auto forwardSkipCall =
+      [&](AqlItemBlockInputRange& inputRange,
+          AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
     skipState.gotCalled(call);
     size_t skipped = 0;
     while (inputRange.hasDataRow() && call.shouldSkip()) {
@@ -1872,10 +1791,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
   };
 
   auto lower = std::make_unique<ExecutionBlockImpl<TestLambdaSkipExecutor>>(
-      fakedQuery->rootEngine(), generateNodeDummy(),
-      makeRegisterInfos(outReg.value(), outReg.value()),
-      makeSkipExecutorInfos(std::move(forwardCall),
-                            std::move(forwardSkipCall)));
+      fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(outReg.value(), outReg.value()),
+      makeSkipExecutorInfos(std::move(forwardCall), std::move(forwardSkipCall)));
   lower->addDependency(upper.get());
 
   auto const& call = getCall();
@@ -1901,8 +1818,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
 TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls) {
   // The WAITING block mock can only stop returning after a full block.
   // As the used calls have "random" sizes, we simply create 1 line blocks only.
-  // This is less then optimal, but we will have an easily predictable result,
-  // with a complex internal structure
+  // This is less then optimal, but we will have an easily predictable result, with a complex internal structure
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   auto builder = std::make_shared<VPackBuilder>();
   builder->openArray();
@@ -1922,8 +1838,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls) {
   NoneAsserter produceAsserter{getCall(), ExecutionBlock::DefaultBatchSize * 3};
   NoneAsserter skipAsserter{getCall(), ExecutionBlock::DefaultBatchSize * 3};
   RegisterId outReg = 0;
-  auto testee =
-      forwardBlock(produceAsserter, skipAsserter, producer.get(), outReg);
+  auto testee = forwardBlock(produceAsserter, skipAsserter, producer.get(), outReg);
   auto const& call = getCall();
   auto stack = buildStack(call);
   auto [state, skipped, block] = testee->execute(stack);
@@ -1934,8 +1849,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls) {
     EXPECT_EQ(block, nullptr);
     std::tie(state, skipped, block) = testee->execute(stack);
     // Kill switch to avoid endless loop in case of error.
-    // We should get this through with much fewer than two times Batchsize
-    // calls.
+    // We should get this through with much fewer than two times Batchsize calls.
     killSwitch++;
     if (killSwitch >= ExecutionBlock::DefaultBatchSize * 2) {
       ASSERT_TRUE(false);
@@ -1954,12 +1868,10 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls) {
 // Simulate many upstream calls, the block upstream only returns a single
 // line. This test forces the executor into internal loops and into keeping
 // internal state due to doesWaiting variant. Using a passthrough executor.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest,
-       test_multiple_upstream_calls_passthrough) {
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_passthrough) {
   // The WAITING block mock can only stop returning after a full block.
   // As the used calls have "random" sizes, we simply create 1 line blocks only.
-  // This is less then optimal, but we will have an easily predictable result,
-  // with a complex internal structure
+  // This is less then optimal, but we will have an easily predictable result, with a complex internal structure
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   auto builder = std::make_shared<VPackBuilder>();
   builder->openArray();
@@ -1990,8 +1902,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
     auto [state, skipped, block] = testee->execute(stack);
     if (doesWaiting()) {
       size_t waited = 0;
-      while (state == ExecutionState::WAITING &&
-             waited < 2 /* avoid endless waiting*/) {
+      while (state == ExecutionState::WAITING && waited < 2 /* avoid endless waiting*/) {
         EXPECT_EQ(state, ExecutionState::WAITING);
         EXPECT_EQ(skipped.getSkipCount(), 0);
         EXPECT_EQ(block, nullptr);
@@ -2021,8 +1932,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
       auto [state, skipped, block] = testee->execute(stack);
       if (doesWaiting()) {
         size_t waited = 0;
-        while (state == ExecutionState::WAITING &&
-               waited < 3 /* avoid endless waiting*/) {
+        while (state == ExecutionState::WAITING && waited < 3 /* avoid endless waiting*/) {
           EXPECT_EQ(state, ExecutionState::WAITING);
           EXPECT_EQ(skipped.getSkipCount(), 0);
           EXPECT_EQ(block, nullptr);
@@ -2054,8 +1964,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
         // The first data row includes skip
         EXPECT_EQ(skipped.getSkipCount(), offset);
       } else {
-        if (call.getLimit() == 0 && call.hasHardLimit() &&
-            call.needsFullCount()) {
+        if (call.getLimit() == 0 && call.hasHardLimit() && call.needsFullCount()) {
           // The last row, with fullCount needs to contain data.
           EXPECT_EQ(skipped.getSkipCount(), 1000 - limit - offset);
         } else {
@@ -2068,9 +1977,10 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
       // Even if the output is full, we fulfill the fullCount request
       // Might however trigger waiting instead.
       /*
-      if (call.hasHardLimit() && !call.needsFullCount() && call.getLimit() == 0)
-      { EXPECT_EQ(state, ExecutionState::DONE); } else { EXPECT_EQ(state,
-      ExecutionState::HASMORE);
+      if (call.hasHardLimit() && !call.needsFullCount() && call.getLimit() == 0) {
+        EXPECT_EQ(state, ExecutionState::DONE);
+      } else {
+        EXPECT_EQ(state, ExecutionState::HASMORE);
       }
       */
       if ((it.isLast() && call.getLimit() > 0) ||
@@ -2107,17 +2017,16 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
   auto subqueryStart = createSubqueryStart(producer.get(), 1);
-  auto filterAllCallback = [](AqlItemBlockInputRange& inputRange,
-                              OutputAqlItemRow& output)
-      -> std::tuple<ExecutorState, NoStats, AqlCall> {
+  auto filterAllCallback =
+      [](AqlItemBlockInputRange& inputRange,
+         OutputAqlItemRow& output) -> std::tuple<ExecutorState, NoStats, AqlCall> {
     while (inputRange.hasDataRow()) {
       std::ignore = inputRange.nextDataRow();
     }
     return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
   };
-  auto skipAllCallback =
-      [](AqlItemBlockInputRange& input,
-         AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
+  auto skipAllCallback = [](AqlItemBlockInputRange& input,
+                            AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
     while (call.needSkipMore() && input.skippedInFlight() > 0) {
       if (call.getOffset() > 0) {
         call.didSkip(input.skip(call.getOffset()));
@@ -2129,8 +2038,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
   };
   auto filterData = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
       fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(0, 0),
-      makeSkipExecutorInfos(std::move(filterAllCallback),
-                            std::move(skipAllCallback)));
+      makeSkipExecutorInfos(std::move(filterAllCallback), std::move(skipAllCallback)));
   filterData->addDependency(subqueryStart.get());
 
   RegisterId outReg = 0;
@@ -2141,8 +2049,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
   size_t maxCalls = doesWaiting() ? 9 : 6;
   NoneAsserter getAsserter{getCall(), maxCalls};
   NoneAsserter skipAsserter{getCall(), maxCalls};
-  auto testee =
-      forwardBlock(getAsserter, skipAsserter, filterData.get(), outReg);
+  auto testee = forwardBlock(getAsserter, skipAsserter, filterData.get(), outReg);
 
   for (size_t i = 0; i < 3; ++i) {
     // We always take a new call. We do not want the call to be modified cross
@@ -2230,10 +2137,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_relevant_shadowRow) {
   }
 }
 
-// Test a classical input ending in a relevant shadowRow and a non-relevant
-// shadow_row
-TEST_P(ExecutionBlockImplExecuteIntegrationTest,
-       input_and_non_relevant_shadowRow) {
+// Test a classical input ending in a relevant shadowRow and a non-relevant shadow_row
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_non_relevant_shadowRow) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
@@ -2351,8 +2256,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
     }
     auto const [state, skipped, block] = testee->execute(stack);
 
-    if (std::holds_alternative<size_t>(call.softLimit) &&
-        !call.hasHardLimit()) {
+    if (std::holds_alternative<size_t>(call.softLimit) && !call.hasHardLimit()) {
       EXPECT_EQ(state, ExecutionState::HASMORE);
       // Do not append shadowRow on softLimit
       ValidateResult(builder, skipped, block, outReg, 0);
@@ -2385,8 +2289,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
         // In the first run, we actually have more after fullCount
         EXPECT_EQ(state, ExecutionState::HASMORE);
       } else {
-        // In the second run we do not have more after fullCount, we have
-        // returned everything
+        // In the second run we do not have more after fullCount, we have returned everything
         EXPECT_EQ(state, ExecutionState::DONE);
       }
 
@@ -2426,9 +2329,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   RegisterId depth1Reg = 1;
   RegisterId depth0Reg = 0;
 
-  auto produceDepth0 = [depth0Reg, depth1Reg](
-                           AqlItemBlockInputRange& inputRange,
-                           OutputAqlItemRow& output)
+  auto produceDepth0 = [depth0Reg, depth1Reg](AqlItemBlockInputRange& inputRange,
+                                              OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, NoStats, AqlCall> {
     while (inputRange.hasDataRow()) {
       auto [state, row] = inputRange.nextDataRow();
@@ -2459,9 +2361,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
   };
 
-  auto skipDepth0 =
-      [](AqlItemBlockInputRange& input,
-         AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
+  auto skipDepth0 = [](AqlItemBlockInputRange& input,
+                       AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
     // We have a defined outer call, that always does unlimited produce.
     // So skip will never be called
     TRI_ASSERT(false);
@@ -2475,9 +2376,9 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
 
   auto subqueryInnerStart = createSubqueryStart(producerDepth0.get(), 2);
 
-  auto produceDepth1 = [depth1Reg, outReg](AqlItemBlockInputRange& inputRange,
-                                           OutputAqlItemRow& output)
-      -> std::tuple<ExecutorState, NoStats, AqlCall> {
+  auto produceDepth1 =
+      [depth1Reg, outReg](AqlItemBlockInputRange& inputRange,
+                          OutputAqlItemRow& output) -> std::tuple<ExecutorState, NoStats, AqlCall> {
     while (inputRange.hasDataRow()) {
       auto [state, row] = inputRange.nextDataRow();
       auto val = row.getValue(depth1Reg).toInt64();
@@ -2493,9 +2394,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
   };
 
-  auto skipDepth1 =
-      [](AqlItemBlockInputRange& input,
-         AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
+  auto skipDepth1 = [](AqlItemBlockInputRange& input,
+                       AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
     // Never order to skip.
     TRI_ASSERT(input.skippedInFlight() == 0);
     while (input.hasDataRow()) {
@@ -2517,8 +2417,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
 
   CallAsserter getAsserter{getCall()};
   SkipCallAsserter skipAsserter{getCall()};
-  auto testee =
-      forwardBlock(getAsserter, skipAsserter, producerDepth1.get(), outReg);
+  auto testee = forwardBlock(getAsserter, skipAsserter, producerDepth1.get(), outReg);
 
   if (doesWaiting()) {
     auto stack = buildStack(AqlCall{}, AqlCall{});
@@ -2530,8 +2429,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     EXPECT_EQ(block, nullptr);
   }
   auto call = getCall();
-  bool skip =
-      call.getOffset() > 0 || (call.getLimit() == 0 && call.needsFullCount());
+  bool skip = call.getOffset() > 0 || (call.getLimit() == 0 && call.needsFullCount());
   {
     // First subquery
     auto stack = buildStack(AqlCall{}, AqlCall{});
@@ -2634,9 +2532,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
 INSTANTIATE_TEST_CASE_P(
     ExecutionBlockExecuteIntegration, ExecutionBlockImplExecuteIntegrationTest,
     ::testing::Combine(::testing::Values(defaultCall(), skipCall(), softLimit(),
-                                         hardLimit(), fullCount(),
-                                         skipAndSoftLimit(), skipAndHardLimit(),
-                                         skipAndHardLimitAndFullCount(),
+                                         hardLimit(), fullCount(), skipAndSoftLimit(),
+                                         skipAndHardLimit(), skipAndHardLimitAndFullCount(),
                                          onlyFullCount(), onlySkipAndCount()),
                        ::testing::Bool()));
 }  // namespace aql

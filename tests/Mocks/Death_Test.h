@@ -25,11 +25,10 @@
 /// e.g. define  set of cade that causes the process to crash.
 /// this could be used to validate that certain states are considered
 /// invalid in production code and not accidentially removed on refactorings.
-/// However every such death test will generate a core-dump, even if the test is
-/// successful This is inconvenient as it unnecessarily bloats up HDD usage and
-/// hides releveant coredumps So this thin macro wraps around the GTEST ::
-/// EXPECT_DEATH macro and disables coredumps only within the expected forked
-/// process
+/// However every such death test will generate a core-dump, even if the test is successful
+/// This is inconvenient as it unnecessarily bloats up HDD usage and hides releveant coredumps
+/// So this thin macro wraps around the GTEST :: EXPECT_DEATH macro and disables coredumps
+/// only within the expected forked process
 
 #pragma once
 

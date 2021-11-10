@@ -21,9 +21,6 @@
 /// @author Tobias Gödderz
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#include <rocksdb/comparator.h>
-#include <rocksdb/slice.h>
-
 #include <array>
 #include <iostream>
 #include <utility>
@@ -31,10 +28,12 @@
 
 #include "Zkd/ZkdHelper.h"
 
+#include <rocksdb/comparator.h>
+#include <rocksdb/slice.h>
+
 using namespace arangodb;
 
-static std::ostream& operator<<(std::ostream& os,
-                                std::vector<zkd::byte_string> const& bsvec) {
+static std::ostream& operator<<(std::ostream& os, std::vector<zkd::byte_string> const& bsvec) {
   os << "{";
   if (!bsvec.empty()) {
     auto it = bsvec.begin();
@@ -49,8 +48,8 @@ static std::ostream& operator<<(std::ostream& os,
   return os;
 }
 
-static std::ostream& operator<<(
-    std::ostream& os, std::vector<zkd::CompareResult> const& cmpResult) {
+static std::ostream& operator<<(std::ostream& os,
+                                std::vector<zkd::CompareResult> const& cmpResult) {
   os << "{";
   if (!cmpResult.empty()) {
     auto it = cmpResult.begin();
@@ -105,8 +104,7 @@ TEST(Zkd_byteStringLiteral, bs) {
             "00000000 00000010"_bs);
   EXPECT_EQ((byte_string{std::byte{1}, std::byte{0x00}}),
             "00000001 00000000"_bs);
-  EXPECT_EQ((byte_string{std::byte{42}, std::byte{42}}),
-            "00101010 00101010"_bs);
+  EXPECT_EQ((byte_string{std::byte{42}, std::byte{42}}), "00101010 00101010"_bs);
   EXPECT_EQ((byte_string{std::byte{0x00}, std::byte{42}, std::byte{42}}),
             "00000000 00101010 00101010"_bs);
 }
@@ -176,12 +174,9 @@ TEST(Zkd_transpose, d3_multi) {
 }
 
 TEST(Zkd_compareBox, d2_eq) {
-  auto min_v =
-      interleave({"00000101"_bs, "01001101"_bs});  // 00 01 00 00 01 11 00 11
-  auto max_v =
-      interleave({"00100011"_bs, "01111001"_bs});  // 00 01 11 01 01 00 10 11
-  auto v =
-      interleave({"00001111"_bs, "01010110"_bs});  // 00 01 00 01 10 11 11 10
+  auto min_v = interleave({"00000101"_bs, "01001101"_bs});  // 00 01 00 00 01 11 00 11
+  auto max_v = interleave({"00100011"_bs, "01111001"_bs});  // 00 01 11 01 01 00 10 11
+  auto v = interleave({"00001111"_bs, "01010110"_bs});  // 00 01 00 01 10 11 11 10
 
   auto res = compareWithBox(v, min_v, max_v, 2);
 
@@ -200,12 +195,9 @@ TEST(Zkd_compareBox, d2_eq) {
 }
 
 TEST(Zkd_compareBox, d2_eq2) {
-  auto min_v =
-      interleave({"00000010"_bs, "00000011"_bs});  // 00 00 00 00 00 00 11 01
-  auto max_v =
-      interleave({"00000110"_bs, "00000101"_bs});  // 00 00 00 00 00 11 10 01
-  auto v =
-      interleave({"00000011"_bs, "00000011"_bs});  // 00 00 00 00 00 00 11 11
+  auto min_v = interleave({"00000010"_bs, "00000011"_bs});  // 00 00 00 00 00 00 11 01
+  auto max_v = interleave({"00000110"_bs, "00000101"_bs});  // 00 00 00 00 00 11 10 01
+  auto v = interleave({"00000011"_bs, "00000011"_bs});  // 00 00 00 00 00 00 11 11
 
   auto res = compareWithBox(v, min_v, max_v, 2);
 
@@ -237,12 +229,9 @@ TEST(Zkd_compareBox, d2_less) {
 }
 
 TEST(Zkd_compareBox, d2_x_less_y_greater) {
-  auto min_v =
-      interleave({"00000100"_bs, "00000010"_bs});  // 00 00 00 00 00 10 01 00
-  auto max_v =
-      interleave({"00001000"_bs, "00000110"_bs});  // 00 00 00 00 10 01 01 00
-  auto v =
-      interleave({"00000011"_bs, "00010000"_bs});  // 00 00 00 01 00 00 10 10
+  auto min_v = interleave({"00000100"_bs, "00000010"_bs});  // 00 00 00 00 00 10 01 00
+  auto max_v = interleave({"00001000"_bs, "00000110"_bs});  // 00 00 00 00 10 01 01 00
+  auto v = interleave({"00000011"_bs, "00010000"_bs});  // 00 00 00 01 00 00 10 10
 
   auto res = compareWithBox(v, min_v, max_v, 2);
 
@@ -257,12 +246,9 @@ TEST(Zkd_compareBox, d2_x_less_y_greater) {
 }
 
 TEST(Zkd_compareBox, d3_x_less_y_greater_z_eq) {
-  auto min_v = interleave({"00000100"_bs, "00000010"_bs,
-                           "00000000"_bs});  // 000 000 000 000 000 100 010 000
-  auto max_v = interleave({"00001000"_bs, "00000110"_bs,
-                           "00000010"_bs});  // 000 000 000 000 100 010 011 000
-  auto v = interleave({"00000011"_bs, "00010000"_bs,
-                       "00000010"_bs});  // 000 000 000 010 000 000 101 100
+  auto min_v = interleave({"00000100"_bs, "00000010"_bs, "00000000"_bs});  // 000 000 000 000 000 100 010 000
+  auto max_v = interleave({"00001000"_bs, "00000110"_bs, "00000010"_bs});  // 000 000 000 000 100 010 011 000
+  auto v = interleave({"00000011"_bs, "00010000"_bs, "00000010"_bs});  // 000 000 000 010 000 000 101 100
 
   auto res = compareWithBox(v, min_v, max_v, 3);
 
@@ -308,8 +294,8 @@ TEST(Zkd_rocksdb, convert_bytestring) {
   for (auto const& it : data) {
     auto const slice =
         rocksdb::Slice(reinterpret_cast<char const*>(it.c_str()), it.size());
-    auto const string = byte_string{
-        reinterpret_cast<std::byte const*>(slice.data()), slice.size()};
+    auto const string =
+        byte_string{reinterpret_cast<std::byte const*>(slice.data()), slice.size()};
     EXPECT_EQ(it, string);
     EXPECT_EQ(it.size(), slice.size());
     EXPECT_EQ(it.size(), string.size());
@@ -343,17 +329,13 @@ TEST(Zkd_rocksdb, cmp_slice) {
   for (auto const& it : data) {
     auto const& [expected, testee] = it;
     auto const& [left, right] = testee;
-    EXPECT_EQ(expected == Cmp::LT,
-              cmp->Compare(sliceFromString(left), sliceFromString(right)) < 0)
+    EXPECT_EQ(expected == Cmp::LT, cmp->Compare(sliceFromString(left), sliceFromString(right)) < 0)
         << "left = " << left << ", right = " << right;
-    EXPECT_EQ(expected == Cmp::EQ,
-              cmp->Compare(sliceFromString(left), sliceFromString(right)) == 0)
+    EXPECT_EQ(expected == Cmp::EQ, cmp->Compare(sliceFromString(left), sliceFromString(right)) == 0)
         << "left = " << left << ", right = " << right;
-    EXPECT_EQ(expected == Cmp::EQ,
-              cmp->Equal(sliceFromString(left), sliceFromString(right)))
+    EXPECT_EQ(expected == Cmp::EQ, cmp->Equal(sliceFromString(left), sliceFromString(right)))
         << "left = " << left << ", right = " << right;
-    EXPECT_EQ(expected == Cmp::GT,
-              cmp->Compare(sliceFromString(left), sliceFromString(right)) > 0)
+    EXPECT_EQ(expected == Cmp::GT, cmp->Compare(sliceFromString(left), sliceFromString(right)) > 0)
         << "left = " << left << ", right = " << right;
   }
 }
@@ -364,42 +346,40 @@ TEST(Zkd_getNextZValue, testFigure41) {
   // upper point of the box: (4, 5)
   auto const pMax = interleave(std::vector{"00000100"_bs, "00000101"_bs});
 
-  auto test =
-      [&pMin, &pMax](
-          std::vector<byte_string> const& inputCoords,
-          std::optional<std::vector<zkd::byte_string>> const& expectedCoords) {
-        auto const input = interleave(inputCoords);
-        auto const expected = std::invoke([&]() -> std::optional<byte_string> {
-          if (expectedCoords.has_value()) {
-            return interleave(expectedCoords.value());
-          } else {
-            return std::nullopt;
-          }
-        });
-        auto cmpResult = compareWithBox(input, pMin, pMax, 2);
-        // input should be outside the box:
-        auto sstr = std::stringstream{};
-        if (expectedCoords.has_value()) {
-          sstr << expectedCoords.value();
-        } else {
-          sstr << "n/a";
-        }
-        ASSERT_TRUE(std::any_of(cmpResult.begin(), cmpResult.end(),
-                                [](auto const& it) { return it.flag != 0; }))
-            << "with input=" << inputCoords << ", expected=" << sstr.str()
-            << ", result=" << cmpResult;
-        auto result = getNextZValue(input, pMin, pMax, cmpResult);
-        auto sstr2 = std::stringstream{};
-        if (result.has_value()) {
-          sstr2 << result.value() << "/" << transpose(result.value(), 2);
-        } else {
-          sstr2 << "n/a";
-        }
-        EXPECT_EQ(expected, result)
-            << "with input=" << inputCoords << ", expected=" << sstr.str()
-            << ", result=" << sstr2.str() << ", cmpResult=" << cmpResult;
-        // TODO should cmpResult be checked?
-      };
+  auto test = [&pMin, &pMax](std::vector<byte_string> const& inputCoords,
+                             std::optional<std::vector<zkd::byte_string>> const& expectedCoords) {
+    auto const input = interleave(inputCoords);
+    auto const expected = std::invoke([&]() -> std::optional<byte_string> {
+      if (expectedCoords.has_value()) {
+        return interleave(expectedCoords.value());
+      } else {
+        return std::nullopt;
+      }
+    });
+    auto cmpResult = compareWithBox(input, pMin, pMax, 2);
+    // input should be outside the box:
+    auto sstr = std::stringstream{};
+    if (expectedCoords.has_value()) {
+      sstr << expectedCoords.value();
+    } else {
+      sstr << "n/a";
+    }
+    ASSERT_TRUE(std::any_of(cmpResult.begin(), cmpResult.end(),
+                            [](auto const& it) { return it.flag != 0; }))
+        << "with input=" << inputCoords << ", expected=" << sstr.str()
+        << ", result=" << cmpResult;
+    auto result = getNextZValue(input, pMin, pMax, cmpResult);
+    auto sstr2 = std::stringstream{};
+    if (result.has_value()) {
+      sstr2 << result.value() << "/" << transpose(result.value(), 2);
+    } else {
+      sstr2 << "n/a";
+    }
+    EXPECT_EQ(expected, result)
+        << "with input=" << inputCoords << ", expected=" << sstr.str()
+        << ", result=" << sstr2.str() << ", cmpResult=" << cmpResult;
+    // TODO should cmpResult be checked?
+  };
 
   // z-curve inside the box [ (2, 2); (4, 5) ] goes through the following
   // points. the value after -/> is outside the box. The next line continues
@@ -422,8 +402,7 @@ TEST(Zkd_getNextZValue, testFigure41) {
       // assert that compareWithBox agrees with our `inBox` bool
       ASSERT_EQ(inBox, std::all_of(cmpResult.begin(), cmpResult.end(),
                                    [](auto const& it) { return it.flag == 0; }))
-          << "xi=" << int(xi) << ", yi=" << int(yi)
-          << ", cmpResult=" << cmpResult;
+          << "xi=" << int(xi) << ", yi=" << int(yi) << ", cmpResult=" << cmpResult;
       if (!inBox) {
         auto result = getNextZValue(input, pMin, pMax, cmpResult);
         if (result.has_value()) {
@@ -441,17 +420,15 @@ TEST(Zkd_getNextZValue, testFigure41) {
 }
 
 TEST(Zkd_testInBox, regression_1) {
-  auto cur =
-      zkd::interleave({byte_string{0x5f_b, 0xf8_b, 0x00_b, 0x00_b, 0x00_b,
-                                   0x00_b, 0x00_b, 0x00_b, 0x00_b},
-                       byte_string{0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b,
-                                   0x00_b, 0x00_b, 0x00_b, 0x00_b}});
+  auto cur = zkd::interleave({
+      byte_string{0x5f_b, 0xf8_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b},
+      byte_string{0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b}
+  });
   auto const& min = cur;
-  auto max =
-      zkd::interleave({byte_string{0x60_b, 0x04_b, 0x00_b, 0x00_b, 0x00_b,
-                                   0x00_b, 0x00_b, 0x00_b, 0x00_b},
-                       byte_string{0x80_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b,
-                                   0x00_b, 0x00_b, 0x00_b, 0x00_b}});
+  auto max = zkd::interleave({
+                                 byte_string{0x60_b, 0x04_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b},
+                                 byte_string{0x80_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b}
+                             });
 
   ASSERT_TRUE(testInBox(cur, min, max, 2));
 }

@@ -21,25 +21,26 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include "gtest/gtest.h"
 
-#include <set>
+#include "fakeit.hpp"
 
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Containers/SmallVector.h"
-#include "IResearch/common.h"
-#include "Mocks/Servers.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-#include "fakeit.hpp"
-#include "gtest/gtest.h"
+#include "IResearch/common.h"
+#include "Mocks/Servers.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+#include <set>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -47,29 +48,31 @@ using namespace arangodb::containers;
 
 class InRangeFunctionTest : public ::testing::Test {
  public:
-  InRangeFunctionTest() { arangodb::tests::init(); }
+  InRangeFunctionTest() {
+    arangodb::tests::init();
+  }
 
  protected:
-  AqlValue evaluate(AqlValue const* attribute, AqlValue const* lower,
-                    AqlValue const* upper, AqlValue const* includeLower,
-                    AqlValue const* includeUpper,
-                    std::set<int>* warnings = nullptr) {
+  AqlValue evaluate(AqlValue const* attribute,
+    AqlValue const* lower,
+    AqlValue const* upper,
+    AqlValue const* includeLower,
+    AqlValue const* includeUpper,
+    std::set<int>* warnings = nullptr) {
     fakeit::Mock<ExpressionContext> expressionContextMock;
     ExpressionContext& expressionContext = expressionContextMock.get();
-    fakeit::When(Method(expressionContextMock, registerWarning))
-        .AlwaysDo([warnings](ErrorCode c, char const*) {
-          if (warnings) {
-            warnings->insert(static_cast<int>(c));
-          }
-        });
-    TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL,
-                              testDBInfo(server.server()));
+    fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([warnings](ErrorCode c, char const*) {
+      if (warnings) {
+        warnings->insert(static_cast<int>(c));
+      }});
+    TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto trx = server.createFakeTransaction();
-    fakeit::When(Method(expressionContextMock, trx))
-        .AlwaysDo([&trx]() -> transaction::Methods& { return *trx; });
-
+    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&trx]() -> transaction::Methods& {
+      return *trx;
+    });
+    
     SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
+    SmallVector<AqlValue> params{ arena };
     if (attribute) {
       params.emplace_back(*attribute);
     }
@@ -85,7 +88,7 @@ class InRangeFunctionTest : public ::testing::Test {
     if (includeUpper) {
       params.emplace_back(*includeUpper);
     }
-
+  
     arangodb::aql::Function f("IN_RANGE", &Functions::InRange);
     arangodb::aql::AstNode node(NODE_TYPE_FCALL);
     node.setData(static_cast<void const*>(&f));
@@ -93,27 +96,33 @@ class InRangeFunctionTest : public ::testing::Test {
     return Functions::InRange(&expressionContext, node, params);
   }
 
-  void assertInRangeFail(size_t line, std::set<int> const& expected_warnings,
-                         AqlValue const* attribute, AqlValue const* lower,
-                         AqlValue const* upper, AqlValue const* includeLower,
-                         AqlValue const* includeUpper) {
+  void assertInRangeFail(size_t line,
+    std::set<int> const& expected_warnings,
+    AqlValue const* attribute,
+    AqlValue const* lower,
+    AqlValue const* upper,
+    AqlValue const* includeLower,
+    AqlValue const* includeUpper) {
     SCOPED_TRACE(testing::Message("assertInRangeFail failed on line:") << line);
     std::set<int> warnings;
-    ASSERT_TRUE(
-        evaluate(attribute, lower, upper, includeLower, includeUpper, &warnings)
-            .isNull(false));
+    ASSERT_TRUE(evaluate(attribute, lower, upper, includeLower, includeUpper, &warnings).isNull(false));
     ASSERT_EQ(expected_warnings, warnings);
   }
 
-  void assertInRange(size_t line, bool expectedValue, AqlValue const* attribute,
-                     AqlValue const* lower, AqlValue const* upper,
-                     bool includeLower, bool includeUpper) {
+  void assertInRange(size_t line,
+    bool expectedValue,
+    AqlValue const* attribute,
+    AqlValue const* lower,
+    AqlValue const* upper,
+    bool includeLower,
+    bool includeUpper) {
     SCOPED_TRACE(testing::Message("assertInRange failed on line:") << line);
     std::set<int> warnings;
-    AqlValue includeLowerAql{AqlValueHintBool(includeLower)};
-    AqlValue includeUpperAql{AqlValueHintBool(includeUpper)};
-    auto value = evaluate(attribute, lower, upper, &includeLowerAql,
-                          &includeUpperAql, &warnings);
+    AqlValue includeLowerAql{ AqlValueHintBool(includeLower) };
+    AqlValue includeUpperAql{ AqlValueHintBool(includeUpper) };
+    auto value = evaluate(attribute, lower, upper,
+      &includeLowerAql,
+      &includeUpperAql, &warnings);
     ASSERT_TRUE(warnings.empty());
     ASSERT_TRUE(value.isBoolean());
     ASSERT_EQ(expectedValue, value.toBoolean());
@@ -154,9 +163,9 @@ TEST_F(InRangeFunctionTest, testValidArgs) {
   }
   // numbers
   {
-    AqlValue foo{AqlValueHintInt(5)};
-    AqlValue boo{AqlValueHintDouble(4.9999)};
-    AqlValue poo{AqlValueHintDouble(5.0001)};
+    AqlValue foo{ AqlValueHintInt(5) };
+    AqlValue boo{ AqlValueHintDouble(4.9999) };
+    AqlValue poo{ AqlValueHintDouble(5.0001) };
     assertInRange(__LINE__, true, &foo, &boo, &poo, true, true);
     assertInRange(__LINE__, false, &foo, &poo, &boo, true, true);
     assertInRange(__LINE__, true, &foo, &foo, &poo, true, true);
@@ -168,24 +177,20 @@ TEST_F(InRangeFunctionTest, testValidArgs) {
   }
   // type mix
   {
-    AqlValue const Int5{AqlValueHintInt(5)};
-    AqlValue const NullVal{AqlValueHintNull{}};
-    AqlValue const ArrayVal{AqlValueHintEmptyArray{}};
-    AqlValue const ObjectVal{AqlValueHintEmptyObject{}};
+    AqlValue const Int5{ AqlValueHintInt(5) };
+    AqlValue const NullVal{ AqlValueHintNull{} };
+    AqlValue const ArrayVal{ AqlValueHintEmptyArray{} };
+    AqlValue const ObjectVal{ AqlValueHintEmptyObject{} };
     AqlValue const StringVal("foo");
     assertInRange(__LINE__, true, &StringVal, &NullVal, &ObjectVal, true, true);
     assertInRange(__LINE__, true, &StringVal, &NullVal, &ArrayVal, true, true);
-    assertInRange(__LINE__, false, &StringVal, &ObjectVal, &NullVal, true,
-                  true);
+    assertInRange(__LINE__, false, &StringVal, &ObjectVal, &NullVal, true, true);
     assertInRange(__LINE__, false, &StringVal, &ArrayVal, &NullVal, true, true);
-    assertInRange(__LINE__, false, &StringVal, &ObjectVal, &ArrayVal, true,
-                  true);
-    assertInRange(__LINE__, false, &StringVal, &ArrayVal, &ObjectVal, true,
-                  true);
+    assertInRange(__LINE__, false, &StringVal, &ObjectVal, &ArrayVal, true, true);
+    assertInRange(__LINE__, false, &StringVal, &ArrayVal, &ObjectVal, true, true);
     assertInRange(__LINE__, false, &StringVal, &NullVal, &Int5, true, true);
     assertInRange(__LINE__, true, &StringVal, &NullVal, &StringVal, true, true);
-    assertInRange(__LINE__, false, &StringVal, &StringVal, &NullVal, true,
-                  true);
+    assertInRange(__LINE__, false, &StringVal, &StringVal, &NullVal, true, true);
     assertInRange(__LINE__, false, &StringVal, &StringVal, &Int5, true, true);
     assertInRange(__LINE__, true, &Int5, &NullVal, &StringVal, true, true);
     assertInRange(__LINE__, false, &Int5, &ArrayVal, &StringVal, true, true);
@@ -193,8 +198,7 @@ TEST_F(InRangeFunctionTest, testValidArgs) {
     assertInRange(__LINE__, true, &Int5, &NullVal, &ObjectVal, true, true);
     assertInRange(__LINE__, false, &ArrayVal, &NullVal, &StringVal, true, true);
     assertInRange(__LINE__, true, &ArrayVal, &NullVal, &ObjectVal, true, true);
-    assertInRange(__LINE__, true, &ArrayVal, &StringVal, &ObjectVal, true,
-                  true);
+    assertInRange(__LINE__, true, &ArrayVal, &StringVal, &ObjectVal, true, true);
     assertInRange(__LINE__, true, &ArrayVal, &Int5, &ObjectVal, true, true);
     assertInRange(__LINE__, true, &ObjectVal, &Int5, &ObjectVal, true, true);
     assertInRange(__LINE__, false, &ObjectVal, &Int5, &ObjectVal, true, false);
@@ -202,16 +206,11 @@ TEST_F(InRangeFunctionTest, testValidArgs) {
 }
 
 TEST_F(InRangeFunctionTest, testInvalidArgs) {
-  const std::set<int> typeMismatchWarning{
-      static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH)};
-  const std::set<int> invalidArgsCount{
-      static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH)};
-  AqlValue const ValidString{"ValidString"};
-  AqlValue const ValidBool{AqlValueHintBool{true}};
-  assertInRangeFail(__LINE__, invalidArgsCount, &ValidString, &ValidString,
-                    &ValidString, &ValidBool, nullptr);
-  assertInRangeFail(__LINE__, typeMismatchWarning, &ValidString, &ValidString,
-                    &ValidString, &ValidBool, &ValidString);
-  assertInRangeFail(__LINE__, typeMismatchWarning, &ValidString, &ValidString,
-                    &ValidString, &ValidString, &ValidBool);
+  const std::set<int> typeMismatchWarning{ static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) };
+  const std::set<int> invalidArgsCount{ static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) };
+  AqlValue const ValidString{ "ValidString" };
+  AqlValue const ValidBool{ AqlValueHintBool{true} };
+  assertInRangeFail(__LINE__, invalidArgsCount, &ValidString, &ValidString, &ValidString, &ValidBool, nullptr);
+  assertInRangeFail(__LINE__, typeMismatchWarning, &ValidString, &ValidString, &ValidString, &ValidBool, &ValidString);
+  assertInRangeFail(__LINE__, typeMismatchWarning, &ValidString, &ValidString, &ValidString, &ValidString, &ValidBool);
 }

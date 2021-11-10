@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
-
 #include "gtest/gtest.h"
 
 TEST(IResearchRocksDBRecoveryHelperIndexId, comparison_equal) {
@@ -87,6 +86,7 @@ TEST(IResearchRocksDBRecoveryHelperIndexId, comparison_less_cid2) {
   ASSERT_TRUE(id < id2);
   ASSERT_FALSE(id2 < id);
 }
+
 
 TEST(IResearchRocksDBRecoveryHelperIndexId, comparison_less_iid) {
   arangodb::iresearch::IResearchRocksDBRecoveryHelper::IndexId id(

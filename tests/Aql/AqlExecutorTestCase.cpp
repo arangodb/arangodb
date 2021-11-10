@@ -26,38 +26,38 @@
 
 using namespace arangodb::tests::aql;
 
-template<bool enableQueryTrace>
+template <bool enableQueryTrace>
 AqlExecutorTestCase<enableQueryTrace>::AqlExecutorTestCase()
     : fakedQuery{_server->createFakeQuery(enableQueryTrace)} {
-  auto engine = std::make_unique<ExecutionEngine>(
-      0, *fakedQuery, manager(), SerializationFormat::SHADOWROWS);
+  auto engine = std::make_unique<ExecutionEngine>(0, *fakedQuery, manager(),
+                                                  SerializationFormat::SHADOWROWS);
   /// TODO fakedQuery->setEngine(engine.release());
   if constexpr (enableQueryTrace) {
     Logger::QUERIES.setLogLevel(LogLevel::DEBUG);
   }
 }
 
-template<bool enableQueryTrace>
+template <bool enableQueryTrace>
 AqlExecutorTestCase<enableQueryTrace>::~AqlExecutorTestCase() {
   if constexpr (enableQueryTrace) {
     Logger::QUERIES.setLogLevel(LogLevel::INFO);
   }
 }
 
-template<bool enableQueryTrace>
-auto AqlExecutorTestCase<enableQueryTrace>::generateNodeDummy(
-    ExecutionNode::NodeType type) -> ExecutionNode* {
-  auto dummy = std::make_unique<MockTypedNode>(
-      const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
-      ExecutionNodeId{_execNodes.size()}, type);
+template <bool enableQueryTrace>
+auto AqlExecutorTestCase<enableQueryTrace>::generateNodeDummy(ExecutionNode::NodeType type)
+    -> ExecutionNode* {
+  auto dummy =
+      std::make_unique<MockTypedNode>(const_cast<arangodb::aql::ExecutionPlan*>(
+                                          fakedQuery->plan()),
+                                      ExecutionNodeId{_execNodes.size()}, type);
   auto res = dummy.get();
   _execNodes.emplace_back(std::move(dummy));
   return res;
 }
 
-template<bool enableQueryTrace>
-auto AqlExecutorTestCase<enableQueryTrace>::generateScatterNodeDummy()
-    -> ScatterNode* {
+template <bool enableQueryTrace>
+auto AqlExecutorTestCase<enableQueryTrace>::generateScatterNodeDummy() -> ScatterNode* {
   auto dummy = std::make_unique<ScatterNode>(
       const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
       ExecutionNodeId{_execNodes.size()}, ScatterNode::ScatterType::SERVER);
@@ -66,9 +66,8 @@ auto AqlExecutorTestCase<enableQueryTrace>::generateScatterNodeDummy()
   return res;
 }
 
-template<bool enableQueryTrace>
-auto AqlExecutorTestCase<enableQueryTrace>::manager() const
-    -> AqlItemBlockManager& {
+template <bool enableQueryTrace>
+auto AqlExecutorTestCase<enableQueryTrace>::manager() const -> AqlItemBlockManager& {
   return fakedQuery->rootEngine()->itemBlockManager();
 }
 

@@ -22,31 +22,30 @@
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Endpoint/Endpoint.h"
 #include "SimpleHttpClient/ConnectionCache.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
-#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::httpclient;
 
 TEST(ConnectionCacheTest, testEmpty) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
-
+  
   auto const& connections = cache.connections();
   EXPECT_EQ(0, connections.size());
 }
 
 TEST(ConnectionCacheTest, testAcquireInvalidEndpoint) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -61,15 +60,14 @@ TEST(ConnectionCacheTest, testAcquireInvalidEndpoint) {
   }
 
   EXPECT_EQ(nullptr, lease._connection);
-
+  
   auto const& connections = cache.connections();
   EXPECT_EQ(0, connections.size());
 }
 
 TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnection) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -81,21 +79,20 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnection) {
 
     lease = cache.acquire(endpoint, 10.0, 30.0, 10, 0);
     EXPECT_NE(nullptr, lease._connection);
-
+    
     auto const& connections = cache.connections();
     EXPECT_EQ(0, connections.size());
   }
   // lease will automatically return connection to cache, but
   // connection is still closed, so dropped
-
+    
   auto const& connections = cache.connections();
   EXPECT_EQ(0, connections.size());
 }
 
 TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnectionForce) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -107,13 +104,13 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnectionForce) {
 
     lease = cache.acquire(endpoint, 10.0, 30.0, 10, 0);
     EXPECT_NE(nullptr, lease._connection);
-
+    
     auto const& connections = cache.connections();
     EXPECT_EQ(0, connections.size());
 
     cache.release(std::move(lease._connection), true);
   }
-
+    
   auto const& connections = cache.connections();
   EXPECT_EQ(1, connections.size());
 
@@ -123,8 +120,7 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnectionForce) {
 
 TEST(ConnectionCacheTest, testAcquireAndReleaseRepeat) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -134,7 +130,7 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseRepeat) {
   {
     ConnectionLease lease = cache.acquire(endpoint, 10.0, 30.0, 10, 0);
     EXPECT_NE(nullptr, lease._connection);
-
+   
     {
       auto const& connections = cache.connections();
       EXPECT_EQ(0, connections.size());
@@ -143,34 +139,34 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseRepeat) {
     gc1 = lease._connection.get();
 
     cache.release(std::move(lease._connection), true);
-
+ 
     {
       auto const& connections = cache.connections();
       EXPECT_EQ(1, connections.size());
-
+    
       EXPECT_NE(connections.find(endpoint), connections.end());
       EXPECT_EQ(1, connections.find(endpoint)->second.size());
     }
   }
-
+    
   httpclient::GeneralClientConnection* gc2 = nullptr;
   {
     ConnectionLease lease = cache.acquire(endpoint, 10.0, 30.0, 10, 0);
     EXPECT_NE(nullptr, lease._connection);
-
+   
     {
       auto const& connections = cache.connections();
       EXPECT_EQ(1, connections.size());
     }
-
+    
     gc2 = lease._connection.get();
 
     cache.release(std::move(lease._connection), true);
-
+ 
     {
       auto const& connections = cache.connections();
       EXPECT_EQ(1, connections.size());
-
+    
       EXPECT_NE(connections.find(endpoint), connections.end());
       EXPECT_EQ(1, connections.find(endpoint)->second.size());
     }
@@ -182,8 +178,7 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseRepeat) {
 
 TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -192,7 +187,7 @@ TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
   ConnectionLease lease1 = cache.acquire(endpoint, 10.0, 30.0, 10, 0);
   EXPECT_NE(nullptr, lease1._connection);
   httpclient::GeneralClientConnection* gc1 = lease1._connection.get();
-
+   
   {
     auto const& connections = cache.connections();
     EXPECT_EQ(0, connections.size());
@@ -205,22 +200,22 @@ TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
   EXPECT_NE(gc1, gc2);
 
   cache.release(std::move(lease1._connection), true);
-
+    
   {
     auto const& connections = cache.connections();
     EXPECT_EQ(1, connections.size());
-
+    
     EXPECT_NE(connections.find(endpoint), connections.end());
     EXPECT_EQ(1, connections.find(endpoint)->second.size());
     EXPECT_EQ(gc1, connections.find(endpoint)->second[0].get());
   }
-
+  
   cache.release(std::move(lease2._connection), true);
-
+  
   {
     auto const& connections = cache.connections();
     EXPECT_EQ(1, connections.size());
-
+    
     EXPECT_NE(connections.find(endpoint), connections.end());
     EXPECT_EQ(2, connections.find(endpoint)->second.size());
     EXPECT_EQ(gc1, connections.find(endpoint)->second[0].get());
@@ -230,8 +225,7 @@ TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
 
 TEST(ConnectionCacheTest, testDifferentEndpoints) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -240,27 +234,27 @@ TEST(ConnectionCacheTest, testDifferentEndpoints) {
 
   ConnectionLease lease = cache.acquire(endpoint1, 10.0, 30.0, 10, 0);
   cache.release(std::move(lease._connection), true);
-
+   
   {
     auto const& connections = cache.connections();
     EXPECT_EQ(1, connections.size());
-
+  
     EXPECT_NE(connections.find(endpoint1), connections.end());
     EXPECT_EQ(1, connections.find(endpoint1)->second.size());
-
+    
     EXPECT_EQ(connections.find(endpoint2), connections.end());
   }
-
+  
   lease = cache.acquire(endpoint2, 10.0, 30.0, 10, 0);
   cache.release(std::move(lease._connection), true);
-
+   
   {
     auto const& connections = cache.connections();
     EXPECT_EQ(2, connections.size());
-
+    
     EXPECT_NE(connections.find(endpoint1), connections.end());
     EXPECT_EQ(1, connections.find(endpoint1)->second.size());
-
+  
     EXPECT_NE(connections.find(endpoint2), connections.end());
     EXPECT_EQ(1, connections.find(endpoint2)->second.size());
   }
@@ -268,8 +262,7 @@ TEST(ConnectionCacheTest, testDifferentEndpoints) {
 
 TEST(ConnectionCacheTest, testSameEndpointDifferentProtocols) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -278,27 +271,27 @@ TEST(ConnectionCacheTest, testSameEndpointDifferentProtocols) {
 
   ConnectionLease lease1 = cache.acquire(endpoint1, 10.0, 30.0, 10, 0);
   cache.release(std::move(lease1._connection), true);
-
+  
   {
     auto const& connections = cache.connections();
     EXPECT_EQ(1, connections.size());
-
+  
     EXPECT_NE(connections.find(endpoint1), connections.end());
     EXPECT_EQ(1, connections.find(endpoint1)->second.size());
-
+    
     EXPECT_EQ(connections.find(endpoint2), connections.end());
   }
-
+  
   ConnectionLease lease2 = cache.acquire(endpoint2, 10.0, 30.0, 10, 0);
   cache.release(std::move(lease2._connection), true);
-
+   
   {
     auto const& connections = cache.connections();
     EXPECT_EQ(2, connections.size());
-
+    
     EXPECT_NE(connections.find(endpoint1), connections.end());
     EXPECT_EQ(1, connections.find(endpoint1)->second.size());
-
+  
     EXPECT_NE(connections.find(endpoint2), connections.end());
     EXPECT_EQ(1, connections.find(endpoint2)->second.size());
   }
@@ -306,8 +299,7 @@ TEST(ConnectionCacheTest, testSameEndpointDifferentProtocols) {
 
 TEST(ConnectionCacheTest, testDropSuperfluous) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{3});
 
@@ -331,11 +323,11 @@ TEST(ConnectionCacheTest, testDropSuperfluous) {
   cache.release(std::move(lease6._connection), true);
   cache.release(std::move(lease7._connection), true);
   cache.release(std::move(lease8._connection), true);
-
+   
   {
     auto const& connections = cache.connections();
     EXPECT_EQ(2, connections.size());
-
+  
     EXPECT_NE(connections.find(endpoint1), connections.end());
     EXPECT_EQ(3, connections.find(endpoint1)->second.size());
 

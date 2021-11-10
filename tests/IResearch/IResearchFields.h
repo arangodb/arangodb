@@ -23,20 +23,23 @@
 #ifndef ARANGOD_TESTS_IRESEARCH__IRESEARCH_FIELDS_H
 #define ARANGOD_TESTS_IRESEARCH__IRESEARCH_FIELDS_H 1
 
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include "analysis/token_streams.hpp"
+#include "store/store_utils.hpp"
 
 #include "Geo/GeoJson.h"
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearch/VelocyPackHelper.h"
-#include "analysis/token_streams.hpp"
-#include "store/store_utils.hpp"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace tests {
 
 struct StringField final {
-  irs::string_ref name() const { return fieldName; }
+  irs::string_ref name() const {
+    return fieldName;
+  }
 
   irs::token_stream& get_tokens() const {
     stream.reset(value);
@@ -48,7 +51,9 @@ struct StringField final {
     return true;
   }
 
-  const irs::features_t& features() const noexcept { return _featuresRange; }
+  const irs::features_t& features() const noexcept {
+    return _featuresRange;
+  }
 
   irs::IndexFeatures index_features() const noexcept {
     return irs::IndexFeatures::NONE;
@@ -61,7 +66,9 @@ struct StringField final {
 };
 
 struct GeoField final {
-  irs::string_ref name() const { return fieldName; }
+  irs::string_ref name() const {
+    return fieldName;
+  }
 
   irs::token_stream& get_tokens() const {
     if (!shapeSlice.isNone()) {
@@ -77,7 +84,9 @@ struct GeoField final {
     return true;
   }
 
-  const irs::features_t& features() const noexcept { return _featuresRange; }
+  const irs::features_t& features() const noexcept {
+    return _featuresRange;
+  }
 
   irs::IndexFeatures index_features() const noexcept {
     return irs::IndexFeatures::NONE;
@@ -89,7 +98,7 @@ struct GeoField final {
   irs::features_t _featuresRange{nullptr, 0};
 };
 
-}  // namespace tests
-}  // namespace arangodb
+} // arangodb
+} // tests
 
-#endif  // ARANGOD_TESTS_IRESEARCH__IRESEARCH_FIELDS_H
+#endif // ARANGOD_TESTS_IRESEARCH__IRESEARCH_FIELDS_H

@@ -22,10 +22,11 @@
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MetricsFeatureTest.h"
-#include "Mocks/Servers.h"
-#include "RestServer/MetricsFeature.h"
 #include "gtest/gtest.h"
+
+#include "RestServer/MetricsFeature.h"
+#include "Mocks/Servers.h"
+#include "MetricsFeatureTest.h"
 
 using namespace arangodb;
 

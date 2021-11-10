@@ -21,11 +21,9 @@
 /// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include "gtest/gtest.h"
+
+#include "fakeit.hpp"
 
 #include <vector>
 
@@ -34,11 +32,14 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Containers/SmallVector.h"
-#include "IResearch/IResearchQueryCommon.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-#include "fakeit.hpp"
-#include "gtest/gtest.h"
+#include "IResearch/IResearchQueryCommon.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -48,6 +49,7 @@ namespace {
 
 // helper functions
 AqlValue createArray(const VPackSlice slice) {
+
   if (!slice.isArray()) {
     return AqlValue(slice);
   }
@@ -65,6 +67,7 @@ AqlValue createArray(const VPackSlice slice) {
 
 void expectEqSlices(const VPackSlice actualSlice,
                     const VPackSlice expectedSlice) {
+
   ASSERT_TRUE((actualSlice.isNumber() && expectedSlice.isNumber()) ||
               (actualSlice.isArray() && expectedSlice.isArray()));
 
@@ -74,14 +77,14 @@ void expectEqSlices(const VPackSlice actualSlice,
     ASSERT_EQ(actualSize, expectedSize);
 
     double lhs, rhs;
-    for (VPackValueLength i = 0; i < actualSize; ++i) {
-      lhs = actualSlice.at(i).getNumber<decltype(lhs)>();
-      rhs = expectedSlice.at(i).getNumber<decltype(rhs)>();
+    for(VPackValueLength i = 0; i < actualSize; ++i) {
+      lhs = actualSlice.at(i).getNumber<decltype (lhs)>();
+      rhs = expectedSlice.at(i).getNumber<decltype (rhs)>();
       ASSERT_DOUBLE_EQ(lhs, rhs);
     }
   } else {
-    double lhs = actualSlice.getNumber<decltype(lhs)>();
-    double rhs = expectedSlice.getNumber<decltype(rhs)>();
+    double lhs = actualSlice.getNumber<decltype (lhs)>();
+    double rhs = expectedSlice.getNumber<decltype (rhs)>();
     ASSERT_DOUBLE_EQ(lhs, rhs);
   }
 
@@ -89,11 +92,11 @@ void expectEqSlices(const VPackSlice actualSlice,
 }
 
 AqlValue evaluateDistanceFunction(const SmallVector<AqlValue>& params,
-                                  const arangodb::aql::AstNode& node) {
+                               const arangodb::aql::AstNode& node) {
+
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
-  fakeit::When(Method(expressionContextMock, registerWarning))
-      .AlwaysDo([](ErrorCode, char const*) {});
+  fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](ErrorCode, char const*){ });
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
@@ -105,16 +108,18 @@ AqlValue evaluateDistanceFunction(const SmallVector<AqlValue>& params,
   fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
   transaction::Methods& trx = trxMock.get();
 
-  fakeit::When(Method(expressionContextMock, trx))
-      .AlwaysDo([&trx]() -> transaction::Methods& { return trx; });
+  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&trx]() -> transaction::Methods& {
+    return trx;
+  });
 
-  auto distanceFunction =
-      static_cast<arangodb::aql::Function const*>(node.getData());
+  auto distanceFunction = static_cast<arangodb::aql::Function const*>(node.getData());
   return distanceFunction->implementation(&expressionContext, node, params);
 }
 
 void assertDistanceFunction(char const* expected, char const* x, char const* y,
-                            const arangodb::aql::AstNode& node) {
+                         const arangodb::aql::AstNode& node) {
+
+
   // get slice for expected value
   auto const expectedJson = VPackParser::fromJson(expected);
   auto const expectedSlice = expectedJson->slice();
@@ -135,7 +140,7 @@ void assertDistanceFunction(char const* expected, char const* x, char const* y,
   AqlValue arrayY = createArray(sliceY);
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params{2, arena};
+  SmallVector<AqlValue> params{2,arena};
   params[0] = arrayX;
   params[1] = arrayY;
 
@@ -154,7 +159,7 @@ void assertDistanceFunction(char const* expected, char const* x, char const* y,
 }
 
 void assertDistanceFunctionFail(char const* x, char const* y,
-                                const arangodb::aql::AstNode& node) {
+                             const arangodb::aql::AstNode& node) {
   // get slice for x value
   auto const jsonX = VPackParser::fromJson(x);
   auto const sliceX = jsonX->slice();
@@ -170,7 +175,7 @@ void assertDistanceFunctionFail(char const* x, char const* y,
   AqlValue arrayY = createArray(sliceY);
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params{2, arena};
+  SmallVector<AqlValue> params{2,arena};
   params[0] = arrayX;
   params[1] = arrayY;
 
@@ -189,65 +194,47 @@ TEST(DistanceFuncton, CosineSimilarityTest) {
   node.setData(static_cast<void const*>(&f));
 
   // correct result
-  assertDistanceFunction("0", "[0,1]", "[1,0]", node);
-  assertDistanceFunction("0.9769856305801876", "[0.5, -1.23, 0.33]",
-                         "[1.0,-3.015,0.1231]", node);
-  assertDistanceFunction("-0.00026332365622013654", "[19, 14, -8, 6317]",
-                         "[0.89, 0.19, 1000, 1]", node);
-  assertDistanceFunction("0.7817515661170301", "[3456, 191, -90, 500, 0.32]",
-                         "[713, 201, 508, -0.5, 0.75]", node);
+  assertDistanceFunction("0", "[0,1]","[1,0]", node);
+  assertDistanceFunction("0.9769856305801876", "[0.5, -1.23, 0.33]", "[1.0,-3.015,0.1231]", node);
+  assertDistanceFunction("-0.00026332365622013654", "[19, 14, -8, 6317]","[0.89, 0.19, 1000, 1]", node);
+  assertDistanceFunction("0.7817515661170301", "[3456, 191, -90, 500, 0.32]", "[713, 201, 508, -0.5, 0.75]", node);
   assertDistanceFunction("-1", "[2]", "[-1]", node);
-  assertDistanceFunction("1", "[1]", "[1]", node);
-  assertDistanceFunction("-1", "[-1,0]", "[1,0]", node);
-  assertDistanceFunction("0", "[0,1,0]", "[1,0,1]", node);
-  assertDistanceFunction("0", "[1,1,1,1,1,0]", "[0,0,0,0,0,1]", node);
-  assertDistanceFunction("0", "[1,1]", "[-1,1]", node);
-  assertDistanceFunction("0", "[1,-1]", "[-1,-1]", node);
+  assertDistanceFunction("1", "[1]","[1]", node);
+  assertDistanceFunction("-1", "[-1,0]","[1,0]", node);
+  assertDistanceFunction("0", "[0,1,0]","[1,0,1]", node);
+  assertDistanceFunction("0", "[1,1,1,1,1,0]","[0,0,0,0,0,1]", node);
+  assertDistanceFunction("0", "[1,1]","[-1,1]", node);
+  assertDistanceFunction("0", "[1,-1]","[-1,-1]", node);
 
   // with matrix
-  assertDistanceFunction("[1,1,1,1]",
-                         "[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]",
-                         "[1,1,1,1]", node);
-  assertDistanceFunction("[1,1,1]", "[[1,1,1,1],[1,1,1,1],[1,1,1,1]]",
-                         "[1,1,1,1]", node);
-  assertDistanceFunction("[1,1,1]", "[1,1,1,1]",
-                         "[[1,1,1,1],[1,1,1,1],[1,1,1,1]]", node);
-  assertDistanceFunction(
-      "[0.7071067811865475, 0.7071067811865475, 0.8660254037844387, 0.5]",
-      "[[0,1,0,1],[1,0,0,1],[1,1,1,0],[0,0,0,1]]", "[1,1,1,1]", node);
-  assertDistanceFunction(
-      "[0.7071067811865475, 0.7071067811865475, 0.8660254037844387, 0.5]",
-      "[1,1,1,1]", "[[0,1,0,1],[1,0,0,1],[1,1,1,0],[0,0,0,1]]", node);
+  assertDistanceFunction("[1,1,1,1]", "[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]", "[1,1,1,1]", node);
+  assertDistanceFunction("[1,1,1]", "[[1,1,1,1],[1,1,1,1],[1,1,1,1]]", "[1,1,1,1]", node);
+  assertDistanceFunction("[1,1,1]", "[1,1,1,1]", "[[1,1,1,1],[1,1,1,1],[1,1,1,1]]", node);
+  assertDistanceFunction("[0.7071067811865475, 0.7071067811865475, 0.8660254037844387, 0.5]", "[[0,1,0,1],[1,0,0,1],[1,1,1,0],[0,0,0,1]]", "[1,1,1,1]", node);
+  assertDistanceFunction("[0.7071067811865475, 0.7071067811865475, 0.8660254037844387, 0.5]", "[1,1,1,1]", "[[0,1,0,1],[1,0,0,1],[1,1,1,0],[0,0,0,1]]", node);
 
   // will fail
-  assertDistanceFunctionFail("[0]", "[0]", node);
-  assertDistanceFunctionFail("[0]", "[1]", node);
-  assertDistanceFunctionFail("[1]", "[0]", node);
-  assertDistanceFunctionFail("[]", "[]", node);
-  assertDistanceFunctionFail("[1]", "[]", node);
-  assertDistanceFunctionFail("[]", "[1]", node);
-  assertDistanceFunctionFail("[\"one\"]", "[\"zero\"]", node);
-  assertDistanceFunctionFail("[true]", "[false]", node);
-  assertDistanceFunctionFail("[1]", "0", node);
-  assertDistanceFunctionFail("1", "[0]", node);
-  assertDistanceFunctionFail("true", "false", node);
-  assertDistanceFunctionFail("\"one\"", "\"zero\"", node);
+  assertDistanceFunctionFail("[0]","[0]", node);
+  assertDistanceFunctionFail("[0]","[1]", node);
+  assertDistanceFunctionFail("[1]","[0]", node);
+  assertDistanceFunctionFail("[]","[]", node);
+  assertDistanceFunctionFail("[1]","[]", node);
+  assertDistanceFunctionFail("[]","[1]", node);
+  assertDistanceFunctionFail("[\"one\"]","[\"zero\"]", node);
+  assertDistanceFunctionFail("[true]","[false]", node);
+  assertDistanceFunctionFail("[1]","0", node);
+  assertDistanceFunctionFail("1","[0]", node);
+  assertDistanceFunctionFail("true","false", node);
+  assertDistanceFunctionFail("\"one\"","\"zero\"", node);
 
   // with matrix
-  assertDistanceFunctionFail("[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]",
-                             "[1,1,1,1]", node);
-  assertDistanceFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1,1]]",
-                             "[1,1,1,1]", node);
-  assertDistanceFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]",
-                             "[1,1,1,1,1]", node);
-  assertDistanceFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]",
-                             "[1,1,1,true]", node);
-  assertDistanceFunctionFail("[[1,1,1,1],[0,0,0,0],[1,1,1,1],[1,1,1,1]]",
-                             "[1,1,1,1]", node);
-  assertDistanceFunctionFail("[1,1,1,1]",
-                             "[[1,1,1,1],[0,0,0,0],[1,1,1,1],[1,1,1,1]]", node);
-  assertDistanceFunctionFail("[[1,1,1,1],1,1,1,1,1,1,1,1,1,1,1,1]", "[1,1,1,1]",
-                             node);
+  assertDistanceFunctionFail("[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]","[1,1,1,1]", node);
+  assertDistanceFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1,1]]", "[1,1,1,1]", node);
+  assertDistanceFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]", "[1,1,1,1,1]", node);
+  assertDistanceFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]", "[1,1,1,true]", node);
+  assertDistanceFunctionFail("[[1,1,1,1],[0,0,0,0],[1,1,1,1],[1,1,1,1]]", "[1,1,1,1]", node);
+  assertDistanceFunctionFail("[1,1,1,1]", "[[1,1,1,1],[0,0,0,0],[1,1,1,1],[1,1,1,1]]", node);
+  assertDistanceFunctionFail("[[1,1,1,1],1,1,1,1,1,1,1,1,1,1,1,1]", "[1,1,1,1]", node);
 }
 
 TEST(DistanceFuncton, L1DistanceTest) {
@@ -257,18 +244,16 @@ TEST(DistanceFuncton, L1DistanceTest) {
   node.setData(static_cast<void const*>(&f));
 
   // correct result
-  assertDistanceFunction("6", "[-1,-1]", "[2,2]", node);
-  assertDistanceFunction("0", "[0,0,0]", "[0,0,0]", node);
-  assertDistanceFunction("3", "[-1,0,-1]", "[0,-1,0]", node);
-  assertDistanceFunction("3", "[-0.5,0.5,-0.5]", "[0.5,-0.5,0.5]", node);
+  assertDistanceFunction("6", "[-1,-1]","[2,2]", node);
+  assertDistanceFunction("0", "[0,0,0]","[0,0,0]", node);
+  assertDistanceFunction("3", "[-1,0,-1]","[0,-1,0]", node);
+  assertDistanceFunction("3", "[-0.5,0.5,-0.5]","[0.5,-0.5,0.5]", node);
   assertDistanceFunction("7", "[0,0,0,0,0,0,0]", "[1,1,1,1,1,1,1]", node);
   assertDistanceFunction("1.5", "[1.5]", "[3]", node);
 
   // with matrix
-  assertDistanceFunction("[3,9,9,7]", "[[1,2,3],[-1,-2,-3],[3,4,5],[-5,2,1]]",
-                         "[1,1,1]", node);
-  assertDistanceFunction("[4,4,4,4]", "[1,1,1,1]",
-                         "[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]", node);
+  assertDistanceFunction("[3,9,9,7]", "[[1,2,3],[-1,-2,-3],[3,4,5],[-5,2,1]]","[1,1,1]", node);
+  assertDistanceFunction("[4,4,4,4]", "[1,1,1,1]", "[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]", node);
 
   // will fail with matrix
   assertDistanceFunctionFail("[[1,1,1,1]]", "[[1,1,1,1]]", node);
@@ -282,11 +267,10 @@ TEST(DistanceFuncton, L2DistanceTest) {
   node.setData(static_cast<void const*>(&f));
 
   // correct result
-  assertDistanceFunction("0", "[0,0]", "[0,0]", node);
-  assertDistanceFunction("4.1231056256176606", "[1,1]", "[5,2]", node);
-  assertDistanceFunction("1.4142135623730951", "[0,1]", "[1,0]", node);
-  assertDistanceFunction("2.449489742783178", "[0,1,0,0,1]", "[2,0,0,0,0]",
-                         node);
+  assertDistanceFunction("0", "[0,0]","[0,0]", node);
+  assertDistanceFunction("4.1231056256176606", "[1,1]","[5,2]", node);
+  assertDistanceFunction("1.4142135623730951", "[0,1]","[1,0]", node);
+  assertDistanceFunction("2.449489742783178", "[0,1,0,0,1]", "[2,0,0,0,0]", node);
 }
 
-}  // namespace
+}

@@ -21,10 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/AstNode.h"
 #include "Basics/Common.h"
-#include "Basics/FixedSizeAllocator.h"
+
 #include "gtest/gtest.h"
+
+#include "Basics/FixedSizeAllocator.h"
+#include "Aql/AstNode.h"
 
 using namespace arangodb;
 
@@ -40,7 +42,7 @@ TEST(FixedSizeAllocatorTest, test_Int) {
   EXPECT_EQ(0, (uintptr_t(p) % alignof(int)));
   EXPECT_EQ(24, *p);
   EXPECT_EQ(1, allocator.numUsed());
-
+  
   p = allocator.allocate(42);
 
   EXPECT_EQ(42, *p);
@@ -70,7 +72,7 @@ TEST(FixedSizeAllocatorTest, test_UInt64) {
   EXPECT_EQ(0, (uintptr_t(p) % alignof(uint64_t)));
   EXPECT_EQ(24, *p);
   EXPECT_EQ(1, allocator.numUsed());
-
+  
   p = allocator.allocate(42);
 
   EXPECT_EQ(42, *p);
@@ -90,7 +92,8 @@ TEST(FixedSizeAllocatorTest, test_UInt64) {
 
 TEST(FixedSizeAllocatorTest, test_Struct) {
   struct Testee {
-    Testee(std::string abc, std::string def) : abc(abc), def(def) {}
+    Testee(std::string abc, std::string def)
+      : abc(abc), def(def) {}
 
     std::string abc;
     std::string def;
@@ -108,13 +111,13 @@ TEST(FixedSizeAllocatorTest, test_Struct) {
   EXPECT_EQ("foo", p->abc);
   EXPECT_EQ("bar", p->def);
   EXPECT_EQ(1, allocator.numUsed());
-
+  
   p = allocator.allocate("foobar", "baz");
   EXPECT_EQ(0, (uintptr_t(p) % alignof(Testee)));
   EXPECT_EQ("foobar", p->abc);
   EXPECT_EQ("baz", p->def);
   EXPECT_EQ(2, allocator.numUsed());
-
+  
   allocator.clear();
 
   EXPECT_EQ(0, allocator.numUsed());
@@ -131,7 +134,7 @@ TEST(FixedSizeAllocatorTest, test_MassAllocation) {
     EXPECT_EQ("test" + std::to_string(i), *p);
     EXPECT_EQ(i + 1, allocator.numUsed());
   }
-
+  
   allocator.clear();
 
   EXPECT_EQ(0, allocator.numUsed());

@@ -21,11 +21,12 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ExecutionBlock.h"
-#include "Basics/StringUtils.h"
 #include "Mocks/Servers.h"
 #include "QueryHelper.h"
 #include "gtest/gtest.h"
+
+#include "Aql/ExecutionBlock.h"
+#include "Basics/StringUtils.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -91,8 +92,7 @@ TEST_P(UpsertExecutorTest, option_ignoreErrors_default) {
       )aql" + action() +
                       R"aql( {value: 2}
       INTO UnitTestCollection)aql";
-  AssertQueryFailsWith(vocbase, query,
-                       TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+  AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
   AssertNotChanged();
 }
 
@@ -118,8 +118,7 @@ TEST_P(UpsertExecutorTest, option_ignoreErrors_false) {
                       R"aql( {value: 2}
       INTO UnitTestCollection
       OPTIONS {ignoreErrors: false})aql";
-  AssertQueryFailsWith(vocbase, query,
-                       TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+  AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
   AssertNotChanged();
 }
 
@@ -229,10 +228,8 @@ TEST_P(UpsertExecutorTest, option_mergeObjects_false) {
   AssertQueryHasResult(vocbase, testQuery, expected->slice());
 }
 
-// TODO: In current implementaiton we search for exact match of _key, _rev which
-// is not found.
-//       So we actually do insert, this needs to be fixed although this seems to
-//       be no production case
+// TODO: In current implementaiton we search for exact match of _key, _rev which is not found.
+//       So we actually do insert, this needs to be fixed although this seems to be no production case
 TEST_P(UpsertExecutorTest, DISABLED_option_ignoreRevs_default) {
   std::string query = R"aql(
       UPSERT {_key: "testee", _rev: "12345"}
@@ -246,10 +243,8 @@ TEST_P(UpsertExecutorTest, DISABLED_option_ignoreRevs_default) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
 }
 
-// TODO: In current implementaiton we search for exact match of _key, _rev which
-// is not found.
-//       So we actually do insert, this needs to be fixed although this seems to
-//       be no production case
+// TODO: In current implementaiton we search for exact match of _key, _rev which is not found.
+//       So we actually do insert, this needs to be fixed although this seems to be no production case
 TEST_P(UpsertExecutorTest, DISABLED_option_ignoreRevs_true) {
   std::string query = R"aql(
       UPSERT {_key: "testee", _rev: "12345"}
@@ -262,10 +257,8 @@ TEST_P(UpsertExecutorTest, DISABLED_option_ignoreRevs_true) {
   auto expected = VPackParser::fromJson(R"([2])");
   AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
 }
-// TODO: In current implementaiton we search for exact match of _key, _rev which
-// is not found.
-//       So we actually do insert, this needs to be fixed although this seems to
-//       be no production case
+// TODO: In current implementaiton we search for exact match of _key, _rev which is not found.
+//       So we actually do insert, this needs to be fixed although this seems to be no production case
 TEST_P(UpsertExecutorTest, DISABLED_option_ignoreRevs_false) {
   std::string query = R"aql(
       UPSERT {_key: "testee", _rev: "12345"}
@@ -331,8 +324,7 @@ TEST_P(UpsertExecutorTest, alternate_insert_update) {
 }
 
 INSTANTIATE_TEST_CASE_P(UpsertExecutorTestBasics, UpsertExecutorTest,
-                        ::testing::Values(UpsertType::UPDATE,
-                                          UpsertType::REPLACE));
+                        ::testing::Values(UpsertType::UPDATE, UpsertType::REPLACE));
 
 /*
  * SECTION: Integration tests
@@ -346,8 +338,7 @@ class UpsertExecutorIntegrationTest
 
   void SetUp() override {
     SCOPED_TRACE("Setup");
-    ASSERT_EQ(ExecutionBlock::ProductionDefaultBatchSize,
-              ExecutionBlock::DefaultBatchSize);
+    ASSERT_EQ(ExecutionBlock::ProductionDefaultBatchSize, ExecutionBlock::DefaultBatchSize);
 
     ExecutionBlock::setDefaultBatchSize(100);
 
@@ -371,8 +362,7 @@ class UpsertExecutorIntegrationTest
   }
 
   void TearDown() override {
-    ExecutionBlock::setDefaultBatchSize(
-        ExecutionBlock::ProductionDefaultBatchSize);
+    ExecutionBlock::setDefaultBatchSize(ExecutionBlock::ProductionDefaultBatchSize);
   }
 
   size_t numDocs() const {
@@ -413,11 +403,10 @@ TEST_P(UpsertExecutorIntegrationTest, DISABLED_upsert_all) {
 }
 
 TEST_P(UpsertExecutorIntegrationTest, upsert_all_by_key) {
-  std::string query =
-      R"aql(FOR doc IN 1..)aql" + basics::StringUtils::itoa(numDocs()) +
-      R"aql( UPSERT {_key: TO_STRING(doc)} 
+  std::string query = R"aql(FOR doc IN 1..)aql" + basics::StringUtils::itoa(numDocs()) +
+                      R"aql( UPSERT {_key: TO_STRING(doc)} 
                              INSERT {value: "invalid"} )aql" +
-      action() + R"aql( {value: 'foo'} IN UnitTestCollection)aql";
+                      action() + R"aql( {value: 'foo'} IN UnitTestCollection)aql";
   VPackBuilder expected;
   {
     VPackArrayBuilder a{&expected};
@@ -677,16 +666,15 @@ TEST_P(UpsertExecutorIntegrationTest, upsert_in_subquery_with_outer_skip) {
 }
 
 TEST_P(UpsertExecutorIntegrationTest, upsert_in_subquery_with_inner_skip) {
-  std::string query =
-      R"aql(
+  std::string query = R"aql(
     FOR x IN 1..2
     LET updated = (
       FILTER x < 2
       FOR doc IN UnitTestCollection
         UPSERT {_key: doc._key} 
         INSERT {value: "invalid"})aql" +
-      action() +
-      R"aql(  {value: CONCAT('foo', TO_STRING(x))} IN UnitTestCollection
+                      action() +
+                      R"aql(  {value: CONCAT('foo', TO_STRING(x))} IN UnitTestCollection
         LIMIT 526, null
       RETURN 1
     )
@@ -723,8 +711,7 @@ TEST_P(UpsertExecutorIntegrationTest, upsert_all_insert_by_key) {
   std::string query = R"aql(FOR doc IN )aql" + from + R"aql(..)aql" + to +
                       R"aql( UPSERT {_key: TO_STRING(doc)} 
                              INSERT {_key: TO_STRING(doc), value: "foo", sortValue: doc} )aql" +
-                      action() +
-                      R"aql( {value: 'invalid'} IN UnitTestCollection)aql";
+                      action() + R"aql( {value: 'invalid'} IN UnitTestCollection)aql";
   VPackBuilder expected;
   {
     VPackArrayBuilder a{&expected};
@@ -748,8 +735,7 @@ TEST_P(UpsertExecutorIntegrationTest, upsert_first_update_then_insert) {
   std::string query = R"aql(FOR doc IN )aql" + from + R"aql(..)aql" + to +
                       R"aql( UPSERT {_key: TO_STRING(doc)} 
                              INSERT {_key: TO_STRING(doc), value: "foo", sortValue: doc} )aql" +
-                      action() +
-                      R"aql( {value: 'bar'} IN UnitTestCollection)aql";
+                      action() + R"aql( {value: 'bar'} IN UnitTestCollection)aql";
   VPackBuilder expected;
   {
     VPackArrayBuilder a{&expected};
@@ -774,8 +760,7 @@ TEST_P(UpsertExecutorIntegrationTest, upsert_first_insert_then_update) {
   std::string query = R"aql(FOR doc IN )aql" + from + R"aql(..)aql" + to +
                       R"aql( UPSERT {_key: TO_STRING(doc)} 
                              INSERT {_key: TO_STRING(doc), value: "foo", sortValue: doc} )aql" +
-                      action() +
-                      R"aql( {value: 'bar'} IN UnitTestCollection)aql";
+                      action() + R"aql( {value: 'bar'} IN UnitTestCollection)aql";
   VPackBuilder expected;
   {
     VPackArrayBuilder a{&expected};
@@ -798,14 +783,12 @@ TEST_P(UpsertExecutorIntegrationTest, upsert_alternate_insert_upsert) {
   // We alternate between inserts and updates
   // If number is disible by two, we divide it by two. (in key range = update)
   // If not, we divide, round floor and add 1000 (out of key range = insert)
-  std::string query =
-      R"aql(FOR preMod IN )aql" + from + R"aql(..)aql" + to +
-      R"aql(
+  std::string query = R"aql(FOR preMod IN )aql" + from + R"aql(..)aql" + to +
+                      R"aql(
                              LET doc = (preMod % 2 == 0) ? (preMod / 2) : (floor(preMod / 2) + 2000)
                              UPSERT {_key: TO_STRING(doc)} 
                              INSERT {_key: TO_STRING(doc), value: "foo", sortValue: preMod} )aql" +
-      action() +
-      R"aql( {value: 'bar', sortValue: preMod} IN UnitTestCollection)aql";
+                      action() + R"aql( {value: 'bar', sortValue: preMod} IN UnitTestCollection)aql";
   VPackBuilder expected;
   {
     VPackArrayBuilder a{&expected};
@@ -822,19 +805,14 @@ TEST_P(UpsertExecutorIntegrationTest, upsert_alternate_insert_upsert) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-INSTANTIATE_TEST_CASE_P(
-    UpsertExecutorIntegration, UpsertExecutorIntegrationTest,
-    ::testing::Combine(::testing::Values(UpsertType::UPDATE,
-                                         UpsertType::REPLACE),
-                       ::testing::Values(1, 101)));
+INSTANTIATE_TEST_CASE_P(UpsertExecutorIntegration, UpsertExecutorIntegrationTest,
+                        ::testing::Combine(::testing::Values(UpsertType::UPDATE, UpsertType::REPLACE),
+                                           ::testing::Values(1, 101)));
 
 /* This works as well, but takes considerably more time to pass.
-INSTANTIATE_TEST_CASE_P(UpsertExecutorIntegration,
-UpsertExecutorIntegrationTest,
-                        ::testing::Combine(::testing::Values(UpsertType::UPDATE,
-UpsertType::REPLACE),
-                                           ::testing::Values(1, 999, 1000, 1001,
-2001)));
+INSTANTIATE_TEST_CASE_P(UpsertExecutorIntegration, UpsertExecutorIntegrationTest,
+                        ::testing::Combine(::testing::Values(UpsertType::UPDATE, UpsertType::REPLACE),
+                                           ::testing::Values(1, 999, 1000, 1001, 2001)));
 */
 
 }  // namespace aql

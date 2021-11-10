@@ -33,9 +33,7 @@ namespace aql {
 class InputAqlItemRow;
 class ShadowAqlItemRow;
 
-template<class RowType, class = std::enable_if_t<
-                            std::is_same<RowType, InputAqlItemRow>::value ||
-                            std::is_same<RowType, ShadowAqlItemRow>::value>>
+template <class RowType, class = std::enable_if_t<std::is_same<RowType, InputAqlItemRow>::value || std::is_same<RowType, ShadowAqlItemRow>::value>>
 std::ostream& operator<<(std::ostream& stream, RowType const& row);
 
 }  // namespace aql

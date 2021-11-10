@@ -22,11 +22,11 @@
 /// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstdint>
-
 #include "Basics/Common.h"
 #include "Containers/SmallVector.h"
+
 #include "gtest/gtest.h"
+#include <cstdint>
 
 TEST(SmallVectorTest, test_empty) {
   arangodb::containers::SmallVectorWithArena<uint64_t, 32> values;
@@ -34,7 +34,7 @@ TEST(SmallVectorTest, test_empty) {
   EXPECT_EQ(values.size(), 0);
   EXPECT_EQ(values.capacity(), 32 / sizeof(uint64_t));
   EXPECT_TRUE(values.empty());
-
+  
   values.clear();
 
   EXPECT_EQ(values.size(), 0);
@@ -56,7 +56,7 @@ TEST(SmallVectorTest, test_in_arena) {
   // this will overflow the arena
   values.push_back(1);
   EXPECT_GT(values.capacity(), 4);
-
+  
   for (size_t i = 0; i < 4; ++i) {
     EXPECT_NE(&values[i], &arena[i]);
   }
@@ -79,16 +79,17 @@ TEST(SmallVectorTest, test_data) {
   // this will overflow the arena
   values.push_back(4);
   EXPECT_GT(values.capacity(), 4);
-
+  
   for (size_t i = 0; i < 5; ++i) {
     EXPECT_EQ(i, values.data()[i]);
   }
 }
 
+
 TEST(SmallVectorTest, test_capacity) {
   {
     arangodb::containers::SmallVectorWithArena<uint64_t, 32> values;
-
+  
     EXPECT_EQ(values.size(), 0);
     EXPECT_EQ(values.capacity(), 32 / sizeof(uint64_t));
     EXPECT_TRUE(values.empty());
@@ -103,14 +104,14 @@ TEST(SmallVectorTest, test_capacity) {
     EXPECT_EQ(values.size(), 5);
     EXPECT_GT(values.capacity(), 4);
   }
-
+  
   {
     arangodb::containers::SmallVectorWithArena<uint32_t, 64> values;
-
+  
     EXPECT_EQ(values.size(), 0);
     EXPECT_EQ(values.capacity(), 64 / sizeof(uint32_t));
     EXPECT_TRUE(values.empty());
-
+    
     for (size_t i = 0; i < 16; ++i) {
       values.push_back(static_cast<uint32_t>(i));
       EXPECT_EQ(values.size(), i + 1);
@@ -121,10 +122,10 @@ TEST(SmallVectorTest, test_capacity) {
     EXPECT_EQ(values.size(), 17);
     EXPECT_GT(values.capacity(), 16);
   }
-
+  
   {
     arangodb::containers::SmallVectorWithArena<uint32_t, 64> values;
-
+  
     EXPECT_EQ(values.size(), 0);
     EXPECT_EQ(values.capacity(), 64 / sizeof(uint32_t));
     EXPECT_TRUE(values.empty());
@@ -132,7 +133,7 @@ TEST(SmallVectorTest, test_capacity) {
 
     EXPECT_EQ(values.capacity(), 1024);
     EXPECT_EQ(values.size(), 0);
-
+    
     for (size_t i = 0; i < 1024; ++i) {
       values.push_back(static_cast<uint32_t>(i));
       EXPECT_EQ(values.size(), i + 1);
@@ -147,7 +148,7 @@ TEST(SmallVectorTest, test_capacity) {
 
 TEST(SmallVectorTest, test_fillup) {
   arangodb::containers::SmallVectorWithArena<uint64_t, 32> values;
-
+  
   values.push_back(0);
   EXPECT_EQ(values.size(), 1);
   EXPECT_FALSE(values.empty());
@@ -155,20 +156,20 @@ TEST(SmallVectorTest, test_fillup) {
   values.push_back(1);
   EXPECT_EQ(values.size(), 2);
   EXPECT_FALSE(values.empty());
-
+  
   values.push_back(2);
   EXPECT_EQ(values.size(), 3);
   EXPECT_FALSE(values.empty());
-
+  
   values.push_back(3);
   EXPECT_EQ(values.size(), 4);
   EXPECT_FALSE(values.empty());
-
+  
   // heap allocation
   values.push_back(4);
   EXPECT_EQ(values.size(), 5);
   EXPECT_FALSE(values.empty());
-
+  
   for (uint64_t i = 0; i < 5; ++i) {
     EXPECT_EQ(i, values[i]);
     EXPECT_EQ(i, values.at(i));
@@ -184,7 +185,7 @@ TEST(SmallVectorTest, test_fillmore) {
     EXPECT_EQ(values.size(), i + 1);
   }
   EXPECT_EQ(values.size(), 1000);
-
+  
   for (uint32_t i = 0; i < 1000; ++i) {
     EXPECT_EQ(i, values[i]);
     EXPECT_EQ(i, values.at(i));
@@ -257,7 +258,7 @@ TEST(SmallVectorTest, test_front) {
 
   values.push_back(666);
   EXPECT_EQ(666, values.front());
-
+  
   values.push_back(999);
   EXPECT_EQ(666, values.front());
 
@@ -272,7 +273,7 @@ TEST(SmallVectorTest, test_back) {
 
   values.push_back(666);
   EXPECT_EQ(666, values.back());
-
+  
   values.push_back(999);
   EXPECT_EQ(999, values.back());
 

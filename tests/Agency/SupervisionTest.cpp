@@ -22,17 +22,19 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <typeinfo>
-
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
 #include "Agency/Supervision.h"
 #include "Mocks/Servers.h"
-#include "fakeit.hpp"
+
 #include "gtest/gtest.h"
+
+#include "fakeit.hpp"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <typeinfo>
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -121,7 +123,7 @@ static Node createNode(char const* c) {
 }
 
 static char const* skeleton =
-    R"=(
+R"=(
 {
   "Plan": {
     "Collections": {
@@ -279,9 +281,10 @@ static char const* skeleton =
 
 class SupervisionTestClass : public ::testing::Test {
  public:
-  SupervisionTestClass() : _snapshot(createNode(skeleton)) {}
+  SupervisionTestClass()
+    : _snapshot(createNode(skeleton)) {
+  }
   ~SupervisionTestClass() {}
-
  protected:
   Node _snapshot;
 };
@@ -291,7 +294,8 @@ static std::shared_ptr<VPackBuilder> runEnforceReplication(Node const& snap) {
   uint64_t jobId = 1;
   {
     VPackObjectBuilder guard(envelope.get());
-    arangodb::consensus::enforceReplicationFunctional(snap, jobId, envelope);
+    arangodb::consensus::enforceReplicationFunctional(
+      snap, jobId, envelope);
   }
   return envelope;
 }
@@ -301,7 +305,8 @@ static std::shared_ptr<VPackBuilder> runCleanupHotbackupTransferJobs(
   auto envelope = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder guard(envelope.get());
-    arangodb::consensus::cleanupHotbackupTransferJobsFunctional(snap, envelope);
+    arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+      snap, envelope);
   }
   return envelope;
 }
@@ -314,9 +319,10 @@ static void checkSupervisionJob(VPackSlice v, std::string const& type,
   EXPECT_EQ(v["creator"].copyString(), "supervision");
   EXPECT_EQ(v["type"].copyString(), type);
   EXPECT_EQ(v["database"].copyString(), database);
-  EXPECT_EQ(v["collection"].copyString(), coll);
+  EXPECT_EQ(v["collection"].copyString(), coll); 
   EXPECT_EQ(v["shard"].copyString(), shard);
 }
+
 
 TEST_F(SupervisionTestClass, enforce_replication_nothing_to_do) {
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
@@ -325,10 +331,10 @@ TEST_F(SupervisionTestClass, enforce_replication_nothing_to_do) {
 }
 
 TEST_F(SupervisionTestClass, schedule_removefollower) {
-  _snapshot.getOrCreate("/Plan/Collections/database/123/shards/s1") =
-      createNode(R"=(["leader", "follower1", "follower2"])=");
-  _snapshot.getOrCreate("/Current/Collections/database/123/s1/servers") =
-      createNode(R"=(["leader", "follower1", "follower2"])=");
+  _snapshot.getOrCreate("/Plan/Collections/database/123/shards/s1")
+    = createNode(R"=(["leader", "follower1", "follower2"])=");
+  _snapshot.getOrCreate("/Current/Collections/database/123/s1/servers")
+    = createNode(R"=(["leader", "follower1", "follower2"])=");
 
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice v = envelope->slice();
@@ -340,10 +346,10 @@ TEST_F(SupervisionTestClass, schedule_removefollower) {
 }
 
 TEST_F(SupervisionTestClass, schedule_addfollower) {
-  _snapshot.getOrCreate("/Plan/Collections/database/123/shards/s1") =
-      createNode(R"=(["leader"])=");
-  _snapshot.getOrCreate("/Current/Collections/database/123/s1/servers") =
-      createNode(R"=(["leader"])=");
+  _snapshot.getOrCreate("/Plan/Collections/database/123/shards/s1")
+    = createNode(R"=(["leader"])=");
+  _snapshot.getOrCreate("/Current/Collections/database/123/s1/servers")
+    = createNode(R"=(["leader"])=");
 
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice v = envelope->slice();
@@ -354,8 +360,8 @@ TEST_F(SupervisionTestClass, schedule_addfollower) {
 }
 
 TEST_F(SupervisionTestClass, schedule_addfollower_rf_3) {
-  _snapshot.getOrCreate("/Plan/Collections/database/123/replicationFactor") =
-      createNode(R"=(3)=");
+  _snapshot.getOrCreate("/Plan/Collections/database/123/replicationFactor")
+    = createNode(R"=(3)=");
 
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice v = envelope->slice();
@@ -365,43 +371,40 @@ TEST_F(SupervisionTestClass, schedule_addfollower_rf_3) {
   checkSupervisionJob(v, "addFollower", "database", "123", "s1");
 }
 
-static std::unordered_map<std::string, std::string> tableOfJobs(
-    VPackSlice envelope) {
+static std::unordered_map<std::string, std::string> tableOfJobs(VPackSlice envelope) {
   std::unordered_map<std::string, std::string> res;
   for (auto const& p : VPackObjectIterator(envelope)) {
-    res.emplace(
-        std::pair(p.value.get("collection").copyString(), p.key.copyString()));
+    res.emplace(std::pair(p.value.get("collection").copyString(),
+                          p.key.copyString()));
   }
   return res;
 }
 
 TEST_F(SupervisionTestClass, schedule_addfollower_bad_server) {
-  _snapshot.getOrCreate("/Supervision/Health/follower1") =
-      createNode(R"=("FAILED")=");
+  _snapshot.getOrCreate("/Supervision/Health/follower1")
+    = createNode(R"=("FAILED")=");
 
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice todo = envelope->slice();
 
   EXPECT_EQ(todo.length(), 2);
   auto table = tableOfJobs(todo);
-  checkSupervisionJob(todo[table["123"]], "addFollower", "database", "123",
-                      "s1");
-  checkSupervisionJob(todo[table["124"]], "addFollower", "database", "124",
-                      "s2");
+  checkSupervisionJob(todo[table["123"]], "addFollower", "database", "123", "s1");
+  checkSupervisionJob(todo[table["124"]], "addFollower", "database", "124", "s2");
 }
 
 TEST_F(SupervisionTestClass, no_remove_follower_loop) {
   // This tests the case which used to have an unholy loop of scheduling
   // a removeFollower job and immediately terminating it and so on.
   // Now, no removeFollower job should be scheduled.
-  _snapshot.getOrCreate("/Plan/Collections/database/123/replicationFactor") =
-      createNode(R"=(3)=");
-  _snapshot.getOrCreate("/Plan/Collections/database/123/shards/s1") =
-      createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
-  _snapshot.getOrCreate("/Current/Collections/database/123/s1/servers") =
-      createNode(R"=(["leader", "follower1", "follower2"])=");
-  _snapshot.getOrCreate("/Supervision/Health/follower1") =
-      createNode(R"=("FAILED")=");
+  _snapshot.getOrCreate("/Plan/Collections/database/123/replicationFactor")
+    = createNode(R"=(3)=");
+  _snapshot.getOrCreate("/Plan/Collections/database/123/shards/s1")
+    = createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
+  _snapshot.getOrCreate("/Current/Collections/database/123/s1/servers")
+    = createNode(R"=(["leader", "follower1", "follower2"])=");
+  _snapshot.getOrCreate("/Supervision/Health/follower1")
+    = createNode(R"=("FAILED")=");
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice content = envelope->slice();
   EXPECT_EQ(content.length(), 1);
@@ -413,20 +416,20 @@ TEST_F(SupervisionTestClass, no_remove_follower_loop_distributeshardslike) {
   // This tests another case which used to have an unholy loop of scheduling
   // a removeFollower job and immediately terminating it and so on.
   // Now, no removeFollower job should be scheduled.
-  _snapshot.getOrCreate("/Plan/Collections/database/124/replicationFactor") =
-      createNode(R"=(3)=");
-  _snapshot.getOrCreate("/Plan/Collections/database/124/shards/s2") =
-      createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
-  _snapshot.getOrCreate("/Plan/Collections/database/125/shards/s3") =
-      createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
-  _snapshot.getOrCreate("/Plan/Collections/database/126/shards/s4") =
-      createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
-  _snapshot.getOrCreate("/Current/Collections/database/124/s2/servers") =
-      createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
-  _snapshot.getOrCreate("/Current/Collections/database/125/s3/servers") =
-      createNode(R"=(["leader", "follower1", "follower3"])=");
-  _snapshot.getOrCreate("/Current/Collections/database/126/s4/servers") =
-      createNode(R"=(["leader", "follower1", "follower2"])=");
+  _snapshot.getOrCreate("/Plan/Collections/database/124/replicationFactor")
+    = createNode(R"=(3)=");
+  _snapshot.getOrCreate("/Plan/Collections/database/124/shards/s2")
+    = createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
+  _snapshot.getOrCreate("/Plan/Collections/database/125/shards/s3")
+    = createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
+  _snapshot.getOrCreate("/Plan/Collections/database/126/shards/s4")
+    = createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
+  _snapshot.getOrCreate("/Current/Collections/database/124/s2/servers")
+    = createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
+  _snapshot.getOrCreate("/Current/Collections/database/125/s3/servers")
+    = createNode(R"=(["leader", "follower1", "follower3"])=");
+  _snapshot.getOrCreate("/Current/Collections/database/126/s4/servers")
+    = createNode(R"=(["leader", "follower1", "follower2"])=");
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice content = envelope->slice();
   EXPECT_EQ(content.length(), 0);
@@ -434,8 +437,8 @@ TEST_F(SupervisionTestClass, no_remove_follower_loop_distributeshardslike) {
 
 TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
   for (size_t i = 0; i < 200; ++i) {
-    _snapshot.getOrCreate("/Target/HotBackup/TransferJobs/" +
-                          std::to_string(1000000 + i)) = createNode(R"=(
+    _snapshot.getOrCreate("/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i))
+      = createNode(R"=(
 {
   "Timestamp": "2021-02-25T12:38:29Z",
   "DBServers": {
@@ -460,8 +463,9 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
 }
         )=");
   }
-  std::shared_ptr<VPackBuilder> envelope =
-      runCleanupHotbackupTransferJobs(_snapshot);
+  std::shared_ptr<VPackBuilder> envelope = runCleanupHotbackupTransferJobs(
+      _snapshot);
   VPackSlice content = envelope->slice();
   EXPECT_EQ(content.length(), 100);
 }
+

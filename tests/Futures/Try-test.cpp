@@ -31,12 +31,12 @@ using namespace arangodb::futures;
 #if __cpp_lib_as_const || _MSC_VER
 /* using override */ using std::as_const;
 #else
-template<class T>
+template <class T>
 constexpr T const& as_const(T& t) noexcept {
   return t;
 }
 
-template<class T>
+template <class T>
 void as_const(T const&&) = delete;
 #endif
 
@@ -52,7 +52,7 @@ class A {
   int x_;
 };
 
-template<bool Nothrow>
+template <bool Nothrow>
 class HasCtors {
  public:
   explicit HasCtors(int) noexcept(Nothrow) {}
@@ -108,8 +108,7 @@ TEST(FuturesTryTest, assignment_with_throwing_ctor) {
       ++counter_;
     }
 
-    [[noreturn]] ThrowingCopyConstructor(
-        const ThrowingCopyConstructor& other) noexcept(false)
+    [[noreturn]] ThrowingCopyConstructor(const ThrowingCopyConstructor& other) noexcept(false)
         : counter_(other.counter_) {
       throw MyException{};
     }

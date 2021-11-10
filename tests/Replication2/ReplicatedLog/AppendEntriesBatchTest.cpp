@@ -20,16 +20,16 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Containers/Enumerate.h>
-#include <gtest/gtest.h>
-
-#include <optional>
-
 #include "Replication2/Mocks/FakeReplicatedLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "TestHelper.h"
+
+#include <Containers/Enumerate.h>
+#include <gtest/gtest.h>
+#include <optional>
+
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
-#include "TestHelper.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -38,8 +38,7 @@ using namespace arangodb::replication2::test;
 
 struct AppendEntriesBatchTest
     : ReplicatedLogTest,
-      ::testing::WithParamInterface<
-          std::tuple<ReplicatedLogGlobalSettings, std::vector<LogPayload>>> {
+      ::testing::WithParamInterface<std::tuple<ReplicatedLogGlobalSettings, std::vector<LogPayload>>> {
   AppendEntriesBatchTest() : _payloads(std::get<1>(GetParam())) {
     *_optionsMock = std::get<0>(GetParam());
   }
@@ -89,9 +88,9 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
 
     expectedNumRequests += numRequests;
 
-    return std::make_shared<TestReplicatedLog>(
-        std::make_unique<LogCore>(persistedLog), _logMetricsMock, _optionsMock,
-        LoggerContext(Logger::REPLICATION2));
+    return std::make_shared<TestReplicatedLog>(std::make_unique<LogCore>(persistedLog),
+                                               _logMetricsMock, _optionsMock,
+                                               LoggerContext(Logger::REPLICATION2));
   });
 
   auto followerLog = makeReplicatedLog(LogId{1});
@@ -142,28 +141,24 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
   }
 }
 
-auto testReplicatedLogOptions = testing::Values(
-    ReplicatedLogGlobalSettings{5, 5}, ReplicatedLogGlobalSettings{1024, 1024},
-    ReplicatedLogGlobalSettings{1024 * 1024, 1024 * 1024});
+auto testReplicatedLogOptions =
+    testing::Values(ReplicatedLogGlobalSettings{5, 5}, ReplicatedLogGlobalSettings{1024, 1024},
+                    ReplicatedLogGlobalSettings{1024 * 1024, 1024 * 1024});
 
 auto testPayloads = testing::Values(
     std::vector<LogPayload>{LogPayload::createFromString("a")},
     std::vector<LogPayload>{LogPayload::createFromString("a"),
                             LogPayload::createFromString("b")},
-    std::vector<LogPayload>{
-        LogPayload::createFromString(std::string(1024, 'a'))},
+    std::vector<LogPayload>{LogPayload::createFromString(std::string(1024, 'a'))},
     std::vector<LogPayload>{LogPayload::createFromString("Hello, world"),
                             LogPayload::createFromString("Bye, world")},
     std::vector<LogPayload>(1024, LogPayload::createFromString("")),
-    std::vector<LogPayload>{
-        LogPayload::createFromString(std::string(1024, 'a')),
-        LogPayload::createFromString("Hello, world"),
-        LogPayload::createFromString("Bye, world")},
-    std::vector<LogPayload>(
-        1024, LogPayload::createFromString(std::string(1024, 'a'))));
+    std::vector<LogPayload>{LogPayload::createFromString(std::string(1024, 'a')),
+                            LogPayload::createFromString("Hello, world"),
+                            LogPayload::createFromString("Bye, world")},
+    std::vector<LogPayload>(1024, LogPayload::createFromString(std::string(1024, 'a'))));
 
 // Use a sequence of payload of pre-defined sizes and send them;
 // count the number of batches that are created.
 INSTANTIATE_TEST_CASE_P(AppendEntriesBatchTestInstance, AppendEntriesBatchTest,
-                        testing::Combine(testReplicatedLogOptions,
-                                         testPayloads));
+                        testing::Combine(testReplicatedLogOptions, testPayloads));

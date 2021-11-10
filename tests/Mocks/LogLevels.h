@@ -32,7 +32,7 @@ namespace tests {
 
 // sets specified topic to specified level in constructor, resets to previous
 // value in destructor
-template<arangodb::LogTopic& topic, arangodb::LogLevel level>
+template <arangodb::LogTopic& topic, arangodb::LogLevel level>
 class LogSuppressor {
  public:
   LogSuppressor() : _oldLevel(topic.level()) {

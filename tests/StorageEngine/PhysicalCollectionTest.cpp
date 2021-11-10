@@ -21,23 +21,25 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
+
+#include "IResearch/RestHandlerMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Result.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/RestHandlerMock.h"
-#include "IResearch/common.h"
-#include "Mocks/LogLevels.h"
-#include "Mocks/StorageEngineMock.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "gtest/gtest.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -46,35 +48,28 @@
 using namespace arangodb;
 
 static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice testDatabaseArgs = testDatabaseBuilder.slice();
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
 class PhysicalCollectionTest
     : public ::testing::Test,
-      arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
-                                     arangodb::LogLevel::WARN> {
+      arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::WARN> {
  protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<std::reference_wrapper<
-      arangodb::application_features::ApplicationFeature>>
-      features;
+  std::vector<std::reference_wrapper<arangodb::application_features::ApplicationFeature>> features;
 
   PhysicalCollectionTest() : engine(server), server(nullptr, nullptr) {
     // setup required application features
-    features.emplace_back(
-        server.addFeature<
-            arangodb::AuthenticationFeature>());  // required for VocbaseContext
+    features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>());  // required for VocbaseContext
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>());
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector);
     selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>());
-    features.emplace_back(
-        server.addFeature<arangodb::QueryRegistryFeature>());  // required for
-                                                               // TRI_vocbase_t
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>());  
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>());  // required for TRI_vocbase_t
 
 #if USE_ENTERPRISE
     features.emplace_back(server.addFeature<arangodb::LdapFeature>());
@@ -86,8 +81,7 @@ class PhysicalCollectionTest
   }
 
   ~PhysicalCollectionTest() {
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        nullptr);
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
 
     for (auto& f : features) {
       f.get().unprepare();
@@ -100,8 +94,7 @@ class PhysicalCollectionTest
 // -----------------------------------------------------------------------------
 
 TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
@@ -200,11 +193,10 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
 
 class MockIndex : public Index {
  public:
-  MockIndex(
-      Index::IndexType type, bool needsReversal, arangodb::IndexId id,
-      LogicalCollection& collection, const std::string& name,
-      std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-      bool unique, bool sparse)
+  MockIndex(Index::IndexType type, bool needsReversal, arangodb::IndexId id,
+            LogicalCollection& collection, const std::string& name,
+            std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
+            bool unique, bool sparse)
       : Index(id, collection, name, fields, unique, sparse),
         _type(type),
         _needsReversal(needsReversal) {}
@@ -226,33 +218,31 @@ class MockIndex : public Index {
 };
 
 TEST_F(PhysicalCollectionTest, test_index_ordeing) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
   std::vector<std::vector<arangodb::basics::AttributeName>> dummyFields;
   PhysicalCollection::IndexContainerType test_container;
   // also regular index but no need to be reversed
-  test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_HASH_INDEX, false, arangodb::IndexId{2}, *collection,
-      "4", dummyFields, false, false));
-  // Edge index- should go right after primary and after all other
-  // non-reversable edge indexes
-  test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_EDGE_INDEX, true, arangodb::IndexId{3}, *collection,
-      "3", dummyFields, false, false));
+  test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_HASH_INDEX,
+                                                    false, arangodb::IndexId{2}, *collection,
+                                                    "4", dummyFields, false, false));
+  // Edge index- should go right after primary and after all other non-reversable edge indexes
+  test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_EDGE_INDEX,
+                                                    true, arangodb::IndexId{3}, *collection,
+                                                    "3", dummyFields, false, false));
   // Edge index- non-reversable should go right after primary
-  test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_EDGE_INDEX, false, arangodb::IndexId{4}, *collection,
-      "2", dummyFields, false, false));
+  test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_EDGE_INDEX,
+                                                    false, arangodb::IndexId{4}, *collection,
+                                                    "2", dummyFields, false, false));
   // Primary index. Should be first!
-  test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_PRIMARY_INDEX, true, arangodb::IndexId{5},
-      *collection, "1", dummyFields, true, false));
+  test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_PRIMARY_INDEX,
+                                                    true, arangodb::IndexId{5}, *collection,
+                                                    "1", dummyFields, true, false));
   // should execute last - regular index with reversal possible
-  test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_HASH_INDEX, true, arangodb::IndexId{1}, *collection,
-      "5", dummyFields, false, false));
+  test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_HASH_INDEX,
+                                                    true, arangodb::IndexId{1}, *collection,
+                                                    "5", dummyFields, false, false));
 
   arangodb::IndexId prevId{5};
   for (auto idx : test_container) {

@@ -22,21 +22,23 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Iterator.h>
+#include "IResearchQueryCommon.h"
 
 #include "IResearch/IResearchView.h"
-#include "IResearchQueryCommon.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+
+#include <velocypack/Iterator.h>
+
 #include "utils/string_utils.hpp"
 
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 class TestDelimAnalyzer : public irs::analysis::analyzer {
  public:
@@ -49,11 +51,9 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return nullptr;
     if (slice.isString()) {
-      PTR_NAMED(TestDelimAnalyzer, ptr,
-                arangodb::iresearch::getStringRef(slice));
+      PTR_NAMED(TestDelimAnalyzer, ptr, arangodb::iresearch::getStringRef(slice));
       return ptr;
-    } else if (slice.isObject() && slice.hasKey("args") &&
-               slice.get("args").isString()) {
+    } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
       PTR_NAMED(TestDelimAnalyzer, ptr,
                 arangodb::iresearch::getStringRef(slice.get("args")));
       return ptr;
@@ -69,14 +69,12 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     arangodb::velocypack::Builder builder;
     if (slice.isString()) {
       VPackObjectBuilder scope(&builder);
-      arangodb::iresearch::addStringRef(
-          builder, "args", arangodb::iresearch::getStringRef(slice));
-    } else if (slice.isObject() && slice.hasKey("args") &&
-               slice.get("args").isString()) {
+      arangodb::iresearch::addStringRef(builder, "args",
+                                        arangodb::iresearch::getStringRef(slice));
+    } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
       VPackObjectBuilder scope(&builder);
-      arangodb::iresearch::addStringRef(
-          builder, "args",
-          arangodb::iresearch::getStringRef(slice.get("args")));
+      arangodb::iresearch::addStringRef(builder, "args",
+                                        arangodb::iresearch::getStringRef(slice.get("args")));
     } else {
       return false;
     }
@@ -87,10 +85,10 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
 
   TestDelimAnalyzer(irs::string_ref const& delim)
       : irs::analysis::analyzer(irs::type<TestDelimAnalyzer>::get()),
-        _delim(irs::ref_cast<irs::byte_type>(delim)) {}
+        _delim(irs::ref_cast<irs::byte_type>(delim)) {
+  }
 
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::term_attribute>::id()) {
       return &_term;
     }
@@ -110,9 +108,9 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
 
       if (0 == strncmp(&(data.c_str()[i]), delim.c_str(), delim.size())) {
         _term.value = irs::bytes_ref(_data.c_str(), i);
-        _data = irs::bytes_ref(
-            _data.c_str() + i + (std::max)(size_t(1), _delim.size()),
-            _data.size() - i - (std::max)(size_t(1), _delim.size()));
+        _data =
+            irs::bytes_ref(_data.c_str() + i + (std::max)(size_t(1), _delim.size()),
+                           _data.size() - i - (std::max)(size_t(1), _delim.size()));
         return true;
       }
     }
@@ -133,16 +131,14 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
   irs::term_attribute _term;
 };
 
-REGISTER_ANALYZER_VPACK(TestDelimAnalyzer, TestDelimAnalyzer::make,
-                        TestDelimAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(TestDelimAnalyzer, TestDelimAnalyzer::make, TestDelimAnalyzer::normalize);
 
 class IResearchQueryTokensTest : public IResearchQueryTest {};
 
 }  // namespace
 
 TEST_P(IResearchQueryTokensTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
@@ -159,15 +155,14 @@ TEST_P(IResearchQueryTokensTest, test) {
         VPackParser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
         VPackParser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
         VPackParser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
-        VPackParser::fromJson(
-            "{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
+        VPackParser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                              *collection,
+                                              arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -190,16 +185,16 @@ TEST_P(IResearchQueryTokensTest, test) {
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
 
-    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
-        resource.u8string());
+    auto builder =
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                              *collection,
+                                              arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -234,8 +229,9 @@ TEST_P(IResearchQueryTokensTest, test) {
     }})";
 
     auto viewDefinition = irs::string_utils::to_string(
-        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
-        static_cast<uint32_t>(linkVersion()));
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
 
@@ -268,8 +264,8 @@ TEST_P(IResearchQueryTokensTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            expected[i++], resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -290,8 +286,8 @@ TEST_P(IResearchQueryTokensTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            expected[i++], resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -313,8 +309,8 @@ TEST_P(IResearchQueryTokensTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            expected[i++], resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -337,8 +333,8 @@ TEST_P(IResearchQueryTokensTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            expected[i++], resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -364,8 +360,8 @@ TEST_P(IResearchQueryTokensTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            expected[i++], resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -391,13 +387,15 @@ TEST_P(IResearchQueryTokensTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            expected[i++], resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
 }
 
-INSTANTIATE_TEST_CASE_P(IResearchQueryTokensTest, IResearchQueryTokensTest,
-                        GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryTokensTest,
+  IResearchQueryTokensTest,
+  GetLinkVersions());

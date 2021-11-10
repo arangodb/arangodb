@@ -22,14 +22,16 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Iterator.h>
+#include "IResearchQueryCommon.h"
 
 #include "IResearch/IResearchView.h"
-#include "IResearchQueryCommon.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <velocypack/Iterator.h>
+
 #include "utils/string_utils.hpp"
 
 extern const char* ARGV0;  // defined in main.cpp
@@ -37,9 +39,9 @@ extern const char* ARGV0;  // defined in main.cpp
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice testDatabaseArgs = testDatabaseBuilder.slice();
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 class IResearchQueryBooleanTermTest : public IResearchQueryTest {};
 
@@ -47,8 +49,7 @@ class IResearchQueryBooleanTermTest : public IResearchQueryTest {};
 
 TEST_P(IResearchQueryBooleanTermTest, test) {
   // ==, !=, <, <=, >, >=, range
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   arangodb::LogicalView* view{};
   std::vector<arangodb::velocypack::Builder> insertedDocs;
 
@@ -80,9 +81,9 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                              *collection,
+                                              arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -118,9 +119,9 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                              *collection,
+                                              arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -155,8 +156,9 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
     }})";
 
     auto viewDefinition = irs::string_utils::to_string(
-        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
-        static_cast<uint32_t>(linkVersion()));
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
@@ -299,8 +301,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -336,8 +338,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -371,8 +373,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -392,8 +394,7 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
       auto const fieldSlice = docSlice.get("value");
 
       if (!fieldSlice.isNone() &&
-          (fieldSlice.isString() &&
-           "true" == arangodb::iresearch::getStringRef(fieldSlice))) {
+          (fieldSlice.isString() && "true" == arangodb::iresearch::getStringRef(fieldSlice))) {
         continue;
       }
 
@@ -417,8 +418,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -434,8 +435,7 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
       auto const fieldSlice = docSlice.get("value");
 
       if (!fieldSlice.isNone() &&
-          (fieldSlice.isString() &&
-           "false" == arangodb::iresearch::getStringRef(fieldSlice))) {
+          (fieldSlice.isString() && "false" == arangodb::iresearch::getStringRef(fieldSlice))) {
         continue;
       }
 
@@ -459,8 +459,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -500,8 +500,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -540,8 +540,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -579,8 +579,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -593,8 +593,7 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
 
-      if (!valueSlice.isNone() &&
-          (valueSlice.isBoolean() && valueSlice.getBoolean())) {
+      if (!valueSlice.isNone() && (valueSlice.isBoolean() && valueSlice.getBoolean())) {
         continue;
       }
 
@@ -619,8 +618,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -633,8 +632,7 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
 
-      if (!valueSlice.isNone() &&
-          (valueSlice.isBoolean() && !valueSlice.getBoolean())) {
+      if (!valueSlice.isNone() && (valueSlice.isBoolean() && !valueSlice.getBoolean())) {
         continue;
       }
 
@@ -659,8 +657,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -673,8 +671,7 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
 
-      if (!valueSlice.isNone() &&
-          (valueSlice.isBoolean() && !valueSlice.getBoolean())) {
+      if (!valueSlice.isNone() && (valueSlice.isBoolean() && !valueSlice.getBoolean())) {
         continue;
       }
 
@@ -697,8 +694,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -828,8 +825,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -881,8 +878,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -1012,8 +1009,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -1049,8 +1046,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -1084,8 +1081,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -1233,8 +1230,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -1268,8 +1265,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -1399,8 +1396,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -1436,8 +1433,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -1471,16 +1468,15 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // -----------------------------------------------------------------------------
-  // --SECTION--                                                      Range (>,
-  // <)
+  // --SECTION--                                                      Range (>, <)
   // -----------------------------------------------------------------------------
 
   // invalid type
@@ -1599,8 +1595,7 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
   }
 
   // -----------------------------------------------------------------------------
-  // --SECTION--                                                     Range (>=,
-  // <)
+  // --SECTION--                                                     Range (>=, <)
   // -----------------------------------------------------------------------------
 
   // invalid type
@@ -1728,16 +1723,15 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // -----------------------------------------------------------------------------
-  // --SECTION--                                                     Range (>,
-  // <=)
+  // --SECTION--                                                     Range (>, <=)
   // -----------------------------------------------------------------------------
 
   // invalid type
@@ -1885,16 +1879,15 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // -----------------------------------------------------------------------------
-  // --SECTION--                                                    Range (>=,
-  // <=)
+  // --SECTION--                                                    Range (>=, <=)
   // -----------------------------------------------------------------------------
 
   // invalid type
@@ -2008,8 +2001,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -2043,8 +2036,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -2078,16 +2071,15 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // -----------------------------------------------------------------------------
-  // --SECTION--                                                    Range (>=,
-  // <=)
+  // --SECTION--                                                    Range (>=, <=)
   // -----------------------------------------------------------------------------
 
   // empty range
@@ -2159,8 +2151,7 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
 
     auto const resolved = resultIt.value().resolveExternals();
     auto expectedDoc = insertedDocs[7].slice();  // seq == 0
-    EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expectedDoc,
-                                                             resolved, true));
+    EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expectedDoc, resolved, true));
 
     resultIt.next();
     EXPECT_FALSE(resultIt.valid());
@@ -2206,8 +2197,8 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
       auto key = resolved.get("seq");
       auto expectedDoc = expectedDocs.find(key.getNumber<size_t>());
       EXPECT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -2253,13 +2244,15 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
       auto key = resolved.get("seq");
       auto expectedDoc = expectedDocs.find(key.getNumber<size_t>());
       EXPECT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second,
+                                                                   resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
   }
 }
 
-INSTANTIATE_TEST_CASE_P(IResearchQueryBooleanTermTest,
-                        IResearchQueryBooleanTermTest, GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryBooleanTermTest,
+  IResearchQueryBooleanTermTest,
+  GetLinkVersions());

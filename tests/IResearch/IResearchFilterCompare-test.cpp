@@ -22,18 +22,37 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
+#include "search/all_filter.hpp"
+#include "search/boolean_filter.hpp"
+#include "search/column_existence_filter.hpp"
+#include "search/granular_range_filter.hpp"
+#include "search/phrase_filter.hpp"
+#include "search/prefix_filter.hpp"
+#include "search/range_filter.hpp"
+#include "search/term_filter.hpp"
+
 #include <velocypack/Parser.h>
+
+#include "IResearch/ExpressionContextMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AqlHelper.h"
-#include "IResearch/ExpressionContextMock.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -41,12 +60,8 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewMeta.h"
-#include "IResearch/common.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
-#include "Mocks/LogLevels.h"
-#include "Mocks/Servers.h"
-#include "Mocks/StorageEngineMock.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -57,25 +72,13 @@
 #include "Transaction/StandaloneContext.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Collections.h"
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "analysis/token_streams.hpp"
-#include "gtest/gtest.h"
-#include "search/all_filter.hpp"
-#include "search/boolean_filter.hpp"
-#include "search/column_existence_filter.hpp"
-#include "search/granular_range_filter.hpp"
-#include "search/phrase_filter.hpp"
-#include "search/prefix_filter.hpp"
-#include "search/range_filter.hpp"
-#include "search/term_filter.hpp"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -83,8 +86,7 @@ static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 class IResearchFilterCompareTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
-                                            arangodb::LogLevel::ERR> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
@@ -97,8 +99,7 @@ class IResearchFilterCompareTest
 
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
 
-    // register fake non-deterministic function in order to suppress
-    // optimizations
+    // register fake non-deterministic function in order to suppress optimizations
     functions.add(arangodb::aql::Function{
         "_NONDETERM_", ".",
         arangodb::aql::Function::makeFlags(
@@ -111,14 +112,12 @@ class IResearchFilterCompareTest
           return params[0];
         }});
 
-    // register fake non-deterministic function in order to suppress
-    // optimizations
+    // register fake non-deterministic function in order to suppress optimizations
     functions.add(arangodb::aql::Function{
         "_FORWARD_", ".",
         arangodb::aql::Function::makeFlags(
             // fake deterministic
-            arangodb::aql::Function::Flags::Deterministic,
-            arangodb::aql::Function::Flags::Cacheable,
+            arangodb::aql::Function::Flags::Deterministic, arangodb::aql::Function::Flags::Cacheable,
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
@@ -127,24 +126,20 @@ class IResearchFilterCompareTest
           return params[0];
         }});
 
-    auto& analyzers =
-        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-    dbFeature.createDatabase(
-        testDBInfo(server.server()),
-        _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::OperationOptions options(arangodb::ExecContext::current());
-    arangodb::methods::Collections::createSystem(
-        *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
-        unused);
+    arangodb::methods::Collections::createSystem(*_vocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
+                                                 false, unused);
     unused = nullptr;
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
-        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")
-            ->slice());  // cache analyzer
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice());  // cache analyzer
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }
@@ -161,20 +156,17 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
 
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a == '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d['a'] == '1' RETURN d",
-                        expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' == d.a RETURN d", expected);
+                        "FOR d IN collection FILTER d.a == '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' == d['a'] RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d['a'] == '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' == d.a RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' == d['a'] RETURN d", expected);
   }
 
   // simple offset, string
@@ -183,14 +175,13 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("[1]");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
 
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d[1] == '1' RETURN d", expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' == d[1] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d[1] == '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' == d[1] RETURN d", expected);
   }
 
   // complex attribute, string
@@ -199,29 +190,21 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b.c");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b.c == '1' RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b.c == '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a['b'].c == '1' RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a['b'].c == '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d['a']['b'].c == '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b'].c == '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' == d.a.b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER '1' == d.a.b.c RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' == d.a['b'].c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER '1' == d.a['b'].c RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER '1' == d['a']['b']['c'] RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' == d['a']['b']['c'] RETURN d", expected);
   }
 
   // complex attribute with offset, string
@@ -230,30 +213,23 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b[23].c == '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[23].c == '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a['b'][23].c == '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a['b'][23].c == '1' RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b'][23].c == '1' RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b'][23].c == '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' == d.a.b[23].c RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' == d.a.b[23].c RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' == d.a['b'][23].c RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' == d.a['b'][23].c RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER '1' == d['a']['b'][23]['c'] RETURN d",
-        expected);
+        "FOR d IN collection FILTER '1' == d['a']['b'][23]['c'] RETURN d", expected);
   }
 
   // complex attribute with offset, string, boost
@@ -263,14 +239,12 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       filter.boost(0.5);
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER boost(d.a.b[23].c == '1', 0.5) RETURN d",
-        expected);
+        "FOR d IN collection FILTER boost(d.a.b[23].c == '1', 0.5) RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER boost(d.a['b'][23].c == '1', 0.5)  RETURN "
@@ -283,8 +257,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER boost('1' == d.a.b[23].c, 0.5)  RETURN d",
-        expected);
+        "FOR d IN collection FILTER boost('1' == d.a.b[23].c, 0.5)  RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER boost('1' == d.a['b'][23].c, 0.5)  RETURN "
@@ -303,8 +276,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
 
     assertFilterSuccess(
@@ -346,8 +318,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       filter.boost(0.5);
       *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
 
     assertFilterSuccess(
@@ -375,8 +346,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
     }
 
     assertFilterSuccess(
@@ -413,24 +383,18 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // dynamic complex attribute name with deterministic expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_term>();
-      *filter.mutable_field() =
-          mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
 
     assertFilterSuccess(
@@ -452,13 +416,10 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -472,17 +433,12 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -496,17 +452,12 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -523,16 +474,13 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b.c == true RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b.c == true RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER true == d.a.b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER true == d.a.b.c RETURN d", expected);
   }
 
   // complex attribute with offset, true
@@ -541,16 +489,13 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a[1].b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a[1].b.c == true RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a[1].b.c == true RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER true == d.a[1].b.c RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER true == d.a[1].b.c RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER analyzer(true == d.a[1].b.c, "
@@ -565,18 +510,15 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       filter.boost(2.5);
       *filter.mutable_field() = mangleBool("a[1].b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
     }
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER boost(d.a[1].b.c == true, 2.5) RETURN d",
-        expected);
+        "FOR d IN collection FILTER boost(d.a[1].b.c == true, 2.5) RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER boost(true == d.a[1].b.c, 2.5) RETURN d",
-        expected);
+        "FOR d IN collection FILTER boost(true == d.a[1].b.c, 2.5) RETURN d", expected);
   }
 
   // complex attribute, false
@@ -585,24 +527,19 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool == false RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool == false RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a.b['c.bool'] == false RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a.b['c.bool'] == false RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER false == d.a.b.c.bool RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER false == d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER false == d['a'].b['c'].bool RETURN d",
-        expected);
+        "FOR d IN collection FILTER false == d['a'].b['c'].bool RETURN d", expected);
   }
 
   // expression
@@ -632,8 +569,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
     }
 
     assertFilterSuccess(
@@ -680,23 +616,18 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
     }
 
     assertFilterSuccess(
@@ -718,13 +649,10 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -738,17 +666,12 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -762,17 +685,12 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -789,32 +707,22 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.bool");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool == null RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool == null RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER d.a['b'].c.bool == null RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b'].c.bool == null RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b'].c.bool == null RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d['a']['b'].c.bool == null RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER null == d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER null == d.a.b.c.bool RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER null == d['a.b.c.bool'] RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER null == d['a.b.c.bool'] RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER null == d.a.b.c['bool'] RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER null == d.a.b.c['bool'] RETURN d", expected);
   }
 
   // complex attribute with offset, null
@@ -823,18 +731,15 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a[1].b[2].c[3].bool");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a[1].b[2].c[3].bool == null RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a[1].b[2].c[3].bool == null RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a[1]['b'][2].c[3].bool == null RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a[1]['b'][2].c[3].bool == null RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER d['a'][1]['b'][2].c[3].bool == null RETURN "
@@ -842,16 +747,13 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER null == d.a[1].b[2].c[3].bool RETURN d",
-        expected);
+        "FOR d IN collection FILTER null == d.a[1].b[2].c[3].bool RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER null == d['a[1].b[2].c[3].bool'] RETURN d",
-        expected);
+        "FOR d IN collection FILTER null == d['a[1].b[2].c[3].bool'] RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER null == d.a[1].b[2].c[3]['bool'] RETURN d",
-        expected);
+        "FOR d IN collection FILTER null == d.a[1].b[2].c[3]['bool'] RETURN d", expected);
   }
 
   // null expression
@@ -867,8 +769,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b[23].c");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -926,8 +827,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       filter.boost(1.5);
       *filter.mutable_field() = mangleNull("a.b[23].c");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -945,23 +845,18 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -983,13 +878,10 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1003,17 +895,12 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1027,17 +914,12 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1063,33 +945,24 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric == 3 RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric == 3 RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER d.a['b'].c.numeric == 3 RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric == 3.0 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b'].c.numeric == 3 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a.b.c['numeric'] == 3.0 RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric == 3.0 RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER 3 == d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c['numeric'] == 3.0 RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER 3 == d.a.b.c.numeric RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER 3.0 == d.a.b.c.numeric RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER 3.0 == d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 3.0 == d['a.b.c'].numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 3.0 == d['a.b.c'].numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 3.0 == d.a['b.c.numeric'] RETURN d",
-        expected);
+        "FOR d IN collection FILTER 3.0 == d.a['b.c.numeric'] RETURN d", expected);
   }
 
   // complex attribute with offset, numeric
@@ -1107,37 +980,27 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     }
 
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b[3].c.numeric == 3 RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[3].c.numeric == 3 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b'][3].c.numeric == 3 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a['b'][3].c.numeric == 3 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a.b[3].c.numeric == 3.0 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a.b[3].c.numeric == 3.0 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a.b[3].c['numeric'] == 3.0 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a.b[3].c['numeric'] == 3.0 RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER 3 == d.a.b[3].c.numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 3 == d.a.b[3].c.numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 3.0 == d.a.b[3].c.numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 3.0 == d.a.b[3].c.numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 3.0 == d['a.b[3].c'].numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 3.0 == d['a.b[3].c'].numeric RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER 3.0 == d.a['b[3].c.numeric'] RETURN d",
-        expected);
+        "FOR d IN collection FILTER 3.0 == d.a['b[3].c.numeric'] RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER analyzer(3.0 == d.a['b[3].c.numeric'], "
@@ -1162,8 +1025,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER boost(d.a.b[3].c.numeric == 3, 5) RETURN d",
-        expected);
+        "FOR d IN collection FILTER boost(d.a.b[3].c.numeric == 3, 5) RETURN d", expected);
   }
 
   // numeric expression
@@ -1249,16 +1111,12 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::numeric_token_stream stream;
     stream.reset(42.5);
@@ -1291,13 +1149,10 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1311,17 +1166,12 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1335,17 +1185,12 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1362,8 +1207,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
     }
 
     assertFilterSuccess(vocbase(),
@@ -1460,20 +1304,17 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
 
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a != '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d['a'] != '1' RETURN d",
-                        expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' != d.a RETURN d", expected);
+                        "FOR d IN collection FILTER d.a != '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' != d['a'] RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d['a'] != '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' != d.a RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' != d['a'] RETURN d", expected);
   }
 
   // simple offset
@@ -1482,14 +1323,13 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("[4]");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
 
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d[4] != '1' RETURN d", expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' != d[4] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d[4] != '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' != d[4] RETURN d", expected);
   }
 
   // complex attribute name, string
@@ -1498,36 +1338,25 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b.c");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b.c != '1' RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b.c != '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d['a'].b.c != '1' RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d['a'].b.c != '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d['a']['b'].c != '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b'].c != '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d['a']['b']['c'] != '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b']['c'] != '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' != d.a.b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER '1' != d.a.b.c RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' != d['a'].b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER '1' != d['a'].b.c RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' != d['a']['b'].c RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' != d['a']['b'].c RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER '1' != d['a']['b']['c'] RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' != d['a']['b']['c'] RETURN d", expected);
   }
 
   // complex attribute name with offset, string
@@ -1536,38 +1365,29 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b[23].c != '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[23].c != '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d['a'].b[23].c != '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d['a'].b[23].c != '1' RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b'][23].c != '1' RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b'][23].c != '1' RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b'][23]['c'] != '1' RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b'][23]['c'] != '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' != d.a.b[23].c RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' != d.a.b[23].c RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' != d['a'].b[23].c RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' != d['a'].b[23].c RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER '1' != d['a']['b'][23].c RETURN d",
-        expected);
+        "FOR d IN collection FILTER '1' != d['a']['b'][23].c RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER '1' != d['a']['b'][23]['c'] RETURN d",
-        expected);
+        "FOR d IN collection FILTER '1' != d['a']['b'][23]['c'] RETURN d", expected);
   }
 
   // string expression
@@ -1583,8 +1403,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
     }
 
     assertFilterSuccess(
@@ -1632,9 +1451,9 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
     }
+
 
     assertFilterSuccess(
         vocbase(),
@@ -1658,8 +1477,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
     }
 
     assertFilterSuccess(
@@ -1672,24 +1490,18 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
-      *filter.mutable_field() =
-          mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
 
     assertFilterSuccess(
@@ -1711,13 +1523,10 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1731,17 +1540,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1755,17 +1559,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1782,23 +1581,18 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b.c != true RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b.c != true RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d['a'].b.c != true RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d['a'].b.c != true RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER true != d.a.b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER true != d.a.b.c RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER true != d['a']['b']['c'] RETURN d",
-        expected);
+        "FOR d IN collection FILTER true != d['a']['b']['c'] RETURN d", expected);
   }
 
   // complex boolean attribute, false
@@ -1807,24 +1601,19 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool != false RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool != false RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b']['c'].bool != false RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b']['c'].bool != false RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER false != d.a.b.c.bool RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER false != d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER false != d['a']['b'].c.bool RETURN d",
-        expected);
+        "FOR d IN collection FILTER false != d['a']['b'].c.bool RETURN d", expected);
   }
 
   // complex boolean attribute with offset, false
@@ -1833,14 +1622,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a[12].b.c.bool");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
     }
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a[12].b.c.bool != false RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a[12].b.c.bool != false RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER d['a'][12]['b']['c'].bool != false RETURN "
@@ -1848,12 +1635,10 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER false != d.a[12].b.c.bool RETURN d",
-        expected);
+        "FOR d IN collection FILTER false != d.a[12].b.c.bool RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER false != d['a'][12]['b'].c.bool RETURN d",
-        expected);
+        "FOR d IN collection FILTER false != d['a'][12]['b'].c.bool RETURN d", expected);
   }
 
   // complex boolean attribute, null
@@ -1862,24 +1647,19 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.bool");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool != null RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool != null RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b']['c'].bool != null RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a['b']['c'].bool != null RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER null != d.a.b.c.bool RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER null != d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER null != d['a']['b'].c.bool RETURN d",
-        expected);
+        "FOR d IN collection FILTER null != d['a']['b'].c.bool RETURN d", expected);
   }
 
   // complex boolean attribute with offset, null
@@ -1888,26 +1668,19 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c[3].bool");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c[3].bool != null RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c[3].bool != null RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b']['c'][3].bool != null RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a['b']['c'][3].bool != null RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER null != d.a.b.c[3].bool RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER null != d.a.b.c[3].bool RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER null != d['a']['b'].c[3].bool RETURN d",
-        expected);
+        "FOR d IN collection FILTER null != d['a']['b'].c[3].bool RETURN d", expected);
   }
 
   // boolean expression
@@ -1923,8 +1696,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
     }
 
     assertFilterSuccess(
@@ -1972,8 +1744,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleBool("a.b[23].c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
     }
 
     assertFilterSuccess(
@@ -1986,23 +1757,18 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
     }
 
     assertFilterSuccess(
@@ -2024,13 +1790,10 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2044,17 +1807,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2068,17 +1826,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2102,8 +1855,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b[23].c");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -2156,8 +1908,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       filter.boost(1.5);
       *filter.mutable_field() = mangleNull("a.b[23].c");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -2170,23 +1921,18 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
-      filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -2208,13 +1954,10 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2228,17 +1971,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2252,17 +1990,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2288,25 +2021,19 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric != 3 RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric != 3 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b'].c.numeric != 3 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b'].c.numeric != 3 RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric != 3.0 RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric != 3.0 RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER 3 != d.a.b.c.numeric RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER 3 != d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER 3.0 != d.a.b.c.numeric RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER 3.0 != d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 3.0 != d.a['b']['c'].numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 3.0 != d.a['b']['c'].numeric RETURN d", expected);
   }
 
   // complex boolean attribute with offset, numeric
@@ -2324,29 +2051,21 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     }
 
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c.numeric[1] != 3 RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric[1] != 3 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b'].c.numeric[1] != 3 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b'].c.numeric[1] != 3 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a.b.c.numeric[1] != 3.0 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a.b.c.numeric[1] != 3.0 RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER 3 != d.a.b.c.numeric[1] RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 3 != d.a.b.c.numeric[1] RETURN d",
-        expected);
+        "FOR d IN collection FILTER 3.0 != d.a.b.c.numeric[1] RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 3.0 != d.a.b.c.numeric[1] RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER 3.0 != d.a['b']['c'].numeric[1] RETURN d",
-        expected);
+        "FOR d IN collection FILTER 3.0 != d.a['b']['c'].numeric[1] RETURN d", expected);
   }
 
   // numeric expression
@@ -2437,16 +2156,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::numeric_token_stream stream;
     stream.reset(42.5);
@@ -2479,13 +2194,10 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2499,17 +2211,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2523,17 +2230,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2550,8 +2252,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     {
       auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
     }
 
     assertFilterSuccess(vocbase(),
@@ -2690,16 +2391,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a >= '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d['a'] >= '1' RETURN d",
-                        expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' <= d.a RETURN d", expected);
+                        "FOR d IN collection FILTER d.a >= '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' <= d['a'] RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d['a'] >= '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' <= d.a RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' <= d['a'] RETURN d", expected);
   }
 
   // simple string offset
@@ -2714,11 +2413,9 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d[23] >= '1' RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d[23] >= '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' <= d[23] RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER '1' <= d[23] RETURN d", expected);
   }
 
   // complex attribute name, string
@@ -2733,17 +2430,13 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b.c >= '1' RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b.c >= '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a['b']['c'] >= '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a['b']['c'] >= '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' <= d.a.b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER '1' <= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' <= d['a']['b'].c RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' <= d['a']['b'].c RETURN d", expected);
   }
 
   // complex attribute name with offset, string
@@ -2758,19 +2451,15 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b[23].c >= '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[23].c >= '1' RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b'][23]['c'] >= '1' RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a['b'][23]['c'] >= '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' <= d.a.b[23].c RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' <= d.a.b[23].c RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER '1' <= d['a']['b'][23].c RETURN d",
-        expected);
+        "FOR d IN collection FILTER '1' <= d['a']['b'][23].c RETURN d", expected);
   }
 
   // string expression
@@ -2846,22 +2535,17 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_range>();
-      *filter.mutable_field() =
-          mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
       opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
       opts->range.min_type = irs::BoundType::INCLUSIVE;
@@ -2886,13 +2570,10 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2906,17 +2587,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2930,17 +2606,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2958,25 +2629,20 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b.c >= true RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b.c >= true RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b']['c'] >= true RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b']['c'] >= true RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER true <= d.a.b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER true <= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER true <= d['a']['b']['c'] RETURN d",
-        expected);
+        "FOR d IN collection FILTER true <= d['a']['b']['c'] RETURN d", expected);
   }
 
   // complex boolean attribute with offset, true
@@ -2986,25 +2652,20 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c[223]");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c[223] >= true RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c[223] >= true RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b']['c'][223] >= true RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b']['c'][223] >= true RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER true <= d.a.b.c[223] RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER true <= d.a.b.c[223] RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER true <= d['a']['b']['c'][223] RETURN d",
-        expected);
+        "FOR d IN collection FILTER true <= d['a']['b']['c'][223] RETURN d", expected);
   }
 
   // complex boolean attribute, false
@@ -3014,25 +2675,20 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool >= false RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool >= false RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b'].c.bool >= false RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b'].c.bool >= false RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER false <= d.a.b.c.bool RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER false <= d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER false <= d.a['b']['c'].bool RETURN d",
-        expected);
+        "FOR d IN collection FILTER false <= d.a['b']['c'].bool RETURN d", expected);
   }
 
   // boolean expression
@@ -3049,8 +2705,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -3091,8 +2746,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       filter.boost(1.5);
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -3106,24 +2760,19 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -3146,13 +2795,10 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -3166,17 +2812,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -3190,17 +2831,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -3218,25 +2854,20 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.nil");
       auto* opts = filter.mutable_options();
-      opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil >= null RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil >= null RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b']['c'].nil >= null RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b']['c'].nil >= null RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER null <= d.a.b.c.nil RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER null <= d.a.b.c.nil RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER null <= d['a']['b'].c.nil RETURN d",
-        expected);
+        "FOR d IN collection FILTER null <= d['a']['b'].c.nil RETURN d", expected);
   }
 
   // complex null attribute with offset
@@ -3246,27 +2877,20 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b[23].c.nil");
       auto* opts = filter.mutable_options();
-      opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b[23].c.nil >= null RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[23].c.nil >= null RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b'][23]['c'].nil >= null RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b'][23]['c'].nil >= null RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER null <= d.a.b[23].c.nil RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER null <= d.a.b[23].c.nil RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER null <= d['a']['b'][23].c.nil RETURN d",
-        expected);
+        "FOR d IN collection FILTER null <= d['a']['b'][23].c.nil RETURN d", expected);
   }
 
   // null expression
@@ -3283,8 +2907,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -3329,8 +2952,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       filter.boost(1.5);
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -3344,24 +2966,19 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -3384,13 +3001,10 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -3404,17 +3018,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -3428,17 +3037,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -3464,27 +3068,19 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric >= 13 RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric >= 13 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b'].c.numeric >= 13 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b'].c.numeric >= 13 RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric >= 13.0 RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER 13 <= d.a.b.c.numeric RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER 13.0 <= d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a.b.c.numeric >= 13.0 RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER 13 <= d.a.b.c.numeric RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER 13.0 <= d.a.b.c.numeric RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER 13.0 <= d['a']['b']['c'].numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 13.0 <= d['a']['b']['c'].numeric RETURN d", expected);
   }
 
   // complex numeric attribute, numeric
@@ -3503,24 +3099,19 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a.b.c[223].numeric >= 13 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a.b.c[223].numeric >= 13 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b'].c[223].numeric >= 13 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b'].c[223].numeric >= 13 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a.b.c[223].numeric >= 13.0 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a.b.c[223].numeric >= 13.0 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 13 <= d.a.b.c[223].numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 13 <= d.a.b.c[223].numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 13.0 <= d.a.b.c[223].numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 13.0 <= d.a.b.c[223].numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER 13.0 <= d['a']['b']['c'][223].numeric "
@@ -3601,16 +3192,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::numeric_token_stream stream;
     stream.reset(42.5);
@@ -3643,13 +3230,10 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -3663,17 +3247,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -3687,17 +3266,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -3715,8 +3289,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -3829,16 +3402,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a > '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d['a'] > '1' RETURN d",
-                        expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' < d.a RETURN d", expected);
+                        "FOR d IN collection FILTER d.a > '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' < d['a'] RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d['a'] > '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' < d.a RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' < d['a'] RETURN d", expected);
   }
 
   // simple string offset
@@ -3852,10 +3423,10 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d[23] > '1' RETURN d", expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' < d[23] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d[23] > '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' < d[23] RETURN d", expected);
   }
 
   // complex attribute name, string
@@ -3870,17 +3441,13 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b.c > '1' RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b.c > '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d['a']['b']['c'] > '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b']['c'] > '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' < d.a.b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER '1' < d.a.b.c RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' < d['a']['b'].c RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' < d['a']['b'].c RETURN d", expected);
   }
 
   // complex attribute name with offset, string
@@ -3895,19 +3462,13 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b[23].c > '1' RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b[23].c > '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a['b'][23]['c'] > '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a['b'][23]['c'] > '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' < d.a.b[23].c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER '1' < d.a.b[23].c RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER '1' < d['a']['b'][23].c RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' < d['a']['b'][23].c RETURN d", expected);
   }
 
   // string expression
@@ -3984,22 +3545,17 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_range>();
-      *filter.mutable_field() =
-          mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
       opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
@@ -4024,13 +3580,10 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -4044,17 +3597,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -4068,17 +3616,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -4096,24 +3639,18 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b.c > true RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b.c > true RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d['a']['b']['c'] > true RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b']['c'] > true RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER true < d.a.b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER true < d.a.b.c RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER true < d['a'].b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER true < d['a'].b.c RETURN d", expected);
   }
 
   // complex boolean attribute, false
@@ -4123,25 +3660,19 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool > false RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool > false RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER d['a'].b.c.bool > false RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER false < d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a'].b.c.bool > false RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER false < d.a.b.c.bool RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER false < d['a']['b']['c'].bool RETURN d",
-        expected);
+        "FOR d IN collection FILTER false < d['a']['b']['c'].bool RETURN d", expected);
   }
 
   // complex boolean attribute with, false
@@ -4151,23 +3682,19 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c[223].bool");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a.b.c[223].bool > false RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a.b.c[223].bool > false RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a'].b.c[223].bool > false RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a'].b.c[223].bool > false RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER false < d.a.b.c[223].bool RETURN d",
-        expected);
+        "FOR d IN collection FILTER false < d.a.b.c[223].bool RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER false < d['a']['b']['c'][223].bool RETURN "
@@ -4189,8 +3716,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4236,8 +3762,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       filter.boost(42);
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4251,24 +3776,19 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4291,13 +3811,10 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -4311,17 +3828,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -4335,17 +3847,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -4363,23 +3870,18 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.nil");
       auto* opts = filter.mutable_options();
-      opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil > null RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil > null RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d['a'].b.c.nil > null RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d['a'].b.c.nil > null RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER null < d.a.b.c.nil RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER null < d.a.b.c.nil RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER null < d['a'].b.c.nil RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER null < d['a'].b.c.nil RETURN d", expected);
   }
 
   // null expression
@@ -4396,8 +3898,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4442,8 +3943,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       filter.boost(42);
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4457,24 +3957,19 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4497,13 +3992,10 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -4517,17 +4009,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -4541,17 +4028,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -4569,25 +4051,20 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b[23].c.nil");
       auto* opts = filter.mutable_options();
-      opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b[23].c.nil > null RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[23].c.nil > null RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b'][23]['c'].nil > null RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b'][23]['c'].nil > null RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER null < d.a.b[23].c.nil RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER null < d.a.b[23].c.nil RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER null < d['a']['b'][23].c.nil RETURN d",
-        expected);
+        "FOR d IN collection FILTER null < d['a']['b'][23].c.nil RETURN d", expected);
   }
 
   // complex boolean attribute, numeric
@@ -4605,25 +4082,19 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric > 13 RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric > 13 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b']['c'].numeric > 13 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b']['c'].numeric > 13 RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric > 13.0 RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric > 13.0 RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER 13 < d.a.b.c.numeric RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER 13 < d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER 13.0 < d.a.b.c.numeric RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER 13.0 < d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 13.0 < d['a']['b'].c.numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 13.0 < d['a']['b'].c.numeric RETURN d", expected);
   }
 
   // complex numeric attribute, floating
@@ -4641,19 +4112,15 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric > 13.5 RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric > 13.5 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b']['c'].numeric > 13.5 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a['b']['c'].numeric > 13.5 RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER 13.5 < d.a.b.c.numeric RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER 13.5 < d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 13.5 < d['a']['b'].c.numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 13.5 < d['a']['b'].c.numeric RETURN d", expected);
   }
 
   // complex numeric attribute, integer
@@ -4672,8 +4139,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a[1].b.c[223].numeric > 13 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a[1].b.c[223].numeric > 13 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER d['a'][1]['b'].c[223].numeric > 13 RETURN "
@@ -4681,16 +4147,13 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a[1].b.c[223].numeric > 13.0 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a[1].b.c[223].numeric > 13.0 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 13 < d.a[1].b.c[223].numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 13 < d.a[1].b.c[223].numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 13.0 < d.a[1].b.c[223].numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 13.0 < d.a[1].b.c[223].numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER 13.0 < d['a'][1]['b']['c'][223].numeric "
@@ -4776,16 +4239,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::numeric_token_stream stream;
     stream.reset(42.5);
@@ -4818,13 +4277,10 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -4838,17 +4294,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -4862,17 +4313,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -4890,8 +4336,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4911,8 +4356,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
     expected.add<irs::empty>();
 
     assertFilterSuccess(
-        vocbase(), "LET k={} FOR d IN collection FILTER k.a > '1' RETURN d",
-        expected, &ctx);
+        vocbase(), "LET k={} FOR d IN collection FILTER k.a > '1' RETURN d", expected, &ctx);
   }
 
   // array in expression
@@ -5001,16 +4445,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a <= '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d['a'] <= '1' RETURN d",
-                        expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' >= d.a RETURN d", expected);
+                        "FOR d IN collection FILTER d.a <= '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' >= d['a'] RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d['a'] <= '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' >= d.a RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' >= d['a'] RETURN d", expected);
   }
 
   // simple string offset
@@ -5025,11 +4467,9 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d[23] <= '1' RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d[23] <= '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' >= d[23] RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER '1' >= d[23] RETURN d", expected);
   }
 
   // complex attribute name, string
@@ -5044,18 +4484,13 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b.c <= '1' RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b.c <= '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d['a']['b'].c <= '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b'].c <= '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' >= d.a.b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER '1' >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER '1' >= d['a']['b']['c'] RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' >= d['a']['b']['c'] RETURN d", expected);
   }
 
   // complex attribute name with offset, string
@@ -5070,19 +4505,15 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a[1].b.c[42] <= '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a[1].b.c[42] <= '1' RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a'][1]['b'].c[42] <= '1' RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a'][1]['b'].c[42] <= '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' >= d.a[1].b.c[42] RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' >= d.a[1].b.c[42] RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER '1' >= d['a'][1]['b']['c'][42] RETURN d",
-        expected);
+        "FOR d IN collection FILTER '1' >= d['a'][1]['b']['c'][42] RETURN d", expected);
   }
 
   // string expression
@@ -5158,22 +4589,17 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_range>();
-      *filter.mutable_field() =
-          mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
       opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
       opts->range.max_type = irs::BoundType::INCLUSIVE;
@@ -5198,13 +4624,10 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5218,17 +4641,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5242,17 +4660,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5270,24 +4683,19 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b.c <= true RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b.c <= true RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b']['c'] <= true RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b']['c'] <= true RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER true >= d.a.b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER true >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER true >= d.a['b']['c'] RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER true >= d.a['b']['c'] RETURN d", expected);
   }
 
   // complex boolean attribute, true
@@ -5297,25 +4705,20 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b[42].c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b[42].c <= true RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[42].c <= true RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b'][42]['c'] <= true RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b'][42]['c'] <= true RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER true >= d.a.b[42].c RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER true >= d.a.b[42].c RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER true >= d.a['b'][42]['c'] RETURN d",
-        expected);
+        "FOR d IN collection FILTER true >= d.a['b'][42]['c'] RETURN d", expected);
   }
 
   // complex boolean attribute, false
@@ -5325,25 +4728,20 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool <= false RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool <= false RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a'].b.c.bool <= false RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a'].b.c.bool <= false RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER false >= d.a.b.c.bool RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER false >= d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER false >= d.a['b']['c'].bool RETURN d",
-        expected);
+        "FOR d IN collection FILTER false >= d.a['b']['c'].bool RETURN d", expected);
   }
 
   // boolean expression
@@ -5360,8 +4758,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5406,8 +4803,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       filter.boost(42);
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5421,24 +4817,19 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5461,13 +4852,10 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5481,17 +4869,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5505,17 +4888,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5533,25 +4911,20 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.nil");
       auto* opts = filter.mutable_options();
-      opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil <= null RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil <= null RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b']['c'].nil <= null RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a['b']['c'].nil <= null RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER null >= d.a.b.c.nil RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER null >= d.a.b.c.nil RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER null >= d['a']['b']['c'].nil RETURN d",
-        expected);
+        "FOR d IN collection FILTER null >= d['a']['b']['c'].nil RETURN d", expected);
   }
 
   // complex null attribute with offset
@@ -5561,25 +4934,20 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.nil[1]");
       auto* opts = filter.mutable_options();
-      opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil[1] <= null RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil[1] <= null RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b']['c'].nil[1] <= null RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a['b']['c'].nil[1] <= null RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER null >= d.a.b.c.nil[1] RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER null >= d.a.b.c.nil[1] RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER null >= d['a']['b']['c'].nil[1] RETURN d",
-        expected);
+        "FOR d IN collection FILTER null >= d['a']['b']['c'].nil[1] RETURN d", expected);
   }
 
   // null expression
@@ -5596,8 +4964,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5642,8 +5009,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       filter.boost(42);
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5657,24 +5023,19 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5697,13 +5058,10 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5717,17 +5075,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5741,17 +5094,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5777,27 +5125,19 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric <= 13 RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric <= 13 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a']['b']['c'].numeric <= 13 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d['a']['b']['c'].numeric <= 13 RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric <= 13.0 RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER 13 >= d.a.b.c.numeric RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER 13.0 >= d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a.b.c.numeric <= 13.0 RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER 13 >= d.a.b.c.numeric RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER 13.0 >= d.a.b.c.numeric RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER 13.0 >= d.a['b']['c'].numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 13.0 >= d.a['b']['c'].numeric RETURN d", expected);
   }
 
   // complex numeric attribute with offset
@@ -5816,8 +5156,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a.b.c[223].numeric <= 13 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a.b.c[223].numeric <= 13 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'][223].numeric <= 13 RETURN "
@@ -5825,16 +5164,13 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a.b.c[223].numeric <= 13.0 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a.b.c[223].numeric <= 13.0 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 13 >= d.a.b.c[223].numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 13 >= d.a.b.c[223].numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 13.0 >= d.a.b.c[223].numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 13.0 >= d.a.b.c[223].numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER 13.0 >= d.a['b']['c'][223].numeric RETURN "
@@ -5920,16 +5256,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::numeric_token_stream stream;
     stream.reset(42.5);
@@ -5962,13 +5294,10 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5982,17 +5311,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6006,17 +5330,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6034,8 +5353,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -6148,16 +5466,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a < '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d['a'] < '1' RETURN d",
-                        expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' > d.a RETURN d", expected);
+                        "FOR d IN collection FILTER d.a < '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' > d['a'] RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d['a'] < '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' > d.a RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' > d['a'] RETURN d", expected);
   }
 
   // simple offset
@@ -6171,10 +5487,10 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d[42] < '1' RETURN d", expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' > d[42] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d[42] < '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' > d[42] RETURN d", expected);
   }
 
   // complex attribute name, string
@@ -6189,17 +5505,13 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b.c < '1' RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b.c < '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a['b']['c'] < '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a['b']['c'] < '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' > d.a.b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER '1' > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER '1' > d['a']['b']['c'] RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER '1' > d['a']['b']['c'] RETURN d", expected);
   }
 
   // complex attribute name with offset, string
@@ -6214,19 +5526,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b[42].c < '1' RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b[42].c < '1' RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a['b'][42]['c'] < '1' RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a['b'][42]['c'] < '1' RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER '1' > d.a.b[42].c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER '1' > d.a.b[42].c RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER '1' > d['a']['b'][42]['c'] RETURN d",
-        expected);
+        "FOR d IN collection FILTER '1' > d['a']['b'][42]['c'] RETURN d", expected);
   }
 
   // string expression
@@ -6302,22 +5609,17 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_range>();
-      *filter.mutable_field() =
-          mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
       opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
@@ -6342,13 +5644,10 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6362,17 +5661,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6386,17 +5680,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6414,25 +5703,18 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.a.b.c < true RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER d.a.b.c < true RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d['a']['b']['c'] < true RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b']['c'] < true RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER true > d.a.b.c RETURN d",
-                        expected);
+                        "FOR d IN collection FILTER true > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER true > d['a']['b']['c'] RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER true > d['a']['b']['c'] RETURN d", expected);
   }
 
   // complex boolean attribute, false
@@ -6442,25 +5724,19 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool < false RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool < false RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b']['c'].bool < false RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a['b']['c'].bool < false RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER false > d.a.b.c.bool RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER false > d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER false > d['a'].b.c.bool RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER false > d['a'].b.c.bool RETURN d", expected);
   }
 
   // complex boolean attribute with offset, false
@@ -6470,15 +5746,13 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c[42].bool[42]");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a.b.c[42].bool[42] < false RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a.b.c[42].bool[42] < false RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'][42].bool[42] < false RETURN "
@@ -6486,12 +5760,10 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER false > d.a.b.c[42].bool[42] RETURN d",
-        expected);
+        "FOR d IN collection FILTER false > d.a.b.c[42].bool[42] RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER false > d['a'].b.c[42].bool[42] RETURN d",
-        expected);
+        "FOR d IN collection FILTER false > d['a'].b.c[42].bool[42] RETURN d", expected);
   }
 
   // boolean expression
@@ -6508,8 +5780,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6555,8 +5826,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       filter.boost(42);
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6570,24 +5840,19 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6610,13 +5875,10 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6630,17 +5892,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6654,17 +5911,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6682,24 +5934,19 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.nil");
       auto* opts = filter.mutable_options();
-      opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil < null RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil < null RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b']['c'].nil < null RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a['b']['c'].nil < null RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER null > d.a.b.c.nil RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER null > d.a.b.c.nil RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER null > d['a'].b.c.nil RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER null > d['a'].b.c.nil RETURN d", expected);
   }
 
   // complex null attribute with offset
@@ -6709,25 +5956,20 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b[42].c.nil");
       auto* opts = filter.mutable_options();
-      opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b[42].c.nil < null RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[42].c.nil < null RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b'][42]['c'].nil < null RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a['b'][42]['c'].nil < null RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER null > d.a.b[42].c.nil RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER null > d.a.b[42].c.nil RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER null > d['a'].b[42].c.nil RETURN d",
-        expected);
+        "FOR d IN collection FILTER null > d['a'].b[42].c.nil RETURN d", expected);
   }
 
   // null expression
@@ -6744,8 +5986,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6790,8 +6031,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       filter.boost(42);
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6805,24 +6045,19 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6845,13 +6080,10 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6865,17 +6097,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6889,17 +6116,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6925,25 +6147,19 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
     }
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric < 13 RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric < 13 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b']['c'].numeric < 13 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a['b']['c'].numeric < 13 RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric < 13.0 RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric < 13.0 RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER 13 > d.a.b.c.numeric RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER 13 > d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER 13.0 > d.a.b.c.numeric RETURN d",
-        expected);
+        vocbase(), "FOR d IN collection FILTER 13.0 > d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 13.0 > d['a']['b']['c'].numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 13.0 > d['a']['b']['c'].numeric RETURN d", expected);
   }
 
   // complex boolean attribute, numeric
@@ -6962,24 +6178,19 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a[1].b[42].c.numeric < 13 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a[1].b[42].c.numeric < 13 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a[1]['b'][42]['c'].numeric < 13 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a[1]['b'][42]['c'].numeric < 13 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a[1].b[42].c.numeric < 13.0 RETURN d",
-        expected);
+        "FOR d IN collection FILTER d.a[1].b[42].c.numeric < 13.0 RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 13 > d.a[1].b[42].c.numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 13 > d.a[1].b[42].c.numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER 13.0 > d.a[1].b[42].c.numeric RETURN d",
-        expected);
+        "FOR d IN collection FILTER 13.0 > d.a[1].b[42].c.numeric RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN collection FILTER 13.0 > d['a'][1]['b'][42]['c'].numeric "
@@ -7065,16 +6276,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // dynamic complex attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::numeric_token_stream stream;
     stream.reset(42.5);
@@ -7107,13 +6314,10 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -7127,17 +6331,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(
-                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -7151,17 +6350,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
-                         false}));  // invalid value type
-    ctx.vars.emplace("c",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                         arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -7179,10 +6373,10 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_false());
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
+
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER 3 < 2 < d.a.b.c RETURN d",
@@ -7200,8 +6394,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
     expected.add<irs::all>();
 
     assertFilterSuccess(
-        vocbase(), "LET k={} FOR d IN collection FILTER k.a < '1' RETURN d",
-        expected, &ctx);
+        vocbase(), "LET k={} FOR d IN collection FILTER k.a < '1' RETURN d", expected, &ctx);
   }
 
   // array in expression

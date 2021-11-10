@@ -27,6 +27,7 @@
 #include "Basics/StringUtils.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Queues/WeightedQueue.h"
+
 #include "gtest/gtest.h"
 
 using namespace arangodb;
@@ -59,8 +60,7 @@ class Step : public arangodb::graph::BaseStep<Step> {
   bool isProcessable() const { return _isLooseEnd ? false : true; }
   size_t id() const { return _id; }
   std::string toString() {
-    return "<Step> _id: " +
-           basics::StringUtils::itoa(static_cast<int32_t>(_id)) +
+    return "<Step> _id: " + basics::StringUtils::itoa(static_cast<int32_t>(_id)) +
            ", _weight: " + basics::StringUtils::ftoa(getWeight());
   }
 };
@@ -141,32 +141,29 @@ TEST_F(WeightedQueueTest, it_should_prioritize_processable_elements) {
 TEST_F(WeightedQueueTest, it_should_order_by_asc_weight) {
   // Random Input in random order. We shuffle it before each iteration, feel
   // free to modify this in any way you like
-  std::vector<Step> input{
-      {1, 1, false}, {2, 4, false}, {3, 6, false}, {4, 12, false}};
+  std::vector<Step> input{{1, 1, false}, {2, 4, false}, {3, 6, false}, {4, 12, false}};
   // Some test orderings, feel free to add more orderings for tests.
-  std::vector<
-      std::pair<std::string, std::function<bool(Step const&, Step const&)>>>
-      orderings{{"DescWeight",
-                 [](Step const& a, Step const& b) -> bool {
-                   // DESC weight
-                   return a.getWeight() > b.getWeight();
-                 }},
-                {"AscWeight",
-                 [](Step const& a, Step const& b) -> bool {
-                   // ASC weight
-                   return a.getWeight() < b.getWeight();
-                 }},
-                {"RandomOrder", [](Step const& a, Step const& b) -> bool {
-                   // RandomWeightOrder, first inject all uneven Steps, sort
-                   // each "package" by ASC weight There is no specicial plan
-                   // behind this, it is to stable "non"-sort by weight
-                   auto modA = a.id() % 2;
-                   auto modB = a.id() % 2;
-                   if (modA != modB) {
-                     return modA > modB;
-                   }
-                   return a.getWeight() < b.getWeight();
-                 }}};
+  std::vector<std::pair<std::string, std::function<bool(Step const&, Step const&)>>> orderings{
+      {"DescWeight",
+       [](Step const& a, Step const& b) -> bool {
+         // DESC weight
+         return a.getWeight() > b.getWeight();
+       }},
+      {"AscWeight",
+       [](Step const& a, Step const& b) -> bool {
+         // ASC weight
+         return a.getWeight() < b.getWeight();
+       }},
+      {"RandomOrder", [](Step const& a, Step const& b) -> bool {
+         // RandomWeightOrder, first inject all uneven Steps, sort each "package" by ASC weight
+         // There is no specicial plan behind this, it is to stable "non"-sort by weight
+         auto modA = a.id() % 2;
+         auto modB = a.id() % 2;
+         if (modA != modB) {
+           return modA > modB;
+         }
+         return a.getWeight() < b.getWeight();
+       }}};
   // No matter how the input is ordered,
   // We need to get it back in exactly the same order, by asc weight
   for (auto [name, o] : orderings) {
@@ -212,6 +209,6 @@ TEST_F(WeightedQueueTest, it_should_pop_all_loose_ends) {
   EXPECT_FALSE(queue.hasProcessableElement());
 }
 
-}  // namespace weighted_queue_graph_cache_test
+}  // namespace queue_graph_cache_test
 }  // namespace tests
 }  // namespace arangodb

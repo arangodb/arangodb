@@ -23,10 +23,11 @@
 
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/ResultT.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ResultT.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Queues/FifoQueue.h"
+
 #include "gtest/gtest.h"
 
 using namespace arangodb;
@@ -42,8 +43,7 @@ class Step : public arangodb::graph::BaseStep<Step> {
   bool _isLooseEnd;
 
  public:
-  Step(size_t id, double weight, bool isLooseEnd)
-      : arangodb::graph::BaseStep<Step>{} {
+  Step(size_t id, double weight, bool isLooseEnd) : arangodb::graph::BaseStep<Step>{} {
     _id = id;
     _weight = weight;
     _isLooseEnd = isLooseEnd;
@@ -58,15 +58,13 @@ class Step : public arangodb::graph::BaseStep<Step> {
   bool isProcessable() const { return _isLooseEnd ? false : true; }
   size_t id() const { return _id; }
   std::string toString() {
-    return "<Step> _id: " +
-           basics::StringUtils::itoa(static_cast<int32_t>(_id)) +
-           ", _weight: " +
-           basics::StringUtils::ftoa(_weight);  // TODO: Add isLooseEnd
+    return "<Step> _id: " + basics::StringUtils::itoa(static_cast<int32_t>(_id)) +
+           ", _weight: " + basics::StringUtils::ftoa(_weight); // TODO: Add isLooseEnd
   }
 };
 
 class FifoQueueTest : public ::testing::Test {
-  // protected:
+ //protected:
  public:
   FifoQueueTest() {}
   ~FifoQueueTest() {}
@@ -176,6 +174,6 @@ TEST_F(FifoQueueTest, it_should_pop_all_loose_ends) {
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
-}  // namespace fifo_queue_graph_cache_test
+}  // namespace queue_graph_cache_test
 }  // namespace tests
 }  // namespace arangodb
