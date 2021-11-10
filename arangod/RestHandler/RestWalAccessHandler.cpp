@@ -267,6 +267,17 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   if (!parseFilter(filter)) {
     return;
   }
+  
+  if (_request->parsedValue("trackOnly", false)) {
+    // only track this client as a future WAL tailer, so that we do not purge the
+    // WAL files it will need for tailing soon
+    server().getFeature<DatabaseFeature>().enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
+      vocbase.replicationClients().track(syncerId, clientId, clientInfo, filter.tickStart,
+                                         replutils::BatchInfo::DefaultTimeoutForTailing);
+    });
+    generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+    return;
+  } 
 
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
