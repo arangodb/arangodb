@@ -1,6 +1,9 @@
 devel
 -----
 
+* Increase default stack size on Windows from 1MB to 4MB. This should allow
+  execution of larger queries without overflowing the stack.
+
 * Fixed BTS-637: Slow SynchronizeShard jobs which need to copy data could
   block quick SynchronizeShard jobs which have the data and only need to
   resync.
