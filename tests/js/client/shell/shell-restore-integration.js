@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
+/* global fail, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -26,13 +26,25 @@
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require('jsunity');
-let internal = require('internal');
-let arangodb = require('@arangodb');
-let fs = require('fs');
-let pu = require('@arangodb/testutils/process-utils');
-let db = arangodb.db;
-let isCluster = require("internal").isCluster();
+const jsunity = require('jsunity');
+const {assertTrue, assertFalse, assertEqual, assertNotEqual, assertInstanceOf} = jsunity.jsUnity.assertions;
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const fs = require('fs');
+const pu = require('@arangodb/testutils/process-utils');
+const db = arangodb.db;
+const isCluster = require("internal").isCluster();
+
+function createDumpJsonFile (path, databaseName, id) {
+  let fn = fs.join(path, "dump.json");
+  fs.write(fn, JSON.stringify({
+    database: databaseName,
+    properties: {
+      name: databaseName,
+      id: id
+    }
+  }));
+}
 
 function restoreIntegrationSuite () {
   'use strict';
@@ -42,22 +54,21 @@ function restoreIntegrationSuite () {
 
   assertTrue(fs.isFile(arangorestore), "arangorestore not found!");
 
-  let addConnectionArgs = function(args) {
-    let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
-    args.push('--server.endpoint');
-    args.push(endpoint);
-    args.push('--server.database');
-    args.push(arango.getDatabaseName());
-    args.push('--server.username');
-    args.push(arango.connectedUser());
-  };
+  const endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
+  const connectionArgs = [
+    '--server.endpoint', endpoint,
+    '--server.database', arango.getDatabaseName(),
+    '--server.username', arango.connectedUser(),
+  ];
 
   let runRestore = function(path, args, rc) {
-    args.push('--input-directory');
-    args.push(path);
-    addConnectionArgs(args);
+    const actualArgs =
+      [ ...connectionArgs,
+        '--input-directory', path,
+        ...args,
+      ];
 
-    let actualRc = internal.executeExternalAndWait(arangorestore, args);
+    let actualRc = internal.executeExternalAndWait(arangorestore, actualArgs);
     assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
     assertEqual(rc, actualRc.exit, actualRc);
   };
@@ -841,7 +852,65 @@ function restoreIntegrationSuite () {
         } catch (err) {}
       }
     },
-    
+
+    testRestoreRegressionDistributeShardsLike: function () {
+      const collectionsJson = [
+        {"parameters": {"name": "Comment_hasTag_Tag_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Comment_Smart", "type": 2, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Forum_hasMember_Person", "type": 3}},
+        {"parameters": {"name": "Forum_hasTag_Tag", "type": 3}},
+        {"parameters": {"name": "Forum", "type": 2}},
+        {"parameters": {"name": "Organisation", "type": 2}},
+        {"parameters": {"name": "Person_hasCreated_Comment_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_hasCreated_Post_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_hasInterest_Tag", "type": 3}},
+        {"parameters": {"name": "Person_knows_Person_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_likes_Comment_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_likes_Post_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_Smart", "type": 2}},
+        {"parameters": {"name": "Person_studyAt_University", "type": 3}},
+        {"parameters": {"name": "Person_workAt_Company", "type": 3}},
+        {"parameters": {"name": "Place", "type": 2}},
+        {"parameters": {"name": "Post_hasTag_Tag_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Post_Smart", "type": 2, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "TagClass", "type": 2}},
+        {"parameters": {"name": "Tag", "type": 2}},
+      ];
+      // satisfy the file format requirements by adding indexes
+      collectionsJson.forEach(col => { col.indexes = []; });
+
+      const path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+
+        const dbName = 'UnitTestRestoreRegressionDb';
+        db._createDatabase(dbName);
+        createDumpJsonFile(path, dbName);
+
+        for (const colJson of collectionsJson) {
+          const colName = colJson.parameters.name;
+          const fn = fs.join(path, colName + ".structure.json");
+          fs.write(fn, JSON.stringify(colJson));
+        }
+
+        const args = ['--server.database', dbName, '--import-data', 'false'];
+        runRestore(path, args, 0);
+
+        db._useDatabase(dbName);
+        for (const colJson of collectionsJson) {
+          const col = db._collection(colJson.parameters.name);
+          assertInstanceOf(arangodb.ArangoCollection, col);
+          assertEqual(colJson.parameters.name, col.name());
+          assertEqual(colJson.parameters.type, col.type());
+          if (isCluster) {
+            assertEqual(colJson.parameters.distributeShardsLike, col.properties().distributeShardsLike);
+          }
+        }
+        fs.removeDirectoryRecursive(path, true);
+      } finally {
+        db._useDatabase("_system");
+      }
+    },
   };
 }
 

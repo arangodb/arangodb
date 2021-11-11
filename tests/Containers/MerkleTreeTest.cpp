@@ -28,10 +28,17 @@
 #include "gtest/gtest.h"
 
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Basics/hashes.h"
 #include "Containers/MerkleTree.h"
 #include "Logger/LogMacros.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+
+using namespace arangodb;
 
 namespace {
 std::vector<std::uint64_t> permutation(std::uint64_t n) {
@@ -637,12 +644,28 @@ TEST(MerkleTreeTest, test_serializePortableSmall) {
   }
 
   ::arangodb::velocypack::Builder t1s;
-  t1.serialize(t1s);
+  t1.serialize(t1s, false);
+
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeVersion).isNumber());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeMaxDepth).isNumber());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeRangeMax).isString());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeRangeMin).isString());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeInitialRangeMin).isString());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeCount).isNumber());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeHash).isNumber());
+  
+  ASSERT_EQ(2, t1s.slice().get(StaticStrings::RevisionTreeMaxDepth).getNumber<int>());
+  ASSERT_EQ(32, t1s.slice().get(StaticStrings::RevisionTreeCount).getNumber<int>());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::deserialize(
           t1s.slice());
   ASSERT_NE(t2, nullptr);
+  ASSERT_EQ(2, t2->depth());
+  ASSERT_EQ(32, t2->count());
+  ASSERT_EQ(t1.range(), t2->range());
+  ASSERT_EQ(t1.rootValue(), t2->rootValue());
+
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
@@ -668,16 +691,105 @@ TEST(MerkleTreeTest, test_serializePortableLarge) {
   ASSERT_EQ(10'000'000, t1.count());
 
   ::arangodb::velocypack::Builder t1s;
-  t1.serialize(t1s);
+  t1.serialize(t1s, false);
+
+  ASSERT_GT(t1s.slice().byteSize(), 7'000'000);
+  ASSERT_LT(t1s.slice().byteSize(), 8'000'000);
+  
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeVersion).isNumber());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeMaxDepth).isNumber());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeRangeMax).isString());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeRangeMin).isString());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeInitialRangeMin).isString());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeCount).isNumber());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeHash).isNumber());
+  
+  ASSERT_EQ(6, t1s.slice().get(StaticStrings::RevisionTreeMaxDepth).getNumber<int>());
+  ASSERT_EQ(10'000'000, t1s.slice().get(StaticStrings::RevisionTreeCount).getNumber<int>());
+  ASSERT_EQ(t1.nodeCountAtDepth(6), t1s.slice().get(StaticStrings::RevisionTreeNodes).length());
+  
+  for (auto it : arangodb::velocypack::ArrayIterator(t1s.slice().get(StaticStrings::RevisionTreeNodes))) {
+    ASSERT_TRUE(it.isObject());
+    ASSERT_TRUE(it.hasKey(StaticStrings::RevisionTreeHash));
+    ASSERT_TRUE(it.hasKey(StaticStrings::RevisionTreeCount));
+  }
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::deserialize(
           t1s.slice());
   ASSERT_NE(t2, nullptr);
+
+  ASSERT_EQ(6, t2->depth());
+  ASSERT_EQ(10'000'000, t2->count());
+  ASSERT_EQ(t1.range(), t2->range());
+  ASSERT_EQ(t1.rootValue(), t2->rootValue());
+
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
 #endif
+
+TEST(MerkleTreeTest, test_serializePortableLargeOnlyPopulated) {
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 1ULL << 18);
+
+  std::vector<std::uint64_t> keys;
+  for (std::uint64_t i = 10'000'000; i < 60'000'000; i += 5) {
+    keys.emplace_back(i);
+    if (keys.size() == 5000) {
+      t1.insert(keys);
+      keys.clear();
+    }
+  }
+  ASSERT_EQ(10'000'000, t1.count());
+
+  ::arangodb::velocypack::Builder t1s;
+  t1.serialize(t1s, true);
+ 
+  ASSERT_GT(t1s.slice().byteSize(), 6'000'000);
+  ASSERT_LT(t1s.slice().byteSize(), 7'000'000);
+  
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeVersion).isNumber());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeMaxDepth).isNumber());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeRangeMax).isString());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeRangeMin).isString());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeInitialRangeMin).isString());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeCount).isNumber());
+  ASSERT_TRUE(t1s.slice().get(StaticStrings::RevisionTreeHash).isNumber());
+  
+  ASSERT_EQ(6, t1s.slice().get(StaticStrings::RevisionTreeMaxDepth).getNumber<int>());
+  ASSERT_EQ(10'000'000, t1s.slice().get(StaticStrings::RevisionTreeCount).getNumber<int>());
+  ASSERT_GE(t1.nodeCountAtDepth(6), t1s.slice().get(StaticStrings::RevisionTreeNodes).length());
+ 
+  size_t populated = 0;
+  size_t empty = 0;
+  for (auto it : arangodb::velocypack::ArrayIterator(t1s.slice().get(StaticStrings::RevisionTreeNodes))) {
+    ASSERT_TRUE(it.isObject());
+
+    if (it.hasKey(StaticStrings::RevisionTreeHash)) {
+      ++populated;
+    } else {
+      ++empty;
+    }
+  }
+
+  ASSERT_GT(empty, 0);
+  ASSERT_GT(populated, 0);
+
+  ASSERT_GE(t1.nodeCountAtDepth(6), empty + populated);
+
+  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
+      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::deserialize(
+          t1s.slice());
+  ASSERT_NE(t2, nullptr);
+  
+  ASSERT_EQ(6, t2->depth());
+  ASSERT_EQ(10'000'000, t2->count());
+  ASSERT_EQ(t1.range(), t2->range());
+  ASSERT_EQ(t1.rootValue(), t2->rootValue());
+
+  ASSERT_TRUE(t1.diff(*t2).empty());
+  ASSERT_TRUE(t2->diff(t1).empty());
+}
 
 TEST(MerkleTreeTest, test_tree_based_on_2021_hlcs) {
   uint64_t rangeMin = uint64_t(1609459200000000000ULL);

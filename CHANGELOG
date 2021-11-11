@@ -1,4 +1,60 @@
-v3.8.2 (XXXX-XX-XX)
+v3.8.3 (XXXX-XX-XX)
+-------------------
+    
+* Close a potential gap during shard synchronization when moving from the
+  initial sync step to the WAL tailing step. In this small gap the leader 
+  could purge some of the WAL files that would be required by the following
+  WAL tailing step. This was possible because at the end of the initial sync
+  step, the snapshot on the leader is released, and there is a small window
+  of time before the follower will issue its first WAL tailing request.
+    
+* Improve Shards overview in web UI: the number of currently syncing shards is
+  now displayed per collection. Additionally, shards on failed servers are now
+  displayed in a different color.
+
+* Fixed BTS-637: Slow SynchronizeShard jobs which need to copy data could block
+  quick SynchronizeShard jobs which have the data and only need to resync.
+
+* When enabling the cluster supervision maintenance mode via the web UI, there
+  is now the possibility to select a duration for the maintenance mode.
+  Previous versions of ArangoDB always enabled the maintenance mode for one
+  hour, without allowing any choice here.
+
+* Fixed SEARCH-261: Fix possible race between file creation and directory
+  cleaner (ArangoSearch).
+
+* Fixed SEARCH-260: Fix invalid sorting order of stored features in presence of
+  primary sort (ArangoSearch).
+
+* DEVSUP-899: Fixed Subquery execution in a very rare case a subquery, nested in
+  another subquery, was not executed, which is fixed now.
+  Technical details:
+  If we have two subqueries: `Outer` and `Nested` the Outer will define the
+  input for Nested. And Outer has the pattern: 1 input, subqueryDone, 1 input,
+  subqueryDone [...] and our internal batching did cut a batch like this:
+  [<...>, input (A)] | [subqueryDone, input (B), subqueryDone, <...>] than
+  Nested on input (B) was not executed. As soon as we have more than 1 input per
+  Outer, or a different cutting position, all was good.
+
+* Fixed potential undefined behavior in edge cache during cache migration tasks.
+  There was a short window of time in which an already freed Table could be used
+  by concurrently running edge lookups.
+
+* Improve performance of getting-in-sync protocol when using revision trees (for
+  collections created with 3.8). The protocol optimization allows skipping the
+  unused parts of the revision trees in the data transfer, which can
+  substantially reduce the amount of data to be transfered for small and medium
+  collections when trying to get back into sync.
+
+* Change error message for queries that use too much memory from "resource limit
+  exceeded" to "query would use more memory than allowed".
+
+* arangorestore: Fix the order (regarding distributeShardsLike) in which
+  collections are being created during restore, which could result in an error
+  and make manual intervention necessary.
+
+
+v3.8.2 (2021-10-26)
 -------------------
 
 * When using Indexes within traversals (e.g. [_from, date]) and filter based

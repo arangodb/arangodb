@@ -284,7 +284,9 @@ MerkleTree<Hasher, BranchingBits>::deserialize(velocypack::Slice slice) {
   std::uint64_t summaryHash = read.getNumber<std::uint64_t>();
 
   velocypack::Slice nodes = slice.get(StaticStrings::RevisionTreeNodes);
-  if (!nodes.isArray() || nodes.length() < nodeCountAtDepth(depth)) {
+  if (!nodes.isArray() || nodes.length() > nodeCountAtDepth(depth)) {
+    // note: we can have less nodes than nodeCountAtDepth because of
+    // "skip" nodes
     return nullptr;
   }
 
@@ -296,23 +298,34 @@ MerkleTree<Hasher, BranchingBits>::deserialize(velocypack::Slice slice) {
   std::uint64_t totalHash = 0;
   std::uint64_t index = 0;
   for (velocypack::Slice nodeSlice : velocypack::ArrayIterator(nodes)) {
-    read = nodeSlice.get(StaticStrings::RevisionTreeCount);
-    if (!read.isNumber()) {
-      return nullptr;
-    }
-    std::uint64_t count = read.getNumber<std::uint64_t>();
+    TRI_ASSERT(nodeSlice.isObject());
 
-    read = nodeSlice.get(StaticStrings::RevisionTreeHash);
-    if (!read.isNumber()) {
-      return nullptr;
+    arangodb::velocypack::Slice skipSlice = nodeSlice.get("skip");
+    if (!skipSlice.isNone()) {
+      index += skipSlice.getNumber<std::uint64_t>();
+      continue;
     }
-    std::uint64_t hash = read.getNumber<std::uint64_t>();
-    Node& node = tree->node(index);
-    node.count = count;
-    node.hash = hash;
+    
+    arangodb::velocypack::Slice countSlice = nodeSlice.get(StaticStrings::RevisionTreeCount);
+    arangodb::velocypack::Slice hashSlice = nodeSlice.get(StaticStrings::RevisionTreeHash);
+    
+    // skip any nodes for which there is neither a count nor a hash value
+    // present. such nodes will be returned by versions which support the
+    // "onlyPopulated" URL parameter for improved efficiency.
+    if (!countSlice.isNone() || !hashSlice.isNone()) {
+      // if any attribute is present, both need to be numeric!
+      if (!countSlice.isNumber() || !hashSlice.isNumber()) {
+        return nullptr;
+      }
+      std::uint64_t count = countSlice.getNumber<std::uint64_t>();
+      std::uint64_t hash = hashSlice.getNumber<std::uint64_t>();
+      if (count != 0 || hash != 0) {
+        tree->node(index) = { count, hash };
 
-    totalCount += count;
-    totalHash ^= hash;
+        totalCount += count;
+        totalHash ^= hash;
+      }
+    }
 
     ++index;
   }
@@ -728,11 +741,14 @@ std::string MerkleTree<Hasher, BranchingBits>::toString(bool full) const {
 
 template <typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::serialize(velocypack::Builder& output,
-                                                  std::uint64_t depth) const {
+                                                  bool onlyPopulated) const {
+  // only a minimum allocation here. we may need a lot more
+  output.reserve(onlyPopulated ? 1024 : 256 * 1024);
+
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
 
   char ridBuffer[arangodb::basics::maxUInt64StringSize];
-  depth = std::min(depth, meta().depth);
+  std::uint64_t depth = meta().depth;
 
   velocypack::ObjectBuilder topLevelGuard(&output);
   output.add(StaticStrings::RevisionTreeVersion, velocypack::Value(::CurrentVersion));
@@ -748,13 +764,40 @@ void MerkleTree<Hasher, BranchingBits>::serialize(velocypack::Builder& output,
   
   velocypack::ArrayBuilder nodeArrayGuard(&output, StaticStrings::RevisionTreeNodes);
   
+  std::uint64_t toSkip = 0;
   std::uint64_t last = nodeCountAtDepth(depth);
   for (std::uint64_t index = 0; index < last; ++index) {
-    velocypack::ObjectBuilder nodeGuard(&output);
     Node const& node = this->node(index);
-    output.add(StaticStrings::RevisionTreeCount, velocypack::Value(node.count));
-    output.add(StaticStrings::RevisionTreeHash, velocypack::Value(node.hash)); 
+    if (onlyPopulated) {
+      if (node.count == 0 && node.hash == 0) {
+        // node is empty. simply count how many empty nodes we have in a run
+        ++toSkip;
+      } else {
+        // check if we have a run of empty nodes...
+        if (toSkip == 1) {
+          // return an empty object. this is still worse than returning nothing at all,
+          // but otherwise we would need to return the index number of each populated node,
+          // which is likely more data
+          output.add(velocypack::Slice::emptyObjectSlice());
+        } else if (toSkip > 1) {
+          // cheat and only return the number of empty buckets
+          output.openObject();
+          output.add("skip", velocypack::Value(toSkip));
+          output.close();
+        }
+        toSkip = 0;
+        velocypack::ObjectBuilder nodeGuard(&output);
+        output.add(StaticStrings::RevisionTreeCount, velocypack::Value(node.count));
+        output.add(StaticStrings::RevisionTreeHash, velocypack::Value(node.hash)); 
+      }
+    } else {
+      velocypack::ObjectBuilder nodeGuard(&output);
+      output.add(StaticStrings::RevisionTreeCount, velocypack::Value(node.count));
+      output.add(StaticStrings::RevisionTreeHash, velocypack::Value(node.hash)); 
+    }
   }
+  // if onlyPopulated = true, we intentionally don't serialize any
+  // to-skip nodes at the end, because they are optional
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>

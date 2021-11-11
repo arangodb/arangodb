@@ -106,6 +106,12 @@
             this.loggerView.logTopicView.remove();
           }
         }
+      
+        if (this.lastRoute === '#shards') {
+          if (this.shardsView) {
+            this.shardsView.remove();
+          }
+        }
 
         // react unmounting
         ReactDOM.unmountComponentAtNode(document.getElementById("content"));

@@ -29,6 +29,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Basics/debugging.h"
 
 #include <atomic>
 #include <chrono>
@@ -193,6 +194,24 @@ class ActionBase {
   /// @brief return priority, inherited from ActionDescription
   int priority() const { return _priority; }
 
+  void setPriority(int prio) {
+    _priority = prio;
+  }
+
+  bool requeueRequested() const {
+    return _requeueRequested;
+  }
+
+  int requeuePriority() const {
+    TRI_ASSERT(_requeueRequested);
+    return _requeuePriority;
+  }
+
+  void requeueMe(int requeuePriority) {
+    _requeueRequested = true;
+    _requeuePriority = requeuePriority;
+  }
+
  protected:
   /// @brief common initialization for all constructors
   void init();
@@ -231,6 +250,8 @@ private:
   mutable std::mutex resLock;
   Result _result;
 
+  bool _requeueRequested = false;
+  int _requeuePriority = 0;
 };  // class ActionBase
 
 class ShardDefinition {
