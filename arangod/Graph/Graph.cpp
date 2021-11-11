@@ -247,10 +247,6 @@ std::set<std::string> const& Graph::edgeCollections() const {
   return _edgeColls;
 }
 
-EdgeDefinition::EdgeDefinitionType Graph::getEdgeDefinitionType(std::string const& edge) const {
-  return EdgeDefinition::EdgeDefinitionType::DEFAULT;
-}
-
 std::map<std::string, EdgeDefinition> const& Graph::edgeDefinitions() const {
   return _edgeDefs;
 }
