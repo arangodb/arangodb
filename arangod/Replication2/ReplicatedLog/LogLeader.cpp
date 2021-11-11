@@ -1097,10 +1097,10 @@ void replicated_log::LogLeader::establishLeadership() {
         LOG_CTX("5ceda", FATAL, self->_logContext)
             << "failed to establish leadership: " << err.what();
       }
+    } else {
+      LOG_TOPIC("94696", TRACE, Logger::REPLICATION2)
+          << "leader is already gone, no leadership was established";
     }
-
-    LOG_TOPIC("94696", TRACE, Logger::REPLICATION2)
-        << "leader is already gone, no leadership was established";
   });
 }
 
