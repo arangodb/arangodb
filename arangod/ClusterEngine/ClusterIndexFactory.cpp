@@ -84,7 +84,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
       velocypack::Builder& normalized,
       velocypack::Slice definition,
       bool isCreation,
-      TRI_vocbase_t const& vocbase             ) const override {
+      TRI_vocbase_t const& vocbase) const override {
     auto& clusterEngine =
         _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
     auto* engine = clusterEngine.actualEngine();
