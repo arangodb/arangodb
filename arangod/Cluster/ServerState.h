@@ -282,6 +282,13 @@ class ServerState {
   /// file where the server persists its UUID
   std::string getUuidFilename() const;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  [[nodiscard]] bool isGoogleTest() const noexcept;
+  void setGoogleTest(bool isGoogleTests) noexcept;
+#else
+  [[nodiscard]] constexpr bool isGoogleTest() const noexcept { return false; }
+#endif
+
  private:
   /// @brief atomically fetches the server role
   inline RoleEnum loadRole() const noexcept {
@@ -374,6 +381,10 @@ class ServerState {
   TRI_voc_tick_t _foxxmasterSince;
   
   bool _foxxmasterQueueupdate;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  bool _isGoogleTests = false;
+#endif
 };
 }  // namespace arangodb
 

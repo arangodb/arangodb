@@ -40,16 +40,16 @@ struct AccessMode {
                     AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
                 "AccessMode::Type total order fail");
 
-  static bool isNone(Type type) { return (type == Type::NONE); }
+  static bool isNone(Type type) noexcept { return type == Type::NONE; }
 
-  static bool isRead(Type type) { return (type == Type::READ); }
+  static bool isRead(Type type) noexcept { return type == Type::READ; }
 
-  static bool isWrite(Type type) { return (type == Type::WRITE); }
+  static bool isWrite(Type type) noexcept { return type == Type::WRITE; }
 
-  static bool isExclusive(Type type) { return (type == Type::EXCLUSIVE); }
+  static bool isExclusive(Type type) noexcept { return type == Type::EXCLUSIVE; }
 
-  static bool isWriteOrExclusive(Type type) {
-    return (isWrite(type) || isExclusive(type));
+  static bool isWriteOrExclusive(Type type) noexcept {
+    return isWrite(type) || isExclusive(type);
   }
 
   /// @brief checks if the type of the two modes is different

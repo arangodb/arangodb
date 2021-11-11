@@ -162,53 +162,6 @@ uint64_t getNumberOfShards(arangodb::RestoreFeature::Options const& options,
   return result;
 }
 
-/// @brief Sort collections for proper recreation order
-bool sortCollectionsForCreation(VPackBuilder const& l, VPackBuilder const& r) {
-  VPackSlice const left = l.slice().get("parameters");
-  VPackSlice const right = r.slice().get("parameters");
-
-  std::string leftName =
-      arangodb::basics::VelocyPackHelper::getStringValue(left, "name", "");
-  std::string rightName =
-      arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
-
-  // First we sort by shard distribution.
-  // We first have to create the collections which have no dependencies.
-  // NB: Dependency graph has depth at most 1, no need to manage complex DAG
-  VPackSlice leftDist = left.get(arangodb::StaticStrings::DistributeShardsLike);
-  VPackSlice rightDist = right.get(arangodb::StaticStrings::DistributeShardsLike);
-  if (leftDist.isNone() && rightDist.isString() &&
-      rightDist.copyString() == leftName) {
-    return true;
-  }
-  if (rightDist.isNone() && leftDist.isString() &&
-      leftDist.copyString() == rightName) {
-    return false;
-  }
-
-  // Next we sort by collection type so that vertex collections are recreated
-  // before edge, etc.
-  int leftType =
-      arangodb::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
-  int rightType =
-      arangodb::basics::VelocyPackHelper::getNumericValue<int>(right, "type", 0);
-  if (leftType != rightType) {
-    return leftType < rightType;
-  }
-
-  // Finally, sort by name so we have stable, reproducible results
-  // Sort system collections first
-  if (!leftName.empty() && leftName[0] == '_' &&
-      !rightName.empty() && rightName[0] != '_') {
-    return true;
-  }
-  if (!leftName.empty() && leftName[0] != '_' &&
-      !rightName.empty() && rightName[0] == '_') {
-    return false;
-  }
-  return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
-}
-
 void makeAttributesUnique(arangodb::velocypack::Builder& builder,
                           arangodb::velocypack::Slice slice) {
   if (slice.isObject()) {
@@ -530,7 +483,6 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::unique_ptr<SimpleHttpResult> response(
       httpClient.request(arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
   return arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(), "restoring view", body);
-  //return ::checkHttpResponse(httpClient, response, "restoring view", body);
 }
 
 arangodb::Result triggerFoxxHeal(arangodb::httpclient::SimpleHttpClient& httpClient) {

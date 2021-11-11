@@ -331,7 +331,7 @@ class ClusterMethods {
   /// @param isNewDatabase
   /// @param colToDistributeShardsLike
 
-  static std::vector<std::shared_ptr<LogicalCollection>> createCollectionOnCoordinator(
+  static std::vector<std::shared_ptr<LogicalCollection>> createCollectionsOnCoordinator(
       TRI_vocbase_t& vocbase, arangodb::velocypack::Slice parametersOfCollections,
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
       bool enforceReplicationFactor, bool isNewDatabase,

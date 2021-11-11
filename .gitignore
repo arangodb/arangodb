@@ -85,9 +85,9 @@ nbproject/
 .idea
 .vscode
 .vs
+CMakeSettings.json
 *.sublime-workspace
 *.sublime-project
-CMakeSettings.json
 
 test.cpp.txt
 

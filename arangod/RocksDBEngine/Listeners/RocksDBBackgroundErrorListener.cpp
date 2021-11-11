@@ -57,6 +57,18 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorR
         operation = "memtable";
         break;
       }
+      case rocksdb::BackgroundErrorReason::kManifestWrite: {
+        operation = "manifest write";
+        break;
+      }
+      case rocksdb::BackgroundErrorReason::kManifestWriteNoWAL: {
+        operation = "manifest write no WAL";
+        break;
+      }
+      case rocksdb::BackgroundErrorReason::kFlushNoWAL: {
+        operation = "flush no WAL";
+        break;
+      }
     }
 
     LOG_TOPIC("fae2c", ERR, Logger::ROCKSDB)

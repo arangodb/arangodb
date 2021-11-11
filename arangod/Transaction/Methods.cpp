@@ -1062,24 +1062,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
     bool didReplace = false;
 
-#ifdef USE_ENTERPRISE
-    if (collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE &&
-        ServerState::instance()->isSingleServer()) {
-      auto vsecol =
-          dynamic_cast<arangodb::VirtualSmartEdgeCollection const*>(collection.get());
-
-      if (vsecol == nullptr) {
-        // Cast did not work. Illegal state
-        return Result(TRI_ERROR_NO_SMART_COLLECTION);
-      }
-
-      auto vRes = vsecol->verifyEdge(value);
-      if (vRes.fail()) {
-        return vRes;
-      }
-    }
-#endif
-
     if (!isPrimaryKeyConstraintViolation) {
       // regular insert without overwrite option. the insert itself will check
       // if the primary key already exists
@@ -2010,23 +1992,9 @@ OperationResult transaction::Methods::countLocal(std::string const& collectionNa
   DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
 
-  //  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
-  //
-  //  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-  //    return OperationResult(lockResult);
-  //  }
-
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::READ));
 
   uint64_t num = collection->numberDocuments(this, type);
-
-  //  if (lockResult.is(TRI_ERROR_LOCKED)) {
-  //    Result res = unlockRecursive(cid, AccessMode::Type::READ);
-  //
-  //    if (res.fail()) {
-  //      return OperationResult(res);
-  //    }
-  //  }
 
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(num));
