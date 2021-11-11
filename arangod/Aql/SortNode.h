@@ -102,18 +102,11 @@ class SortNode : public ExecutionNode {
   /// @brief returns all sort information
   SortInformation getSortInformation(ExecutionPlan*, arangodb::basics::StringBuffer*) const;
 
-  std::vector<std::pair<ExecutionNode*, bool>> getCalcNodePairs();
-
   /// @brief simplifies the expressions of the sort node
   /// this will sort expressions if they are constant
   /// the method will return true if all sort expressions were removed after
   /// simplification, and false otherwise
   bool simplify(ExecutionPlan*);
-
-  /// @brief removes the first count conditions from the sort condition
-  /// this can be used if the first conditions of the condition are constant
-  /// values (e.g. when a FILTER condition exists that guarantees this)
-  void removeConditions(size_t count);
 
   SorterType sorterType() const;
 
