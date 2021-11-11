@@ -91,44 +91,6 @@ void SortNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add("strategy", VPackValue(sorterTypeName(sorterType())));
 }
 
-class SortNodeFindMyExpressions
-    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
- public:
-  size_t _foundCalcNodes;
-  SortElementVector _elms;
-  std::vector<std::pair<ExecutionNode*, bool>> _myVars;
-
-  explicit SortNodeFindMyExpressions(SortNode* me)
-      : _foundCalcNodes(0), _elms(me->elements()) {
-    _myVars.resize(_elms.size());
-  }
-
-  bool before(ExecutionNode* en) override final {
-    auto vars = en->getVariablesSetHere();
-    for (auto const& v : vars) {
-      for (size_t n = 0; n < _elms.size(); n++) {
-        if (_elms[n].var->id == v->id) {
-          _myVars[n] = std::make_pair(en, _elms[n].ascending);
-          _foundCalcNodes++;
-          break;
-        }
-      }
-    }
-    return _foundCalcNodes >= _elms.size();
-  }
-};
-
-std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs() {
-  SortNodeFindMyExpressions findExp(this);
-  _dependencies[0]->walk(findExp);
-  if (findExp._foundCalcNodes < _elements.size()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "SortNode wasn't able to locate all its CalculationNodes");
-  }
-  return findExp._myVars;
-}
-
 /// @brief simplifies the expressions of the sort node
 /// this will sort expressions if they are constant
 /// the method will return true if all sort expressions were removed after
@@ -157,12 +119,6 @@ bool SortNode::simplify(ExecutionPlan* plan) {
   }
 
   return _elements.empty();
-}
-
-void SortNode::removeConditions(size_t count) {
-  TRI_ASSERT(_elements.size() > count);
-  TRI_ASSERT(count > 0);
-  _elements.erase(_elements.begin(), _elements.begin() + count);
 }
 
 /// @brief returns all sort information

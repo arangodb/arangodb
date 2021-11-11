@@ -708,14 +708,6 @@ class ClusterInfo final {
                                             LogicalCollection const*);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief set collection status in coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  Result setCollectionStatusCoordinator(std::string const& databaseName,
-                                        std::string const& collectionID,
-                                        TRI_vocbase_col_status_e status);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create view in coordinator
   //////////////////////////////////////////////////////////////////////////////
   Result createViewCoordinator(         // create view
@@ -891,12 +883,6 @@ class ClusterInfo final {
   void invalidateCurrentCoordinators();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidate current id mappings
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidateCurrentMappings();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Plan" structure
   //////////////////////////////////////////////////////////////////////////////
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
@@ -918,8 +904,6 @@ class ClusterInfo final {
   void setServerAliases(std::unordered_map<ServerID, std::string> aliases);
 
   void setServerAdvertisedEndpoints(std::unordered_map<ServerID, std::string> advertisedEndpoints);
-
-  void setServerTimestamps(std::unordered_map<ServerID, std::string> timestamps);
 #endif
 
   bool serverExists(ServerID const& serverId) const noexcept;
@@ -929,10 +913,6 @@ class ClusterInfo final {
   std::unordered_map<ServerID, std::string> getServers();
 
   TEST_VIRTUAL std::unordered_map<ServerID, std::string> getServerAliases();
-
-  std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints() const;
-
-  std::unordered_map<ServerID, std::string> getServerTimestamps() const;
 
   std::unordered_map<ServerID, RebootId> rebootIds() const;
 
