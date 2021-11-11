@@ -639,11 +639,11 @@ function dumpIntegrationSuite () {
 
         let tree = runDump(path, args, 0);
         for (let i = 1; i < 3; ++i) {
-          db._useDatabase("databaseTest" + i);
-          assertEqual(-1, tree.indexOf("databaseTest" + i));
-          assertNotEqual(-1, tree.indexOf(db._id()));
-          checkDumpJsonFile("databaseTest" + i, fs.join(path, db._id()), db._id());
-          checkCollections(tree, path, db._id());
+          const dbName = "databaseTest" + i;
+          db._useDatabase(dbName);
+          assertNotEqual(-1, tree.indexOf(dbName));
+          checkDumpJsonFile(dbName, fs.join(path, dbName), db._id());
+          checkCollections(tree, path, dbName);
           db._useDatabase("_system");
         }
       } finally {
