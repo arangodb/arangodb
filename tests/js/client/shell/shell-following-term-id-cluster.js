@@ -30,6 +30,7 @@ let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
+let { getMetric, debugCanUseFailAt, debugRemoveFailAt, debugSetFailAt, debugClearFailAt, waitForShardsInSync } = require('@arangodb/test-helper');
 
 function createCollectionWithKnownLeaderAndFollower(cn) {
   db._create(cn, {numberOfShards:1, replicationFactor:2});
@@ -64,20 +65,19 @@ function switchConnectionToFollower(collInfo) {
 function followingTermIdSuite() {
   'use strict';
   const cn = 'UnitTestsFollowingTermId';
-  let collInfo = {};
 
   return {
 
     setUp: function () {
       db._drop(cn);
-      collInfo = createCollectionWithKnownLeaderAndFollower(cn);
     },
 
     tearDown: function () {
       db._drop(cn);
     },
     
-    testFollowingTermIdSuite: function() {
+    testFollowingTermIdHandling: function() {
+      let collInfo = createCollectionWithKnownLeaderAndFollower(cn);
       // We have a shard whose leader and follower is known to us.
       
       // Let's insert some documents:
@@ -92,7 +92,7 @@ function followingTermIdSuite() {
       switchConnectionToFollower(collInfo);
       assertEqual(100, db._collection(collInfo.shard).count());
 
-      // Try to insert a document with the leaderId:
+      // Try to insert a document with only the leaderId:
       let res = arango.POST(`/_api/document/${collInfo.shard}?isSynchronousReplication=${collInfo.idMap[collInfo.leader]}`, {Hallo:101});
       assertTrue(res.error);
       assertEqual(406, res.code);
@@ -110,6 +110,125 @@ function followingTermIdSuite() {
       assertEqual(101, db._collection(collInfo.shard).count());
 
       switchConnectionToCoordinator(collInfo);
+    },
+    
+    testFollowingTermIdHandlingMixedMode: function() {
+      let collInfo = createCollectionWithKnownLeaderAndFollower(cn);
+
+      let followerEndpoint = collInfo.endpointMap[collInfo.follower];
+      let leaderEndpoint = collInfo.endpointMap[collInfo.leader];
+
+      if (!debugCanUseFailAt(followerEndpoint)) {
+        // test only works if we can use failure points
+        return;
+      }
+
+      // We have a shard whose leader and follower is known to us.
+      // now set failure points on the follower to get the shard out
+      // of sync
+      try {
+        switchConnectionToFollower(collInfo);
+        // this failure point makes a follower refuse every operation sent by the leader
+        // via synchronous replication
+        debugSetFailAt(followerEndpoint, "synchronousReplication::refuseOnFollower");
+        // this failure point makes the follower not send the "wantFollowingTermId" as part
+        // of the synchronization protocol
+        debugSetFailAt(followerEndpoint, "synchronousReplication::dontSendWantFollowingTerm");
+        
+        let droppedFollowersBefore = getMetric(leaderEndpoint, "arangodb_dropped_followers_count");
+     
+        switchConnectionToCoordinator(collInfo);
+        let c = db._collection(cn);
+        // this will drop the follower
+        c.insert({});
+        
+        let droppedFollowersAfter = getMetric(leaderEndpoint, "arangodb_dropped_followers_count");
+        assertTrue(droppedFollowersAfter > droppedFollowersBefore, { droppedFollowersBefore, droppedFollowersAfter });
+        
+        switchConnectionToFollower(collInfo);
+        debugRemoveFailAt(followerEndpoint, "synchronousReplication::refuseOnFollower");
+
+        // wait for everything to get back into sync
+        switchConnectionToCoordinator(collInfo);
+        assertEqual(1, db._collection(cn).count());
+        waitForShardsInSync(cn, 120); 
+
+        switchConnectionToFollower(collInfo);
+        assertEqual(1, db._collection(collInfo.shard).count());
+        
+        switchConnectionToLeader(collInfo);
+        assertEqual(1, db._collection(collInfo.shard).count());
+        
+      } finally {
+        switchConnectionToFollower(collInfo);
+        debugClearFailAt(followerEndpoint);
+
+        switchConnectionToCoordinator(collInfo);
+      }
+    },
+    
+    testFollowingTermIdIsSet: function() {
+      let collInfo = createCollectionWithKnownLeaderAndFollower(cn);
+
+      let followerEndpoint = collInfo.endpointMap[collInfo.follower];
+      let leaderEndpoint = collInfo.endpointMap[collInfo.leader];
+
+      if (!debugCanUseFailAt(followerEndpoint)) {
+        // test only works if we can use failure points
+        return;
+      }
+
+      // We have a shard whose leader and follower is known to us.
+      // now set failure points on the follower to get the shard out
+      // of sync
+      try {
+        switchConnectionToFollower(collInfo);
+
+        // this failure point makes a follower refuse every operation sent by the leader
+        // via synchronous replication
+        debugSetFailAt(followerEndpoint, "synchronousReplication::refuseOnFollower");
+        // this failure point makes the follower reject all synchronous replication requests
+        // that do not have a following term id
+        debugSetFailAt(followerEndpoint, "synchronousReplication::expectFollowingTerm");
+        
+        let droppedFollowersBefore = getMetric(leaderEndpoint, "arangodb_dropped_followers_count");
+     
+        switchConnectionToCoordinator(collInfo);
+        let c = db._collection(cn);
+        // this will drop the follower
+        c.insert({});
+        
+        let droppedFollowersAfter = getMetric(leaderEndpoint, "arangodb_dropped_followers_count");
+        assertTrue(droppedFollowersAfter > droppedFollowersBefore, { droppedFollowersBefore, droppedFollowersAfter });
+        
+        switchConnectionToFollower(collInfo);
+        debugRemoveFailAt(followerEndpoint, "synchronousReplication::refuseOnFollower");
+
+        // wait for everything to get back into sync
+        switchConnectionToCoordinator(collInfo);
+        assertEqual(1, db._collection(cn).count());
+        waitForShardsInSync(cn, 120); 
+
+        switchConnectionToFollower(collInfo);
+        assertEqual(1, db._collection(collInfo.shard).count());
+        
+        switchConnectionToLeader(collInfo);
+        assertEqual(1, db._collection(collInfo.shard).count());
+        
+
+        droppedFollowersBefore = getMetric(leaderEndpoint, "arangodb_dropped_followers_count");
+        // the following insert should not drop any followers
+        switchConnectionToCoordinator(collInfo);
+        c.insert({});
+        
+        droppedFollowersAfter = getMetric(leaderEndpoint, "arangodb_dropped_followers_count");
+        assertEqual(droppedFollowersAfter, droppedFollowersBefore);
+        
+      } finally {
+        switchConnectionToFollower(collInfo);
+        debugClearFailAt(followerEndpoint);
+        switchConnectionToCoordinator(collInfo);
+      }
     },
     
   };

@@ -149,6 +149,12 @@ class FollowerInfo {
   Result remove(ServerID const& s);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief explicitly set the following term id for a follower.
+  /// this should only be used for special cases during upgrading or testing.
+  //////////////////////////////////////////////////////////////////////////////
+  void setFollowingTermId(ServerID const& s, uint64_t value);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief for each run of the "get-in-sync" protocol we generate a
   /// random number to identify this "following term". This is created
   /// when the follower fetches the exclusive lock to finally get in sync
