@@ -691,7 +691,7 @@ auto QuerySnippet::prepareFirstBranch(
       if (localGraphNode->isDisjoint()) {
         if (!myExpFinal.empty()) {
           size_t numberOfShards = myExpFinal.begin()->second.size();
-          // We need one expansion for every non-satellite collection in the Graph (-1 per satellite)
+          // We need one expansion for every non-satellite collection in the Graph
           size_t amountOfNonSatellites = 0;
           for (auto const& col : localGraphNode->collections()) {
             if (!col->isSatellite()) {
