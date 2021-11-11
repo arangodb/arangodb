@@ -96,7 +96,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
     }
 
     return engine->indexFactory().factory(_type).normalize(
-        normalized, definition, isCreation, vocbase          );
+        normalized, definition, isCreation, vocbase);
   }
 };
 
