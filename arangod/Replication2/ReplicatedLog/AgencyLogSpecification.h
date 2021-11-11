@@ -125,11 +125,16 @@ struct LogCurrent {
 
   struct Leader {
     LogTerm term;
+    ParticipantsConfig committedParticipantsConfig;
+
+    auto toVelocyPack(VPackBuilder&) const -> void;
+    static auto fromVelocyPack(VPackSlice) -> Leader;
   };
 
   std::optional<Leader> leader;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
+  static auto fromVelocyPack(VPackSlice) -> LogCurrent;
   LogCurrent(from_velocypack_t, VPackSlice);
   LogCurrent() = default;
 };

@@ -120,16 +120,17 @@ auto LogCurrentLocalState::toVelocyPack(VPackBuilder& builder) const -> void {
 }
 
 LogCurrent::LogCurrent(from_velocypack_t, VPackSlice slice) {
-  for (auto const& [key, value] :
-       VPackObjectIterator(slice.get(StaticStrings::LocalStatus))) {
-    localState.emplace(ParticipantId{key.copyString()},
-                       LogCurrentLocalState(from_velocypack, value));
+  if (auto ls = slice.get(StaticStrings::LocalStatus); !ls.isNone()) {
+    for (auto const& [key, value] : VPackObjectIterator(ls)) {
+      localState.emplace(ParticipantId{key.copyString()},
+                         LogCurrentLocalState(from_velocypack, value));
+    }
   }
   if (auto ss = slice.get("supervision"); !ss.isNone()) {
     supervision = LogCurrentSupervision{from_velocypack, ss};
   }
   if (auto ls = slice.get("leader"); !ls.isNone()) {
-    leader.emplace(Leader{ls.get("term").extract<LogTerm>()});
+    leader = Leader::fromVelocyPack(ls);
   }
 }
 
@@ -161,9 +162,13 @@ auto LogCurrent::toVelocyPack(VPackBuilder& builder) const -> void {
     supervision->toVelocyPack(builder);
   }
   if (leader.has_value()) {
-    VPackObjectBuilder ob(&builder, "leader");
-    builder.add("term", VPackValue(leader->term));
+    VPackObjectBuilder lob(&builder, "leader");
+    leader->toVelocyPack(builder);
   }
+}
+
+auto LogCurrent::fromVelocyPack(VPackSlice s) -> LogCurrent {
+  return LogCurrent(from_velocypack, s);
 }
 
 auto LogCurrentSupervision::toVelocyPack(VPackBuilder& builder) const -> void {
@@ -217,4 +222,18 @@ auto agency::operator==(const LogCurrentSupervisionElection& left,
          left.participantsAvailable == right.participantsAvailable &&
          left.participantsRequired == right.participantsRequired &&
          left.detail == right.detail;
+}
+
+auto LogCurrent::Leader::toVelocyPack(VPackBuilder& builder) const -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add(StaticStrings::Term, VPackValue(term));
+  builder.add(VPackValue("committedParticipantsConfig"));
+  committedParticipantsConfig.toVelocyPack(builder);
+}
+
+auto LogCurrent::Leader::fromVelocyPack(VPackSlice s) -> Leader {
+  auto leader =  LogCurrent::Leader{};
+  leader.term = s.get(StaticStrings::Term).extract<LogTerm>();
+  leader.committedParticipantsConfig = ParticipantsConfig::fromVelocyPack(s.get("committedParticipantsConfig"));
+  return leader;
 }

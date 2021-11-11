@@ -98,6 +98,8 @@ struct LogStatus {
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] auto getLocalStatistics() const noexcept -> std::optional<LogStatistics>;
 
+  [[nodiscard]] auto asLeaderStatus() const noexcept -> LeaderStatus const*;
+
   static auto fromVelocyPack(velocypack::Slice slice) -> LogStatus;
   void toVelocyPack(velocypack::Builder& builder) const;
  private:

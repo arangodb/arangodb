@@ -229,3 +229,7 @@ auto LogStatus::getVariant() const noexcept -> VariantType const& {
 auto LogStatus::toVelocyPack(velocypack::Builder& builder) const -> void {
   std::visit([&](auto const& s) { s.toVelocyPack(builder); }, _variant);
 }
+
+auto LogStatus::asLeaderStatus() const noexcept -> LeaderStatus const* {
+  return std::get_if<LeaderStatus>(&_variant);
+}

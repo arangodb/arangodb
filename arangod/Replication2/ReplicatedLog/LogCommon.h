@@ -346,7 +346,7 @@ struct ParticipantFlags {
 };
 
 struct ParticipantsConfig {
-  std::size_t generation;
+  std::size_t generation = 0;
   std::unordered_map<ParticipantId, ParticipantFlags> participants;
 
   void toVelocyPack(velocypack::Builder&) const;
