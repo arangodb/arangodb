@@ -343,8 +343,6 @@ class LogicalCollection : public LogicalDataSource {
 
   uint64_t getInternalValidatorTypes() const;
 
-  bool isShard() const noexcept;
-
   bool isLocalSmartEdgeCollection() const noexcept;
 
   bool isRemoteSmartEdgeCollection() const noexcept;
