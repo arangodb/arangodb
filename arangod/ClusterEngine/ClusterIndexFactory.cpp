@@ -211,7 +211,7 @@ Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition
   }
 
   return ae->indexFactory().enhanceIndexDefinition(
-      definition, normalized, isCreation, vocbase    );
+      definition, normalized, isCreation, vocbase);
 }
 
 void ClusterIndexFactory::fillSystemIndexes(LogicalCollection& col,
