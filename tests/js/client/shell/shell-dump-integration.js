@@ -643,15 +643,16 @@ function dumpIntegrationSuite () {
           assertEqual(-1, tree.indexOf("databaseTest" + i));
           assertNotEqual(-1, tree.indexOf(db._id()));
           checkDumpJsonFile("databaseTest" + i, fs.join(path, db._id()), db._id());
-      //    checkStructureFile(tree, path, true, "collectionTest" + i);
           checkCollections(tree, path, db._id());
           db._useDatabase("_system");
-          db._dropDatabase("databaseTest" + i);
         }
       } finally {
         try {
           fs.removeDirectory(path);
           db._useDatabase("_system");
+          for (let i = 1; i < 3; ++i) {
+            db._dropDatabase("databaseTest" + i);
+          }
         } catch (err) {
         }
       }
