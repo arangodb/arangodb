@@ -551,6 +551,11 @@ VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
   return newValue;
 }
 
+void FollowerInfo::setFollowingTermId(ServerID const& s, uint64_t value) {
+  WRITE_LOCKER(guard, _dataLock);
+  _followingTermId[s] = value;
+}
+
 uint64_t FollowerInfo::newFollowingTermId(ServerID const& s) noexcept {
   WRITE_LOCKER(guard, _dataLock);
   uint64_t i = 0;
