@@ -6,8 +6,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: aMahanna/clang-format-fixer@v1.0.3
+      - uses: Ana06/get-changed-files@v2.0.0
+        id: gcf
         with:
-          sources: "bad-directory"
+          filter: |
+            **/*.cpp
+            **/*.hpp
+            **/*.c
+            **/*.h
+      - uses: aMahanna/clang-format-fixer@v1.1.2
+        with:
+          sources: "${{ steps.gcf.outputs.added_modified }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
