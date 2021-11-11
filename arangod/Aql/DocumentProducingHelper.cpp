@@ -331,7 +331,7 @@ IndexIterator::CoveringCallback aql::getCallback(DocumentProducingCallbackVarian
     
     objectBuilder.close();
     
-    if (!context.checkFilter(objectBuilder.slice())) {
+    if (context.hasFilter() && !context.checkFilter(objectBuilder.slice())) {
       context.incrFiltered();
       return false;
     }
