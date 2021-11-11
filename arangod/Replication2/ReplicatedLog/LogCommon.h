@@ -334,6 +334,13 @@ struct ParticipantFlags {
   bool forced = false;
   bool excluded = false;
 
+  friend auto operator==(ParticipantFlags const& left, ParticipantFlags const& right) noexcept -> bool {
+    return left.forced == right.forced && left.excluded == right.excluded;
+  }
+  friend auto operator!=(ParticipantFlags const& left, ParticipantFlags const& right) noexcept -> bool {
+    return !(left == right);
+  }
+
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> ParticipantFlags;
 };
@@ -344,6 +351,14 @@ struct ParticipantsConfig {
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> ParticipantsConfig;
+
+  // to be defaulted soon
+  friend auto operator==(ParticipantsConfig const& left, ParticipantsConfig const& right) noexcept -> bool {
+    return left.generation == right.generation && left.participants == right.participants;
+  }
+  friend auto operator!=(ParticipantsConfig const& left, ParticipantsConfig const& right) noexcept -> bool {
+    return !(left == right);
+  }
 };
 
 // These settings are initialised by the ReplicatedLogFeature based on command line arguments

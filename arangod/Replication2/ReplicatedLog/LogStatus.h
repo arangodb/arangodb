@@ -56,6 +56,8 @@ struct LeaderStatus {
   // now() - insertTP of last uncommitted entry
   std::chrono::duration<double, std::milli> commitLagMS;
   CommitFailReason lastCommitStatus;
+  ParticipantsConfig acceptedParticipantConfig;
+  ParticipantsConfig committedParticipantConfig;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;

@@ -78,6 +78,10 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   local.toVelocyPack(builder);
   builder.add(VPackValue("lastCommitStatus"));
   lastCommitStatus.toVelocyPack(builder);
+  builder.add(VPackValue("acceptedParticipantConfig"));
+  acceptedParticipantConfig.toVelocyPack(builder);
+  builder.add(VPackValue("committedParticipantConfig"));
+  committedParticipantConfig.toVelocyPack(builder);
   {
     VPackObjectBuilder ob2(&builder, StaticStrings::Follower);
     for (auto const& [id, stat] : follower) {
@@ -98,6 +102,10 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
       slice.get("commitLagMS").extract<double>()};
   status.lastCommitStatus =
       CommitFailReason::fromVelocyPack(slice.get("lastCommitStatus"));
+  status.acceptedParticipantConfig = ParticipantsConfig::fromVelocyPack(
+      slice.get("acceptedParticipantConfig"));
+  status.committedParticipantConfig = ParticipantsConfig::fromVelocyPack(
+      slice.get("committedParticipantConfig"));
   for (auto [key, value] : VPackObjectIterator(slice.get(StaticStrings::Follower))) {
     auto id = ParticipantId{key.copyString()};
     auto stat = FollowerStatistics::fromVelocyPack(value);
@@ -112,8 +120,10 @@ auto replicated_log::operator==(LeaderStatus const& left,
                 left.term == right.term &&
                 left.largestCommonIndex == right.largestCommonIndex &&
                 left.commitLagMS == right.commitLagMS &&
-                left.lastCommitStatus == right.lastCommitStatus
-                && left.follower.size() == right.follower.size();
+                left.lastCommitStatus == right.lastCommitStatus &&
+                left.follower.size() == right.follower.size() &&
+                left.acceptedParticipantConfig == right.acceptedParticipantConfig &&
+                left.committedParticipantConfig == right.committedParticipantConfig;
   if (!result) {
     return false;
   }
