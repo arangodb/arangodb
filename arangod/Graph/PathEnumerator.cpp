@@ -288,12 +288,6 @@ bool DepthFirstEnumerator::next() {
           return;
         }
 
-#ifdef USE_ENTERPRISE
-        if (!validDisjointPath()) {
-          return;
-        }
-#endif
-
         _enumeratedPath.pushEdge(eid);
         foundPath = true;
       }
