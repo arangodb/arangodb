@@ -11,6 +11,9 @@ v3.9.0 (XXXX-XX-XX)
   and setting this flag would not be of use. When the flag is set to true, the 
   histogram is displayed before the summary in the output.
 
+* Increase default stack size on Windows from 1MB to 4MB. This should allow
+  execution of larger queries without overflowing the stack.
+  
 * Make background calculation of SHA hashes for RocksDB .sst files less
   intrusive. The previous implementation frequently iterated over all files in
   the database directory to check if it needed to ad-hoc calculate the SHA
