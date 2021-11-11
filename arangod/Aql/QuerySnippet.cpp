@@ -686,13 +686,6 @@ auto QuerySnippet::prepareFirstBranch(
         }
       }
 
-      // TODO: We need to exclude DBServers which only do have Satellite
-      // collections only This server is not allowed to receive a setup call
-
-      // 1.) Satellites: 1x shard exists (681) -> not landing in myExpFinal
-      // => 2x shards vertex collections -> DB1 v: [s1, s2] , DB2 []
-      // 2.)
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // additional verification checks for Disjoint SmartGraphs
       if (localGraphNode->isDisjoint()) {
