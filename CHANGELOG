@@ -1,10 +1,10 @@
 devel
 -----
 
-* In the shards overview the list of servers to move the selected server now
-  also contains the current follower. Therefore the user can now move the server
-  to the current follower.
-
+* In the shards overview the list of servers to move the leader shard to, now
+  also contains the current followers. This means that from now on also active
+  follower servers can be nominated as the leading server for that specific
+  shard.
 * When enabling the cluster supervision maintenance mode via the web UI, there
   is now the possibility to select a duration for the maintenance mode.
   Previous versions of ArangoDB always enabled the maintenance mode for one
