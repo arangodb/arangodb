@@ -783,7 +783,7 @@
         };
 
         assertNotEqual(null, db._collection("_analyzers"));
-        assertEqual((isEnterprise && isCluster) ?
+        assertEqual((isEnterprise) ?
             3 : // plus 1 for a SmartGraph in Enterprise
             2,  // only 1 stored custom analyzers
           db._analyzers.count());

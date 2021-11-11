@@ -92,7 +92,8 @@ struct Collections {
       bool isNewDatabase,
       std::shared_ptr<LogicalCollection>& ret,
       bool allowSystem = false,
-      bool isSingleServerEnterpriseCollection = false);  // invoke on collection creation
+      bool isSingleServerEnterpriseCollection = false, // invoke on collection creation
+      bool isRestore = false);                         // whether this is being called during restore
 
   /// Create many collections, ownership of collections in callback is
   /// transferred to callee
@@ -103,7 +104,8 @@ struct Collections {
                        std::shared_ptr<LogicalCollection> const& colPtr,
                        std::vector<std::shared_ptr<LogicalCollection>>& ret,
                        bool allowSystem = false,
-                       bool isSingleServerEnterpriseCollection = false);
+                       bool isSingleServerEnterpriseCollection = false,
+                       bool isRestore = false);
 
   static Result createSystem(TRI_vocbase_t& vocbase, OperationOptions const&,
                              std::string const& name, bool isNewDatabase,

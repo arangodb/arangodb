@@ -427,7 +427,8 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     bool createWaitsForSyncReplication,             // replication wait flag
     bool enforceReplicationFactor,                  // replication factor flag
     bool isNewDatabase, std::shared_ptr<LogicalCollection>& ret, bool allowSystem,
-    bool isSingleServerEnterpriseCollection) {  // invoke on collection creation
+    bool isSingleServerEnterpriseCollection,
+    bool isRestore) {  // invoke on collection creation
   if (name.empty()) {
     events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return TRI_ERROR_ARANGO_ILLEGAL_NAME;
@@ -440,7 +441,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = create(vocbase, options, infos, createWaitsForSyncReplication,
                       enforceReplicationFactor, isNewDatabase, nullptr, collections,
-                      allowSystem, isSingleServerEnterpriseCollection);
+                      allowSystem, isSingleServerEnterpriseCollection, isRestore);
   if (res.ok() && collections.size() > 0) {
     ret = std::move(collections[0]);
   }
@@ -453,7 +454,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
                            bool enforceReplicationFactor, bool isNewDatabase,
                            std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
                            std::vector<std::shared_ptr<LogicalCollection>>& ret,
-                           bool allowSystem, bool isSingleServerEnterpriseCollection) {
+                           bool allowSystem, bool isSingleServerEnterpriseCollection, bool isRestore) {
   ExecContext const& exec = options.context();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
     for (auto const& info : infos) {
@@ -548,7 +549,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
   try {
     // in case of success we grant the creating user RW access
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-    if (um != nullptr && !exec.isSuperuser()) {
+    if (um != nullptr && !exec.isSuperuser() && !isRestore) {
       // this should not fail, we can not get here without database RW access
       // however, there may be races for updating the users account, so we try
       // a few times in case of a conflict
