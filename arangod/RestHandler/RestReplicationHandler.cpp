@@ -3288,7 +3288,7 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = methods::Collections::create(_vocbase, options, infos, true,
                       enforceReplicationFactor, isNewDatabase, nullptr, collections,
-                      allowSystem, isSingleServerEnterpriseCollection);
+                      allowSystem, isSingleServerEnterpriseCollection, true);
   if (res.fail()) {
     return res.errorNumber();
   }
