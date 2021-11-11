@@ -169,7 +169,11 @@ template<typename T> class Gauge : public Metric {
     _g.store(t, std::memory_order_relaxed);
     return *this;
   }
-  
+
+  void store(T value, std::memory_order mo) noexcept {
+    return _g.store(value, mo);
+  }
+
   T load(std::memory_order mo = std::memory_order_relaxed) const noexcept { return _g.load(mo); }
   
   void toPrometheus(std::string& result, std::string const& globalLabels, std::string const& alternativeName) const override {
