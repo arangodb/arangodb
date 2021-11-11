@@ -209,7 +209,7 @@ RestStatus RestLogHandler::handleGetRequest(ReplicatedLogMethods const& methods)
     return handleGetSlice(methods, logId);
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  "expecting one of the resources 'tail', 'entry', 'slice'");
+                  "expecting one of the resources 'poll', 'head', 'tail', 'entry', 'slice'");
   }
   return RestStatus::DONE;
 }

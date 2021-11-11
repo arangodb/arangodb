@@ -189,9 +189,6 @@ bool Agent::start() {
   return true;
 }
 
-/// Get all logs from state machine
-query_t Agent::allLogs() const { return _state.allLogs(); }
-
 /// This agent's term
 term_t Agent::term() const { return _constituent.term(); }
 
@@ -988,12 +985,6 @@ std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "Failed to add promise for polling");
   }
-}
-
-// Check if I am member of active agency
-bool Agent::active() const {
-  std::vector<std::string> active = _config.active();
-  return (find(active.begin(), active.end(), id()) != active.end());
 }
 
 /// @brief Activate agency (Inception thread for multi-host, main thread else)
@@ -1980,6 +1971,8 @@ void Agent::executeLockedRead(std::function<void()> const& cb) {
   cb();
 }
 
+#if 0
+// currently not called from anywhere
 void Agent::executeLockedWrite(std::function<void()> const& cb) {
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
@@ -1987,6 +1980,7 @@ void Agent::executeLockedWrite(std::function<void()> const& cb) {
   CONDITION_LOCKER(guard, _waitForCV);
   cb();
 }
+#endif
 
 void Agent::executeTransientLocked(std::function<void()> const& cb) {
   MUTEX_LOCKER(transientLocker, _transientLock);

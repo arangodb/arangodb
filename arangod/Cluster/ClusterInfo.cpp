@@ -4031,77 +4031,6 @@ AnalyzerModificationTransaction::Ptr ClusterInfo::createAnalyzersCleanupTrans() 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set collection status in coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseName,
-                                                   std::string const& collectionID,
-                                                   TRI_vocbase_col_status_e status) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-  AgencyComm ac(_server);
-
-  AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
-                                    AgencyPrecondition::Type::EMPTY, false);
-
-
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.read(
-    std::vector<std::string>{
-      AgencyCommHelper::path("Plan/Collections/" + databaseName + "/" + collectionID)});
-  std::initializer_list<std::string_view> const vpath{
-    AgencyCommHelper::path(), "Plan", "Collections", databaseName, collectionID};
-
-  if (!acb->slice()[0].hasKey(vpath)) {
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  }
-  VPackSlice col = acb->slice()[0].get(vpath);
-
-  if (!col.isObject()) {
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  }
-
-  TRI_vocbase_col_status_e old = static_cast<TRI_vocbase_col_status_e>(
-      arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          col, "status", static_cast<int>(TRI_VOC_COL_STATUS_CORRUPTED)));
-
-  if (old == status) {
-    // no status change
-    return Result();
-  }
-
-  VPackBuilder builder;
-  try {
-    VPackObjectBuilder b(&builder);
-    for (auto const& entry : VPackObjectIterator(col)) {
-      std::string key = entry.key.copyString();
-      if (key != "status") {
-        builder.add(key, entry.value);
-      }
-    }
-    builder.add("status", VPackValue(status));
-  } catch (...) {
-    return Result(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  AgencyOperation setColl("Plan/Collections/" + databaseName + "/" + collectionID,
-                          AgencyValueOperationType::SET, builder.slice());
-  AgencyOperation incVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
-
-  AgencyWriteTransaction trans({setColl, incVersion}, databaseExists);
-  AgencyCommResult res = ac.sendTransactionWithFailover(trans);
-
-  if (res.successful()) {
-    Result r;
-    if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
-      r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
-    }
-    return r;
-  }
-
-  return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, res.errorMessage());
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief ensure an index in coordinator.
 ////////////////////////////////////////////////////////////////////////////////
 Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
@@ -5531,15 +5460,6 @@ void ClusterInfo::invalidateCurrentCoordinators() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief invalidate current mappings
-//////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::invalidateCurrentMappings() {
-  WRITE_LOCKER(writeLocker, _mappingsProt.lock);
-  _mappingsProt.isValid = false;
-}
-
-//////////////////////////////////////////////////////////////////////////////
 /// @brief get current "Plan" structure
 //////////////////////////////////////////////////////////////////////////////
 
@@ -5618,11 +5538,6 @@ void ClusterInfo::setServerAdvertisedEndpoints(std::unordered_map<ServerID, std:
   WRITE_LOCKER(readLocker, _serversProt.lock);
   _serverAdvertisedEndpoints = std::move(advertisedEndpoints);
 }
-  
-void ClusterInfo::setServerTimestamps(std::unordered_map<ServerID, std::string> timestamps) {
-  WRITE_LOCKER(readLocker, _serversProt.lock);
-  _serverTimestamps = std::move(timestamps);
-}
 #endif
   
 bool ClusterInfo::serverExists(ServerID const& serverId) const noexcept {
@@ -5653,23 +5568,6 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
     ret.try_emplace(i.second, i.first);
   }
   return ret;
-}
-
-std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoints() const {
-  std::unordered_map<std::string, std::string> ret;
-  READ_LOCKER(readLocker, _serversProt.lock);
-  // note: don't try to change this to
-  //  return _serverAdvertisedEndpoints
-  // because we are returning the aliases in {value, key} order here
-  for (const auto& i : _serverAdvertisedEndpoints) {
-    ret.try_emplace(i.second, i.first);
-  }
-  return ret;
-}
-
-std::unordered_map<ServerID, std::string> ClusterInfo::getServerTimestamps() const {
-  READ_LOCKER(readLocker, _serversProt.lock);
-  return _serverTimestamps;
 }
 
 arangodb::Result ClusterInfo::getShardServers(ShardID const& shardId,
