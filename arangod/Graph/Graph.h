@@ -56,8 +56,7 @@ class EdgeDefinition {
 
  public:
   EdgeDefinition(std::string edgeCollection_, std::set<std::string>&& from_,
-                 std::set<std::string>&& to_,
-                 EdgeDefinitionType type = EdgeDefinitionType::DEFAULT)
+                 std::set<std::string>&& to_)
       : _edgeCollection(std::move(edgeCollection_)),
         _from(std::move(from_)),
         _to(std::move(to_)) {}
