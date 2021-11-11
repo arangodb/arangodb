@@ -166,12 +166,6 @@ bool BreadthFirstEnumerator::next() {
           return;
         }
 
-#ifdef USE_ENTERPRISE
-        if (!validDisjointPath(nextIdx, vId)) {
-          return;
-        }
-#endif
-
         growStorage();
         TRI_ASSERT(_schreier.capacity() > _schreier.size());
         _schreier.emplace_back(nextIdx, std::move(eid), vId);
