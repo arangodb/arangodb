@@ -403,7 +403,7 @@ ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice sli
 /// @briefs creates a new document key, the input slice is ignored here
 std::string LogicalCollection::createKey(VPackSlice input) {
   if (isSatToSmartEdgeCollection() || isSmartToSatEdgeCollection()) {
-    return createSmartToSatKey(input);
+    return createKeyBetweenSmartAndSat(input);
   }
   return keyGenerator()->generate();
 }
