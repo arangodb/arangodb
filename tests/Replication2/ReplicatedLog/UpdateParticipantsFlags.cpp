@@ -218,3 +218,36 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
     EXPECT_EQ(committed, 2);
   }
 }
+
+TEST_F(UpdateParticipantsFlagsTest, update_without_additional_entry) {
+  // Check the configuration is eventually committed even if the user
+  // does not write additional entries.
+  leader->triggerAsyncReplication();
+  runAllAsyncAppendEntries();
+  ASSERT_TRUE(leader->isLeadershipEstablished());
+
+  // Force follower 2
+  {
+    auto newConfig = std::make_shared<ParticipantsConfig>();
+    newConfig->generation = 1;
+    // make follower2 excluded
+    newConfig->participants["follower2"] = replication2::ParticipantFlags{true, false};
+    leader->updateParticipantsConfig(newConfig);
+  }
+
+  EXPECT_EQ(leader->getCommitIndex(), LogIndex{1});
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 1);
+    EXPECT_EQ(committed, 0);
+  }
+  // now run all followers
+  runAllAsyncAppendEntries();
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 1);
+    EXPECT_EQ(committed, 1);
+  }
+}

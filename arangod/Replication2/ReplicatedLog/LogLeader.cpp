@@ -1115,6 +1115,7 @@ void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<Partici
     return idx;
   });
 
+  triggerAsyncReplication();
   waitFor(waitForIndex).thenFinal([weak = weak_from_this(), config](futures::Try<WaitForResult>&& result) noexcept {
     if (auto self = weak.lock(); self) {
       try {
