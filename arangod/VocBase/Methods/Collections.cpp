@@ -88,8 +88,7 @@ bool checkIfDefinedAsSatellite(VPackSlice const& properties) {
         return true;
       }
     } else if (properties.get(StaticStrings::ReplicationFactor).isString()) {
-      auto replFactor = properties.get(StaticStrings::ReplicationFactor).copyString();
-      if (replFactor == StaticStrings::Satellite) {
+      if (properties.get(StaticStrings::ReplicationFactor).isEqualString(StaticStrings::Satellite)) {
         return true;
       }
     }
