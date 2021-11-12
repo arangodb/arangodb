@@ -502,7 +502,12 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
       }
     } else if (allowEnterpriseCollectionsOnSingleServer) {
 #ifdef USE_ENTERPRISE
-      // todo: add comment to describe that section && implement
+      /*
+       * If we end up here, we do allow enterprise collections to be created in a SingleServer instance
+       * as well. Important: We're storing and persisting the meta information of those collections. They
+       * will still be used as before, but will do some further validation. This has been originally
+       * implemented for the SmartGraph Simulator feature.
+       */
       TRI_ASSERT(ServerState::instance()->isSingleServer());
       TRI_ASSERT(infoSlice.isArray());
 
