@@ -76,7 +76,7 @@ static void resolveFCallConstAttributes(Ast* ast, AstNode* fcall) {
   }
 }
 
-template <bool checkUniqueness>
+template <bool checkUniqueness, bool skip>
 IndexIterator::CoveringCallback getCallback(DocumentProducingFunctionContext& context,
                                             transaction::Methods::IndexHandle const& index,
                                             IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
@@ -137,45 +137,45 @@ IndexIterator::CoveringCallback getCallback(DocumentProducingFunctionContext& co
         return false;
       }
     }
+    if constexpr (!skip) {
+      InputAqlItemRow const& input = context.getInputRow();
+      OutputAqlItemRow& output = context.getOutputRow();
+      RegisterId registerId = context.getOutputRegister();
 
-    InputAqlItemRow const& input = context.getInputRow();
-    OutputAqlItemRow& output = context.getOutputRow();
-    RegisterId registerId = context.getOutputRegister();
-
-    // move a document id
-    AqlValue v(AqlValueHintUInt(token.id()));
-    AqlValueGuard guard{v, true};
-    TRI_ASSERT(!output.isFull());
-    output.moveValueInto(registerId, input, guard);
-
-    // hash/skiplist/persistent
-    if (covering->isArray()) {
-      for (auto const& indReg : outNonMaterializedIndRegs.second) {
-        TRI_ASSERT(indReg.first < covering->length());
-        if (ADB_UNLIKELY(indReg.first >= covering->length())) {
-          return false;
-        }
-        auto s = covering->at(indReg.first);
-        AqlValue v(s);
-        AqlValueGuard guard{v, true};
-        TRI_ASSERT(!output.isFull());
-        output.moveValueInto(indReg.second, input, guard);
-      }
-    } else {  // primary/edge
-      auto indReg = outNonMaterializedIndRegs.second.cbegin();
-      TRI_ASSERT(indReg != outNonMaterializedIndRegs.second.cend());
-      if (ADB_UNLIKELY(indReg == outNonMaterializedIndRegs.second.cend())) {
-        return false;
-      }
-      AqlValue v(covering->value());
+      // move a document id
+      AqlValue v(AqlValueHintUInt(token.id()));
       AqlValueGuard guard{v, true};
       TRI_ASSERT(!output.isFull());
-      output.moveValueInto(indReg->second, input, guard);
+      output.moveValueInto(registerId, input, guard);
+
+      // hash/skiplist/persistent
+      if (covering->isArray()) {
+        for (auto const& indReg : outNonMaterializedIndRegs.second) {
+          TRI_ASSERT(indReg.first < covering->length());
+          if (ADB_UNLIKELY(indReg.first >= covering->length())) {
+            return false;
+          }
+          auto s = covering->at(indReg.first);
+          AqlValue v(s);
+          AqlValueGuard guard{v, true};
+          TRI_ASSERT(!output.isFull());
+          output.moveValueInto(indReg.second, input, guard);
+        }
+      } else {  // primary/edge
+        auto indReg = outNonMaterializedIndRegs.second.cbegin();
+        TRI_ASSERT(indReg != outNonMaterializedIndRegs.second.cend());
+        if (ADB_UNLIKELY(indReg == outNonMaterializedIndRegs.second.cend())) {
+          return false;
+        }
+        AqlValue v(covering->value());
+        AqlValueGuard guard{v, true};
+        TRI_ASSERT(!output.isFull());
+        output.moveValueInto(indReg->second, input, guard);
+      }
+
+      TRI_ASSERT(output.produced());
+      output.advanceRow();
     }
-
-    TRI_ASSERT(output.produced());
-    output.advanceRow();
-
     return true;
   };
 }
@@ -369,8 +369,8 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
     case Type::LateMaterialized:
       _coveringProducer =
           checkUniqueness
-              ? ::getCallback<true>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs())
-              : ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs());
+              ? ::getCallback<true, false>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs())
+              : ::getCallback<false, false>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs());
       break;
     case Type::Count:
       break;
@@ -380,8 +380,15 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
                               : buildDocumentCallback<false, false>(context);
       break;
   }
-  _documentSkipper = checkUniqueness ? buildDocumentCallback<true, true>(context)
-                                     : buildDocumentCallback<false, true>(context);
+  if (_coveringProducer) {
+     _coveringSkipper =
+          checkUniqueness
+              ? ::getCallback<true, true>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs())
+              : ::getCallback<false, true>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs());
+  } else {
+    _documentSkipper = checkUniqueness ? buildDocumentCallback<true, true>(context)
+                                       : buildDocumentCallback<false, true>(context);
+  }
 }
 
 IndexExecutor::CursorReader::CursorReader(CursorReader&& other) noexcept
