@@ -61,6 +61,7 @@ struct LogPlanSpecification {
   std::optional<LogPlanTermSpecification> currentTerm;
 
   LogConfig targetConfig;
+  ParticipantsConfig participantsConfig;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogPlanSpecification(from_velocypack_t, VPackSlice);

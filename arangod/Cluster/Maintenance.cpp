@@ -558,8 +558,19 @@ void arangodb::maintenance::diffReplicatedLogs(
         // check if the term is the same
         bool const requiresUpdate = std::invoke([&, &status = localIt->second, &spec = spec] {
           if (spec.currentTerm.has_value()) {
+            // check if term has changed
             auto currentTerm = status.getCurrentTerm();
-            return !currentTerm.has_value() || *currentTerm != spec.currentTerm->term;
+            if (!currentTerm.has_value() || *currentTerm != spec.currentTerm->term) {
+              return true;
+            }
+
+            // check if participants generation has changed (in case we are the leader)
+            if (auto leaderStatus = status.asLeaderStatus(); leaderStatus != nullptr) {
+              if (leaderStatus->acceptedParticipantConfig.generation <
+                  spec.participantsConfig.generation) {
+                return true;
+              }
+            }
           }
           return false;
         });
@@ -574,10 +585,13 @@ void arangodb::maintenance::diffReplicatedLogs(
 
   for (auto const& [id, status] : localLogs) {
     bool const dropLog = std::invoke([&, &id = id] {
+      // Drop a replicated log if
+      // either it is no longer in plan or ...
       auto it = planLogs.find(id);
       if (it == std::end(planLogs)) {
         return true;
       }
+      // ... we are no longer a participant
       auto const& spec = it->second;
       return !spec.currentTerm.has_value() ||
              (spec.currentTerm->participants.find(serverId) ==
@@ -1225,11 +1239,6 @@ static auto reportCurrentReplicatedLogLeader(replication2::replicated_log::Leade
     bool requiresUpdate = currentLeader == nullptr || currentLeader->term != status.term ||
                           currentLeader->committedParticipantsConfig.generation !=
                               status.committedParticipantConfig.generation;
-
-    LOG_DEVEL_IF(currentLeader != nullptr)
-        << currentLeader->committedParticipantsConfig.generation << " "
-        << status.committedParticipantConfig.generation << "term "
-        << currentLeader->term << " " << status.term;
 
     if (requiresUpdate) {
       replication2::agency::LogCurrent::Leader leader;

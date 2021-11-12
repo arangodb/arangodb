@@ -298,10 +298,19 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& mySe
 
     TRI_ASSERT(logId == spec->id);
     TRI_ASSERT(spec->currentTerm.has_value());
-    auto& leader = spec->currentTerm->leader;
+    auto& plannedLeader = spec->currentTerm->leader;
     auto log = ctx.ensureReplicatedLog(logId);
 
-    if (leader.has_value() && leader->serverId == myServerId && leader->rebootId == myRebootId) {
+    auto status = log->getParticipant()->getStatus();
+
+    if (status.getCurrentTerm() == spec->currentTerm->term) {
+      // something has changed in the term volatile configuration
+      auto leader = log->getLeader();
+      TRI_ASSERT(leader != nullptr);
+      leader->updateParticipantsConfig(
+          std::make_shared<ParticipantsConfig const>(spec->participantsConfig));
+    } else if (plannedLeader.has_value() && plannedLeader->serverId == myServerId &&
+               plannedLeader->rebootId == myRebootId) {
       auto followers =
           std::vector<std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
       for (auto const& [participant, data] : spec->currentTerm->participants) {

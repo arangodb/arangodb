@@ -80,6 +80,8 @@ auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
     builder.add(VPackValue(StaticStrings::CurrentTerm));
     currentTerm->toVelocyPack(builder);
   }
+  builder.add(VPackValue("participantsConfig"));
+  participantsConfig.toVelocyPack(builder);
 }
 
 LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice)
@@ -87,6 +89,10 @@ LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice)
       targetConfig(slice.get(StaticStrings::TargetConfig)) {
   if (auto term = slice.get(StaticStrings::CurrentTerm); !term.isNone()) {
     currentTerm = LogPlanTermSpecification{from_velocypack, term};
+  }
+
+  if (auto partConfig = slice.get("participantsConfig"); !partConfig.isNone()) {
+    participantsConfig = ParticipantsConfig::fromVelocyPack(partConfig);
   }
 }
 

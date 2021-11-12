@@ -1110,6 +1110,13 @@ void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<Partici
   LOG_CTX("ac277", DEBUG, _logContext)
       << "updating configuration to generation " << config->generation;
   auto waitForIndex = _guardedLeaderData.doUnderLock([&](GuardedLeaderData& data) {
+    if (data.activeParticipantConfig->generation >= config->generation) {
+      THROW_ARANGO_EXCEPTION_FORMAT(
+          TRI_ERROR_BAD_PARAMETER,
+          "updated participant config generation is smaller or equal to "
+          "current generation - refusing to update; new = %zu, current = %zu",
+          config->generation, data.activeParticipantConfig->generation);
+    }
     auto idx = data.insertInternal(std::nullopt, true, std::nullopt);
     data.activeParticipantConfig = config;
     return idx;
