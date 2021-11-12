@@ -8802,7 +8802,7 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(
     transaction::BuilderLeaser sBuilder(&trx);
     // smart vertex collection
     auto svecol =
-        dynamic_cast<arangodb::SmartVertexCollection const*>(logicalCollection.get());
+        dynamic_cast<arangodb::SmartVertexCollection*>(logicalCollection.get());
     auto sveRes = svecol->rewriteVertexOnInsert(input, *sBuilder.get(), false);
     if (sveRes.fail()) {
       THROW_ARANGO_EXCEPTION(sveRes.errorNumber());

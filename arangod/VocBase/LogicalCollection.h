@@ -201,7 +201,7 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes
-  virtual std::string createKey(velocypack::Slice input) const;
+  virtual std::string createKey(velocypack::Slice input);
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
