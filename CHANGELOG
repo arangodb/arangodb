@@ -1,6 +1,10 @@
 devel
 -----
 
+* Add option to content-transfer encode gzip Foxx replies.
+
+* Simplify internal request compression/decompression handling code.
+
 * In the shards overview the list of servers to move the leader shard to, now
   also contains the current followers. This means that from now on also active
   follower servers can be nominated as the leading server for that specific
