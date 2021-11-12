@@ -317,7 +317,6 @@ transaction::Methods* Collections::Context::trx(AccessMode::Type const& type, bo
   return _trx;
 }
 
-// TRI_vocbase_t& Collections::Context::vocbase() const { return _vocbase; }
 
 std::shared_ptr<LogicalCollection> Collections::Context::coll() const {
   return _coll;
