@@ -371,7 +371,7 @@ auto ParticipantStateTuple::isFailed() const noexcept -> bool {
   return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Failed) != std::end(flags);
 };
 
-auto operator<=(ParticipantStateTuple left, ParticipantStateTuple right) noexcept -> bool {
+auto operator<=(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept -> bool {
   if (left.index < right.index) {
     return true;
   } else if (left.index==right.index) {
@@ -380,35 +380,6 @@ auto operator<=(ParticipantStateTuple left, ParticipantStateTuple right) noexcep
     return false;
   }
 }
-
-
-/* Add flag for failed server to IndexParticipant struct
- *
- *  add struct for parameters:
- *   replicationFactor
- *   - writeConcern (==quorumSize)
- *   - softWriteConcern (better name?)
- *   -
- *  TRI_ASSERT(indexes.size() == replicationFactor)
- *  TRI_ASSERT(writeConcern <= softWriteConcern <= replicationFactor)
- *
- *   actualWriteConcern = max(writeConcern, x)
- *     where x = min(replicationFactor - number of failedServers,
- *                   softWriteConcern);
- *
- *  for purposes of computing actualwriteConcern, excluded and failed
- *  servers are treated the same.
- *
- * writeConcern is the *minimum* number of confirmed copies necessary to
- * proceed with a commit for any given LogIndex
- *
- * softWriteConcern allows for a number of failed servers to be tolerated
- * for the purposes of commit
- *
- * replicationFactor is the (expected) number of participants in the
- * replicated log
- *
- * */
 
 algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
     std::size_t writeConcern, std::size_t softWriteConcern, std::size_t replicationFactor)
