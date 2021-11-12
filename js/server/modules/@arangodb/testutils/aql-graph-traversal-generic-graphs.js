@@ -39,16 +39,14 @@ const satgm = tryRequire("@arangodb/satellite-graph");
 const cgm = require("@arangodb/general-graph");
 const _ = require("lodash");
 const assert = require("jsunity").jsUnity.assertions;
+const isCluster = require("internal").isCluster();
 
 const TestVariants = Object.freeze({
   SingleServer: 1,
   GeneralGraph: 2,
   SmartGraph: 3,
   SatelliteGraph: 4,
-  DisjointSmartGraph: 5,
-  SmartGraphSingleServer: 6,
-  DisjointSmartGraphSingleServer: 7,
-  SatelliteGraphSingleServer: 8,
+  DisjointSmartGraph: 5
 });
 
 const defaultSmartGraphValue = "1";
@@ -155,7 +153,6 @@ class TestGraph {
         verifyGeneralGraph(this.name(), options);
         break;
       }
-      case TestVariants.SmartGraphSingleServer:
       case TestVariants.SmartGraph: {
         const options = {
           numberOfShards: this.numberOfShards,
@@ -166,7 +163,6 @@ class TestGraph {
         verifySmartGraph(this.name(), false);
         break;
       }
-      case TestVariants.DisjointSmartGraphSingleServer:
       case TestVariants.DisjointSmartGraph: {
         const options = {
           numberOfShards: this.numberOfShards,
@@ -178,7 +174,6 @@ class TestGraph {
         verifySmartGraph(this.name(), true);
         break;
       }
-      case TestVariants.SatelliteGraphSingleServer:
       case TestVariants.SatelliteGraph: {
         const options = {
           replicationFactor: 'satellite'
@@ -189,28 +184,15 @@ class TestGraph {
       }
     }
 
-    if (
-      [
-        TestVariants.SingleServer,
-        TestVariants.SatelliteGraphSingleServer
-      ].includes(this.testVariant)
-    ) {
-      this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices);
-    } else if (
-      [
-        TestVariants.SmartGraphSingleServer,
-        TestVariants.DisjointSmartGraphSingleServer
-      ].includes(this.testVariant))
-    {
-        const dummySharding = [];
-        this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices, dummySharding);
-    }
-    else {
+    let vertexSharding = [];
+    if (isCluster) {
+      // Only create proper smart/vertex sharding settings in cluster mode
+      // In SingleServer mode it is intended to be empty.
       const shardAttrsByShardIndex = this._shardAttrPerShard(db[this.vn]);
-      const vertexSharding = this.protoSmartSharding.map(([v, i]) => [v, shardAttrsByShardIndex[i]]);
-      this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices, vertexSharding);
+      vertexSharding = this.protoSmartSharding.map(([v, i]) => [v, shardAttrsByShardIndex[i]]);
     }
 
+    this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices, vertexSharding);
     db[this.en].ensureIndex({type: "persistent", fields: ["_from", graphIndexedAttribute]});
   }
 
@@ -237,9 +219,6 @@ class TestGraph {
     switch (this.testVariant) {
       case TestVariants.SingleServer:
       case TestVariants.SatelliteGraph:
-      case TestVariants.SatelliteGraphSingleServer:
-      case TestVariants.SmartGraphSingleServer:
-      case TestVariants.DisjointSmartGraphSingleServer:
       case TestVariants.GeneralGraph: {
         return `${this.vn}/nonExistingVertex`;
       }
@@ -386,8 +365,9 @@ class ProtoGraph {
     });
   }
 
-  prepareSmartGraphs(variant = TestVariants.SmartGraph) {
+  prepareSmartGraphs() {
     return this.smartShardings.map((sharding, idx) => {
+      const variant = TestVariants.SmartGraph;
       const {numberOfShards, vertexSharding} = sharding;
       const suffix = ProtoGraph._buildSmartSuffix(sharding, idx, variant);
 
@@ -402,8 +382,9 @@ class ProtoGraph {
     });
   }
 
-  prepareDisjointSmartGraphs(variant = TestVariants.DisjointSmartGraph) {
+  prepareDisjointSmartGraphs() {
     return this.smartShardings.map((sharding, idx) => {
+      const variant = TestVariants.DisjointSmartGraph;
       const {numberOfShards, vertexSharding} = sharding;
       const suffix = ProtoGraph._buildSmartSuffix(sharding, idx, variant);
 
@@ -424,8 +405,9 @@ class ProtoGraph {
     });
   }
 
-  prepareSatelliteGraphs(variant = TestVariants.SatelliteGraph) {
+  prepareSatelliteGraphs() {
     // We're not able to test multiple shards in a SatelliteGraph as a SatelliteGraph has only one shard by default
+    const variant = TestVariants.SatelliteGraph;
     const suffix = `_satellite_${variant}`;
     const numberOfShards = 1;
     const vn = this.protoGraphName + '_Vertex' + suffix;

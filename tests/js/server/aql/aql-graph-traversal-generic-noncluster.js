@@ -25,12 +25,11 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-const {protoGraphs, TestVariants} = require('@arangodb/testutils/aql-graph-traversal-generic-graphs.js');
+const {protoGraphs} = require('@arangodb/testutils/aql-graph-traversal-generic-graphs.js');
 const {testsByGraph, metaTests} = require('@arangodb/testutils/aql-graph-traversal-generic-tests.js');
 const console = require('console');
 const jsunity = require("jsunity");
 const _ = require("lodash");
-const isEnterprise = require("internal").isEnterprise();
 
 function graphTraversalGenericGeneralGraphStandaloneSuite() {
   let testGraphs = _.fromPairs(_.keys(protoGraphs).map(x => [x, {}]));
