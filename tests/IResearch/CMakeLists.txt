@@ -19,6 +19,7 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterIn-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchIndex-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchInvertedIndexCondition-test.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchInvertedIndexIterator-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchLink-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchLinkCoordinator-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchLinkHelper-test.cpp
