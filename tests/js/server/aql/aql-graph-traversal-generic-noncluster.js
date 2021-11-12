@@ -38,18 +38,6 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
     _.each(protoGraph.prepareSingleServerGraph(), function (testGraph) {
       testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerGeneralGraph`] = testGraph;
     });
-
-    if (isEnterprise) {
-      _.each(protoGraph.prepareSmartGraphs(TestVariants.SmartGraphSingleServer), function (testGraph) {
-        testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerSmartGraph`] = testGraph;
-      });
-      _.each(protoGraph.prepareDisjointSmartGraphs(TestVariants.DisjointSmartGraphSingleServer), function (testGraph) {
-        testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerDisjointSmartGraph`] = testGraph;
-      });
-      _.each(protoGraph.prepareSatelliteGraphs(TestVariants.SatelliteGraphSingleServer), function (testGraph) {
-        testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerSatelliteGraph`] = testGraph;
-      });
-    }
   });
 
   const suite = {
