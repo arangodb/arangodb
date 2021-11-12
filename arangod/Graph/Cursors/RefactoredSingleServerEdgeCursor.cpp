@@ -277,20 +277,20 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(SingleServerProvider<Step>&
     } else {
       cursor.all([&](LocalDocumentId const& token) {
         return collection->getPhysical()
-            ->read(
-                _trx, token,
-                [&](LocalDocumentId const&, VPackSlice edgeDoc) {
-                  stats.addScannedIndex(1);
+            ->read(_trx, token,
+                   [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+                     stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
-                  if (_trx->skipInaccessible()) {
-                    // TODO: we only need to check one of these
-                    VPackSlice from =
-                        transaction::helpers::extractFromFromDocument(edgeDoc);
-                    VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
-                    if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
-                      return false;
-                    }
-                  }
+                     if (_trx->skipInaccessible()) {
+                       // TODO: we only need to check one of these
+                       VPackSlice from =
+                           transaction::helpers::extractFromFromDocument(edgeDoc);
+                       VPackSlice to =
+                           transaction::helpers::extractToFromDocument(edgeDoc);
+                       if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+                         return false;
+                       }
+                     }
 #endif
                   // eval depth-based expression first if available
                   EdgeDocumentToken edgeToken(cid, token);

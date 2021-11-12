@@ -96,6 +96,9 @@ class TwoSidedEnumerator {
     auto provider() -> ProviderType&;
 
    private:
+    auto clearProvider() -> void;
+
+   private:
     // Fast path, to test if we find a connecting vertex between left and right.
     Shell _shell{};
 
@@ -129,7 +132,7 @@ class TwoSidedEnumerator {
 
   ~TwoSidedEnumerator();
 
-  void clear();
+  auto clear() -> void;
 
   /**
    * @brief Quick test if the finder can prove there is no more data available.
@@ -208,4 +211,3 @@ class TwoSidedEnumerator {
 };
 }  // namespace graph
 }  // namespace arangodb
-

@@ -56,7 +56,7 @@ class EdgeDefinition {
 
  public:
   EdgeDefinition(std::string edgeCollection_, std::set<std::string>&& from_,
-                 std::set<std::string>&& to_) 
+                 std::set<std::string>&& to_)
       : _edgeCollection(std::move(edgeCollection_)),
         _from(std::move(from_)),
         _to(std::move(to_)) {}
@@ -89,16 +89,6 @@ class EdgeDefinition {
   bool isToVertexCollectionUsed(std::string const& collectionName) const;
 
   bool renameCollection(std::string const& oldName, std::string const& newName);
-
-  /* @brief
-   * Set type of the EdgeDefinition. Only allowed to be called once and only if
-   * type is DEFAULT. If type has been set, it is not changeable anymore.
-   *
-   * @param type Type to be set
-   *
-   * @return True if type has been set, returns false in case type has not been set.
-   */
-  auto setType(EdgeDefinitionType type) -> bool;
 
  private:
   std::string _edgeCollection;
