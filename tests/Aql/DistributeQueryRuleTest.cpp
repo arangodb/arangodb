@@ -208,7 +208,17 @@ TEST_F(DistributeQueryRuleTest, distributed_sort) {
   assertNodesMatch(planSlice, {"SingletonNode", "EnumerateCollectionNode",
                                "CalculationNode", "SortNode", "RemoteNode",
                                "GatherNode", "ReturnNode"});
-  // TODO Assert that GatherNode uses correct Sorting variant
+  auto gatherNode = planSlice.at(5);
+  ASSERT_TRUE(gatherNode.isObject());
+  EXPECT_TRUE(gatherNode.get("sortmode").isEqualString("minelement"));
+  auto sortBy = gatherNode.get("elements");
+  ASSERT_TRUE(sortBy.isArray());
+  ASSERT_EQ(sortBy.length() , 1);
+  auto sortVar = sortBy.at(0);
+  // We sort by a temp variable named 1
+  EXPECT_TRUE(sortVar.get("inVariable").get("name").isEqualString("1"));
+  // We need to keep DESC sort
+  EXPECT_FALSE(sortVar.get("ascending").getBool());
 }
 
 }  // namespace aql
