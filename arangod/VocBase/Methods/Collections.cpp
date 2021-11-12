@@ -512,7 +512,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
       TRI_ASSERT(infoSlice.isArray());
 
       auto res =
-          enterprise::CollectionValidatorEE::createLogicalCollections(infoSlice, collections,
+          enterprise::CollectionValidatorEE::prepareLogicalCollectionStubs(infoSlice, collections,
                                                                       vocbase);
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
