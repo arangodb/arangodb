@@ -3273,13 +3273,13 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   std::vector<CollectionCreationInfo> infos{{name, collectionType, slice}};
   bool isNewDatabase = false;
   bool allowSystem = true;
-  bool isSingleServerEnterpriseCollection = false;
+  bool allowEnterpriseCollectionsOnSingleServer = false;
   bool enforceReplicationFactor = false;
 
 #ifdef USE_ENTERPRISE
   if (slice.get(StaticStrings::IsSmart).isTrue() ||
       slice.get(StaticStrings::GraphIsSatellite).isTrue()) {
-    isSingleServerEnterpriseCollection = true;
+    allowEnterpriseCollectionsOnSingleServer = true;
     enforceReplicationFactor = true;
   }
 #endif
@@ -3288,7 +3288,7 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = methods::Collections::create(_vocbase, options, infos, true,
                       enforceReplicationFactor, isNewDatabase, nullptr, collections,
-                      allowSystem, isSingleServerEnterpriseCollection, true);
+                      allowSystem, allowEnterpriseCollectionsOnSingleServer, true);
   if (res.fail()) {
     return res.errorNumber();
   }

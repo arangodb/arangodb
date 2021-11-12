@@ -108,7 +108,7 @@ bool isSystemName(CollectionCreationInfo const& info) {
 
 Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
                                   std::vector<CollectionCreationInfo> const& infos,
-                                  bool allowSystem, bool isSingleServerEnterpriseCollection,
+                                  bool allowSystem, bool allowEnterpriseCollectionsOnSingleServer,
                                   bool enforceReplicationFactor) {
   for (auto const& info : infos) {
     // If the PlanId is not set, we either are on a single server, or this is
@@ -116,7 +116,7 @@ Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
     // collection (as seen on a Coordinator), nor a shard (on a DBServer).
 
     // validate the information of the collection to be created
-    CollectionValidator collectionValidator(info, vocbase, isSingleServerEnterpriseCollection,
+    CollectionValidator collectionValidator(info, vocbase, allowEnterpriseCollectionsOnSingleServer,
                                             enforceReplicationFactor,
                                             isLocalCollection(info),
                                             isSystemName(info), allowSystem);
@@ -132,7 +132,7 @@ Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
 // Returns a builder that combines the information from \p infos and cluster related information.
 VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
                                         std::vector<CollectionCreationInfo> const& infos,
-                                        bool isSingleServerEnterpriseCollection) {
+                                        bool allowEnterpriseCollectionsOnSingleServer) {
   StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
   VPackBuilder helper;
@@ -150,7 +150,7 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
     // generate a rocksdb collection object id in case it does not exist
-    if (isSingleServerEnterpriseCollection) {
+    if (allowEnterpriseCollectionsOnSingleServer) {
       engine.addParametersForNewCollection(helper, info.properties);
     }
 
@@ -164,7 +164,7 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
                  arangodb::velocypack::Value(useRevs));
     }
 
-    if (!isLocalCollection(info) || isSingleServerEnterpriseCollection) {
+    if (!isLocalCollection(info) || allowEnterpriseCollectionsOnSingleServer) {
       auto const& cl = vocbase.server().getFeature<ClusterFeature>();
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
 
@@ -250,7 +250,7 @@ VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
         VPackCollection::merge(info.properties, helper.slice(), false, true);
 
     bool haveShardingFeature = (ServerState::instance()->isCoordinator() ||
-                                isSingleServerEnterpriseCollection) &&
+                                allowEnterpriseCollectionsOnSingleServer) &&
                                vocbase.server().hasFeature<ShardingFeature>();
     if (haveShardingFeature &&
         !info.properties.get(StaticStrings::ShardingStrategy).isString()) {
@@ -426,9 +426,9 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     arangodb::velocypack::Slice const& properties,  // collection properties
     bool createWaitsForSyncReplication,             // replication wait flag
     bool enforceReplicationFactor,                  // replication factor flag
-    bool isNewDatabase, std::shared_ptr<LogicalCollection>& ret, bool allowSystem,
-    bool isSingleServerEnterpriseCollection,
-    bool isRestore) {  // invoke on collection creation
+    bool isNewDatabase,
+    std::shared_ptr<LogicalCollection>& ret,        // invoke on collection creation
+    bool allowSystem, bool allowEnterpriseCollectionsOnSingleServer, bool isRestore) {
   if (name.empty()) {
     events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return TRI_ERROR_ARANGO_ILLEGAL_NAME;
@@ -441,7 +441,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = create(vocbase, options, infos, createWaitsForSyncReplication,
                       enforceReplicationFactor, isNewDatabase, nullptr, collections,
-                      allowSystem, isSingleServerEnterpriseCollection, isRestore);
+                      allowSystem, allowEnterpriseCollectionsOnSingleServer, isRestore);
   if (res.ok() && collections.size() > 0) {
     ret = std::move(collections[0]);
   }
@@ -454,7 +454,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
                            bool enforceReplicationFactor, bool isNewDatabase,
                            std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
                            std::vector<std::shared_ptr<LogicalCollection>>& ret,
-                           bool allowSystem, bool isSingleServerEnterpriseCollection, bool isRestore) {
+                           bool allowSystem, bool allowEnterpriseCollectionsOnSingleServer, bool isRestore) {
   ExecContext const& exec = options.context();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
     for (auto const& info : infos) {
@@ -470,7 +470,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
 
   {  // validate information from every element of infos
     Result res = validateAllCollectionsInfo(vocbase, infos, allowSystem,
-                                            isSingleServerEnterpriseCollection,
+                                            allowEnterpriseCollectionsOnSingleServer,
                                             enforceReplicationFactor);
     if (res.fail()) {
       return res;
@@ -479,7 +479,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
 
   // construct a builder that contains information from all elements of infos and cluster related information
   VPackBuilder builder =
-      createCollectionProperties(vocbase, infos, isSingleServerEnterpriseCollection);
+      createCollectionProperties(vocbase, infos, allowEnterpriseCollectionsOnSingleServer);
 
   VPackSlice const infoSlice = builder.slice();
 
@@ -502,7 +502,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
         }
         return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
       }
-    } else if (isSingleServerEnterpriseCollection) {
+    } else if (allowEnterpriseCollectionsOnSingleServer) {
 #ifdef USE_ENTERPRISE
       // todo: add comment to describe that section && implement
       TRI_ASSERT(ServerState::instance()->isSingleServer());
