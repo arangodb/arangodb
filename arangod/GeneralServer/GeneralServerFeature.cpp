@@ -176,7 +176,6 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOldOption("server.hide-product-header",
                         "http.hide-product-header");
   options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
-  options->addOldOption("server.default-api-compatibility", "");
   options->addOldOption("no-server", "server.rest-server");
 
   options->addOption("--server.io-threads",

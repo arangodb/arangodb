@@ -87,6 +87,18 @@ auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice) -> L
   return stats;
 }
 
+auto replicated_log::operator==(LogStatistics const& left,
+                                LogStatistics const& right) noexcept -> bool {
+  return left.spearHead == right.spearHead &&
+         left.commitIndex == right.commitIndex &&
+         left.firstIndex == right.firstIndex;
+}
+
+auto replicated_log::operator!=(LogStatistics const &left,
+                                LogStatistics const& right) noexcept -> bool {
+  return !(left == right);
+}
+
 auto arangodb::replication2::replicated_log::to_string(AppendEntriesErrorReason reason) noexcept
     -> std::string_view {
   switch (reason) {

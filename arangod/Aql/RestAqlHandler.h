@@ -124,7 +124,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   void setupClusterQuery();
 
   // handle for useQuery
-  RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
+  RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice querySlice);
   
   // handle query finalization for all engines
   RestStatus handleFinishQuery(std::string const& idString);
