@@ -1,6 +1,11 @@
 v3.8.3 (XXXX-XX-XX)
 -------------------
 
+* In the shards overview the list of servers to move the leader shard to, now
+  also contains the current followers. This means that from now on also active
+  follower servers can be nominated as the leading server for that specific
+  shard.
+
 * Fix issues during rolling upgrades from 3.8.0 to 3.8.x (x >= 1) and from 3.7.x
   (x <= 12) to 3.8.3. The problem was that older versions did not handle
   following term ids that are sent from newer versions during synchronous
