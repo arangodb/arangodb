@@ -1065,7 +1065,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
           ServerState::instance()->isSingleServer()) {
         transaction::BuilderLeaser req(this);
         auto svecol =
-            dynamic_cast<arangodb::SmartVertexCollection const*>(collection.get());
+            dynamic_cast<arangodb::SmartVertexCollection*>(collection.get());
 
         if (svecol == nullptr) {
           // Cast did not work. Illegal state
