@@ -649,11 +649,12 @@ function dumpIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-          db._useDatabase("_system");
-          for (let i = 1; i < 3; ++i) {
+        } catch (err) {}
+        db._useDatabase("_system");
+        for (let i = 1; i < 3; ++i) {
+          try {
             db._dropDatabase("databaseTest" + i);
-          }
-        } catch (err) {
+          } catch (err) {}
         }
       }
     },
