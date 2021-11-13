@@ -60,7 +60,7 @@ struct ValidatorBase {
   virtual Result validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert,
                           VPackOptions const*) const;
 
-  // Validate a single document in the specialized class ignoring the the level.
+  // Validate a single document in the specialized class ignoring the level.
   // This version is used in the implementations of AQL Functions.
   virtual Result validateOne(VPackSlice slice, VPackOptions const*) const = 0;
 
