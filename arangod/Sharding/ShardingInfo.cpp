@@ -122,7 +122,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
 #ifdef USE_ENTERPRISE
     else if (replicationFactorSlice.isString() &&
              replicationFactorSlice.copyString() == StaticStrings::Satellite) {
-        std::tie(isError, isASatellite) = makeSatellite();
+      std::tie(isError, isASatellite) = makeSatellite();
     }
 
     if (isSmart && isASatellite) {
@@ -304,17 +304,21 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
   result.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
   result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
 
-  if ((!_distributeShardsLike.empty() && ServerState::instance()->isCoordinator()) ||
-      (!_distributeShardsLike.empty() && ServerState::instance()->isSingleServer() && isSmartOrSatellite)) {
-    // We either want to expose _distributeShardsLike if we're either on a Coordinator
-    // Or we have found a Smart or Satellite collection on a single server instance.
-    if (translateCids && !ServerState::instance()->isSingleServer()) {
-      CollectionNameResolver resolver(_collection->vocbase());
+  if (!_distributeShardsLike.empty()) {
+    if (ServerState::instance()->isCoordinator()) {
+      // We either want to expose _distributeShardsLike if we're either on a Coordinator
+      if (translateCids) {
+        CollectionNameResolver resolver(_collection->vocbase());
 
-      result.add(StaticStrings::DistributeShardsLike,
-                 VPackValue(resolver.getCollectionNameCluster(DataSourceId{
-                     basics::StringUtils::uint64(distributeShardsLike())})));
-    } else {
+        result.add(StaticStrings::DistributeShardsLike,
+                   VPackValue(resolver.getCollectionNameCluster(DataSourceId{
+                       basics::StringUtils::uint64(distributeShardsLike())})));
+      } else {
+        result.add(StaticStrings::DistributeShardsLike,
+                   VPackValue(distributeShardsLike()));
+      }
+    } else if (ServerState::instance()->isSingleServer()) {
+      // Or we have found a Smart or Satellite collection on a single server instance.
       result.add(StaticStrings::DistributeShardsLike, VPackValue(distributeShardsLike()));
     }
   }
