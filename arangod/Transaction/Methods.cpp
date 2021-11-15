@@ -677,11 +677,6 @@ bool transaction::Methods::isEdgeCollection(std::string const& collectionName) c
 }
 
 /// @brief return the type of a collection
-bool transaction::Methods::isDocumentCollection(std::string const& collectionName) const {
-  return getCollectionType(collectionName) == TRI_COL_TYPE_DOCUMENT;
-}
-
-/// @brief return the type of a collection
 TRI_col_type_e transaction::Methods::getCollectionType(std::string const& collectionName) const {
   auto collection = resolver()->getCollection(collectionName);
 
@@ -1015,7 +1010,17 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       if (options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
-      if (options.isSynchronousReplicationFrom != theLeader) {
+      bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
+        sendRefusal = true;
+      }
+      TRI_IF_FAILURE("synchronousReplication::expectFollowingTerm") {
+        // expect a following term id or send a refusal
+        if (!options.isRestore) {
+          sendRefusal |= (options.isSynchronousReplicationFrom.find('_') == std::string::npos);
+        }
+      }
+      if (sendRefusal) {
         return OperationResult(
             ::buildRefusalResult(*collection, "insert", options, theLeader),
             options);
@@ -1307,7 +1312,17 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       if (options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
-      if (options.isSynchronousReplicationFrom != theLeader) {
+      bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
+        sendRefusal = true;
+      }
+      TRI_IF_FAILURE("synchronousReplication::expectFollowingTerm") {
+        // expect a following term id or send a refusal
+        if (!options.isRestore) {
+          sendRefusal |= (options.isSynchronousReplicationFrom.find('_') == std::string::npos);
+        }
+      }
+      if (sendRefusal) {
         return OperationResult(
             ::buildRefusalResult(*collection, (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? "replace" : "update"), options, theLeader),
             options);
@@ -1518,7 +1533,17 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       if (options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
-      if (options.isSynchronousReplicationFrom != theLeader) {
+      bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
+        sendRefusal = true;
+      }
+      TRI_IF_FAILURE("synchronousReplication::expectFollowingTerm") {
+        // expect a following term id or send a refusal
+        if (!options.isRestore) {
+          sendRefusal |= (options.isSynchronousReplicationFrom.find('_') == std::string::npos);
+        }
+      }
+      if (sendRefusal) {
         return OperationResult(
             ::buildRefusalResult(*collection, "remove", options, theLeader),
             options);
@@ -1751,7 +1776,17 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
       }
-      if (options.isSynchronousReplicationFrom != theLeader) {
+      bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
+        sendRefusal = true;
+      }
+      TRI_IF_FAILURE("synchronousReplication::expectFollowingTerm") {
+        // expect a following term id or send a refusal
+        if (!options.isRestore) {
+          sendRefusal |= (options.isSynchronousReplicationFrom.find('_') == std::string::npos);
+        }
+      }
+      if (sendRefusal) {
         return futures::makeFuture(
             OperationResult(
                 ::buildRefusalResult(*collection, "truncate", options, theLeader),
@@ -1793,10 +1828,21 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       reqOpts.param(StaticStrings::Compact, (options.truncateCompact ? "true" : "false"));
 
       for (auto const& f : *followers) {
-        reqOpts.param(StaticStrings::IsSynchronousReplicationString,
-            ServerState::instance()->getId() + "_" +
-            basics::StringUtils::itoa(
-              collection->followers()->getFollowingTermId(f)));
+        // check following term id for the follower: 
+        // if it is 0, it means that the follower cannot handle following
+        // term ids safely, so we only pass the leader id string to id but
+        // no following term. this happens for followers < 3.8.3
+        // if the following term id is != 0, we will pass it on along with
+        // the leader id string, in format "LEADER_FOLLOWINGTERMID"
+        uint64_t followingTermId = collection->followers()->getFollowingTermId(f);
+        if (followingTermId == 0) {
+          reqOpts.param(StaticStrings::IsSynchronousReplicationString,
+                        ServerState::instance()->getId());
+        } else {
+          reqOpts.param(StaticStrings::IsSynchronousReplicationString,
+              ServerState::instance()->getId() + "_" +
+              basics::StringUtils::itoa(followingTermId));
+        }
         // reqOpts is copied deep in sendRequestRetry, so we are OK to
         // change it in the loop!
         network::Headers headers;
@@ -2058,22 +2104,6 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
   // the above methods must always return a valid iterator or throw!
   TRI_ASSERT(iterator != nullptr);
   return iterator;
-}
-
-/// @brief return the collection
-arangodb::LogicalCollection* transaction::Methods::documentCollection(DataSourceId cid) const {
-  TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  auto trxColl = trxCollection(cid, AccessMode::Type::READ);
-  if (trxColl == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "could not find collection");
-  }
-
-  TRI_ASSERT(trxColl != nullptr);
-  TRI_ASSERT(trxColl->collection() != nullptr);
-  return trxColl->collection().get();
 }
 
 /// @brief return the collection
@@ -2351,10 +2381,21 @@ Future<Result> Methods::replicateOperations(
 
   auto* pool = vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& f : *followerList) {
-    reqOpts.param(StaticStrings::IsSynchronousReplicationString,
-        ServerState::instance()->getId() + "_" +
-        basics::StringUtils::itoa(
-          collection->followers()->getFollowingTermId(f)));
+    // check following term id for the follower: 
+    // if it is 0, it means that the follower cannot handle following
+    // term ids safely, so we only pass the leader id string to id but
+    // no following term. this happens for followers < 3.8.3
+    // if the following term id is != 0, we will pass it on along with
+    // the leader id string, in format "LEADER_FOLLOWINGTERMID"
+    uint64_t followingTermId = collection->followers()->getFollowingTermId(f);
+    if (followingTermId == 0) {
+      reqOpts.param(StaticStrings::IsSynchronousReplicationString,
+                    ServerState::instance()->getId());
+    } else {
+      reqOpts.param(StaticStrings::IsSynchronousReplicationString,
+          ServerState::instance()->getId() + "_" +
+          basics::StringUtils::itoa(followingTermId));
+    }
     // reqOpts is copied deep in sendRequestRetry, so we are OK to
     // change it in the loop!
     network::Headers headers;

@@ -503,7 +503,7 @@ auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
   }
 
   auto newLog = _inMemoryLog.release(compactionStop);
-  auto res = _logCore->removeFront(compactionStop);
+  auto res = _logCore->removeFront(compactionStop).get();
   if (res.ok()) {
     _inMemoryLog = std::move(newLog);
   }

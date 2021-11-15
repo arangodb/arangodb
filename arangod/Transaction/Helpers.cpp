@@ -428,11 +428,6 @@ transaction::StringBufferLeaser::StringBufferLeaser(transaction::Methods* trx)
     : _transactionContext(trx->transactionContextPtr()),
       _stringBuffer(_transactionContext->leaseStringBuffer(32)) {}
 
-/// @brief constructor, leases a StringBuffer
-transaction::StringBufferLeaser::StringBufferLeaser(transaction::Context* transactionContext)
-    : _transactionContext(transactionContext),
-      _stringBuffer(_transactionContext->leaseStringBuffer(32)) {}
-
 /// @brief destructor
 transaction::StringBufferLeaser::~StringBufferLeaser() {
   _transactionContext->returnStringBuffer(_stringBuffer);

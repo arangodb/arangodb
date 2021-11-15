@@ -155,6 +155,10 @@ uint64_t ClusterTransactionState::numCommits() const {
   return _status == transaction::Status::COMMITTED ? 1 : 0;
 }
 
+TRI_voc_tick_t ClusterTransactionState::lastOperationTick() const noexcept {
+  return 0;
+}
+
 std::unique_ptr<TransactionCollection> ClusterTransactionState::createTransactionCollection(
     DataSourceId cid, AccessMode::Type accessType) {
   return std::make_unique<ClusterTransactionCollection>(this, cid, accessType);

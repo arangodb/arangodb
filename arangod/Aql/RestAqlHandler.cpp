@@ -287,10 +287,9 @@ void RestAqlHandler::setupClusterQuery() {
 
   double const ttl = options.ttl;
   // creates a StandaloneContext or a leased context
-  auto q = ClusterQuery::create(clusterQueryId, 
+  auto q = ClusterQuery::create(clusterQueryId,
                                 createTransactionContext(access),
                                 std::move(options));
-  
   TRI_ASSERT(clusterQueryId == 0 || clusterQueryId == q->id());
 
   VPackBufferUInt8 buffer;
@@ -653,30 +652,9 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecut
 
 // handle for useQuery
 RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
-                                          VPackSlice const querySlice) {
+                                          VPackSlice querySlice) {
   bool found;
   std::string const& shardId = _request->header(StaticStrings::AqlShardIdHeader, found);
-
-  // upon first usage, the "initializeCursor" method must be called
-  // note: if the operation is "initializeCursor" itself, we do not initialize
-  // the cursor here but let the case for "initializeCursor" process it.
-  // this is because the request may contain additional data
-  if ((operation == "getSome" || operation == "skipSome") &&
-      !_engine->initializeCursorCalled()) {
-    TRI_IF_FAILURE("RestAqlHandler::getSome") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    auto res = _engine->initializeCursor(nullptr, 0);
-    if (res.first == ExecutionState::WAITING) {
-      return RestStatus::WAITING;
-    }
-    if (!res.second.ok()) {
-      generateError(GeneralResponse::responseCode(res.second.errorNumber()),
-                    res.second.errorNumber(),
-                    "cannot initialize cursor for AQL query");
-      return RestStatus::DONE;
-    }
-  }
 
   auto const rootNodeType = _engine->root()->getPlanNode()->getType();
 
@@ -718,71 +696,6 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     answerBuilder.add(VPackValue(StaticStrings::AqlRemoteResult));
     result.toVelocyPack(answerBuilder, &_engine->getQuery().vpackOptions());
     answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
-  } else if (operation == "getSome") {
-    TRI_IF_FAILURE("RestAqlHandler::getSome") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    auto atMost = VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
-                                                            ExecutionBlock::DefaultBatchSize);
-    SharedAqlItemBlockPtr items;
-    ExecutionState state;
-
-    // shardId is set IFF the root node is scatter or distribute
-    TRI_ASSERT(shardId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
-                                   rootNodeType == ExecutionNode::DISTRIBUTE));
-    if (shardId.empty()) {
-      std::tie(state, items) = _engine->getSome(atMost);
-      if (state == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
-    } else {
-      auto block = dynamic_cast<BlocksWithClients*>(_engine->root());
-      if (block == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "unexpected node type");
-      }
-      std::tie(state, items) = block->getSomeForShard(atMost, shardId);
-      if (state == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
-    }
-    answerBuilder.add("done", VPackValue(state == ExecutionState::DONE));
-    answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
-    if (items.get() == nullptr) {
-      // Backwards Compatibility
-      answerBuilder.add(StaticStrings::Error, VPackValue(false));
-    } else {
-      items->toVelocyPack(&_engine->getQuery().vpackOptions(), answerBuilder);
-    }
-
-  } else if (operation == "skipSome") {
-    auto atMost = VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
-                                                            ExecutionBlock::DefaultBatchSize);
-    size_t skipped;
-    if (shardId.empty()) {
-      auto tmpRes = _engine->skipSome(atMost);
-      if (tmpRes.first == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
-      skipped = tmpRes.second;
-    } else {
-      TRI_ASSERT(rootNodeType == ExecutionNode::SCATTER ||
-                 rootNodeType == ExecutionNode::DISTRIBUTE);
-
-      auto block = dynamic_cast<BlocksWithClients*>(_engine->root());
-      if (block == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "unexpected node type");
-      }
-
-      auto tmpRes = block->skipSomeForShard(atMost, shardId);
-      if (tmpRes.first == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
-      skipped = tmpRes.second;
-    }
-    answerBuilder.add("skipped", VPackValue(skipped));
-    answerBuilder.add(StaticStrings::Error, VPackValue(false));
   } else if (operation == "initializeCursor") {
     auto pos = VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
     Result res;

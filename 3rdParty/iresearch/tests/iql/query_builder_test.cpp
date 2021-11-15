@@ -119,10 +119,10 @@ class IqlQueryBuilderTestSuite: public ::testing::Test {
   }
 };
 
-class analyzed_string_field: public templates::string_field {
+class analyzed_string_field: public string_field {
  public:
   analyzed_string_field(const std::string& name, const irs::string_ref& value)
-    : templates::string_field(name, value),
+    : string_field(name, value),
       token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::text>::get(), "en")) {
     if (!token_stream_) {
       throw std::runtime_error("Failed to get 'text' analyzer for args: en");
