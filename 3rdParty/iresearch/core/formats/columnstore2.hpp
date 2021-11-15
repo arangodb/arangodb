@@ -63,6 +63,9 @@ class column final : public irs::column_output {
     uint64_t avg;
     uint64_t data;
     uint64_t last_size;
+#ifdef IRESEARCH_DEBUG
+    uint64_t size;
+#endif
     uint32_t bits;
   }; // column_block
 
@@ -75,21 +78,19 @@ class column final : public irs::column_output {
       deflater_{std::move(deflater)} {
   }
 
-  void prepare(doc_id_t key) {
-    if (IRS_LIKELY(key > pend_)) {
-      if (addr_table_.full()) {
-        flush_block();
-      }
-
-      prev_ = pend_;
-      pend_ = key;
-      docs_writer_.push_back(key);
-      addr_table_.push_back(data_.stream.file_pointer());
-    }
-  }
+  void prepare(doc_id_t key);
 
   bool empty() const noexcept {
     return addr_table_.empty();
+  }
+
+  void flush() {
+    if (!addr_table_.empty()) {
+      flush_block();
+#ifdef IRESEARCH_DEBUG
+      sealed_ = true;
+#endif
+    }
   }
 
   void finish(index_output& index_out);
@@ -102,17 +103,7 @@ class column final : public irs::column_output {
     data_.stream.write_bytes(b, size);
   }
 
-  virtual void reset() override {
-    if (empty()) {
-      return;
-    }
-
-    [[maybe_unused]] const bool res = docs_writer_.erase(pend_);
-    assert(res);
-    data_.stream.seek(addr_table_.back());
-    addr_table_.pop_back();
-    pend_ = prev_;
-  }
+  virtual void reset() override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -180,6 +171,9 @@ class column final : public irs::column_output {
   doc_id_t prev_{}; // last committed doc_id_t
   doc_id_t pend_{}; // last pushed doc_id_t
   bool fixed_length_{true};
+#ifdef IRESEARCH_DEBUG
+  bool sealed_{false};
+#endif
 }; // column
 
 ////////////////////////////////////////////////////////////////////////////////
