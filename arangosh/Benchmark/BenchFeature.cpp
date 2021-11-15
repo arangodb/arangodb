@@ -569,7 +569,7 @@ void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> con
 
 
   std::vector<BenchRunResult> resultsSorted;
-  resultsSorted.insert (resultsSorted.begin(),
+  resultsSorted.insert(resultsSorted.begin(),
                         results.cbegin(), results.cend());
   std::sort(std::begin(resultsSorted), std::end(resultsSorted),
             [](BenchRunResult const& a, BenchRunResult const& b)
