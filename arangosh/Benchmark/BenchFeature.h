@@ -83,10 +83,10 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
  private:
   void status(std::string const& value);
-  void report(ClientFeature&, std::vector<BenchRunResult>&, arangobench::BenchmarkStats const& stats, std::string const& histogram, VPackBuilder& builder);
+  void report(ClientFeature& client, std::vector<BenchRunResult> const& results, arangobench::BenchmarkStats const& stats, std::string const& histogram, VPackBuilder& builder);
   void printResult(BenchRunResult const& result, VPackBuilder& builder);
   bool writeJunitReport(BenchRunResult const& result);
-  void setupHistogram(std::stringstream& pp, VPackBuilder& builder);
+  void setupHistogram(std::stringstream& pp);
   void updateStatsValues(std::stringstream& pp, VPackBuilder& builder, std::vector<std::unique_ptr<arangodb::arangobench::BenchmarkThread>> const&  threads, arangodb::arangobench::BenchmarkStats& totalStats);
 
   uint64_t _concurrency;

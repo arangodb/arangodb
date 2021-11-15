@@ -242,20 +242,22 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (options->processingResult().touched("--histogram.interval-size")) {
-    LOG_TOPIC("8b53b", WARN, arangodb::Logger::BENCH)
-        << "For flag '--histogram.interval-size " << _histogramIntervalSize
-        << "': histogram is disabled by default. Enable it with flag '--histogram.generate = true'.";
-  }
-  if (options->processingResult().touched("--histogram.num-intervals")) {
+  if (!_generateHistogram) {
+    if (options->processingResult().touched("--histogram.interval-size")) {
+      LOG_TOPIC("8b53b", WARN, arangodb::Logger::BENCH)
+          << "For flag '--histogram.interval-size "
+          << _histogramIntervalSize << "': histogram is disabled by default. Enable it with flag '--histogram.generate = true'.";
+    }
+    if (options->processingResult().touched("--histogram.num-intervals")) {
       LOG_TOPIC("02916", WARN, arangodb::Logger::BENCH)
-        << "For flag '--histogram.num-intervals " << _histogramNumIntervals
-        << "': histogram is disabled by default. Enable it with flag '--histogram.generate = true'.";
-  }
-  if (options->processingResult().touched("--histogram.percentiles")) {
-    LOG_TOPIC("ad47b", WARN, arangodb::Logger::BENCH)
-        << "For flag '--histogram.percentiles " << _percentiles
-        << "': histogram is disabled by default. Enable it with flag '--histogram.generate = true'.";
+          << "For flag '--histogram.num-intervals "
+          << _histogramNumIntervals << "': histogram is disabled by default. Enable it with flag '--histogram.generate = true'.";
+    }
+    if (options->processingResult().touched("--histogram.percentiles")) {
+      LOG_TOPIC("ad47b", WARN, arangodb::Logger::BENCH)
+          << "For flag '--histogram.percentiles "
+          << _percentiles << "': histogram is disabled by default. Enable it with flag '--histogram.generate = true'.";
+    }
   }
 }
 
@@ -271,8 +273,7 @@ void BenchFeature::updateStartCounter() { ++_started; }
 
 int BenchFeature::getStartCounter() { return _started; }
 
-void BenchFeature::setupHistogram(std::stringstream& pp, VPackBuilder& builder) {
-  builder.add("histogram", VPackValue(VPackValueType::Object));
+void BenchFeature::setupHistogram(std::stringstream& pp) {
   pp << "Interval/Percentile:";
   for (auto percentile : _percentiles) {
     pp << std::fixed << std::right << std::setw(13) << std::setprecision(2)
@@ -411,7 +412,8 @@ void BenchFeature::start() {
   std::vector<BenchRunResult> results;
   std::stringstream pp;
   if (_generateHistogram) {
-    setupHistogram(pp, builder);
+    builder.add("histogram", VPackValue(VPackValueType::Object));
+    setupHistogram(pp);
   }
 
   for (uint64_t j = 0; j < _runs; j++) {
@@ -531,7 +533,7 @@ void BenchFeature::start() {
   *_result = ret;
 }
 
-void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult>& results,
+void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> const& results,
                           BenchmarkStats const& stats,
                           std::string const& histogram, VPackBuilder& builder) {
 
@@ -565,28 +567,36 @@ void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult>& re
   builder.add("database", VPackValue(client.databaseName()));
   builder.add("collection", VPackValue(_collection));
 
-  std::sort(results.begin(), results.end(),
+
+  std::vector<BenchRunResult> resultsSorted;
+  resultsSorted.insert (resultsSorted.begin(),
+                        results.cbegin(), results.cend());
+  std::sort(std::begin(resultsSorted), std::end(resultsSorted),
             [](BenchRunResult const& a, BenchRunResult const& b)
             { return a._time < b._time; });
+
+  TRI_ASSERT(std::is_sorted(std::begin(resultsSorted), std::end(resultsSorted),
+                            [](BenchRunResult const& a, BenchRunResult const& b)
+                            { return a._time < b._time; }));
 
   BenchRunResult output{0, 0, 0, 0};
 
   if (_runs > 1) {
-    size_t size = results.size();
+    size_t size = resultsSorted.size();
 
     std::cout << std::endl;
     std::cout << "Printing fastest result" << std::endl;
     std::cout << "=======================" << std::endl;
 
     builder.add("fastestResults", VPackValue(VPackValueType::Object));
-    printResult(results[0], builder);
+    printResult(resultsSorted[0], builder);
     builder.close();
 
     std::cout << "Printing slowest result" << std::endl;
     std::cout << "=======================" << std::endl;
 
     builder.add("slowestResults", VPackValue(VPackValueType::Object));
-    printResult(results[size - 1], builder);
+    printResult(resultsSorted[size - 1], builder);
     builder.close();
 
     std::cout << "Printing median result" << std::endl;
@@ -595,15 +605,15 @@ void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult>& re
     size_t mid = (size_t)size / 2;
 
     if (size % 2 == 0) {
-      output.update((results[mid - 1]._time + results[mid]._time) / 2,
-                    (results[mid - 1]._failures + results[mid]._failures) / 2,
-                    (results[mid - 1]._incomplete + results[mid]._incomplete) / 2,
-                    (results[mid - 1]._requestTime + results[mid]._requestTime) / 2);
+      output.update((resultsSorted[mid - 1]._time + resultsSorted[mid]._time) / 2,
+                    (resultsSorted[mid - 1]._failures + resultsSorted[mid]._failures) / 2,
+                    (resultsSorted[mid - 1]._incomplete + resultsSorted[mid]._incomplete) / 2,
+                    (resultsSorted[mid - 1]._requestTime + resultsSorted[mid]._requestTime) / 2);
     } else {
-      output = results[mid];
+      output = resultsSorted[mid];
     }
   } else if (_runs > 0) {
-    output = results[0];
+    output = resultsSorted[0];
   }
 
   builder.add("results", VPackValue(VPackValueType::Object));
