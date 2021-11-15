@@ -8798,6 +8798,7 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(
   }
 
 #ifdef USE_ENTERPRISE
+  // TODO: Remove me as soon SmartVertex Schema Validation is in place (!)
   if (logicalCollection->isSmart() && logicalCollection->type() == TRI_COL_TYPE_DOCUMENT) {
     transaction::BuilderLeaser sBuilder(&trx);
     // smart vertex collection
