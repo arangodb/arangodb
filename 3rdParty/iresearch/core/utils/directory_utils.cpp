@@ -32,27 +32,6 @@ namespace iresearch {
 namespace directory_utils {
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                           memory_allocator utils
-// ----------------------------------------------------------------------------
-
-//memory_allocator& ensure_allocator(
-//    directory& dir, size_t size) {
-//  return size
-//    ? *dir.attributes().emplace<memory_allocator>(size)
-//    : memory_allocator::global();
-//}
-//
-//memory_allocator& get_allocator(const directory& dir) {
-//  auto& allocator = dir.attributes().get<memory_allocator>();
-//
-//  if (allocator) {
-//    return *allocator;
-//  }
-//
-//  return memory_allocator::global();
-//}
-
-// ----------------------------------------------------------------------------
 // --SECTION--                                            index_file_refs utils
 // ----------------------------------------------------------------------------
 
@@ -324,7 +303,7 @@ ref_tracking_directory::ref_tracking_directory(
     track_open_(std::move(other.track_open_)) {
 }
 
-void ref_tracking_directory::clear_refs() const noexcept {
+void ref_tracking_directory::clear_refs() const {
   // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(mutex_);
   refs_.clear();
@@ -333,7 +312,6 @@ void ref_tracking_directory::clear_refs() const noexcept {
 index_output::ptr ref_tracking_directory::create(
     const std::string& name) noexcept {
   try {
-
     // Do not change the order of calls!
     // The cleaner should "see" the file in directory
     // ONLY if there is a tracking reference present!
@@ -362,22 +340,26 @@ index_input::ptr ref_tracking_directory::open(
     return impl_.open(name, advice);
   }
 
-  auto result = impl_.open(name, advice);
+  try {
+    // Do not change the order of calls!
+    // The cleaner should "see" the file in directory
+    // ONLY if there is a tracking reference present!
+    auto ref = attribute_.add(name);
+    auto result = impl_.open(name, advice);
 
-  // only track ref on successful call to impl_
-  if (result) {
-    try {
-      auto ref = attribute_.add(name);
+    // only track ref on successful call to impl_
+    if (result) {
       auto lock = make_lock_guard(mutex_);
-
-      refs_.emplace(ref);
-    } catch (...) {
-
-      return nullptr;
+      refs_.emplace(std::move(ref));
+    } else {
+      attribute_.remove(name);
     }
+
+    return result;
+  } catch (...) {
   }
 
-  return result;
+  return nullptr;
 }
 
 bool ref_tracking_directory::remove(const std::string& name) noexcept {
@@ -416,14 +398,13 @@ bool ref_tracking_directory::rename(
 
     {
       // aliasing ctor
-      const index_file_refs::ref_t src_ref(
+      const index_file_refs::ref_t src_ref{
         index_file_refs::ref_t(),
-        &src
-      );
+        &src};
 
       auto lock = make_lock_guard(mutex_);
 
-      refs_.emplace(ref);
+      refs_.emplace(std::move(ref));
       refs_.erase(src_ref);
     }
 

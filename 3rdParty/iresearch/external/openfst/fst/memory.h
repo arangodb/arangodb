@@ -324,11 +324,11 @@ class PoolAllocator {
   using Allocator = std::allocator<T>;
   using size_type = typename Allocator::size_type;
   using difference_type = typename Allocator::difference_type;
+  using pointer = typename Allocator::pointer;
+  using const_pointer = typename Allocator::const_pointer;
+  using reference = typename Allocator::reference;
+  using const_reference = typename Allocator::const_reference;
   using value_type = typename Allocator::value_type;
-  using pointer = value_type*;
-  using const_pointer = value_type const*;
-  using reference = value_type&;
-  using const_reference = value_type const&;
 
   template <typename U>
   struct rebind {
