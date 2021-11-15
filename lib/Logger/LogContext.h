@@ -39,6 +39,10 @@
 
 namespace arangodb {
 
+namespace rest {
+  class RestHandler;
+}
+
 class LogContext {
  public:
   struct Visitor;
@@ -64,14 +68,19 @@ class LogContext {
   template <class Vals = std::tuple<>, const char... Keys[]>
   struct ValueBuilder;
 
-  /// @brief adds the provided value(s) to the LogContext for the current scope,
-  /// i.e., upon destruction the value(s) are removed from the current LogContext.
-  struct ScopedValue;
-
   /// @brief sets the given LogContext as the thread's current context for the
   /// current scope; restores the previous LogContext upon destruction.
   struct ScopedContext;
 
+  struct Accessor {
+   private:
+    friend class arangodb::rest::RestHandler;
+    
+    /// @brief adds the provided value(s) to the LogContext for the current scope,
+    /// i.e., upon destruction the value(s) are removed from the current LogContext.
+    struct ScopedValue;
+  };
+  
   static ValueBuilder<> makeValue() noexcept;
 
   LogContext() = default;
@@ -331,7 +340,7 @@ struct LogContext::ThreadControlBlock {
   LogContext::EntryCache _entryCache;
 };
 
-struct LogContext::ScopedValue {
+struct LogContext::Accessor::ScopedValue {
   explicit ScopedValue(std::shared_ptr<LogContext::Values> v) {
     appendEntry(std::move(v));
   }
@@ -388,7 +397,7 @@ inline void LogContext::EntryImpl<Vals>::release(EntryCache& cache) noexcept {
 
 // LogContext::ScopedValue
 
-inline LogContext::ScopedValue::~ScopedValue() {
+inline LogContext::Accessor::ScopedValue::~ScopedValue() {
   auto& local = LogContext::controlBlock();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_oldTail == local._logContext._tail);

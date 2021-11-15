@@ -2653,10 +2653,6 @@ Future<OperationResult> Methods::insertInternal(std::string const& cname, VPackS
                                                 OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   
-  // LogContext::ScopedValue logCtx(LogContext::makeValue().
-  //   with<logContextKeyDatabaseName>(vocbase().name()).
-  //   with<logContextKeyCollectionName>(cname));
-
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
     events::CreateDocument(vocbase().name(), cname, value, options,

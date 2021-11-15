@@ -201,6 +201,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void compressResponse();
 
  protected:
+  using ScopedValue = LogContext::Accessor::ScopedValue;
+ 
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
   application_features::ApplicationServer& _server;
