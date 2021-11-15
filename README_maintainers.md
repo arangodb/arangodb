@@ -381,13 +381,13 @@ This is known to work under Linux and the `jeprof` tool comes with the
 Using it with the integration tests is possible; snapshots will be taken before
 the first and after each subsequent testcase executed.
 
-The `shell-sleep-grey.js` testsuite can be used to suspend execution for a
+The `shell-sleep.js` testsuite can be used to suspend execution for a
 specified amount of time:
 
     export SLEEP_FOR=$((5*60))
     ./scripts/unittest shell_client \
        --memprof true \
-       --test shell-sleep-grey.js \
+       --test shell-sleep.js \
        --oneTestTimeout ((6*60)) \
        --cleanup false
     ...

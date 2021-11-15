@@ -1,10 +1,8 @@
 /*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, fail, Buffer */
+/*global assertTrue, process */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test filesystem functions
-///
-/// @file
 ///
 /// DISCLAIMER
 ///
@@ -28,20 +26,26 @@
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test attributes
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const internal = require("internal");
 
 function SleepSuite () {
   'use strict';
   return {
+    
+    testSleep : function () {
+      let time = require("internal").time;
+      let start = time();
+      internal.sleep(1);
+      let stop = time();
+      assertTrue(stop - start > 0.99);
+    },
 
-    testExists : function () {
-      var tempName;
-      let sleepFor = 1;
+    testSleepFor : function () {
+      // this is not a proper test. its purpose is just to serve as an
+      // example for invoking some test suite with memory profiling. this
+      // is explained in README_maintainers.md
+      let sleepFor = 0.01;
       if (process.env.hasOwnProperty('SLEEP_FOR')) {
         sleepFor = parseInt(process.env['SLEEP_FOR']);
       }
@@ -50,11 +54,6 @@ function SleepSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(SleepSuite);
 
 return jsunity.done();
-
