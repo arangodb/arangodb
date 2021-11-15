@@ -628,7 +628,7 @@ void createMiniDump(EXCEPTION_POINTERS* pointers) {
   };
 
   if (MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile,
-                        MINIDUMP_TYPE(MiniDumpNormal | MiniDumpWithProcessThreadData | MiniDumpWithDataSegs),
+                        MINIDUMP_TYPE(MiniDumpNormal | MiniDumpWithProcessThreadData | MiniDumpWithDataSegs | MiniDumpIgnoreInaccessibleMemory),
                         pointers ? &exceptionInfo : nullptr, nullptr,
                         pointers ? &callbackInfo : nullptr)) {
     char* p = &buffer[0];
