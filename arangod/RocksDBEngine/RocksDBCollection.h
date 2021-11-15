@@ -164,20 +164,24 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                   RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& documentId,
                                   arangodb::velocypack::Slice const& doc,
-                                  OperationOptions& options) const;
+                                  OperationOptions& options,
+                                  TRI_voc_rid_t revisionId) const;
 
   arangodb::Result removeDocument(arangodb::transaction::Methods* trx,
+                                  RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& documentId,
                                   arangodb::velocypack::Slice const& doc,
-                                  OperationOptions& options) const;
+                                  OperationOptions& options,
+                                  TRI_voc_rid_t revisionId) const;
 
-  arangodb::Result updateDocument(transaction::Methods* trx, 
+  arangodb::Result modifyDocument(transaction::Methods* trx, 
                                   RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& oldDocumentId,
                                   arangodb::velocypack::Slice const& oldDoc,
                                   LocalDocumentId const& newDocumentId,
                                   arangodb::velocypack::Slice const& newDoc,
-                                  OperationOptions& options) const;
+                                  OperationOptions& options,
+                                  TRI_voc_rid_t revisionId) const;
 
   /// @brief lookup document in cache and / or rocksdb
   /// @param readCache attempt to read from cache

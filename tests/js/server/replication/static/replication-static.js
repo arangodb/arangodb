@@ -156,7 +156,7 @@ const compare = function (masterFunc, slaveFunc, applierConfiguration) {
       console.debug('waiting for slave to catch up');
       printed = true;
     }
-    internal.wait(0.5, false);
+    internal.wait(0.2, false);
   }
 
   db._flushCache();
