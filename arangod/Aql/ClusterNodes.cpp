@@ -346,6 +346,9 @@ void DistributeNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const
     {
       VPackArrayBuilder guard(&builder);
       for (auto const& v : _satellites) {
+        // if the mapped shard for a collection is empty, it means that
+        // we have a vertex collection that is only relevant on some of the
+        // target servers
         builder.add(VPackValue(v->name()));
       }
     }

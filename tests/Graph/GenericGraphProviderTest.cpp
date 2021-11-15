@@ -138,8 +138,8 @@ class GraphProviderTest : public ::testing::Test {
         auto fakeQuery = arangodb::aql::Query::create(ctx, queryString, nullptr);
         try {
           fakeQuery->collections().add("s9880", AccessMode::Type::READ,
-                                       arangodb::aql::Collection::Hint::Shard);
-        } catch(...) {
+                                      arangodb::aql::Collection::Hint::Shard);
+        } catch (...) {
         }
         fakeQuery->prepareQuery(SerializationFormat::SHADOWROWS);
         auto ast = fakeQuery->ast();

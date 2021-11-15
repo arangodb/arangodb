@@ -178,18 +178,14 @@ class AqlItemBlock {
     _maxModifiedRowIndex = std::max<size_t>(_maxModifiedRowIndex, index + 1);
   }
 
-  /// @brief eraseValue, erase the current value of a register and freeing it
+  /// @brief erase the current value of a register and free it
   /// if this was the last reference to the value
   /// use with caution only in special situations when it can be ensured that
   /// no one else will be pointing to the same value
   void destroyValue(size_t index, RegisterId varNr);
   void destroyValue(size_t index, RegisterId::value_t column);
 
-  /// @brief eraseValue, erase the current value of a register not freeing it
-  /// this is used if the value is stolen and later released from elsewhere
-  void eraseValue(size_t index, RegisterId varNr);
-
-  /// @brief eraseValue, erase the current value of all values, not freeing
+  /// @brief erase the current value of all values, not freeing
   /// them. this is used if the value is stolen and later released from
   /// elsewhere
   void eraseAll();
@@ -265,13 +261,6 @@ class AqlItemBlock {
   /// @brief slice/clone chosen rows for a subset, this does a deep copy
   /// of all entries
   SharedAqlItemBlockPtr slice(std::vector<size_t> const& chosen, size_t from, size_t to) const;
-
-  /// @brief steal for a subset, this does not copy the entries, rather,
-  /// it remembers which it has taken. This is stored in the
-  /// this AqlItemBlock. It is highly recommended to delete it right
-  /// after this operation, because it is unclear, when the values
-  /// to which our AqlValues point will vanish.
-  SharedAqlItemBlockPtr steal(std::vector<size_t> const& chosen, size_t from, size_t to);
 
   /// @brief toJson, transfer all rows of this AqlItemBlock to Json, the result
   /// can be used to recreate the AqlItemBlock via the Json constructor

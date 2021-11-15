@@ -26,6 +26,7 @@
 
 #include "StringBuffer.h"
 
+#include "Basics/EncodingUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
@@ -165,89 +166,6 @@ void TRI_AnnihilateStringBuffer(TRI_string_buffer_t* self) {
 void TRI_FreeStringBuffer(TRI_string_buffer_t* self) {
   TRI_DestroyStringBuffer(self);
   TRI_Free(self);
-}
-
-/// @brief compress the string buffer using deflate
-ErrorCode TRI_DeflateStringBuffer(TRI_string_buffer_t* self, size_t bufferSize) {
-  TRI_string_buffer_t deflated;
-  char const* ptr;
-  char const* end;
-  char* buffer;
-  int res;
-
-  z_stream strm;
-  strm.zalloc = Z_NULL;
-  strm.zfree = Z_NULL;
-  strm.opaque = Z_NULL;
-
-  // initialize deflate procedure
-  res = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
-
-  if (res != Z_OK) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  buffer = static_cast<char*>(TRI_Allocate(bufferSize));
-
-  if (buffer == nullptr) {
-    (void)deflateEnd(&strm);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  // we'll use this buffer for the output
-  TRI_InitStringBuffer(&deflated);
-
-  ptr = TRI_BeginStringBuffer(self);
-  end = ptr + TRI_LengthStringBuffer(self);
-
-  while (ptr < end) {
-    int flush;
-
-    strm.next_in = (unsigned char*)ptr;
-
-    if (end - ptr > (int)bufferSize) {
-      strm.avail_in = (int)bufferSize;
-      flush = Z_NO_FLUSH;
-    } else {
-      strm.avail_in = (uInt)(end - ptr);
-      flush = Z_FINISH;
-    }
-    ptr += strm.avail_in;
-
-    do {
-      strm.avail_out = (int)bufferSize;
-      strm.next_out = (unsigned char*)buffer;
-      res = deflate(&strm, flush);
-
-      if (res == Z_STREAM_ERROR) {
-        (void)deflateEnd(&strm);
-        TRI_Free(buffer);
-        TRI_DestroyStringBuffer(&deflated);
-
-        return TRI_ERROR_INTERNAL;
-      }
-
-      if (TRI_AppendString2StringBuffer(&deflated, (char*)buffer,
-                                        bufferSize - strm.avail_out) != TRI_ERROR_NO_ERROR) {
-        (void)deflateEnd(&strm);
-        TRI_Free(buffer);
-        TRI_DestroyStringBuffer(&deflated);
-
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
-    } while (strm.avail_out == 0);
-  }
-
-  // deflate successful
-  (void)deflateEnd(&strm);
-
-  TRI_SwapStringBuffer(self, &deflated);
-  TRI_DestroyStringBuffer(&deflated);
-
-  TRI_Free(buffer);
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief ensure the string buffer has a specific capacity
@@ -772,92 +690,32 @@ std::ostream& operator<<(std::ostream& stream, arangodb::basics::StringBuffer co
   return stream;
 }
 
-/// @brief uncompress the buffer into stringstream out, using zlib-inflate
-ErrorCode arangodb::basics::StringBuffer::inflate(std::stringstream& out,
-                                                  size_t bufferSize, size_t skip) {
-  z_stream strm;
+ErrorCode arangodb::basics::StringBuffer::deflate() {
+  arangodb::basics::StringBuffer deflated;
 
-  strm.zalloc = Z_NULL;
-  strm.zfree = Z_NULL;
-  strm.opaque = Z_NULL;
-  strm.avail_in = 0;
-  strm.next_in = Z_NULL;
+  ErrorCode code = arangodb::encoding::gzipDeflate(
+      reinterpret_cast<uint8_t const*>(data()), size(), deflated);
 
-  int res = inflateInit(&strm);
-
-  if (res != Z_OK) {
-    return TRI_ERROR_OUT_OF_MEMORY;
+  if (code == TRI_ERROR_NO_ERROR) {
+    swap(&deflated);
   }
-
-  size_t len = this->length();
-
-  if (len < skip) {
-    len = 0;
-  } else {
-    len -= skip;
-  }
-
-  strm.avail_in = (int)len;
-  strm.next_in = ((unsigned char*)this->c_str()) + skip;
-
-  auto guard = scopeGuard([&strm]() noexcept { (void)inflateEnd(&strm); });
-
-  auto buffer = std::make_unique<char[]>(bufferSize);
-
-  do {
-    if (strm.avail_in == 0) {
-      break;
-    }
-
-    do {
-      strm.avail_out = (uInt)bufferSize;
-      strm.next_out = (unsigned char*)buffer.get();
-
-      res = ::inflate(&strm, Z_NO_FLUSH);
-      TRI_ASSERT(res != Z_STREAM_ERROR);
-
-      switch (res) {
-        case Z_NEED_DICT:
-        case Z_DATA_ERROR:
-        case Z_MEM_ERROR: {
-          return TRI_ERROR_INTERNAL;
-        }
-        default:;
-      }
-
-      out.write(buffer.get(), bufferSize - strm.avail_out);
-    } while (strm.avail_out == 0);
-  } while (res != Z_STREAM_END);
-
-  if (res != Z_STREAM_END) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return TRI_ERROR_INTERNAL;
+  return code;
 }
 
 /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
 ErrorCode arangodb::basics::StringBuffer::inflate(arangodb::basics::StringBuffer& out,
-                                                  size_t bufferSize, size_t skip) {
-  z_stream strm;
+                                                  size_t skip) {
+  uint8_t const* p = reinterpret_cast<uint8_t const*>(data());
+  size_t length = size();
 
-  strm.zalloc = Z_NULL;
-  strm.zfree = Z_NULL;
-  strm.opaque = Z_NULL;
-  strm.avail_in = 0;
-  strm.next_in = Z_NULL;
-
-  size_t len = this->length();
-  bool raw = true;
-
-  if (len < skip) {
-    len = 0;
+  if (length < skip) {
+    length = 0;
   } else {
-    len -= skip;
+    p += skip;
+    length -= skip;
   }
 
-  unsigned char* start = ((unsigned char*)this->c_str()) + skip;
-
+  /* TODO: figure out if the following code needs to be re-enabled
   // nginx seems to skip the header - which is wrong according to the
   // RFC. The following is a hack to find out, if a header is present.
   // There is a 1 in 31 chance that this will not work.
@@ -870,46 +728,7 @@ ErrorCode arangodb::basics::StringBuffer::inflate(arangodb::basics::StringBuffer
   }
 
   int res = raw ? inflateInit2(&strm, -15) : inflateInit(&strm);
+  */
 
-  if (res != Z_OK) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  strm.avail_in = (int)len;
-  strm.next_in = start;
-
-  auto guard = scopeGuard([&strm]() noexcept { (void)inflateEnd(&strm); });
-
-  auto buffer = std::make_unique<char[]>(bufferSize);
-
-  do {
-    if (strm.avail_in == 0) {
-      break;
-    }
-
-    do {
-      strm.avail_out = (uInt)bufferSize;
-      strm.next_out = (unsigned char*)buffer.get();
-
-      res = ::inflate(&strm, Z_NO_FLUSH);
-      TRI_ASSERT(res != Z_STREAM_ERROR);
-
-      switch (res) {
-        case Z_NEED_DICT:
-        case Z_DATA_ERROR:
-        case Z_MEM_ERROR: {
-          return TRI_ERROR_INTERNAL;
-        }
-        default:;
-      }
-
-      out.appendText(buffer.get(), bufferSize - strm.avail_out);
-    } while (strm.avail_out == 0);
-  } while (res != Z_STREAM_END);
-
-  if (res != Z_STREAM_END) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return TRI_ERROR_INTERNAL;
+  return arangodb::encoding::gzipInflate(p, length, out);
 }

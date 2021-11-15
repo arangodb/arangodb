@@ -217,7 +217,7 @@ class GraphNode : public ExecutionNode {
     _isDisjoint = target;
   }
 #endif
- protected:  
+ protected:
   void doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
 
   void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone, bool withProperties) const;

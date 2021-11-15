@@ -16,6 +16,11 @@ set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 add_definitions("-DNROCKSDB_THREAD_STATUS")
 add_definitions("-DROCKSDB_SUPPORT_THREAD_LOCAL")
 
+# IPO_ENABLED is set by the top-level CMakeLists.txt file
+if (IPO_ENABLED)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION True)
+endif()
+
 # jemalloc settings
 if (USE_JEMALLOC)
   if (WIN32)
