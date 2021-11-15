@@ -2198,8 +2198,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   }
 
   if (res.ok()) {
-    RocksDBTransactionState::toState(trx)->trackRemove(_logicalCollection.id(),
-                                                       documentId.id());
+    RocksDBTransactionState::toState(trx)->trackRemove(_logicalCollection.id(), revisionId);
   }
 
   return res;
