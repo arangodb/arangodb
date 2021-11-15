@@ -1,4 +1,5 @@
 import 'jsoneditor-react/es/editor.min.css';
+import 'react-autocomplete-input/dist/bundle.css';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 

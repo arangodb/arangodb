@@ -6,8 +6,12 @@ import { isEmpty, map, negate, pickBy } from 'lodash';
 import Checkbox from "../../../components/pure-css/form/Checkbox";
 import LinkPropertiesInput from "./inputs/LinkPropertiesInput";
 import { IconButton } from "../../../components/arango/buttons";
-import Textbox from "../../../components/pure-css/form/Textbox";
 import { useLinkState } from "../helpers";
+import AutoCompleteTextInput from "../../../components/pure-css/form/AutoCompleteTextInput";
+
+// const getOptions = (str: string): string[] => {
+//   return [str];
+// };
 
 type LinkPropertiesFormProps = FormProps<FormState> & {
   cache?: { [key: string]: any };
@@ -22,8 +26,8 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled, cache = {} }: LinkP
     Object.assign(cache.links, pickBy(links, negate(isEmpty)));
   }, [cache, links]);
 
-  const updateCollection = (event: ChangeEvent<HTMLSelectElement>) => {
-    setCollection(event.target.value);
+  const updateCollection = (value: string | number) => {
+    setCollection(value);
   };
 
   const toggleLink = (collection: string, checked: boolean) => {
@@ -92,7 +96,9 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled, cache = {} }: LinkP
           ? null
           : <tr style={{ borderBottom: '1px  solid #DDD' }}>
             <ArangoTD seq={0} colSpan={2}>
-              <Textbox type={'text'} placeholder={'Collection'} onChange={updateCollection} value={collection}/>
+              <AutoCompleteTextInput placeholder={'Collection'} value={collection} minChars={1} spacer={''}
+                                     onSelect={updateCollection} matchAny={true}/>
+              {/* <Textbox type={'text'} placeholder={'Collection'} onChange={updateCollection} value={collection}/>*/}
             </ArangoTD>
             <ArangoTD seq={1}>
               <IconButton icon={'plus'} type={'warning'} onClick={addLink}
