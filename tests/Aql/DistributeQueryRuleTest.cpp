@@ -35,6 +35,19 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+#define useOptimize 1
+
+namespace {
+  std::string PrintNodeNames(VPackSlice nodes) {
+    std::string result;
+    for (auto n : VPackArrayIterator(nodes)) {
+      result += n.get("type").copyString();
+      result += ", ";
+    }
+    return result;
+  }
+}
+
 class DistributeQueryRuleTest : public ::testing::Test {
  protected:
   mocks::MockCoordinator server;
@@ -42,9 +55,14 @@ class DistributeQueryRuleTest : public ::testing::Test {
   std::shared_ptr<VPackBuilder> prepareQuery(std::string const& queryString) const {
     auto ctx = std::make_shared<StandaloneContext>(server.getSystemDatabase());
     auto const bindParamVPack = VPackParser::fromJson("{}");
-    auto const optionsVPack = VPackParser::fromJson(R"json({"optimizer": {"rules": ["distribute-query"]}})json");
+#if useOptimize
+    auto const optionsVPack =
+        VPackParser::fromJson(R"json({"optimizer": {"rules": ["distribute-query"]}})json");
+#else
+    auto const optionsVPack = VPackParser::fromJson(R"json({})json");
+#endif
     auto query = Query::create(ctx, QueryString(queryString), bindParamVPack,
-                                                   QueryOptions(optionsVPack->slice()));
+                               QueryOptions(optionsVPack->slice()));
 
     // NOTE: We can only get a VPacked Variant of the Plan, we cannot inject deep enough into the query.
     auto res = query->explain();
@@ -219,6 +237,65 @@ TEST_F(DistributeQueryRuleTest, distributed_sort) {
   EXPECT_TRUE(sortVar.get("inVariable").get("name").isEqualString("1"));
   // We need to keep DESC sort
   EXPECT_FALSE(sortVar.get("ascending").getBool());
+}
+
+TEST_F(DistributeQueryRuleTest, distributed_subquery_dbserver) {
+  auto queryString = R"aql(
+    FOR y IN 1..3
+    LET sub = (
+      FOR x IN collection
+        FILTER x.value == y
+        RETURN x)
+     RETURN sub)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << PrintNodeNames(planSlice);
+  assertNodesMatch(planSlice,
+                   {"SingletonNode", "CalculationNode", "EnumerateListNode",
+                    "SubqueryStartNode", "ScatterNode", "RemoteNode",
+                    "EnumerateCollectionNode", "CalculationNode", "FilterNode",
+                    "RemoteNode", "GatherNode", "SubqueryEndNode",
+                    "ReturnNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, distributed_remove) {
+  auto queryString = R"aql(
+    FOR y IN 1..3
+    REMOVE {_key: CONCAT("test", y)} IN collection)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << PrintNodeNames(planSlice);
+  assertNodesMatch(planSlice,
+                   {"SingletonNode", "CalculationNode", "EnumerateListNode",
+                    "CalculationNode", "CalculationNode", "DistributeNode",
+                    "RemoteNode", "RemoveNode", "RemoteNode", "GatherNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, distributed_subquery_remove) {
+  auto queryString = R"aql(
+    FOR y IN 1..3
+    LET sub = (
+      REMOVE {_key: CONCAT("test", y)} IN collection
+    )
+    RETURN sub)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << PrintNodeNames(planSlice);
+  assertNodesMatch(planSlice,
+                   {"SingletonNode", "CalculationNode", "EnumerateListNode",
+                    "CalculationNode", "CalculationNode",
+                    "DistributeNode", "RemoteNode", "SubqueryStartNode", "RemoveNode",
+                    "SubqueryEndNode", "RemoteNode", "GatherNode",
+                    "ReturnNode"});
 }
 
 }  // namespace aql

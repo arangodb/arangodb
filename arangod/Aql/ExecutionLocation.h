@@ -33,10 +33,18 @@ class ExecutionLocation {
  public:
   ExecutionLocation(LocationType location) : _location(location) {}
   bool canRunOnDBServer() const {
-    return _location == LocationType::ANYWHERE || _location == LocationType::DBSERVER;
+    return _location != LocationType::COORDINATOR;
   }
   bool canRunOnCoordinator() const {
-    return _location == LocationType::ANYWHERE || _location == LocationType::COORDINATOR;
+    return _location != LocationType::DBSERVER;
+  }
+
+  bool isSubqueryStart() const {
+    return _location == LocationType::SUBQUERY_START;
+  }
+
+  bool isSubqueryEnd() const {
+    return _location == LocationType::SUBQUERY_END;
   }
 
   /**

@@ -8675,140 +8675,307 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
     std::vector<ExecutionNode*> relevantNodes;
   } walker{};
 
+  /*
+   * This struct can be moved out of this method.
+   * i just kept them in here for simplicity to move this rule into a seperate file
+   * there is nothing from the scope required.
+   */
+  struct SubqueryScope {
+    ExecutionNode* previous;
+    ExecutionNode* subqueryEnd;
+    ExecutionNode* firstInternalNode;
+    bool hasInternalRemote;
+  };
+
   plan->root()->walk(walker);
 
+  TRI_vocbase_t* vocbase = &plan->getAst()->query().vocbase();
   /*
    * This Lambda can be moved out as a static method.
-   * i just kept them in here for simplicity to move this rule into a seperate file
-   * there is nothing from the scope  required.
+   * i just kept them in here for simplicity to move this rule into a seperate
+   * file there is nothing from the scope  required.
    */
   /**
    * TODO: I think this is still a bit unclear. Reformulate
    * @brief This method defines the logic to decide if two adjacent snippets can
-   * be merged. It will get the relevant Connected Nodes as input, and will return
-   * the node that defines the next Sharding upstream
+   * be merged. It will get the relevant Connected Nodes as input, and will
+   * return the node that defines the next Sharding upstream
    */
-  auto JoinSnippets = [](ExecutionPlan& plan, ExecutionNode* lower, ExecutionNode* upper) -> ExecutionNode* {
+  auto JoinSnippets = [vocbase](ExecutionPlan& plan, ExecutionNode* lower,
+                                ExecutionNode* upper, std::stack<SubqueryScope>& subqueryScopes) -> ExecutionNode* {
+
+    /*
+     * This Lambda can be moved out as a static method.
+     * i just kept them in here for simplicity to move this rule into a seperate
+     * file there is nothing from the scope  required.
+     */
+    /**
+     * @brief Helper method to create a node to control the input stream for targetNode
+     * The input stream can either be scattered (send input to all parallel branches of targetNode)
+     * or distributed (for every input line specifically select one branch of targetNode)
+     */
     auto createScatterNode = [](ExecutionPlan& plan, ExecutionNode* targetNode) -> ExecutionNode* {
       auto nodeType = targetNode->getType();
       if (nodeEligibleForDistribute(nodeType)) {
         // Use Distribute where possible
-        auto const [isSmart, isDisjoint, collection] = extractSmartnessAndCollection(targetNode);
+        auto const [isSmart, isDisjoint, collection] =
+            extractSmartnessAndCollection(targetNode);
         if (isModificationNode(nodeType) || (isGraphNode(nodeType) && isSmart && isDisjoint)) {
           return createDistributeNodeFor(plan, targetNode);
         }
       }
-      // Fallback to Scatter if we cannot identify the correct shard 
+      // Fallback to Scatter if we cannot identify the correct shard
       return plan.createNode<ScatterNode>(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD);
     };
+
+    LOG_DEVEL << "Joining snippets " << lower->getTypeString() << " with " << upper->getTypeString();
     auto lowerLoc = lower->getAllowedLocation();
     auto upperLoc = upper->getAllowedLocation();
     TRI_ASSERT(lowerLoc.isStrict());
     TRI_ASSERT(upperLoc.isStrict());
-    if (lowerLoc.canRunOnCoordinator() && upperLoc.canRunOnCoordinator()) {
-      // Both on Coordinator, already joined in between nothing to do
+    if (upperLoc.isSubqueryEnd()) {
+      LOG_DEVEL << "Pushing on SubqueryScope stack";
+      // We need to handle Subquery Joining later, start a new scope and remember it in stack
+      subqueryScopes.emplace(SubqueryScope{lower, upper, nullptr, false});
       return upper;
     }
+    if (upperLoc.isSubqueryStart()) {
+      LOG_DEVEL << "Concluding subquery";
+      TRI_ASSERT(!subqueryScopes.empty());
+      auto top = subqueryScopes.top();
+      subqueryScopes.pop();
+      // Lower (innerhalb vom Subquery)
+      if (top.hasInternalRemote) {
+        LOG_DEVEL << "Has internal remote is set";
+        // Scatter gather before the subquery.
+        // We need to make sure the Subquery is started and completed on Coordinator
+        // NOTE/TOOD: We need to know here that we can only handle notes that either run on
+        // coordinator or on dbserver, so canRun is enough, we should rename it to make clear
+        // that this node is FORCED on coordinator
+        if (top.previous->getAllowedLocation().canRunOnCoordinator()) {
+          // Previous -> Subquery is ok, both coordinator
+          if (top.firstInternalNode != nullptr) {
+            auto* subqueryNode =
+                (top.subqueryEnd->getType() == ExecutionNode::SUBQUERY)
+                    ? ExecutionNode::castTo<SubqueryNode*>(top.subqueryEnd)->getSubquery()
+                    : top.subqueryEnd;
+            // subqueryNode is on Coordinator
+            // Add GATHER REMOTE right above the lowerNode to keep most computations on DBServer, take sharding from upperNode
+            // TODO: We may need to get more clever with the GATHER node here, regarding parallelism
+            // TODO: We may need to improve the gather / even omit the gather, if we figure out Upper
+            // only has a single Shard
 
-    if (lowerLoc.canRunOnCoordinator() && upperLoc.canRunOnDBServer()) {
-      // TODO: we could collect our vocbase once in the walker above, it cannot be changed anyways.
-      TRI_vocbase_t* vocbase = extractVocbaseFromNode(upper);
+            // NOTE: InsertGatherNode does NOT insert anthing, it just creates the GatherNode
+            // NOTE: No idea what subqueries should be used for. yet. (TODO)
+            SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
+            SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+            auto gatherNode = insertGatherNode(plan, top.firstInternalNode, subqueries);
+            TRI_ASSERT(gatherNode);
 
-      // Lower is on Coordinator
-      // Add GATHER REMOTE right above the lowerNode to keep most computations on DBServer, take sharding from upperNode
-      // TODO: We may need to get more clever with the GATHER node here, regarding parallelism
-      // TODO: We may need to improve the gather / even omit the gather, if we figure out Upper
-      // only has a single Shard
+            auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(),
+                                                          vocbase, "", "", "");
+            TRI_ASSERT(remoteNode);
 
-      // NOTE: InsertGatherNode does NOT insert anthing, it just creates the GatherNode
-      // NOTE: No idea what subqueries should be used for. yet. (TODO)
-      SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
-      SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
-      auto gatherNode = insertGatherNode(plan, upper, subqueries);
-      TRI_ASSERT(gatherNode);
+            // Now need to relink:
+            // dependency <- subqueryNode
+            // =>
+            // dependency <- remote <- gather <- subqueryNode
+            auto dependencyNode = subqueryNode->getFirstDependency();
+            remoteNode->addDependency(dependencyNode);
+            gatherNode->addDependency(remoteNode);
+            subqueryNode->replaceDependency(dependencyNode, gatherNode);
+          }
 
-      auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
-      TRI_ASSERT(remoteNode);
+          // SubqueryEnd -> FirstNode
+          return upper;
+        } else {
+          TRI_ASSERT(top.previous->getAllowedLocation().canRunOnDBServer());
+          // Previous on DBServer -> Subquery on Coordinator add Remote Part
+          // Lower is on DBServer
+          // We need to add SCATTER REMOTE or DISTRIBUTE REMOTE right below the coordinator piece on upper.
+          // We continue with the "sharding" from upperNode, which is Coordinator.
 
-      // Now need to relink:
-      // dependency <- lower
-      // =>
-      // dependency <- remote <- gather <- lower
-      auto dependencyNode = lower->getFirstDependency();
-      remoteNode->addDependency(dependencyNode);
-      gatherNode->addDependency(remoteNode);
-      lower->replaceDependency(dependencyNode, gatherNode);
+          auto scatterNode = createScatterNode(plan, top.previous);
+          TRI_ASSERT(scatterNode);
+
+          auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(),
+                                                        vocbase, "", "", "");
+          TRI_ASSERT(remoteNode);
+
+          // Now need to relink:
+          // upper <- parent
+          // =>
+          // upper <- scatter <- remote <- parent
+
+          // At this stage in the planning every Node can only have a single parent
+          TRI_ASSERT(top.subqueryEnd->hasParent());
+          TRI_ASSERT(top.subqueryEnd->getParents().size() == 1);
+          auto parent = top.subqueryEnd->getParents().front();
+
+          LOG_DEVEL << "Piff paff puff";
+          scatterNode->addDependency(top.subqueryEnd);
+          remoteNode->addDependency(scatterNode);
+          parent->replaceDependency(top.subqueryEnd, remoteNode);
+          return upper;
+        }
+      } else {
+        LOG_DEVEL << "Has internal remote is false";
+        auto nodeType = lower->getType();
+        if (nodeEligibleForDistribute(nodeType)) {
+          // Only in this case we can push down to DBServer
+          // Otherwise Subquery needs to be on Coordinator
+          // Exception: OneShard
+        }
+        // Subquery can be executed in full on selected Server
+        // NOTE / TODO: The following CODE is identical to JoinSnippets
+        // behaviour, needs to be unified
+
+        // Need to check if we have to insert Remote part between before
+        // subquery previous && subquery itself (lower) (oder firstInternalNode)
+        auto previousLocation = top.previous->getAllowedLocation();
+        if (previousLocation.canRunOnCoordinator()) {
+          if (lowerLoc.canRunOnCoordinator()) {
+            // Nothing todo, subquery stays on coordinator
+          } else {
+            LOG_DEVEL << "Puffi";
+            // Switch Coordinator -> DBServer
+            SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
+            SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+            auto gatherNode = insertGatherNode(plan, lower, subqueries);
+            TRI_ASSERT(gatherNode);
+
+            auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(),
+                                                          vocbase, "", "", "");
+            TRI_ASSERT(remoteNode);
+
+            // Now need to relink:
+            // dependency <- top.previous
+            // =>
+            // dependency <- remote <- gather <- top.previous
+            auto dependencyNode = top.previous->getFirstDependency();
+            remoteNode->addDependency(dependencyNode);
+            gatherNode->addDependency(remoteNode);
+            top.previous->replaceDependency(dependencyNode, gatherNode);
+          }
+        } else {
+          if (lowerLoc.canRunOnCoordinator()) {
+            // Switch DBServer -> Coordinator
+          } else {
+            // Switch DBServer -> DBServer
+          }
+        }
+
+        return upper;
+      }
+
+      if (lowerLoc.isSubqueryEnd()) {
+        LOG_DEVEL << "Setting first internal";
+        TRI_ASSERT(!subqueryScopes.empty());
+        auto& top = subqueryScopes.top();
+        top.firstInternalNode = upper;
+        // We cannot join
+        return upper;
+      }
+
+      if (lowerLoc.canRunOnCoordinator() && upperLoc.canRunOnCoordinator()) {
+        // Both on Coordinator, already joined in between nothing to do
+        return upper;
+      }
+
+      if (lowerLoc.canRunOnCoordinator() && upperLoc.canRunOnDBServer()) {
+        // Lower is on Coordinator
+        // Add GATHER REMOTE right above the lowerNode to keep most computations on DBServer, take sharding from upperNode
+        // TODO: We may need to get more clever with the GATHER node here, regarding parallelism
+        // TODO: We may need to improve the gather / even omit the gather, if we figure out Upper
+        // only has a single Shard
+
+        // NOTE: InsertGatherNode does NOT insert anthing, it just creates the GatherNode
+        // NOTE: No idea what subqueries should be used for. yet. (TODO)
+        SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
+        SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+        auto gatherNode = insertGatherNode(plan, upper, subqueries);
+        TRI_ASSERT(gatherNode);
+
+        auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(),
+                                                      vocbase, "", "", "");
+        TRI_ASSERT(remoteNode);
+
+        // Now need to relink:
+        // dependency <- lower
+        // =>
+        // dependency <- remote <- gather <- lower
+        auto dependencyNode = lower->getFirstDependency();
+        remoteNode->addDependency(dependencyNode);
+        gatherNode->addDependency(remoteNode);
+        lower->replaceDependency(dependencyNode, gatherNode);
+        return upper;
+      }
+
+      if (lowerLoc.canRunOnDBServer() && upperLoc.canRunOnCoordinator()) {
+        // Lower is on DBServer
+        // We need to add SCATTER REMOTE or DISTRIBUTE REMOTE right below the coordinator piece on upper.
+        // We continue with the "sharding" from upperNode, which is Coordinator.
+
+        auto scatterNode = createScatterNode(plan, lower);
+        TRI_ASSERT(scatterNode);
+
+        auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(),
+                                                      vocbase, "", "", "");
+        TRI_ASSERT(remoteNode);
+
+        // Now need to relink:
+        // upper <- parent
+        // =>
+        // upper <- scatter <- remote <- parent
+
+        // At this stage in the planning every Node can only have a single parent
+        TRI_ASSERT(upper->hasParent());
+        TRI_ASSERT(upper->getParents().size() == 1);
+        auto parent = upper->getParents().front();
+
+        scatterNode->addDependency(upper);
+        remoteNode->addDependency(scatterNode);
+        parent->replaceDependency(upper, remoteNode);
+
+        return upper;
+      }
+
+      if (lowerLoc.canRunOnDBServer() && upperLoc.canRunOnDBServer()) {
+        auto scatterNode = createScatterNode(plan, lower);
+        TRI_ASSERT(scatterNode);
+
+        auto scatterRemoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase,
+                                                             "", "", "");
+        TRI_ASSERT(scatterRemoteNode);
+
+        // NOTE: InsertGatherNode does NOT insert anthing, it just creates the GatherNode
+        // NOTE: No idea what subqueries should be used for. yet. (TODO)
+        SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
+        SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+        auto gatherNode = insertGatherNode(plan, upper, subqueries);
+        TRI_ASSERT(gatherNode);
+
+        auto gatherRemoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(),
+                                                            vocbase, "", "", "");
+        TRI_ASSERT(gatherRemoteNode);
+
+        // Now need to relink:
+        // dependency <- lower
+        // =>
+        // dependency <- remote <- gather <- scatter <- remote <- lower
+        // NOTE: This is not necessarily the optimimal position.
+        // We can implement a more sophisticated algorithm to optimize the switch
+
+        auto dependencyNode = lower->getFirstDependency();
+        gatherRemoteNode->addDependency(dependencyNode);
+        gatherNode->addDependency(gatherRemoteNode);
+        scatterNode->addDependency(gatherNode);
+        scatterRemoteNode->addDependency(scatterNode);
+        lower->replaceDependency(dependencyNode, scatterRemoteNode);
+      }
+
       return upper;
-    }
-
-    if (lowerLoc.canRunOnDBServer() && upperLoc.canRunOnCoordinator()) {
-      // TODO: we could collect our vocbase once in the walker above, it cannot be changed anyways.
-      TRI_vocbase_t* vocbase = extractVocbaseFromNode(lower);
-
-      // Lower is on DBServer
-      // We need to add SCATTER REMOTE or DISTRIBUTE REMOTE right below the coordinator piece on upper.
-      // We continue with the "sharding" from upperNode, which is Coordinator.
-
-      auto scatterNode = createScatterNode(plan, lower);
-      TRI_ASSERT(scatterNode);
-
-      auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
-      TRI_ASSERT(remoteNode);
-
-      // Now need to relink:
-      // upper <- parent 
-      // =>
-      // upper <- scatter <- remote <- parent
-
-      // At this stage in the planning every Node can only have a single parent
-      TRI_ASSERT(upper->hasParent());
-      TRI_ASSERT(upper->getParents().size() == 1);
-      auto parent = upper->getParents().front();
-
-      scatterNode->addDependency(upper);
-      remoteNode->addDependency(scatterNode);
-      parent->replaceDependency(upper, remoteNode);
-
-      return upper;
-    }
-
-    if (lowerLoc.canRunOnDBServer() && upperLoc.canRunOnDBServer()) {
-      // TODO: we could collect our vocbase once in the walker above, it cannot be changed anyways.
-      TRI_vocbase_t* vocbase = extractVocbaseFromNode(upper);
-
-      auto scatterNode = createScatterNode(plan, lower);
-      TRI_ASSERT(scatterNode);
-
-      auto scatterRemoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
-      TRI_ASSERT(scatterRemoteNode);
-
-      // NOTE: InsertGatherNode does NOT insert anthing, it just creates the GatherNode
-      // NOTE: No idea what subqueries should be used for. yet. (TODO)
-      SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
-      SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
-      auto gatherNode = insertGatherNode(plan, upper, subqueries);
-      TRI_ASSERT(gatherNode);
-
-      auto gatherRemoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
-      TRI_ASSERT(gatherRemoteNode);
-
-      // Now need to relink:
-      // dependency <- lower
-      // =>
-      // dependency <- remote <- gather <- scatter <- remote <- lower
-      // NOTE: This is not necessarily the optimimal position.
-      // We can implement a more sophisticated algorithm to optimize the switch
-
-      auto dependencyNode = lower->getFirstDependency();
-      gatherRemoteNode->addDependency(dependencyNode);
-      gatherNode->addDependency(gatherRemoteNode);
-      scatterNode->addDependency(gatherNode);
-      scatterRemoteNode->addDependency(scatterNode);
-      lower->replaceDependency(dependencyNode, scatterRemoteNode);
-    }
-
-    return upper;
-  };
+    };
 
   auto& relevantNodes = walker.relevantNodes;
   // We will at least find the final RETURN, or the final Modification
@@ -8819,8 +8986,6 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
   {
     auto firstLocation = previous->getAllowedLocation();
     if (firstLocation.canRunOnDBServer()) {
-      // TODO: we could collect our vocbase once in the walker above, it cannot be changed anyways.
-      TRI_vocbase_t* vocbase = extractVocbaseFromNode(previous);
 
       // Special case, the final node of the query is located on DBServer.
       // Need to gather it.
@@ -8841,13 +9006,26 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
       plan->root(gatherNode, true);
     }
   }
+
+  std::stack<SubqueryScope> subqueryScopes;
   
   // We start on purpose at i = 1, to guarantee that we have a previous node
   for (size_t i = 1; i < relevantNodes.size(); ++i) {
     auto* node = relevantNodes[i];
     TRI_ASSERT(previous);
     TRI_ASSERT(node);
-    previous = JoinSnippets(*plan, previous, node);
+    
+    previous = JoinSnippets(*plan, previous, node, subqueryScopes);
+    /*
+    RETURN / Subquery => (Coordinator, Unknown)
+    stack.push(<Subquery, Return, hasInternalRemote = false>)
+    Subquery / Enumerate => (Unknown, DBServer)
+    Enumerate / Enumerate => (DBServer, DBServer) => Set hasInternalRemote
+    Enumerate / Singleton => (DBServer, Deferred DBServer)
+    stack.pop() (may set hasInternalRemote of 1 level before)
+    => Backtrace 
+    // Subquery
+    */
   }
 
   bool modified = true;
