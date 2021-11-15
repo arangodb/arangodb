@@ -1,6 +1,8 @@
 devel
 -----
 
+* Changed arangosh directory name to client-tools
+
 * Add option to content-transfer encode gzip Foxx replies.
 
 * Simplify internal request compression/decompression handling code.

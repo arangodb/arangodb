@@ -1400,7 +1400,7 @@ list(INSERT SYSTEM_LIBRARIES 0
 )
 
 add_subdirectory(lib)
-add_subdirectory(arangosh)
+add_subdirectory(client-tools)
 add_subdirectory(arangod)
 
 
