@@ -320,7 +320,51 @@ struct ReplicatedLogMethodsCoordinator final
 
   auto insert(LogId id, TypedLogIterator<LogPayload>& iter) const
       -> futures::Future<std::pair<std::vector<LogIndex>, replicated_log::WaitForResult>> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    auto path = basics::StringUtils::joinT("/", "_api/log", id, "multi-insert");
+
+    VPackBuilder builder{};
+    {
+      VPackArrayBuilder arrayBuilder{&builder};
+      while (auto payload = iter.next()) {
+        if (payload.has_value()) {
+          builder.add(payload->slice());
+        } else {
+          builder.add(VPackSlice::emptyObjectSlice());
+        }
+      }
+    }
+    auto slice = builder.slice();
+    // use value length
+    velocypack::Buffer<uint8_t> payload{};
+    payload.append(slice.start(), slice.byteSize());
+
+    network::RequestOptions opts;
+    opts.database = vocbase.name();
+    return network::sendRequest(pool, "server:" + getLogLeader(id),
+                                fuerte::RestVerb::Post, path, payload, opts)
+        .thenValue([](network::Response&& resp) {
+          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+            THROW_ARANGO_EXCEPTION(resp.combinedResult());
+          }
+          auto result = resp.slice().get("result");
+          auto waitResult = result.get("result");
+
+          auto quorum = std::make_shared<replication2::replicated_log::QuorumData const>(
+              waitResult.get("quorum"));
+          auto commitIndex = waitResult.get("commitIndex").extract<LogIndex>();
+
+          // preallocate container
+          std::vector<LogIndex> indexes{};
+          auto indexesArray = result.get("indexes");
+          // validate array type
+          auto length = indexesArray.length();
+          for (velocypack::ValueLength idx(0); idx < length; ++idx) {
+            indexes.push_back(indexesArray.at(idx).extract<LogIndex>());
+          }
+          return std::make_pair(
+              std::move(indexes),
+              replicated_log::WaitForResult(commitIndex, std::move(quorum)));
+        });
   }
 
   auto release(LogId id, LogIndex index) const -> futures::Future<Result> override {
