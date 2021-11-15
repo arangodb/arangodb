@@ -98,7 +98,6 @@ class GeneralResponse {
  public:
   virtual ~GeneralResponse() = default;
 
- public:
   // response codes are http response codes, but they are used in other
   // protocols as well
   ResponseCode responseCode() const { return _responseCode; }
@@ -131,7 +130,6 @@ class GeneralResponse {
 
   virtual bool isResponseEmpty() const = 0;
 
- public:
   uint64_t messageId() const { return _messageId; }
   void setMessageId(uint64_t msgId) { _messageId = msgId; }
 
@@ -163,7 +161,7 @@ class GeneralResponse {
     return _generateBody = generateBody;
   }
   
-  virtual ErrorCode deflate(size_t size = 16384) = 0;
+  virtual ErrorCode deflate() { return TRI_ERROR_NO_ERROR; }
 
  protected:
   std::unordered_map<std::string, std::string> _headers;  // headers/metadata map

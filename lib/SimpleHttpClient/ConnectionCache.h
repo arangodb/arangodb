@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_CONNECTION_CACHE_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_CONNECTION_CACHE_H 1
+#pragma once
 
 #include "Basics/Mutex.h"
 
@@ -108,5 +107,3 @@ class ConnectionCache {
 
 }  // namespace httpclient
 }  // namespace arangodb
-
-#endif

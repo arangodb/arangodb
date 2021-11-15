@@ -67,12 +67,12 @@ SslServerFeature::SslServerFeature(application_features::ApplicationServer& serv
     : ApplicationFeature(server, "SslServer"),
       _cafile(),
       _keyfile(),
-      _sessionCache(false),
       _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
       _sslProtocol(TLS_GENERIC),
       _sslOptions(asio_ns::ssl::context::default_workarounds |
                   asio_ns::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1"),
+      _sessionCache(false),
       _preferHttp11InAlpn(false) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();

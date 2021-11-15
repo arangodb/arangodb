@@ -41,11 +41,11 @@ class index_profile_test_case : public tests::index_test_base {
       irs::index_writer::ptr writer = nullptr,
       std::atomic<size_t>* commit_count = nullptr) {
     struct csv_doc_template_t: public tests::csv_doc_generator::doc_template {
-      std::vector<std::shared_ptr<tests::templates::string_field>> fields;
+      std::vector<std::shared_ptr<tests::string_field>> fields;
 
       csv_doc_template_t() {
-        fields.emplace_back(std::make_shared<tests::templates::string_field>("id"));
-        fields.emplace_back(std::make_shared<tests::templates::string_field>("label"));
+        fields.emplace_back(std::make_shared<tests::string_field>("id"));
+        fields.emplace_back(std::make_shared<tests::string_field>("label"));
         reserve(fields.size());
       }
 
@@ -255,17 +255,17 @@ class index_profile_test_case : public tests::index_test_base {
             {
               auto filter = irs::by_term::make();
               auto key_field = csv_doc_template.indexed.begin()->name();
-              auto key_term = csv_doc_template.indexed.get<tests::templates::string_field>(key_field)->value();
+              auto key_term = csv_doc_template.indexed.get<tests::string_field>(key_field)->value();
               auto value_field = (++(csv_doc_template.indexed.begin()))->name();
-              auto value_term = csv_doc_template.indexed.get<tests::templates::string_field>(value_field)->value();
+              auto value_term = csv_doc_template.indexed.get<tests::string_field>(value_field)->value();
               std::string updated_term(value_term.c_str(), value_term.size());
 
               auto& filter_impl = static_cast<irs::by_term&>(*filter);
               *filter_impl.mutable_field() = key_field;
               filter_impl.mutable_options()->term = irs::ref_cast<irs::byte_type>(key_term);
               updated_term.append(value_term.c_str(), value_term.size()); // double up term
-              csv_doc_template.indexed.get<tests::templates::string_field>(value_field)->value(updated_term);
-              csv_doc_template.insert(std::make_shared<tests::templates::string_field>("updated"));
+              csv_doc_template.indexed.get<tests::string_field>(value_field)->value(updated_term);
+              csv_doc_template.insert(std::make_shared<tests::string_field>("updated"));
 
               REGISTER_TIMER_NAMED_DETAILED("update");
               update(*writer,

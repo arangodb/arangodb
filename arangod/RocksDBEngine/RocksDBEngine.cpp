@@ -926,7 +926,7 @@ void RocksDBEngine::start() {
 
   _logPersistor = std::make_shared<RocksDBLogPersistor>(
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-      _db, std::make_shared<SchedulerExecutor>(server()),
+      _db->GetRootDB(), std::make_shared<SchedulerExecutor>(server()),
       server().getFeature<ReplicatedLogFeature>().options());
 
   _settingsManager->retrieveInitialValues();
@@ -1583,6 +1583,12 @@ void RocksDBEngine::processCompactions() {
       // found something to do, now steal the item from the queue
       bounds = std::move(_pendingCompactions.front());
       _pendingCompactions.pop_front();
+      
+      if (server().isStopping()) {
+        // if we are stopping, it is ok to not process but lose any pending
+        // compactions
+        return;
+      }
       // set it to running already, so that concurrent callers of this method
       // will not kick off additional jobs
       ++_runningCompactions;
@@ -3135,16 +3141,19 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
   int iterations = 0;
 
   do {
+    size_t numRunning;
     {
       READ_LOCKER(locker, _pendingCompactionsLock);
-      if (_runningCompactions == 0) {
-        return;
-      }
+      numRunning =  _runningCompactions;
+    }
+    if (numRunning == 0) {
+      return;
     }
       
     // print this only every few seconds
     if (iterations++ % 200 == 0) {
-      LOG_TOPIC("9cbfd", INFO, Logger::ENGINES) << "waiting for compaction jobs to finish...";
+      LOG_TOPIC("9cbfd", INFO, Logger::ENGINES) 
+          << "waiting for " << numRunning << " compaction job(s) to finish...";
     }
     // unfortunately there is not much we can do except waiting for
     // RocksDB's compaction job(s) to finish.

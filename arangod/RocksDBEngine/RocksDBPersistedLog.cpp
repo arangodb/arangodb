@@ -27,6 +27,7 @@
 #include <Replication2/ReplicatedLog/PersistedLog.h>
 #include <memory>
 
+#include <utility>
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBKey.h"
 #include "RocksDBPersistedLog.h"
@@ -115,14 +116,9 @@ auto RocksDBPersistedLog::drop() -> Result {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-auto RocksDBPersistedLog::removeFront(replication2::LogIndex stop) -> Result {
-  auto last = RocksDBKey();
-  last.constructLogEntry(_objectId, stop);
-
-  rocksdb::WriteOptions opts;
-  auto s = _persistor->_db->DeleteRange(opts, _persistor->_cf,
-                                        getBounds().start(), last.string());
-  return rocksutils::convertStatus(s);
+auto RocksDBPersistedLog::removeFront(replication2::LogIndex stop)
+    -> futures::Future<Result> {
+  return _persistor->persist(shared_from_this(), RocksDBLogPersistor::RemoveFront{stop}, {});
 }
 
 auto RocksDBPersistedLog::removeBack(replication2::LogIndex start) -> Result {
@@ -147,14 +143,23 @@ auto RocksDBPersistedLog::prepareWriteBatch(PersistedLogIterator& iter,
     }
   }
 
-  return Result();
+  return {};
 }
 
 auto RocksDBPersistedLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
                                       WriteOptions const& opts) -> futures::Future<Result> {
   RocksDBLogPersistor::WriteOptions wo;
   wo.waitForSync = opts.waitForSync;
-  return _persistor->persist(shared_from_this(), std::move(iter), wo);
+  return _persistor->persist(shared_from_this(),
+                             RocksDBLogPersistor::InsertEntries{std::move(iter)}, wo);
+}
+
+auto RocksDBPersistedLog::prepareRemoveFront(replication2::LogIndex stop,
+                                             rocksdb::WriteBatch& wb) -> Result {
+  auto last = RocksDBKey();
+  last.constructLogEntry(_objectId, stop);
+  auto s = wb.DeleteRange(_persistor->_cf, getBounds().start(), last.string());
+  return rocksutils::convertStatus(s);
 }
 
 RocksDBLogPersistor::RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf,
@@ -198,13 +203,9 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         // little by reporting up to which entry was written successfully.
         while (wb.GetDataSize() < _options->_maxRocksDBWriteBatchSize &&
                nextReqToWrite != std::end(pendingRequests)) {
-          auto* log_ptr = dynamic_cast<RocksDBPersistedLog*>(nextReqToWrite->log.get());
-          TRI_ASSERT(log_ptr != nullptr);
-          if (auto res = log_ptr->prepareWriteBatch(*nextReqToWrite->iter, wb);
-              res.fail()) {
+          if (auto res = nextReqToWrite->execute(wb); res.fail()) {
             return res;
           }
-          TRI_ASSERT(nextReqToWrite->iter->next() == std::nullopt);
           ++nextReqToWrite;
         }
         {
@@ -243,9 +244,9 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
   }
 }
 
-auto RocksDBLogPersistor::persist(std::shared_ptr<PersistedLog> log,
-                                  std::unique_ptr<PersistedLogIterator> iter,
-                                  WriteOptions const& options) -> futures::Future<Result> {
+auto RocksDBLogPersistor::persist(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
+        Action action, WriteOptions const& options)
+    ->futures::Future<Result> {
   auto p = futures::Promise<Result>{};
   auto f = p.getFuture();
 
@@ -254,8 +255,7 @@ auto RocksDBLogPersistor::persist(std::shared_ptr<PersistedLog> log,
 
   {
     std::unique_lock guard(lane._persistorMutex);
-    lane._pendingPersistRequests.emplace_back(std::move(log), std::move(iter),
-                                              std::move(p));
+    lane._pendingPersistRequests.emplace_back(std::move(log), std::move(action), std::move(p));
     bool const wantNewThread = lane._activePersistorThreads == 0 ||
                                (lane._pendingPersistRequests.size() > 100 &&
                                 lane._activePersistorThreads < 2);
@@ -295,4 +295,27 @@ auto RocksDBLogPersistor::persist(std::shared_ptr<PersistedLog> log,
   }
 
   return f;
+}
+
+auto RocksDBLogPersistor::PersistRequest::execute(rocksdb::WriteBatch& wb) -> Result {
+  struct ExecuteVisitor {
+    auto operator()(InsertEntries const& what) -> Result {
+      auto* log_ptr = dynamic_cast<RocksDBPersistedLog*>(req.log.get());
+      TRI_ASSERT(log_ptr != nullptr);
+      if (auto res = log_ptr->prepareWriteBatch(*what.iter, wb); res.fail()) {
+        return res;
+      }
+      TRI_ASSERT(what.iter->next() == std::nullopt);
+      return {};
+    }
+    auto operator()(RemoveFront const& what) -> Result {
+      auto* log_ptr = dynamic_cast<RocksDBPersistedLog*>(req.log.get());
+      return log_ptr->prepareRemoveFront(what.stop, wb);
+    }
+
+    PersistRequest& req;
+    rocksdb::WriteBatch& wb;
+  };
+
+  return std::visit(ExecuteVisitor{*this, wb}, action);
 }

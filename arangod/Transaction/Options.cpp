@@ -32,25 +32,15 @@
 
 using namespace arangodb::transaction;
 
-uint64_t Options::defaultMaxTransactionSize = UINT64_MAX;
-uint64_t Options::defaultIntermediateCommitSize = 512 * 1024 * 1024;
-uint64_t Options::defaultIntermediateCommitCount = 1 * 1000 * 1000;
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+uint64_t Options::defaultMaxTransactionSize =
+    std::numeric_limits<decltype(Options::defaultMaxTransactionSize)>::max();
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+uint64_t Options::defaultIntermediateCommitSize = std::uint64_t{512} * 1024 * 1024;  // 1 << 29
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+uint64_t Options::defaultIntermediateCommitCount = 1'000'000;
 
-Options::Options()
-    : lockTimeout(defaultLockTimeout),
-      maxTransactionSize(defaultMaxTransactionSize),
-      intermediateCommitSize(defaultIntermediateCommitSize),
-      intermediateCommitCount(defaultIntermediateCommitCount),
-      allowImplicitCollectionsForRead(true),
-      allowImplicitCollectionsForWrite(false),
-#ifdef USE_ENTERPRISE
-      skipInaccessibleCollections(false),
-#endif
-      waitForSync(false),
-      fillBlockCache(true),
-      isFollowerTransaction(false),
-      origin("", arangodb::RebootId(0)) {
-
+Options::Options() {
   // if we are a coordinator, fill in our own server id/reboot id.
   // the data is passed to DB servers when the transaction is started
   // there. the DB servers use this data to abort the transaction

@@ -31,7 +31,7 @@
 
 class levenshtein_automaton_index_test_case : public tests::index_test_base {
  protected:
-  void assert_index(const irs::index_reader& reader,
+  void assert_index(irs::index_reader::ptr reader,
                     const irs::parametric_description& description,
                     const irs::bytes_ref& prefix,
                     const irs::bytes_ref& target) {
@@ -42,7 +42,7 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
     irs::memory::arena_vector<uint32_t, decltype(arena)> target_chars(arena);
     irs::utf8_utils::utf8_to_utf32<false>(target.c_str(), target.size(), std::back_inserter(target_chars));
 
-    for (auto& segment : reader) {
+    for (auto& segment : *reader) {
       auto fields = segment.fields();
       ASSERT_NE(nullptr, fields);
 
@@ -104,7 +104,7 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
 
   // add data
   {
-    tests::templates::europarl_doc_template doc;
+    tests::europarl_doc_template doc;
     tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
     add_segment(gen);
   }
@@ -116,7 +116,10 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
     for (auto& target : TARGETS) {
       SCOPED_TRACE(testing::Message("Target: '") << target <<
                    testing::Message("', Edit distance: ") << size_t(description.max_distance()));
-      assert_index(reader, description, irs::bytes_ref::EMPTY, irs::ref_cast<irs::byte_type>(target));
+      assert_index(static_cast<irs::index_reader::ptr>(reader),
+                   description,
+                   irs::bytes_ref::EMPTY,
+                   irs::ref_cast<irs::byte_type>(target));
     }
   }
 }

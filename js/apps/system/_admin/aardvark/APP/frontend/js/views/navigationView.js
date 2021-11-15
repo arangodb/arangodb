@@ -68,9 +68,10 @@
         frontendConfig: window.frontendConfig,
         currentDB: this.currentDB.toJSON()
       }));
-      arangoHelper.checkDatabasePermissions(this.continueRender.bind(this),
-        this.continueRender.bind(this));
-      this.fetchLicenseInfo();
+      arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
+      if (window.frontendConfig.isEnterprise === true) {
+        this.fetchLicenseInfo();
+      }
     },
 
     continueRender: function (readOnly) {
@@ -120,8 +121,7 @@
         $('#ArangoDBLogo').after('<span id="enterpriseLabel" style="display: none">Enterprise Edition</span>');
         $('#enterpriseLabel').fadeIn('slow');
       } else {
-        $('#ArangoDBLogo').after(
-          '<span id="communityLabel" style="display: none">Community Edition</span>');
+        $('#ArangoDBLogo').after('<span id="communityLabel" style="display: none">Community Edition</span>');
         $('#communityLabel').fadeIn('slow');
         $('.enterprise-menu').show();
       }
@@ -134,19 +134,19 @@
       const url = arangoHelper.databaseUrl('/_admin/license');
 
       $.ajax({
-        type: 'GET',
+        type: "GET",
         url: url,
         success: function (licenseData) {
           if (licenseData.status && licenseData.features && licenseData.features.expires) {
             self.renderLicenseInfo(licenseData.status, licenseData.features.expires);
           } else {
-            self.showLicenseError();
+            self.showLicenseError();  
           }
         },
         error: function () {
           self.showLicenseError();
         }
-      });
+      }); 
     },
 
     showLicenseError: function () {
@@ -161,14 +161,12 @@
         let alertClasses = 'alert alert-license';
         switch (status) {
           case 'expiring':
-            daysInfo = Math.floor(
-              (expires - Math.round(new Date().getTime() / 1000)) / (3600 * 24));
+            daysInfo = Math.floor((expires - Math.round(new Date().getTime() / 1000)) / (3600*24));
             infotext = 'Your license is expiring ' + daysInfo + ' days from now. Please contact ArangoDB sales to extend your license urgently.';
             this.appendLicenseInfoToUi(infotext, alertClasses);
             break;
           case 'expired':
-            daysInfo = Math.floor(
-              (Math.round(new Date().getTime() / 1000) - expires) / (3600 * 24));
+            daysInfo = Math.floor((Math.round(new Date().getTime() / 1000) - expires) / (3600*24));
             infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact ArangoDB sales immediately.';
             alertClasses += ' alert-danger';
             this.appendLicenseInfoToUi(infotext, alertClasses);
@@ -184,7 +182,7 @@
       }
     },
 
-    appendLicenseInfoToUi: function (infotext, alertClasses) {
+    appendLicenseInfoToUi: function(infotext, alertClasses) {
       var infoElement = '<div id="subNavLicenseInfo" class="' + alertClasses + '"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">' + infotext + '</span></div>';
       $('#licenseInfoArea').append(infoElement);
     },

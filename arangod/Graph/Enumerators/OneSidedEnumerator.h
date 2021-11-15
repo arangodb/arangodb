@@ -146,6 +146,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   // Ensure that we have more valid paths in the _result stock.
   // May be a noop if _result is not empty.
   auto searchMoreResults() -> void;
+  void clearProvider();
 
  private:
   GraphOptions _options;

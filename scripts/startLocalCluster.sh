@@ -82,7 +82,7 @@ fi
 
 SFRE=1.0
 COMP=500
-KEEP=2000
+KEEP=50000
 if [ -z "$ONGOING_PORTS" ] ; then
   CO_BASE=$(( $PORT_OFFSET + 8530 ))
   DB_BASE=$(( $PORT_OFFSET + 8629 ))
@@ -297,19 +297,25 @@ done
 
 testServer() {
     PORT=$1
+    COUNTER=0
     while true ; do
         if [ -z "$AUTHORIZATION_HEADER" ]; then
           ${CURL}//$ADDRESS:$PORT/_api/version > /dev/null 2>&1
         else
           ${CURL}//$ADDRESS:$PORT/_api/version -H "$AUTHORIZATION_HEADER" > /dev/null 2>&1
         fi
-        if [ "$?" != "0" ] ; then
-            echo Server on port $PORT does not answer yet.
+        if [ "x$?" != "x0" ] ; then
+            COUNTER=$(($COUNTER + 1))
+            if [ "x$COUNTER" = "x4" ]; then
+              # only print every now and then
+              echo Server on port $PORT does not answer yet.
+              COUNTER=0
+            fi;
         else
             echo Server on port $PORT is ready for business.
             break
         fi
-        sleep 1
+        sleep 0.25
     done
 }
 
