@@ -164,6 +164,15 @@ std::string transaction::helpers::extractIdString(CollectionNameResolver const* 
   return makeIdFromCustom(resolver, id, key);
 }
 
+void transaction::helpers::extractSmartGraphIds(VPackSlice const doc,
+                                                      arangodb::velocypack::StringRef& left,
+                                                      arangodb::velocypack::StringRef& right) {
+  arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(doc));
+  left = key.substr(0, key.find(':'));
+  key = key.substr(key.find(':') + 1);
+  right = key.substr(key.find(':') + 1);
+}
+
 /// @brief quick access to the _id attribute in a database document
 /// the document must have at least two attributes, and _id is supposed to
 /// be the second one

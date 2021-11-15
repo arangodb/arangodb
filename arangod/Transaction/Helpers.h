@@ -58,6 +58,17 @@ arangodb::velocypack::StringRef extractKeyPart(velocypack::StringRef);
 
 std::string extractIdString(CollectionNameResolver const*, VPackSlice, VPackSlice const&);
 
+/** Extracts the _key attribute from slice and writes to left: the part of it
+   * up to the first ':' (meaning _from),
+   * and to right: the part of it from the second ':' (meaning _to).
+   * @param slice can be Object (isObject() == true) or String (isString() == true)
+   * @param left
+   * @param right
+ */
+void extractSmartGraphIds(arangodb::velocypack::Slice const slice,
+                                 arangodb::velocypack::StringRef& left,
+                                 arangodb::velocypack::StringRef& right) ;
+
 /// @brief quick access to the _key attribute in a database document
 /// the document must have at least two attributes, and _key is supposed to
 /// be the first one
