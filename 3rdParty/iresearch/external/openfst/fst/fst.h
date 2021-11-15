@@ -948,7 +948,7 @@ class ImplToFst : public FST {
   // Returns a ref-counted smart poiner to the implementation.
   std::shared_ptr<Impl> GetSharedImpl() const { return impl_; }
 
-  bool Unique() const { return impl_.unique(); }
+  bool Unique() const { return impl_.use_count() == 1; }
 
   void SetImpl(std::shared_ptr<Impl> impl) { impl_ = std::move(impl); }
 

@@ -112,7 +112,7 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
 
       auto visit_next = visitor(*ref, ref.use_count() - 1); // -1 for usage by refs_ itself
 
-      if (remove_unused && ref.unique()) {
+      if (remove_unused && ref.use_count() == 1) {
         const auto erase_me = itr++;
         refs_.erase(erase_me);
       } else {

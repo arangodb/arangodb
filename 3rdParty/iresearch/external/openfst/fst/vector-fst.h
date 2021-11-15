@@ -35,8 +35,7 @@ class VectorState {
   using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
   using ArcAllocator = M;
-  using StateAllocator =
-      typename ArcAllocator::template rebind<VectorState<Arc, M>>::other;
+  using StateAllocator = typename std::allocator_traits<ArcAllocator>::template rebind_alloc<VectorState<Arc, M>>;
 
   // Provide STL allocator for arcs.
   explicit VectorState(const ArcAllocator &alloc)

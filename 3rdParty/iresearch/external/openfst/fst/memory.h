@@ -359,14 +359,18 @@ class PoolAllocator {
     return Allocator().address(ref);
   }
 
-  size_type max_size() const { return Allocator().max_size(); }
+  size_type max_size() const { return std::allocator_traits<Allocator>::max_size(Allocator()); }
 
   template <class U, class... Args>
   void construct(U *p, Args &&... args) {
-    Allocator().construct(p, std::forward<Args>(args)...);
+    Allocator alloc;
+    std::allocator_traits<Allocator>::construct(alloc, p, std::forward<Args>(args)...);
   }
 
-  void destroy(pointer p) { Allocator().destroy(p); }
+  void destroy(pointer p) {
+    Allocator alloc;
+    std::allocator_traits<Allocator>::destroy(alloc, p);
+  }
 
   pointer allocate(size_type n, const void *hint = nullptr) {
     if (n == 1) {
@@ -384,7 +388,8 @@ class PoolAllocator {
     } else if (n <= 64) {
       return static_cast<pointer>(Pool<64>()->Allocate());
     } else {
-      return Allocator().allocate(n, hint);
+      Allocator alloc;
+      return std::allocator_traits<Allocator>::allocate(alloc, n, hint);
     }
   }
 

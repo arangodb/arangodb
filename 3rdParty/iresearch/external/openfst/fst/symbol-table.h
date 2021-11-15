@@ -407,7 +407,7 @@ class SymbolTable {
   explicit SymbolTable(internal::SymbolTableImpl *impl) : impl_(impl) {}
 
   void MutateCheck() {
-    if (!impl_.unique()) impl_.reset(new internal::SymbolTableImpl(*impl_));
+    if (impl_.use_count() != 1) impl_.reset(new internal::SymbolTableImpl(*impl_));
   }
 
   const internal::SymbolTableImpl *Impl() const { return impl_.get(); }
