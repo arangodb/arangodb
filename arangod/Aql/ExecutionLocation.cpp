@@ -38,6 +38,12 @@ auto operator<<(std::ostream& out, ExecutionLocation const& location) -> std::os
     case ExecutionLocation::LocationType::DBSERVER:
       out << "DBServer";
       break;
+    case ExecutionLocation::LocationType::SUBQUERY_START:
+      out << "SubqueryStart";
+      break;
+    case ExecutionLocation::LocationType::SUBQUERY_END:
+      out << "SubqueryEnd";
+      break;
   }
   return out;
 }

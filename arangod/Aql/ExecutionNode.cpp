@@ -1530,6 +1530,9 @@ SingletonNode::SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 ExecutionNode::NodeType SingletonNode::getType() const { return SINGLETON; }
 
 ExecutionLocation SingletonNode::getAllowedLocation() const {
+  if (isInSubquery()) {
+    return ExecutionLocation(ExecutionLocation::LocationType::SUBQUERY_START);
+  }
   return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
 }
 
@@ -2077,7 +2080,7 @@ SubqueryNode::SubqueryNode(ExecutionPlan* plan, arangodb::velocypack::Slice cons
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
 
 ExecutionLocation SubqueryNode::getAllowedLocation() const {
-  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+  return ExecutionLocation(ExecutionLocation::LocationType::SUBQUERY_END);
 }
 
 /// @brief doToVelocyPack, for SubqueryNode

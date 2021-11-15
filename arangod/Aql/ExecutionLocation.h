@@ -28,7 +28,7 @@ namespace arangodb {
 namespace aql {
 class ExecutionLocation {
  public:
-  enum LocationType { ANYWHERE, DBSERVER, COORDINATOR };
+  enum LocationType { ANYWHERE, DBSERVER, COORDINATOR, SUBQUERY_START, SUBQUERY_END };
 
  public:
   ExecutionLocation(LocationType location) : _location(location) {}

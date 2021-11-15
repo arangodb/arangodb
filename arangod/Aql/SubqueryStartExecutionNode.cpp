@@ -48,7 +48,7 @@ SubqueryStartNode::SubqueryStartNode(ExecutionPlan* plan,
 }
 
 ExecutionLocation SubqueryStartNode::getAllowedLocation() const {
-  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+  return ExecutionLocation(ExecutionLocation::LocationType::SUBQUERY_START);
 }
 
 CostEstimate SubqueryStartNode::estimateCost() const {

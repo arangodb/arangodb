@@ -67,7 +67,7 @@ SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id,
 }
 
 ExecutionLocation SubqueryEndNode::getAllowedLocation() const {
-  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+  return ExecutionLocation(ExecutionLocation::LocationType::SUBQUERY_END);
 }
 
 void SubqueryEndNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
