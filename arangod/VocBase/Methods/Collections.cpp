@@ -37,7 +37,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "CollectionValidator.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Graph/GraphManager.h"
@@ -105,6 +104,79 @@ bool isSystemName(CollectionCreationInfo const& info) {
   return NameValidator::isSystemName(info.name);
 }
 
+Result validateCreationInfo(CollectionCreationInfo const& info,
+                            TRI_vocbase_t const& vocbase, bool isSingleServerSmartGraph,
+                            bool enforceReplicationFactor, bool isLocalCollection,
+                            bool isSystemName, bool allowSystem = false) {
+  // check whether the name of the collection is valid
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+  if (!CollectionNameValidator::isAllowedName(allowSystem,
+                                              extendedNames, info.name)) {
+    events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  }
+
+  // check the collection type in _info
+  if (info.collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
+      info.collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    events::CreateCollection(vocbase.name(), info.name,
+                             TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID};
+  }
+
+  // validate shards factor and replication factor
+  if (ServerState::instance()->isCoordinator() || isSingleServerSmartGraph) {
+    Result res =
+        ShardingInfo::validateShardsAndReplicationFactor(info.properties,
+                                                         vocbase.server(),
+                                                         enforceReplicationFactor);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  // All collections on a single server should be local collections.
+  // A Coordinator should never have local collections.
+  // On an Agent, all collections should be local collections.
+  // On a DBServer, the only local collections should be system collections
+  // (like _statisticsRaw). Non-local (system or not) collections are shards,
+  // so don't have system-names, even if they are system collections!
+  switch (ServerState::instance()->getRole()) {
+    case ServerState::ROLE_SINGLE:
+      TRI_ASSERT(isLocalCollection);
+      break;
+    case ServerState::ROLE_DBSERVER:
+      TRI_ASSERT(isLocalCollection == isSystemName);
+      break;
+    case ServerState::ROLE_COORDINATOR:
+      TRI_ASSERT(!isLocalCollection);
+      break;
+    case ServerState::ROLE_AGENT:
+      TRI_ASSERT(isLocalCollection);
+      break;
+    case ServerState::ROLE_UNDEFINED:
+      TRI_ASSERT(false);
+  }
+
+  if (isLocalCollection && !isSingleServerSmartGraph) {
+    // the combination "isSmart" and replicationFactor "satellite" does not make any sense.
+    // note: replicationFactor "satellite" can also be expressed as replicationFactor 0.
+    VPackSlice s = info.properties.get(StaticStrings::IsSmart);
+    auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
+    if (s.isBoolean() && s.getBoolean() &&
+        ((replicationFactorSlice.isNumber() && replicationFactorSlice.getNumber<int>() == 0) ||
+         (replicationFactorSlice.isString() &&
+          replicationFactorSlice.stringRef() == StaticStrings::Satellite))) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "invalid combination of 'isSmart' and 'satellite' "
+              "replicationFactor"};
+    }
+  }
+
+  return {TRI_ERROR_NO_ERROR};
+}
+
 Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
                                   std::vector<CollectionCreationInfo> const& infos,
                                   bool allowSystem, bool allowEnterpriseCollectionsOnSingleServer,
@@ -115,11 +187,10 @@ Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
     // collection (as seen on a Coordinator), nor a shard (on a DBServer).
 
     // validate the information of the collection to be created
-    CollectionValidator collectionValidator(info, vocbase, allowEnterpriseCollectionsOnSingleServer,
-                                            enforceReplicationFactor,
-                                            isLocalCollection(info),
-                                            isSystemName(info), allowSystem);
-    Result res = collectionValidator.validateCreationInfo();
+    Result res =
+        validateCreationInfo(info, vocbase, allowEnterpriseCollectionsOnSingleServer,
+                             enforceReplicationFactor, isLocalCollection(info),
+                             isSystemName(info), allowSystem);
     if (res.fail()) {
       events::CreateCollection(vocbase.name(), info.name, res.errorNumber());
       return res;
@@ -128,7 +199,7 @@ Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
   return {TRI_ERROR_NO_ERROR};
 }
 
-// Returns a builder that combines the information from \p infos and cluster related information.
+// Returns a builder that combines the information from infos and cluster related information.
 VPackBuilder createCollectionProperties(TRI_vocbase_t const& vocbase,
                                         std::vector<CollectionCreationInfo> const& infos,
                                         bool allowEnterpriseCollectionsOnSingleServer) {
