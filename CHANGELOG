@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed an issue in old incremental sync protocol with document keys that
+  contained special characters (`%`). These keys could be send unencoded in
+  the incremental sync protocol, leading to wrong key ranges being transfered
+  between leader and follower, and thus causing follow-up errors and preventing
+  getting in sync.
+
 * Add option to content-transfer encode gzip Foxx replies.
 
 * Simplify internal request compression/decompression handling code.
