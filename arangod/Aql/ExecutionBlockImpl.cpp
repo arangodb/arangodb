@@ -159,7 +159,7 @@ class TestLambdaSkipExecutor;
 
 template <typename Executor>
 constexpr bool executorHasSideEffects =
-    is_one_of_v<Executor, 
+    is_one_of_v<Executor,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
@@ -167,7 +167,7 @@ constexpr bool executorHasSideEffects =
 
 template <typename Executor>
 constexpr bool executorCanReturnWaiting =
-    is_one_of_v<Executor, 
+    is_one_of_v<Executor,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
@@ -617,9 +617,9 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               KShortestPathsExecutor<graph::KShortestPathsFinder>, KShortestPathsExecutor<KPathRefactored>,
               KShortestPathsExecutor<KPathRefactoredTracer>, KShortestPathsExecutor<KPathRefactoredCluster>,
               KShortestPathsExecutor<KPathRefactoredClusterTracer>, ParallelUnsortedGatherExecutor,
-              IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>, HashedCollectExecutor,
-              AccuWindowExecutor, WindowExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
-              ConstrainedSortExecutor, CountCollectExecutor,
+              IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>,
+              HashedCollectExecutor, AccuWindowExecutor, WindowExecutor, IndexExecutor, EnumerateCollectionExecutor,
+              DistinctCollectExecutor, ConstrainedSortExecutor, CountCollectExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               TestLambdaSkipExecutor,
 #endif
@@ -779,20 +779,21 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
 
       // we can safely ignore the result here, because we will try to
       // claim the task ourselves anyway.
+
       SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                          [block = this, task = _prefetchTask,
+                                         [block = this, task = _prefetchTask,
                                           stack = ctx.stack]() mutable {
-                                            if (!task->tryClaim()) {
-                                              return;
-                                            }
-                                            // task is a copy of the PrefetchTask shared_ptr, and we will only
-                                            // attempt to execute the task if we successfully claimed the task.
-                                            // i.e., it does not matter if this task lingers around in the
-                                            // scheduler queue even after the execution block has been destroyed,
-                                            // because in this case we will not be able to claim the task and
-                                            // simply return early without accessing the block.
-                                            task->execute(*block, stack);
-                                          });
+                                           if (!task->tryClaim()) {
+                                             return;
+                                           }
+                                           // task is a copy of the PrefetchTask shared_ptr, and we will only
+                                           // attempt to execute the task if we successfully claimed the task.
+                                           // i.e., it does not matter if this task lingers around in the
+                                           // scheduler queue even after the execution block has been destroyed,
+                                           // because in this case we will not be able to claim the task and
+                                           // simply return early without accessing the block.
+                                           task->execute(*block, stack);
+                                         });
     }
 
     if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
@@ -1444,8 +1445,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
         } else {
           // Execute skipSome
           std::tie(state, stats, skippedLocal, call) =
-              executeSkipRowsRange(_lastRange, ctx.clientCall);
-        }
+            executeSkipRowsRange(_lastRange, ctx.clientCall);}
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         // Assertion: We did skip 'skippedLocal' documents here.
