@@ -1,6 +1,9 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
+* Fix issue #14819: Query: AQL: missing variable # for node #... location
+  RestCursorHandler.cpp.
+
 * Fixed SEARCH-261: Fix possible race between file creation and directory
   cleaner (ArangoSearch).
 
