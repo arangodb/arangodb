@@ -511,6 +511,10 @@ void BenchFeature::start() {
 
   std::cout << '\n';
 
+  std::sort(std::begin(results), std::end(results),
+            [](BenchRunResult const& a, BenchRunResult const& b)
+            { return a._time < b._time; });
+
   report(client, results, totalStats, pp.str(), builder);
 
   builder.close();
@@ -567,36 +571,29 @@ void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> con
   builder.add("database", VPackValue(client.databaseName()));
   builder.add("collection", VPackValue(_collection));
 
+  TRI_ASSERT(std::is_sorted(std::begin(results), std::end(results),
+             [](BenchRunResult const& a, BenchRunResult const& b)
+             { return a._time < b._time; }));
 
-  std::vector<BenchRunResult> resultsSorted;
-  resultsSorted.insert(resultsSorted.begin(),
-                        results.cbegin(), results.cend());
-  std::sort(std::begin(resultsSorted), std::end(resultsSorted),
-            [](BenchRunResult const& a, BenchRunResult const& b)
-            { return a._time < b._time; });
-
-  TRI_ASSERT(std::is_sorted(std::begin(resultsSorted), std::end(resultsSorted),
-                            [](BenchRunResult const& a, BenchRunResult const& b)
-                            { return a._time < b._time; }));
 
   BenchRunResult output{0, 0, 0, 0};
 
   if (_runs > 1) {
-    size_t size = resultsSorted.size();
+    size_t size = results.size();
 
     std::cout << std::endl;
     std::cout << "Printing fastest result" << std::endl;
     std::cout << "=======================" << std::endl;
 
     builder.add("fastestResults", VPackValue(VPackValueType::Object));
-    printResult(resultsSorted[0], builder);
+    printResult(results[0], builder);
     builder.close();
 
     std::cout << "Printing slowest result" << std::endl;
     std::cout << "=======================" << std::endl;
 
     builder.add("slowestResults", VPackValue(VPackValueType::Object));
-    printResult(resultsSorted[size - 1], builder);
+    printResult(results[size - 1], builder);
     builder.close();
 
     std::cout << "Printing median result" << std::endl;
@@ -605,15 +602,15 @@ void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> con
     size_t mid = (size_t)size / 2;
 
     if (size % 2 == 0) {
-      output.update((resultsSorted[mid - 1]._time + resultsSorted[mid]._time) / 2,
-                    (resultsSorted[mid - 1]._failures + resultsSorted[mid]._failures) / 2,
-                    (resultsSorted[mid - 1]._incomplete + resultsSorted[mid]._incomplete) / 2,
-                    (resultsSorted[mid - 1]._requestTime + resultsSorted[mid]._requestTime) / 2);
+      output.update((results[mid - 1]._time + results[mid]._time) / 2,
+                    (results[mid - 1]._failures + results[mid]._failures) / 2,
+                    (results[mid - 1]._incomplete + results[mid]._incomplete) / 2,
+                    (results[mid - 1]._requestTime + results[mid]._requestTime) / 2);
     } else {
-      output = resultsSorted[mid];
+      output = results[mid];
     }
   } else if (_runs > 0) {
-    output = resultsSorted[0];
+    output = results[0];
   }
 
   builder.add("results", VPackValue(VPackValueType::Object));
