@@ -8651,8 +8651,8 @@ struct SubqueryScope {
   ExecutionNode* lastInternalNode = nullptr;
   ExecutionNode* shardingDefinedByNode = nullptr;
   bool hasInternalRemote = false;
-  SubqueryScope(ExecutionNode* previous_, ExecutionNode* subqueryEnd_)
-      : previous(previous_), subqueryEnd(subqueryEnd_) {}
+  SubqueryScope(ExecutionNode* previous, ExecutionNode* subqueryEnd)
+      : previous(previous), subqueryEnd(subqueryEnd) {}
 
   ExecutionNode* getExternalStartNode() const {
     TRI_ASSERT(subqueryStart != nullptr);
@@ -8674,7 +8674,8 @@ struct SubqueryScope {
 
 class NodeInformation {
  public:
-  NodeInformation(ExecutionNode* node) : NodeInformation(node, node){};
+  NodeInformation(ExecutionNode* node) 
+      : NodeInformation(node, node) {}
   NodeInformation(ExecutionNode* node, ExecutionNode* shardingDefinedBy)
       : NodeInformation(node, shardingDefinedBy,
                         shardingDefinedBy->getAllowedLocation()){};
@@ -8724,7 +8725,7 @@ namespace {
     remoteNode->addDependency(dependencyNode);
     gatherNode->addDependency(remoteNode);
     node->replaceDependency(dependencyNode, gatherNode);
-  };
+  }
 
   void addScatterBelow(ExecutionPlan& plan, ExecutionNode* node, ExecutionNode* scatterTo) {
     TRI_vocbase_t* vocbase = &plan.getAst()->query().vocbase();
@@ -8768,19 +8769,21 @@ namespace {
     // At this stage in the planning every Node can only have a single parent
     TRI_ASSERT(node->hasParent());
     TRI_ASSERT(node->getParents().size() == 1);
-    auto parent = node->getParents().front();
+    auto* parent = node->getFirstParent();
     LOG_DEVEL << "Adding " << scatterNode->getTypeString() <<  ": " << node->getTypeString() << " <- " << parent->getTypeString();
     scatterNode->addDependency(node);
     remoteNode->addDependency(scatterNode);
     parent->replaceDependency(node, remoteNode);
-  };
+  }
 
   // Forward Declare method. The below methods need to call each other.
   NodeInformation joinSnippets(ExecutionPlan& plan, NodeInformation lower,
                                NodeInformation upper,
-                               std::stack<SubqueryScope>& subqueryScopes);
+                               std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes);
 
-  NodeInformation linkSubquery(ExecutionPlan& plan, SubqueryScope const scope, std::optional<NodeInformation> upper, std::stack<SubqueryScope>& subqueryScopes) {
+  NodeInformation linkSubquery(ExecutionPlan& plan, SubqueryScope const& scope, 
+                               std::optional<NodeInformation> upper, 
+                               std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes) {
     if (!scope.hasInternalRemote) {
       // We can push the complete subquery to the desired location
       if (scope.shardingDefinedByNode == nullptr) {
@@ -8790,35 +8793,25 @@ namespace {
         TRI_ASSERT(scope.firstInternalNode == nullptr);
         if (upper.has_value()) {
           return ::joinSnippets(plan, scope.previous, upper.value(), subqueryScopes);
-        } else {
-          return scope.previous;
-        }
-      } else {
-        auto loc = scope.shardingDefinedByNode->getAllowedLocation();
-        if (loc.canRunOnCoordinator()) {
-          // The subquery has to be executed on Coordinator, push it there in full.
-          // The lower sharding is handled, we do not actually need retain it.
-          std::ignore = ::joinSnippets(plan, scope.previous, {scope.subqueryEnd, scope.shardingDefinedByNode, loc}, subqueryScopes);
-          if (upper.has_value()) {
-            return ::joinSnippets(plan, {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc}, upper.value(), subqueryScopes);
-          } else {
-            return {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc};
-          }
-        } else {
-          auto nodeType = scope.shardingDefinedByNode->getType();
-          if (nodeEligibleForDistribute(nodeType)) {
-            // The subquery is guaranteed to only have results on a single shard, so we can push it down to dbservers.
-            // Handled it like it would be on the DBServer in full.
-            // The lower sharding is handled, we do not actually need retain it.
-            std::ignore = ::joinSnippets(plan, scope.previous, {scope.subqueryEnd, scope.shardingDefinedByNode, loc}, subqueryScopes);
-            if (upper.has_value()) {
-              return ::joinSnippets(plan, {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc}, upper.value(), subqueryScopes);
-            } else {
-              return {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc};
-            }
-          }
-        }
+        } 
+        return scope.previous;
       }
+
+      auto loc = scope.shardingDefinedByNode->getAllowedLocation();
+      if (loc.canRunOnCoordinator() || nodeEligibleForDistribute(scope.shardingDefinedByNode->getType())) {
+        // This covers two separate cases:
+        // 1  The subquery has to be executed on Coordinator, push it there in full.
+        //
+        // 2. The subquery is guaranteed to only have results on a single shard, so we can push it down to dbservers.
+        //    Handled it like it would be on the DBServer in full.
+        //
+        // The lower sharding is handled, we do not actually need to retain it.
+        std::ignore = ::joinSnippets(plan, scope.previous, {scope.subqueryEnd, scope.shardingDefinedByNode, loc}, subqueryScopes);
+        if (upper.has_value()) {
+          return ::joinSnippets(plan, {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc}, upper.value(), subqueryScopes);
+        }
+        return {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc};
+      } 
     }
     // Unfortunately we cannot optimize the subquery. The SubqueryNodes themselfs need to be handled as CoordiantorOnly nodes.
 
@@ -8836,18 +8829,17 @@ namespace {
     // Link SubqueryEnd, with the first node that is relevant internally
     std::ignore = ::joinSnippets(plan, {scope.getInternalEndNode(), scope.getInternalEndNode(), coordinatorLocation},
                                  scope.firstInternalNode, subqueryScopes);
-    // Link SubqueryStart with the lastNode that is relevant internally
+    // Link SubqueryStart with the last node that is relevant internally
     std::ignore = ::joinSnippets(plan, scope.lastInternalNode,
                                  {scope.subqueryStart, scope.subqueryStart, coordinatorLocation},
                                  subqueryScopes);
-    // Now link SubqueryStart with the next piece in mainquery
+    // Now link SubqueryStart with the next piece in main query
     if (upper.has_value()) {
       return ::joinSnippets(plan, {scope.getExternalStartNode(), scope.getExternalStartNode(), coordinatorLocation},
                             upper.value(), subqueryScopes);
-    } else {
-      return {scope.getExternalStartNode(), scope.getExternalStartNode(), coordinatorLocation};
-    }
-  };
+    } 
+    return {scope.getExternalStartNode(), scope.getExternalStartNode(), coordinatorLocation};
+  }
 
   /**
    * TODO: I think this is still a bit unclear. Reformulate
@@ -8857,7 +8849,7 @@ namespace {
    */
   NodeInformation joinSnippets(ExecutionPlan& plan, NodeInformation lower,
                                NodeInformation upper,
-                               std::stack<SubqueryScope>& subqueryScopes) {
+                               std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes) {
     LOG_DEVEL << "Joining snippets " << lower.getNode()->getTypeString()
               << " with " << upper.getNode()->getTypeString();
     auto lowerLoc = lower.getAllowedLocation();
@@ -8931,6 +8923,9 @@ namespace {
     }
 
     if (lowerLoc.canRunOnDBServer() && upperLoc.canRunOnDBServer()) {
+      // TODO: actually check here if we need to insert a Scatter/Gather.
+      // we don't need to do this for collections with the same sharding
+      // and satellite collections.
       addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
       auto dependencyNode = lower.getNode()->getFirstDependency();
       addScatterBelow(plan, dependencyNode, lower.getShardByNode());
@@ -8942,25 +8937,35 @@ namespace {
     }
 
     return upper;
-  };
-}
+  }
+}  // namespace
+
 void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
-  // TODO The following can actually be it's own independent rule, and should
+  // TODO: handle special case for OneShard:
+  // in a OneShard database, we can insert a single GatherNode and have everything
+  // else run on the DB server
+
+  // TODO The following can actually be its own independent rule, and should
   // run very early. It inserts a new Calculation to determine the ShardKey as
-  // preprocessing for Distribute This also allows to roll _key values. However
+  // preprocessing for Distribute. This also allows to roll _key values. However
   // it actually is a classical calcuation and could be moved around as well.
   {
-    /* Begin of independent optimzier rule */
+    /* Begin of independent optimizer rule */
     ::insertDistributeInputCalculationNextGen(*plan);
     /* End of independent optimizer rule */
   }
   /*
+   * The RelevantNodesFinder will build a list of "relevant" nodes for making decisions 
+   * about ExecutionNode positioning (coordinator or DB server). For that, it collects 
+   * all nodes for which a change in position _could_ be useful or even required.
+   * ExecutionNodes are traversed bottom-up (in explain output order), with depth-first
+   * subquery entering.
    * This struct can be moved out of this method.
    * i just kept them in here for simplicity to move this rule into a seperate
-   * file there is nothing from the scope  required.
+   * file. there is nothing from the scope required.
    */
-  struct NodePositioner : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
+  struct RelevantNodesFinder : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
     bool before(arangodb::aql::ExecutionNode* n) override {
       auto loc = n->getAllowedLocation();
       if (loc.isStrict()) {
@@ -8968,17 +8973,22 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<Executio
       }
       // Always continue walking
       return false;
-    };
+    }
+  
+    // we want to enter subqueries
+    bool enterSubquery(arangodb::aql::ExecutionNode* /*super*/, arangodb::aql::ExecutionNode* /*sub*/) override { 
+      return true; 
+    }
 
-    void after(arangodb::aql::ExecutionNode* n) override{};
+    void after(arangodb::aql::ExecutionNode* n) override {}
 
     std::vector<ExecutionNode*> relevantNodes;
   } walker{};
 
   plan->root()->walk(walker);
 
-  auto& relevantNodes = walker.relevantNodes;
-  // We will at least find the final RETURN, or the final Modification
+  auto const& relevantNodes = walker.relevantNodes;
+  // We will at least find the final RETURN, or the final Modification.
   // Otherwise the query syntax is invalid, and should be handled before
   TRI_ASSERT(!relevantNodes.empty());
 
@@ -9008,7 +9018,7 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<Executio
     }
   }
 
-  std::stack<SubqueryScope> subqueryScopes;
+  std::stack<SubqueryScope, std::vector<SubqueryScope>> subqueryScopes;
 
   // We start on purpose at i = 1, to guarantee that we have a previous node
   for (size_t i = 1; i < relevantNodes.size(); ++i) {
