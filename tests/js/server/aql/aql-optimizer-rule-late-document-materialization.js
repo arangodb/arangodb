@@ -607,7 +607,28 @@ function lateDocumentMaterializationRuleTestSuite () {
       let result = AQL_EXECUTE(query);
       assertEqual(1, result.json.length);
       assertEqual(result.json[0]._key, 'c0');
-    }
+    },
+
+    testIssue14819: function () {
+      // the following query triggers the error described in Github issue #14819,
+      // but in 3.7 it is not eligible for late document materialization. In 3.8
+      // it is eligible, that's why the test ended up here (backport from 3.8..)
+      let query = "FOR doc IN UNION((FOR doc IN " + severalIndexesCollectionName + " FILTER doc.a >= 1 && doc.a <= 10 COLLECT dt = DATE_FORMAT(DATE_TRUNC(doc.a, 'day'), '%yyyy-%mm-%dd') AGGREGATE sum = SUM(doc.b) LIMIT 1000000 RETURN { dt, sum }), []) LIMIT 1000000 RETURN doc";
+      let plans = AQL_EXPLAIN(query, null, { allPlans: true }).plans; 
+      assertEqual(2, plans.length);
+      // preferred plan without late materialization
+      let plan = plans[0];
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+      // other plan, with late materialization
+      plan = plans[1];
+      if (isCluster) {
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+      } else {
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      }
+      let result = AQL_EXECUTE(query).json;
+      assertEqual(0, result.length);
+    },
   };
 }
 
