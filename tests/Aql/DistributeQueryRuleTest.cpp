@@ -327,6 +327,26 @@ TEST_F(DistributeQueryRuleTest, distributed_subquery_remove) {
                     "ReturnNode"});
 }
 
+TEST_F(DistributeQueryRuleTest, subquery_as_first_node) {
+  auto queryString = R"aql(
+    LET sub = (
+      FOR x IN collection
+      RETURN 1
+    )
+    RETURN LENGTH(sub))aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << nodeNames(planSlice);
+  assertNodesMatch(planSlice,
+                   {"SingletonNode", "SubqueryStartNode", "ScatterNode",
+                    "RemoteNode", "EnumerateCollectionNode", "RemoteNode",
+                    "GatherNode", "SubqueryEndNode", "CalculationNode",
+                    "ReturnNode"});
+}
+
 TEST_F(DistributeQueryRuleTest, enumerate_remove) {
   auto queryString = R"aql(
     FOR doc IN collection
