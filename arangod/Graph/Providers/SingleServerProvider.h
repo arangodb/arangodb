@@ -75,6 +75,7 @@ class SingleServerProvider {
       -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;  // index
+  auto clear() -> void;
 
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
   void insertEdgeIdIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);

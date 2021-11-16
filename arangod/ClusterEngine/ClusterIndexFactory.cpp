@@ -54,8 +54,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
       : IndexTypeFactory(server), _type(type) {}
 
   bool equal(velocypack::Slice lhs,
-             velocypack::Slice rhs,
-             std::string const& dbname) const override {
+             velocypack::Slice rhs, std::string const& dbname) const override {
     auto& clusterEngine =
         _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
     auto* engine = clusterEngine.actualEngine();
@@ -78,8 +77,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
     auto ct = clusterEngine.engineType();
 
     return std::make_shared<ClusterIndex>(id, collection, ct,
-                                          Index::type(_type),
-                                          definition);
+                                          Index::type(_type), definition);
   }
 
   virtual Result normalize(
@@ -98,7 +96,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
     }
 
     return engine->indexFactory().factory(_type).normalize(
-      normalized, definition, isCreation, vocbase);
+        normalized, definition, isCreation, vocbase);
   }
 };
 
@@ -213,7 +211,7 @@ Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition
   }
 
   return ae->indexFactory().enhanceIndexDefinition(
-    definition, normalized, isCreation, vocbase);
+      definition, normalized, isCreation, vocbase);
 }
 
 void ClusterIndexFactory::fillSystemIndexes(LogicalCollection& col,
@@ -305,8 +303,8 @@ void ClusterIndexFactory::prepareIndexes(
       indexes.emplace_back(std::move(idx));
     } catch (std::exception const& ex) {
       LOG_TOPIC("7ed52", ERR, Logger::ENGINES)
-          << "error creating index from definition '" << v.toString() << "': " << ex.what();
-
+          << "error creating index from definition '" << v.toString()
+          << "': " << ex.what();
     }
   }
 }

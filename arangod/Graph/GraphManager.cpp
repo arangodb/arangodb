@@ -444,9 +444,8 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
 
 Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
-  auto query =
-      arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
-                                   arangodb::aql::QueryString{queryStr}, nullptr);
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
+                             arangodb::aql::QueryString{queryStr}, nullptr);
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
 
