@@ -36,6 +36,7 @@ const leaderEndpoint = arango.getEndpoint();
 const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 const errors = require("internal").errors;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const _ = require('lodash');
 
 const cn = 'UnitTestsReplication';
 
@@ -248,6 +249,54 @@ function BaseTestConfig () {
       assertEqual(rev3, c.document("c")._rev);
      
       checkCountConsistency(cn, 3);
+    },
+
+    testLargeDocumentsWithEvilKeys: function () {
+      let c = db._create(cn);
+
+      // create connection on follower too
+      connectToFollower();
+      db._flushCache();
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+      });
+      // insert documents with evil keys
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "testi$!%20%44+abc=" + i });
+      }
+      c.insert(docs);
+      assertEqual(100, c.count());
+
+      connectToLeader();
+      let payload = Array(512).join("x");
+      let doc = {};
+      for (let i = 0; i < 100; ++i) {
+        doc["test" + i] = payload;
+      }
+      docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        doc._key = "testi$!%20%44+abc=" + i;
+        docs.push(_.clone(doc));
+        if (docs.length === 100) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+      assertEqual(10000, c.count());
+
+      connectToFollower();
+
+      // sync all documents
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      checkCountConsistency(cn, 10000);
     },
 
     // create different state on follower

@@ -1,3 +1,13 @@
+v3.7.13.1 (XXXX-XX-XX)
+----------------------
+
+* Fixed an issue in old incremental sync protocol with document keys that
+  contained special characters (`%`). These keys could be send unencoded in the
+  incremental sync protocol, leading to wrong key ranges being transfered
+  between leader and follower, and thus causing follow-up errors and preventing
+  getting in sync.
+
+
 v3.7.13 (2021-07-20)
 --------------------
 
