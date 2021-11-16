@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed wrong repo string in version for EE.
+
 * APM-209: Histogram displaying is now switched off by default. For displaying
   it, the new flag `histogram.generate` must be set to true. Its default value
   is false for compatibility with other versions and also for complying with the
