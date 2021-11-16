@@ -78,6 +78,12 @@
 
 #include <tuple>
 
+using namespace arangodb;
+using namespace arangodb::aql;
+using namespace arangodb::containers;
+using namespace arangodb::iresearch;
+using EN = arangodb::aql::ExecutionNode;
+
 namespace {
 
 bool willUseV8(arangodb::aql::ExecutionPlan const& plan) {
@@ -815,13 +821,63 @@ bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
   return (0.25 * N * lgM + M * lgM) < (N * lgN);
 }
 
+std::tuple<Collection const*, Variable const*, bool> extractDistributeInfo(ExecutionNode* node) {
+  // TODO: this seems a bit verbose, but is at least local & simple
+  //       the modification nodes are all collectionaccessing, the graph nodes
+  //       are currently assumed to be disjoint, and hence smart, so all
+  //       collections are sharded the same way!
+  switch (node->getType()) {
+    case ExecutionNode::INSERT: {
+      auto const* insertNode = ExecutionNode::castTo<InsertNode const*>(node);
+      return {insertNode->collection(), insertNode->inVariable(), false};
+    } break;
+    case ExecutionNode::REMOVE: {
+      auto const* removeNode = ExecutionNode::castTo<RemoveNode const*>(node);
+      return {removeNode->collection(), removeNode->inVariable(), false};
+    } break;
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::REPLACE: {
+      auto const* updateReplaceNode =
+          ExecutionNode::castTo<UpdateReplaceNode const*>(node);
+      if (updateReplaceNode->inKeyVariable() != nullptr) {
+        return {updateReplaceNode->collection(), updateReplaceNode->inKeyVariable(), false};
+      } else {
+        return {updateReplaceNode->collection(), updateReplaceNode->inDocVariable(), false};
+      }
+    } break;
+    case ExecutionNode::UPSERT: {
+      auto upsertNode = ExecutionNode::castTo<UpsertNode const*>(node);
+      return {upsertNode->collection(), upsertNode->inDocVariable(), false};
+    } break;
+    case ExecutionNode::TRAVERSAL: {
+      auto traversalNode = ExecutionNode::castTo<TraversalNode const*>(node);
+      TRI_ASSERT(traversalNode->isDisjoint());
+      return {traversalNode->collection(), traversalNode->inVariable(), true};
+    } break;
+    case ExecutionNode::K_SHORTEST_PATHS: {
+      auto kShortestPathsNode = ExecutionNode::castTo<KShortestPathsNode const*>(node);
+      TRI_ASSERT(kShortestPathsNode->isDisjoint());
+      // Subtle: KShortestPathsNode uses a reference when returning startInVariable
+      return {kShortestPathsNode->collection(), &kShortestPathsNode->startInVariable(), true};
+    } break;
+    case ExecutionNode::SHORTEST_PATH: {
+      auto shortestPathNode = ExecutionNode::castTo<ShortestPathNode const*>(node);
+      TRI_ASSERT(shortestPathNode->isDisjoint());
+      return {shortestPathNode->collection(), shortestPathNode->startInVariable(), true};
+    } break;
+    default: {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Cannot distribute " +
+                                         node->getTypeString() + ".");
+    } break;
+  }
+
+
+}
+
 }  // namespace
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using namespace arangodb::containers;
-using namespace arangodb::iresearch;
-using EN = arangodb::aql::ExecutionNode;
 
 namespace arangodb {
 namespace aql {
@@ -3830,70 +3886,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 // register it with the plan
 auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node)
     -> DistributeNode* {
-  auto collection = static_cast<Collection const*>(nullptr);
-  auto inputVariable = static_cast<Variable const*>(nullptr);
 
-  bool isGraphNode = false;
-  // TODO: this seems a bit verbose, but is at least local & simple
-  //       the modification nodes are all collectionaccessing, the graph nodes
-  //       are currently assumed to be disjoint, and hence smart, so all
-  //       collections are sharded the same way!
-  switch (node->getType()) {
-    case ExecutionNode::INSERT: {
-      auto const* insertNode = ExecutionNode::castTo<InsertNode const*>(node);
-      collection = insertNode->collection();
-      inputVariable = insertNode->inVariable();
-    } break;
-    case ExecutionNode::REMOVE: {
-      auto const* removeNode = ExecutionNode::castTo<RemoveNode const*>(node);
-      collection = removeNode->collection();
-      inputVariable = removeNode->inVariable();
-    } break;
-    case ExecutionNode::UPDATE:
-    case ExecutionNode::REPLACE: {
-      auto const* updateReplaceNode =
-          ExecutionNode::castTo<UpdateReplaceNode const*>(node);
-      collection = updateReplaceNode->collection();
-      if (updateReplaceNode->inKeyVariable() != nullptr) {
-        inputVariable = updateReplaceNode->inKeyVariable();
-      } else {
-        inputVariable = updateReplaceNode->inDocVariable();
-      }
-    } break;
-    case ExecutionNode::UPSERT: {
-      auto upsertNode = ExecutionNode::castTo<UpsertNode const*>(node);
-      collection = upsertNode->collection();
-      inputVariable = upsertNode->inDocVariable();
-    } break;
-    case ExecutionNode::TRAVERSAL: {
-      auto traversalNode = ExecutionNode::castTo<TraversalNode const*>(node);
-      TRI_ASSERT(traversalNode->isDisjoint());
-      collection = traversalNode->collection();
-      inputVariable = traversalNode->inVariable();
-      isGraphNode = true;
-    } break;
-    case ExecutionNode::K_SHORTEST_PATHS: {
-      auto kShortestPathsNode = ExecutionNode::castTo<KShortestPathsNode const*>(node);
-      TRI_ASSERT(kShortestPathsNode->isDisjoint());
-      collection = kShortestPathsNode->collection();
-      // Subtle: KShortestPathsNode uses a reference when returning startInVariable
-      inputVariable = &kShortestPathsNode->startInVariable();
-      isGraphNode = true;
-    } break;
-    case ExecutionNode::SHORTEST_PATH: {
-      auto shortestPathNode = ExecutionNode::castTo<ShortestPathNode const*>(node);
-      TRI_ASSERT(shortestPathNode->isDisjoint());
-      collection = shortestPathNode->collection();
-      inputVariable = shortestPathNode->startInVariable();
-      isGraphNode = true;
-    } break;
-    default: {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "Cannot distribute " +
-                                         node->getTypeString() + ".");
-    } break;
-  }
+  auto [collection, inputVariable, isGraphNode] = ::extractDistributeInfo(node);
 
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(inputVariable != nullptr);
