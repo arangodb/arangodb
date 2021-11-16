@@ -1,6 +1,11 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* In the shards overview the list of servers to move the leader shard to, now
+  also contains the current followers. This means that from now on also active
+  follower servers can be nominated as the leading server for that specific
+  shard.
+
 * Extend Windows minidumps with memory regions referenced from CPU registers or
   the stack to provide more contextual information in case of crashes.
 
