@@ -533,6 +533,10 @@ inline void LogContext::popTail(EntryCache& cache) noexcept {
   _tail = prev;
 }
 
+/// @brief Captures the current LogContext and returns a new function that applies
+/// the captures LogContext before calling the given function.
+/// This is helpful in cases where a function is handed to some other thread but we
+/// want to retain the current LogContext (e.g., when using futures).
 template <typename Func>
 auto withLogContext(Func&& func) {
   return [func = std::forward<Func>(func), ctx = LogContext::current()](auto&&... args) mutable {
