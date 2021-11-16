@@ -1,4 +1,4 @@
-v3.7.13.1 (XXXX-XX-XX)
+v3.7.13.1 (2021-11-16)
 ----------------------
 
 * Fixed an issue in old incremental sync protocol with document keys that
