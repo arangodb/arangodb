@@ -1,6 +1,9 @@
 v3.8.3 (XXXX-XX-XX)
 -------------------
-    
+
+* Fixed arangodump not overwriting dump directory when flags `--all-databases`
+  and `--overwrite` are set to true.
+
 * Close a potential gap during shard synchronization when moving from the
   initial sync step to the WAL tailing step. In this small gap the leader 
   could purge some of the WAL files that would be required by the following
@@ -11,9 +14,6 @@ v3.8.3 (XXXX-XX-XX)
 * Improve Shards overview in web UI: the number of currently syncing shards is
   now displayed per collection. Additionally, shards on failed servers are now
   displayed in a different color.
-
-* Fixed arangodump not overwriting dump directory when flags `--all-databases`
-  and `--overwrite` are set to true.
 
 * Fixed BTS-637: Slow SynchronizeShard jobs which need to copy data could block
   quick SynchronizeShard jobs which have the data and only need to resync.
