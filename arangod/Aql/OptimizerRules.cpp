@@ -8920,6 +8920,23 @@ namespace {
       // TODO: actually check here if we need to insert a Scatter/Gather.
       // we don't need to do this for collections with the same sharding
       // and satellite collections.
+
+      // Optimize Case:
+      // We distribute on LOWER, by the output of upper. There is no need
+      // to return to coordinator in between
+      // This handles cases like:
+      //   FOR x IN col REMOVE x IN col
+
+      if (nodeEligibleForDistribute(lower.getShardByNode()->getType())) {
+        auto [collection, inputVariable, isGraphNode] = ::extractDistributeInfo(lower.getShardByNode());
+        auto up = upper.getShardByNode();
+        VarSet variablesToTest;
+        variablesToTest.insert(inputVariable);
+        if (up->setsVariable(variablesToTest)) {
+          LOG_DEVEL << "Distribute by attached producer, " << inputVariable->name << " produced by " << up->getTypeString();
+          return upper;
+        }
+      }
       addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
       auto dependencyNode = lower.getNode()->getFirstDependency();
       addScatterBelow(plan, dependencyNode, lower.getShardByNode());
