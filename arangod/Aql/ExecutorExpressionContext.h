@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_EXECUTOR_EXPRESSION_CONTEXT_H
 #define ARANGOD_AQL_EXECUTOR_EXPRESSION_CONTEXT_H 1
 
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryExpressionContext.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
@@ -59,6 +60,7 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
   std::vector<Variable const*> const& _vars;
   std::vector<RegisterId> const& _regs;
 };
+
 }  // namespace aql
 }  // namespace arangodb
 #endif

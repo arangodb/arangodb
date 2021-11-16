@@ -719,6 +719,7 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
 void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node, bool pushToSingleServer) {
   node->prepareOptions();
   injectVertexCollections(node);
+  node->initializeIndexConditions();
   // SnippetID does not matter on GraphNodes
   _shardLocking.addNode(node, 0, pushToSingleServer);
   _graphNodes.emplace_back(node);

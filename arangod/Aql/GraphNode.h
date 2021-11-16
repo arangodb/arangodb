@@ -202,6 +202,8 @@ class GraphNode : public ExecutionNode {
  public:
   graph::Graph const* graph() const noexcept;
 
+  void initializeIndexConditions() const;
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Internal helpers used in tests to modify enterprise detections.
   // These should not be used in production, as their detection

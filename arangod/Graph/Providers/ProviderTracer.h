@@ -70,6 +70,8 @@ class ProviderTracer {
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
 
+  void prepareIndexExpressions(aql::Ast* ast);
+
   // Note: ClusterProvider will need to implement destroyEngines
   void destroyEngines();
 
