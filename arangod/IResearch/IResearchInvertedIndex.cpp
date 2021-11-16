@@ -154,24 +154,24 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
       return false;
     }
     TRI_ASSERT(hasExtra());
-    return nextImplInternal<ExtraCallback, true, false>(callback, limit);
+    return nextImplInternal<ExtraCallback, true, false, true>(callback, limit);
   }
 
   bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override {
-    return nextImplInternal<LocalDocumentIdCallback, false, false>(callback, limit);
+    return nextImplInternal<LocalDocumentIdCallback, false, false, true>(callback, limit);
   }
 
   bool nextCoveringImpl(CoveringCallback const& callback, size_t limit) override {
-    return nextImplInternal<CoveringCallback, false, true>(callback, limit);
+    return nextImplInternal<CoveringCallback, false, true, true>(callback, limit);
   }
 
   void skipImpl(uint64_t count, uint64_t& skipped) override {
-    TRI_ASSERT(FALSE); // FIXME: implement
+    nextImplInternal<decltype(skipped), false, false, false>(skipped, count);
   }
 
   // FIXME: Evaluate buffering iresearch reads
-  template<typename Callback, bool withExtra, bool withCovering>
-  bool nextImplInternal(Callback const& callback, size_t limit)  {
+  template<typename Callback, bool withExtra, bool withCovering, bool produce>
+  bool nextImplInternal(Callback callback, size_t limit)  {
     if (limit == 0 || !_filter) {
       TRI_ASSERT(limit > 0); // Someone called with limit == 0. Api broken
                              // validate that Iterator is in a good shape and hasn't failed
@@ -184,39 +184,50 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
       if (!_itr || !_itr->next()) {
         if (_readerOffset >= count) {
           break;
-        }
-        auto& segmentReader = (*_reader)[_readerOffset++];
-        _pkDocItr = ::pkColumn(segmentReader);
-        _pkValue = irs::get<irs::payload>(*_pkDocItr);
-        if constexpr (withExtra || withCovering) {
-          _projections.reset(segmentReader);
-        }
-        if (ADB_UNLIKELY(!_pkValue)) {
+        } else 
+        _segmentReader = (*_reader)[_readerOffset++];
+        if constexpr (produce) {
+          _pkDocItr = ::pkColumn(segmentReader);
+          _pkValue = irs::get<irs::payload>(*_pkDocItr);
+          if constexpr (withExtra || withCovering) {
+            _projections.reset(segmentReader);
+          }
+          if (ADB_UNLIKELY(!_pkValue)) {
+            _pkValue = &NoPayload;
+          }
+        } else {
           _pkValue = &NoPayload;
+          _pkDocItr.reset();
         }
-        _itr = segmentReader.mask(_filter->execute(segmentReader));
+        _itr = segmentReader.mask(_filter->execute(_segmentReader));
         _doc = irs::get<irs::document>(*_itr);
       } else {
-        if (_doc->value == _pkDocItr->seek(_doc->value)) {
-          LocalDocumentId documentId;
-          bool const readSuccess = DocumentPrimaryKey::read(documentId,  _pkValue->value);
-          if (readSuccess) {
-            if constexpr (withExtra) {
-              TRI_ASSERT(_extraIndex >= 0);
-              _projections.seek(_doc->value);
-              auto extraSlice = _projections.at(_extraIndex);
-              if (!extraSlice.isNone()) {
-                --limit;
-                callback(documentId, extraSlice);
-              } 
-            } else if constexpr (withCovering) {
-              _projections.seek(_doc->value);
-              callback(documentId, &_projections);
-            } else {
-              --limit;
-              callback(documentId);
+        if constexpr (produce) {
+          if (_doc->value == _pkDocItr->seek(_doc->value)) {
+            LocalDocumentId documentId;
+            bool const readSuccess = DocumentPrimaryKey::read(documentId,  _pkValue->value);
+            if (readSuccess) {
+              if constexpr (withExtra) {
+                TRI_ASSERT(_extraIndex >= 0);
+                _projections.seek(_doc->value);
+                auto extraSlice = _projections.at(_extraIndex);
+                if (!extraSlice.isNone()) {
+                  --limit;
+                  callback(documentId, extraSlice);
+                } 
+              } else if constexpr (withCovering) {
+                _projections.seek(_doc->value);
+                callback(documentId, &_projections);
+              } else {
+                if (callback(documentId)) {
+                  --limit; // count only existing documents
+                }
+              }
             }
           }
+        } else {
+          --limit;
+          ++callback;
         }
       }
     }
@@ -490,6 +501,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   irs::document const* _doc{};
   const irs::payload* _pkValue{};
   irs::index_reader const* _reader{0};
+  irs::sub_reader const* _segmentReader{nullptr};
   IResearchInvertedIndex* _index;
   aql::Variable const* _variable;
   size_t _readerOffset{0};

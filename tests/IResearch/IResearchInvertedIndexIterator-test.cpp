@@ -29,6 +29,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
 #include "Aql/Projections.h"
+#include "Basics/StaticStrings.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchInvertedIndex.h"
@@ -41,8 +42,9 @@
 #include "RestServer/FlushFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Methods/Collections.h"
-#include "Basics/StaticStrings.h"
+
 
 namespace {
 std::vector<std::vector<std::string>> EMPTY_STORED_FIELDS{};
@@ -95,12 +97,59 @@ class IResearchInvertedIndexIteratorTest
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                        EMPTY, collections, EMPTY,
                                        arangodb::transaction::Options());
-     auto doc0 = arangodb::velocypack::Parser::fromJson(
-        R"("{ "a":"1", "b":"2"  }")");
-     arangodb::LocalDocumentId doc0Id{1};
-     _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
-                    arangodb::iresearch::InvertedIndexFieldMeta>(trx, doc0Id,
-                                                                 doc0->slice(), _index->_meta);
+    trx.begin();
+    {
+       auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"2"})");
+       arangodb::LocalDocumentId docId{1};
+       // MSVC fails to compile if EXPECT_TRUE  is called directly
+       auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
+                                 arangodb::iresearch::InvertedIndexFieldMeta>(
+                                    trx, docId,
+                                    doc->slice(), _index->_meta).ok();
+       EXPECT_TRUE(res);
+    }
+    {
+       auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"1"})");
+       arangodb::LocalDocumentId docId{2};
+       // MSVC fails to compile if EXPECT_TRUE  is called directly
+       auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
+                                 arangodb::iresearch::InvertedIndexFieldMeta>(
+                                    trx, docId,
+                                    doc->slice(), _index->_meta).ok();
+       EXPECT_TRUE(res);
+    }
+    {
+       auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"2"})");
+       arangodb::LocalDocumentId docId{3};
+       // MSVC fails to compile if EXPECT_TRUE  is called directly
+       auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
+                                 arangodb::iresearch::InvertedIndexFieldMeta>(
+                                    trx, docId,
+                                    doc->slice(), _index->_meta).ok();
+       EXPECT_TRUE(res);
+    }
+    {
+       auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"1"})");
+       arangodb::LocalDocumentId docId{4};
+       // MSVC fails to compile if EXPECT_TRUE  is called directly
+       auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
+                                 arangodb::iresearch::InvertedIndexFieldMeta>(
+                                    trx, docId,
+                                    doc->slice(), _index->_meta).ok();
+       EXPECT_TRUE(res);
+    }    
+    {
+       auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"3", "b":"3"})");
+       arangodb::LocalDocumentId docId{5};
+       // MSVC fails to compile if EXPECT_TRUE  is called directly
+       auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
+                                 arangodb::iresearch::InvertedIndexFieldMeta>(
+                                    trx, docId,
+                                    doc->slice(), _index->_meta).ok();
+       EXPECT_TRUE(res);
+    }
+    EXPECT_TRUE(trx.commitAsync().get().ok());
+    EXPECT_TRUE(_index->commit(true).ok());
   }
 
   VPackBuilder getPropertiesSlice(arangodb::IndexId iid,
@@ -140,103 +189,99 @@ class IResearchInvertedIndexIteratorTest
     _collection.reset();
   }
 
-  //void assertProjectionsCoverageSuccess(
-  //  std::vector<std::vector<std::string>> const& storedFields,
-  //  std::vector<arangodb::aql::AttributeNamePath> const& attributes,
-  //  arangodb::aql::Projections const& expected) {
-  //  arangodb::aql::Projections projections(attributes);
-  //  arangodb::IndexId id(1);
-  //  arangodb::iresearch::InvertedIndexFieldMeta meta;
-  //  std::string errorField;
-  //  std::vector<std::string> fields = {"a"};
-  //  ASSERT_TRUE(meta.init(_server.server(),
-  //                        getPropertiesSlice(id, fields, storedFields).slice(),
-  //                        false, errorField, _vocbase->name()));
-  //  arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection, std::move(meta));
-  //  ASSERT_TRUE(Index.covers(projections));
-  //  ASSERT_EQ(expected.size(), projections.size());
-  //  for (size_t i = 0; i < expected.size(); ++i) {
-  //    ASSERT_EQ(expected[i].path, projections[i].path);
-  //    ASSERT_EQ(expected[i].coveringIndexCutoff, projections[i].coveringIndexCutoff);
-  //    ASSERT_EQ(expected[i].coveringIndexPosition, projections[i].coveringIndexPosition);
-  //  }
-  //}
+  void executeIteratorTest(std::string_view queryString,
+                           std::function<void(arangodb::IndexIterator* it)> const& test,
+                           std::string_view refName = "d",
+                           std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+                           int mutableConditionIdx = -1) {
+    SCOPED_TRACE(testing::Message("ExecuteIteratorTest failed for query ") << queryString); 
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
+    auto query = arangodb::aql::Query::create(ctx,
+                                              arangodb::aql::QueryString(queryString.data(),
+                                                                         queryString.length()),
+                                              bindVars);
+    ASSERT_NE(query.get(), nullptr);
+    auto const parseResult = query->parse();
+    ASSERT_TRUE(parseResult.result.ok());
 
-  //void estimateFilterCondition(
-  //    std::string const& queryString, std::vector<std::string> const& fields,
-  //    arangodb::Index::FilterCosts const& expectedCosts,
-  //    arangodb::aql::ExpressionContext* exprCtx = nullptr,
-  //    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-  //    std::string const& refName = "d") {
-  //  SCOPED_TRACE(testing::Message("estimateFilterCondition failed for query:<")
-  //    << queryString << "> Expected support:" << expectedCosts.supportsCondition);
-  //  arangodb::IndexId id(1);
-  //  arangodb::iresearch::InvertedIndexFieldMeta meta;
-  //  std::string errorField;
-  //  meta.init(_server.server(), getPropertiesSlice(id, fields).slice(), false, errorField, _vocbase->name());
-  //  auto indexFields =arangodb::iresearch::IResearchInvertedIndex::fields(meta);
-  //  arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection, std::move(meta));
+    auto* ast = query->ast();
+    ASSERT_TRUE(ast);
 
+    auto* root = ast->root();
+    ASSERT_TRUE(root);
+    // find first FILTER node
+    arangodb::aql::AstNode* filterNode = nullptr;
+    for (size_t i = 0; i < root->numMembers(); ++i) {
+      auto* node = root->getMemberUnchecked(i);
+      ASSERT_TRUE(node);
 
-  //  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
-  //  auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString),
-  //                                            bindVars);
+      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+        filterNode = node;
+        break;
+      }
+    }
+    ASSERT_TRUE(filterNode);
 
-  //  ASSERT_NE(query.get(), nullptr);
-  //  auto const parseResult = query->parse();
-  //  ASSERT_TRUE(parseResult.result.ok());
+    // find referenced variable
+    auto* allVars = ast->variables();
+    ASSERT_TRUE(allVars);
+    arangodb::aql::Variable* ref = nullptr;
+    for (auto entry : allVars->variables(true)) {
+      if (entry.second == refName) {
+        ref = allVars->getVariable(entry.first);
+        break;
+      }
+    }
+    ASSERT_TRUE(ref);
+    arangodb::IndexIteratorOptions opts;
+    arangodb::SingleCollectionTransaction trx(
+      ctx, collection(), arangodb::AccessMode::Type::READ);
+    auto iterator = index().iteratorForCondition(
+                    &collection(), &trx, filterNode, ref, opts, mutableConditionIdx);
+    test(iterator.get());
+  }
 
-  //  auto* ast = query->ast();
-  //  ASSERT_TRUE(ast);
-
-  //  auto* root = ast->root();
-  //  ASSERT_TRUE(root);
-
-  //  // find first FILTER node
-  //  arangodb::aql::AstNode* filterNode = nullptr;
-  //  for (size_t i = 0; i < root->numMembers(); ++i) {
-  //    auto* node = root->getMemberUnchecked(i);
-  //    ASSERT_TRUE(node);
-
-  //    if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-  //      filterNode = node;
-  //      break;
-  //    }
-  //  }
-  //  ASSERT_TRUE(filterNode);
-
-  //  // find referenced variable
-  //  auto* allVars = ast->variables();
-  //  ASSERT_TRUE(allVars);
-  //  arangodb::aql::Variable* ref = nullptr;
-  //  for (auto entry : allVars->variables(true)) {
-  //    if (entry.second == refName) {
-  //      ref = allVars->getVariable(entry.first);
-  //      break;
-  //    }
-  //  }
-  //  ASSERT_TRUE(ref);
-
-  //  // optimization time
-  //  {
-  //    arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
-  //                                        {}, {}, {}, arangodb::transaction::Options());
-  //    auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
-  //    if (mockCtx) {
-  //      mockCtx->setTrx(&trx);
-  //    }
-
-  //    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, mockCtx, nullptr, ref};
-  //    auto costs = Index.supportsFilterCondition(id, indexFields, {}, filterNode, ref, 0);
-  //    ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
-  //  }
-  //  // runtime is not intended - we must decide during optimize time!
-  //}
 
   arangodb::LogicalCollection& collection() {return *_collection;}
   TRI_vocbase_t& vocbase() { return *_vocbase; }
+  arangodb::iresearch::IResearchInvertedIndex& index() { return *_index.get(); }
 };  // IResearchFilterSetup
 
+/// *IResearchInvertedIndexIteratorTest*:*IResearchInvertedIndex*:*LateMaterialization*:*NoMaterialization* --gtest_break_on_failure
 TEST_F(IResearchInvertedIndexIteratorTest, test_skip) {
+  std::string queryString{ R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" RETURN d)"};
+  auto test = [](arangodb::IndexIterator* iterator) {
+    ASSERT_NE(iterator, nullptr);
+    ASSERT_TRUE(iterator->hasMore());
+    uint64_t skipped{0};
+    iterator->skipAll(skipped);
+    ASSERT_EQ(3, skipped);
+    ASSERT_FALSE(iterator->hasMore());
+  };
+  executeIteratorTest(queryString, test);
+}
 
+TEST_F(IResearchInvertedIndexIteratorTest, test_skip_next) {
+  std::string queryString{ R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" RETURN d)"};
+  auto test = [](arangodb::IndexIterator* iterator) {
+    ASSERT_NE(iterator, nullptr);
+    ASSERT_TRUE(iterator->hasMore());
+    uint64_t skipped{0};
+    iterator->skip(1, skipped);
+    ASSERT_EQ(1, skipped);
+    ASSERT_TRUE(iterator->hasMore());
+    ASSERT_TRUE(iterator->hasCovering());
+    std::vector<arangodb::LocalDocumentId> docs;
+    auto docCallback = [&docs](arangodb::LocalDocumentId const& token) {
+      docs.push_back(token);
+      return true;
+    };
+    ASSERT_FALSE(iterator->next(docCallback, 1000));
+    ASSERT_EQ(docs.size(), 2);
+    // we can't assume order of the documents. Let's just check invalid ones are not returned
+    ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(2)), docs.end());
+    ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(5)), docs.end());
+    ASSERT_FALSE(iterator->hasMore());
+  };
+  executeIteratorTest(queryString, test);
 }
