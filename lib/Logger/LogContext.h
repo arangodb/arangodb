@@ -43,13 +43,34 @@ namespace rest {
   class RestHandler;
 }
 
+/// @brief LogContext allows to add thread-local contextual information which
+/// will automatically be included in all log messages.
+///
+/// LogContext manages thread-local instances to capture per-thread values.
+/// Values are usually added using ScopedValues which add a value to the context
+/// for the current scope, i.e., once the ScopedValue goes out of scope the value
+/// is again removed from the context. That way the LogContext can be populated
+/// with data when we move up the callstack, and clean up upon returning.
+/// This is simple enough for serial execution, but when we hand execution over
+/// to some other thread (e.g., using futures), we also need to transfer the
+/// context. The easiest way to achieve that is by using the `withLogContext`
+/// helper function.
+///
+/// Internally the values are managed in an immutable linked list using ref counts.
+/// I.e., values that have been added to some LogContext are never copied, even if
+/// that LogContext is captured in some futures.
 class LogContext {
  public:
+  /// @brief Visitor pattern to visit the values of some LogContext.
+  /// Values that are not strings or numbers are stringified using operator<< and visited as string.
   struct Visitor;
 
+  /// @brief Helper class to allow simple visitors with a single templatized visit function.
   template <class Derived>
   struct GenericVisitor;
 
+  /// @brief Helper class to define a visitor using any type that provides operator().
+  /// This is typically used with overloaded lambdas or a single lambda with auto params.
   template <class Overloads>
   struct OverloadVisitor;
 
@@ -74,13 +95,21 @@ class LogContext {
 
   struct Accessor {
    private:
+    /// @brief adds the provided value(s) to the LogContext for the current
+    /// scope, i.e., upon destruction the value(s) are removed from the current
+    /// LogContext.
+    struct ScopedValue;
+
+    // We intentionally use this Accessor class with RestHandler as friend to
+    // restrict usage of ScopedValues to certian classes in order to prevent
+    // ScopedValues to be created in some inner function where they might cause
+    // significant performance overhead.
     friend class arangodb::rest::RestHandler;
     
-    /// @brief adds the provided value(s) to the LogContext for the current scope,
-    /// i.e., upon destruction the value(s) are removed from the current LogContext.
-    struct ScopedValue;
+    friend struct LogContextTest;
   };
   
+  /// @brief Helper to create an empty ValueBuilder.
   static ValueBuilder<> makeValue() noexcept;
 
   LogContext() = default;
@@ -352,6 +381,9 @@ struct LogContext::Accessor::ScopedValue {
   }
 
   ~ScopedValue();
+  
+  template <const char Key[], class Val>
+  static ScopedValue with(Val&& v) { return ScopedValue(LogContext::makeValue().with<Key>(std::forward<Val>(v))); }
 
  private:
   template <class V>
