@@ -322,27 +322,25 @@ struct ReplicatedLogMethodsCoordinator final
       -> futures::Future<std::pair<std::vector<LogIndex>, replicated_log::WaitForResult>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "multi-insert");
 
+    std::size_t payloadSize{0};
     VPackBuilder builder{};
     {
       VPackArrayBuilder arrayBuilder{&builder};
-      while (auto payload = iter.next()) {
+      while (const auto payload = iter.next()) {
         if (payload.has_value()) {
           builder.add(payload->slice());
         } else {
           builder.add(VPackSlice::emptyObjectSlice());
         }
+        ++payloadSize;
       }
     }
-    auto slice = builder.slice();
-    // use value length
-    velocypack::Buffer<uint8_t> payload{};
-    payload.append(slice.start(), slice.byteSize());
 
     network::RequestOptions opts;
     opts.database = vocbase.name();
     return network::sendRequest(pool, "server:" + getLogLeader(id),
-                                fuerte::RestVerb::Post, path, payload, opts)
-        .thenValue([](network::Response&& resp) {
+                                fuerte::RestVerb::Post, path, builder.bufferRef(), opts)
+        .thenValue([payloadSize](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
@@ -353,14 +351,13 @@ struct ReplicatedLogMethodsCoordinator final
               waitResult.get("quorum"));
           auto commitIndex = waitResult.get("commitIndex").extract<LogIndex>();
 
-          // preallocate container
-          std::vector<LogIndex> indexes{};
-          auto indexesArray = result.get("indexes");
-          // validate array type
-          auto length = indexesArray.length();
-          for (velocypack::ValueLength idx(0); idx < length; ++idx) {
-            indexes.push_back(indexesArray.at(idx).extract<LogIndex>());
-          }
+          std::vector<LogIndex> indexes;
+          indexes.reserve(payloadSize);
+          auto indexIter = velocypack::ArrayIterator(result.get("indexes"));
+          std::transform(indexIter.begin(), indexIter.end(),
+                        std::back_inserter(indexes), [](auto const& it) {
+                           return it.template extract<LogIndex>();
+                         });
           return std::make_pair(
               std::move(indexes),
               replicated_log::WaitForResult(commitIndex, std::move(quorum)));
