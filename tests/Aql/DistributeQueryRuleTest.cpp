@@ -340,6 +340,8 @@ TEST_F(DistributeQueryRuleTest, distributed_insert_using_shardkey) {
 
 
 TEST_F(DistributeQueryRuleTest, distributed_subquery_remove) {
+  // NOTE: This test is known to be red right now, it waits for an optimizer rule
+  // that can move Calculations out of subqueries.
   auto queryString = R"aql(
     FOR y IN 1..3
     LET sub = (

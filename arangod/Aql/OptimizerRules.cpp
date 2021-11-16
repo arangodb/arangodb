@@ -8756,15 +8756,22 @@ namespace {
     TRI_ASSERT(remoteNode);
 
     // Now need to relink:
-    // upper <- parent
+    // node <- parent
     // =>
-    // upper <- scatter <- remote <- parent
+    // node <- scatter <- remote <- parent
 
     // At this stage in the planning every Node can only have a single parent
     TRI_ASSERT(node->hasParent());
     TRI_ASSERT(node->getParents().size() == 1);
     auto* parent = node->getFirstParent();
     LOG_DEVEL << "Adding " << scatterNode->getTypeString() <<  ": " << node->getTypeString() << " <- " << parent->getTypeString();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (scatterNode->getType() == ExecutionNode::DISTRIBUTE) {
+      // We cannot move our distribute to a point where the Input Variable is not valid anymore.
+      auto var = ExecutionNode::castTo<DistributeNode*>(scatterNode)->getVariable();
+      TRI_ASSERT(node->getVarsValid().contains(var));
+    }
+#endif
     scatterNode->addDependency(node);
     remoteNode->addDependency(scatterNode);
     parent->replaceDependency(node, remoteNode);
@@ -8774,6 +8781,7 @@ namespace {
   NodeInformation joinSnippets(ExecutionPlan& plan, NodeInformation lower,
                                NodeInformation upper,
                                std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes);
+
 
   NodeInformation linkSubquery(ExecutionPlan& plan, SubqueryScope const& scope, 
                                std::optional<NodeInformation> upper, 
@@ -8824,8 +8832,31 @@ namespace {
                                  {scope.subqueryEnd, scope.subqueryEnd, coordinatorLocation},
                                  subqueryScopes);
     // Link SubqueryEnd, with the first node that is relevant internally
-    std::ignore = ::joinSnippets(plan, {scope.getInternalEndNode(), scope.getInternalEndNode(), coordinatorLocation},
-                                 scope.firstInternalNode, subqueryScopes);
+    if (scope.getInternalEndNode() == scope.firstInternalNode) {
+      // This is a special case, the ROOT of the subquery is a ModificationNode, not a return.
+      // Need to gather it.
+      SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
+      SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+      auto gatherNode = insertGatherNode(plan, scope.firstInternalNode, subqueries);
+      TRI_ASSERT(gatherNode);
+
+      TRI_vocbase_t* vocbase = &plan.getAst()->query().vocbase();
+      auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(),
+                                                     vocbase, "", "", "");
+      TRI_ASSERT(remoteNode);
+
+      // Now need to relink:
+      // previous (root)
+      // =>
+      // previous <- remote <- gather (root)
+      remoteNode->addDependency(scope.firstInternalNode);
+      gatherNode->addDependency(remoteNode);
+      TRI_ASSERT(scope.subqueryEnd->getType() == ExecutionNode::SUBQUERY);
+      ExecutionNode::castTo<SubqueryNode*>(scope.subqueryEnd)->setSubquery(gatherNode, true);
+    } else {
+      std::ignore = ::joinSnippets(plan, {scope.getInternalEndNode(), scope.getInternalEndNode(), coordinatorLocation},
+                                   scope.firstInternalNode, subqueryScopes);
+    }
     // Link SubqueryStart with the last node that is relevant internally
     std::ignore = ::joinSnippets(plan, scope.lastInternalNode,
                                  {scope.subqueryStart, scope.subqueryStart, coordinatorLocation},
@@ -8849,6 +8880,7 @@ namespace {
                                std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes) {
     LOG_DEVEL << "Joining snippets " << lower.getNode()->getTypeString()
               << " with " << upper.getNode()->getTypeString();
+    TRI_ASSERT(lower.getNode() != upper.getNode());
     auto lowerLoc = lower.getAllowedLocation();
     auto upperLoc = upper.getAllowedLocation();
     TRI_ASSERT(lowerLoc.isStrict());
