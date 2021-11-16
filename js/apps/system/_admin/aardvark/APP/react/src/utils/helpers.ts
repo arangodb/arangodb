@@ -47,12 +47,9 @@ export const facetedFilter = (filterExpr: string, list: { [key: string]: any }[]
           item => minimatch(item[field].toLowerCase(), `*${pattern.toLowerCase()}*`));
       }
     } catch (e) {
-      filteredList = filteredList.filter(item => {
-        const normalizedPattern = `*${filterExpr.toLowerCase()}*`;
+      const normalizedPattern = `*${filterExpr.toLowerCase()}*`;
 
-        return facets.some(
-          field => minimatch(item[field].toLowerCase(), normalizedPattern));
-      });
+      filteredList = filteredList.filter(item => facets.some(field => minimatch(item[field].toLowerCase(), normalizedPattern)));
     }
   }
 
@@ -200,8 +197,8 @@ export function useJsonFormErrorHandler<FormState> (dispatch: Dispatch<DispatchA
       dispatch({ type: 'lockJsonForm' });
 
       setFormErrors(errors.map(error => {
-        if (has(error.params, 'errors')) {
-          return `
+          if (has(error.params, 'errors')) {
+            return `
               ${error.params.errors[0].keyword} error: ${error.instancePath}${error.message}.
             `;
           } else {
