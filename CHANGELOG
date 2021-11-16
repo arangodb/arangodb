@@ -1,7 +1,8 @@
 devel
 -----
 
-* Changed arangosh directory name to client-tools
+* Changed "arangosh" directory name to "client-tools", because the directory 
+  contains the code for all client tools and not just arangosh.
 
 * APM-209: Histogram displaying is now switched off by default. For displaying
   it, the new flag `histogram.generate` must be set to true. Its default value
