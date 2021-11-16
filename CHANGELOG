@@ -1,6 +1,12 @@
 v3.8.3 (XXXX-XX-XX)
 -------------------
-    
+
+* When using Indexes within traversals (e.g. [_from, date]) and filter based on
+  a function (e.g. FILTER path.edges[0].date <= DATE_ADD(@now, 5, "day")) this
+  function was passed through to the index. The index cannot evaluate this
+  function and returned incorrect results. Now all functions are evaluted before
+  looking into the index. Fixes BTS-407.
+
 * Close a potential gap during shard synchronization when moving from the
   initial sync step to the WAL tailing step. In this small gap the leader 
   could purge some of the WAL files that would be required by the following
@@ -56,12 +62,6 @@ v3.8.3 (XXXX-XX-XX)
 
 v3.8.2 (2021-10-26)
 -------------------
-
-* When using Indexes within traversals (e.g. [_from, date]) and filter based
-  on a function (e.g. FILTER path.edges[0].date <= DATE_ADD(@now, 5, "day"))
-  this function was passed through to the index. The index cannot evaluate this
-  function and returned incorrect results. Now all functions are evaluted
-  before looking into the index. (Fixes BTS-407)
 
 * Updated ArangoDB Starter to 0.15.3.
 
