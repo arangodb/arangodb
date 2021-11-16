@@ -2839,8 +2839,20 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     VPackObjectBuilder bb(&b);
     b.add(StaticStrings::Error, VPackValue(false));
     if (!serverId.empty()) {
-      b.add(StaticStrings::FollowingTermId,
-            VPackValue(col->followers()->newFollowingTermId(serverId)));
+      // check if the follower sent us the "wantFollowingTerm" attribute.
+      // followers >= 3.8.3 will send this to indicate that they know how
+      // to handle following term ids safely
+      bool wantFollowingTerm = VelocyPackHelper::getBooleanValue(body, "wantFollowingTerm", false);
+      if (wantFollowingTerm) {
+        b.add(StaticStrings::FollowingTermId,
+              VPackValue(col->followers()->newFollowingTermId(serverId)));
+      } else {
+        // a client < 3.8.3 does not know how to handle following term ids
+        // safely. in this case we set the follower's term id to 0, so it
+        // will be ignored on followers < 3.8.3
+        col->followers()->setFollowingTermId(serverId, 0);
+        b.add(StaticStrings::FollowingTermId, VPackValue(0));
+      }
     }
   }
 
