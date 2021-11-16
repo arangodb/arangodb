@@ -37,6 +37,9 @@
 #pragma warning(pop)
 #endif
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 
@@ -123,6 +126,22 @@ class InMemoryLogIterator : public TypedLogIterator<InMemoryLogEntry> {
   log_type _container;
   log_type::const_iterator _begin;
   log_type::const_iterator _end;
+};
+
+class LogPayloadIterator : public TypedLogIterator<LogPayload> {
+ public:
+  auto next() -> std::optional<LogPayload> override {
+    if (_iter.valid()) {
+      return LogPayload::createFromSlice(*_iter++);
+    }
+
+    return std::nullopt;
+  }
+
+  explicit LogPayloadIterator(VPackSlice slice) : _iter(slice) {}
+
+ private:
+  VPackArrayIterator _iter;
 };
 
 }  // namespace arangodb::replication2::replicated_log

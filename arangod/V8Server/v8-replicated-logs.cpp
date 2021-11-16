@@ -34,6 +34,7 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 
 using namespace arangodb::replication2;
 
@@ -197,6 +198,52 @@ static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
   {
     VPackObjectBuilder ob(&response);
     response.add("index", VPackValue(result.first));
+    response.add(VPackValue("result"));
+    result.second.toVelocyPack(response);
+  }
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_MultiInsert(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  auto& vocbase = GetContextVocBase(isolate);
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
+  if (!arangodb::ExecContext::current().isAdminUser()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("No access to replicated log '") + to_string(id) + "'");
+  }
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("multiInsert(<payload>)");
+  }
+
+  VPackBufferUInt8 payload;
+  VPackBuilder builder(payload);
+  TRI_V8ToVPack(isolate, builder, args[0], false, false);
+  auto slice = builder.slice();
+  if (!slice.isArray()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "multiInsert(<payload>) expects array");
+  }
+
+  replicated_log::LogPayloadIterator iter{slice};
+  auto result = ReplicatedLogMethods::createInstance(vocbase)
+                    ->insert(id, iter).get();
+
+  VPackBuilder response;
+  {
+    VPackObjectBuilder ob(&response);
+    {
+      VPackArrayBuilder ab{&response, "indexes"};
+      for (auto const logIndex : result.first) {
+        response.add(VPackValue(logIndex));
+      }
+    }
     response.add(VPackValue("result"));
     result.second.toVelocyPack(response);
   }
@@ -431,6 +478,7 @@ void TRI_InitV8ReplicatedLogs(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "id"), JS_Id);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"), JS_Drop);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "insert"), JS_Insert);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "multiInsert"), JS_MultiInsert);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "status"), JS_Status);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "head"), JS_Head);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "tail"), JS_Tail);

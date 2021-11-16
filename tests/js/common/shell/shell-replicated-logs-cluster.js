@@ -97,6 +97,21 @@ function ReplicatedLogsWriteSuite () {
       assertTrue(status.local.commitIndex >= index);
     },
 
+    testMultiInsert : function() {
+      let log = db._replicatedLog(logId);
+      let index = 0;
+      for (let i = 0; i < 100; i += 3) {
+        let indexes = log.multiInsert([{foo0: i}, {foo1: i + 1}, {foo2: i + 2}]).indexes;
+        assertTrue(Array.isArray(indexes));
+        assertTrue(indexes.length === 3);
+        let next = indexes[indexes.length - 1];
+        assertTrue(next > index);
+        index = next;
+      }
+      let status = log.status();
+      assertTrue(status.local.commitIndex >= index);
+    },
+
     testHeadTail : function() {
       let log = db._replicatedLog(logId);
       let index = 0;
