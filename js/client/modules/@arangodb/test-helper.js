@@ -164,7 +164,7 @@ exports.getMetric = function (endpoint, name) {
   const primaryEndpoint = arango.getEndpoint();
   try {
     reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.GET_RAW( '/_admin/metrics/v2');
+    let res = arango.GET_RAW( '/_admin/metrics');
     if (res.code !== 200) {
       throw "error fetching metric";
     }
