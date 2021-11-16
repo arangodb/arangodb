@@ -152,10 +152,10 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
       console.topic('replication=debug', 'waiting for follower to catch up');
       printed = true;
     }
-    internal.wait(0.5, false);
+    internal.wait(0.25, false);
   }
 
-  internal.wait(1.0, false);
+  internal.wait(0.1, false);
   db._flushCache();
 
   try {
@@ -164,6 +164,23 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
     console.warn("caught error. debug information: syncResult:", syncResult, "loggerState:", loggerState, "followerState:", followerState.state);
     throw err;
   }
+};
+
+const checkCountConsistency = function(cn, expected) {
+  let check = function() {
+    db._flushCache();
+    let c = db[cn];
+    let figures = c.figures(true).engine;
+
+    assertEqual(expected, c.count());
+    assertEqual(expected, c.toArray().length);
+    assertEqual(expected, figures.documents);
+    assertEqual("primary", figures.indexes[0].type);
+    assertEqual(expected, figures.indexes[0].count);
+    figures.indexes.forEach((idx) => {
+      assertEqual(expected, idx.count);
+    });
+  };
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -184,9 +201,11 @@ function BaseTestConfig () {
 
         function (state) {
           db._create(cn);
+          let docs = [];
           for (let i = 0; i < 1000; ++i) {
-            db._collection(cn).insert({ _key: "test" + i });
+            docs.push({ _key: "test" + i });
           }
+          db._collection(cn).insert(docs);
           internal.wal.flush(true, true);
         },
 
@@ -233,6 +252,8 @@ function BaseTestConfig () {
           assertTrue(s.totalFetchTime > 0);
           assertTrue(s.totalApplyTime > 0);
           assertTrue(s.averageApplyTime > 0);
+  
+          checkCountConsistency(cn, 1000);
         }
       );
     },
@@ -347,7 +368,70 @@ function BaseTestConfig () {
         }
       );
     },
+    
+    testInsertRemoveInsert: function () {
+      connectToLeader();
 
+      compare(
+        function (state) {
+          db._create(cn);
+        },
+        function (state) {
+          for (let i = 0; i < 1000; ++i) {
+            db._collection(cn).insert({ _key: "test" + i, value: i });
+            db._collection(cn).update("test" + i, { value: i + 1 });
+            db._collection(cn).remove("test" + i);
+            db._collection(cn).insert({ _key: "test" + i, value: 42 + i });
+          }
+          internal.wal.flush(true, true);
+        },
+
+        function (state) {
+          return true;
+        },
+
+        function (state) {
+          checkCountConsistency(cn, 1000);
+        }
+      );
+    },
+    
+    testInsertRemoveTransaction: function () {
+      connectToLeader();
+
+      compare(
+        function (state) {
+          db._create(cn);
+        },
+        function (state) {
+          const opts = {
+            collections: {
+              write: [cn]
+            }
+          };
+          const trx = internal.db._createTransaction(opts);
+
+          const tc = trx.collection(cn);
+          for (let i = 0; i < 1000; ++i) {
+            tc.insert({ _key: "test" + i, value: i });
+            tc.update("test" + i, { value: i + 1 });
+            tc.remove("test" + i);
+            tc.insert({ _key: "test" + i, value: 42 + i });
+          }
+          trx.commit();
+          internal.wal.flush(true, true);
+        },
+
+        function (state) {
+          return true;
+        },
+
+        function (state) {
+          checkCountConsistency(cn, 1000);
+        }
+      );
+    },
+    
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test duplicate _key issue and replacement
     // //////////////////////////////////////////////////////////////////////////////
@@ -386,6 +470,7 @@ function BaseTestConfig () {
         function (state) {
           // leader document version must have one
           assertEqual('leader', db[cn].document('boom').who);
+          checkCountConsistency(cn, 1);
         }
       );
     },
@@ -409,7 +494,7 @@ function BaseTestConfig () {
             action: function(params) {
               let db = require("internal").db;
               db[params.cn].insert({ _key: "meow", foo: "bar" });
-              db[params.cn].insert({ _key: "boom", who: "leader" });
+              db[params.cn].insert({ _key: "boom", who: "leader" }, {waitForSync: true});
             },
             params: { cn }
           });
@@ -424,6 +509,7 @@ function BaseTestConfig () {
           assertEqual("bar", db[cn].document("meow").foo);
           // leader document version must have won
           assertEqual("leader", db[cn].document("boom").who);
+          checkCountConsistency(cn, 2);
         }
       );
     },
@@ -469,6 +555,7 @@ function BaseTestConfig () {
           }));
           assertEqual('leader', db[cn].toArray()[0]._key);
           assertEqual('one', db[cn].toArray()[0].value);
+          checkCountConsistency(cn, 1);
         }
       );
     },
@@ -518,6 +605,7 @@ function BaseTestConfig () {
           });
           assertEqual("leader", docs[0]._key);
           assertEqual("one", docs[0].value);
+          checkCountConsistency(cn, 3);
         }
       );
     },
