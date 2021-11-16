@@ -328,6 +328,13 @@ void OptimizerRulesFeature::addRules() {
   // fuse multiple adjacent filters into one
   registerRule("fuse-filters", fuseFiltersRule, OptimizerRule::fuseFiltersRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+  
+  registerRule("insert-distribute-calculations",
+               insertDistributeCalculationsRule,
+               OptimizerRule::insertDistributeCalculationsRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::DisabledByDefault));
+                                       // OptimizerRule::Flags::ClusterOnly));
 
 #ifdef USE_ENTERPRISE
   // must be the first cluster optimizer rule

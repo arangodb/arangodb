@@ -295,7 +295,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        bool disabled = (_useNewDistribute && rule.isClusterOnly() && rule.name != "distribute-query");
+        bool disabled = (_useNewDistribute && rule.isClusterOnly() && rule.name != "distribute-query" && rule.name != "insert-distribute-calculations");
         disabled |= p->isDisabledRule(rule.level);
         disabled |= (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() && rule.canBeDisabled());
 
