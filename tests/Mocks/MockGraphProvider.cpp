@@ -125,6 +125,8 @@ auto MockGraphProvider::expand(Step const& step, size_t previous,
   }
 }
 
+auto MockGraphProvider::clear() -> void {}
+
 auto MockGraphProvider::addVertexToBuilder(const Step::Vertex& vertex,
                                            arangodb::velocypack::Builder& builder) -> void {
   std::string id = vertex.getID().toString();
@@ -194,6 +196,10 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
       << "<MockGraphProvider> Expansion length: " << result.size();
   _stats.addScannedIndex(result.size());
   return result;
+}
+
+void MockGraphProvider::prepareIndexExpressions(aql::Ast* ast) {
+  // Nothing to do here. We do not have any special index conditions
 }
 
 [[nodiscard]] transaction::Methods* MockGraphProvider::trx() { return &_trx; }

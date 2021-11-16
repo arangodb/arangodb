@@ -97,7 +97,7 @@ template <typename Tag, typename Fn, typename... Args>
 auto subr_wrapper_aux(Fn fn, pack<Args...>)
 {
     return subr_wrapper_impl<Tag>(
-        fn, pack<std::result_of_t<Fn(Args...)>>{}, pack<Args...>{});
+        fn, pack<std::invoke_result_t<Fn, Args...>>{}, pack<Args...>{});
 }
 
 template <typename Tag, typename Fn>

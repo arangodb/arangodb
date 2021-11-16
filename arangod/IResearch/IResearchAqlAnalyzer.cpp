@@ -185,36 +185,47 @@ bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
 class CalculationTransactionState final : public arangodb::TransactionState {
  public:
   explicit CalculationTransactionState(TRI_vocbase_t& vocbase)
-      : TransactionState(vocbase, arangodb::TransactionId(0), arangodb::transaction::Options()) {
+      : TransactionState(vocbase, arangodb::TransactionId(0),
+                         arangodb::transaction::Options()) {
     updateStatus(arangodb::transaction::Status::RUNNING);  // always running to make ASSERTS happy
   }
 
-  ~CalculationTransactionState() {
+  ~CalculationTransactionState() override {
     if (status() == arangodb::transaction::Status::RUNNING) {
       updateStatus(arangodb::transaction::Status::ABORTED);  // simulate state changes to make ASSERTS happy
     }
   }
   /// @brief begin a transaction
-  arangodb::Result beginTransaction(arangodb::transaction::Hints) override {
+  [[nodiscard]] arangodb::Result beginTransaction(arangodb::transaction::Hints) override {
     return {};
   }
 
   /// @brief commit a transaction
-  arangodb::Result commitTransaction(arangodb::transaction::Methods*) override {
+  [[nodiscard]] arangodb::Result commitTransaction(arangodb::transaction::Methods*) override {
     updateStatus(arangodb::transaction::Status::COMMITTED);  // simulate state changes to make ASSERTS happy
     return {};
   }
 
   /// @brief abort a transaction
-  arangodb::Result abortTransaction(arangodb::transaction::Methods*) override {
+  [[nodiscard]] arangodb::Result abortTransaction(arangodb::transaction::Methods*) override {
     updateStatus(arangodb::transaction::Status::ABORTED);  // simulate state changes to make ASSERTS happy
     return {};
   }
 
-  bool hasFailedOperations() const override { return false; }
+  [[nodiscard]] bool hasFailedOperations() const override { return false; }
 
   /// @brief number of commits, including intermediate commits
-  uint64_t numCommits() const override { return 0; }
+  [[nodiscard]] uint64_t numCommits() const override { return 0; }
+
+  [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept override {
+    return 0;
+  }
+
+  std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
+      arangodb::DataSourceId cid, arangodb::AccessMode::Type accessType) override {
+    TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 };
 
 /// @brief Dummy transaction context which just gives dummy state

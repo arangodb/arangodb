@@ -312,10 +312,10 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
         cond.notify_all();
       });
 
-    ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 100ms));
-    obj.reset();
-    lock.unlock();
-    thread.join();
+      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms));
+      obj.reset();
+      lock.unlock();
+      thread.join();
     }
   }
 

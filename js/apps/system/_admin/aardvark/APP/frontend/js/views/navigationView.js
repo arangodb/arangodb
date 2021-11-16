@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, templateEngine, $, window, arangoHelper, _ */
+/* global Backbone, templateEngine, $, window, sessionStorage, Storage, arangoHelper, _ */
 (function () {
   'use strict';
   window.NavigationView = Backbone.View.extend({
@@ -69,6 +69,9 @@
         currentDB: this.currentDB.toJSON()
       }));
       arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
+      if (window.frontendConfig.isEnterprise === true) {
+        this.fetchLicenseInfo();
+      }
     },
 
     continueRender: function (readOnly) {
@@ -124,6 +127,64 @@
       }
 
       return this;
+    },
+
+    fetchLicenseInfo: function () {
+      const self = this;
+      const url = arangoHelper.databaseUrl('/_admin/license');
+
+      $.ajax({
+        type: "GET",
+        url: url,
+        success: function (licenseData) {
+          if (licenseData.status && licenseData.features && licenseData.features.expires) {
+            self.renderLicenseInfo(licenseData.status, licenseData.features.expires);
+          } else {
+            self.showLicenseError();  
+          }
+        },
+        error: function () {
+          self.showLicenseError();
+        }
+      }); 
+    },
+
+    showLicenseError: function () {
+      const errorElement = '<div id="subNavLicenseInfo" class="alert alert-danger alert-license"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">Error: Failed to fetch license information</span></div>';
+      $('#licenseInfoArea').append(errorElement);
+    },
+
+    renderLicenseInfo: function (status, expires) {
+      if (status !== null && expires !== null) {
+        let infotext = '';
+        let daysInfo = '';
+        let alertClasses = 'alert alert-license';
+        switch (status) {
+          case 'expiring':
+            daysInfo = Math.floor((expires - Math.round(new Date().getTime() / 1000)) / (3600*24));
+            infotext = 'Your license is expiring ' + daysInfo + ' days from now. Please contact ArangoDB sales to extend your license urgently.';
+            this.appendLicenseInfoToUi(infotext, alertClasses);
+            break;
+          case 'expired':
+            daysInfo = Math.floor((Math.round(new Date().getTime() / 1000) - expires) / (3600*24));
+            infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact ArangoDB sales immediately.';
+            alertClasses += ' alert-danger';
+            this.appendLicenseInfoToUi(infotext, alertClasses);
+            break;
+          case 'read-only':
+            infotext = 'Your license expired over 14 days ago. This installation has been restricted to read-only mode. Please contact ArangoDB sales immediately to extend your license.';
+            alertClasses += ' alert-danger';
+            this.appendLicenseInfoToUi(infotext, alertClasses);
+            break;
+          default:
+            break;
+        }
+      }
+    },
+
+    appendLicenseInfoToUi: function(infotext, alertClasses) {
+      var infoElement = '<div id="subNavLicenseInfo" class="' + alertClasses + '"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">' + infotext + '</span></div>';
+      $('#licenseInfoArea').append(infoElement);
     },
 
     resize: function () {

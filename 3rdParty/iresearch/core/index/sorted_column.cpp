@@ -32,8 +32,7 @@ namespace iresearch {
 std::pair<doc_map, field_id> sorted_column::flush(
     columnstore_writer& writer,
     doc_id_t max,
-    const comparer& less
-) {
+    const comparer& less) {
   assert(index_.size() <= max);
   assert(index_.empty() || index_.back().first <= max);
 
@@ -44,8 +43,7 @@ std::pair<doc_map, field_id> sorted_column::flush(
   // first - position in 'index_', eof() - not present
   // second - old document id, 'doc_limit::min()'-based
   std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> new_old(
-    doc_limits::min() + max, std::make_pair(doc_limits::eof(), 0)
-  );
+    doc_limits::min() + max, std::make_pair(doc_limits::eof(), 0));
 
   doc_id_t new_doc_id = irs::doc_limits::min();
   for (size_t i = 0, size = index_.size()-1; i < size; ++i) {
@@ -94,7 +92,7 @@ std::pair<doc_map, field_id> sorted_column::flush(
 
   // flush sorted data
   auto column = writer.push_column(info_);
-  auto& column_writer = column.second;
+  const auto& column_writer = column.second;
 
   new_doc_id = doc_limits::min();
   for (auto end = new_old.end(); begin != end; ++begin) {
@@ -107,11 +105,10 @@ std::pair<doc_map, field_id> sorted_column::flush(
 
   clear(); // data have been flushed
 
-  return std::pair<doc_map, field_id>(
+  return std::pair<doc_map, field_id>{
     std::piecewise_construct,
     std::forward_as_tuple(std::move(docmap)),
-    std::forward_as_tuple(column.first)
-  );
+    std::forward_as_tuple(column.first)};
 }
 
 void sorted_column::flush_already_sorted(
@@ -194,7 +191,7 @@ field_id sorted_column::flush(
   }
 
   auto column = writer.push_column(info_);
-  auto& column_writer = column.second;
+  const auto& column_writer = column.second;
 
   // temporarily push sentinel
   index_.emplace_back(doc_limits::eof(), data_buf_.size());

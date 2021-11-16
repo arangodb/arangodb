@@ -30,25 +30,27 @@
 #include <fuerte/requests.h>
 #include <v8.h>
 
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/EncodingUtils.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Import/ImportHelper.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
-#include "Shell/ConsoleFeature.h"
+#include "Shell/ShellConsoleFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-buffer.h"
+#include "V8/v8-conv.h"
+#include "V8/v8-deadline.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8/v8-deadline.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -582,13 +584,13 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
 
   if (args.Length() < 4) {
     if (client->jwtSecret().empty()) {
-      ConsoleFeature& console = v8connection->server().getFeature<ConsoleFeature>();
+      ShellConsoleFeature& console = v8connection->server().getFeature<ShellConsoleFeature>();
 
       if (console.isEnabled()) {
         password = console.readPassword("Please specify a password: ");
       } else {
         std::cout << "Please specify a password: " << std::flush;
-        password = ConsoleFeature::readPassword();
+        password = ShellConsoleFeature::readPassword();
         std::cout << std::endl << std::flush;
       }
     }
@@ -1855,44 +1857,111 @@ bool setPostBody(fu::Request& request,
 
 bool canParseResponse(fu::Response const& response) {
   return (response.isContentTypeVPack() || response.isContentTypeJSON()) &&
-         response.contentEncoding() == fuerte::ContentEncoding::Identity &&
+    (response.contentEncoding() == fuerte::ContentEncoding::Identity ||
+     response.contentEncoding() == fuerte::ContentEncoding::Gzip ||
+     response.contentEncoding() == fuerte::ContentEncoding::Deflate)     &&
          response.payload().size() > 0;
 }
 
+
+
 v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
                                         v8::Isolate* isolate) {
-  if (response.contentType() == fu::ContentType::VPack) {
-    std::vector<VPackSlice> const& slices = response.slices();
-    return TRI_VPackToV8(isolate, slices[0]);
-  } else if (response.contentType() == fu::ContentType::Json) {
+  if ((response.contentType() != fu::ContentType::VPack) &&
+      (response.contentType() != fu::ContentType::Json) ) {
+    return v8::Undefined(isolate);
+  }
+
+  if (response.contentEncoding() == fuerte::ContentEncoding::Deflate ||
+      response.contentEncoding() == fuerte::ContentEncoding::Gzip) {
+    // TODO: working with the stringbuffer adds another alloc / copy.
+    // translateResultBodyToV8 will probably decode once more.
+    // this uses more resources than neccessary; a better solution
+    // would implement this inside fuerte.
     auto responseBody = response.payload();
-    try {
-      auto parsedBody = VPackParser::fromJson(
-        reinterpret_cast<char const*>(
-          responseBody.data()),
-        responseBody.size());
-      return TRI_VPackToV8(isolate, parsedBody->slice());
-    } catch (std::exception const& ex) {
-      std::string err("Error parsing the server JSON reply: ");
-      err += ex.what();
-      TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
+    VPackBuffer<uint8_t> inflateBuf;
+    ErrorCode code = TRI_ERROR_NO_ERROR;
+    if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
+      code = arangodb::encoding::gzipInflate(
+        reinterpret_cast<uint8_t const*>(responseBody.data()), responseBody.size(), inflateBuf);
+    } else {
+      code = arangodb::encoding::gzipUncompress(
+        reinterpret_cast<uint8_t const*>(responseBody.data()), responseBody.size(), inflateBuf);
     }
-  } 
-  return v8::Local<v8::Value>();
+    if (code != TRI_ERROR_NO_ERROR) {
+        std::string err("Error inflating compressed response body");
+        TRI_CreateErrorObject(isolate, code, err, true);
+        return v8::Undefined(isolate);
+    }
+    if (response.contentType() == fu::ContentType::VPack) {
+      auto const& slices = VPackSlice(inflateBuf.data());
+      return TRI_VPackToV8(isolate, slices);
+    } else {
+      try {
+        auto parsedBody = VPackParser::fromJson(inflateBuf.data(), inflateBuf.size());
+        return TRI_VPackToV8(isolate, parsedBody->slice());
+      } catch (std::exception const& ex) {
+        std::string err("Error parsing the server JSON reply: ");
+        err += ex.what();
+        TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
+      }
+    }
+  } else {
+    if (response.contentType() == fu::ContentType::VPack) {
+      std::vector<VPackSlice> const& slices = response.slices();
+      return TRI_VPackToV8(isolate, slices[0]);
+    } else {
+      auto responseBody = response.payload();
+      try {
+        auto parsedBody = VPackParser::fromJson(
+          reinterpret_cast<char const*>(
+            responseBody.data()),
+          responseBody.size());
+        return TRI_VPackToV8(isolate, parsedBody->slice());
+      } catch (std::exception const& ex) {
+        std::string err("Error parsing the server JSON reply: ");
+        err += ex.what();
+        TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
+      }
+    }
+  }
+  return v8::Undefined(isolate);
 }
 
 v8::Local<v8::Value> translateResultBodyToV8(fu::Response const& response,
                                              v8::Isolate* isolate) {
   auto responseBody = response.payload();
-  if ((response.contentEncoding() == fuerte::ContentEncoding::Identity) &&
+  if (((response.contentEncoding() == fuerte::ContentEncoding::Identity) ||
+       (response.contentEncoding() == fuerte::ContentEncoding::Gzip) ||
+       (response.contentEncoding() == fuerte::ContentEncoding::Deflate)    ) &&
       (
         response.isContentTypeJSON() ||
         response.isContentTypeText() ||
         response.isContentTypeHtml()
         )
     ) {
-    const char* bodyStr = reinterpret_cast<const char*>(responseBody.data());
-    return TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
+    if (response.contentEncoding() == fuerte::ContentEncoding::Deflate ||
+        response.contentEncoding() == fuerte::ContentEncoding::Gzip)      {
+      auto responseBody = response.payload();
+      VPackBuffer<uint8_t> inflateBuf;
+      ErrorCode code = TRI_ERROR_NO_ERROR;
+      if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
+        code = arangodb::encoding::gzipInflate(
+          reinterpret_cast<uint8_t const*>(responseBody.data()), responseBody.size(), inflateBuf);
+      } else {
+        code = arangodb::encoding::gzipUncompress(
+          reinterpret_cast<uint8_t const*>(responseBody.data()), responseBody.size(), inflateBuf);
+      }
+      if (code != TRI_ERROR_NO_ERROR) {
+        std::string err("Error inflating compressed response body");
+        TRI_CreateErrorObject(isolate, code, err, true);
+        return v8::Undefined(isolate);
+      }
+      return TRI_V8_PAIR_STRING(isolate, inflateBuf.data(), inflateBuf.size());
+    } else {
+      const char* bodyStr = reinterpret_cast<const char*>(responseBody.data());
+      return TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
+    }
   } else {
     V8Buffer* buffer = V8Buffer::New
       (isolate,

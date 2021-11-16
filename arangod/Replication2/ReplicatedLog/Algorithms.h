@@ -25,8 +25,10 @@
 
 #include <variant>
 #include <unordered_map>
+#include <set>
 
 #include "Cluster/ClusterTypes.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
@@ -35,6 +37,9 @@ namespace arangodb::replication2::algorithms {
 struct ParticipantRecord {
   RebootId rebootId;
   bool isHealthy;
+
+  ParticipantRecord(RebootId rebootId, bool isHealthy)
+      : rebootId(rebootId), isHealthy(isHealthy) {}
 };
 
 using ParticipantInfo = std::unordered_map<ParticipantId, ParticipantRecord>;
@@ -68,5 +73,45 @@ struct LogActionContext {
 auto updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId, RebootId rebootId,
                          LogId logId, agency::LogPlanSpecification const* spec) noexcept
     -> arangodb::Result;
+
+enum class ParticipantFlag {
+  Excluded,
+  Forced,
+  Failed
+};
+using ParticipantFlags = std::set<ParticipantFlag>;
+
+struct ParticipantStateTuple : implement_compare<ParticipantStateTuple> {
+  LogIndex index;
+  ParticipantId id;
+  ParticipantFlags flags;
+
+  ParticipantStateTuple(LogIndex index, ParticipantId id, ParticipantFlags flags);
+
+  [[nodiscard]] auto isExcluded() const noexcept -> bool;
+  [[nodiscard]] auto isForced() const noexcept -> bool;
+  [[nodiscard]] auto isFailed() const noexcept -> bool;
+
+  friend auto operator<=(ParticipantStateTuple const&, ParticipantStateTuple const&) noexcept -> bool;
+  friend auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept -> std::ostream&;
+};
+
+auto operator<=(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept -> bool;
+auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept -> std::ostream&;
+auto operator<<(std::ostream& os, ParticipantFlag const& f) noexcept
+ -> std::ostream&;
+
+struct CalculateCommitIndexOptions {
+  std::size_t const _writeConcern{0};       // might be called quorumSize in other places
+  std::size_t const _softWriteConcern{0};
+  std::size_t const _replicationFactor{0};
+
+  CalculateCommitIndexOptions(std::size_t writeConcern, std::size_t softWriteConcern, std::size_t replicationFactor);
+};
+
+auto calculateCommitIndex(std::vector<ParticipantStateTuple> const& indexes,
+                          CalculateCommitIndexOptions const opt,
+                          LogIndex currentCommitIndex, LogIndex spearhead)
+    -> std::tuple<LogIndex, replicated_log::CommitFailReason, std::vector<ParticipantId>>;
 
 }  // namespace arangodb::replication2::algorithms

@@ -33,7 +33,7 @@ namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class ngram_token_stream
-/// @brief produces ngram from a specified input in a range of 
+/// @brief produces ngram from a specified input in a range of
 ///         [min_gram;max_gram]. Can optionally preserve the original input.
 ////////////////////////////////////////////////////////////////////////////////
 class ngram_token_stream_base
@@ -133,7 +133,7 @@ class ngram_token_stream: public ngram_token_stream_base {
  public:
   static ptr make(const ngram_token_stream_base::Options& options);
 
-  ngram_token_stream(const ngram_token_stream_base::Options& options);
+  explicit ngram_token_stream(const ngram_token_stream_base::Options& options);
   
   virtual bool next() noexcept override;
 

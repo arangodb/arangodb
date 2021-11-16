@@ -75,7 +75,7 @@ template<
   compact(const compact&) = default;
 
   template<typename U = T>
-  compact(U&&) noexcept { }
+  explicit compact(U&&) noexcept { }
 
   compact& operator=(const compact&) = default;
   compact& operator=(compact&&) noexcept { return *this; }
@@ -97,7 +97,7 @@ class compact<I, T, false> {
     : val_(std::move(rhs.val_)) { }
 
   template<typename U = T>
-  compact(U&& value) noexcept
+  explicit compact(U&& value) noexcept
     : val_(std::forward<U>(value)) {
     static_assert(std::is_nothrow_move_constructible_v<std::remove_pointer_t<decltype(this)>>);
   }
@@ -148,7 +148,7 @@ template<
   compact_ref(const compact_ref&) = default;
 
   template<typename U = T>
-  compact_ref(U&&) noexcept { }
+  explicit compact_ref(U&&) noexcept { }
 
   compact_ref& operator=(const compact_ref&) = default;
 
@@ -166,12 +166,12 @@ class compact_ref<I, T, false> {
   compact_ref(const compact_ref& rhs) = default;
 
   template<typename U = T>
-  compact_ref(const U& value) noexcept
+  explicit compact_ref(const U& value) noexcept
     : val_(const_cast<U*>(&value)) {
   }
 
   template<typename U = T>
-  compact_ref(U& value) noexcept
+  explicit compact_ref(U& value) noexcept
     : val_(&value) {
   }
 

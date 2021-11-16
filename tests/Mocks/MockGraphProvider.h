@@ -222,9 +222,12 @@ class MockGraphProvider {
   auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
   auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void;
+  auto clear() -> void;
 
   void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
+
+  void prepareIndexExpressions(aql::Ast* ast);
 
   [[nodiscard]] transaction::Methods* trx();
 

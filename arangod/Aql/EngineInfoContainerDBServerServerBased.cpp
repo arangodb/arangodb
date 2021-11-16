@@ -300,7 +300,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
 
   ErrorCode cleanupReason = TRI_ERROR_CLUSTER_TIMEOUT;
-  
+
   auto cleanupGuard = scopeGuard([this, &serverToQueryId, &cleanupReason]() noexcept {
     try {
       transaction::Methods& trx = _query.trxForOptimization();
@@ -709,6 +709,7 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
 void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node, bool pushToSingleServer) {
   node->prepareOptions();
   injectVertexCollections(node);
+  node->initializeIndexConditions();
   // SnippetID does not matter on GraphNodes
   _shardLocking.addNode(node, 0, pushToSingleServer);
   _graphNodes.emplace_back(node);

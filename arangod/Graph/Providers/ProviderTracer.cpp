@@ -77,6 +77,14 @@ auto ProviderTracer<ProviderImpl>::expand(Step const& from, size_t previous,
 }
 
 template <class ProviderImpl>
+auto ProviderTracer<ProviderImpl>::clear() -> void {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { _stats["clear"].addTiming(TRI_microtime() - start); });
+  _impl.clear();
+}
+
+template <class ProviderImpl>
 void ProviderTracer<ProviderImpl>::addVertexToBuilder(typename Step::Vertex const& vertex,
                                                       arangodb::velocypack::Builder& builder) {
   double start = TRI_microtime();
@@ -104,6 +112,13 @@ aql::TraversalStats ProviderTracer<ProviderImpl>::stealStats() {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept { _stats["stealStats"].addTiming(TRI_microtime() - start); });
   return _impl.stealStats();
+}
+
+template <class ProviderImpl>
+void ProviderTracer<ProviderImpl>::prepareIndexExpressions(aql::Ast* ast) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["prepareIndexExpressions"].addTiming(TRI_microtime() - start); });
+  return _impl.prepareIndexExpressions(ast);
 }
 
 template <class ProviderImpl>

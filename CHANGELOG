@@ -1,6 +1,213 @@
 devel
 -----
 
+* APM-209: Histogram displaying is now switched off by default. For displaying
+  it, the new flag `histogram.generate` must be set to true. Its default value
+  is false for compatibility with other versions and also for complying with the
+  histogram not being displayed by default. If this flag is not set to true, but
+  other histogram flags are addressed, e.g. `--histogram.interval-size 500`,
+  everything will still run normally, but a warning message will be displayed
+  saying that the histogram is switched off and setting this flag would not be
+  of use. When the flag is set to true, the histogram is displayed before the
+  summary in the output.
+
+* Extend Windows minidumps with memory regions referenced from CPU registers or
+  the stack to provide more contextual information in case of crashes.
+
+* Add option to content-transfer encode gzip Foxx replies.
+
+* Simplify internal request compression/decompression handling code.
+
+* In the shards overview the list of servers to move the leader shard to, now
+  also contains the current followers. This means that from now on also active
+  follower servers can be nominated as the leading server for that specific
+  shard.
+  
+* Fix issues during rolling upgrades from 3.8.0 to 3.8.x (x >= 1) and from
+  3.7.x (x <= 12) to 3.8.3. The problem was that older versions did not handle
+  following term ids that are sent from newer versions during synchronous
+  replication operations.
+
+* Close a potential gap during shard synchronization when moving from the
+  initial sync step to the WAL tailing step. In this small gap the leader 
+  could purge some of the WAL files that would be required by the following
+  WAL tailing step. This was possible because at the end of the initial sync
+  step, the snapshot on the leader is released, and there is a small window
+  of time before the follower will issue its first WAL tailing request.
+
+* Improve Shards overview in web UI: the number of currently syncing shards is
+  now displayed per collection. Additionally, shards on failed servers are now
+  displayed in a different color.
+
+* Increase default stack size on Windows from 1MB to 4MB. This should allow
+  execution of larger queries without overflowing the stack.
+
+* Fixed BTS-637: Slow SynchronizeShard jobs which need to copy data could
+  block quick SynchronizeShard jobs which have the data and only need to
+  resync.
+
+* When enabling the cluster supervision maintenance mode via the web UI, there
+  is now the possibility to select a duration for the maintenance mode.
+  Previous versions of ArangoDB always enabled the maintenance mode for one
+  hour, without allowing any choice here.
+
+* Remove unsupported `--server.default-api-compatibility` startup option.
+
+* Fixed potential undefined behavior in edge cache during cache migration tasks.
+  There was a short window of time in which an already freed Table could be
+  used by concurrently running edge lookups.
+
+* DEVSUP-899: Fixed Subquery execution
+  in a very rare case a subquery, nested in another subquery, was not
+  executed, which is fixed now. Technical details:
+  If we have two subqueries: `Outer` and `Nested` the Outer will define
+  the input for Nested. And Outer has the pattern: 1 input, subqueryDone, 1
+  input, subqueryDone [...] and our internal batching did cut a batch like
+  this: [<...>, input (A)] | [subqueryDone, input (B), subqueryDone, <...>]
+  than Nested on input (B) was not executed. As soon as we have more than 1
+  input per Outer, or a different cutting position, all was good.
+
+* Fixed SEARCH-261: Fix possible race between file creation and directory
+  cleaner (ArangoSearch).
+
+* Fixed SEARCH-260: Fix invalid sorting order of stored features in presence of
+  primary sort (ArangoSearch).
+
+* APM-187: The "Rebalance Shards" button now is displayed in a new tab, and it
+  is displayed for any database in cluster mode. There is also a new flag for
+  arangod, `--cluster.max-number-of-move-shards` (default = 10), which limits
+  the amount of move shards operations each time the button is clicked to 
+  rebalance shards. When the button is clicked, the number of move shards 
+  operations scheduled is shown, or that no operation was scheduled if the flag 
+  `--cluster.max-number-of-move-shards` has a value of 0.
+  
+* BTS-623: The audit log messages, when written, were not showing the log level
+  of the message, as in the example:
+    `2021-10-21T02:28:42Z | hostname | audit-authentication | n/a | _system |
+     127.0.0.1:52490 | n/a | credentials missing | /_admin/aardvark/favicon.ico`
+  With the new flag `--audit.display-log-level`, the level of the audit log
+  message can be displayed in the log text.  When set to true, this behavior is
+  expected, as in the example:
+    `2021-10-21T02:28:42Z | DEBUG | hostname | audit-authentication | n/a |
+     _system | 127.0.0.1:52490 | n/a | credentials missing |
+     /_admin/aardvark/favicon.ico`
+  The default value for the flag is false for compatibility with former
+  versions. When this flag is not used, it is considered to have the default
+  behavior (that is, set to false).
+
+* Upgrade bundled version of RocksDB to 6.26.
+
+* Change error message for queries that use too much memory from "resource
+  limit exceeded" to "query would use more memory than allowed".
+
+* Single server license output checking fixed.
+
+* Added enterprise license feature visibility for arangosh.
+
+* When using Indexes within traversals (e.g. [_from, date]) and filter based
+  on a function (e.g. FILTER path.edges[0].date <= DATE_ADD(@now, 5, "day"))
+  this function was passed through to the index. The index cannot evaluate this
+  function and returned incorrect results. Now all functions are evaluted
+  before looking into the index. (Fixes BTS-407)
+
+* arangorestore: Fix the order (regarding distributeShardsLike) in which
+  collections are being created during restore, which could result in an error
+  and make manual intervention necessary.
+
+* Updated ArangoDB Starter to 0.15.3.
+
+* Old license mechanism for docker containers removed.
+
+* Add license information to the web UI.
+
+* Fix local cluster script for deprecated authentication option.
+
+* Fix caching of collection counts and index selectivity estimates in cluster.
+  The cache values expired too early in previous versions, making the cache 
+  ineffective.
+
+* Add better error message for replication request failures in case requests
+  are retried.
+
+* Make background statistics gathering more efficient by avoiding one AQL query
+  every 10 seconds that fetched the most recent stats entry. Instead, buffer 
+  the entry in value after we have written it. Also spread out the statistics
+  calls by different servers more randomly, so that request spikes are avoided
+  for cluster with many coordinators that used to run their statistics queries
+  at about the same time when the instances were started simultaneously.
+
+* Fixed compilation and linking when using glibc 2.34.
+
+* Fuerte: don't fall back to identity encoding in case of unknown encoding.
+
+* BTS-616: Added support for client tools arangoimport, arangodump,
+  arangorestore, arangobench and arangoexport to handle HTTP responses when 
+  they are not in JSON format (e.g. text/html).   
+
+* Updated ArangoDB Starter to 0.15.3-preview-1.
+
+* Remove dysfunctional CMake variable `USE_OPTIMIZE_FOR_ARCHITECTURE`.
+  Architecture detection and architecture-specific optimization is now 
+  performed unconditionally. It is still possible to inject a certain
+  target architecture by setting the CMake variable `TARGET_ARCHITECTURE`.
+
+* Stop calling unnecessary `/_api/wal/open-transactions` REST API before
+  starting the continuous synchronization in active fail and single server
+  replication. This request is unnecessary with the RocksDB storage
+  engine.
+
+* Make background calculation of SHA hashes for RocksDB .sst files less
+  intrusive. The previous implementation frequently iterated over all files
+  in the database directory to check if it needed to ad-hoc calculate the
+  SHA hashes for .sst files it previously missed. The procedure it used 
+  was to iterate over all files in the database directory and check if there
+  were matching pairs of .sst files and .sha files. This was expensive,
+  because a full directory iteration was performed and a lot of temporary
+  strings were created for filenames and used in comparisons. This was
+  especially expensive for larger deployments with lots of .sst files.
+  The expensive iteration of files in the directory is now happening less
+  frequently, and will not be as expensive as before if it runs.
+
+* Fix a potential overwhelm situation on DB servers that can lead to no further
+  tasks being pulled from a DB servers queue even though there would still be
+  processing capacity and idle threads available.
+
+* Fixed ES-881: Fixed LDAP global options. This needs to use the first active
+  provider, not just the first provider and it should be globally disabled.
+
+* Web UI: Fixes the loading of map tiles which are being used to display the
+  query output based on a world map when using SSL encryption. This lead to not
+  displaying some world map tiles correctly (OASIS-590).
+
+* Web UI - Added missing HTML escaping inside the file upload plugin used in the
+  section of deploying a new Foxx application when uploading a zip file.
+
+* Now, arangoimport supports merging of attributes. When importing data from a
+  file into a collection, a document attribute can be comprised of merging
+  attributes from the file into it, with separators and other literal strings.
+  The new document attribute will result in the concatenation of the literal
+  strings, the values of the attributes and the separators, as in the example:
+
+      arangoimport --merge-attributes fullName=[firstName]:[lastName] 
+
+* Do not use an edge index for range queries, i.e. with the comparison 
+  operators `>`, `>=`, `<` or `<=`, but only for equality lookups using the
+  `==` and `IN` comparison operators.
+  The edge index is not fully ordered, so while using it for range queries
+  may produce _some_ documents, it is possible that other documents from the
+  range would be skipped.
+
+* Do not rename the arangod process to "arangod [shutting down]" during the
+  server shutdown. The renaming can cause issues with tools that look for
+  the exact process name "arangod".
+
+* Remove internal AQL query option `readCompleteInput` that controled if
+  all input for a modification operation (UPDATE / REPLACE / REMOVE) are
+  read into memory first. This was a necessity with the MMFiles storage
+  engine in cases when a query read from a collection and wrote into it
+  in the same query afterwards. With the RocksDB engine and its snapshots, 
+  we never need to read the entire input into memory first.
+
 * Fix windows installer PATH manipulation issue by replaceng the NSIS plugin
   (BTS-176).
 
@@ -230,6 +437,14 @@ devel
 * Added ArangoSearch condition optimization: STARTS_WITH is merged 
   with LEVENSHTEIN_MATCH if used in the same AND node and field name and prefix
   matches.
+
+* Hybrid (Disjoint) SmartGraphs (Enterprise Edition):
+  SmartGraphs have been extended with a new option to create Hybrid SmartGraphs.
+  Hybrid SmartGraphs are capable of using SatelliteCollections within their
+  graph definition. You can now select some VertexCollections to be satellites,
+  and therefore available on all DBServers. The SmartGraph can make use of those
+  to collections to increase the traversal performance by larger local
+  components.
 
 * Added multidimensional indexes which can be used to efficiently intersect
   multiple range queries. They are currently limited to IEEE-754 double values.

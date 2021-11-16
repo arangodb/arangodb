@@ -271,8 +271,6 @@ std::string const RestReplicationHandler::LoggerTickRanges =
     "logger-tick-ranges";
 std::string const RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
 std::string const RestReplicationHandler::LoggerFollow = "logger-follow";
-std::string const RestReplicationHandler::OpenTransactions =
-    "determine-open-transactions";
 std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Barrier = "barrier";
 std::string const RestReplicationHandler::Inventory = "inventory";
@@ -354,11 +352,6 @@ RestStatus RestReplicationHandler::execute() {
       auto guard = scopeGuard([&rf]() noexcept { rf.trackTailingEnd(); });
 
       handleCommandLoggerFollow();
-    } else if (command == OpenTransactions) {
-      if (type != rest::RequestType::GET) {
-        goto BAD_CALL;
-      }
-      handleCommandDetermineOpenTransactions();
     } else if (command == Batch) {
       // access batch context in context manager
       // example call: curl -XPOST --dump - --data '{}'
@@ -2652,7 +2645,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   if (body.hasKey(StaticStrings::RebootId)) {
     if (body.get(StaticStrings::RebootId).isInteger()) {
-      if (body.hasKey("serverId") && body.get("serverId").isString()) {
+      if (body.get("serverId").isString()) {
         rebootId = RebootId(body.get(StaticStrings::RebootId).getNumber<uint64_t>());
         serverId = body.get("serverId").copyString();
       } else {
@@ -2741,9 +2734,28 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     VPackObjectBuilder bb(&b);
     b.add(StaticStrings::Error, VPackValue(false));
     if (!serverId.empty()) {
-      b.add(StaticStrings::FollowingTermId,
-            VPackValue(col->followers()->newFollowingTermId(serverId)));
+      // check if the follower sent us the "wantFollowingTerm" attribute.
+      // followers >= 3.8.3 will send this to indicate that they know how
+      // to handle following term ids safely
+      bool wantFollowingTerm = VelocyPackHelper::getBooleanValue(body, "wantFollowingTerm", false);
+      if (wantFollowingTerm) {
+        b.add(StaticStrings::FollowingTermId,
+              VPackValue(col->followers()->newFollowingTermId(serverId)));
+      } else {
+        // a client < 3.8.3 does not know how to handle following term ids
+        // safely. in this case we set the follower's term id to 0, so it
+        // will be ignored on followers < 3.8.3
+        col->followers()->setFollowingTermId(serverId, 0);
+        b.add(StaticStrings::FollowingTermId, VPackValue(0));
+      }
     }
+
+    // also return the _current_ last log sequence number. this may be higher
+    // than the tick of the transaction created above, but it still can be
+    // used by a follower as an upper bound until which to tail the WAL _at most_.
+    TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
+    StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+    b.add("lastLogTick", VPackValue(engine.currentTick()));
   }
 
   LOG_TOPIC("61a9d", DEBUG, Logger::REPLICATION)

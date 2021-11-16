@@ -124,6 +124,8 @@ class OneSidedEnumerator : public TraversalEnumerator {
   bool skipPath() override;
   auto destroyEngines() -> void override;
 
+  auto prepareIndexExpressions(aql::Ast* ast) -> void override;
+
   /**
    * @brief Return statistics generated since
    * the last time this method was called.
@@ -144,6 +146,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   // Ensure that we have more valid paths in the _result stock.
   // May be a noop if _result is not empty.
   auto searchMoreResults() -> void;
+  void clearProvider();
 
  private:
   GraphOptions _options;

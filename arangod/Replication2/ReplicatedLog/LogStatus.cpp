@@ -29,6 +29,7 @@
 
 #include "LogStatus.h"
 
+using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
 
@@ -59,7 +60,7 @@ auto FollowerStatus::fromVelocyPack(velocypack::Slice slice) -> FollowerStatus {
   FollowerStatus status;
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
   status.largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
-  status.local = LogStatistics::fromVelocyPack(slice);
+  status.local = LogStatistics::fromVelocyPack(slice.get("local"));
   if (auto leader = slice.get(StaticStrings::Leader); !leader.isNone()) {
     status.leader = leader.copyString();
   }
@@ -74,6 +75,8 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   builder.add("commitLagMS", VPackValue(commitLagMS.count()));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
+  builder.add(VPackValue("lastCommitStatus"));
+  lastCommitStatus.toVelocyPack(builder);
   {
     VPackObjectBuilder ob2(&builder, StaticStrings::Follower);
     for (auto const& [id, stat] : follower) {
@@ -91,12 +94,40 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
   status.largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
   status.commitLagMS = std::chrono::duration<double, std::milli>{
       slice.get("commitLagMS").extract<double>()};
+  status.lastCommitStatus =
+      CommitFailReason::fromVelocyPack(slice.get("lastCommitStatus"));
   for (auto [key, value] : VPackObjectIterator(slice.get(StaticStrings::Follower))) {
     auto id = ParticipantId{key.copyString()};
     auto stat = FollowerStatistics::fromVelocyPack(value);
     status.follower.emplace(std::move(id), stat);
   }
   return status;
+}
+
+auto replicated_log::operator==(LeaderStatus const& left,
+                                LeaderStatus const& right) -> bool {
+  bool result = left.local == right.local &&
+                left.term == right.term &&
+                left.largestCommonIndex == right.largestCommonIndex &&
+                left.commitLagMS == right.commitLagMS &&
+                left.lastCommitStatus == right.lastCommitStatus
+                && left.follower.size() == right.follower.size();
+  if (!result) {
+    return false;
+  }
+  for (auto const& [participantId, followerStatistics] : left.follower) {
+    auto search = right.follower.find(participantId);
+    if (search == right.follower.end() || !(search->second == followerStatistics)) {
+      result = false;
+      break;
+    }
+  }
+  return result;
+}
+
+auto replicated_log::operator!=(LeaderStatus const& left,
+                                LeaderStatus const& right) -> bool {
+  return !(left == right);
 }
 
 void FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
@@ -120,6 +151,18 @@ auto FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStat
       slice.get("lastRequestLatencyMS").getDouble()};
   stats.internalState = FollowerState::fromVelocyPack(slice.get("state"));
   return stats;
+}
+
+auto replicated_log::operator==(FollowerStatistics const& left,
+                FollowerStatistics const& right) noexcept -> bool {
+  return left.lastErrorReason == right.lastErrorReason &&
+      left.lastRequestLatencyMS == right.lastRequestLatencyMS &&
+      left.internalState.value.index() == right.internalState.value.index();
+}
+
+auto replicated_log::operator!=(FollowerStatistics const& left,
+                FollowerStatistics const& right) noexcept -> bool {
+  return !(left == right);
 }
 
 auto LogStatus::getCurrentTerm() const noexcept -> std::optional<LogTerm> {

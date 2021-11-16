@@ -115,6 +115,7 @@ void ClusterProvider::clear() {
     _resourceMonitor->decreaseMemoryUsage(
         costPerVertexOrEdgeType + (entry.second.size() * (costPerVertexOrEdgeType * 2)));
   }
+  _vertexConnectedEdges.clear();
 }
 
 auto ClusterProvider::startVertex(VertexType vertex, size_t depth, double weight) -> Step {
@@ -355,9 +356,13 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   // Note: This disables the ScopeGuard
   futures.clear();
 
-  _resourceMonitor->increaseMemoryUsage(
-      costPerVertexOrEdgeType + (connectedEdges.size() * (costPerVertexOrEdgeType * 2)));
-  _vertexConnectedEdges.emplace(vertex, std::move(connectedEdges));
+  std::uint64_t memoryPerItem = costPerVertexOrEdgeType + (connectedEdges.size() * (costPerVertexOrEdgeType * 2));
+  ResourceUsageScope guard(*_resourceMonitor, memoryPerItem);
+
+  auto [it, inserted] = _vertexConnectedEdges.emplace(vertex, std::move(connectedEdges));
+  if (inserted) {
+    guard.steal();
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -418,6 +423,11 @@ void ClusterProvider::addVertexToBuilder(Step::Vertex const& vertex,
 auto ClusterProvider::addEdgeToBuilder(Step::Edge const& edge,
                                        arangodb::velocypack::Builder& builder) -> void {
   builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
+}
+
+void ClusterProvider::prepareIndexExpressions(aql::Ast* ast) {
+  // Nothing to do here. The variables are send over in a different way.
+  // We do not make use of special indexes here anyways.
 }
 
 arangodb::transaction::Methods* ClusterProvider::trx() { return _trx.get(); }

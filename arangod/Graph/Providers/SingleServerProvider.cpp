@@ -165,6 +165,13 @@ void SingleServerProvider<Step>::addVertexToBuilder(typename Step::Vertex const&
 }
 
 template <class Step>
+auto SingleServerProvider<Step>::clear() -> void {
+  // Clear the cache - this cache does contain StringRefs
+  // We need to make sure that no one holds references to the cache (!)
+  _cache.clear();
+}
+
+template <class Step>
 void SingleServerProvider<Step>::insertEdgeIntoResult(EdgeDocumentToken edge,
                                                       arangodb::velocypack::Builder& builder) {
   _cache.insertEdgeIntoResult(edge, builder);
@@ -174,6 +181,12 @@ template <class Step>
 void SingleServerProvider<Step>::insertEdgeIdIntoResult(EdgeDocumentToken edge,
                                                         arangodb::velocypack::Builder& builder) {
   _cache.insertEdgeIdIntoResult(edge, builder);
+}
+
+template <class Step>
+void SingleServerProvider<Step>::prepareIndexExpressions(aql::Ast* ast) {
+  TRI_ASSERT(_cursor != nullptr);
+  _cursor->prepareIndexExpressions(ast);
 }
 
 template <class Step>

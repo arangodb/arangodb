@@ -76,7 +76,11 @@ typedef signed char int8_t;
 		} \
 	} while (0)
 #else
-# include <x86intrin.h> 
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#include <arm_neon.h>
+#else
+#include <x86intrin.h>
+#endif
 # define SIMDCOMP_CTZ(result, mask) \
 	result = __builtin_ctz(mask)
 #endif

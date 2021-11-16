@@ -458,7 +458,10 @@ SyncerId newSyncerId() {
 }
 
 Syncer::SyncerState::SyncerState(Syncer* syncer, ReplicationApplierConfiguration const& configuration)
-    : syncerId{newSyncerId()}, applier{configuration}, connection{syncer, configuration}, leader{configuration} {}
+    : syncerId{newSyncerId()}, 
+      applier{configuration}, 
+      connection{syncer, configuration}, 
+      leader{configuration} {}
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _state{this, configuration} {
@@ -761,7 +764,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
 
   VPackBuilder s;
   s.openObject();
-  s.add("objectId", VPackSlice::nullSlice());
+  s.add(StaticStrings::ObjectId, VPackSlice::nullSlice());
   s.close();
   VPackBuilder merged =
       VPackCollection::merge(indexSlice, s.slice(),

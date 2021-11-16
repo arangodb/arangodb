@@ -39,7 +39,13 @@ struct FollowerStatistics : LogStatistics {
   FollowerState internalState;
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
+
+  friend auto operator==(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
+  friend auto operator!=(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
 };
+
+[[nodiscard]] auto operator==(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
+[[nodiscard]] auto operator!=(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
 
 struct LeaderStatus {
   LogStatistics local;
@@ -48,10 +54,17 @@ struct LeaderStatus {
   std::unordered_map<ParticipantId, FollowerStatistics> follower;
   // now() - insertTP of last uncommitted entry
   std::chrono::duration<double, std::milli> commitLagMS;
+  CommitFailReason lastCommitStatus;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;
+
+  friend auto operator==(LeaderStatus const& left, LeaderStatus const& right) -> bool;
+  friend auto operator!=(LeaderStatus const& left, LeaderStatus const& right) -> bool;
 };
+
+[[nodiscard]] auto operator==(LeaderStatus const& left, LeaderStatus const& right) -> bool;
+[[nodiscard]] auto operator!=(LeaderStatus const& left, LeaderStatus const& right) -> bool;
 
 struct FollowerStatus {
   LogStatistics local;

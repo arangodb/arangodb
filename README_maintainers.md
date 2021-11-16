@@ -146,17 +146,10 @@ in addition to the other options:
 -DTARGET_ARCHITECTURE
 ```
 
-Oskar uses predefined architecture which is defined in `./VERSIONS` file or `westmere` if it's not defined.
+Oskar uses predefined architecture which is defined in `./VERSIONS` file or `sandybridge` if it's not defined.
 
 Note: if you use more modern architecture for optimizations or any additional implementation with extended
 set of CPU instructions please notice that result could be different to the default one.
-
-If you would like to disable architecture-specific optimizations or your CPU architecture isn't recognized
-by `cmake` module the following option could be used:
-
-```
--DUSE_OPTIMIZE_FOR_ARCHITECTURE="OFF"
-```
 
 For building the ArangoDB starter checkout the
 [ArangoDB Starter](https://github.com/arangodb-helper/arangodb).
@@ -699,7 +692,6 @@ or skipped depending on parameters:
 | `-cluster`      | These tests will only run if clustering is tested (option 'cluster' needs to be true).
 | `-noncluster`   | These tests will only run if no cluster is used (option 'cluster' needs to be false)
 | `-timecritical` | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to *true*.
-| `-disabled`     | These tests are disabled. You may however want to run them by hand.
 | `-spec`         | These tests are run using the mocha framework instead of jsunity.
 | `-nightly`      | These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.
 | `-grey`         | These tests are currently listed as "grey", which means that they are known to be unstable or broken. These tests will not be executed by the testing framework if the option `--skipGrey` is given. If `--onlyGrey` option is given then non-"grey" tests are skipped. See `tests/Greylist.txt` for up-to-date information about greylisted tests. Please help to keep this file up to date.

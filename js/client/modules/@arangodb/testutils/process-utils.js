@@ -240,6 +240,7 @@ let ARANGOIMPORT_BIN;
 let ARANGORESTORE_BIN;
 let ARANGOEXPORT_BIN;
 let ARANGOSH_BIN;
+let ARANGO_SECURE_INSTALLATION_BIN;
 let CONFIG_ARANGODB_DIR;
 let CONFIG_RELATIVE_DIR;
 let CONFIG_DIR;
@@ -327,6 +328,7 @@ function setupBinaries (builddir, buildType, configDir) {
   ARANGORESTORE_BIN = fs.join(BIN_DIR, 'arangorestore' + executableExt);
   ARANGOEXPORT_BIN = fs.join(BIN_DIR, 'arangoexport' + executableExt);
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executableExt);
+  ARANGO_SECURE_INSTALLATION_BIN = fs.join(BIN_DIR, 'arango-secure-installation' + executableExt);
 
   CONFIG_ARANGODB_DIR = fs.join(builddir, 'etc', 'arangodb3');
   if (!fs.exists(CONFIG_ARANGODB_DIR)) {
@@ -1097,6 +1099,11 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
     args['datatype'] = what.datatype;
   }
 
+  if (what.mergeAttributes !== undefined) {
+    args['merge-attributes'] = what.mergeAttributes;
+  }
+
+
   return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
 }
 
@@ -1814,7 +1821,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       }
       print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.role);
       let url = arangod.url;
-      if (arangod.role === "coordinator") {
+      if (arangod.role === "coordinator" && arangod.args["javascript.enabled"] !== "false") {
         url += '/_admin/aardvark/index.html';
       } else {
         url += '/_api/version';
@@ -2523,9 +2530,15 @@ exports.getCleanupDBDirectories = getCleanupDBDirectories;
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 exports.dumpAgency = dumpAgency;
-Object.defineProperty(exports, 'ARANGOEXPORT_BIN', {get: () => ARANGOEXPORT_BIN});
+Object.defineProperty(exports, 'ARANGOBACKUP_BIN', {get: () => ARANGOBACKUP_BIN});
+Object.defineProperty(exports, 'ARANGOBENCH_BIN', {get: () => ARANGOBENCH_BIN});
+Object.defineProperty(exports, 'ARANGODUMP_BIN', {get: () => ARANGODUMP_BIN});
 Object.defineProperty(exports, 'ARANGOD_BIN', {get: () => ARANGOD_BIN});
+Object.defineProperty(exports, 'ARANGOEXPORT_BIN', {get: () => ARANGOEXPORT_BIN});
+Object.defineProperty(exports, 'ARANGOIMPORT_BIN', {get: () => ARANGOIMPORT_BIN});
+Object.defineProperty(exports, 'ARANGORESTORE_BIN', {get: () => ARANGORESTORE_BIN});
 Object.defineProperty(exports, 'ARANGOSH_BIN', {get: () => ARANGOSH_BIN});
+Object.defineProperty(exports, 'ARANGO_SECURE_INSTALLATION_BIN', {get: () => ARANGO_SECURE_INSTALLATION_BIN});
 Object.defineProperty(exports, 'CONFIG_DIR', {get: () => CONFIG_DIR});
 Object.defineProperty(exports, 'TOP_DIR', {get: () => TOP_DIR});
 Object.defineProperty(exports, 'LOGS_DIR', {get: () => LOGS_DIR});

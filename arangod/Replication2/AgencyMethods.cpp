@@ -52,11 +52,21 @@ using namespace arangodb::replication2::agency;
 namespace paths = arangodb::cluster::paths::aliases;
 
 namespace {
-auto sendAgencyWriteTransaction(VPackBufferUInt8 trx) {
+auto sendAgencyWriteTransaction(VPackBufferUInt8 trx)
+    -> futures::Future<ResultT<uint64_t>> {
   AsyncAgencyComm ac;
-  return ac.sendWriteTransaction(120s, std::move(trx)).thenValue([](AsyncAgencyCommResult&& res) {
-    return res.asResult();
-  });
+  return ac.sendWriteTransaction(120s, std::move(trx))
+      .thenValue([](AsyncAgencyCommResult&& res) -> ResultT<uint64_t> {
+        if (res.fail()) {
+          return res.asResult();
+        }
+
+        // extract raft index
+        auto slice = res.slice().get("results");
+        TRI_ASSERT(slice.isArray());
+        TRI_ASSERT(!slice.isEmptyArray());
+        return slice.at(slice.length()-1).getNumericValue<uint64_t>();
+      });
 }
 }  // namespace
 
@@ -86,7 +96,7 @@ auto methods::updateTermSpecificationTrx(arangodb::agency::envelope envelope,
 auto methods::updateTermSpecification(DatabaseID const& database, LogId id,
                                       LogPlanTermSpecification const& spec,
                                       std::optional<LogTerm> prevTerm)
-    -> futures::Future<Result> {
+    -> futures::Future<ResultT<uint64_t>> {
   VPackBufferUInt8 trx;
   {
     VPackBuilder builder(trx);
@@ -112,7 +122,7 @@ auto methods::deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
 }
 
 auto methods::deleteReplicatedLog(DatabaseID const& database, LogId id)
-    -> futures::Future<Result> {
+    -> futures::Future<ResultT<uint64_t>> {
   VPackBufferUInt8 trx;
   {
     VPackBuilder builder(trx);
@@ -139,22 +149,22 @@ auto methods::createReplicatedLogTrx(arangodb::agency::envelope envelope,
 }
 
 auto methods::createReplicatedLog(DatabaseID const& database, LogPlanSpecification const& spec)
-    -> futures::Future<Result> {
+    -> futures::Future<ResultT<uint64_t>> {
   VPackBufferUInt8 trx;
   {
     VPackBuilder builder(trx);
     createReplicatedLogTrx(arangodb::agency::envelope::into_builder(builder), database, spec)
         .done();
   }
-
   return sendAgencyWriteTransaction(std::move(trx));
 }
 
 auto methods::updateElectionResult(arangodb::agency::envelope envelope,
-                                   const DatabaseID& database, LogId id,
-                                   const LogCurrentSupervisionElection& result)
+                                   DatabaseID const& database, LogId id,
+                                   LogCurrentSupervisionElection const& result)
     -> arangodb::agency::envelope {
   auto path = paths::current()->replicatedLogs()->database(database)->log(to_string(id))->str();
+
   return envelope.write()
       .emplace_object(path + "/supervision/election",
                       [&](VPackBuilder& builder) {

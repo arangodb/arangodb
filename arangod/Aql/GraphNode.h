@@ -200,6 +200,8 @@ class GraphNode : public ExecutionNode {
 
   graph::Graph const* graph() const noexcept;
 
+  void initializeIndexConditions() const;
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Internal helpers used in tests to modify enterprise detections.
   // These should not be used in production, as their detection
@@ -212,7 +214,7 @@ class GraphNode : public ExecutionNode {
     _isDisjoint = target;
   }
 #endif
- protected:  
+ protected:
   void doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
 
   void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone, bool withProperties) const;

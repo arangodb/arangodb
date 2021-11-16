@@ -325,6 +325,7 @@ ref_tracking_directory::ref_tracking_directory(
 }
 
 void ref_tracking_directory::clear_refs() const noexcept {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(mutex_);
   refs_.clear();
 }
@@ -332,14 +333,19 @@ void ref_tracking_directory::clear_refs() const noexcept {
 index_output::ptr ref_tracking_directory::create(
     const std::string& name) noexcept {
   try {
+
+    // Do not change the order of calls!
+    // The cleaner should "see" the file in directory
+    // ONLY if there is a tracking reference present!
+    auto ref = attribute_.add(name);
     auto result = impl_.create(name);
 
     // only track ref on successful call to impl_
     if (result) {
-      auto ref = attribute_.add(name);
-
       auto lock = make_lock_guard(mutex_);
-      refs_.emplace(ref);
+      refs_.insert(std::move(ref));
+    } else {
+      attribute_.remove(name);
     }
 
     return result;
@@ -431,6 +437,7 @@ bool ref_tracking_directory::rename(
 
 bool ref_tracking_directory::visit_refs(
     const std::function<bool(const index_file_refs::ref_t& ref)>& visitor) const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(mutex_);
 
   for (const auto& ref: refs_) {

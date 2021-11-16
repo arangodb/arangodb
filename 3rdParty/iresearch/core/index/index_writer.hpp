@@ -57,6 +57,7 @@ class directory_reader;
 class readers_cache final : util::noncopyable {
  public:
   struct key_t {
+    // cppcheck-suppress noExplicitConstructor
     key_t(const segment_meta& meta); // implicit constructor
 
     bool operator==(const key_t& other) const noexcept {
@@ -73,6 +74,7 @@ class readers_cache final : util::noncopyable {
     }
   };
 
+  // cppcheck-suppress constParameter
   explicit readers_cache(directory& dir) noexcept
     : dir_(dir) {}
 
@@ -182,6 +184,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
       size_t update_id_;
     };
 
+    // cppcheck-suppress constParameter
     explicit documents_context(index_writer& writer) noexcept
       : writer_(writer) {
     }
@@ -223,6 +226,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     template<typename Filter>
     void remove(Filter&& filter) {
       // thread-safe to use ctx_/segment_ while have lock since active flush_context will not change
+      // cppcheck-suppress unreadVariable
       auto ctx = update_segment(); // updates 'segment_' and 'ctx_'
       assert(segment_.ctx());
 
@@ -290,6 +294,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
       auto& writer = *(segment->writer_);
       segment_writer::document doc(writer);
       std::exception_ptr exception;
+      // cppcheck-suppress shadowFunction
       bitvector rollback; // 0-based offsets to roll back on failure for this specific replace(..) operation
       auto uncomitted_doc_id_begin =
         segment->uncomitted_doc_id_begin_ > segment->flushed_update_contexts_.size()
@@ -661,6 +666,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   /// @returns true if transaction has been sucessflully started
   ////////////////////////////////////////////////////////////////////////////
   bool begin() {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(commit_lock_);
 
     return start();
@@ -670,6 +676,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   /// @brief rollbacks the two-phase transaction 
   ////////////////////////////////////////////////////////////////////////////
   void rollback() {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(commit_lock_);
 
     abort();
@@ -684,6 +691,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
   bool commit() {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(commit_lock_);
 
     const bool modified = start();
@@ -696,6 +704,13 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   void purge_cached_readers() noexcept {
     cached_readers_.clear();
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @returns field features
+  ////////////////////////////////////////////////////////////////////////////
+  const field_features_t& field_features() const noexcept {
+    return field_features_;
   }
 
  private:
@@ -837,8 +852,8 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     struct flushed_t: public index_meta::index_segment_t {
       doc_id_t docs_mask_tail_doc_id{std::numeric_limits<doc_id_t>::max()}; // starting doc_id that should be added to docs_mask
       flushed_t() = default;
-      flushed_t(segment_meta&& meta)
-        : index_meta::index_segment_t(std::move(meta)) {}
+      explicit flushed_t(segment_meta&& meta)
+               : index_meta::index_segment_t(std::move(meta)) {}
     };
     using segment_meta_generator_t = std::function<segment_meta()>;
     using ptr = std::unique_ptr<segment_context>;
@@ -911,10 +926,10 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     std::atomic<size_t> segment_count_max; // @see segment_options::max_segment_count
     std::atomic<size_t> segment_docs_max; // @see segment_options::max_segment_docs
     std::atomic<size_t> segment_memory_max; // @see segment_options::max_segment_memory
-    segment_limits(const segment_options& opts) noexcept
-      : segment_count_max(opts.segment_count_max),
-        segment_docs_max(opts.segment_docs_max),
-        segment_memory_max(opts.segment_memory_max) {
+    explicit segment_limits(const segment_options& opts) noexcept
+             : segment_count_max(opts.segment_count_max),
+               segment_docs_max(opts.segment_docs_max),
+               segment_memory_max(opts.segment_memory_max) {
     }
     segment_limits& operator=(const segment_options& opts) noexcept {
       segment_count_max.store(opts.segment_count_max);
@@ -1013,6 +1028,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
 
     template<typename Visitor>
     bool visit(const Visitor& visitor, const index_meta& meta) const {
+      // cppcheck-suppress shadowFunction
       auto begin = files.begin();
 
       for (auto& entry : segments) {

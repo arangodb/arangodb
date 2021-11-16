@@ -98,6 +98,12 @@ void GeneralResponseMock::reset(arangodb::ResponseCode code) {
 arangodb::Endpoint::TransportType GeneralResponseMock::transportType() {
   return arangodb::Endpoint::TransportType::HTTP; // arbitrary value
 }
+  
+ErrorCode GeneralResponseMock::deflate() {
+  // we should never get here
+  TRI_ASSERT(false);
+  return TRI_ERROR_INTERNAL;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

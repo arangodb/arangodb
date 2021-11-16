@@ -91,7 +91,7 @@ class TailingSyncer : public Syncer {
 #endif
 
   /// @brief whether or not a collection should be excluded
-  bool skipMarker(TRI_voc_tick_t firstRegulaTick, arangodb::velocypack::Slice const& slice,
+  bool skipMarker(TRI_voc_tick_t firstRegulaTick, arangodb::velocypack::Slice slice,
                   TRI_voc_tick_t actualMarkerTick, TRI_replication_operation_e type);
 
   /// @brief whether or not a collection should be excluded
@@ -140,10 +140,6 @@ class TailingSyncer : public Syncer {
   /// @brief perform a continuous sync with the leader
   Result runContinuousSync();
 
-  /// @brief fetch the open transactions we still need to complete
-  Result fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tick_t toTick,
-                               TRI_voc_tick_t& startTick);
-
   /// @brief save the current applier state
   virtual Result saveApplierState() = 0;
 
@@ -179,7 +175,7 @@ class TailingSyncer : public Syncer {
                                                     char const* type);
 
  protected:
-  virtual bool skipMarker(arangodb::velocypack::Slice const& slice) = 0;
+  virtual bool skipMarker(arangodb::velocypack::Slice slice) = 0;
 
   /// @brief pointer to the applier
   ReplicationApplier* _applier;

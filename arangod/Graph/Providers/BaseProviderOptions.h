@@ -25,6 +25,7 @@
 
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/NonConstExpressionContainer.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
@@ -43,9 +44,12 @@ namespace graph {
 struct IndexAccessor {
   IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
                 std::optional<size_t> memberToUpdate,
-                std::unique_ptr<arangodb::aql::Expression> expression, size_t cursorId);
+                std::unique_ptr<arangodb::aql::Expression> expression,
+                std::optional<aql::NonConstExpressionContainer> nonConstPart,
+                size_t cursorId);
   IndexAccessor(IndexAccessor const&) = delete;
   IndexAccessor(IndexAccessor&&) = default;
+  IndexAccessor& operator=(IndexAccessor const&) = delete;
 
   aql::AstNode* getCondition() const;
   aql::Expression* getExpression() const;
@@ -53,16 +57,18 @@ struct IndexAccessor {
   std::optional<size_t> getMemberToUpdate() const;
   size_t cursorId() const;
 
+  bool hasNonConstParts() const;
+
+  aql::NonConstExpressionContainer const& nonConstPart() const;
+
  private:
   transaction::Methods::IndexHandle _idx;
   aql::AstNode* _indexCondition;
+  // Position of _from / _to in the index search condition
   std::optional<size_t> _memberToUpdate;
-
-  // Note: We would prefer to have this a unique_ptr here.
-  // However the IndexAccessor is used in std::vector<IndexAccessor>
-  // which then refuses to compile (deleted copy constructor)
   std::unique_ptr<arangodb::aql::Expression> _expression;
   size_t _cursorId;
+  std::optional<aql::NonConstExpressionContainer> _nonConstContainer;
 };
 
 struct BaseProviderOptions {
@@ -80,7 +86,7 @@ struct BaseProviderOptions {
   BaseProviderOptions(BaseProviderOptions&&) = default;
 
   aql::Variable const* tmpVar() const;
-  std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> const& indexInformations() const;
+  std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>>& indexInformations();
 
   std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap() const;
 

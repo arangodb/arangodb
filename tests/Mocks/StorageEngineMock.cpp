@@ -717,7 +717,7 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
   HashIndexIteratorMock(arangodb::LogicalCollection* collection,
                         arangodb::transaction::Methods* trx, arangodb::Index const* index,
                         HashIndexMap const& map, std::unique_ptr<VPackBuilder>&& keys)
-    : IndexIterator(collection, trx, arangodb::ReadOwnWrites::no), _map(map) {
+      : IndexIterator(collection, trx, arangodb::ReadOwnWrites::no), _map(map) {
     _documents = _map.find(std::move(keys));
     _begin = _documents.begin();
     _end = _documents.end();
@@ -1329,9 +1329,9 @@ arangodb::IndexEstMap PhysicalCollectionMock::clusterIndexEstimates(bool allowUp
   return estimates;
 }
 
-arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*,
-                                              arangodb::velocypack::StringRef const& key,
-                                              arangodb::IndexIterator::DocumentCallback const& cb,
+arangodb::Result PhysicalCollectionMock::read(
+    arangodb::transaction::Methods*, arangodb::velocypack::StringRef const& key,
+    arangodb::IndexIterator::DocumentCallback const& cb,
                                               arangodb::ReadOwnWrites) const {
   before();
   auto it = _documents.find(key);
@@ -1499,7 +1499,7 @@ std::shared_ptr<arangodb::iresearch::IResearchLinkMock> StorageEngineMock::build
                    if (arangodb::iresearch::IResearchLinkMock::InitCallback != nullptr) {
                      return arangodb::iresearch::IResearchLinkMock::InitCallback();
                    }
-                   return irs::directory_attributes{};
+                 return irs::directory_attributes{};
                  });
 
   if (!res.ok()) {
@@ -1593,13 +1593,6 @@ std::unique_ptr<arangodb::PhysicalCollection> StorageEngineMock::createPhysicalC
 arangodb::Result StorageEngineMock::createTickRanges(VPackBuilder&) {
   TRI_ASSERT(false);
   return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-std::unique_ptr<arangodb::TransactionCollection> StorageEngineMock::createTransactionCollection(
-    arangodb::TransactionState& state, arangodb::DataSourceId cid,
-    arangodb::AccessMode::Type accessType) {
-  return std::unique_ptr<arangodb::TransactionCollection>(
-      new TransactionCollectionMock(&state, cid, accessType));
 }
 
 std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager(
@@ -1975,6 +1968,15 @@ uint64_t TransactionStateMock::numCommits() const {
 
 bool TransactionStateMock::hasFailedOperations() const {
   return false;  // assume no failed operations
+}
+
+TRI_voc_tick_t TransactionStateMock::lastOperationTick() const noexcept {
+  return 0;
+}
+
+std::unique_ptr<arangodb::TransactionCollection> TransactionStateMock::createTransactionCollection(
+    arangodb::DataSourceId cid, arangodb::AccessMode::Type accessType) {
+  return std::make_unique<TransactionCollectionMock>(this, cid, accessType);
 }
 
 // -----------------------------------------------------------------------------

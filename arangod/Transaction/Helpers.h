@@ -111,7 +111,6 @@ std::string makeIdFromParts(CollectionNameResolver const* resolver,
 class StringBufferLeaser {
  public:
   explicit StringBufferLeaser(Methods*);
-  explicit StringBufferLeaser(transaction::Context*);
   ~StringBufferLeaser();
   arangodb::basics::StringBuffer* stringBuffer() const { return _stringBuffer; }
   arangodb::basics::StringBuffer* operator->() const { return _stringBuffer; }

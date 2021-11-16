@@ -65,10 +65,14 @@ class ProviderTracer {
   auto expand(Step const& from, size_t previous, std::function<void(Step)> callback)
       -> void;
 
+  auto clear() -> void;
+
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+
+  void prepareIndexExpressions(aql::Ast* ast);
 
   // Note: ClusterProvider will need to implement destroyEngines
   void destroyEngines();
