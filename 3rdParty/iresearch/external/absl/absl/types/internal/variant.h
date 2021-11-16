@@ -894,7 +894,7 @@ struct ContainsVariantNPos
 
 template <class Op, class... QualifiedVariants>
 using RawVisitResult =
-    iresearch_absl::result_of_t<Op, VariantAccessResult<0, QualifiedVariants>...>;
+    iresearch_absl::result_of_t<Op(VariantAccessResult<0, QualifiedVariants>...)>;
 
 // NOTE: The spec requires that all return-paths yield the same type and is not
 // SFINAE-friendly, so we can deduce the return type by examining the first
@@ -905,7 +905,7 @@ using RawVisitResult =
 template <class Op, class... QualifiedVariants>
 struct VisitResultImpl {
   using type =
-      iresearch_absl::result_of_t<Op, VariantAccessResult<0, QualifiedVariants>...>;
+      iresearch_absl::result_of_t<Op(VariantAccessResult<0, QualifiedVariants>...)>;
 };
 
 // Done in two steps intentionally so that we don't cause substitution to fail.
@@ -927,8 +927,8 @@ struct PerformVisitation {
                            index_sequence<TupIs...>, SizeT<Is>...) const {
     static_assert(
         std::is_same<ReturnType,
-                     iresearch_absl::result_of_t<Op, VariantAccessResult<
-                                          Is, QualifiedVariants>...>>::value,
+                     iresearch_absl::result_of_t<Op(VariantAccessResult<
+                                          Is, QualifiedVariants>...)>>::value,
         "All visitation overloads must have the same return type.");
     return iresearch_absl::base_internal::invoke(
         iresearch_absl::forward<Op>(op),
